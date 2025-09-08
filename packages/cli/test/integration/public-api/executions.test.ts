@@ -246,9 +246,8 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should retry an execution', async () => {
 		const mockedRetriedExecutionStatus = 'waiting';
-		jest
-			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedRetriedExecutionStatus);
+		const mockedExecutionResponse = { status: mockedRetriedExecutionStatus } as any;
+		jest.spyOn(Container.get(ExecutionService), 'retry').mockResolvedValue(mockedExecutionResponse);
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
