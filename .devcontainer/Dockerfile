@@ -9,8 +9,8 @@ RUN mkdir /workspaces && chown node:node /workspaces
 RUN npm install -g pnpm
 
 # Instala las librerías de Python para Vanna.ai
-RUN pip install vanna
-RUN pip install psycopg2-binary
+RUN pip install vanna --break-system-packages
+RUN pip install psycopg2-binary --break-system-packages
 
 USER node
 RUN mkdir -p ~/.pnpm-store && pnpm config set store-dir ~/.pnpm-store --global
