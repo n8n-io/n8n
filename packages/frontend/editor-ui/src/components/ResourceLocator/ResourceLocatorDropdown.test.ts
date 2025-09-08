@@ -153,4 +153,96 @@ describe('ResourceLocatorDropdown', () => {
 			expect(wrapper.emitted()['update:modelValue']).toEqual([['workflow-2']]);
 		});
 	});
+
+	describe('pagination', () => {
+		it('should trigger onResultsEnd handler when scrolling to bottom with pagination', async () => {
+			// Generate multiple pages of mock data (enough to require scrolling)
+			const manyResources: IResourceLocatorResultExpanded[] = Array.from(
+				{ length: 50 },
+				(_, i) => ({
+					name: `Workflow ${i + 1}`,
+					value: `workflow-${i + 1}`,
+					url: `/workflow/workflow-${i + 1}`,
+				}),
+			);
+
+			const wrapper = renderComponent({
+				props: {
+					show: true,
+					resources: manyResources,
+					hasMore: true, // Indicates there are more items to load
+					loading: false,
+				},
+			});
+
+			const resultsContainer = screen
+				.getByTestId('resource-locator-dropdown')
+				.querySelector('[class*="container"]') as HTMLDivElement;
+			expect(resultsContainer).toBeInTheDocument();
+
+			// Mock scroll to bottom - simulate scrolling to the end
+			Object.defineProperty(resultsContainer, 'scrollTop', {
+				writable: true,
+				value: resultsContainer.scrollHeight - resultsContainer.offsetHeight,
+			});
+
+			// Trigger scroll event
+			await fireEvent.scroll(resultsContainer);
+
+			// Verify loadMore event was emitted
+			expect(wrapper.emitted().loadMore).toHaveLength(1);
+		});
+
+		it('should not trigger loadMore when already loading', async () => {
+			const wrapper = renderComponent({
+				props: {
+					show: true,
+					resources: [],
+					hasMore: true,
+					loading: true, // Currently loading
+				},
+			});
+
+			const resultsContainer = screen
+				.getByTestId('resource-locator-dropdown')
+				.querySelector('[class*="container"]') as HTMLDivElement;
+
+			// Mock scroll to bottom
+			Object.defineProperty(resultsContainer, 'scrollTop', {
+				writable: true,
+				value: resultsContainer.scrollHeight - resultsContainer.offsetHeight,
+			});
+
+			await fireEvent.scroll(resultsContainer);
+
+			// Should not emit loadMore when loading
+			expect(wrapper.emitted().loadMore).toBeUndefined();
+		});
+
+		it('should not trigger loadMore when no more items available', async () => {
+			const wrapper = renderComponent({
+				props: {
+					show: true,
+					resources: [],
+					hasMore: false, // No more items to load
+					loading: false,
+				},
+			});
+
+			const resultsContainer = screen
+				.getByTestId('resource-locator-dropdown')
+				.querySelector('[class*="container"]') as HTMLDivElement;
+
+			// Mock scroll to bottom
+			Object.defineProperty(resultsContainer, 'scrollTop', {
+				writable: true,
+				value: resultsContainer.scrollHeight - resultsContainer.offsetHeight,
+			});
+
+			await fireEvent.scroll(resultsContainer);
+
+			// Should not emit loadMore when hasMore is false
+			expect(wrapper.emitted().loadMore).toBeUndefined();
+		});
+	});
 });
