@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { LogsPanel } from './components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
+	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
+
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
 	}
@@ -20,6 +23,14 @@ export class ExecutionsPage extends BasePage {
 		return executionItems.nth(0);
 	}
 
+	getAutoRefreshButton() {
+		return this.page.getByTestId('auto-refresh-checkbox');
+	}
+
+	getPreviewIframe() {
+		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
+	}
+
 	async clickLastExecutionItem(): Promise<void> {
 		const executionItem = this.getLastExecutionItem();
 		await executionItem.click();
@@ -30,7 +41,6 @@ export class ExecutionsPage extends BasePage {
 	 * @param action - The action to take.
 	 */
 	async handlePinnedNodesConfirmation(action: 'Unpin' | 'Cancel'): Promise<void> {
-		const confirmDialog = this.page.locator('.matching-pinned-nodes-confirmation');
 		await this.page.getByRole('button', { name: action }).click();
 	}
 }

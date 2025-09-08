@@ -39,40 +39,7 @@
                     }
                 }
             }
-        },
-        "rowCount": {
-            "type": "integer"
-        },
-        "rows": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "dimensionValues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "value": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "metricValues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "value": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
-    "version": 4
+    "version": 5
 }

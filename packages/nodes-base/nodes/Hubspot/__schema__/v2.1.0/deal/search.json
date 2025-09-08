@@ -16,9 +16,6 @@
                 "createdate": {
                     "type": "string"
                 },
-                "dealname": {
-                    "type": "string"
-                },
                 "dealstage": {
                     "type": "string"
                 },
@@ -27,9 +24,6 @@
                 },
                 "hs_object_id": {
                     "type": "string"
-                },
-                "pipeline": {
-                    "type": "string"
                 }
             }
         },
@@ -37,5 +31,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

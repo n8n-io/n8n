@@ -8,6 +8,7 @@ from src.config.sentry_config import SentryConfig
 from src.config.task_runner_config import TaskRunnerConfig
 from src.logs import setup_logging
 from src.task_runner import TaskRunner
+from src.shutdown import Shutdown
 
 
 async def main():
@@ -48,21 +49,17 @@ async def main():
     task_runner = TaskRunner(task_runner_config)
     logger.info("Starting runner...")
 
+    shutdown = Shutdown(task_runner, health_check_server, sentry)
+    task_runner.on_idle_timeout = shutdown.start_auto_shutdown
+
     try:
         await task_runner.start()
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        logger.info("Shutting down runner...")
     except Exception:
         logger.error("Unexpected error", exc_info=True)
-        raise
-    finally:
-        await task_runner.stop()
+        await shutdown.start_shutdown()
 
-        if health_check_server:
-            await health_check_server.stop()
-
-        if sentry:
-            sentry.shutdown()
+    exit_code = await shutdown.wait_for_shutdown()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

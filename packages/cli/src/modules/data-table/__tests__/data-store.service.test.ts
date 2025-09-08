@@ -3,6 +3,7 @@ import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-t
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { DataStoreRow } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
@@ -842,18 +843,17 @@ describe('dataStore', () => {
 				{},
 			);
 			expect(count).toEqual(4);
-			expect(data).toEqual(
-				rows.map((row, i) =>
-					expect.objectContaining({
+
+			const expected = rows.map(
+				(row, i) =>
+					expect.objectContaining<DataStoreRow>({
 						...row,
 						id: i + 1,
-						c1: row.c1,
-						c2: row.c2,
 						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-						c4: row.c4,
-					}),
-				),
+					}) as jest.AsymmetricMatcher,
 			);
+
+			expect(data).toEqual(expected);
 		});
 
 		it('inserts a row even if it matches with the existing one', async () => {
@@ -1161,7 +1161,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('rejects a invalid date string to date column', async () => {
+		it('rejects an invalid date string to date column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1174,10 +1174,9 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError(
-					"value '2025-99-15T09:48:14.259Z' does not match column type 'date'",
-				),
+				"value '2025-99-15T09:48:14.259Z' does not match column type 'date'",
 			);
 		});
 
@@ -1211,14 +1210,16 @@ describe('dataStore', () => {
 			});
 
 			// ACT
+			const wrongValue = new Date().toISOString();
 			const result = dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ c1: 3 },
-				{ c1: true },
+				{ c1: wrongValue },
 			]);
 
 			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError("value 'true' does not match column type 'number'"),
+				`value '${wrongValue}' does not match column type 'number'`,
 			);
 		});
 
@@ -1636,7 +1637,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 			});
 
@@ -1690,7 +1691,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { id: 1 },
+				filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
 				data: { name: 'Alicia', age: 31, active: false },
 			});
 
@@ -1742,7 +1743,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { age: 31, active: false },
 			});
 
@@ -1785,7 +1786,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { name: 'Alicia' },
 			});
 
@@ -1832,7 +1833,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { age: 30 },
+				filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: 30 }] },
 				data: { age: 31 },
 			});
 
@@ -1860,6 +1861,51 @@ describe('dataStore', () => {
 			);
 		});
 
+		it('should be able to update by numeric string', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'age', type: 'number' }],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }]);
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: '30' }] },
+				data: { age: '31' },
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(data).toEqual([expect.objectContaining({ age: 31 })]);
+		});
+
+		it('should throw on invalid numeric string', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'age', type: 'number' }],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }]);
+
+			// ACT
+			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
+				},
+				data: { age: '31' },
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
+			await expect(result).rejects.toThrow("value '30dfddf' does not match column type 'number'");
+		});
+
 		it('should be able to update by boolean column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1879,7 +1925,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { active: true },
+				filter: { type: 'and', filters: [{ columnName: 'active', condition: 'eq', value: true }] },
 				data: { active: false },
 			});
 
@@ -1909,6 +1955,9 @@ describe('dataStore', () => {
 
 		it('should be able to update by date column', async () => {
 			// ARRANGE
+			const aliceBirthday = new Date('1990-01-02');
+			const bobBirthday = new Date('1995-01-01');
+
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
 				columns: [
@@ -1920,14 +1969,18 @@ describe('dataStore', () => {
 			});
 
 			await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+				{ name: 'Alice', age: 30, active: true, birthday: aliceBirthday },
+				{ name: 'Bob', age: 25, active: false, birthday: bobBirthday },
 			]);
 
 			// ACT
+			const newBirthday = new Date('1990-01-03');
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { birthday: new Date('1990-01-01') },
-				data: { birthday: new Date('1990-01-02') },
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'birthday', condition: 'eq', value: aliceBirthday }],
+				},
+				data: { birthday: newBirthday },
 			});
 
 			// ASSERT
@@ -1941,14 +1994,14 @@ describe('dataStore', () => {
 						name: 'Alice',
 						age: 30,
 						active: true,
-						birthday: new Date('1990-01-02'),
+						birthday: newBirthday,
 					}),
 					expect.objectContaining({
 						id: 2,
 						name: 'Bob',
 						age: 25,
 						active: false,
-						birthday: new Date('1995-01-01'),
+						birthday: bobBirthday,
 					}),
 				]),
 			);
@@ -1973,7 +2026,13 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice', age: 30 },
+				filter: {
+					type: 'and',
+					filters: [
+						{ columnName: 'name', condition: 'eq', value: 'Alice' },
+						{ columnName: 'age', condition: 'eq', value: 30 },
+					],
+				},
 				data: { department: 'Management' },
 			});
 
@@ -2019,7 +2078,10 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Charlie' },
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+				},
 				data: { age: 25 },
 			});
 
@@ -2049,13 +2111,13 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: {},
+				filter: { type: 'and', filters: [] },
 				data: { name: 'Alice', age: 31 },
 			});
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError('Filter columns must not be empty for updateRow'),
+				new DataStoreValidationError('Filter must not be empty for updateRow'),
 			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
@@ -2081,7 +2143,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: {},
 			});
 
@@ -2102,7 +2164,7 @@ describe('dataStore', () => {
 		it('should fail when data store does not exist', async () => {
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow('non-existent-id', project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { age: 25 },
 			});
 
@@ -2120,7 +2182,7 @@ describe('dataStore', () => {
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { invalidColumn: 'value' },
 			});
 
@@ -2138,7 +2200,10 @@ describe('dataStore', () => {
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { invalidColumn: 'Alice' },
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],
+				},
 				data: { name: 'Bob' },
 			});
 
@@ -2159,7 +2224,7 @@ describe('dataStore', () => {
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { age: 'not-a-number' },
 			});
 
@@ -2183,7 +2248,7 @@ describe('dataStore', () => {
 
 			// ACT - only update age, leaving name and active unchanged
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { age: 31 },
 			});
 
@@ -2218,7 +2283,7 @@ describe('dataStore', () => {
 			// ACT
 			const newDate = new Date('1991-02-02');
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
-				filter: { name: 'Alice' },
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { birthDate: newDate.toISOString() },
 			});
 
@@ -2256,7 +2321,10 @@ describe('dataStore', () => {
 				dataStoreId,
 				project1.id,
 				{
-					filter: { name: 'Alice' },
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
 					data: { age: 31, active: false, timestamp: soon },
 				},
 				true,
@@ -2341,6 +2409,28 @@ describe('dataStore', () => {
 					updatedAt: expect.any(Date),
 				},
 			]);
+		});
+
+		it('should fail when filter contains invalid column names', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+
+			// ACT
+			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],
+				},
+				data: { name: 'Bob' },
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
 		});
 	});
 });

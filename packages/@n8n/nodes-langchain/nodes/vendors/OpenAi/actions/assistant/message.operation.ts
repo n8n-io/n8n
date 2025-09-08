@@ -24,6 +24,7 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -193,6 +194,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: options.maxRetries ?? 2,
 		timeout: options.timeout ?? 10000,
 		baseURL,
+		fetchOptions: {
+			dispatcher: getProxyAgent(baseURL),
+		},
 	});
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });

@@ -853,6 +853,30 @@ describe('GET /project/:projectId', () => {
 			role: 'project:admin',
 		});
 	});
+
+	test('should have correct folder scopes when, as an admin / owner, I fetch a project created by a different user', async () => {
+		const [ownerUser, testUser1] = await Promise.all([createOwner(), createUser()]);
+
+		const createdProject = await createTeamProject(undefined, testUser1);
+
+		const memberAgent = testServer.authAgentFor(ownerUser);
+
+		const resp = await memberAgent.get(`/projects/${createdProject.id}`);
+		expect(resp.status).toBe(200);
+
+		expect(resp.body.data.id).toBe(createdProject.id);
+		expect(resp.body.data.name).toBe(createdProject.name);
+
+		expect(resp.body.data.scopes).toEqual(
+			expect.arrayContaining([
+				'folder:read',
+				'folder:update',
+				'folder:delete',
+				'folder:create',
+				'folder:list',
+			]),
+		);
+	});
 });
 
 describe('DELETE /project/:projectId', () => {
