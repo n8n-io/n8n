@@ -108,8 +108,7 @@
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
-      "tmp": "0.2.4",
-      "@n8n/codemirror-lang-sql": "link:../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql"
+      "tmp": "0.2.4"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
