@@ -1,55 +1,26 @@
 import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
-import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import * as a from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 
-import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
-import { TypedEmitter } from '../typed-emitter';
-
-type ChildProcess = ReturnType<typeof spawn>;
-
-export type ExitReason = 'unknown' | 'oom';
-
-export type TaskRunnerProcessEventMap = {
-	exit: {
-		reason: ExitReason;
-	};
-};
+import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-process-base';
 
 /**
- * Manages the JS task runner process as a child process
+ * Responsible for managing a JavaScript task runner as a child process.
+ * This is internal mode, which is not recommended for production.
  */
 @Service()
-export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
-	get isRunning() {
-		return this.process !== null;
-	}
+export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
+	readonly name = 'runnner:js';
 
-	/** The process ID of the task runner process */
-	get pid() {
-		return this.process?.pid;
-	}
-
-	/** Promise that resolves when the process has exited */
-	get runPromise() {
-		return this._runPromise;
-	}
-
-	private process: ChildProcess | null = null;
-
-	private _runPromise: Promise<void> | null = null;
+	readonly loggerScope = 'task-runner-js';
 
 	private oomDetector: NodeProcessOomDetector | null = null;
-
-	private isShuttingDown = false;
-
-	private logger: Logger;
 
 	/** Environment variables inherited by the child process from the current environment. */
 	private readonly passthroughEnvVars = [
@@ -67,24 +38,19 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_PATH',
 	] as const;
 
-	private readonly mode: 'insecure' | 'secure' = 'secure';
+	private readonly securityMode: 'insecure' | 'secure' = 'secure';
 
 	constructor(
-		logger: Logger,
-		private readonly runnerConfig: TaskRunnersConfig,
-		private readonly authService: TaskBrokerAuthService,
+		readonly logger: Logger,
+		readonly runnerConfig: TaskRunnersConfig,
+		readonly authService: TaskBrokerAuthService,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super();
+		super(logger, runnerConfig, authService);
 
-		a.ok(
-			this.runnerConfig.mode !== 'external',
-			'Task Runner Process cannot be used in external mode',
-		);
+		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 
-		this.mode = this.runnerConfig.insecureMode ? 'insecure' : 'secure';
-
-		this.logger = logger.scoped('task-runner');
+		this.securityMode = this.runnerConfig.insecureMode ? 'insecure' : 'secure';
 
 		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
 			this.logger.warn('Task runner failed heartbeat check, restarting...');
@@ -97,43 +63,28 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		});
 	}
 
-	async start() {
-		a.ok(!this.process, 'Task Runner Process already running');
-
-		const grantToken = await this.authService.createGrantToken();
-
-		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
-		this.process = this.startNode(grantToken, taskBrokerUri);
-
-		forwardToLogger(this.logger, this.process, '[Task Runner]: ');
-
-		this.monitorProcess(this.process);
-	}
-
-	startNode(grantToken: string, taskBrokerUri: string) {
+	async startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess> {
 		const startScript = require.resolve('@n8n/task-runner/start');
-
-		const flags =
-			this.mode === 'secure'
-				? ['--disallow-code-generation-from-strings', '--disable-proto=delete']
-				: [];
+		const flags = this.runnerConfig.insecureMode
+			? []
+			: ['--disallow-code-generation-from-strings', '--disable-proto=delete'];
 
 		return spawn('node', [...flags, startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
 		});
 	}
 
-	@OnShutdown()
-	async stop() {
-		if (!this.process) return;
+	startNode(grantToken: string, taskBrokerUri: string) {
+		const startScript = require.resolve('@n8n/task-runner/start');
 
-		this.isShuttingDown = true;
+		const flags =
+			this.securityMode === 'secure'
+				? ['--disallow-code-generation-from-strings', '--disable-proto=delete']
+				: [];
 
-		// TODO: Timeout & force kill
-		this.killNode();
-		await this._runPromise;
-
-		this.isShuttingDown = false;
+		return spawn('node', [...flags, startScript], {
+			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
+		});
 	}
 
 	/** Force-restart a runner suspected of being unresponsive. */
@@ -151,24 +102,12 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.process.kill();
 	}
 
-	private monitorProcess(taskRunnerProcess: ChildProcess) {
-		this._runPromise = new Promise((resolve) => {
-			this.oomDetector = new NodeProcessOomDetector(taskRunnerProcess);
-
-			taskRunnerProcess.on('exit', (code) => {
-				this.onProcessExit(code, resolve);
-			});
-		});
+	setupProcessMonitoring(process: ChildProcess) {
+		this.oomDetector = new NodeProcessOomDetector(process);
 	}
 
-	private onProcessExit(_code: number | null, resolveFn: () => void) {
-		this.process = null;
-		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
-		resolveFn();
-
-		if (!this.isShuttingDown) {
-			setImmediate(async () => await this.start());
-		}
+	analyzeExitReason(): { reason: ExitReason } {
+		return { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' };
 	}
 
 	private getProcessEnvVars(grantToken: string, taskBrokerUri: string) {

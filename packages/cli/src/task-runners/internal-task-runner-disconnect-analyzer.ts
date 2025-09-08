@@ -6,8 +6,8 @@ import type { DisconnectErrorOptions } from '@/task-runners/task-broker/task-bro
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
 import { SlidingWindowSignal } from './sliding-window-signal';
-import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process';
-import { TaskRunnerProcess } from './task-runner-process';
+import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process-base';
+import { JsTaskRunnerProcess } from './task-runner-process-js';
 
 /**
  * Analyzes the disconnect reason of a task runner process to provide a more
@@ -19,7 +19,7 @@ export class InternalTaskRunnerDisconnectAnalyzer extends DefaultTaskRunnerDisco
 
 	constructor(
 		private readonly runnerConfig: TaskRunnersConfig,
-		private readonly taskRunnerProcess: TaskRunnerProcess,
+		private readonly taskRunnerProcess: JsTaskRunnerProcess,
 	) {
 		super();
 
