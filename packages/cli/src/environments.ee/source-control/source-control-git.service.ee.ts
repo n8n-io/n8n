@@ -163,6 +163,8 @@ export class SourceControlGitService {
 			const foundRemote = remotes.find((e) => {
 				if (e.name !== SOURCE_CONTROL_ORIGIN) return false;
 
+				// Normalize URLs by removing credentials to safely compare HTTPS URLs
+				// that may contain username/password authentication details
 				const normalizeUrl = (url: string) => {
 					try {
 						const urlObj = new URL(url);
