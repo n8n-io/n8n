@@ -109,9 +109,6 @@ ENV NODE_ENV=production \
 
 # Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
-COPY --from=node-alpine /usr/local/bin/npm /usr/local/bin/npm
-COPY --from=node-alpine /usr/local/bin/npx /usr/local/bin/npx
-COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
