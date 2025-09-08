@@ -1,27 +1,25 @@
-import { useUsersStore, type LoginHook } from '@/stores/users.store';
+import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { EnterpriseEditionFeature } from '@/constants';
+import { initializeAuthenticatedFeatures, initializeCore, state } from '@/init';
+import { UserManagementAuthenticationMethod } from '@/Interface';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { state, initializeAuthenticatedFeatures, initializeCore } from '@/init';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
+import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { STORES } from '@n8n/stores';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { createTestingPinia } from '@pinia/testing';
 import { AxiosError } from 'axios';
 import merge from 'lodash/merge';
-import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@n8n/stores';
-import { useSSOStore } from '@/stores/sso.store';
-import { UserManagementAuthenticationMethod } from '@/Interface';
-import type { IUser } from '@n8n/rest-api-client/api/users';
-import { EnterpriseEditionFeature } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
+import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { telemetry } from './plugins/telemetry';
-import { useProjectsStore } from './stores/projects.store';
-import type { Project } from './types/projects.types';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -47,7 +45,6 @@ describe('Init', () => {
 	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
-	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 
 	beforeEach(() => {
@@ -68,7 +65,6 @@ describe('Init', () => {
 		versionsStore = mockedStore(useVersionsStore);
 		ssoStore = mockedStore(useSSOStore);
 		uiStore = mockedStore(useUIStore);
-		projectsStore = mockedStore(useProjectsStore);
 		rootStore = mockedStore(useRootStore);
 	});
 
@@ -129,16 +125,10 @@ describe('Init', () => {
 			);
 			rootStore.instanceId = 'testInstanceId';
 			rootStore.versionCli = '1.102.0';
-			projectsStore.personalProject = mock<Project>({ id: 'mockPersonalProjectId' });
 
 			await initializeCore();
 
-			expect(telemetryIdentifySpy).toHaveBeenCalledWith(
-				'testInstanceId',
-				'userId',
-				'1.102.0',
-				'mockPersonalProjectId',
-			);
+			expect(telemetryIdentifySpy).toHaveBeenCalledWith('testInstanceId', 'userId', '1.102.0');
 		});
 
 		it('should initialize ssoStore with settings SSO configuration', async () => {
