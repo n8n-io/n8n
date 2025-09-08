@@ -110,8 +110,9 @@ COPY --from=node-alpine /usr/local/bin/npm /usr/local/bin/npm
 COPY --from=node-alpine /usr/local/bin/npx /usr/local/bin/npx
 COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-# Node needs libstdc++
-RUN apk add --no-cache ca-certificates tini libstdc++
+# libstdc++ is required by Node
+# libc6-compat is required by task-runner-launcher
+RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
 
 RUN addgroup -g 1000 -S runner \
  && adduser -u 1000 -S -G runner -h /home/runner -D runner
