@@ -1,14 +1,15 @@
-import type {
-	IConnection,
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	IRunData,
-	IRunNodeResponse,
-	ITaskMetadata,
-	Request,
-	Workflow,
-	LoggerProxy,
+import {
+	type IConnection,
+	type IExecuteData,
+	type INode,
+	type INodeExecutionData,
+	type IRunData,
+	type IRunNodeResponse,
+	type ITaskMetadata,
+	type Request,
+	type Workflow,
+	type LoggerProxy,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 type NodeToBeExecuted = {
@@ -53,7 +54,14 @@ export function handleRequests({
 		metadata: request.metadata,
 	};
 	for (const action of request.actions) {
-		const node = workflow.getNode(action.nodeName)!;
+		const node = workflow.getNode(action.nodeName);
+
+		if (!node) {
+			throw new UnexpectedError(
+				`Workflow does not contain a node with the name of "${action.nodeName}".`,
+			);
+		}
+
 		node.rewireOutputLogTo = action.type;
 		const inputConnectionData: IConnection = {
 			// agents always have a main input
