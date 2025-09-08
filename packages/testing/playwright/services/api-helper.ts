@@ -11,6 +11,7 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { VariablesApiHelper } from './variables-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
@@ -37,12 +38,14 @@ export class ApiHelpers {
 	workflowApi: WorkflowApiHelper;
 	projectApi: ProjectApiHelper;
 	credentialApi: CredentialApiHelper;
+	variablesApi: VariablesApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflowApi = new WorkflowApiHelper(this);
 		this.projectApi = new ProjectApiHelper(this);
 		this.credentialApi = new CredentialApiHelper(this);
+		this.variablesApi = new VariablesApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
