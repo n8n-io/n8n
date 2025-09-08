@@ -16,6 +16,69 @@ import {
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 
+// Helper functions for common operations
+async function addOpenAILanguageModelWithCredentials(
+	n8n: n8nPage,
+	parentNode: string,
+	options: { exactMatch?: boolean; closeNDV?: boolean } = { exactMatch: true, closeNDV: false },
+) {
+	await n8n.canvas.addSupplementalNodeToParent(
+		AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+		'ai_languageModel',
+		parentNode,
+		options,
+	);
+
+	await n8n.ndv.clickCreateNewCredential();
+	await n8n.credentialsModal.setValues({
+		apiKey: 'abcd',
+	});
+	await n8n.ndv.clickBackToCanvasButton();
+}
+
+async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
+	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+		timeout,
+	});
+}
+
+async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
+	await n8n.canvas.logsPanel.sendManualChatMessage(message);
+	await waitForWorkflowSuccess(n8n);
+}
+
+async function verifyChatMessages(n8n: n8nPage, expectedCount: number, inputMessage?: string) {
+	const messages = n8n.canvas.getManualChatMessages();
+	await expect(messages).toHaveCount(expectedCount);
+	if (inputMessage) {
+		await expect(messages.first()).toContainText(inputMessage);
+	}
+	await expect(messages.last()).toBeVisible();
+	return messages;
+}
+
+async function verifyLogsPanelEntries(n8n: n8nPage, expectedEntries: string[]) {
+	await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
+	await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(expectedEntries.length);
+	for (let i = 0; i < expectedEntries.length; i++) {
+		await expect(n8n.canvas.logsPanel.getLogEntries().nth(i)).toHaveText(expectedEntries[i]);
+	}
+}
+
+async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] = []) {
+	await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+	// Add additional nodes if specified
+	for (const nodeName of additionalNodes) {
+		await n8n.canvas.addSupplementalNodeToParent(nodeName, 'ai_tool', AGENT_NODE_NAME, {
+			closeNDV: true,
+		});
+	}
+
+	// Always add OpenAI Language Model
+	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
+}
+
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
@@ -180,100 +243,42 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		test('should be able to open and execute Basic LLM Chain node', async ({ n8n }) => {
 			await n8n.canvas.addNode(BASIC_LLM_CHAIN_NODE_NAME, { closeNDV: true });
 
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				BASIC_LLM_CHAIN_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
+			await addOpenAILanguageModelWithCredentials(n8n, BASIC_LLM_CHAIN_NODE_NAME);
 
 			await n8n.canvas.openNode(BASIC_LLM_CHAIN_NODE_NAME);
 			const inputMessage = 'Hello!';
 
 			await n8n.ndv.execute();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
-
-			// Wait for the workflow to complete
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
+			await executeChatAndWaitForResponse(n8n, inputMessage);
 
 			// Verify chat message appears
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
 		});
 		test('should be able to open and execute Agent node', async ({ n8n }) => {
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
-
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				AGENT_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
+			await setupBasicAgentWorkflow(n8n);
 
 			const inputMessage = 'Hello!';
 			await n8n.canvas.clickManualChatButton();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+			await executeChatAndWaitForResponse(n8n, inputMessage);
 
-			// Wait for the workflow to complete
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
 			// Verify chat message appears
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
 		});
 		test('should add and use Manual Chat Trigger node together with Agent node', async ({
 			n8n,
 		}) => {
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
-
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				AGENT_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
+			await setupBasicAgentWorkflow(n8n);
 
 			const inputMessage = 'Hello!';
-
 			await n8n.canvas.clickManualChatButton();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+			await executeChatAndWaitForResponse(n8n, inputMessage);
 
-			// Wait for the workflow to complete
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
-			const messages = n8n.canvas.getManualChatMessages();
-			await expect(messages).toHaveCount(2);
-			await expect(messages.first()).toContainText(inputMessage);
-			// Verify response message appears
-			await expect(messages.last()).toBeVisible();
-
-			await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(3);
-			await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toHaveText(
+			await verifyChatMessages(n8n, 2, inputMessage);
+			await verifyLogsPanelEntries(n8n, [
 				'When chat message received',
-			);
-			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toHaveText('AI Agent');
-			await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toHaveText('OpenAI Chat Model');
+				'AI Agent',
+				'OpenAI Chat Model',
+			]);
 
 			await n8n.canvas.closeManualChatModal();
 			await expect(n8n.canvas.logsPanel.getLogEntries()).toBeHidden();
@@ -285,38 +290,13 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		test('should show tool info notice if no existing tools were used during execution', async ({
 			n8n,
 		}) => {
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
-
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				AGENT_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
-
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_TOOL_CALCULATOR_NODE_NAME,
-				'ai_tool',
-				AGENT_NODE_NAME,
-				{ closeNDV: true },
-			);
+			await setupBasicAgentWorkflow(n8n, [AI_TOOL_CALCULATOR_NODE_NAME]);
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
 			const inputMessage = 'Hello!';
-
 			await n8n.ndv.execute();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+			await executeChatAndWaitForResponse(n8n, inputMessage);
 
-			// Wait for the workflow to complete
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
 			await n8n.canvas.closeManualChatModal();
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
@@ -330,18 +310,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
 			await n8n.ndv.clickBackToCanvasButton();
 
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				AGENT_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
+			await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 
 			await n8n.canvas.addSupplementalNodeToParent(
 				AI_TOOL_CALCULATOR_NODE_NAME,
@@ -349,13 +318,11 @@ test.describe('Langchain Integration @capability:proxy', () => {
 				AGENT_NODE_NAME,
 				{ closeNDV: true },
 			);
+
 			const inputMessage = 'What is 1000 * 10?';
 			await n8n.canvas.clickManualChatButton();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
-			// Wait for the workflow to complete
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
+			await executeChatAndWaitForResponse(n8n, inputMessage);
+
 			await n8n.canvas.closeManualChatModal();
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
@@ -392,22 +359,10 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await n8n.ndv.getParameterInput('sessionIdType').click();
 			await n8n.page.getByRole('option', { name: 'Define below' }).click();
 			await n8n.ndv.getParameterInput('sessionKey').locator('input').fill('asdasd');
-
 			await n8n.ndv.clickBackToCanvasButton();
 
 			// Add and configure OpenAI Language Model
-			await n8n.canvas.addSupplementalNodeToParent(
-				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				'ai_languageModel',
-				AGENT_NODE_NAME,
-				{ exactMatch: true, closeNDV: false },
-			);
-
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
-				apiKey: 'abcd',
-			});
-			await n8n.ndv.clickBackToCanvasButton();
+			await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 
 			await n8n.canvas.clickZoomToFitButton();
 		}
@@ -439,16 +394,10 @@ test.describe('Langchain Integration @capability:proxy', () => {
 
 			// Execute workflow with chat trigger
 			await n8n.canvas.clickManualChatButton();
-			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
-			// Wait for workflow to finish (with error)
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
+			await executeChatAndWaitForResponse(n8n, inputMessage);
 
 			// Check that messages and logs are displayed
-			const messages = n8n.canvas.getManualChatMessages();
-			await expect(messages).toHaveCount(2);
-			await expect(messages.first()).toContainText(inputMessage);
+			const messages = await verifyChatMessages(n8n, 2, inputMessage);
 			await expect(messages.last()).toContainText(
 				'[ERROR: The service refused the connection - perhaps it is offline]',
 			);
@@ -488,11 +437,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await n8n.page.getByRole('option', { name: 'Define below' }).click();
 			await n8n.ndv.getParameterInput('text').locator('textarea').fill('Some text');
 			await n8n.ndv.execute();
-
-			// Wait for workflow to finish (with error)
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
+			await waitForWorkflowSuccess(n8n);
 
 			// Assert that logs tab is active and error is displayed
 			await assertLogsTabIsActive(n8n);
@@ -509,9 +454,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await n8n.canvas.deselectAll();
 
 			await n8n.canvas.executeNode('Populate VS');
-			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-				timeout: 3000,
-			});
+			await waitForWorkflowSuccess(n8n);
 
 			const assertInputOutputTextExists = async (text: string) => {
 				await expect(n8n.ndv.getOutputPanel()).toContainText(text);
