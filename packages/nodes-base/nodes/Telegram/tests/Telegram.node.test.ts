@@ -1,5 +1,10 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Telegram } from '../Telegram.node';
@@ -19,9 +24,11 @@ describe('Telegram node', () => {
 			typeVersion: 1.2,
 		} as INode);
 		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((input) => input as any[]);
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation(
+			(input) => input as INodeExecutionData[],
+		);
 		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
-			(input) => input as any[],
+			(input) => input as NodeExecutionWithMetadata[],
 		);
 	});
 
@@ -332,36 +339,47 @@ describe('Telegram node', () => {
 			expect(apiRequestSpy).toHaveBeenCalledTimes(2);
 
 			const firstCall = apiRequestSpy.mock.calls[0];
-			expect(firstCall[0]).toBe('POST');
-			expect(firstCall[1]).toBe('sendPhoto');
-			expect(firstCall[4]).toEqual({
-				formData: expect.objectContaining({
-					chat_id: 'chat-id-0',
-					photo: expect.objectContaining({
-						value: expect.any(Buffer),
-						options: expect.objectContaining({
-							filename: 'photo0.jpg',
-							contentType: 'image/jpeg',
+			expect(apiRequestSpy).toHaveBeenNthCalledWith(
+				1,
+				'POST',
+				'sendPhoto',
+				{},
+				{},
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						chat_id: 'chat-id-0',
+						photo: expect.objectContaining({
+							value: expect.any(Buffer),
+							options: expect.objectContaining({
+								filename: 'photo0.jpg',
+								contentType: 'image/jpeg',
+							}),
 						}),
 					}),
 				}),
-			});
+			);
 
 			const secondCall = apiRequestSpy.mock.calls[1];
-			expect(secondCall[0]).toBe('POST');
-			expect(secondCall[1]).toBe('sendPhoto');
-			expect(secondCall[4]).toEqual({
-				formData: expect.objectContaining({
-					chat_id: 'chat-id-1',
-					photo: expect.objectContaining({
-						value: expect.any(Buffer),
-						options: expect.objectContaining({
-							filename: 'photo1.png',
-							contentType: 'image/png',
+
+			expect(apiRequestSpy).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'sendPhoto',
+				{},
+				{},
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						chat_id: 'chat-id-1',
+						photo: expect.objectContaining({
+							value: expect.any(Buffer),
+							options: expect.objectContaining({
+								filename: 'photo1.png',
+								contentType: 'image/png',
+							}),
 						}),
 					}),
 				}),
-			});
+			);
 		});
 
 		it('should fallback to binary fileName when additionalFields.fileName is empty', async () => {
