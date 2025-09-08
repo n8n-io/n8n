@@ -76,6 +76,10 @@ export class CanvasPage extends BasePage {
 		await this.nodeCreatorItemByName(text).click();
 	}
 
+	async clickAddToWorkflowButton(): Promise<void> {
+		await this.page.getByText('Add to workflow').click();
+	}
+
 	/**
 	 * Add a node to the canvas with flexible options
 	 * @param nodeName - The name of the node to search for and add

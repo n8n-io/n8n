@@ -809,4 +809,8 @@ export class NodeDetailsViewPage extends BasePage {
 	getAiOutputModeToggle() {
 		return this.page.getByTestId('ai-output-mode-select');
 	}
+
+	getCredentialLabel(credentialType: string) {
+		return this.page.getByText(credentialType);
+	}
 }
