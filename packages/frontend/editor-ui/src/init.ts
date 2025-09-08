@@ -206,10 +206,16 @@ function registerAuthenticationHooks() {
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
+	const projectsStore = useProjectsStore();
 
 	usersStore.registerLoginHook((user) => {
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id);
+		telemetry.identify(
+			rootStore.instanceId,
+			user.id,
+			rootStore.versionCli,
+			projectsStore.personalProject?.id,
+		);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();

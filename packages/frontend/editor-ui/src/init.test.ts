@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore, type LoginHook } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -17,7 +17,11 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import type { Cloud } from '@n8n/rest-api-client';
+import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
+import { mock } from 'vitest-mock-extended';
+import { telemetry } from './plugins/telemetry';
+import { useProjectsStore } from './stores/projects.store';
+import type { Project } from './types/projects.types';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -34,19 +38,17 @@ vi.mock('@/stores/users.store', () => ({
 	}),
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: vi.fn(),
-}));
-
 describe('Init', () => {
-	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let cloudPlanStore: ReturnType<typeof mockedStore<typeof useCloudPlanStore>>;
-	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
-	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let versionsStore: ReturnType<typeof useVersionsStore>;
-	let ssoStore: ReturnType<typeof useSSOStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
+	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 
 	beforeEach(() => {
 		setActivePinia(
@@ -57,15 +59,17 @@ describe('Init', () => {
 			}),
 		);
 
-		settingsStore = useSettingsStore();
+		settingsStore = mockedStore(useSettingsStore);
 		cloudPlanStore = mockedStore(useCloudPlanStore);
-		sourceControlStore = useSourceControlStore();
-		nodeTypesStore = useNodeTypesStore();
-		usersStore = useUsersStore();
-		versionsStore = useVersionsStore();
-		versionsStore = useVersionsStore();
-		ssoStore = useSSOStore();
-		uiStore = useUIStore();
+		sourceControlStore = mockedStore(useSourceControlStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		usersStore = mockedStore(useUsersStore);
+		versionsStore = mockedStore(useVersionsStore);
+		versionsStore = mockedStore(useVersionsStore);
+		ssoStore = mockedStore(useSSOStore);
+		uiStore = mockedStore(useUIStore);
+		projectsStore = mockedStore(useProjectsStore);
+		rootStore = mockedStore(useRootStore);
 	});
 
 	describe('initializeCore()', () => {
@@ -118,6 +122,25 @@ describe('Init', () => {
 			expect(registerLogoutHookSpy).toHaveBeenCalled();
 		});
 
+		it('should correctly identify the user for telemetry', async () => {
+			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
+			usersStore.registerLoginHook.mockImplementation((hook) =>
+				hook(mock<CurrentUserResponse>({ id: 'userId' })),
+			);
+			rootStore.instanceId = 'testInstanceId';
+			rootStore.versionCli = '1.102.0';
+			projectsStore.personalProject = mock<Project>({ id: 'mockPersonalProjectId' });
+
+			await initializeCore();
+
+			expect(telemetryIdentifySpy).toHaveBeenCalledWith(
+				'testInstanceId',
+				'userId',
+				'1.102.0',
+				'mockPersonalProjectId',
+			);
+		});
+
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -155,12 +178,10 @@ describe('Init', () => {
 
 	describe('initializeAuthenticatedFeatures()', () => {
 		beforeEach(() => {
-			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'isTemplatesEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-			vi.mocked(useRootStore).mockReturnValue({ defaultLocale: 'es' } as ReturnType<
-				typeof useRootStore
-			>);
+			settingsStore.isCloudDeployment = true;
+			settingsStore.isTemplatesEnabled = true;
+			sourceControlStore.isEnterpriseSourceControlEnabled = true;
+			rootStore.defaultLocale = 'es';
 		});
 
 		afterEach(() => {
@@ -172,9 +193,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: null } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = null;
 
 			await initializeAuthenticatedFeatures(false);
 			expect(cloudStoreSpy).not.toHaveBeenCalled();
@@ -188,9 +207,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -211,9 +228,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -230,9 +245,7 @@ describe('Init', () => {
 			const sourceControlSpy = vi.spyOn(sourceControlStore, 'getPreferences');
 			const nodeTranslationSpy = vi.spyOn(nodeTypesStore, 'getNodeTranslationHeaders');
 			const versionsSpy = vi.spyOn(versionsStore, 'checkForNewVersions');
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 
 			await initializeAuthenticatedFeatures(false);
 
@@ -244,9 +257,7 @@ describe('Init', () => {
 
 		it('should handle source control initialization error', async () => {
 			vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
-			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
-				typeof useUsersStore
-			>);
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['*'] });
 			vi.spyOn(sourceControlStore, 'getPreferences').mockRejectedValueOnce(
 				new AxiosError('Something went wrong', '404'),
 			);
