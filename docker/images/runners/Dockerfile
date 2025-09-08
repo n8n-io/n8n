@@ -54,11 +54,14 @@ RUN uv sync \
 			--frozen \
 			--no-editable \
 			--no-install-project \
+			--no-dev \
 			--all-extras
 
 COPY packages/@n8n/task-runner-python/ ./
 RUN uv sync \
       --frozen \
+			--no-dev \
+			--all-extras \
       --no-editable
 
 # Install extra runtime-only Python packages. Allow usage in the Code node via
