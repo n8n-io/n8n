@@ -89,8 +89,6 @@ const handlePopoverOpenChange = async (open: boolean) => {
 };
 
 const validateName = () => {
-	console.log('validating', error.value);
-
 	if (error.value) {
 		error.value = null;
 	}
