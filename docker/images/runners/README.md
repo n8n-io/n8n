@@ -151,3 +151,43 @@ docker run --rm -it \
   -p 5680:5680 \
   n8nio/runners:custom
 ```
+
+## Test deployment for self-hosting
+
+Use the following docker compose as a reference to add a task runner sidecar container to your n8n deployment.
+
+Keep in mind:
+
+- The `n8nio/runners` image version must match that of the `n8nio/n8n` image.
+- See [n8n docs](https://docs.n8n.io/hosting/configuration/task-runners/) on task runners configuration.
+
+```yaml
+services:
+  n8n:
+    image: n8nio/n8n:1.111.0
+    container_name: n8n-main
+    environment:
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=your-secret-here
+      - N8N_NATIVE_PYTHON_RUNNER=true
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    # etc.
+
+  task-runners:
+    image: n8nio/runners:1.111.0
+    container_name: n8n-runners
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n-main:5679
+      - N8N_RUNNERS_AUTH_TOKEN=your-secret-here
+      # etc.
+    depends_on:
+      - n8n
+
+volumes:
+  n8n_data:
+```
