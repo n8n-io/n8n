@@ -4,6 +4,7 @@
  * - Single instances (SQLite or PostgreSQL)
  * - Queue mode with Redis
  * - Multi-main instances with load balancing
+ * - Task runner containers for external code execution
  * - Parallel execution (multiple stacks running simultaneously)
  *
  * Key features for parallel execution:
@@ -23,6 +24,7 @@ import {
 	setupCaddyLoadBalancer,
 	pollContainerHttpEndpoint,
 	setupProxyServer,
+	setupTaskRunner,
 } from './n8n-test-container-dependencies';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 
@@ -45,7 +47,6 @@ const BASE_ENV: Record<string, string> = {
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	N8N_METRICS: 'true',
-	N8N_RUNNERS_ENABLED: 'true',
 	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
@@ -81,6 +82,7 @@ export interface N8NConfig {
 		cpu?: number; // in cores
 	};
 	proxyServerEnabled?: boolean;
+	taskRunner?: boolean;
 }
 
 export interface N8NStack {
@@ -119,15 +121,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled = false,
 		projectName,
 		resourceQuota,
+		taskRunner = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
+	const taskRunnerEnabled = !!taskRunner;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
-	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer || proxyServerEnabled;
+	const needsNetwork =
+		usePostgres || !!queueConfig || needsLoadBalancer || proxyServerEnabled || taskRunnerEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -217,6 +222,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	if (taskRunnerEnabled) {
+		environment = {
+			...environment,
+			N8N_RUNNERS_ENABLED: 'true',
+			N8N_RUNNERS_MODE: 'external',
+			N8N_RUNNERS_AUTH_TOKEN: 'test',
+			N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
+		};
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -267,6 +282,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			resourceQuota,
 		});
 		containers.push(...instances);
+	}
+
+	if (taskRunnerEnabled && network) {
+		// Connect to first available broker (main or worker)
+		// In queue mode, workers also run task brokers
+		const taskBrokerUri = queueConfig?.workers
+			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
+			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
+
+		const taskRunnerContainer = await setupTaskRunner({
+			projectName: uniqueProjectName,
+			network,
+			taskBrokerUri,
+		});
+		containers.push(taskRunnerContainer);
 	}
 
 	return {
@@ -414,6 +444,7 @@ async function createN8NContainer({
 	directPort,
 	resourceQuota,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
+	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
@@ -445,13 +476,23 @@ async function createN8NContainer({
 	}
 
 	if (isWorker) {
-		container = container.withCommand(['worker']).withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
+		// Workers expose task broker port if task runners are enabled
+		const workerPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		container = container
+			.withCommand(['worker'])
+			.withExposedPorts(...workerPorts)
+			.withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
 	} else {
-		container = container.withExposedPorts(5678).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
+		// Mains always expose both ports (5678 for web, 5679 for task broker when enabled)
+		const mainPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		container = container.withExposedPorts(...mainPorts).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 
 		if (directPort) {
+			const portMappings = taskRunnerEnabled
+				? [{ container: 5678, host: directPort }, 5679]
+				: [{ container: 5678, host: directPort }];
 			container = container
-				.withExposedPorts({ container: 5678, host: directPort })
+				.withExposedPorts(...portMappings)
 				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 		}
 	}
