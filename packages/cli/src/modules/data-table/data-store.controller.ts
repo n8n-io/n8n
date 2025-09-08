@@ -257,7 +257,7 @@ export class DataStoreController {
 				dataStoreId,
 				req.params.projectId,
 				dto.data,
-				dto.returnData,
+				dto.returnData ? 'all' : 'id',
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {

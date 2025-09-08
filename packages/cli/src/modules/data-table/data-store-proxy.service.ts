@@ -131,8 +131,12 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 				return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
 			},
 
-			async insertRows(rows: DataStoreRows, returnData: boolean) {
-				return await dataStoreService.insertRows(dataStoreId, projectId, rows, returnData);
+			async insertRowsBulk(rows: DataStoreRows) {
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows, 'count');
+			},
+
+			async insertRows(rows: DataStoreRows) {
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows, 'all');
 			},
 
 			async updateRows(options: UpdateDataStoreRowsOptions) {

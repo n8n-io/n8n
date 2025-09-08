@@ -49,8 +49,18 @@ export async function execute(
 
 	const row = getAddRow(this, index);
 
-	const insertedRows = await dataStoreProxy.insertRows([row], returnData);
-	return insertedRows.map((json) => ({ json }));
+	if (returnData) {
+		const insertedRows = await dataStoreProxy.insertRows([row]);
+		return insertedRows.map((json, item) => ({ json, pairedItem: { item } }));
+	}
+
+	this.addExecutionHints({
+		message: 'Unable to optimize bulk insert due to expression in Data Table ID ',
+		location: 'outputPane',
+	});
+
+	const json = await dataStoreProxy.insertRowsBulk([row]);
+	return [{ json }];
 }
 
 export async function executeBulk(
@@ -60,6 +70,11 @@ export async function executeBulk(
 	const returnData = !this.getNodeParameter('options.optimizeBulk', 0, false);
 	const rows = this.getInputData().flatMap((_, i) => [getAddRow(this, i)]);
 
-	const insertedRows = await proxy.insertRows(rows, returnData);
-	return insertedRows.map((json, item) => ({ json, pairedItem: { item } }));
+	if (returnData) {
+		const insertedRows = await proxy.insertRows(rows);
+		return insertedRows.map((json, item) => ({ json, pairedItem: { item } }));
+	}
+
+	const json = await proxy.insertRowsBulk(rows);
+	return [{ json }];
 }

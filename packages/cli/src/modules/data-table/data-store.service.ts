@@ -17,6 +17,8 @@ import type {
 	DataStoreRow,
 	DataStoreRowReturn,
 	DataStoreRows,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
@@ -134,23 +136,23 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : Array<Pick<DataStoreRowReturn, 'id'>>>;
+		returnType: T,
+	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: boolean,
+		returnType: DataTableInsertRowsReturnType,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
+		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnType);
 	}
 
 	async upsertRows<T extends boolean | undefined>(

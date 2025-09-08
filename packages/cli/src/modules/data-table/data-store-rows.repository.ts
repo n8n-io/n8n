@@ -18,6 +18,8 @@ import {
 	UnexpectedError,
 	DataStoreRowsReturn,
 	DATA_TABLE_SYSTEM_COLUMNS,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 
 import { DataStoreUserTableName } from './data-store.types';
@@ -157,18 +159,61 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRowsBulk(
+		table: DataStoreUserTableName,
+		rows: DataStoreRows,
+		columns: DataTableColumn[],
+	) {
+		const batchSize = 5000;
+		const batches = 1 + Math.ceil((columns.length * rows.length) / batchSize);
+		const rowsPerBatch = Math.ceil(rows.length / batches);
+
+		const columnNames = columns.map((x) => x.name);
+		const dbType = this.dataSource.options.type;
+
+		let insertedRows = 0;
+		for (let i = 0; i < batches; ++i) {
+			const start = i * rowsPerBatch;
+			const endExclusive = Math.min(rows.length, (i + 1) * rowsPerBatch);
+
+			if (endExclusive <= start) break;
+
+			const completeRows = new Array<DataStoreColumnJsType[]>(endExclusive - start);
+			for (let j = start; j < endExclusive; ++j) {
+				const insertArray: DataStoreColumnJsType[] = [];
+
+				for (let h = 0; h < columnNames.length; ++h) {
+					const column = columns[h];
+					// Fill missing columns with null values to support partial data insertion
+					const value = rows[j][column.name] ?? null;
+					insertArray[h] = normalizeValue(value, column.type, dbType);
+				}
+				completeRows[j - start] = insertArray;
+			}
+
+			const query = this.dataSource
+				.createQueryBuilder()
+				.insert()
+				.into(table, columnNames)
+				.values(completeRows);
+			await query.execute();
+			insertedRows += completeRows.length;
+		}
+		return { success: true, insertedRows } as const;
+	}
+
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : Array<Pick<DataStoreRowReturn, 'id'>>>;
-	async insertRows(
+		returnType: T,
+	): Promise<DataTableInsertRowsResult<T>>;
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: boolean,
-	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		returnType: T,
+	): Promise<DataTableInsertRowsResult> {
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
@@ -180,43 +225,8 @@ export class DataStoreRowsRepository {
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
-		if (returnData === false) {
-			const batchSize = 5000;
-			const batches = Math.floor((columns.length * rows.length) / batchSize) + 1; // + 1 to account for cuts in the middle of columns
-			const results: unknown[] = [];
-			for (let i = 0; i < batches; ++i) {
-				const start = i * Math.floor(rows.length / batches);
-				const endExclusive = Math.min(rows.length, (i + 1) * Math.floor(rows.length / batches));
-				const completeRows = new Array(endExclusive - start);
-				for (let j = start; j < endExclusive; ++j) {
-					// Fill missing columns with null values to support partial data insertion
-					const completeRow = { ...rows[j] };
-					for (const column of columns) {
-						if (!(column.name in completeRow)) {
-							completeRow[column.name] = null;
-						}
-						completeRow[column.name] = normalizeValue(
-							completeRow[column.name],
-							column.type,
-							dbType,
-						);
-					}
-					completeRows[j - start] = completeRow;
-				}
-				console.log(completeRows.slice(0, 10));
-				console.log(completeRows.slice(-10));
-				const query = this.dataSource
-					.createQueryBuilder()
-					.insert()
-					.into(table)
-					.values(completeRows);
-				const result = await query.execute();
-				results.push.apply(results, result.raw);
-			}
-
-			console.log(results);
-
-			return results as never;
+		if (returnType === 'count') {
+			return await this.insertRowsBulk(table, rows, columns);
 		}
 
 		// We insert one by one as the default behavior of returning the last inserted ID
@@ -236,15 +246,16 @@ export class DataStoreRowsRepository {
 			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
-				query.returning(returnData ? selectColumns.join(',') : 'id');
+				query.returning(returnType === 'all' ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = returnData
-					? normalizeRows(extractReturningData(result.raw), columns)
-					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
+				const returned =
+					returnType === 'all'
+						? normalizeRows(extractReturningData(result.raw), columns)
+						: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -255,7 +266,7 @@ export class DataStoreRowsRepository {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
-			if (!returnData) {
+			if (returnType === 'id') {
 				inserted.push(...ids.map((id) => ({ id })));
 				continue;
 			}
@@ -353,7 +364,12 @@ export class DataStoreRowsRepository {
 		const output: DataStoreRowReturn[] = [];
 
 		if (rowsToInsert.length > 0) {
-			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
+			const result = await this.insertRows(
+				dataStoreId,
+				rowsToInsert,
+				columns,
+				returnData ? 'all' : 'id',
+			);
 			if (returnData) {
 				output.push.apply(output, result);
 			}

@@ -36,7 +36,7 @@ export async function execute(
 
 	// insert
 	if (matches.length === 0) {
-		const result = await dataStoreProxy.insertRows([row], true);
+		const result = await dataStoreProxy.insertRows([row]);
 		return result.map((json) => ({ json }));
 	}
 

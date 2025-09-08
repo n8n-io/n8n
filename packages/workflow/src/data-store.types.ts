@@ -88,6 +88,16 @@ export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
 
+export type DataTableInsertRowsReturnType = 'all' | 'id' | 'count';
+export type DataTableInsertRowsBulkResult = { success: true; insertedRows: number };
+export type DataTableInsertRowsResult<
+	T extends DataTableInsertRowsReturnType = DataTableInsertRowsReturnType,
+> = T extends 'all'
+	? DataStoreRowReturn[]
+	: T extends 'id'
+		? Array<Pick<DataStoreRowReturn, 'id'>>
+		: DataTableInsertRowsBulkResult;
+
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
 	getProjectId(): string;
@@ -116,10 +126,8 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
-	insertRows(
-		rows: DataStoreRows,
-		returnData: boolean,
-	): Promise<DataStoreRowReturn[] | Array<Pick<DataStoreRowReturn, 'id'>>>;
+	insertRowsBulk(rows: DataStoreRows): Promise<DataTableInsertRowsResult<'count'>>;
+	insertRows(rows: DataStoreRows): Promise<DataTableInsertRowsResult<'all'>>;
 
 	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 
