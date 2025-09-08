@@ -4,10 +4,21 @@
 
 import crypto from 'crypto';
 import { promises as fs } from 'fs';
-import type { Expectation, HttpRequest } from 'mockserver-client';
+import type { Expectation, RequestDefinition } from 'mockserver-client';
 import { mockServerClient as proxyServerClient } from 'mockserver-client';
-import type { MockServerClient, RequestResponse } from 'mockserver-client/mockServerClient';
+import type { HttpRequest, HttpResponse } from 'mockserver-client/mockServer';
+import type {
+	MockServerClient,
+	PathOrRequestDefinition,
+	RequestResponse,
+} from 'mockserver-client/mockServerClient';
 import { join } from 'path';
+
+export type RequestMade = {
+	httpRequest?: HttpRequest;
+	httpResponse?: HttpResponse;
+	timestamp?: string;
+};
 
 export interface ProxyServerRequest {
 	method: string;
@@ -60,17 +71,18 @@ export class ProxyServer {
 	}
 
 	/**
-	 * Load all expectations from the expectations directory and mock them
+	 * Load all expectations from the specified subfolder and mock them
 	 */
-	async loadExpectations(): Promise<void> {
+	async loadExpectations(folderName: string): Promise<void> {
 		try {
-			const files = await fs.readdir(this.expectationsDir);
+			const targetDir = join(this.expectationsDir, folderName);
+			const files = await fs.readdir(targetDir);
 			const jsonFiles = files.filter((file) => file.endsWith('.json'));
 			const expectations: Expectation[] = [];
 
 			for (const file of jsonFiles) {
 				try {
-					const filePath = join(this.expectationsDir, file);
+					const filePath = join(targetDir, file);
 					const fileContent = await fs.readFile(filePath, 'utf8');
 					const expectation = JSON.parse(fileContent);
 					expectations.push(expectation);
@@ -108,11 +120,12 @@ export class ProxyServer {
 	/**
 	 * Verify that a request was received by ProxyServer
 	 */
-	async verifyRequest(request: ProxyServerRequest, numberOfRequests: number): Promise<boolean> {
+	async verifyRequest(request: RequestDefinition, numberOfRequests: number): Promise<boolean> {
 		try {
-			await this.client.verify(request, numberOfRequests);
+			await this.client.verify(request, numberOfRequests, numberOfRequests);
 			return true;
 		} catch (error) {
+			console.log('error', error);
 			return false;
 		}
 	}
@@ -120,16 +133,16 @@ export class ProxyServer {
 	/**
 	 * Clear all expectations and logs from ProxyServer
 	 */
-	async clearProxyServer(): Promise<void> {
+	async clearAllExpectations(): Promise<void> {
 		try {
-			await this.client.clear(null, 'ALL');
+			await this.client.clear('', 'ALL');
 		} catch (error) {
 			throw new Error(`Failed to clear ProxyServer: ${JSON.stringify(error)}`);
 		}
 	}
 
 	/**
-	 * Create a simple GET request expectation with JSON response
+	 * Create a request expectation with JSON response
 	 */
 	async createGetExpectation(
 		path: string,
@@ -161,40 +174,50 @@ export class ProxyServer {
 	}
 
 	/**
-	 * Verify a GET request was made to ProxyServer
+	 * Verify a request was made to ProxyServer
 	 */
-	async wasGetRequestMade(
-		path: string,
-		queryParams?: Record<string, string>,
-		numberOfRequests = 1,
-	): Promise<boolean> {
-		const queryStringParameters = queryParams
-			? Object.entries(queryParams).reduce<Record<string, string[]>>((acc, [key, value]) => {
-					acc[key] = [value];
-					return acc;
-				}, {})
-			: undefined;
+	async wasRequestMade(request: RequestDefinition, numberOfRequests = 1): Promise<boolean> {
+		return await this.verifyRequest(request, numberOfRequests);
+	}
 
-		return await this.verifyRequest(
-			{
-				method: 'GET',
-				path,
-				...(queryStringParameters && { queryStringParameters }),
-			},
-			numberOfRequests,
-		);
+	async getAllRequestsMade(): Promise<RequestMade[]> {
+		// @ts-expect-error mockserver types seem to be messed up
+		return await this.client.retrieveRecordedRequestsAndResponses('');
 	}
 
 	/**
 	 * Retrieve recorded expectations and write to files
+	 *
+	 * @param folderName - Target folder name for saving expectation files
+	 * @param options - Optional configuration
+	 * @param options.pathOrRequestDefinition - Filter expectations by path or request definition
+	 * @param options.host - Filter expectations by host name (partial match)
+	 * @param options.dedupe - Remove duplicate expectations based  on request
+	 * @param options.raw - Save full original requests (true) or cleaned requests (false, default)
+	 *   - raw: false (default) - Saves only essential fields: method, path, queryStringParameters (GET), body (POST/PUT)
+	 *   - raw: true - Saves complete original request including all headers and metadata
 	 */
-	async recordExpectations(request?: HttpRequest): Promise<void> {
+	async recordExpectations(
+		folderName: string,
+		options?: {
+			pathOrRequestDefinition?: PathOrRequestDefinition;
+			host?: string;
+			dedupe?: boolean;
+			raw?: boolean;
+		},
+	): Promise<void> {
 		try {
 			// Retrieve recorded expectations from the mock server
-			const recordedExpectations = await this.client.retrieveRecordedExpectations(request);
+			const recordedExpectations = await this.client.retrieveRecordedExpectations(
+				options?.pathOrRequestDefinition,
+			);
 
-			// Ensure expectations directory exists
-			await fs.mkdir(this.expectationsDir, { recursive: true });
+			// Create target directory path
+			const targetDir = join(this.expectationsDir, folderName);
+
+			// Ensure target directory exists
+			await fs.mkdir(targetDir, { recursive: true });
+			const seenRequests = new Set<string>();
 
 			for (const expectation of recordedExpectations) {
 				if (
@@ -208,25 +231,77 @@ export class ProxyServer {
 					continue;
 				}
 
-				// Generate unique filename based on request details
-				const requestData = {
-					method: expectation.httpRequest?.method,
-					path: expectation.httpRequest?.path,
-					queryStringParameters: expectation.httpRequest?.queryStringParameters,
-					headers: expectation.httpRequest?.headers,
+				// Extract host for filename and filtering
+				const headers = expectation.httpRequest.headers ?? {};
+				const hostHeader = 'Host' in headers ? headers?.Host : undefined;
+				const hostName = Array.isArray(hostHeader) ? hostHeader[0] : (hostHeader ?? 'unknown-host');
+
+				if (options?.host && typeof hostName === 'string' && !hostName.includes(options.host)) {
+					continue;
+				}
+
+				const method = expectation.httpRequest.method;
+				let requestForProcessing: Record<string, unknown> | HttpRequest;
+
+				if (options?.raw) {
+					// Use raw request without cleaning
+					requestForProcessing = expectation.httpRequest;
+				} else {
+					// Clean up the request data
+					const cleanedRequest: Record<string, unknown> = {
+						method: expectation.httpRequest.method,
+						path: expectation.httpRequest.path,
+					};
+
+					// Include different fields based on method
+					if (method === 'GET') {
+						// For GET requests, include queryStringParameters if present
+						if (expectation.httpRequest.queryStringParameters) {
+							cleanedRequest.queryStringParameters = expectation.httpRequest.queryStringParameters;
+						}
+					} else if (method === 'POST' || method === 'PUT') {
+						// For POST/PUT requests, include body if present
+						if (expectation.httpRequest.body) {
+							cleanedRequest.body = expectation.httpRequest.body;
+						}
+					}
+
+					requestForProcessing = cleanedRequest;
+				}
+
+				// Dedupe expectations if requested
+				if (options?.dedupe) {
+					const dedupeKey = JSON.stringify(requestForProcessing);
+
+					if (seenRequests.has(dedupeKey)) {
+						continue;
+					}
+
+					seenRequests.add(dedupeKey);
+				}
+
+				// Create expectation (cleaned or raw)
+				const processedExpectation: Expectation = {
+					...expectation,
+					httpRequest: requestForProcessing,
+					times: {
+						unlimited: true,
+					},
 				};
 
+				// Generate unique filename based on request details
 				const hash = crypto
 					.createHash('sha256')
-					.update(JSON.stringify(requestData))
+					.update(JSON.stringify(requestForProcessing))
 					.digest('hex')
 					.substring(0, 8);
 
-				const filename = `${expectation.httpRequest?.method?.toString()}-${expectation.httpRequest?.path?.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
-				const filePath = join(this.expectationsDir, filename);
+				const filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
+				processedExpectation.id = filename;
+				const filePath = join(targetDir, filename);
 
 				// Write expectation to JSON file
-				await fs.writeFile(filePath, JSON.stringify(expectation, null, 2));
+				await fs.writeFile(filePath, JSON.stringify(processedExpectation, null, 2));
 			}
 		} catch (error) {
 			throw new Error(`Failed to record expectations: ${JSON.stringify(error)}`);

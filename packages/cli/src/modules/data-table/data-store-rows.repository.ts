@@ -1,8 +1,16 @@
-import type { ListDataStoreContentQueryDto, ListDataStoreContentFilter } from '@n8n/api-types';
+import type { ListDataStoreContentQueryDto, DataTableFilter } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } from '@n8n/typeorm';
+import {
+	DataSource,
+	DataSourceOptions,
+	QueryRunner,
+	SelectQueryBuilder,
+	UpdateQueryBuilder,
+	In,
+	ObjectLiteral,
+} from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
 	DataStoreRows,
@@ -44,20 +52,23 @@ type QueryBuilder = SelectQueryBuilder<any>;
  * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
  */
 function getConditionAndParams(
-	filter: ListDataStoreContentFilter['filters'][number],
+	filter: DataTableFilter['filters'][number],
 	index: number,
 	dbType: DataSourceOptions['type'],
+	tableReference?: string,
 	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
+	const columnRef = tableReference
+		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
+		: quoteIdentifier(filter.columnName, dbType);
 
 	if (filter.value === null) {
 		switch (filter.condition) {
 			case 'eq':
-				return [`${column} IS NULL`, {}];
+				return [`${columnRef} IS NULL`, {}];
 			case 'neq':
-				return [`${column} IS NOT NULL`, {}];
+				return [`${columnRef} IS NOT NULL`, {}];
 		}
 	}
 
@@ -76,7 +87,7 @@ function getConditionAndParams(
 	};
 
 	if (operators[filter.condition]) {
-		return [`${column} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
+		return [`${columnRef} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
 	}
 
 	switch (filter.condition) {
@@ -84,29 +95,32 @@ function getConditionAndParams(
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				const globValue = toSqliteGlobFromPercent(value as string);
-				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
+				return [`${columnRef} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [`${column} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
+				return [
+					`${columnRef} LIKE BINARY :${paramName} ESCAPE '\\\\'`,
+					{ [paramName]: escapedValue },
+				];
 			}
 
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [`${column} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+				return [`${columnRef} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
 			// Generic fallback
-			return [`${column} LIKE :${paramName}`, { [paramName]: value }];
+			return [`${columnRef} LIKE :${paramName}`, { [paramName]: value }];
 
 		// case-insensitive
 		case 'ilike':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
-					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
+					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
@@ -114,17 +128,17 @@ function getConditionAndParams(
 			if (['mysql', 'mariadb'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
-					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
+					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
 
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [`${column} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+				return [`${columnRef} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
-			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
+			return [`UPPER(${columnRef}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
 	}
 
 	// This should never happen as all valid conditions are handled above
@@ -218,7 +232,7 @@ export class DataStoreRowsRepository {
 	async updateRow(
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
-		whereData: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		returnData: boolean = false,
 	) {
@@ -236,26 +250,26 @@ export class DataStoreRowsRepository {
 			if (column.name in setData) {
 				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
 			}
-			if (column.name in whereData) {
-				whereData[column.name] = normalizeValue(whereData[column.name], column.type, dbType);
-			}
 		}
 
 		let affectedRows: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		if (!useReturning && returnData) {
 			// Only Postgres supports RETURNING statement on updates (with our typeorm),
 			// on other engines we must query the list of updates rows later by ID
-			affectedRows = await this.dataSource
+			const selectQuery = this.dataSource
 				.createQueryBuilder()
 				.select('id')
-				.from(table, 'dataStore')
-				.where(whereData)
-				.getRawMany<{ id: number }>();
+				.from(table, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable', columns);
+			affectedRows = await selectQuery.getRawMany<{ id: number }>();
 		}
 
 		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
-		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
+		const query = this.dataSource.createQueryBuilder().update(table);
+		// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
+		this.applyFilters(query, filter, undefined, columns);
+		query.set(setData);
 
 		if (useReturning && returnData) {
 			query.returning(selectColumns.join(','));
@@ -316,7 +330,16 @@ export class DataStoreRowsRepository {
 				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
 				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-				const result = await this.updateRow(dataStoreId, setData, whereData, columns, returnData);
+				// Convert whereData object to DataTableFilter format
+				const filter: DataTableFilter = {
+					type: 'and',
+					filters: Object.entries(whereData).map(([columnName, value]) => ({
+						columnName,
+						condition: 'eq' as const,
+						value,
+					})),
+				};
+				const result = await this.updateRow(dataStoreId, setData, filter, columns, returnData);
 				if (returnData) {
 					output.push.apply(output, result);
 				}
@@ -336,7 +359,7 @@ export class DataStoreRowsRepository {
 		await this.dataSource
 			.createQueryBuilder()
 			.delete()
-			.from(table, 'dataStore')
+			.from(table, 'dataTable')
 			.where({ id: In(ids) })
 			.execute();
 
@@ -408,7 +431,7 @@ export class DataStoreRowsRepository {
 		const updatedRows = await this.dataSource
 			.createQueryBuilder()
 			.select(selectColumns)
-			.from(table, 'dataStore')
+			.from(table, 'dataTable')
 			.where({ id: In(ids) })
 			.getRawMany<DataStoreRowReturn>();
 
@@ -428,8 +451,11 @@ export class DataStoreRowsRepository {
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
-		query.from(this.toTableName(dataStoreId), 'dataStore');
-		this.applyFilters(query, dto, columns);
+		const tableReference = 'dataTable';
+		query.from(this.toTableName(dataStoreId), tableReference);
+		if (dto.filter) {
+			this.applyFilters(query, dto.filter, tableReference, columns);
+		}
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
 		this.applyPagination(query, dto);
@@ -437,17 +463,18 @@ export class DataStoreRowsRepository {
 		return [countQuery, query];
 	}
 
-	private applyFilters(
-		query: QueryBuilder,
-		dto: ListDataStoreContentQueryDto,
+	private applyFilters<T extends ObjectLiteral>(
+		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
+		filter: DataTableFilter,
+		tableReference?: string,
 		columns?: DataTableColumn[],
 	): void {
-		const filters = dto.filter?.filters ?? [];
-		const filterType = dto.filter?.type ?? 'and';
+		const filters = filter.filters ?? [];
+		const filterType = filter.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType, columns),
+			getConditionAndParams(filter, i, dbType, tableReference, columns),
 		);
 
 		for (const [condition, params] of conditionsAndParams) {
@@ -470,7 +497,7 @@ export class DataStoreRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
-		const quotedField = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(field, dbType)}`;
+		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
 
@@ -487,7 +514,7 @@ export class DataStoreRowsRepository {
 		const queryBuilder = this.dataSource
 			.createQueryBuilder()
 			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'datastore');
+			.from(this.toTableName(dataStoreId), 'datatable');
 
 		rows.forEach((row, index) => {
 			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));

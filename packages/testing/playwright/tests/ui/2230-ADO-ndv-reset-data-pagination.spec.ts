@@ -15,13 +15,12 @@ test.describe('ADO-2230 NDV Pagination Reset', () => {
 
 		await expect(n8n.ndv.getOutputPaginationPages()).toHaveCount(5);
 
-		await expect(n8n.ndv.getOutputTbodyCell(0, 0)).not.toBeEmpty();
-		const firstPageContent = await n8n.ndv.getOutputPageContent(0, 0);
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).not.toBeEmpty();
+		const firstPageContent = await n8n.ndv.outputPanel.getTbodyCell(0, 0).textContent();
 
 		await n8n.ndv.navigateToOutputPage(4);
 
-		const fourthPageContent = await n8n.ndv.getOutputPageContent(0, 0);
-		expect(fourthPageContent).not.toBe(firstPageContent);
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).not.toHaveText(firstPageContent ?? '');
 
 		await n8n.ndv.setParameterInputValue('randomDataCount', '20');
 
@@ -30,6 +29,6 @@ test.describe('ADO-2230 NDV Pagination Reset', () => {
 
 		await expect(n8n.ndv.getOutputPaginationPages()).toHaveCount(2);
 
-		await expect(n8n.ndv.getOutputTbodyCell(0, 0)).not.toBeEmpty();
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).not.toBeEmpty();
 	});
 });

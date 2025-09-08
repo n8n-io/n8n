@@ -28,8 +28,8 @@ test.describe('Demo', () => {
 		await n8n.demo.importWorkflow(workflowWithPinned);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await n8n.canvas.openNode('Webhook');
-		await expect(n8n.ndv.getOutputTableHeaders().first()).toContainText('headers');
-		await expect(n8n.ndv.getOutputTableCell(1, 3)).toContainText('dragons');
+		await expect(n8n.ndv.outputPanel.getTableHeaders().first()).toContainText('headers');
+		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 3)).toContainText('dragons');
 	});
 
 	test('can override theme to dark', async ({ n8n }) => {

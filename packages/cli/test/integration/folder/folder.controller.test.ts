@@ -87,7 +87,7 @@ describe('POST /projects/:projectId/folders', () => {
 			name: 'Test Folder',
 		};
 
-		await authOwnerAgent.post('/projects/non-existing-id/folders').send(payload).expect(403);
+		await authOwnerAgent.post('/projects/non-existing-id/folders').send(payload).expect(404);
 	});
 
 	test('should not create folder when name is empty', async () => {
@@ -278,7 +278,7 @@ describe('GET /projects/:projectId/folders/:folderId/tree', () => {
 	});
 
 	test('should not get folder tree when project does not exist', async () => {
-		await authOwnerAgent.get('/projects/non-existing-id/folders/some-folder-id/tree').expect(403);
+		await authOwnerAgent.get('/projects/non-existing-id/folders/some-folder-id/tree').expect(404);
 	});
 
 	test('should not get folder tree when folder does not exist', async () => {
@@ -418,7 +418,7 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 	test('should not get folder credentials when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/folders/some-folder-id/credentials')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not get folder credentials when folder does not exist', async () => {
@@ -545,7 +545,7 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/folders/some-folder-id')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not update folder when folder does not exist', async () => {
@@ -1005,7 +1005,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/folders/some-folder-id')
 			.send({})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete folder when folder does not exist', async () => {
@@ -1303,7 +1303,7 @@ describe('GET /projects/:projectId/folders', () => {
 	});
 
 	test('should not list folders when project does not exist', async () => {
-		await authOwnerAgent.get('/projects/non-existing-id/folders').expect(403);
+		await authOwnerAgent.get('/projects/non-existing-id/folders').expect(404);
 	});
 
 	test('should not list folders if user has no access to project', async () => {
@@ -1731,7 +1731,7 @@ describe('GET /projects/:projectId/folders/content', () => {
 	test('should not list folders when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/folders/no-existing-id/content')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not return folder content if user has no access to project', async () => {

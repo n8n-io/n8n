@@ -4,10 +4,12 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { LogsPanel } from './components/LogsPanel';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
+	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
@@ -535,22 +537,6 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
-	async clearExecutionData(): Promise<void> {
-		await this.page.getByTestId('clear-execution-data-button').click();
-	}
-
-	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
-	}
-
-	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
-	}
-
-	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
-	}
-
 	getNodesWithSpinner(): Locator {
 		return this.page.getByTestId('canvas-node').filter({
 			has: this.page.locator('[data-icon=refresh-cw]'),
@@ -563,10 +549,6 @@ export class CanvasPage extends BasePage {
 		});
 	}
 
-	async sendManualChatMessage(message: string): Promise<void> {
-		await this.getManualChatInput().fill(message);
-		await this.getManualChatModal().locator('.chat-input-send-button').click();
-	}
 	/**
 	 * Get all currently selected nodes on the canvas
 	 */

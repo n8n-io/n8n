@@ -33,6 +33,9 @@
         "full_name": {
             "type": "string"
         },
+        "job": {
+            "type": "string"
+        },
         "last_name": {
             "type": "string"
         },
@@ -42,9 +45,12 @@
         "nb_employees": {
             "type": "string"
         },
+        "phone": {
+            "type": "string"
+        },
         "website": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
