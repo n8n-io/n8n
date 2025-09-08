@@ -19,8 +19,16 @@ const { onDocumentVisible } = vi.hoisted(() => ({
 
 const flushPromises = async () => await new Promise(setImmediate);
 
+const mockToast = {
+	showError: vi.fn(),
+};
+
 vi.mock('@/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({ onDocumentVisible }),
+}));
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: vi.fn(() => mockToast),
 }));
 
 vi.mock('vue-router', () => {
@@ -54,6 +62,12 @@ describe('WorkflowSelectorParameterInput', () => {
 		workflowsStore.totalWorkflowCount = 0;
 		workflowsStore.getWorkflowById.mockReturnValue(null as any);
 		workflowsStore.fetchWorkflow.mockResolvedValue({} as any);
+		workflowsStore.createNewWorkflow.mockResolvedValue({
+			id: 'new-workflow-id',
+			name: 'New Workflow',
+		} as any);
+		workflowsStore.allWorkflows = [];
+		mockToast.showError.mockClear();
 	});
 
 	afterEach(() => {
@@ -110,7 +124,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		// on mount
 		const expectedModelValue = {
 			...props.modelValue,
-			cachedResultUrl: '/projects/1/folders/1',
+			cachedResultUrl: '/projects/1/workflows/1',
 		};
 
 		expect(emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
@@ -213,11 +227,15 @@ describe('WorkflowSelectorParameterInput', () => {
 	});
 
 	describe('error handling', () => {
-		it('should attempt to fetch workflow even with invalid IDs', async () => {
+		it('should show toast when workflow creation fails', async () => {
+			// Make createNewWorkflow fail
+			const error = new Error('Failed to create workflow');
+			workflowsStore.createNewWorkflow.mockRejectedValue(error);
+
 			const props: Props = {
 				modelValue: {
 					__rl: true,
-					value: 'invalid-workflow-id',
+					value: '',
 					mode: 'list',
 				},
 				path: '',
@@ -229,11 +247,19 @@ describe('WorkflowSelectorParameterInput', () => {
 				},
 			};
 
-			renderComponent({ props });
+			const { getByTestId } = renderComponent({ props });
 			await flushPromises();
 
-			// Should attempt to fetch the workflow
-			expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('invalid-workflow-id');
+			// Get the ResourceLocatorDropdown component to trigger the add resource click
+			const addResourceButton = getByTestId('rlc-item-add-resource');
+			expect(addResourceButton).toBeInTheDocument();
+
+			// Click the add resource button
+			await addResourceButton.click();
+			await flushPromises();
+
+			// Verify the toast error was shown
+			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error creating sub-workflow.');
 		});
 	});
 });
