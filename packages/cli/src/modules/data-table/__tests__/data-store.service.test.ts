@@ -1350,7 +1350,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toEqual([{ id: expect.any(Number) }]);
+			expect(result).toBe(true);
 
 			const { count, data } = await dataStoreService.getManyRowsAndCount(
 				dataStoreId,

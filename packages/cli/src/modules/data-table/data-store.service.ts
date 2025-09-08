@@ -172,7 +172,8 @@ export class DataStoreService {
 		}
 
 		// No rows were updated, so insert a new one
-		return await this.insertRows(dataStoreId, projectId, [dto.data], returnData);
+		const inserted = await this.insertRows(dataStoreId, projectId, [dto.data], returnData);
+		return returnData ? inserted : true;
 	}
 
 	async updateRow<T extends boolean | undefined>(
