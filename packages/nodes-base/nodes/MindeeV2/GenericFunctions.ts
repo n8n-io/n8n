@@ -126,15 +126,24 @@ export async function pollMindee(
  * @param index Index of the parameter.
  */
 export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIParams {
+	const modelId = ctx.getNodeParameter('modelId', index);
+	const alias = ctx.getNodeParameter('alias', index);
+	const rag = ctx.getNodeParameter('rag', index);
+	const polygon = ctx.getNodeParameter('polygon', index);
+	const confidence = ctx.getNodeParameter('confidence', index);
+	const rawText = ctx.getNodeParameter('rawText', index);
+	const maxDelayCount = ctx.getNodeParameter('maxDelayCount', index);
+	const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', index, '');
+
 	return {
-		modelId: ctx.getNodeParameter('modelId', index) as string,
-		alias: ctx.getNodeParameter('alias', index) as string,
-		rag: ctx.getNodeParameter('rag', index) as string,
-		polygon: ctx.getNodeParameter('polygon', index) as string,
-		confidence: ctx.getNodeParameter('confidence', index) as string,
-		rawText: ctx.getNodeParameter('rawText', index) as string,
-		maxDelayCount: ctx.getNodeParameter('maxDelayCount', index) as number,
-		binaryPropertyName: ctx.getNodeParameter('binaryPropertyName', index, ''),
+		modelId: typeof modelId === 'string' ? modelId : '',
+		alias: typeof alias === 'string' ? alias : '',
+		rag: typeof rag === 'string' ? rag : 'default',
+		polygon: typeof polygon === 'string' ? polygon : 'default',
+		confidence: typeof confidence === 'string' ? confidence : 'default',
+		rawText: typeof rawText === 'string' ? rawText : 'default',
+		maxDelayCount: typeof maxDelayCount === 'number' ? maxDelayCount : 120,
+		binaryPropertyName: typeof binaryPropertyName === 'string' ? binaryPropertyName : '',
 	};
 }
 
