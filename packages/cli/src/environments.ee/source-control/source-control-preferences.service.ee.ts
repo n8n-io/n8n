@@ -263,7 +263,7 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
-		if (noKeyPair && preferences.connectionType !== 'https') await this.generateAndSaveKeyPair();
+		if (noKeyPair && preferences.connectionType === 'ssh') await this.generateAndSaveKeyPair();
 
 		if (
 			preferences.connectionType === 'https' &&
