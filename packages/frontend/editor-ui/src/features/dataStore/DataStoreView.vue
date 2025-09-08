@@ -61,23 +61,6 @@ const currentProject = computed(() => {
 	return projectsStore.currentProject;
 });
 
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return currentProject.value?.name ?? '';
-});
-
-const emptyCalloutDescription = computed(() => {
-	return projectPages.isOverviewSubPage ? i18n.baseText('dataStore.empty.description') : '';
-});
-
-const emptyCalloutButtonText = computed(() => {
-	return i18n.baseText('dataStore.empty.button.label', {
-		interpolate: { projectName: projectName.value },
-	});
-});
-
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const initialize = async () => {
@@ -160,8 +143,7 @@ watch(
 			<n8n-action-box
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
-				:description="emptyCalloutDescription"
-				:button-text="emptyCalloutButtonText"
+				:button-text="i18n.baseText('generic.create')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>

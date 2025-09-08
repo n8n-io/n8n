@@ -2845,7 +2845,6 @@
 	"dataStore.dataStores": "Data tables",
 	"dataStore.empty.label": "You don't have any data tables yet",
 	"dataStore.empty.description": "Once you create data tables for your projects, they will appear here",
-	"dataStore.empty.button.label": "Create Data table in \"{projectName}\"",
 	"dataStore.card.size": "{size}MB",
 	"dataStore.card.column.count": "{count} column | {count} columns",
 	"dataStore.card.row.count": "{count} record | {count} records",
