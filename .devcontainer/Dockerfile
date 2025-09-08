@@ -1,7 +1,7 @@
 FROM n8nio/base:22
 
 # Instala pip para poder instalar las librerías de Python
-RUN apk add --no-cache python3-pip
+RUN apk add --no-cache py3-pip
 
 RUN apk add --no-cache --update openssh sudo shadow bash
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
