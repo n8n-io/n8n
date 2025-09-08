@@ -113,6 +113,9 @@ COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 # Node needs libstdc++
 RUN apk add --no-cache ca-certificates tini libstdc++
 
+# Debugging task runner launcher problems, TODO removeme
+RUN apk add --no-cache file binutils pax-utils
+
 RUN addgroup -g 1000 -S runner \
  && adduser -u 1000 -S -G runner -h /home/runner -D runner
 WORKDIR /home/runner
