@@ -126,8 +126,5 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch"
     }
-  },
-  "dependencies": {
-    "@n8n/codemirror-lang-sql": "link:../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql"
   }
 }
