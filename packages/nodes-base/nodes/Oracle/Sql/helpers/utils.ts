@@ -350,7 +350,7 @@ function _getResponseForOutbinds(
  */
 function doesRowExist(query: string, results: any) {
 	if (/^\s*UPDATE\b/i.test(query) && results.rowsAffected === 0) {
-		throw new Error("The row you are trying to update doesn't exist") as oracledb.DBError;
+		throw new Error("The row you are trying to update doesn't exist");
 	}
 }
 
