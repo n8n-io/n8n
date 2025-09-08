@@ -46,7 +46,7 @@ const emit = defineEmits<{
 		/>
 		<N8nIconButton
 			v-else
-			icon="maximize-2"
+			icon="expand"
 			size="small"
 			type="tertiary"
 			text
@@ -57,6 +57,7 @@ const emit = defineEmits<{
 			data-test-id="node-execute-button"
 			:node-name="node.name"
 			:tooltip="`Execute ${node.name}`"
+			type="secondary"
 			size="small"
 			icon="play"
 			:square="true"

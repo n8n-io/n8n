@@ -54,19 +54,11 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 				</li>
 			</ul>
 		</N8nText>
-		<ExperimentalCanvasNodeSettings v-else-if="node" :key="nodeSettingsViewKey" :node-id="node.id">
-			<template #actions>
-				<N8nIconButton
-					icon="maximize-2"
-					type="secondary"
-					text
-					size="mini"
-					icon-size="large"
-					aria-label="Expand"
-					@click="emit('openNdv')"
-				/>
-			</template>
-		</ExperimentalCanvasNodeSettings>
+		<ExperimentalCanvasNodeSettings
+			v-else-if="node"
+			:key="nodeSettingsViewKey"
+			:node-id="node.id"
+		/>
 	</div>
 </template>
 
