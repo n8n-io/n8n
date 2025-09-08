@@ -19,7 +19,6 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
-import { DataStoreRepository } from './data-store.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
@@ -147,10 +146,7 @@ function getConditionAndParams(
 
 @Service()
 export class DataStoreRowsRepository {
-	constructor(
-		private dataSource: DataSource,
-		private readonly dataStoreRepository: DataStoreRepository,
-	) {}
+	constructor(private dataSource: DataSource) {}
 
 	async insertRows<T extends boolean | undefined>(
 		dataStoreId: string,
