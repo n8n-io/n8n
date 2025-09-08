@@ -280,6 +280,7 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are are grouped by workflow correctly', async () => {
 		// ARRANGE
+		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
@@ -373,6 +374,7 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are grouped by workflow correctly with sorting', async () => {
 		// ARRANGE
+		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
@@ -408,6 +410,7 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are grouped by workflow correctly with pagination', async () => {
 		// ARRANGE
+		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2, workflow3]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
