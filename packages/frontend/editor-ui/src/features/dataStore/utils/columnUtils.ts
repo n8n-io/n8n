@@ -93,3 +93,11 @@ export const dateValueFormatter = (
 	if (value === null || value === undefined) return '';
 	return value.toISOString();
 };
+
+export const numberValueFormatter = (
+	params: ValueFormatterParams<DataStoreRow, number | null | undefined>,
+): string => {
+	const value = params.value;
+	if (value === null || value === undefined) return '';
+	return new Intl.NumberFormat('fr-FR').format(value);
+};

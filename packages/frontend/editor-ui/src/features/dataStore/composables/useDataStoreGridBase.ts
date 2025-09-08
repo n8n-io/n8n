@@ -37,6 +37,7 @@ import {
 	createStringValueSetter,
 	stringCellEditorParams,
 	dateValueFormatter,
+	numberValueFormatter,
 } from '@/features/dataStore/utils/columnUtils';
 
 export const useDataStoreGridBase = ({
@@ -140,6 +141,8 @@ export const useDataStoreGridBase = ({
 				component: ElDatePickerCellEditor,
 			});
 			columnDef.valueFormatter = dateValueFormatter;
+		} else if (col.type === 'number') {
+			columnDef.valueFormatter = numberValueFormatter;
 		}
 
 		return {
