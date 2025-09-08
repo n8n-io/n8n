@@ -273,9 +273,10 @@ watch(connectionType, () => {
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</n8n-heading>
 
-			<!-- Connection Type Selector -->
 			<div v-if="!isConnected" :class="$style.group">
-				<label for="connectionType">Connection Type</label>
+				<label for="connectionType"
+					>Connection Typelocale.baseText('settings.sourceControl.connectionType')</label
+				>
 				<n8n-form-input
 					id="connectionType"
 					v-model="connectionType"

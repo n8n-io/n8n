@@ -2232,6 +2232,7 @@
 	"settings.sourceControl.description": "Use multiple instances for different environments (dev, prod, etc.), deploying between them via a Git repository. {link}",
 	"settings.sourceControl.description.link": "More info",
 	"settings.sourceControl.gitConfig": "Git configuration",
+	"settings.sourceControl.connectionType": "Connection Type",
 	"settings.sourceControl.repoUrl": "Git repository URL (SSH)",
 	"settings.sourceControl.repoUrlPlaceholder": "e.g. git{'@'}github.com:my-team/my-repository",
 	"settings.sourceControl.repoUrlInvalid": "The Git repository URL is not valid",
