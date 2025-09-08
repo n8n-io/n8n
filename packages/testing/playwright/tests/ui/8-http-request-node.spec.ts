@@ -14,7 +14,7 @@ test.describe('HTTP Request node', () => {
 		});
 		await n8n.ndv.execute();
 
-		await expect(n8n.ndv.getOutputPanel()).toContainText('fact');
+		await expect(n8n.ndv.outputPanel.get()).toContainText('fact');
 	});
 
 	test.describe('Credential-only HTTP Request Node variants', () => {
