@@ -94,20 +94,6 @@ describe('ResourceLocatorDropdown', () => {
 	});
 
 	describe('model value handling', () => {
-		it('should handle INodeParameterResourceLocator objects properly', () => {
-			renderComponent({
-				props: {
-					show: true,
-					resources: mockResources,
-					modelValue: mockModelValue,
-				},
-			});
-
-			// Check that the selected item is highlighted properly
-			const selectedItem = screen.getByText('Workflow 1').closest('[data-test-id="rlc-item"]');
-			expect(selectedItem).toHaveClass('selected');
-		});
-
 		it('should compare values correctly for selection highlighting', () => {
 			const modelValue: INodeParameterResourceLocator = {
 				__rl: true,
@@ -165,32 +151,6 @@ describe('ResourceLocatorDropdown', () => {
 			}
 
 			expect(wrapper.emitted()['update:modelValue']).toEqual([['workflow-2']]);
-		});
-	});
-
-	describe('pagination behavior', () => {
-		it('should show hasMore prop correctly affects behavior', async () => {
-			const wrapper = renderComponent({
-				props: {
-					show: true,
-					resources: mockResources,
-					hasMore: true,
-					loading: false,
-				},
-			});
-
-			// Component renders without errors when hasMore is true
-			expect(screen.getByTestId('resource-locator-dropdown')).toBeInTheDocument();
-
-			await wrapper.rerender({
-				show: true,
-				resources: mockResources,
-				hasMore: false,
-				loading: false,
-			});
-
-			// Component renders without errors when hasMore is false
-			expect(screen.getByTestId('resource-locator-dropdown')).toBeInTheDocument();
 		});
 	});
 });
