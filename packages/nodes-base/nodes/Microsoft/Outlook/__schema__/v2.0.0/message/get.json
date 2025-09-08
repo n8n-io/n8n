@@ -30,6 +30,9 @@
         "conversationId": {
             "type": "string"
         },
+        "createdDateTime": {
+            "type": "string"
+        },
         "from": {
             "type": "object",
             "properties": {
@@ -55,9 +58,6 @@
         "isRead": {
             "type": "boolean"
         },
-        "receivedDateTime": {
-            "type": "string"
-        },
         "sender": {
             "type": "object",
             "properties": {
@@ -76,26 +76,7 @@
         },
         "subject": {
             "type": "string"
-        },
-        "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
-    "version": 5
+    "version": 6
 }

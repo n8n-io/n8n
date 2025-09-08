@@ -26,6 +26,12 @@
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mariadb": "N8N_LOG_LEVEL=silent DB_TYPE=mariadb DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",
+    "test:win": "pnpm test:sqlite:win",
+    "test:dev:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=sqlite&& jest --watch",
+    "test:sqlite:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=sqlite&& jest",
+    "test:postgres:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=postgresdb&& set DB_POSTGRESDB_SCHEMA=alt_schema&& set DB_TABLE_PREFIX=test_&& jest --no-coverage",
+    "test:mariadb:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=mariadb&& set DB_TABLE_PREFIX=test_&& jest --no-coverage",
+    "test:mysql:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=mysqldb&& set DB_TABLE_PREFIX=test_&& jest --no-coverage",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "bin": {

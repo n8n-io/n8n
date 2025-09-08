@@ -139,7 +139,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 </script>
 
 <template>
-	<div ref="popOutContainer">
+	<div ref="popOutContainer" data-test-id="logs-panel">
 		<!-- force re-create with key for shortcuts to work in pop-out window -->
 		<LogsViewKeyboardEventListener
 			:key="String(!!popOutWindow)"

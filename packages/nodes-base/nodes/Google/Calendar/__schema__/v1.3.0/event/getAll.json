@@ -9,9 +9,6 @@
             "properties": {
                 "email": {
                     "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
                 }
             }
         },
@@ -47,6 +44,9 @@
         "organizer": {
             "type": "object",
             "properties": {
+                "displayName": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -87,5 +87,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

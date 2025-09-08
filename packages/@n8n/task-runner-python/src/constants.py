@@ -62,7 +62,7 @@ ENV_ENVIRONMENT = "ENVIRONMENT"
 ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 
 # Sentry
-SENTRY_TAG_SERVER_TYPE = "server_type"
+SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
 
 # Logging
@@ -144,4 +144,3 @@ ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
-ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"

@@ -6,7 +6,7 @@ from src.config.sentry_config import SentryConfig
 from src.constants import (
     EXECUTOR_FILENAMES,
     LOG_SENTRY_MISSING,
-    SENTRY_TAG_SERVER_TYPE,
+    SENTRY_TAG_SERVER_TYPE_KEY,
     SENTRY_TAG_SERVER_TYPE_VALUE,
 )
 
@@ -25,14 +25,14 @@ class TaskRunnerSentry:
             release=f"n8n@{self.config.n8n_version}",
             environment=self.config.environment,
             server_name=self.config.deployment_name,
-            before_send=self._filter_out_user_code_errors,
+            before_send=self._filter_out_ignored_errors,
             attach_stacktrace=True,
             send_default_pii=False,
             auto_enabling_integrations=False,
             default_integrations=True,
             integrations=[LoggingIntegration(level=logging.ERROR)],
         )
-        sentry_sdk.set_tag(SENTRY_TAG_SERVER_TYPE, SENTRY_TAG_SERVER_TYPE_VALUE)
+        sentry_sdk.set_tag(SENTRY_TAG_SERVER_TYPE_KEY, SENTRY_TAG_SERVER_TYPE_VALUE)
         self.logger.info("Sentry ready")
 
     def shutdown(self) -> None:
@@ -41,7 +41,7 @@ class TaskRunnerSentry:
         sentry_sdk.flush(timeout=2.0)
         self.logger.info("Sentry stopped")
 
-    def _filter_out_user_code_errors(self, event: Any, hint: Any) -> Optional[Any]:
+    def _filter_out_ignored_errors(self, event: Any, hint: Any) -> Optional[Any]:
         if "exc_info" in hint:
             exc_type, _, _ = hint["exc_info"]
             if exc_type is TaskRuntimeError:

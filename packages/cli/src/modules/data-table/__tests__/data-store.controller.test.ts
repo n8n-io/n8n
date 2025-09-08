@@ -2802,13 +2802,8 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 	test('should not upsert rows when project does not exist', async () => {
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authOwnerAgent
@@ -2820,13 +2815,8 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 	test('should not upsert rows when data store does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authOwnerAgent
@@ -2839,24 +2829,19 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authMemberAgent
@@ -2871,24 +2856,19 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authMemberAgent
@@ -2904,24 +2884,19 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { name: 'Alice', age: 30 },
 		};
 
 		await authMemberAgent
@@ -2931,7 +2906,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
 		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
 
 	test('should upsert rows if user has project:admin role in team project', async () => {
@@ -2941,24 +2916,19 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authAdminAgent
@@ -2968,31 +2938,26 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
 		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
 
 	test('should upsert rows in personal project', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					second: 'another value',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30 },
 		};
 
 		await authMemberAgent
@@ -3002,31 +2967,26 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
 		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
 
 	test('should not upsert rows when column does not exist', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test value',
-					nonexisting: 'this does not exist',
-				},
-			],
-			matchFields: ['first', 'second'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 30, nonexisting: 'this does not exist' },
 		};
 
 		const response = await authMemberAgent
@@ -3039,96 +2999,33 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 		expect(rowsInDb.count).toBe(0);
 	});
 
-	test('should update existing matched fields and insert new ones', async () => {
+	test('should return updated row if returnData is set', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'first',
+					name: 'name',
 					type: 'string',
 				},
 				{
-					name: 'second',
-					type: 'string',
+					name: 'age',
+					type: 'number',
 				},
 			],
 			data: [
 				{
-					first: 'test row',
-					second: 'test value',
+					name: 'Alice',
+					age: 30,
 				},
 				{
-					first: 'test row',
-					second: 'another row with same first column',
+					name: 'John',
+					age: 25,
 				},
 			],
 		});
 
 		const payload = {
-			rows: [
-				{
-					first: 'test row',
-					second: 'updated value',
-				},
-				{
-					first: 'new row',
-					second: 'new value',
-				},
-			],
-			matchFields: ['first'],
-		};
-
-		const result = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/upsert`)
-			.send(payload)
-			.expect(200);
-
-		expect(result.body.data).toBe(true);
-
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {
-			sortBy: ['id', 'ASC'],
-		});
-		expect(rowsInDb.count).toBe(3);
-		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
-		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
-		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
-	});
-
-	test('should return affected rows if returnData is set', async () => {
-		const dataStore = await createDataStore(memberProject, {
-			columns: [
-				{
-					name: 'first',
-					type: 'string',
-				},
-				{
-					name: 'second',
-					type: 'string',
-				},
-			],
-			data: [
-				{
-					first: 'test row',
-					second: 'test value',
-				},
-				{
-					first: 'test row',
-					second: 'another row with same first column',
-				},
-			],
-		});
-
-		const payload = {
-			rows: [
-				{
-					first: 'test row',
-					second: 'updated value',
-				},
-				{
-					first: 'new row',
-					second: 'new value',
-				},
-			],
-			matchFields: ['first'],
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
+			data: { age: 35 },
 			returnData: true,
 		};
 
@@ -3137,31 +3034,15 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(result.body.data).toEqual(
-			expect.arrayContaining([
-				{
-					id: 1,
-					first: 'test row',
-					second: 'updated value',
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
-				},
-				{
-					id: 2,
-					first: 'test row',
-					second: 'updated value',
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
-				},
-				{
-					id: 3,
-					first: 'new row',
-					second: 'new value',
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
-				},
-			]),
-		);
+		expect(result.body.data).toEqual([
+			{
+				id: expect.any(Number),
+				name: 'Alice',
+				age: 35,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 });
 

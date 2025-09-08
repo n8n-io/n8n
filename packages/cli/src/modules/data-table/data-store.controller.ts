@@ -8,7 +8,7 @@ import {
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
 	UpdateDataTableRowDto,
-	UpsertDataStoreRowsDto,
+	UpsertDataStoreRowDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -274,14 +274,14 @@ export class DataStoreController {
 
 	@Post('/:dataStoreId/upsert')
 	@ProjectScope('dataStore:writeRow')
-	async upsertDataStoreRows(
+	async upsertDataStoreRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpsertDataStoreRowsDto,
+		@Body dto: UpsertDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(
+			return await this.dataStoreService.upsertRow(
 				dataStoreId,
 				req.params.projectId,
 				dto,
