@@ -23,14 +23,14 @@ export type QueryWithValues = {
 export type WhereClause = { column: string; condition: string; value: any };
 export type SortRule = { column: string; direction: string };
 export type ColumnInfo = {
-	column_name: string;
-	data_type: string;
-	is_nullable: boolean;
-	udt_name?: string;
-	column_default?: string | null;
-	is_generated?: 'ALWAYS' | 'NEVER';
-	identity_generation?: 'ALWAYS' | 'NEVER';
-	max_size: number;
+	columnName: string;
+	dataType: string;
+	isNullable: boolean;
+	udtName?: string;
+	columnDefault?: string | null;
+	isGenerated?: 'ALWAYS' | 'NEVER';
+	identityGeneration?: 'ALWAYS' | 'NEVER';
+	maxSize: number;
 };
 
 export type QueriesRunner = (

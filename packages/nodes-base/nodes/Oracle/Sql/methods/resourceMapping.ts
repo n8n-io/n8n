@@ -23,14 +23,14 @@ export async function getMappingColumns(
 
 	const columns = await getColumnMetaData(this.getNode(), pool, schema, table);
 	const fields = columns.map((col) => {
-		const type = mapDbType(col.data_type).n8nType as FieldType;
-		const nullable = col.is_nullable;
-		const hasDefault = col.column_default === 'YES';
-		const isGenerated = col.is_generated === 'ALWAYS';
+		const type = mapDbType(col.dataType).n8nType as FieldType;
+		const nullable = col.isNullable;
+		const hasDefault = col.columnDefault === 'YES';
+		const isGenerated = col.isGenerated === 'ALWAYS';
 
 		return {
-			id: col.column_name,
-			displayName: col.column_name,
+			id: col.columnName,
+			displayName: col.columnName,
 			required: !nullable && !hasDefault && !isGenerated,
 			display: true,
 			type,
