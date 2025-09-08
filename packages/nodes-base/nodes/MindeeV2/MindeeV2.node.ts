@@ -169,10 +169,11 @@ export class MindeeV2 implements INodeType {
 				const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form);
 				const result = await pollMindee(this, enqueue, params.maxDelayCount);
 
-				returnData.push(...(Array.isArray(result) ? result : [result]));
+				returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as Error).message });
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					returnData.push({ error: errorMessage });
 					continue;
 				}
 				throw error;
