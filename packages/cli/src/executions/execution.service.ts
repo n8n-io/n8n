@@ -240,14 +240,14 @@ export class ExecutionService {
 
 		const retriedExecutionId = await this.workflowRunner.run(data);
 
-		// TODO: discuss wether this.executionRepository.findWithUnflattenedData(retriedExecutionId,sharedWorkflowIds) is preferred
-		// over using getPostExecutePromise and creating the complete response by merging execution, executionData and the retriedExecutionId
 		const executionData = await this.activeExecutions.getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		// TODO: discuss wether we should add an additional this.executionRepository.findWithUnflattenedData(retriedExecutionId,sharedWorkflowIds)
+		// call in favor of manually creating the execution object
 		return {
 			...execution,
 			...executionData,
