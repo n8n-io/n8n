@@ -81,7 +81,7 @@ const emit = defineEmits<{
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: var(--color-text-base);
+	color: var(--color-text-light);
 }
 .collapse-icon {
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
