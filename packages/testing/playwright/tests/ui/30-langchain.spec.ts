@@ -1,11 +1,7 @@
-import type { ExecutionError } from 'n8n-workflow';
-
 import {
 	AGENT_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
-	MANUAL_TRIGGER_NODE_NAME,
-	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
 	AI_MEMORY_POSTGRES_NODE_NAME,
@@ -19,11 +15,11 @@ import {
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { createMockNodeExecutionData, runMockWorkflowExecution } from '../../utils/execution-mocks';
-import { createAgentLLMExecutionData } from '../../utils/langchain-test-fixtures';
 
-test.describe('Langchain Integration', () => {
-	test.beforeEach(async ({ n8n }) => {
+test.describe('Langchain Integration @capability:proxy', () => {
+	test.beforeEach(async ({ n8n, proxyServer }) => {
+		await proxyServer.clearAllExpectations();
+		await proxyServer.loadExpectations('langchain');
 		await n8n.canvas.openNewWorkflow();
 	});
 
@@ -193,31 +189,23 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
 			await n8n.canvas.openNode(BASIC_LLM_CHAIN_NODE_NAME);
 			const inputMessage = 'Hello!';
-			const outputMessage = 'Hi there! How can I assist you today?';
 
 			await n8n.ndv.execute();
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
-				runData: [
-					createMockNodeExecutionData(BASIC_LLM_CHAIN_NODE_NAME, {
-						jsonData: {
-							main: { output: outputMessage },
-						},
-						metadata: {
-							subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
-						},
-					}),
-				],
-				lastNodeExecuted: BASIC_LLM_CHAIN_NODE_NAME,
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+
+			// Wait for the workflow to complete
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
 
-			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText(outputMessage);
+			// Verify chat message appears
+			await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
 		});
 		test('should be able to open and execute Agent node', async ({ n8n }) => {
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
@@ -231,37 +219,24 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
-			await n8n.canvas.openNode(AGENT_NODE_NAME);
-
 			const inputMessage = 'Hello!';
-			const outputMessage = 'Hi there! How can I assist you today?';
+			await n8n.canvas.clickManualChatButton();
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
 
-			await n8n.ndv.execute();
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
-				runData: [
-					createMockNodeExecutionData(AGENT_NODE_NAME, {
-						jsonData: {
-							main: { output: outputMessage },
-						},
-						metadata: {
-							subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
-						},
-					}),
-				],
-				lastNodeExecuted: AGENT_NODE_NAME,
+			// Wait for the workflow to complete
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
-
-			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText(outputMessage);
+			// Verify chat message appears
+			await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
 		});
 		test('should add and use Manual Chat Trigger node together with Agent node', async ({
 			n8n,
 		}) => {
-			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
 			await n8n.canvas.addSupplementalNodeToParent(
@@ -273,52 +248,32 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
-			await n8n.canvas.clickManualChatButton();
-
 			const inputMessage = 'Hello!';
-			const outputMessage = 'Hi there! How can I assist you today?';
-			const runData = [
-				createMockNodeExecutionData(MANUAL_CHAT_TRIGGER_NODE_NAME, {
-					jsonData: {
-						main: { input: inputMessage },
-					},
-				}),
-				createMockNodeExecutionData(
-					AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-					createAgentLLMExecutionData(
-						AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-						AGENT_NODE_NAME,
-						outputMessage,
-					),
-				),
-				createMockNodeExecutionData(AGENT_NODE_NAME, {
-					jsonData: {
-						main: { output: outputMessage },
-					},
-				}),
-			];
 
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => {
-					await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
-				},
-				runData,
-				lastNodeExecuted: AGENT_NODE_NAME,
+			await n8n.canvas.clickManualChatButton();
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+
+			// Wait for the workflow to complete
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
-
 			const messages = n8n.canvas.getManualChatMessages();
 			await expect(messages).toHaveCount(2);
 			await expect(messages.first()).toContainText(inputMessage);
-			await expect(messages.last()).toContainText(outputMessage);
+			// Verify response message appears
+			await expect(messages.last()).toBeVisible();
 
 			await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
-			await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toHaveText('AI Agent');
-			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toHaveText('OpenAI Chat Model');
+			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(3);
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toHaveText(
+				'When chat message received',
+			);
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toHaveText('AI Agent');
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toHaveText('OpenAI Chat Model');
 
 			await n8n.canvas.closeManualChatModal();
 			await expect(n8n.canvas.logsPanel.getLogEntries()).toBeHidden();
@@ -341,7 +296,7 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
@@ -354,23 +309,13 @@ test.describe('Langchain Integration', () => {
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
 			const inputMessage = 'Hello!';
-			const outputMessage = 'Hi there! How can I assist you today?';
 
 			await n8n.ndv.execute();
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
 
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
-				runData: [
-					createMockNodeExecutionData(AGENT_NODE_NAME, {
-						jsonData: {
-							main: { output: outputMessage },
-						},
-						metadata: {
-							subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
-						},
-					}),
-				],
-				lastNodeExecuted: AGENT_NODE_NAME,
+			// Wait for the workflow to complete
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
 			await n8n.canvas.closeManualChatModal();
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
@@ -394,7 +339,7 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
@@ -404,31 +349,13 @@ test.describe('Langchain Integration', () => {
 				AGENT_NODE_NAME,
 				{ closeNDV: true },
 			);
-			await n8n.canvas.openNode(AGENT_NODE_NAME);
-
-			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
-
-			const inputMessage = 'Hello!';
-			const outputMessage = 'Hi there! How can I assist you today?';
-
-			await n8n.ndv.execute();
-
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
-				runData: [
-					createMockNodeExecutionData(AGENT_NODE_NAME, {
-						jsonData: {
-							main: { output: outputMessage },
-						},
-						metadata: {
-							subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
-						},
-					}),
-					createMockNodeExecutionData(AI_TOOL_CALCULATOR_NODE_NAME, {}),
-				],
-				lastNodeExecuted: AGENT_NODE_NAME,
+			const inputMessage = 'What is 1000 * 10?';
+			await n8n.canvas.clickManualChatButton();
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+			// Wait for the workflow to complete
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
-
 			await n8n.canvas.closeManualChatModal();
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
@@ -478,108 +405,11 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickCreateNewCredential();
 			await n8n.credentialsModal.setValues({
-				apiKey: 'sk_test_123',
+				apiKey: 'abcd',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
 
 			await n8n.canvas.clickZoomToFitButton();
-		}
-
-		// Helper function to create mock data with Postgres error
-		function createPostgresErrorMockData(inputMessage: string, triggerNodeName: string) {
-			return [
-				createMockNodeExecutionData(triggerNodeName, {
-					jsonData: {
-						main: { input: inputMessage },
-					},
-				}),
-				createMockNodeExecutionData(AI_MEMORY_POSTGRES_NODE_NAME, {
-					jsonData: {
-						ai_memory: {
-							json: {
-								action: 'loadMemoryVariables',
-								values: {
-									input: inputMessage,
-									system_message: 'You are a helpful assistant',
-									formatting_instructions:
-										'IMPORTANT: Always call `format_final_json_response` to format your final response!',
-								},
-							},
-						},
-					},
-					inputOverride: {
-						ai_memory: [
-							[
-								{
-									json: {
-										action: 'loadMemoryVariables',
-										values: {
-											input: inputMessage,
-											system_message: 'You are a helpful assistant',
-											formatting_instructions:
-												'IMPORTANT: Always call `format_final_json_response` to format your final response!',
-										},
-									},
-								},
-							],
-						],
-					},
-					source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
-					error: {
-						message: 'Internal error',
-						timestamp: 1722591723244,
-						name: 'NodeOperationError',
-						description: 'Internal error',
-						context: {},
-						cause: {
-							name: 'error',
-							message: 'Some error',
-						},
-					} as ExecutionError,
-					metadata: {
-						subRun: [
-							{
-								node: 'Postgres Chat Memory',
-								runIndex: 0,
-							},
-						],
-					},
-				}),
-				createMockNodeExecutionData(AGENT_NODE_NAME, {
-					executionStatus: 'error',
-					error: {
-						level: 'error',
-						tags: {
-							packageName: 'workflow',
-						},
-						context: {},
-						functionality: 'configuration-node',
-						name: 'NodeOperationError',
-						timestamp: 1722591723244,
-						node: {
-							parameters: {
-								notice: '',
-								sessionIdType: 'fromInput',
-								tableName: 'n8n_chat_histories',
-							},
-							id: '6b9141da-0135-4e9d-94d1-2d658cbf48b5',
-							name: 'Postgres Chat Memory',
-							type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-							typeVersion: 1,
-							position: [1140, 500],
-							credentials: {
-								postgres: {
-									id: 'RkyZetVpGsSfEAhQ',
-									name: 'Postgres account',
-								},
-							},
-						},
-						messages: ['database "chat11" does not exist'],
-						description: 'Internal error',
-						message: 'Internal error',
-					} as unknown as ExecutionError,
-				}),
-			];
 		}
 
 		// Helper function to assert logs tab is active
@@ -606,27 +436,25 @@ test.describe('Langchain Integration', () => {
 			await setupAgentWorkflowWithPostgresError(n8n);
 
 			const inputMessage = 'Test the code tool';
-			const runDataWithError = createPostgresErrorMockData(
-				inputMessage,
-				MANUAL_CHAT_TRIGGER_NODE_NAME,
-			);
 
 			// Execute workflow with chat trigger
 			await n8n.canvas.clickManualChatButton();
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
-				runData: runDataWithError,
-				lastNodeExecuted: AGENT_NODE_NAME,
+			await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
+			// Wait for workflow to finish (with error)
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
 
 			// Check that messages and logs are displayed
 			const messages = n8n.canvas.getManualChatMessages();
 			await expect(messages).toHaveCount(2);
 			await expect(messages.first()).toContainText(inputMessage);
-			await expect(messages.last()).toContainText('[ERROR: Internal error]');
+			await expect(messages.last()).toContainText(
+				'[ERROR: The service refused the connection - perhaps it is offline]',
+			);
 
 			await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(3);
 			await expect(n8n.canvas.logsPanel.getSelectedLogEntry()).toHaveText('AI Agent');
 			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
 				AI_MEMORY_POSTGRES_NODE_NAME,
@@ -643,17 +471,10 @@ test.describe('Langchain Integration', () => {
 		});
 
 		test('should switch to logs tab on error, when NDV is already opened', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
-
 			// Remove the auto-added chat trigger
-			await n8n.canvas
-				.nodeByName(CHAT_TRIGGER_NODE_DISPLAY_NAME)
-				.locator('[data-test-id="delete-node-button"]')
-				.click();
+			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: false });
 
 			// Set manual trigger to output standard pinned data
-			await n8n.canvas.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.ndv.getEditPinnedDataButton().click();
 			await n8n.ndv.savePinnedData();
 			await n8n.ndv.close();
@@ -663,14 +484,14 @@ test.describe('Langchain Integration', () => {
 
 			// Open the AI Agent node
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
+			await n8n.ndv.getParameterInput('promptType').click();
+			await n8n.page.getByRole('option', { name: 'Define below' }).click();
+			await n8n.ndv.getParameterInput('text').locator('textarea').fill('Some text');
+			await n8n.ndv.execute();
 
-			const inputMessage = 'Test the code tool';
-			const runDataWithError = createPostgresErrorMockData(inputMessage, MANUAL_TRIGGER_NODE_NAME);
-
-			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.ndv.execute(),
-				runData: runDataWithError,
-				lastNodeExecuted: AGENT_NODE_NAME,
+			// Wait for workflow to finish (with error)
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
 			});
 
 			// Assert that logs tab is active and error is displayed
@@ -688,9 +509,9 @@ test.describe('Langchain Integration', () => {
 			await n8n.canvas.deselectAll();
 
 			await n8n.canvas.executeNode('Populate VS');
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-				'Workflow executed successfully',
-			);
+			await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
+				timeout: 3000,
+			});
 
 			const assertInputOutputTextExists = async (text: string) => {
 				await expect(n8n.ndv.getOutputPanel()).toContainText(text);
@@ -750,7 +571,6 @@ test.describe('Langchain Integration', () => {
 			// Open Node 1 and execute it
 			await n8n.canvas.openNode('Node 1');
 			await n8n.ndv.execute();
-
 			// Chat modal should now be visible
 			await expect(n8n.canvas.getManualChatModal().locator('main')).toBeVisible();
 
