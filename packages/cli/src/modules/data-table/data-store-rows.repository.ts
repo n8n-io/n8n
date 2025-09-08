@@ -168,7 +168,7 @@ export class DataStoreRowsRepository {
 		// In practice 20000 works here, but performance didn't meaningfully change
 		// so this should be a safe limit
 		const batchSize = 800;
-		const batches = 1 + Math.ceil((columns.length * rows.length) / batchSize);
+		const batches = Math.max(1, Math.ceil((columns.length * rows.length) / batchSize));
 		const rowsPerBatch = Math.ceil(rows.length / batches);
 
 		const columnNames = columns.map((x) => x.name);
