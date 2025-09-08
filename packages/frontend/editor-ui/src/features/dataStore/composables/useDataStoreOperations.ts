@@ -2,6 +2,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type {
+	AddColumnResponse,
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
@@ -18,6 +19,8 @@ import type {
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useDataStoreTypes } from './useDataStoreTypes';
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -74,6 +77,7 @@ export const useDataStoreOperations = ({
 	const dataStoreStore = useDataStoreStore();
 	const contentLoading = ref(false);
 	const telemetry = useTelemetry();
+	const dataStoreTypes = useDataStoreTypes();
 
 	async function onDeleteColumn(columnId: string) {
 		const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
@@ -117,7 +121,7 @@ export const useDataStoreOperations = ({
 		}
 	}
 
-	async function onAddColumn(column: DataStoreColumnCreatePayload) {
+	async function onAddColumn(column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> {
 		try {
 			const newColumn = await dataStoreStore.addDataStoreColumn(dataStoreId, projectId, column);
 			addGridColumn(newColumn);
@@ -130,10 +134,14 @@ export const useDataStoreOperations = ({
 				column_type: newColumn.type,
 				data_table_id: dataStoreId,
 			});
-			return true;
+			return { success: true, httpStatus: 200 };
 		} catch (error) {
-			toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
-			return false;
+			const addColumnError = dataStoreTypes.getAddColumnError(error);
+			return {
+				success: false,
+				httpStatus: addColumnError.httpStatus,
+				errorMessage: addColumnError.message,
+			};
 		}
 	}
 

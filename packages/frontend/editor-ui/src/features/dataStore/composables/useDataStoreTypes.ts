@@ -5,6 +5,7 @@ import type {
 	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
+import { ResponseError } from '@n8n/rest-api-client';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
@@ -57,10 +58,33 @@ export const useDataStoreTypes = () => {
 		}
 	};
 
+	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+		const DEFAULT_HTTP_STATUS = 500;
+		const DEFAULT_MESSAGE = 'An unknown error occurred';
+
+		if (error instanceof ResponseError) {
+			return {
+				httpStatus: error.httpStatusCode ?? 500,
+				message: error.message,
+			};
+		}
+		if (error instanceof Error) {
+			return {
+				httpStatus: DEFAULT_HTTP_STATUS,
+				message: error.message,
+			};
+		}
+		return {
+			httpStatus: DEFAULT_HTTP_STATUS,
+			message: DEFAULT_MESSAGE,
+		};
+	};
+
 	return {
 		getIconForType,
 		mapToAGCellType,
 		mapToDataStoreColumnType,
 		getDefaultValueForType,
+		getAddColumnError,
 	};
 };
