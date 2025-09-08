@@ -40,8 +40,8 @@ const properties: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: ['event'],
-				operation: ['getAll'],
+				resource: ['database'],
+				operation: ['select'],
 			},
 		},
 	},
@@ -56,6 +56,8 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
+				resource: ['database'],
+				operation: ['select'],
 				returnAll: [false],
 			},
 		},

@@ -24,9 +24,9 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	const columns = await getColumnMetaData(this.getNode(), pool, schema, table);
 
 	return columns.map((column) => ({
-		name: column.column_name,
-		value: column.column_name,
-		description: `Type: ${column.data_type.toUpperCase()}, Nullable: ${column.is_nullable}`,
+		name: column.columnName,
+		value: column.columnName,
+		description: `Type: ${column.dataType.toUpperCase()}, Nullable: ${column.isNullable}`,
 	}));
 }
 

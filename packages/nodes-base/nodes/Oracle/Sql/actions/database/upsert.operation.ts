@@ -96,6 +96,13 @@ function getQuery(
 		index,
 	) as string[];
 
+	if (columnsToMatchOn.length === 0) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'No matching columns configured. Please define at least one column to match on.',
+		);
+	}
+
 	if (!item[columnsToMatchOn[0]]) {
 		throw new NodeOperationError(
 			ctx.getNode(),
