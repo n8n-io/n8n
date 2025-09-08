@@ -534,7 +534,7 @@ onBeforeUnmount(() => {
 				<!-- Max Parallel field - only show for v2 execution order -->
 				<el-row v-if="workflowSettings.executionOrder === 'v2'">
 					<el-col :span="10" class="setting-name">
-						Max Parallel Nodes
+						{{ i18n.baseText('workflowSettings.maxParallel') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-n8n-html="helpTexts.maxParallel"></div>
