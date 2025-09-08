@@ -1,18 +1,13 @@
 import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type {
-	DataStoreColumnJsType,
-	DataStoreRows,
-	DataStoreRowReturn,
-	DataStoreRowsReturn,
-} from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataStoreUserTableName } from '../data-store.types';
 import type { DataTableColumn } from '../data-table-column.entity';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -98,33 +93,6 @@ export function deleteColumnQuery(
 ): string {
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
-}
-
-export function splitRowsByExistence(
-	existing: Array<Record<string, unknown>>,
-	matchFields: string[],
-	rows: DataStoreRows,
-): { rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows } {
-	// Extracts only the fields relevant to matching and serializes them for comparison
-	const getMatchKey = (row: Record<string, unknown>): string =>
-		JSON.stringify(Object.fromEntries(matchFields.map((field) => [field, row[field]])));
-
-	const existingSet = new Set(existing.map((row) => getMatchKey(row)));
-
-	const rowsToUpdate: DataStoreRows = [];
-	const rowsToInsert: DataStoreRows = [];
-
-	for (const row of rows) {
-		const key = getMatchKey(row);
-
-		if (existingSet.has(key)) {
-			rowsToUpdate.push(row);
-		} else {
-			rowsToInsert.push(row);
-		}
-	}
-
-	return { rowsToInsert, rowsToUpdate };
 }
 
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {

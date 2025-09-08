@@ -7,6 +7,6 @@ import {
 } from '../../schemas/data-store.schema';
 
 export class AddDataStoreRowsDto extends Z.class({
-	returnData: z.boolean().default(false),
+	returnData: z.boolean().optional().default(false),
 	data: z.array(z.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)),
 }) {}
