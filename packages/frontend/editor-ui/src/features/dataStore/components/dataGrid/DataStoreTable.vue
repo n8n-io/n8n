@@ -33,6 +33,7 @@ import { useDataStorePagination } from '@/features/dataStore/composables/useData
 import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataStoreGridBase';
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 import { useDataStoreOperations } from '@/features/dataStore/composables/useDataStoreOperations';
+import { useI18n } from '@n8n/i18n';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -65,6 +66,8 @@ const emit = defineEmits<{
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
+
+const i18n = useI18n();
 
 const dataStoreGridBase = useDataStoreGridBase({
 	gridContainerRef,
@@ -128,6 +131,8 @@ const initialize = async (params: GridReadyEvent) => {
 	await dataStoreOperations.fetchDataStoreRows();
 };
 
+const customNoRowsOverlay = `<div class="no-rows-overlay" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
+
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
 	await pagination.setCurrentPage(1);
 });
@@ -159,6 +164,7 @@ defineExpose({
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
 				@cell-value-changed="dataStoreOperations.onCellValueChanged"
 				@column-moved="dataStoreOperations.onColumnMoved"
