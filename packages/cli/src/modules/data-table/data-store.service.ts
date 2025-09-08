@@ -140,13 +140,13 @@ export class DataStoreService {
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnType: T,
+		returnType?: T,
 	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnType: DataTableInsertRowsReturnType,
+		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);

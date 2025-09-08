@@ -1320,7 +1320,7 @@ describe('dataStore', () => {
 
 				// ACT
 				const rows = [{}];
-				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'count');
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
 
 				// ASSERT
 				expect(result).toEqual({ success: true, insertedRows: 1 });
@@ -1351,7 +1351,7 @@ describe('dataStore', () => {
 					c2: index % 2 === 0,
 					c3: `index ${index}`,
 				}));
-				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'count');
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
 
 				// ASSERT
 				expect(result).toEqual({ success: true, insertedRows: rows.length });
@@ -1771,15 +1771,10 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-					{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -1822,23 +1817,18 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{
-						name: 'Alice',
-						age: 30,
-						active: true,
-					},
-					{
-						name: 'Bob',
-						age: 25,
-						active: false,
-					},
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{
+					name: 'Alice',
+					age: 30,
+					active: true,
+				},
+				{
+					name: 'Bob',
+					age: 25,
+					active: false,
+				},
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -1879,12 +1869,9 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30, active: true }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true },
+			]);
 
 			const { data: initialRows } = await dataStoreService.getManyRowsAndCount(
 				dataStoreId,
@@ -1933,15 +1920,10 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-					{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -1985,15 +1967,10 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-					{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2032,7 +2009,7 @@ describe('dataStore', () => {
 				columns: [{ name: 'age', type: 'number' }],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }], 'count');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2054,7 +2031,7 @@ describe('dataStore', () => {
 				columns: [{ name: 'age', type: 'number' }],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }], 'count');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ age: 30 }]);
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2082,15 +2059,10 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-					{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2137,15 +2109,10 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, birthday: aliceBirthday },
-					{ name: 'Bob', age: 25, active: false, birthday: bobBirthday },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: aliceBirthday },
+				{ name: 'Bob', age: 25, active: false, birthday: bobBirthday },
+			]);
 
 			// ACT
 			const newBirthday = new Date('1990-01-03');
@@ -2192,16 +2159,11 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, department: 'Engineering' },
-					{ name: 'Alice', age: 25, department: 'Marketing' },
-					{ name: 'Bob', age: 30, department: 'Engineering' },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, department: 'Engineering' },
+				{ name: 'Alice', age: 25, department: 'Marketing' },
+				{ name: 'Bob', age: 30, department: 'Engineering' },
+			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2253,12 +2215,7 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30 }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2291,12 +2248,7 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30 }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2328,12 +2280,7 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30 }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2372,7 +2319,7 @@ describe('dataStore', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }], 'count');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2390,7 +2337,7 @@ describe('dataStore', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }], 'count');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2414,12 +2361,7 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30 }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT & ASSERT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2441,12 +2383,9 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', age: 30, active: true }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true },
+			]);
 
 			// ACT - only update age, leaving name and active unchanged
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
@@ -2478,12 +2417,9 @@ describe('dataStore', () => {
 			});
 
 			const initialDate = new Date('1990-01-01');
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice', birthDate: initialDate }],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', birthDate: initialDate },
+			]);
 
 			// ACT
 			const newDate = new Date('1991-02-02');
@@ -2513,15 +2449,10 @@ describe('dataStore', () => {
 			});
 
 			const now = new Date();
-			await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ name: 'Alice', age: 30, active: true, timestamp: now },
-					{ name: 'Bob', age: 25, active: false, timestamp: now },
-				],
-				'count',
-			);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, timestamp: now },
+				{ name: 'Bob', age: 25, active: false, timestamp: now },
+			]);
 
 			const soon = new Date();
 			soon.setDate(now.getDate() + 1);
@@ -2628,7 +2559,7 @@ describe('dataStore', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }], 'count');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
 
 			// ACT
 			const result = dataStoreService.updateRow(dataStoreId, project1.id, {

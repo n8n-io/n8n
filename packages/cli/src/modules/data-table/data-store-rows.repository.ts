@@ -164,8 +164,11 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 	) {
-		// SQLite only allows 999 parameters per query, so we need to batch larger requests
-		const batchSize = 20000;
+		// DB systems have different maximum parameters per query
+		// with old sqlite versions having the lowest in 999 parameters
+		// In practice 20000 works here, but performance didn't meaningfully change
+		// so this should be a safe limit
+		const batchSize = 800;
 		const batches = 1 + Math.ceil((columns.length * rows.length) / batchSize);
 		const rowsPerBatch = Math.ceil(rows.length / batches);
 
