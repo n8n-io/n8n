@@ -18,9 +18,9 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../../utils/execution-mocks';
 import { createAgentLLMExecutionData } from '../../utils/langchain-test-fixtures';
-import { n8nPage } from '../../pages/n8nPage';
 
 test.describe('Langchain Integration', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -315,13 +315,13 @@ test.describe('Langchain Integration', () => {
 			await expect(messages.first()).toContainText(inputMessage);
 			await expect(messages.last()).toContainText(outputMessage);
 
-			await expect(n8n.canvas.getOverviewPanel()).toBeVisible();
-			await expect(n8n.canvas.getLogEntries()).toHaveCount(2);
-			await expect(n8n.canvas.getLogEntries().nth(0)).toHaveText('AI Agent');
-			await expect(n8n.canvas.getLogEntries().nth(1)).toHaveText('OpenAI Chat Model');
+			await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
+			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toHaveText('AI Agent');
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toHaveText('OpenAI Chat Model');
 
 			await n8n.canvas.closeManualChatModal();
-			await expect(n8n.canvas.getOverviewPanelBody()).toBeHidden();
+			await expect(n8n.canvas.logsPanel.getLogEntries()).toBeHidden();
 			await expect(n8n.canvas.getManualChatInput()).toBeHidden();
 		});
 	});
@@ -625,10 +625,12 @@ test.describe('Langchain Integration', () => {
 			await expect(messages.first()).toContainText(inputMessage);
 			await expect(messages.last()).toContainText('[ERROR: Internal error]');
 
-			await expect(n8n.canvas.getOverviewPanel()).toBeVisible();
-			await expect(n8n.canvas.getLogEntries()).toHaveCount(2);
-			await expect(n8n.canvas.getSelectedLogEntry()).toHaveText('AI Agent');
-			await expect(n8n.canvas.getLogsOutputPanel()).toContainText(AI_MEMORY_POSTGRES_NODE_NAME);
+			await expect(n8n.canvas.logsPanel.getLogEntries().first()).toBeVisible();
+			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+			await expect(n8n.canvas.logsPanel.getSelectedLogEntry()).toHaveText('AI Agent');
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
+				AI_MEMORY_POSTGRES_NODE_NAME,
+			);
 
 			await n8n.canvas.closeManualChatModal();
 

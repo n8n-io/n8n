@@ -639,29 +639,6 @@ export class CanvasPage extends BasePage {
 		}
 	}
 
-	// Logs panel helpers
-	getOverviewPanel() {
-		return this.page.getByTestId('logs-overview');
-	}
-
-	getOverviewPanelBody() {
-		return this.page.getByTestId('logs-overview-body');
-	}
-
-	getLogEntries() {
-		return this.page.getByTestId('logs-overview-body').locator('[role="treeitem"]');
-	}
-
-	getSelectedLogEntry() {
-		return this.page
-			.getByTestId('logs-overview-body')
-			.locator('[role="treeitem"][aria-selected="true"]');
-	}
-
-	getLogsOutputPanel() {
-		return this.page.getByTestId('log-details-output');
-	}
-
 	async openExecutions() {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
