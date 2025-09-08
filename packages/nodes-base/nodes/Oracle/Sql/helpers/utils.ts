@@ -289,12 +289,12 @@ ORDER BY atc.COLUMN_NAME`;
 
 		return (
 			result.rows?.map((row: any) => ({
-				column_name: row.COLUMN_NAME,
-				is_generated: row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
-				column_default: row.HAS_DEFAULT,
-				data_type: row.DATA_TYPE,
-				is_nullable: row.NULLABLE === 'Y',
-				max_size: row.DATA_LENGTH,
+				columnName: row.COLUMN_NAME,
+				isGenerated: row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
+				columnDefault: row.HAS_DEFAULT,
+				dataType: row.DATA_TYPE,
+				isNullable: row.NULLABLE === 'Y',
+				maxSize: row.DATA_LENGTH,
 			})) ?? []
 		);
 	} finally {
@@ -575,11 +575,11 @@ export const configureTableSchemaUpdater = (
 
 export function getColumnMap(tableSchema: ColumnInfo[]) {
 	const columnMetaDataObject: ColumnMap = tableSchema.reduce(
-		(acc, { column_name, data_type, is_nullable, max_size }) => {
-			acc[column_name] = {
-				type: data_type.toUpperCase(),
-				nullable: is_nullable,
-				maxSize: max_size,
+		(acc, { columnName, dataType, isNullable, maxSize }) => {
+			acc[columnName] = {
+				type: dataType.toUpperCase(),
+				nullable: isNullable,
+				maxSize,
 			};
 			return acc;
 		},
