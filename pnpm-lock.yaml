@@ -202,6 +202,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   tmp: 0.2.4
+  '@n8n/codemirror-lang-sql': link:../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql
 
 patchedDependencies:
   '@lezer/highlight':
@@ -250,6 +251,10 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@n8n/codemirror-lang-sql':
+        specifier: link:../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql
+        version: link:../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.0
@@ -2497,8 +2502,8 @@ importers:
         specifier: workspace:*
         version: link:../../@n8n/codemirror-lang
       '@n8n/codemirror-lang-sql':
-        specifier: ^1.0.2
-        version: 1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
+        specifier: link:../../../../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql
+        version: link:../../../../../AppData/Local/pnpm/global/5/node_modules/@n8n/codemirror-lang-sql
       '@n8n/composables':
         specifier: workspace:*
         version: link:../@n8n/composables
@@ -5742,9 +5747,6 @@ packages:
   '@mswjs/interceptors@0.37.5':
     resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
     engines: {node: '>=18'}
-
-  '@n8n/codemirror-lang-sql@1.0.2':
-    resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
 
   '@n8n/localtunnel@3.0.0':
     resolution: {integrity: sha512-0t/AUiZ8Oqo7AqYp2q2qmEC2p2lPP4CEdrGRB0J6nSC7ivOtr0p46Pw739UvUfJMU1bIKvzHIc5M9wCjH5Byjg==}
@@ -20318,17 +20320,6 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)':
-    dependencies:
-      '@codemirror/autocomplete': 6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
-      '@codemirror/language': 6.10.1
-      '@codemirror/state': 6.4.1
-      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
-      '@lezer/lr': 1.4.0
-    transitivePeerDependencies:
-      - '@codemirror/view'
-      - '@lezer/common'
-
   '@n8n/localtunnel@3.0.0':
     dependencies:
       axios: 1.11.0(debug@4.3.6)
@@ -23806,7 +23797,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.11.0(debug@4.4.1)):
     dependencies:
-      axios: 1.11.0(debug@4.4.1)
+      axios: 1.11.0(debug@4.3.6)
       is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.11.0):
@@ -25902,7 +25893,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -25926,7 +25917,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
       eslint: 9.29.0(jiti@1.21.7)
@@ -25965,7 +25956,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -26940,7 +26931,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -27293,7 +27284,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.11
       '@types/tough-cookie': 4.0.5
-      axios: 1.11.0(debug@4.4.1)
+      axios: 1.11.0(debug@4.3.6)
       camelcase: 6.3.0
       debug: 4.4.1(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30381,7 +30372,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color

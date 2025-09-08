@@ -138,7 +138,7 @@ const plugins: UserConfig['plugins'] = [
 	},
 	// For sanitize-html
 	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
+		include: ['fs', 'path', 'url', 'util', 'timers', 'process'],
 	}),
 ];
 
@@ -152,6 +152,8 @@ export default mergeConfig(
 			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
 			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
 			BASE_PATH: `'${publicPath}'`,
+			// Define process for browser compatibility
+			...(NODE_ENV !== 'test' ? { 'process': '{}' } : {}),
 		},
 		plugins,
 		resolve: { alias },
