@@ -274,11 +274,13 @@ const nodeDiffs = computed(() => {
 		}
 
 		if (key === 'jsCode') {
-			return String(value).split('\n').filter(Boolean);
+			// Only process if value is actually a string, preserve empty lines
+			return typeof value === 'string' ? value.split('\n') : value;
 		}
 
 		if (key === 'content' && nodeType === STICKY_NODE_TYPE) {
-			return String(value).split('\n').filter(Boolean);
+			// Only process if value is actually a string, preserve empty lines
+			return typeof value === 'string' ? value.split('\n') : value;
 		}
 
 		return value;
