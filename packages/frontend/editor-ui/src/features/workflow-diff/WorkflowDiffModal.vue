@@ -273,14 +273,11 @@ const nodeDiffs = computed(() => {
 			return undefined; // exclude this property
 		}
 
-		if (key === 'jsCode') {
-			// Only process if value is actually a string, preserve empty lines
-			return typeof value === 'string' ? value.split('\n') : value;
-		}
-
-		if (key === 'content' && nodeType === STICKY_NODE_TYPE) {
-			// Only process if value is actually a string, preserve empty lines
-			return typeof value === 'string' ? value.split('\n') : value;
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
 		}
 
 		return value;
