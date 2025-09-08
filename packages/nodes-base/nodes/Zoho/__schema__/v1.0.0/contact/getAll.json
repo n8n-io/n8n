@@ -82,6 +82,9 @@
         "$state": {
             "type": "string"
         },
+        "Asst_Phone": {
+            "type": "null"
+        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -101,6 +104,9 @@
         },
         "Email_Opt_Out": {
             "type": "boolean"
+        },
+        "Fax": {
+            "type": "null"
         },
         "Full_Name": {
             "type": "string"
@@ -151,15 +157,29 @@
                 }
             }
         },
+        "Reporting_To": {
+            "type": "null"
+        },
+        "Tag": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
         "Unsubscribed_Time": {
             "type": "null"
-        },
-        "Vendor_Name": {
-            "type": "null"
         }
     },
-    "version": 6
+    "version": 7
 }

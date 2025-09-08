@@ -4,27 +4,27 @@
         "@odata.context": {
             "type": "string"
         },
-        "businessPhones": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "department": {
+        "createdDateTime": {
             "type": "string"
         },
         "displayName": {
             "type": "string"
         },
+        "email": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
-        "preferredLanguage": {
-            "type": "null"
+        "isArchived": {
+            "type": "boolean"
         },
-        "userPrincipalName": {
+        "membershipType": {
+            "type": "string"
+        },
+        "webUrl": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 1
 }
