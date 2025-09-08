@@ -9,7 +9,6 @@ import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
 import type { TextKeys } from './result-validation';
 import { validateRunCodeAllItems, validateRunCodeEachItem } from './result-validation';
 import { throwExecutionError } from './throw-execution-error';
-import { ValidationError } from './ValidationError';
 
 const JS_TEXT_KEYS: TextKeys = {
 	object: { singular: 'object', plural: 'objects' },
@@ -55,10 +54,10 @@ export class JsTaskRunnerSandbox {
 		);
 	}
 
-	async runCodeForTool(): Promise<string> {
+	async runCodeForTool(): Promise<unknown> {
 		const itemIndex = 0;
 
-		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
+		const executionResult = await this.executeFunctions.startJob(
 			'javascript',
 			{
 				code: this.jsCode,
@@ -73,12 +72,6 @@ export class JsTaskRunnerSandbox {
 			throwExecutionError('error' in executionResult ? executionResult.error : {});
 		}
 
-		if (typeof executionResult.result !== 'string') {
-			throw new ValidationError({
-				message: "Code doesn't return a string",
-				description: 'Please return a string.',
-			});
-		}
 		return executionResult.result;
 	}
 

@@ -246,7 +246,7 @@ export class ToolCode implements INodeType {
 			return sandbox;
 		};
 
-		const runFunction = async (query: string | IDataObject): Promise<string> => {
+		const runFunction = async (query: string | IDataObject): Promise<unknown> => {
 			if (language === 'javaScript' && isRunnerEnabled) {
 				const sandbox = new JsTaskRunnerSandbox(code, 'runOnceForAllItems', workflowMode, this);
 				const executionData = await sandbox.runCodeForTool();
@@ -261,7 +261,7 @@ export class ToolCode implements INodeType {
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
 			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
-			let response: string = '';
+			let response: any = '';
 			let executionError: ExecutionError | undefined;
 			try {
 				response = await runFunction(query);
