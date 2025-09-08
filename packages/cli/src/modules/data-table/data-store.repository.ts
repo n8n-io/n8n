@@ -260,12 +260,14 @@ export class DataStoreRepository extends Repository<DataTable> {
 			case 'postgresdb':
 				sql = `
 					SELECT ROUND(
-						SUM(pg_relation_size(schemaname||'.'||tablename)) / 1024.0 / 1024.0, 2
+							SUM(pg_relation_size(c.oid)) / 1024.0 / 1024.0, 2
 					) AS total_mb
-					FROM pg_tables
-					WHERE schemaname = '${schemaName}'
-					AND tablename LIKE '${toTableName('%')}'
-				`;
+					FROM pg_class c
+					JOIN pg_namespace n ON n.oid = c.relnamespace
+					WHERE n.nspname = '${schemaName}'
+					AND c.relname LIKE '${toTableName('%')}'
+					AND c.relkind IN ('r', 'm', 'p')
+    		`;
 				break;
 
 			case 'mysqldb':
