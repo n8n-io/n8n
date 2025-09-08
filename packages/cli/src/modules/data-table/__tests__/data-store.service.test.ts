@@ -1263,7 +1263,7 @@ describe('dataStore', () => {
 		});
 	});
 
-	describe('upsertRows', () => {
+	describe('upsertRow', () => {
 		it('should update a row if filter matches', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1284,12 +1284,12 @@ describe('dataStore', () => {
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
 			// ACT
-			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
-				rows: [
-					{ pid: '1995-111a', name: 'Alicia', age: 31 },
-					{ pid: '1994-222a', name: 'John', age: 32 },
-				],
-				matchFields: ['pid'],
+			const result = await dataStoreService.upsertRow(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'pid', value: '1995-111a', condition: 'eq' }],
+				},
+				data: { name: 'Alicia', age: 31 },
 			});
 
 			// ASSERT
@@ -1307,74 +1307,17 @@ describe('dataStore', () => {
 					expect.objectContaining({
 						pid: '1995-111a',
 						name: 'Alicia',
-						age: 31,
+						age: 31, // updated
 					}),
 					expect.objectContaining({
 						pid: '1994-222a',
 						name: 'John',
-						age: 32,
+						age: 31,
 					}),
 					expect.objectContaining({
 						pid: '1993-333a',
 						name: 'Paul',
 						age: 32,
-					}), // unchanged
-				]),
-			);
-		});
-
-		it('should work correctly with multiple filters', async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'city', type: 'string' },
-					{ name: 'age', type: 'number' },
-					{ name: 'isEligible', type: 'boolean' },
-				],
-			});
-
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ city: 'Berlin', age: 30, isEligible: false },
-				{ city: 'Amsterdam', age: 32, isEligible: false },
-				{ city: 'Oslo', age: 28, isEligible: false },
-			]);
-
-			// ACT
-			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
-				rows: [
-					{ city: 'Berlin', age: 30, isEligible: true },
-					{ city: 'Amsterdam', age: 32, isEligible: true },
-				],
-				matchFields: ['age', 'city'],
-			});
-
-			// ASSERT
-			expect(result).toBe(true);
-
-			const { count, data } = await dataStoreService.getManyRowsAndCount(
-				dataStoreId,
-				project1.id,
-				{},
-			);
-
-			expect(count).toEqual(3);
-			expect(data).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						city: 'Berlin',
-						age: 30,
-						isEligible: true,
-					}),
-					expect.objectContaining({
-						city: 'Amsterdam',
-						age: 32,
-						isEligible: true,
-					}),
-					expect.objectContaining({
-						city: 'Oslo',
-						age: 28,
-						isEligible: false,
 					}),
 				]),
 			);
@@ -1398,58 +1341,12 @@ describe('dataStore', () => {
 			expect(ids).toEqual([{ id: 1 }]);
 
 			// ACT
-			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
-				rows: [{ pid: '1992-222b', name: 'Alice', age: 30 }],
-				matchFields: ['pid'],
-			});
-
-			// ASSERT
-			expect(result).toBe(true);
-
-			const { count, data } = await dataStoreService.getManyRowsAndCount(
-				dataStoreId,
-				project1.id,
-				{},
-			);
-
-			expect(count).toEqual(2);
-			expect(data).toEqual([
-				expect.objectContaining({
-					name: 'Alice',
-					age: 30,
-					pid: '1995-111a',
-				}),
-				expect.objectContaining({
-					name: 'Alice',
-					age: 30,
-					pid: '1992-222b',
-				}),
-			]);
-		});
-
-		it('should allow adding partial data', async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'pid', type: 'string' },
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ pid: '1995-111a', name: 'Alice', age: 30 },
-			]);
-			expect(ids).toEqual([{ id: 1 }]);
-
-			// ACT
-			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
-				rows: [
-					{ pid: '1992-222b', name: 'Alice' }, // age is missing
-					{ pid: '1995-111a', age: 35 }, // name is missing
-				],
-				matchFields: ['pid'],
+			const result = await dataStoreService.upsertRow(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'pid', value: '1995-222b', condition: 'eq' }],
+				},
+				data: { pid: '1995-222b', name: 'Alice', age: 30 },
 			});
 
 			// ASSERT
@@ -1466,24 +1363,23 @@ describe('dataStore', () => {
 				expect.arrayContaining([
 					expect.objectContaining({
 						name: 'Alice',
-						age: 35, // updated age
+						age: 30,
 						pid: '1995-111a',
 					}),
 					expect.objectContaining({
 						name: 'Alice',
-						age: null, // missing age
-						pid: '1992-222b',
+						age: 30,
+						pid: '1995-222b',
 					}),
 				]),
 			);
 		});
 
-		it('should return full upserted rows if returnData is set', async () => {
+		it('should return full inserted row if returnData is set', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
 				columns: [
-					{ name: 'pid', type: 'string' },
 					{ name: 'fullName', type: 'string' },
 					{ name: 'age', type: 'number' },
 					{ name: 'birthday', type: 'date' },
@@ -1492,47 +1388,79 @@ describe('dataStore', () => {
 
 			// Insert initial row
 			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ pid: '1995-111a', fullName: 'Alice', age: 30, birthday: new Date('1995-01-01') },
+				{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') },
 			]);
 			expect(ids).toEqual([{ id: 1 }]);
 
 			// ACT
-			const result = await dataStoreService.upsertRows(
+			const result = await dataStoreService.upsertRow(
 				dataStoreId,
 				project1.id,
 				{
-					rows: [
-						{ pid: '1995-111a', fullName: 'Alicia', age: 31, birthday: new Date('1995-01-01') },
-						{ pid: '1992-222b', fullName: 'Bob', age: 30, birthday: new Date('1992-01-01') },
-					],
-					matchFields: ['pid'],
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'fullName', value: 'Bob Vance', condition: 'eq' }],
+					},
+					data: { fullName: 'Bob Vance', age: 30, birthday: new Date('1992-01-02') },
 				},
 				true,
 			);
 
 			// ASSERT
-			expect(result).toEqual(
-				expect.arrayContaining([
-					{
-						id: 1,
-						fullName: 'Alicia',
-						age: 31,
-						pid: '1995-111a',
-						birthday: new Date('1995-01-01'),
-						createdAt: expect.any(Date),
-						updatedAt: expect.any(Date),
+			expect(result).toEqual([
+				{
+					id: expect.any(Number),
+					fullName: 'Bob Vance',
+					age: 30,
+					birthday: new Date('1992-01-02'),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+		});
+
+		it('should return full updated row if returnData is set', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'fullName', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			// Insert initial row
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') },
+			]);
+			expect(ids).toEqual([{ id: 1 }]);
+
+			// ACT
+			const result = await dataStoreService.upsertRow(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', value: 30, condition: 'eq' }],
 					},
-					{
-						id: 2,
-						fullName: 'Bob',
-						age: 30,
-						pid: '1992-222b',
-						birthday: new Date('1992-01-01'),
-						createdAt: expect.any(Date),
-						updatedAt: expect.any(Date),
-					},
-				]),
+					data: { age: 35, birthday: new Date('1990-01-01') },
+				},
+				true,
 			);
+
+			// ASSERT
+			expect(result).toEqual([
+				{
+					id: expect.any(Number),
+					fullName: 'Alice Cooper',
+					age: 35,
+					birthday: new Date('1990-01-01'),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
 		});
 	});
 
@@ -2117,7 +2045,7 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError('Filter must not be empty for updateRow'),
+				new DataStoreValidationError('Filter must not be empty'),
 			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
@@ -2149,7 +2077,7 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError('Data columns must not be empty for updateRow'),
+				new DataStoreValidationError('Data columns must not be empty'),
 			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
