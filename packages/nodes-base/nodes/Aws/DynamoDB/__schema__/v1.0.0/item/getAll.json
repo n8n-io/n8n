@@ -1,15 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "company_name": {
-            "type": "string"
-        },
         "date": {
-            "type": "string"
-        },
-        "journal": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 1
 }
