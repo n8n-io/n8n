@@ -473,6 +473,9 @@ export class CanvasPage extends BasePage {
 		await this.page.keyboard.press(keyMap[direction]);
 	}
 
+	async openNewWorkflow(): Promise<void> {
+		await this.page.goto('/workflow/new');
+	}
 	/**
 	 * Visit the workflow page with a specific timestamp for NPS survey testing.
 	 * Uses Playwright's clock API to set a fixed time.
@@ -481,7 +484,7 @@ export class CanvasPage extends BasePage {
 		// Set fixed time using Playwright's clock API
 		await this.page.clock.setFixedTime(timestamp);
 
-		await this.page.goto('/workflow/new');
+		await this.openNewWorkflow();
 	}
 
 	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
@@ -554,7 +557,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Disable node via context menu
-	async disableNode(nodeName: string): Promise<void> {
+	async disableNodeFromContextMenu(nodeName: string): Promise<void> {
 		await this.rightClickNode(nodeName);
 		await this.page
 			.getByTestId('context-menu')
@@ -625,6 +628,16 @@ export class CanvasPage extends BasePage {
 
 	getLogEntries() {
 		return this.page.getByTestId('logs-overview-body').locator('[role="treeitem"]');
+	}
+
+	getSelectedLogEntry() {
+		return this.page
+			.getByTestId('logs-overview-body')
+			.locator('[role="treeitem"][aria-selected="true"]');
+	}
+
+	getLogsOutputPanel() {
+		return this.page.getByTestId('log-details-output');
 	}
 
 	async openExecutions() {

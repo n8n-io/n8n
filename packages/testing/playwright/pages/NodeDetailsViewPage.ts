@@ -654,37 +654,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByTestId('node-credentials-select-item-new').click();
 	}
 
-	async setCredentialValues(values: Record<string, string>, save: boolean = true): Promise<void> {
-		const modal = this.page.getByTestId('editCredential-modal');
-		await modal.waitFor({ state: 'visible' });
-
-		for (const [key, val] of Object.entries(values)) {
-			const input = this.page.getByTestId(`parameter-input-${key}`).locator('input, textarea');
-			await input.fill(val);
-			await expect(input).toHaveValue(val);
-		}
-
-		if (save) {
-			const saveBtn = this.page.getByTestId('credential-save-button');
-			await saveBtn.click();
-			await saveBtn.waitFor({ state: 'visible' });
-			// Saved state changes the button text to "Saved"
-			// Defensive wait for text when UI updates
-			try {
-				await saveBtn
-					.getByText('Saved', { exact: true })
-					.waitFor({ state: 'visible', timeout: 3000 });
-			} catch {
-				// ignore if text assertion is flaky; modal close below will still ensure flow continues
-			}
-			// Close modal
-			const closeBtn = modal.locator('.el-dialog__close').first();
-			if (await closeBtn.isVisible()) {
-				await closeBtn.click();
-			}
-		}
-	}
-
 	// Run selector and linking helpers
 	getInputRunSelector() {
 		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
@@ -717,5 +686,13 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getOutputRunSelectorInput() {
 		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
+	}
+
+	getAiOutputModeToggle() {
+		return this.page.getByTestId('ai-output-mode-select');
+	}
+
+	async editPinnedData() {
+		await this.getEditPinnedDataButton().click();
 	}
 }

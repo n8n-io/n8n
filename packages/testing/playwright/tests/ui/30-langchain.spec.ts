@@ -1,9 +1,14 @@
+import type { ExecutionError } from 'n8n-workflow';
+
 import {
 	AGENT_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+	AI_MEMORY_POSTGRES_NODE_NAME,
 	AI_TOOL_CALCULATOR_NODE_NAME,
 	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 	AI_TOOL_CODE_NODE_NAME,
@@ -15,10 +20,11 @@ import {
 import { test, expect } from '../../fixtures/base';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../../utils/execution-mocks';
 import { createAgentLLMExecutionData } from '../../utils/langchain-test-fixtures';
+import { n8nPage } from '../../pages/n8nPage';
 
 test.describe('Langchain Integration', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+		await n8n.canvas.openNewWorkflow();
 	});
 
 	test.describe('Workflow Execution Behavior', () => {
@@ -52,7 +58,7 @@ test.describe('Langchain Integration', () => {
 				{ exactMatch: true, closeNDV: true },
 			);
 
-			await n8n.canvas.disableNode(SCHEDULE_TRIGGER_NODE_NAME);
+			await n8n.canvas.disableNodeFromContextMenu(SCHEDULE_TRIGGER_NODE_NAME);
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeHidden();
 		});
 	});
@@ -186,7 +192,7 @@ test.describe('Langchain Integration', () => {
 			);
 
 			await n8n.ndv.clickCreateNewCredential();
-			await n8n.ndv.setCredentialValues({
+			await n8n.credentialsModal.setValues({
 				apiKey: 'sk_test_123',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
@@ -224,7 +230,7 @@ test.describe('Langchain Integration', () => {
 			);
 
 			await n8n.ndv.clickCreateNewCredential();
-			await n8n.ndv.setCredentialValues({
+			await n8n.credentialsModal.setValues({
 				apiKey: 'sk_test_123',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
@@ -266,7 +272,7 @@ test.describe('Langchain Integration', () => {
 			);
 
 			await n8n.ndv.clickCreateNewCredential();
-			await n8n.ndv.setCredentialValues({
+			await n8n.credentialsModal.setValues({
 				apiKey: 'sk_test_123',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
@@ -334,7 +340,7 @@ test.describe('Langchain Integration', () => {
 			);
 
 			await n8n.ndv.clickCreateNewCredential();
-			await n8n.ndv.setCredentialValues({
+			await n8n.credentialsModal.setValues({
 				apiKey: 'sk_test_123',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
@@ -387,7 +393,7 @@ test.describe('Langchain Integration', () => {
 			);
 
 			await n8n.ndv.clickCreateNewCredential();
-			await n8n.ndv.setCredentialValues({
+			await n8n.credentialsModal.setValues({
 				apiKey: 'sk_test_123',
 			});
 			await n8n.ndv.clickBackToCanvasButton();
@@ -427,6 +433,247 @@ test.describe('Langchain Integration', () => {
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
 
 			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
+		});
+	});
+
+	test.describe('Error Handling and Logs Display', () => {
+		// Helper function to set up the agent workflow with Postgres error configuration
+		async function setupAgentWorkflowWithPostgresError(n8n: n8nPage) {
+			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+			// Add Calculator Tool (required for OpenAI model)
+			await n8n.canvas.addSupplementalNodeToParent(
+				AI_TOOL_CALCULATOR_NODE_NAME,
+				'ai_tool',
+				AGENT_NODE_NAME,
+				{ closeNDV: true },
+			);
+
+			// Add and configure Postgres Memory
+			await n8n.canvas.addSupplementalNodeToParent(
+				AI_MEMORY_POSTGRES_NODE_NAME,
+				'ai_memory',
+				AGENT_NODE_NAME,
+				{ closeNDV: false },
+			);
+
+			await n8n.ndv.clickCreateNewCredential();
+			await n8n.credentialsModal.setValues({
+				password: 'testtesttest',
+			});
+
+			await n8n.ndv.getParameterInput('sessionIdType').click();
+			await n8n.page.getByRole('option', { name: 'Define below' }).click();
+			await n8n.ndv.getParameterInput('sessionKey').locator('input').fill('asdasd');
+
+			await n8n.ndv.clickBackToCanvasButton();
+
+			// Add and configure OpenAI Language Model
+			await n8n.canvas.addSupplementalNodeToParent(
+				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+				'ai_languageModel',
+				AGENT_NODE_NAME,
+				{ exactMatch: true, closeNDV: false },
+			);
+
+			await n8n.ndv.clickCreateNewCredential();
+			await n8n.credentialsModal.setValues({
+				apiKey: 'sk_test_123',
+			});
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.clickZoomToFitButton();
+		}
+
+		// Helper function to create mock data with Postgres error
+		function createPostgresErrorMockData(inputMessage: string, triggerNodeName: string) {
+			return [
+				createMockNodeExecutionData(triggerNodeName, {
+					jsonData: {
+						main: { input: inputMessage },
+					},
+				}),
+				createMockNodeExecutionData(AI_MEMORY_POSTGRES_NODE_NAME, {
+					jsonData: {
+						ai_memory: {
+							json: {
+								action: 'loadMemoryVariables',
+								values: {
+									input: inputMessage,
+									system_message: 'You are a helpful assistant',
+									formatting_instructions:
+										'IMPORTANT: Always call `format_final_json_response` to format your final response!',
+								},
+							},
+						},
+					},
+					inputOverride: {
+						ai_memory: [
+							[
+								{
+									json: {
+										action: 'loadMemoryVariables',
+										values: {
+											input: inputMessage,
+											system_message: 'You are a helpful assistant',
+											formatting_instructions:
+												'IMPORTANT: Always call `format_final_json_response` to format your final response!',
+										},
+									},
+								},
+							],
+						],
+					},
+					source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
+					error: {
+						message: 'Internal error',
+						timestamp: 1722591723244,
+						name: 'NodeOperationError',
+						description: 'Internal error',
+						context: {},
+						cause: {
+							name: 'error',
+							message: 'Some error',
+						},
+					} as ExecutionError,
+					metadata: {
+						subRun: [
+							{
+								node: 'Postgres Chat Memory',
+								runIndex: 0,
+							},
+						],
+					},
+				}),
+				createMockNodeExecutionData(AGENT_NODE_NAME, {
+					executionStatus: 'error',
+					error: {
+						level: 'error',
+						tags: {
+							packageName: 'workflow',
+						},
+						context: {},
+						functionality: 'configuration-node',
+						name: 'NodeOperationError',
+						timestamp: 1722591723244,
+						node: {
+							parameters: {
+								notice: '',
+								sessionIdType: 'fromInput',
+								tableName: 'n8n_chat_histories',
+							},
+							id: '6b9141da-0135-4e9d-94d1-2d658cbf48b5',
+							name: 'Postgres Chat Memory',
+							type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+							typeVersion: 1,
+							position: [1140, 500],
+							credentials: {
+								postgres: {
+									id: 'RkyZetVpGsSfEAhQ',
+									name: 'Postgres account',
+								},
+							},
+						},
+						messages: ['database "chat11" does not exist'],
+						description: 'Internal error',
+						message: 'Internal error',
+					} as unknown as ExecutionError,
+				}),
+			];
+		}
+
+		// Helper function to assert logs tab is active
+		async function assertLogsTabIsActive(n8n: n8nPage) {
+			await expect(n8n.ndv.getOutputDataContainer()).toBeVisible();
+			await expect(n8n.ndv.getAiOutputModeToggle()).toBeVisible();
+
+			const radioButtons = n8n.ndv.getAiOutputModeToggle().locator('[role="radio"]');
+			await expect(radioButtons).toHaveCount(2);
+			await expect(radioButtons.nth(1)).toHaveAttribute('aria-checked', 'true');
+		}
+
+		// Helper function to assert error message is visible
+		async function assertErrorMessageVisible(n8n: n8nPage) {
+			await expect(
+				n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
+			).toBeVisible();
+			await expect(
+				n8n.ndv.getOutputPanel().getByTestId('node-error-message').first(),
+			).toContainText('Error in sub-node');
+		}
+
+		test('should open logs tab by default when there was an error', async ({ n8n }) => {
+			await setupAgentWorkflowWithPostgresError(n8n);
+
+			const inputMessage = 'Test the code tool';
+			const runDataWithError = createPostgresErrorMockData(
+				inputMessage,
+				MANUAL_CHAT_TRIGGER_NODE_NAME,
+			);
+
+			// Execute workflow with chat trigger
+			await n8n.canvas.clickManualChatButton();
+			await runMockWorkflowExecution(n8n.page, {
+				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				runData: runDataWithError,
+				lastNodeExecuted: AGENT_NODE_NAME,
+			});
+
+			// Check that messages and logs are displayed
+			const messages = n8n.canvas.getManualChatMessages();
+			await expect(messages).toHaveCount(2);
+			await expect(messages.first()).toContainText(inputMessage);
+			await expect(messages.last()).toContainText('[ERROR: Internal error]');
+
+			await expect(n8n.canvas.getOverviewPanel()).toBeVisible();
+			await expect(n8n.canvas.getLogEntries()).toHaveCount(2);
+			await expect(n8n.canvas.getSelectedLogEntry()).toHaveText('AI Agent');
+			await expect(n8n.canvas.getLogsOutputPanel()).toContainText(AI_MEMORY_POSTGRES_NODE_NAME);
+
+			await n8n.canvas.closeManualChatModal();
+
+			// Open the AI Agent node to see the logs
+			await n8n.canvas.openNode(AGENT_NODE_NAME);
+
+			// Assert that logs tab is active and error is displayed
+			await assertLogsTabIsActive(n8n);
+			await assertErrorMessageVisible(n8n);
+		});
+
+		test('should switch to logs tab on error, when NDV is already opened', async ({ n8n }) => {
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+			// Remove the auto-added chat trigger
+			await n8n.canvas
+				.nodeByName(CHAT_TRIGGER_NODE_DISPLAY_NAME)
+				.locator('[data-test-id="delete-node-button"]')
+				.click();
+
+			// Set manual trigger to output standard pinned data
+			await n8n.canvas.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			await n8n.ndv.editPinnedData();
+			await n8n.ndv.savePinnedData();
+			await n8n.ndv.close();
+
+			// Set up the same workflow components but with manual trigger
+			await setupAgentWorkflowWithPostgresError(n8n);
+
+			// Open the AI Agent node
+			await n8n.canvas.openNode(AGENT_NODE_NAME);
+
+			const inputMessage = 'Test the code tool';
+			const runDataWithError = createPostgresErrorMockData(inputMessage, MANUAL_TRIGGER_NODE_NAME);
+
+			await runMockWorkflowExecution(n8n.page, {
+				trigger: async () => await n8n.ndv.clickExecuteNode(),
+				runData: runDataWithError,
+				lastNodeExecuted: AGENT_NODE_NAME,
+			});
+
+			// Assert that logs tab is active and error is displayed
+			await assertLogsTabIsActive(n8n);
+			await assertErrorMessageVisible(n8n);
 		});
 	});
 
