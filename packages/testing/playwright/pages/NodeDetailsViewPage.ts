@@ -2,12 +2,15 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
+	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
+	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
 
 	constructor(page: Page) {
 		super(page);
@@ -49,16 +52,8 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickByTestId('node-execute-button');
 	}
 
-	getOutputPanel() {
-		return this.page.getByTestId('output-panel');
-	}
-
 	getContainer() {
 		return this.page.getByTestId('ndv');
-	}
-
-	getInputPanel() {
-		return this.page.getByTestId('ndv-input-panel');
 	}
 
 	getParameterExpressionPreviewValue() {
@@ -82,47 +77,15 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('ndv-edit-pinned-data');
 	}
 
-	getPinDataButton() {
-		return this.getOutputPanel().getByTestId('ndv-pin-data');
-	}
-
 	getRunDataPaneHeader() {
 		return this.page.getByTestId('run-data-pane-header');
-	}
-
-	getOutputTable() {
-		return this.getOutputPanel().getByTestId('ndv-data-container').locator('table');
-	}
-
-	getOutputDataContainer() {
-		return this.getOutputPanel().getByTestId('ndv-data-container');
-	}
-
-	getOutputTableRows() {
-		return this.getOutputTable().locator('tr');
-	}
-
-	getOutputTableHeaders() {
-		return this.getOutputTable().locator('thead th');
-	}
-
-	getOutputTableRow(row: number) {
-		return this.getOutputTableRows().nth(row);
-	}
-
-	getOutputTableCell(row: number, col: number) {
-		return this.getOutputTableRow(row).locator('td').nth(col);
-	}
-
-	getOutputTbodyCell(row: number, col: number) {
-		return this.getOutputTable().locator('tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.getOutputPanel().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill(pinnedData);
@@ -133,7 +96,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async pastePinnedData(data: object) {
 		await this.getEditPinnedDataButton().click();
 
-		const editor = this.getOutputPanel().locator('[contenteditable="true"]');
+		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
 		await editor.waitFor();
 		await editor.click();
 		await editor.fill('');
@@ -400,62 +363,14 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
-	async switchInputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
-		await this.getInputPanel().getByRole('radio', { name: mode }).click();
-	}
-
-	async switchOutputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
-		await this.getOutputPanel().getByRole('radio', { name: mode }).click();
-	}
-
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
 	}
 
-	getJsonDataContainer() {
-		return this.getInputPanel().locator('.json-data');
-	}
-
-	getInputJsonProperty(propertyName: string) {
-		return this.getInputPanel()
-			.locator('.json-data')
-			.locator('span')
-			.filter({ hasText: new RegExp(`^"${propertyName}"$`) })
-			.first();
-	}
-
-	getInputJsonPropertyContaining(text: string) {
-		return this.getInputPanel()
-			.locator('.json-data')
-			.locator('span')
-			.filter({ hasText: `"${text}"` })
-			.first();
-	}
-
-	getInputSchemaItem(text: string) {
-		return this.getInputPanel()
-			.getByTestId('run-data-schema-item')
-			.locator('span')
-			.filter({ hasText: new RegExp(`^${text}$`) })
-			.first();
-	}
-
-	getNodeInputOptions() {
-		return this.getInputPanel().getByTestId('ndv-input-select');
-	}
-
 	async selectInputNode(nodeName: string) {
-		const inputSelect = this.getNodeInputOptions();
+		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
 		await this.page.getByRole('option', { name: nodeName }).click();
-	}
-
-	getInputTableHeader(index: number = 0) {
-		return this.getInputPanel().locator('table th').nth(index);
-	}
-
-	getInputTbodyCell(row: number, col: number) {
-		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -542,14 +457,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.type(content);
 	}
 
-	getInputTable() {
-		return this.getInputPanel().locator('table');
-	}
-
-	getInputTableCellSpan(row: number, col: number, dataName: string) {
-		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
-	}
-
 	getAddFieldToSortByButton() {
 		return this.getNodeParameters().getByText('Add Field To Sort By');
 	}
@@ -562,7 +469,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPagination() {
-		return this.getOutputPanel().getByTestId('ndv-data-pagination');
+		return this.outputPanel.get().getByTestId('ndv-data-pagination');
 	}
 
 	getOutputPaginationPages() {
@@ -580,10 +487,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return parseInt(pageText ?? '1', 10);
 	}
 
-	async getOutputPageContent(row: number = 0, col: number = 0): Promise<string> {
-		return (await this.getOutputTbodyCell(row, col).textContent()) ?? '';
-	}
-
 	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
 		const input = this.getParameterInput(parameterName).locator('input');
 		await input.clear();
@@ -598,32 +501,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-error-description');
 	}
 
-	getInputRunSelector() {
-		return this.getInputPanel().getByTestId('run-selector');
-	}
-
-	getOutputRunSelector() {
-		return this.getOutputPanel().getByTestId('run-selector');
-	}
-
-	async toggleOutputRunLinking() {
-		await this.getOutputPanel().getByTestId('link-run').click();
-	}
-
-	async toggleInputRunLinking() {
-		await this.getInputPanel().getByTestId('link-run').click();
-	}
-
-	getOutputLinkRun() {
-		return this.getOutputPanel().getByTestId('link-run');
-	}
-
-	getInputLinkRun() {
-		return this.getInputPanel().getByTestId('link-run');
-	}
-
 	async isOutputRunLinkingEnabled() {
-		const linkButton = this.getOutputLinkRun();
+		const linkButton = this.outputPanel.getLinkRun();
 		const classList = await linkButton.getAttribute('class');
 		return classList?.includes('linked') ?? false;
 	}
@@ -631,49 +510,33 @@ export class NodeDetailsViewPage extends BasePage {
 	async ensureOutputRunLinking(shouldBeLinked: boolean = true) {
 		const isLinked = await this.isOutputRunLinkingEnabled();
 		if (isLinked !== shouldBeLinked) {
-			await this.toggleOutputRunLinking();
+			await this.outputPanel.getLinkRun().click();
 		}
 	}
 
 	async changeInputRunSelector(value: string) {
-		const selector = this.getInputRunSelector();
+		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.page.getByRole('option', { name: value }).click();
 	}
 
 	async changeOutputRunSelector(value: string) {
-		const selector = this.getOutputRunSelector();
+		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.page.getByRole('option', { name: value }).click();
 	}
 
 	async getInputRunSelectorValue() {
-		return await this.getInputRunSelector().locator('input').inputValue();
+		return await this.inputPanel.getRunSelectorInput().inputValue();
 	}
 
 	async getOutputRunSelectorValue() {
-		return await this.getOutputRunSelector().locator('input').inputValue();
-	}
-
-	getOutputDisplayMode() {
-		return this.getOutputPanel().getByTestId('ndv-output-display-mode');
-	}
-
-	getSchemaViewItems() {
-		return this.getOutputPanel().locator('[data-test-id="run-data-schema-item"]');
-	}
-
-	getSchemaItem(key: string) {
-		return this.getSchemaViewItems().filter({ hasText: key });
+		return await this.outputPanel.getRunSelectorInput().inputValue();
 	}
 
 	async expandSchemaItem(itemText: string) {
-		const item = this.getSchemaItem(itemText);
+		const item = this.outputPanel.getSchemaItem(itemText);
 		await item.locator('.toggle').click();
-	}
-
-	getPaginationContainer() {
-		return this.getOutputPanel().locator('[class*="_pagination"]');
 	}
 
 	getExecuteNodeButton() {
@@ -724,32 +587,16 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-version');
 	}
 
-	getOutputSearchInput() {
-		return this.getOutputPanel().getByTestId('ndv-search');
-	}
-
-	getInputSearchInput() {
-		return this.getInputPanel().getByTestId('ndv-search');
-	}
-
 	async searchOutputData(searchTerm: string) {
-		const searchInput = this.getOutputSearchInput();
+		const searchInput = this.outputPanel.getSearchInput();
 		await searchInput.click();
 		await searchInput.fill(searchTerm);
 	}
 
 	async searchInputData(searchTerm: string) {
-		const searchInput = this.getInputSearchInput();
+		const searchInput = this.inputPanel.getSearchInput();
 		await searchInput.click();
 		await searchInput.fill(searchTerm);
-	}
-
-	getOutputItemsCount() {
-		return this.getOutputPanel().getByTestId('ndv-items-count');
-	}
-
-	getInputItemsCount() {
-		return this.getInputPanel().getByTestId('ndv-items-count');
 	}
 
 	/**
@@ -877,13 +724,5 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getInputSelect() {
 		return this.page.getByTestId('ndv-input-select').locator('input');
-	}
-
-	getInputTableRows() {
-		return this.getInputTable().locator('tr');
-	}
-
-	getOutputRunSelectorInput() {
-		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
 	}
 }

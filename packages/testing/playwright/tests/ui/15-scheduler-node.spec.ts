@@ -11,7 +11,7 @@ test.describe('Schedule Trigger node', () => {
 
 		await n8n.ndv.execute();
 
-		await expect(n8n.ndv.getOutputPanel()).toContainText('timestamp');
+		await expect(n8n.ndv.outputPanel.get()).toContainText('timestamp');
 
 		await n8n.ndv.clickBackToCanvasButton();
 	});

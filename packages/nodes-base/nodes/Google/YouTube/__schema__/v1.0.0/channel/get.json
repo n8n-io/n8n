@@ -18,9 +18,6 @@
                         },
                         "title": {
                             "type": "string"
-                        },
-                        "unsubscribedTrailer": {
-                            "type": "string"
                         }
                     }
                 },
@@ -189,5 +186,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
