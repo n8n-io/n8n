@@ -3,7 +3,7 @@
 import fs from "fs";
 import path from "path";
 import { ESLint } from "eslint";
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import tmp from "tmp";
 import semver from "semver";
 import axios from "axios";
@@ -19,6 +19,11 @@ const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
 const registry = "https://registry.npmjs.org/";
 
 export const resolvePackage = (packageSpec) => {
+	// Validate input to prevent command injection
+	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
+		throw new Error('Invalid package specification');
+	}
+
 	let packageName, version;
 	if (packageSpec.startsWith("@")) {
 		if (packageSpec.includes("@", 1)) {
@@ -40,8 +45,14 @@ export const resolvePackage = (packageSpec) => {
 
 const downloadAndExtractPackage = async (packageName, version) => {
 	try {
-		// Download the tarball
-		execSync(`npm -q pack ${packageName}@${version}`, { cwd: TEMP_DIR });
+		// Download the tarball using safe arguments
+		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], { 
+			cwd: TEMP_DIR,
+			stdio: 'pipe'
+		});
+		if (npmResult.status !== 0) {
+			throw new Error(`npm pack failed: ${npmResult.stderr?.toString()}`);
+		}
 		const tarballName = fs
 			.readdirSync(TEMP_DIR)
 			.find((file) => file.endsWith(".tgz"));
@@ -52,9 +63,13 @@ const downloadAndExtractPackage = async (packageName, version) => {
 		// Unpack the tarball
 		const packageDir = path.join(TEMP_DIR, `${packageName}-${version}`);
 		fs.mkdirSync(packageDir, { recursive: true });
-		execSync(`tar -xzf ${tarballName} -C ${packageDir} --strip-components=1`, {
+		const tarResult = spawnSync('tar', ['-xzf', tarballName, '-C', packageDir, '--strip-components=1'], {
 			cwd: TEMP_DIR,
+			stdio: 'pipe'
 		});
+		if (tarResult.status !== 0) {
+			throw new Error(`tar extraction failed: ${tarResult.stderr?.toString()}`);
+		}
 		fs.unlinkSync(path.join(TEMP_DIR, tarballName));
 
 		return packageDir;

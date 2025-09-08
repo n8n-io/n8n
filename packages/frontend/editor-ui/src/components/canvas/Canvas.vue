@@ -4,7 +4,7 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import type { ContextMenuTarget } from '@/composables/useContextMenu';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
@@ -56,6 +56,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 const $style = useCssModule();
 
@@ -907,6 +908,10 @@ provide(CanvasKey, {
 	viewport,
 	isExperimentalNdvActive,
 	isPaneMoving,
+});
+
+defineExpose({
+	executeContextMenuAction: onContextMenuAction,
 });
 </script>
 

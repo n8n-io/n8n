@@ -12,7 +12,7 @@ import {
 
 export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Data Table',
+		displayName: 'Data table',
 		name: 'dataTable',
 		icon: 'fa:table',
 		iconColor: 'orange-red',
@@ -21,7 +21,7 @@ export class DataTable implements INodeType {
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Permanently save data across workflow executions in a table',
 		defaults: {
-			name: 'Data Table',
+			name: 'Data table',
 		},
 		usableAsTool: true,
 		// We have custom logic in the frontend to ignore `hidden` for this

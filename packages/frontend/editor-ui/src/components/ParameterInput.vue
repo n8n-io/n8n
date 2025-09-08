@@ -931,6 +931,7 @@ function valueChanged(untypedValue: unknown) {
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
+			value: value as string,
 		});
 	}
 	// Track workflow input data mode change
