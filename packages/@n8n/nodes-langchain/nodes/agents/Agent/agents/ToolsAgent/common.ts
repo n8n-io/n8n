@@ -229,10 +229,11 @@ export const getAgentStepsParser =
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
 					try {
+						const parsedOutput = jsonParse<Record<string, unknown>>(finalResponse.output);
 						// If the output is an object, we will try to parse it as JSON
 						// this is because parser expects stringified JSON object like { "output": { .... } }
 						// so we try to parse the output before wrapping it and then stringify it
-						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+						parserInput = JSON.stringify({ output: parsedOutput?.output ?? parsedOutput });
 					} catch (error) {
 						// Fallback to the raw output if parsing fails.
 						parserInput = finalResponse.output;
