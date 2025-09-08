@@ -94,6 +94,14 @@ export class OwnershipService {
 		return sharedWorkflow.project;
 	}
 
+	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
+		void this.cacheService.setHash('workflow-project', {
+			[workflowId]: this.copyProject(project),
+		});
+
+		return project;
+	}
+
 	/**
 	 * Retrieve the user who owns the personal project, or `null` if non-personal project.
 	 * Personal project ownership is **immutable**.

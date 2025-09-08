@@ -715,8 +715,8 @@ function onOpenNdv() {
 		}
 
 		.editorContainer {
-			height: 100%;
-			overflow-y: auto;
+			height: 0;
+			flex-grow: 1;
 
 			.editor {
 				display: flex;

@@ -2,9 +2,15 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
+import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { LogsPanel } from './components/LogsPanel';
+import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
+	readonly sticky = new StickyComponent(this.page);
+	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
@@ -15,6 +21,19 @@ export class CanvasPage extends BasePage {
 
 	nodeCreatorSubItem(subItemText: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
+	}
+
+	getNthCreatorItem(index: number): Locator {
+		return this.page.getByTestId('node-creator-item').nth(index);
+	}
+
+	getNodeCreatorHeader(text?: string) {
+		const header = this.page.getByTestId('nodes-list-header');
+		return text ? header.filter({ hasText: text }) : header.first();
+	}
+
+	async selectNodeCreatorItemByText(nodeName: string) {
+		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -492,6 +511,10 @@ export class CanvasPage extends BasePage {
 		await this.nodeCreatorSubItem(subItemText).click();
 	}
 
+	async openNewWorkflow() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
 	getRagCalloutTip(): Locator {
 		return this.page.getByText('Tip: Get a feel for vector stores in n8n with our');
 	}
@@ -551,9 +574,11 @@ export class CanvasPage extends BasePage {
 		});
 	}
 
-	async sendManualChatMessage(message: string): Promise<void> {
-		await this.getManualChatInput().fill(message);
-		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	/**
+	 * Get all currently selected nodes on the canvas
+	 */
+	getSelectedNodes() {
+		return this.page.locator('[data-test-id="canvas-node"].selected');
 	}
 
 	// Disable node via context menu

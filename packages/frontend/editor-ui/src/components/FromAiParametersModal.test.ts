@@ -6,6 +6,7 @@ import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useRouter } from 'vue-router';
 import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -13,6 +14,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nextTick } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createTestWorkflow } from '@/__tests__/mocks';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
 
 const ModalStub = {
 	template: `
@@ -43,7 +45,9 @@ const mockMcpNode = {
 	id: 'id1',
 	name: 'Test MCP Node',
 	type: AI_MCP_TOOL_NODE_TYPE,
+	typeVersion: 1,
 	parameters: {},
+	credentials: undefined,
 };
 
 const mockParentNode = {
@@ -95,6 +99,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
 
 describe('FromAiParametersModal', () => {
 	beforeEach(() => {
@@ -135,6 +140,8 @@ describe('FromAiParametersModal', () => {
 		agentRequestStore.getAgentRequest = vi.fn();
 		nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue(mockTools);
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProjectId = 'test-project-id';
 	});
 
 	it('renders correctly with node data', () => {
@@ -280,6 +287,91 @@ describe('FromAiParametersModal', () => {
 				testBoolean: false,
 				testParam: 'given value',
 			},
+		});
+	});
+
+	it('passes credentials and projectId to MCP tool loading', async () => {
+		renderModal({
+			props: {
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
+				data: {
+					nodeName: 'Test MCP Node',
+				},
+			},
+			global: {
+				stubs: {
+					Modal: ModalStub,
+				},
+			},
+			pinia,
+		});
+
+		await nextTick();
+
+		expect(nodeTypesStore.getNodeParameterOptions).toHaveBeenCalledWith({
+			nodeTypeAndVersion: {
+				name: AI_MCP_TOOL_NODE_TYPE,
+				version: 1,
+			},
+			path: 'parameters.includedTools',
+			methodName: 'getTools',
+			currentNodeParameters: {},
+			credentials: undefined,
+			projectId: 'test-project-id',
+		});
+	});
+
+	describe('Error handling for MCP requests', () => {
+		it('displays error message when MCP tool loading fails', async () => {
+			const errorMessage = 'Failed to load MCP tools';
+			nodeTypesStore.getNodeParameterOptions = vi.fn().mockRejectedValue(new Error(errorMessage));
+
+			const { findByText, queryByRole, queryByTestId } = renderModal({
+				props: {
+					modalName: FROM_AI_PARAMETERS_MODAL_KEY,
+					data: {
+						nodeName: 'Test MCP Node',
+					},
+				},
+				global: {
+					stubs: {
+						Modal: ModalStub,
+					},
+				},
+				pinia,
+			});
+
+			const errorCallout = await findByText(errorMessage);
+			expect(errorCallout).toBeTruthy();
+
+			// Should not show the form inputs when error occurs
+			const toolSelect = queryByRole('combobox');
+			expect(toolSelect).toBeNull();
+
+			const executeButton = queryByTestId('execute-workflow-button');
+			expect(executeButton).toBeNull();
+		});
+
+		it('displays generic error message for unknown errors', async () => {
+			nodeTypesStore.getNodeParameterOptions = vi.fn().mockRejectedValue('String error');
+
+			const { findByText } = renderModal({
+				props: {
+					modalName: FROM_AI_PARAMETERS_MODAL_KEY,
+					data: {
+						nodeName: 'Test MCP Node',
+					},
+				},
+				global: {
+					stubs: {
+						Modal: ModalStub,
+					},
+				},
+				pinia,
+			});
+
+			const errorCallout = await findByText('Unknown error occurred');
+			expect(errorCallout).toBeTruthy();
 		});
 	});
 });

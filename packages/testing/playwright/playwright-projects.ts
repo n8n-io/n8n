@@ -3,7 +3,14 @@ import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
 
 // Tags that require test containers environment
 // These tests won't be run against local
-const CONTAINER_ONLY_TAGS = ['proxy', 'multi-node', 'postgres', 'queue', 'multi-main'];
+const CONTAINER_ONLY_TAGS = [
+	'proxy',
+	'multi-node',
+	'postgres',
+	'queue',
+	'multi-main',
+	'task-runner',
+];
 const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
 
 // Tags that need serial execution
@@ -12,7 +19,7 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 const SERIAL_EXECUTION = /@db:reset/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'standard', config: { proxyServerEnabled: true, taskRunner: true } },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
@@ -41,11 +48,12 @@ export function getProjects(): Project[] {
 		);
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
+			const grepInvertPatterns = [SERIAL_EXECUTION.source];
 			projects.push(
 				{
 					name: `${name}:ui`,
 					testDir: './tests/ui',
-					grepInvert: SERIAL_EXECUTION,
+					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
 					fullyParallel: true,
 					use: { containerConfig: config },

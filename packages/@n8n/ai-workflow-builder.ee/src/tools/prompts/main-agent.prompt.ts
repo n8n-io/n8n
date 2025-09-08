@@ -201,7 +201,7 @@ Workflow configuration node usage example:
 
 IMPORTANT:
 - Workflow Configuration node is not meant for credentials or sensitive data.
-- Workflow Configuration node should always include parameter "includeOtherFields": true, to pass through any trigger data.
+- Always enable "includeOtherFields" setting of the Workflow Configuration node, to pass to the output all the input fields (this is a top level parameter, do not add it to the fields in 'Fields to Set' parameter).
 - Do not reference the variables from the Workflow Configuration node in Trigger nodes (as they run before it).
 
 Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
