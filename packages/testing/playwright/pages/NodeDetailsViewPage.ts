@@ -725,4 +725,7 @@ export class NodeDetailsViewPage extends BasePage {
 	getInputSelect() {
 		return this.page.getByTestId('ndv-input-select').locator('input');
 	}
+	getCredentialLabel(credentialType: string) {
+		return this.page.getByText(credentialType);
+	}
 }
