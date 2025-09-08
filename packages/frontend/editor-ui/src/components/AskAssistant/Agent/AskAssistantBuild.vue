@@ -114,35 +114,28 @@ function shouldShowPlanControls(message: NodesPlanMessageType) {
 	return planMessageIndex === builderStore.chatMessages.length - 1;
 }
 
-watch(
-	() => builderStore.streaming,
-	(isStreaming) => {
-		if (isStreaming) {
-			return;
-		}
+function trackWorkflowModifications() {
+	if (workflowUpdated.value) {
+		// Track tool usage for telemetry
+		const newToolMessages = builderStore.toolMessages.filter(
+			(toolMsg) =>
+				toolMsg.status !== 'running' &&
+				toolMsg.toolCallId &&
+				!trackedTools.value.has(toolMsg.toolCallId),
+		);
 
-		if (workflowUpdated.value) {
-			// Track tool usage for telemetry
-			const newToolMessages = builderStore.toolMessages.filter(
-				(toolMsg) =>
-					toolMsg.status !== 'running' &&
-					toolMsg.toolCallId &&
-					!trackedTools.value.has(toolMsg.toolCallId),
-			);
+		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+		telemetry.track('Workflow modified by builder', {
+			tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+			session_id: builderStore.trackingSessionId,
+			start_workflow_json: workflowUpdated.value.start,
+			end_workflow_json: workflowUpdated.value.end,
+			workflow_id: workflowsStore.workflowId,
+		});
 
-			newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-			telemetry.track('Workflow modified by builder', {
-				tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-				session_id: builderStore.trackingSessionId,
-				start_workflow_json: workflowUpdated.value.start,
-				end_workflow_json: workflowUpdated.value.end,
-				workflow_id: workflowsStore.workflowId,
-			});
-
-			workflowUpdated.value = undefined;
-		}
-	},
-);
+		workflowUpdated.value = undefined;
+	}
+}
 
 // Watch for workflow updates and apply them
 watch(
@@ -191,10 +184,14 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async () => {
+	async (isStreaming) => {
+		if (!isStreaming) {
+			trackWorkflowModifications();
+		}
+
 		if (
 			builderStore.initialGeneration &&
-			!builderStore.streaming &&
+			!isStreaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
 			// Check if the generation completed successfully (no error or cancellation)
