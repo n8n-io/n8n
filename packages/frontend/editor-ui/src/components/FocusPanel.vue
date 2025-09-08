@@ -38,6 +38,7 @@ import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type CanvasNode, CanvasNodeRenderType } from '@/types';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -112,9 +113,11 @@ const node = computed<INodeUi | undefined>(() => {
 		return resolvedParameter.value?.node;
 	}
 
-	const selected = vueFlow.getSelectedNodes.value[0]?.id;
+	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
-	return selected ? workflowsStore.allNodes.find((n) => n.id === selected) : undefined;
+	return selected?.data?.render.type === CanvasNodeRenderType.Default
+		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		: undefined;
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
