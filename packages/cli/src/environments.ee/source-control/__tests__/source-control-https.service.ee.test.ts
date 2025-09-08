@@ -55,9 +55,9 @@ describe('SourceControlGitService - HTTPS functionality', () => {
 		mockSimpleGit.getRemotes.mockClear();
 	});
 
-	describe('setGitSshCommand', () => {
+	describe('setGitCommand', () => {
 		it('should configure git for HTTPS without SSH command', async () => {
-			await sourceControlGitService.setGitSshCommand();
+			await sourceControlGitService.setGitCommand();
 
 			expect(mockSimpleGit.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 			expect(mockSimpleGit.env).not.toHaveBeenCalledWith('GIT_SSH_COMMAND', expect.any(String));
@@ -70,7 +70,7 @@ describe('SourceControlGitService - HTTPS functionality', () => {
 				.spyOn(sourceControlPreferencesService, 'getPrivateKeyPath')
 				.mockResolvedValue('/path/to/key');
 
-			await sourceControlGitService.setGitSshCommand('/git/folder', '/ssh/folder');
+			await sourceControlGitService.setGitCommand('/git/folder', '/ssh/folder');
 
 			expect(sourceControlPreferencesService.getPrivateKeyPath).toHaveBeenCalled();
 			expect(mockSimpleGit.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type {
 	CommitResult,
@@ -83,7 +83,7 @@ export class SourceControlGitService {
 
 		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
-		await this.setGitSshCommand(gitFolder, sshFolder);
+		await this.setGitCommand(gitFolder, sshFolder);
 
 		if (!(await this.checkRepositorySetup())) {
 			await (this.git as unknown as SimpleGit).init();
@@ -96,10 +96,7 @@ export class SourceControlGitService {
 		}
 	}
 
-	/**
-	 * Update the Git configuration based on connection type (SSH or HTTPS).
-	 */
-	async setGitSshCommand(
+	async setGitCommand(
 		gitFolder = this.sourceControlPreferencesService.gitFolder,
 		sshFolder = this.sourceControlPreferencesService.sshFolder,
 	) {
@@ -195,6 +192,25 @@ export class SourceControlGitService {
 		return false;
 	}
 
+	private async getAuthorizedHttpsRepositoryUrl(
+		repositoryUrl: string,
+		connectionType: string | undefined,
+	): Promise<string> {
+		if (connectionType !== 'https') {
+			return repositoryUrl;
+		}
+
+		const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
+		if (!credentials) {
+			throw new UserError('HTTPS connection type specified but no credentials found');
+		}
+
+		const urlObj = new URL(repositoryUrl);
+		urlObj.username = encodeURIComponent(credentials.username);
+		urlObj.password = encodeURIComponent(credentials.password);
+		return urlObj.toString();
+	}
+
 	async initRepository(
 		sourceControlPreferences: Pick<
 			SourceControlPreferences,
@@ -213,17 +229,10 @@ export class SourceControlGitService {
 			}
 		}
 
-		let repositoryUrl = sourceControlPreferences.repositoryUrl;
-
-		if (sourceControlPreferences.connectionType === 'https') {
-			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			if (credentials) {
-				const urlObj = new URL(repositoryUrl);
-				urlObj.username = encodeURIComponent(credentials.username);
-				urlObj.password = encodeURIComponent(credentials.password);
-				repositoryUrl = urlObj.toString();
-			}
-		}
+		const repositoryUrl = await this.getAuthorizedHttpsRepositoryUrl(
+			sourceControlPreferences.repositoryUrl,
+			sourceControlPreferences.connectionType,
+		);
 
 		try {
 			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, repositoryUrl);
@@ -358,7 +367,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (fetch)');
 		}
-		await this.setGitSshCommand();
+		await this.setGitCommand();
 		return await this.git.fetch();
 	}
 
@@ -366,7 +375,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (pull)');
 		}
-		await this.setGitSshCommand();
+		await this.setGitCommand();
 		const params = {};
 		if (options.ffOnly) {
 			Object.assign(params, { '--ff-only': true });
@@ -384,7 +393,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized ({)');
 		}
-		await this.setGitSshCommand();
+		await this.setGitCommand();
 		if (force) {
 			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
 		}

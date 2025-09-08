@@ -54,7 +54,7 @@ describe('SourceControlGitService', () => {
 				const checkoutSpy = jest.spyOn(git, 'checkout');
 				const branchSpy = jest.spyOn(git, 'branch');
 				gitService.git = git;
-				jest.spyOn(gitService, 'setGitSshCommand').mockResolvedValue();
+				jest.spyOn(gitService, 'setGitCommand').mockResolvedValue();
 				jest
 					.spyOn(gitService, 'getBranches')
 					.mockResolvedValue({ currentBranch: '', branches: ['main'] });
@@ -139,7 +139,7 @@ describe('SourceControlGitService', () => {
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
 				// Act
-				await gitService.setGitSshCommand('/git/folder', sshFolder);
+				await gitService.setGitCommand('/git/folder', sshFolder);
 
 				// Assert - verify Windows paths are normalized to POSIX format
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
@@ -180,7 +180,7 @@ describe('SourceControlGitService', () => {
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
 				// Act
-				await gitService.setGitSshCommand('/git/folder', sshFolder);
+				await gitService.setGitCommand('/git/folder', sshFolder);
 
 				// Assert - verify paths with spaces are properly quoted
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
@@ -224,7 +224,7 @@ describe('SourceControlGitService', () => {
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
 				// Act
-				await gitService.setGitSshCommand('/git/folder', sshFolder);
+				await gitService.setGitCommand('/git/folder', sshFolder);
 
 				// Assert - verify the SSH command was properly escaped
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
