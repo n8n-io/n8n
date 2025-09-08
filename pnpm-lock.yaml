@@ -202,6 +202,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   tmp: 0.2.4
+  simple-swizzle: 0.2.2
 
 patchedDependencies:
   '@lezer/highlight':
