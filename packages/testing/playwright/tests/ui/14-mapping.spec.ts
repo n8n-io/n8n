@@ -101,13 +101,17 @@ test.describe('Data Mapping', () => {
 		await expect(scheduleNode).toBeVisible();
 		await scheduleNode.click();
 
-		const schemaItem = n8n.ndv.inputPanel.getSchemaItem('count');
+		const schemaItem = n8n.ndv.inputPanel.getSchemaItemText('count');
 		await expect(schemaItem).toBeVisible();
 
 		const valueParameterInput = n8n.ndv.getParameterInput('value');
 		await expect(valueParameterInput).toBeVisible();
 
-		await n8n.interactions.precisionDragToTarget(schemaItem, valueParameterInput, 'top');
+		await n8n.interactions.precisionDragToTarget(
+			schemaItem.locator('span'),
+			valueParameterInput,
+			'top',
+		);
 
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText(
 			"{{ $('Schedule Trigger').item.json.input[0].count }}",
@@ -185,7 +189,7 @@ test.describe('Data Mapping', () => {
 		await n8n.ndv.getParameterInputField('value').clear();
 		await n8n.page.keyboard.press('Escape');
 
-		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItem('count');
+		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('count');
 		await expect(countSchemaItem).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
@@ -195,7 +199,7 @@ test.describe('Data Mapping', () => {
 		await n8n.page.keyboard.press('Escape');
 		await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('0');
 
-		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItem('input');
+		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('input');
 		await expect(inputSchemaItem).toBeVisible();
 
 		await n8n.interactions.precisionDragToTarget(inputSchemaItem, valueParameter, 'top');
@@ -239,7 +243,7 @@ test.describe('Data Mapping', () => {
 		const addFieldButton = n8n.ndv.getAddFieldToSortByButton();
 		await addFieldButton.click();
 
-		const myCountSpan = n8n.ndv.inputPanel.getSchemaItem('my count');
+		const myCountSpan = n8n.ndv.inputPanel.getSchemaItemText('my count');
 		await expect(myCountSpan).toBeVisible();
 
 		const fieldNameParameter = n8n.ndv.getParameterInput('fieldName');
@@ -262,7 +266,7 @@ test.describe('Data Mapping', () => {
 		await n8n.ndv.fillParameterInputByName('value', 'fun');
 		await n8n.ndv.getParameterInputField('value').clear();
 
-		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItem('count');
+		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('count');
 		await expect(countSchemaItem).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
@@ -272,7 +276,7 @@ test.describe('Data Mapping', () => {
 		await n8n.page.keyboard.press('Escape');
 		await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('0');
 
-		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItem('input');
+		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('input');
 		await expect(inputSchemaItem).toBeVisible();
 
 		await n8n.interactions.precisionDragToTarget(inputSchemaItem, valueParameter, 'top');
@@ -314,7 +318,7 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeVisible();
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeHidden();
 
-		const countSpan = n8n.ndv.inputPanel.getSchemaItem('count');
+		const countSpan = n8n.ndv.inputPanel.getSchemaItemText('count');
 		await expect(countSpan).toBeVisible();
 
 		await countSpan.hover();
@@ -341,7 +345,7 @@ test.describe('Data Mapping', () => {
 		await n8n.ndv.getInlineExpressionEditorContent().fill('hello world\n\nnewline');
 		await n8n.page.keyboard.press('Escape');
 
-		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItem('count');
+		const countSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('count');
 		await expect(countSchemaItem).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
@@ -355,7 +359,7 @@ test.describe('Data Mapping', () => {
 			'0hello world\n\nnewline',
 		);
 
-		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItem('input');
+		const inputSchemaItem = n8n.ndv.inputPanel.getSchemaItemText('input');
 		await expect(inputSchemaItem).toBeVisible();
 
 		await n8n.interactions.precisionDragToTarget(inputSchemaItem, valueParameter, 'center');

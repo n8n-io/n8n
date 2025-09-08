@@ -96,10 +96,11 @@ export class RunDataPanel {
 	}
 
 	getSchemaItem(text: string) {
-		return this.getSchemaItems()
-			.locator('span')
-			.filter({ hasText: new RegExp(`^${text}$`) })
-			.first();
+		return this.getSchemaItems().filter({ hasText: text }).first();
+	}
+
+	getSchemaItemText(text: string) {
+		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
 	}
 
 	getNodeInputOptions() {
