@@ -4,11 +4,12 @@ import type {
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
-	UpsertDataStoreRowsDto,
+	UpsertDataStoreRowDto,
 	UpdateDataStoreDto,
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type {
@@ -30,12 +31,11 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class DataStoreService {
 	lastCacheSizeCheck: Date;
-	pendingSizeCheck: any;
+	pendingSizeCheck: Promise<void> | null = null;
 
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
@@ -159,36 +159,28 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
-	async upsertRows<T extends boolean | undefined>(
+	async upsertRow<T extends boolean | undefined>(
 		dataStoreId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	async upsertRows(
+	async upsertRow(
 		dataStoreId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, dto.rows, true);
+		const updated = await this.updateRow(dataStoreId, projectId, dto, true);
 
-		if (dto.rows.length === 0) {
-			throw new DataStoreValidationError('No rows provided for upsertRows');
+		if (updated.length > 0) {
+			return returnData ? updated : true;
 		}
 
-		const { matchFields, rows } = dto;
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
-		return await this.dataStoreRowsRepository.upsertRows(
-			dataStoreId,
-			matchFields,
-			rows,
-			columns,
-			returnData,
-		);
+		// No rows were updated, so insert a new one
+		const inserted = await this.insertRows(dataStoreId, projectId, [dto.data], returnData);
+		return returnData ? inserted : true;
 	}
 
 	async updateRow<T extends boolean | undefined>(
@@ -215,10 +207,10 @@ export class DataStoreService {
 
 		const { data, filter } = dto;
 		if (!filter?.filters || filter.filters.length === 0) {
-			throw new DataStoreValidationError('Filter must not be empty for updateRow');
+			throw new DataStoreValidationError('Filter must not be empty');
 		}
 		if (!data || Object.keys(data).length === 0) {
-			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
+			throw new DataStoreValidationError('Data columns must not be empty');
 		}
 
 		this.validateRowsWithColumns([data], columns, false);

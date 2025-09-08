@@ -122,33 +122,48 @@ export async function executeSelectMany(
 		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
 	}
 
-	let take = 1000;
+	const PAGE_SIZE = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
-	let totalCount = undefined;
-	do {
-		const response = await dataStoreProxy.getManyRowsAndCount({
-			skip: result.length,
-			take,
+
+	const limit = ctx.getNodeParameter('limit', index, undefined);
+
+	let expectedTotal: number | undefined;
+	let skip = 0;
+	let take = PAGE_SIZE;
+
+	while (true) {
+		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+			skip,
+			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
 		});
-		const data = response.data.map((json) => ({ json }));
+		const wrapped = data.map((json) => ({ json }));
 
-		// Optimize common path of <1000 results
-		if (response.count === response.data.length) {
-			return data;
+		// Fast path: everything fits in a single page
+		if (skip === 0 && count === data.length) {
+			return wrapped;
 		}
 
-		if (totalCount !== undefined && response.count !== totalCount) {
+		// Ensure the total doesn't change mid-pagination
+		if (expectedTotal !== undefined && count !== expectedTotal) {
 			throw new NodeOperationError(
 				ctx.getNode(),
 				'synchronization error: result count changed during pagination',
 			);
 		}
-		totalCount = response.count;
+		expectedTotal = count;
 
-		result.push.apply(result, data);
-		take = Math.min(take, response.count - result.length);
-	} while (take > 0);
+		result.push.apply(result, wrapped);
+
+		// Stop if we've hit the limit
+		if (limit && result.length >= limit) break;
+
+		// Stop if we've collected everything
+		if (result.length >= count) break;
+
+		skip = result.length;
+		take = Math.min(PAGE_SIZE, count - result.length);
+	}
 
 	return result;
 }
