@@ -1310,6 +1310,69 @@ describe('dataStore', () => {
 				},
 			]);
 		});
+		describe('bulk', () => {
+			it('handles single empty row correctly in bulk mode', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore',
+					columns: [],
+				});
+
+				// ACT
+				const rows = [{}];
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'count');
+
+				// ASSERT
+				expect(result).toEqual({ success: true, insertedRows: 1 });
+
+				const { count, data } = await dataStoreService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+				expect(count).toEqual(1);
+
+				expect(data).toEqual([{ id: 1, createdAt: expect.any(Date), updatedAt: expect.any(Date) }]);
+			});
+			it('handles multi-batch bulk correctly in bulk mode', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'c1', type: 'number' },
+						{ name: 'c2', type: 'boolean' },
+						{ name: 'c3', type: 'string' },
+					],
+				});
+
+				// ACT
+				const rows = Array.from({ length: 3000 }, (_, index) => ({
+					c1: index,
+					c2: index % 2 === 0,
+					c3: `index ${index}`,
+				}));
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'count');
+
+				// ASSERT
+				expect(result).toEqual({ success: true, insertedRows: rows.length });
+
+				const { count, data } = await dataStoreService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+				expect(count).toEqual(rows.length);
+
+				const expected = rows.map(
+					(row, i) =>
+						expect.objectContaining<DataStoreRow>({
+							...row,
+							id: i + 1,
+						}) as jest.AsymmetricMatcher,
+				);
+				expect(data).toEqual(expected);
+			});
+		});
 	});
 
 	describe('upsertRows', () => {

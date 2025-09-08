@@ -33,7 +33,7 @@ export const description: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				noDataExpression: true, // bulk inserts don't support expressions so this is a bit paradoxical
-				description: 'Whether to improve bulk insert performance by not returning inserted data',
+				description: 'Whether to improve bulk insert performance 5x by not returning inserted data',
 			},
 		],
 		displayOptions,
