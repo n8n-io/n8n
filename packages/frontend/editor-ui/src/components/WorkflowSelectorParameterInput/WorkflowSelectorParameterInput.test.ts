@@ -259,7 +259,7 @@ describe('WorkflowSelectorParameterInput', () => {
 			await flushPromises();
 
 			// Verify the toast error was shown
-			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error creating sub-workflow.');
+			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error creating sub-workflow');
 		});
 	});
 });
