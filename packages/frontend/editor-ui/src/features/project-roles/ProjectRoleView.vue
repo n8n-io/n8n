@@ -3,12 +3,14 @@ import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
 import { N8nButton, N8nCheckbox, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useAsyncState } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
 const { showError, showMessage } = useToast();
+const i18n = useI18n();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -40,40 +42,37 @@ const { state: form } = useAsyncState(
 	{ shallow: false },
 );
 
-const scopeTypes = [
-	'project',
-	'folders',
-	'workflows',
-	'credentials',
-	'sourceControl',
-	'dataStore',
-] as const;
+const project = (['read', 'update', 'delete'] as const).map(
+	(action) => `project:${action}` as const,
+);
+const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
+	(action) => `folder:${action}` as const,
+);
+const workflow = (['read', 'execute', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+	(action) => `workflow:${action}` as const,
+);
+const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+	(action) => `credential:${action}` as const,
+);
+const sourceControl = (['pull', 'push', 'manage'] as const).map(
+	(action) => `sourceControl:${action}` as const,
+);
+
+const scopeTypes = ['project', 'folder', 'workflow', 'credential', 'sourceControl'] as const;
 
 const scopes = {
-	project: ['read', 'list', 'delete', 'create', 'update'].map((action) => `project:${action}`),
-	folders: ['read', 'update', 'create', 'move', 'delete', 'list'].map(
-		(action) => `folder:${action}`,
-	),
-	workflows: [
-		'read',
-		'execute',
-		'activate',
-		'deactivate',
-		'update',
-		'create',
-		'share',
-		'move',
-		'delete',
-		'list',
-	].map((action) => `workflow:${action}`),
-	credentials: ['read', 'update', 'share', 'move', 'create', 'delete', 'list'].map(
-		(action) => `credential:${action}`,
-	),
-	sourceControl: ['pull', 'push', 'manage'].map((action) => `sourceControl:${action}`),
-	dataStore: ['read', 'readRow', 'listProject'].map((action) => `dataStore:${action}`),
+	project,
+	folder,
+	workflow,
+	credential,
+	sourceControl,
 } as const;
 
 function toggleScope(scope: string) {
+	if (scope.endsWith(':read')) {
+		toggleScope(scope.replace(':read', ':list'));
+	}
+
 	const index = form.value.scopes.indexOf(scope);
 	if (index !== -1) {
 		form.value.scopes.splice(index, 1);
@@ -146,7 +145,10 @@ function setPreset(slug: string) {
 	form.value.scopes = preset.scopes;
 }
 
-const keyValidationRules = [{ name: 'REQUIRED' }, { name: 'MIN_LENGTH', config: { minimum: 2 } }];
+const displayNameValidationRules = [
+	{ name: 'REQUIRED' },
+	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
+];
 </script>
 
 <template>
@@ -171,7 +173,7 @@ const keyValidationRules = [{ name: 'REQUIRED' }, { name: 'MIN_LENGTH', config: 
 				v-model="form.displayName"
 				label="Role name"
 				validate-on-blur
-				:validation-rules="keyValidationRules"
+				:validation-rules="displayNameValidationRules"
 				class="mb-s"
 				show-required-asterisk
 				required
@@ -210,7 +212,7 @@ const keyValidationRules = [{ name: 'REQUIRED' }, { name: 'MIN_LENGTH', config: 
 						v-for="scope in scopes[type]"
 						:key="scope"
 						:model-value="form.scopes.includes(scope)"
-						:label="scope"
+						:label="i18n.baseText(`projectRoles.${scope}`)"
 						@update:model-value="() => toggleScope(scope)"
 					/>
 				</div>
