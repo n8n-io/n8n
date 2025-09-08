@@ -14,8 +14,6 @@ export declare namespace ExecutionRequest {
 			lastId: string;
 			firstId: string;
 		};
-
-		type GetOne = { unflattedResponse: 'true' | 'false' };
 	}
 
 	namespace BodyParams {
@@ -41,7 +39,7 @@ export declare namespace ExecutionRequest {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
 
-	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
+	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
