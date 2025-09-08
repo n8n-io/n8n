@@ -768,10 +768,8 @@ async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: s
 
 	emit('tidy-up', { result, target, source: payload.source });
 
-	if (!applyOnSelection) {
-		await nextTick();
-		await onFitView();
-	}
+	await nextTick();
+	await onFitView();
 }
 
 /**
