@@ -263,7 +263,6 @@ defineExpose({
 
 	:global(.id-column) {
 		color: var(--color-text-light);
-		justify-content: center;
 	}
 
 	:global(.ag-header-cell[col-id='id']) {

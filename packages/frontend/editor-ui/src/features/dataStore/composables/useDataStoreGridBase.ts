@@ -184,7 +184,7 @@ export const useDataStoreGridBase = ({
 				},
 				{
 					editable: false,
-					sortable: false,
+					sortable: true,
 					suppressMovable: true,
 					headerComponent: null,
 					lockPosition: true,

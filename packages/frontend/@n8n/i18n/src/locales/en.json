@@ -2861,7 +2861,7 @@
 	"dataStore.add.input.name.placeholder": "Enter data table name",
 	"dataStore.add.error": "Error creating data table",
 	"dataStore.delete.confirm.title": "Delete Data table",
-	"dataStore.delete.confirm.message": "Are you sure you want to delete the data table \"{name}\"? This action cannot be undone.",
+	"dataStore.delete.confirm.message": "Are you sure you want to delete the data table '{name}'? This action cannot be undone.",
 	"dataStore.delete.error": "Error deleting data table",
 	"dataStore.rename.error": "Error renaming data table",
 	"dataStore.getDetails.error": "Error fetching data table details",
