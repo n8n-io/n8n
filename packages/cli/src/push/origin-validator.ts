@@ -84,7 +84,7 @@ export function validateOriginHeaders(headers: Request['headers']): OriginValida
  * @param protocol The protocol ('http' or 'https')
  * @returns The normalized host string with default ports removed
  */
-export function normalizeHost(host: string, protocol: 'http' | 'https'): string {
+function normalizeHost(host: string, protocol: 'http' | 'https'): string {
 	if (!host) return host;
 
 	try {
@@ -118,7 +118,7 @@ export function normalizeHost(host: string, protocol: 'http' | 'https'): string 
  * @param hostname The hostname that may contain IPv6 brackets (e.g., "[::1]" or "[::1]:8080")
  * @returns Hostname with IPv6 brackets removed if present (e.g., "::1" or "::1:8080")
  */
-export function stripIPv6Brackets(hostname: string): string {
+function stripIPv6Brackets(hostname: string): string {
 	// Handle IPv6 with port: [::1]:8080 -> ::1:8080
 	if (hostname.startsWith('[') && hostname.includes(']:')) {
 		const closingBracket = hostname.indexOf(']:');
@@ -139,7 +139,7 @@ export function stripIPv6Brackets(hostname: string): string {
  * @param header The header value (string or string[])
  * @returns First header value or undefined
  */
-export function getFirstHeaderValue(header: string | string[] | undefined): string | undefined {
+function getFirstHeaderValue(header: string | string[] | undefined): string | undefined {
 	if (!header) return undefined;
 	if (typeof header === 'string') return header;
 	return header[0]; // Take first value from array
@@ -151,7 +151,7 @@ export function getFirstHeaderValue(header: string | string[] | undefined): stri
  * @param proto Protocol value from headers
  * @returns 'http' or 'https' if valid, undefined if invalid
  */
-export function validateProtocol(proto: string | undefined): 'http' | 'https' | undefined {
+function validateProtocol(proto: string | undefined): 'http' | 'https' | undefined {
 	if (!proto) return undefined;
 	const normalized = proto.toLowerCase().trim();
 	return normalized === 'http' || normalized === 'https' ? normalized : undefined;
@@ -163,9 +163,7 @@ export function validateProtocol(proto: string | undefined): 'http' | 'https' | 
  * @param forwardedHeader The Forwarded header value (e.g., "for=192.0.2.60;proto=http;host=example.com")
  * @returns Object with host and proto, or null if parsing fails
  */
-export function parseForwardedHeader(
-	forwardedHeader: string,
-): { host?: string; proto?: string } | null {
+function parseForwardedHeader(forwardedHeader: string): { host?: string; proto?: string } | null {
 	if (!forwardedHeader || typeof forwardedHeader !== 'string') {
 		return null;
 	}
@@ -205,7 +203,7 @@ export function parseForwardedHeader(
  * @param origin The origin URL (e.g., "https://example.com", "http://localhost:3000")
  * @returns Object with protocol and normalized host, or null if invalid
  */
-export function parseOrigin(origin: string): { protocol: 'http' | 'https'; host: string } | null {
+function parseOrigin(origin: string): { protocol: 'http' | 'https'; host: string } | null {
 	if (!origin || typeof origin !== 'string') {
 		return null;
 	}
