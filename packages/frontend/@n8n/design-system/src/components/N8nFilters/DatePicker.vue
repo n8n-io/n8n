@@ -15,7 +15,6 @@ import {
 	DatePickerHeadCell,
 	DatePickerNext,
 	DatePickerPrev,
-	FocusScope,
 } from 'reka-ui';
 import { ref, watch, onMounted, nextTick } from 'vue';
 

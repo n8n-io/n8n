@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 // Use the non connected components to achieve this, Calendar, DateField and TimeField
 
+import { getLocalTimeZone, parseDate, type DateValue } from '@internationalized/date';
 import {
 	DateFieldInput,
 	DateFieldRoot,
@@ -22,9 +23,9 @@ import {
 	TimeFieldInput,
 } from 'reka-ui';
 import { ref, computed, useTemplateRef } from 'vue';
+
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
-import { getLocalTimeZone, parseDate, type DateValue } from '@internationalized/date';
 
 interface FilterItem {
 	name: string;

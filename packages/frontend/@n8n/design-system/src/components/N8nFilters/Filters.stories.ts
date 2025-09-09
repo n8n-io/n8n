@@ -132,9 +132,46 @@ WithDateFilter.args = {
 	primaryActionText: 'Search',
 };
 
+export const WithStringFilter = Template.bind({});
+WithStringFilter.args = {
+	filters: [
+		{
+			label: 'Name',
+			type: 'string',
+			options: [], // String filters don't use predefined options
+		},
+		{
+			label: 'Description',
+			type: 'string',
+			options: [],
+		},
+		{
+			label: 'Status',
+			type: 'single',
+			options: [
+				{ name: 'Active', id: 'active', value: 'active' },
+				{ name: 'Inactive', id: 'inactive', value: 'inactive' },
+			],
+		},
+	],
+	actions: [
+		{
+			label: 'Search',
+			icon: 'search',
+			tooltip: 'Search by text',
+		},
+	],
+	primaryActionText: 'Apply Filters',
+};
+
 export const WithAllFilterTypes = Template.bind({});
 WithAllFilterTypes.args = {
 	filters: [
+		{
+			label: 'Name',
+			type: 'string',
+			options: [],
+		},
 		{
 			label: 'Status',
 			type: 'single',
