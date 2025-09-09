@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import type { DataStoreRow } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
+import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
 import { DataStoreColumnNameConflictError } from '../errors/data-store-column-name-conflict.error';
@@ -14,7 +15,6 @@ import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-fo
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
-import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
@@ -24,6 +24,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['DataTable', 'DataTableColumn']);
+	const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+	dataStoreSizeValidator.reset();
 });
 
 afterAll(async () => {
@@ -2425,8 +2427,6 @@ describe('dataStore', () => {
 
 		it('should prevent upsertRow when size limit exceeded (insert case)', async () => {
 			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
 

@@ -251,7 +251,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-					SELECT ROUND(SUM(pgsize) / 1024.0 / 1024.0, 2) AS total_mb
+        	SELECT SUM(pgsize) AS total_bytes
 					FROM dbstat
 					WHERE name LIKE '${toTableName('%')}'
 				`;
@@ -259,9 +259,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			case 'postgresdb':
 				sql = `
-					SELECT ROUND(
-							SUM(pg_relation_size(c.oid)) / 1024.0 / 1024.0, 2
-					) AS total_mb
+        	SELECT SUM(pg_relation_size(c.oid)) AS total_bytes
 					FROM pg_class c
 					JOIN pg_namespace n ON n.oid = c.relnamespace
 					WHERE n.nspname = '${schemaName}'
@@ -274,7 +272,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
 				sql = `
-					SELECT ROUND(SUM((DATA_LENGTH + INDEX_LENGTH)) / 1024 / 1024, 1) AS total_mb
+        	SELECT SUM((DATA_LENGTH + INDEX_LENGTH)) AS total_bytes
 					FROM information_schema.tables
 					WHERE table_schema = '${databaseName}'
 					AND table_name LIKE '${toTableName('%')}'
@@ -286,10 +284,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 				return 0;
 		}
 
-		const result = (await this.query(sql)) as Array<{ total_mb: number | null }>;
+		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
 
-		const currentSizeInMbs = result[0]?.total_mb ?? 0;
-
-		return currentSizeInMbs;
+		return result[0]?.total_bytes ?? 0;
 	}
 }

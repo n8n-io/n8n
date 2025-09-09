@@ -5,7 +5,7 @@ import { DataStoreValidationError } from './errors/data-store-validation.error';
 @Service()
 export class DataStoreSizeValidator {
 	private lastCheck: Date | undefined;
-	private cachedSizeInMb: number | undefined;
+	private cachedSizeInBytes: number | undefined;
 	private pendingCheck: Promise<number> | null = null;
 	private readonly cacheDurationMs: number;
 
@@ -19,46 +19,46 @@ export class DataStoreSizeValidator {
 		now = new Date(),
 	): Promise<void> {
 		// If there's a pending check, wait for it to complete
+
 		if (this.pendingCheck) {
-			this.cachedSizeInMb = await this.pendingCheck;
+			this.cachedSizeInBytes = await this.pendingCheck;
 		} else {
-			// Check if we need to refresh the cached size
+			// Check if we need to refresh the db size
 			const shouldRefresh =
-				this.cachedSizeInMb === undefined ||
+				this.cachedSizeInBytes === undefined ||
 				!this.lastCheck ||
 				now.getTime() - this.lastCheck.getTime() >= this.cacheDurationMs;
 
 			if (shouldRefresh) {
-				this.pendingCheck = this.performCheck(fetchSizeFn, now);
+				this.pendingCheck = fetchSizeFn();
 				try {
-					this.cachedSizeInMb = await this.pendingCheck;
+					this.cachedSizeInBytes = await this.pendingCheck;
+					this.lastCheck = now;
 				} finally {
 					this.pendingCheck = null;
 				}
 			}
 		}
 
-		// Always validate against the cached size
-		if (this.cachedSizeInMb !== undefined && this.cachedSizeInMb >= maxSize) {
+		// Always validate against the cache size
+		if (this.cachedSizeInBytes !== undefined && this.cachedSizeInBytes >= maxSize) {
 			throw new DataStoreValidationError(
-				`Data store size limit exceeded: ${this.cachedSizeInMb}MB used, limit is ${maxSize}MB`,
+				`Data store size limit exceeded: ${this.toMb(this.cachedSizeInBytes)}MB used, limit is ${this.toMb(maxSize)}MB`,
 			);
 		}
 	}
 
-	private async performCheck(fetchSizeFn: () => Promise<number>, checkTime: Date): Promise<number> {
-		const result = await fetchSizeFn();
-		this.lastCheck = checkTime;
-		return result;
+	private toMb(sizeInBytes: number): number {
+		return Math.round(sizeInBytes / (1024 * 1024));
 	}
 
 	reset() {
 		this.lastCheck = undefined;
-		this.cachedSizeInMb = undefined;
+		this.cachedSizeInBytes = undefined;
 		this.pendingCheck = null;
 	}
 
 	getCachedSize() {
-		return this.cachedSizeInMb ?? 0;
+		return this.toMb(this.cachedSizeInBytes ?? 0);
 	}
 }
