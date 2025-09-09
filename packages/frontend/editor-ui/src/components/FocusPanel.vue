@@ -599,6 +599,7 @@ function onOpenNdv() {
 					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
 					:node="node"
 					:node-ids="selectedNodeIds"
+					:is-read-only="isReadOnly"
 					@open-ndv="onOpenNdv"
 					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
 				/>
