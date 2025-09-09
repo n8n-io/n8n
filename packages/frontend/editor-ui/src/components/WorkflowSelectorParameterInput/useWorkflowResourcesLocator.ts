@@ -24,14 +24,19 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 	const hasMoreWorkflowsToLoad = computed(() => totalCount.value > workflowsResources.value.length);
 
+	function constructName(workflow: IWorkflowDb | WorkflowListResource) {
+		// Add the project name if it's not a personal project
+		if (workflow.homeProject && workflow.homeProject.type !== 'personal') {
+			return `${workflow.homeProject.name} — ${workflow.name}`;
+		}
+
+		return workflow.name;
+	}
+
 	function getWorkflowName(id: string): string {
 		const workflow = workflowsStore.getWorkflowById(id);
 		if (workflow) {
-			// Add the project name if it's not a personal project
-			if (workflow.homeProject && workflow.homeProject.type !== 'personal') {
-				return `${workflow.homeProject.name} — ${workflow.name}`;
-			}
-			return workflow.name;
+			return constructName(workflow);
 		}
 		return id;
 	}
@@ -51,7 +56,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 	function workflowDbToResourceMapper(workflow: WorkflowListResource | IWorkflowDb) {
 		return {
-			name: workflow.name,
+			name: constructName(workflow),
 			value: workflow.id,
 			url: getWorkflowUrl(workflow.id),
 			isArchived: 'isArchived' in workflow ? workflow.isArchived : false,
