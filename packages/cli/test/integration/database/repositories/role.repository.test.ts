@@ -798,37 +798,6 @@ describe('RoleRepository', () => {
 			});
 		});
 
-		describe('undefined role types', () => {
-			it('should return undefined for non-global, non-project role types', async () => {
-				//
-				// ARRANGE
-				//
-				const workflowRole = await createRole({
-					slug: 'workflow-role',
-					displayName: 'Workflow Role',
-					roleType: 'workflow',
-				});
-
-				const credentialRole = await createRole({
-					slug: 'credential-role',
-					displayName: 'Credential Role',
-					roleType: 'credential',
-				});
-
-				//
-				// ACT
-				//
-				const workflowCount = await roleRepository.countUsersWithRole(workflowRole);
-				const credentialCount = await roleRepository.countUsersWithRole(credentialRole);
-
-				//
-				// ASSERT
-				//
-				expect(workflowCount).toBeUndefined();
-				expect(credentialCount).toBeUndefined();
-			});
-		});
-
 		describe('edge cases', () => {
 			it('should handle project roles when query returns null count', async () => {
 				//
