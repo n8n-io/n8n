@@ -5,7 +5,7 @@ import EmptyOutput from './custom/empty-output.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
-import NodeError from './custom/node-error.svg';
+import NodeExecutionError from './custom/node-execution-error.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
@@ -435,7 +435,7 @@ export const updatedIconSet = {
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
-	'node-error': NodeError,
+	'node-execution-error': NodeExecutionError,
 	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
