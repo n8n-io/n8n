@@ -207,9 +207,14 @@ describe('DataStoreProxyService', () => {
 			node,
 			'dataStore-id',
 		);
-		await dataStoreOperations.insertRows(rows);
+		await dataStoreOperations.insertRows(rows, 'count');
 
-		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows, true);
+		expect(dataStoreServiceMock.insertRows).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			rows,
+			'count',
+		);
 	});
 
 	it('should call upsertRow with correct parameters', async () => {
