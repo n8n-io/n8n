@@ -47,8 +47,14 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		return spawn(venvPath, ['-m', 'src.main'], {
 			cwd: pythonDir,
 			env: {
+				PATH: process.env.PATH,
+				HOME: process.env.HOME,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
+				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
+				N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
+				N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
+				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			},
 		});
 	}
