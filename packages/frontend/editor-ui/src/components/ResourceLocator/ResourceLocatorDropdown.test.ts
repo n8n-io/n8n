@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent, screen } from '@testing-library/vue';
+import { vi } from 'vitest';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
@@ -34,8 +35,14 @@ const renderComponent = createComponentRenderer(ResourceLocatorDropdown, {
 });
 
 describe('ResourceLocatorDropdown', () => {
+	beforeEach(() => {
+		vi.useRealTimers();
+	});
+
 	describe('cached result display', () => {
 		it('should show cached result when selected item is not in resources list', async () => {
+			vi.useFakeTimers();
+
 			const cachedModelValue: INodeParameterResourceLocator = {
 				__rl: true,
 				value: 'workflow-cached',
@@ -61,8 +68,8 @@ describe('ResourceLocatorDropdown', () => {
 			if (cachedItem) {
 				await fireEvent.mouseEnter(cachedItem);
 
-				// Wait for the hover timeout (250ms) before checking for the icon
-				await new Promise((resolve) => setTimeout(resolve, 300));
+				// Fast-forward time by 250ms to trigger the hover timeout
+				await vi.advanceTimersByTimeAsync(250);
 
 				// Verify the external link icon is present after hover
 				const linkIcon = cachedItem.querySelector('svg[data-icon="external-link"]');
