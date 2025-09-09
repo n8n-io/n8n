@@ -351,6 +351,10 @@ defineExpose({
 	:global(.ag-row[row-id='__n8n_add_row__']) {
 		border-bottom: none;
 	}
+
+	:global(.ag-row-last) {
+		border-bottom: none;
+	}
 }
 
 .footer {
