@@ -53,9 +53,9 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		editorBaseUrl: '',
 		datatable: {
-			maxSize: 100,
-			warningThreshold: 95,
-			sizeCheckCacheDuration: 300,
+			maxSize: 100 * 1024 * 1024,
+			warningThreshold: 95 * 1024 * 1024,
+			sizeCheckCacheDuration: 5000,
 		},
 		database: {
 			logging: {
