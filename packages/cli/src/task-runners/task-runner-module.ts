@@ -33,7 +33,9 @@ export class TaskRunnerModule {
 
 	private pyRunnerProcess: PyTaskRunnerProcess | undefined;
 
-	private taskRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+	private jsRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+
+	private pyRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
 	constructor(
 		private readonly logger: Logger,
@@ -106,10 +108,10 @@ export class TaskRunnerModule {
 
 		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js');
 		this.jsRunnerProcess = Container.get(JsTaskRunnerProcess);
-		this.taskRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+		this.jsRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
 			this.jsRunnerProcess,
 		);
-		this.taskRunnerProcessRestartLoopDetector.on(
+		this.jsRunnerProcessRestartLoopDetector.on(
 			'restart-loop-detected',
 			this.onRunnerRestartLoopDetected,
 		);
@@ -119,6 +121,13 @@ export class TaskRunnerModule {
 		if (process.env.N8N_NATIVE_PYTHON_RUNNER === 'true') {
 			const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
 			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
+			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+				this.pyRunnerProcess,
+			);
+			this.pyRunnerProcessRestartLoopDetector.on(
+				'restart-loop-detected',
+				this.onRunnerRestartLoopDetected,
+			);
 			await this.pyRunnerProcess.start();
 		}
 
