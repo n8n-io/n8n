@@ -186,7 +186,7 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => {
 				expect(getByText('Role "Test Role"')).toBeInTheDocument();
-				expect(getByText('Edit', { selector: 'button' })).toBeInTheDocument();
+				expect(getByText('Save', { selector: 'button' })).toBeInTheDocument();
 				expect(getByDisplayValue('Test Role')).toBeInTheDocument();
 				expect(getByDisplayValue('A test role for testing')).toBeInTheDocument();
 			});
@@ -235,7 +235,7 @@ describe('ProjectRoleView', () => {
 			}
 
 			// Submit form
-			await userEvent.click(getByText('Edit', { selector: 'button' }));
+			await userEvent.click(getByText('Save', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
@@ -256,7 +256,7 @@ describe('ProjectRoleView', () => {
 			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
 			rolesStore.updateProjectRole.mockRejectedValueOnce(error);
 
-			const { getByText } = renderComponent({
+			const { getByText, container } = renderComponent({
 				props: { roleSlug: 'test-role' },
 			});
 
@@ -264,7 +264,20 @@ describe('ProjectRoleView', () => {
 				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
 			});
 
-			await userEvent.click(getByText('Edit', { selector: 'button' }));
+			// Update role name - need to wait for the form to be populated first
+			await waitFor(() => {
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				expect(nameInput?.value).toBe('Test Role');
+			});
+
+			const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+			if (nameInput) {
+				// Clear and replace value
+				await userEvent.clear(nameInput);
+				await userEvent.type(nameInput, 'Updated Role');
+			}
+
+			await userEvent.click(getByText('Save', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating role');
