@@ -633,8 +633,8 @@ export function useCanvasMapping({
 						[CanvasConnectionMode.Output]: outputConnections,
 					},
 					issues: {
-						execution: nodeIssuesById.value[node.id].execution,
-						validation: nodeIssuesById.value[node.id].validation,
+						execution: nodeExecutionErrorsById.value[node.id],
+						validation: nodeValidationErrorsById.value[node.id],
 						visible: nodeHasIssuesById.value[node.id],
 					},
 					pinnedData: {
