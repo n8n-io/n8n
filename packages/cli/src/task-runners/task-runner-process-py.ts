@@ -2,10 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { exec, spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { access } from 'node:fs/promises';
 
 import { MissingRequirementsError } from './errors/missing-requirements.error';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
