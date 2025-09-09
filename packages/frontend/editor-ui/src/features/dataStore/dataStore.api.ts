@@ -157,7 +157,7 @@ export const insertDataStoreRowApi = async (
 		'POST',
 		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
-			returnData: true,
+			returnType: 'all',
 			data: [row],
 		},
 	);

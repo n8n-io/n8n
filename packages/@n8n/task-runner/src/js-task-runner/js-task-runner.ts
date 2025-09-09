@@ -56,6 +56,8 @@ export interface RpcCallObject {
 
 export interface JSExecSettings {
 	code: string;
+	// Additional properties to add to the context
+	additionalProperties?: Record<string, unknown>;
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -245,6 +247,7 @@ export class JsTaskRunner extends TaskRunner {
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
+			...settings.additionalProperties,
 		});
 
 		try {
@@ -309,7 +312,13 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const context = this.buildContext(
+			taskId,
+			workflow,
+			data.node,
+			undefined,
+			settings.additionalProperties,
+		);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);

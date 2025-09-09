@@ -29,7 +29,7 @@ test.describe('NDV', () => {
 		const canvasNodes = n8n.canvas.getCanvasNodes();
 		await canvasNodes.last().dblclick();
 		await expect(n8n.ndv.getContainer()).toBeVisible();
-		await expect(n8n.ndv.getInputPanel()).toContainText('Wire me up');
+		await expect(n8n.ndv.inputPanel.get()).toContainText('Wire me up');
 	});
 
 	test('should test webhook node', async ({ n8n }) => {
@@ -42,8 +42,8 @@ test.describe('NDV', () => {
 		const response = await n8n.ndv.makeWebhookRequest(webhookUrl as string);
 		expect(response.status()).toBe(200);
 
-		await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-		await expect(n8n.ndv.getOutputDataContainer()).toBeVisible();
+		await expect(n8n.ndv.outputPanel.get()).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getDataContainer()).toBeVisible();
 	});
 
 	test('should change input and go back to canvas', async ({ n8n }) => {
@@ -52,11 +52,11 @@ test.describe('NDV', () => {
 		await n8n.canvas.getCanvasNodes().last().dblclick();
 		await n8n.ndv.execute();
 
-		await n8n.ndv.switchInputMode('Table');
+		await n8n.ndv.inputPanel.switchDisplayMode('table');
 
-		await n8n.ndv.getNodeInputOptions().last().click();
+		await n8n.ndv.inputPanel.getNodeInputOptions().last().click();
 
-		await expect(n8n.ndv.getInputPanel()).toContainText('start');
+		await expect(n8n.ndv.inputPanel.get()).toContainText('start');
 
 		await n8n.ndv.clickBackToCanvasButton();
 		await expect(n8n.ndv.getContainer()).toBeHidden();
@@ -175,20 +175,20 @@ test.describe('NDV', () => {
 
 		test('should switch to output schema view and validate it', async ({ n8n }) => {
 			await setupSchemaWorkflow(n8n);
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
 			for (const key of schemaKeys) {
-				await expect(n8n.ndv.getSchemaViewItems().filter({ hasText: key })).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getSchemaItem(key)).toBeVisible();
 			}
 		});
 
 		test('should preserve schema view after execution', async ({ n8n }) => {
 			await setupSchemaWorkflow(n8n);
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 			await n8n.ndv.execute();
 
 			for (const key of schemaKeys) {
-				await expect(n8n.ndv.getSchemaViewItems().filter({ hasText: key })).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getSchemaItem(key)).toBeVisible();
 			}
 		});
 
@@ -196,17 +196,17 @@ test.describe('NDV', () => {
 			await setupSchemaWorkflow(n8n);
 			const expandedObjectProps = ['prop1', 'prop2'];
 
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
 			for (const key of expandedObjectProps) {
-				await expect(n8n.ndv.getSchemaViewItems().filter({ hasText: key })).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getSchemaItem(key)).toBeVisible();
 			}
 
-			const objectValueItem = n8n.ndv.getSchemaViewItems().filter({ hasText: 'objectValue' });
+			const objectValueItem = n8n.ndv.outputPanel.getSchemaItem('objectValue');
 			await objectValueItem.locator('.toggle').click();
 
 			for (const key of expandedObjectProps) {
-				await expect(n8n.ndv.getSchemaViewItems().filter({ hasText: key })).not.toBeInViewport();
+				await expect(n8n.ndv.outputPanel.getSchemaItem(key)).not.toBeInViewport();
 			}
 		});
 
@@ -222,14 +222,14 @@ test.describe('NDV', () => {
 
 			await n8n.ndv.execute();
 
-			await expect(n8n.ndv.getOutputPanel().getByText('5 items')).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get().getByText('5 items')).toBeVisible();
 
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-			const schemaItemsCount = await n8n.ndv.getSchemaViewItems().count();
+			const schemaItemsCount = await n8n.ndv.outputPanel.getSchemaItems().count();
 			expect(schemaItemsCount).toBeGreaterThan(0);
 
-			await n8n.ndv.switchOutputMode('JSON');
+			await n8n.ndv.outputPanel.switchDisplayMode('json');
 		});
 
 		test('should display large schema', async ({ n8n }) => {
@@ -237,12 +237,12 @@ test.describe('NDV', () => {
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.openNode('Set');
 
-			await expect(n8n.ndv.getOutputPanel().getByText('20 items')).toBeVisible();
-			await expect(n8n.ndv.getOutputPanel().locator('[class*="_pagination"]')).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get().getByText('20 items')).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeVisible();
 
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-			await expect(n8n.ndv.getOutputPanel().locator('[class*="_pagination"]')).toBeHidden();
+			await expect(n8n.ndv.outputPanel.get().locator('[class*="_pagination"]')).toBeHidden();
 		});
 	});
 
@@ -356,16 +356,16 @@ test.describe('NDV', () => {
 		);
 
 		await n8n.canvas.openNode('Edit Fields');
-		await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+		await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 
 		await n8n.ndv.searchOutputData('US');
 
-		await expect(n8n.ndv.getOutputTableRow(1).locator('mark')).toContainText('US');
+		await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('US');
 
 		await n8n.ndv.execute();
 
-		await expect(n8n.ndv.getOutputSearchInput()).toBeVisible();
-		await expect(n8n.ndv.getOutputSearchInput()).toHaveValue('US');
+		await expect(n8n.ndv.outputPanel.getSearchInput()).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getSearchInput()).toHaveValue('US');
 	});
 
 	test('Should render xml and html tags as strings and can search', async ({ n8n }) => {
@@ -375,23 +375,23 @@ test.describe('NDV', () => {
 		);
 		await n8n.canvas.openNode('Edit Fields');
 
-		await expect(n8n.ndv.getOutputPanel().locator('[class*="active"]')).toContainText('Table');
+		await expect(n8n.ndv.outputPanel.get().locator('[class*="active"]')).toContainText('Table');
 
-		await expect(n8n.ndv.getOutputTableRow(1)).toContainText(
+		await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText(
 			'<?xml version="1.0" encoding="UTF-8"?> <library>',
 		);
 
 		await n8n.page.keyboard.press('/');
 
-		const searchInput = n8n.ndv.getOutputSearchInput();
+		const searchInput = n8n.ndv.outputPanel.getSearchInput();
 		await expect(searchInput).toBeFocused();
 		await searchInput.fill('<lib');
 
-		await expect(n8n.ndv.getOutputTableRow(1).locator('mark')).toContainText('<lib');
+		await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('<lib');
 
-		await n8n.ndv.switchOutputMode('JSON');
+		await n8n.ndv.outputPanel.switchDisplayMode('json');
 
-		await expect(n8n.ndv.getOutputDataContainer().locator('.json-data')).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getDataContainer().locator('.json-data')).toBeVisible();
 	});
 
 	test.describe('Run Data & Selectors - Advanced', () => {
@@ -403,39 +403,39 @@ test.describe('NDV', () => {
 			);
 			await n8n.canvas.openNode('Set3');
 
-			await n8n.ndv.switchInputMode('Table');
-			await n8n.ndv.switchOutputMode('Table');
+			await n8n.ndv.inputPanel.switchDisplayMode('table');
+			await n8n.ndv.outputPanel.switchDisplayMode('table');
 
 			await n8n.ndv.ensureOutputRunLinking(true);
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
-			await expect(n8n.ndv.getInputTbodyCell(0, 0)).toHaveText('1111');
-			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toHaveText('1111');
+			await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toHaveText('1111');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
-			await n8n.ndv.toggleOutputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.outputPanel.getLinkRun().click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
-			await n8n.ndv.toggleOutputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.outputPanel.getLinkRun().click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
 
-			await n8n.ndv.toggleInputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.toggleInputRunLinking();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
 
-			await n8n.ndv.toggleInputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.toggleInputRunLinking();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 		});
 	});
@@ -708,21 +708,21 @@ test.describe('NDV', () => {
 			);
 
 			await n8n.canvas.openNode('Only Item 1');
-			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem1')).toBeVisible();
+			await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem1')).toBeVisible();
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Only Item 2');
-			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem2')).toBeVisible();
+			await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem2')).toBeVisible();
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Only Item 3');
-			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem3')).toBeVisible();
+			await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem3')).toBeVisible();
 			await n8n.ndv.close();
 		});
 	});
@@ -731,13 +731,13 @@ test.describe('NDV', () => {
 		test('should not show items count when searching in schema view', async ({ n8n }) => {
 			await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 			await n8n.canvas.openNode('Edit Fields');
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 
 			await n8n.ndv.execute();
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 			await n8n.ndv.searchOutputData('US');
 
-			await expect(n8n.ndv.getOutputItemsCount()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getItemsCount()).toBeHidden();
 		});
 
 		test('should show additional tooltip when searching in schema view if no matches', async ({
@@ -746,14 +746,16 @@ test.describe('NDV', () => {
 			await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 
 			await n8n.canvas.openNode('Edit Fields');
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 
 			await n8n.ndv.execute();
-			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.outputPanel.switchDisplayMode('schema');
 			await n8n.ndv.searchOutputData('foo');
 
 			await expect(
-				n8n.ndv.getOutputPanel().getByText('To search field values, switch to table or JSON view.'),
+				n8n.ndv.outputPanel
+					.get()
+					.getByText('To search field values, switch to table or JSON view.'),
 			).toBeVisible();
 		});
 	});
@@ -768,14 +770,12 @@ test.describe('NDV', () => {
 			);
 
 			await n8n.canvas.openNode('DebugHelper');
-			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+			await expect(n8n.ndv.inputPanel.get()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 
 			await n8n.ndv.execute();
 
-			await expect(
-				n8n.ndv.getInputPanel().getByTestId('run-data-schema-item').filter({ hasText: 'a1' }),
-			).toBeVisible();
+			await expect(n8n.ndv.inputPanel.getSchemaItem('a1')).toBeVisible();
 		});
 	});
 

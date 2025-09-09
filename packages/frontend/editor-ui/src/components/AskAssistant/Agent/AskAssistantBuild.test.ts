@@ -1355,4 +1355,203 @@ describe('AskAssistantBuild', () => {
 			expect(chatInput).not.toHaveAttribute('disabled');
 		});
 	});
+
+	it('should handle multiple canvas generations correctly', async () => {
+		const originalWorkflow = {
+			nodes: [],
+			connections: {},
+		};
+		builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(originalWorkflow));
+
+		const intermediaryWorkflow = {
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
+			],
+			connections: {},
+		};
+
+		const finalWorkflow = {
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
+
+				{
+					id: 'node2',
+					name: 'HttpReuqest',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				} as INodeUi,
+			],
+			connections: {},
+		};
+		workflowsStore.$patch({
+			workflow: originalWorkflow,
+		});
+
+		renderComponent();
+
+		builderStore.$patch({ streaming: true });
+		await flushPromises();
+
+		// Trigger the watcher by updating workflowMessages
+		builderStore.workflowMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(intermediaryWorkflow),
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(finalWorkflow),
+			},
+		];
+
+		const toolCallId1_1 = '1234';
+		const toolCallId1_2 = '3333';
+		const toolCallId2 = '4567';
+		const toolCallId3 = '8901';
+
+		builderStore.toolMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_1,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'second-tool',
+				toolCallId: toolCallId2,
+				status: 'running',
+				updates: [],
+			},
+		];
+
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
+
+		expect(trackMock).toHaveBeenCalledOnce();
+		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
+			end_workflow_json: JSON.stringify(finalWorkflow),
+			session_id: 'app_session_id',
+			start_workflow_json: JSON.stringify(originalWorkflow),
+			// first-tool is added once, even though it completed twice
+			// second-tool is ignored because it's running
+			tools_called: ['first-tool'],
+			workflow_id: 'abc123',
+		});
+
+		trackMock.mockClear();
+
+		builderStore.$patch({ streaming: true });
+
+		await flushPromises();
+		// second run after new messages
+		const updatedWorkflow2 = {
+			...finalWorkflow,
+			nodes: [
+				...finalWorkflow.nodes,
+				{
+					id: 'node1',
+					name: 'Updated',
+					type: 'n8n-nodes-base.updated',
+					position: [0, 0],
+					typeVersion: 1,
+					parameters: {},
+				},
+			],
+		};
+		builderStore.workflowMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'workflow-updated' as const,
+				codeSnippet: JSON.stringify(updatedWorkflow2),
+			},
+		];
+
+		builderStore.toolMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_1,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'first-tool',
+				toolCallId: toolCallId1_2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'second-tool',
+				toolCallId: toolCallId2,
+				status: 'completed',
+				updates: [],
+			},
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'third-tool',
+				toolCallId: toolCallId3,
+				status: 'completed',
+				updates: [],
+			},
+		];
+
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
+
+		expect(trackMock).toHaveBeenCalledOnce();
+		expect(trackMock).toHaveBeenCalledWith('Workflow modified by builder', {
+			end_workflow_json: JSON.stringify(updatedWorkflow2),
+			session_id: 'app_session_id',
+			start_workflow_json: JSON.stringify(originalWorkflow),
+			// first-tool is ignored, because it was tracked in first run (same tool call id)
+			tools_called: ['second-tool', 'third-tool'],
+			workflow_id: 'abc123',
+		});
+	});
 });
