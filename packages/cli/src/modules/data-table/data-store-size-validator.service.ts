@@ -57,4 +57,8 @@ export class DataStoreSizeValidator {
 		this.cachedSizeInMb = undefined;
 		this.pendingCheck = null;
 	}
+
+	getSize() {
+		return this.cachedSizeInMb ?? 0;
+	}
 }
