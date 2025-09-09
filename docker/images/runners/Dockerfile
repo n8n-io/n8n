@@ -54,11 +54,14 @@ RUN uv sync \
 			--frozen \
 			--no-editable \
 			--no-install-project \
+			--no-dev \
 			--all-extras
 
 COPY packages/@n8n/task-runner-python/ ./
 RUN uv sync \
       --frozen \
+			--no-dev \
+			--all-extras \
       --no-editable
 
 # Install extra runtime-only Python packages. Allow usage in the Code node via
@@ -100,31 +103,28 @@ FROM python:${PYTHON_VERSION}-alpine AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
-ENV NODE_ENV=production
-ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-ENV SHELL=/bin/sh
+ENV NODE_ENV=production \
+    N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
+    SHELL=/bin/sh
 
-# Copy over node from node alpine
+# Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
-COPY --from=node-alpine /usr/local/bin/npm /usr/local/bin/npm
-COPY --from=node-alpine /usr/local/bin/npx /usr/local/bin/npx
-COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
 
 RUN addgroup -g 1000 -S runner \
- && adduser -u 1000 -S -G runner -h /home/runner -D runner
+ && adduser  -u 1000 -S -G runner -h /home/runner -D runner \
+ && install -d -o runner -g runner /opt/runners
+
 WORKDIR /home/runner
 
-COPY --from=javascript-runner-builder /app/task-runner-javascript /opt/runners/task-runner-javascript
-COPY --from=python-runner-builder /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=javascript-runner-builder --chown=runner:runner /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --from=python-runner-builder --chown=runner:runner /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
-COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
-
-RUN chown -R runner:runner /opt/runners /home/runner
 USER runner
 
 EXPOSE 5680/tcp

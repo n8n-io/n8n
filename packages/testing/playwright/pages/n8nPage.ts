@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
+import { CommunityNodesPage } from './CommunityNodesPage';
+import { CredentialsEditModal } from './CredentialsEditModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
@@ -14,6 +16,7 @@ import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
+import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
@@ -24,6 +27,7 @@ import { CanvasComposer } from '../composables/CanvasComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
+import { NavigationHelper } from '../helpers/NavigationHelper';
 import type { ApiHelpers } from '../services/api-helper';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -35,6 +39,7 @@ export class n8nPage {
 	readonly aiAssistant: AIAssistantPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
+	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
 	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
@@ -42,6 +47,7 @@ export class n8nPage {
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
+	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
 	readonly workflows: WorkflowsPage;
@@ -54,12 +60,16 @@ export class n8nPage {
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly credentialsModal: CredentialsEditModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly start: TestEntryComposer;
+
+	// Helpers
+	readonly navigate: NavigationHelper;
 
 	constructor(page: Page, api: ApiHelpers) {
 		this.page = page;
@@ -69,6 +79,7 @@ export class n8nPage {
 		this.aiAssistant = new AIAssistantPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
+		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
 		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
@@ -76,6 +87,7 @@ export class n8nPage {
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
+		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
 		this.workflows = new WorkflowsPage(page);
@@ -88,12 +100,16 @@ export class n8nPage {
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.credentialsModal = new CredentialsEditModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.start = new TestEntryComposer(this);
+
+		// Helpers
+		this.navigate = new NavigationHelper(page);
 	}
 
 	async goHome() {

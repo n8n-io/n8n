@@ -259,8 +259,8 @@ test.describe('Logs', () => {
 		const response = await n8n.page.request.get(webhookUrl!);
 		expect(response.status()).toBe(200);
 
-		await expect(n8n.canvas.getNodesWithSpinner()).not.toBeVisible();
-		await expect(n8n.canvas.getWaitingNodes()).not.toBeVisible();
+		await expect(n8n.canvas.getNodesWithSpinner()).toBeHidden();
+		await expect(n8n.canvas.getWaitingNodes()).toBeHidden();
 		await expect(
 			n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
 		).toBeVisible();
