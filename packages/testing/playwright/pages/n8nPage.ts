@@ -4,6 +4,7 @@ import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { CredentialsEditModal } from './CredentialsEditModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
@@ -59,6 +60,7 @@ export class n8nPage {
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly credentialsModal: CredentialsEditModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -98,6 +100,7 @@ export class n8nPage {
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.credentialsModal = new CredentialsEditModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

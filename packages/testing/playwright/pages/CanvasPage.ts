@@ -541,6 +541,28 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
+	async clearExecutionData(): Promise<void> {
+		await this.page.getByTestId('clear-execution-data-button').click();
+	}
+
+	getManualChatModal(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
+	getManualChatInput(): Locator {
+		return this.getManualChatModal().locator('.chat-inputs textarea');
+	}
+
+	getManualChatMessages(): Locator {
+		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+	}
+
+	getManualChatLatestBotMessage(): Locator {
+		return this.getManualChatModal()
+			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
+			.last();
+	}
+
 	getNodesWithSpinner(): Locator {
 		return this.page.getByTestId('canvas-node').filter({
 			has: this.page.locator('[data-icon=refresh-cw]'),
@@ -558,6 +580,67 @@ export class CanvasPage extends BasePage {
 	 */
 	getSelectedNodes() {
 		return this.page.locator('[data-test-id="canvas-node"].selected');
+	}
+
+	// Disable node via context menu
+	async disableNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.rightClickNode(nodeName);
+		await this.page
+			.getByTestId('context-menu')
+			.getByTestId('context-menu-item-toggle_activation')
+			.click();
+	}
+
+	// Chat open/close buttons (manual chat)
+	async clickManualChatButton(): Promise<void> {
+		await this.page.getByTestId('workflow-chat-button').click();
+		await this.getManualChatModal().waitFor({ state: 'visible' });
+	}
+
+	async closeManualChatModal(): Promise<void> {
+		// Same toggle button closes the chat
+		await this.page.getByTestId('workflow-chat-button').click();
+	}
+
+	// Input plus endpoints (to add supplemental nodes to parent inputs)
+	getInputPlusEndpointByType(nodeName: string, endpointType: string) {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			)
+			.first();
+	}
+
+	// Generic supplemental node addition, then wrappers for specific types
+	async addSupplementalNodeToParent(
+		childNodeName: string,
+		endpointType:
+			| 'main'
+			| 'ai_chain'
+			| 'ai_document'
+			| 'ai_embedding'
+			| 'ai_languageModel'
+			| 'ai_memory'
+			| 'ai_outputParser'
+			| 'ai_tool'
+			| 'ai_retriever'
+			| 'ai_textSplitter'
+			| 'ai_vectorRetriever'
+			| 'ai_vectorStore',
+		parentNodeName: string,
+		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+	): Promise<void> {
+		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (exactMatch) {
+			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
+		} else {
+			await this.nodeCreatorNodeItems().filter({ hasText: childNodeName }).first().click();
+		}
+
+		if (closeNDV) {
+			await this.page.keyboard.press('Escape');
+		}
 	}
 
 	async openExecutions() {

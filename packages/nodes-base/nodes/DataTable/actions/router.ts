@@ -15,7 +15,7 @@ type DataTableNodeType = AllEntities<{
 
 const BULK_OPERATIONS = ['insert'] as const;
 
-function canBulk(operation: string): operation is (typeof BULK_OPERATIONS)[number] {
+function hasBulkExecute(operation: string): operation is (typeof BULK_OPERATIONS)[number] {
 	return (BULK_OPERATIONS as readonly string[]).includes(operation);
 }
 
@@ -41,7 +41,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	} as DataTableNodeType;
 
 	// If the operation supports
-	if (canBulk(dataTableNodeData.operation) && !hasComplexId(this)) {
+	if (hasBulkExecute(dataTableNodeData.operation) && !hasComplexId(this)) {
 		try {
 			const proxy = await getDataTableProxyExecute(this);
 
@@ -66,7 +66,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					itemData: { item: i },
 				});
 
-				operationResult.push.apply(operationResult, executionData);
+				// pushing here risks stack overflows for very high numbers (~100k) of results on filter-based queries (update, get, etc.)
+				operationResult = operationResult.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					operationResult.push({

@@ -34,6 +34,7 @@
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "flatted": "catalog:",
     "nanoid": "catalog:",
     "tsx": "catalog:",
     "mockserver-client": "^5.15.0",

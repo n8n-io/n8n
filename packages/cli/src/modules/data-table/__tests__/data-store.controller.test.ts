@@ -1904,6 +1904,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		await authOwnerAgent
@@ -1921,6 +1922,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		await authOwnerAgent
@@ -1950,6 +1952,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		await authMemberAgent
@@ -1981,6 +1984,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		await authMemberAgent
@@ -2013,6 +2017,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2053,6 +2058,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authAdminAgent
@@ -2090,6 +2096,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					second: 'another value',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2121,7 +2128,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 		});
 
 		const payload = {
-			returnData: true,
+			returnType: 'all',
 			data: [
 				{
 					first: 'first row',
@@ -2184,6 +2191,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					nonexisting: 'this does not exist',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2217,6 +2225,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					b: '2025-08-15T12:34:56+02:00',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2265,6 +2274,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					c: '2025-08-15T09:48:14.259Z',
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2305,6 +2315,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					b: false,
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2360,6 +2371,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					e: 2340439341231259,
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2410,6 +2422,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					d: null,
 				},
 			],
+			returnType: 'id',
 		};
 
 		const response = await authMemberAgent
@@ -2458,6 +2471,7 @@ describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 					b: 3,
 				},
 			],
+			returnType: 'id',
 		};
 
 		const first = await authMemberAgent

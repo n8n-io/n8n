@@ -19,6 +19,8 @@ import {
 	UnexpectedError,
 	DataStoreRowsReturn,
 	DATA_TABLE_SYSTEM_COLUMNS,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 
 import { DataStoreUserTableName } from './data-store.types';
@@ -157,21 +159,64 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRowsBulk(
+		table: DataStoreUserTableName,
+		rows: DataStoreRows,
+		columns: DataTableColumn[],
+		em: EntityManager,
+	) {
+		// DB systems have different maximum parameters per query
+		// with old sqlite versions having the lowest in 999 parameters
+		// In practice 20000 works here, but performance didn't meaningfully change
+		// so this should be a safe limit
+		const batchSize = 800;
+		const batches = Math.max(1, Math.ceil((columns.length * rows.length) / batchSize));
+		const rowsPerBatch = Math.ceil(rows.length / batches);
+
+		const columnNames = columns.map((x) => x.name);
+		const dbType = this.dataSource.options.type;
+
+		let insertedRows = 0;
+		for (let i = 0; i < batches; ++i) {
+			const start = i * rowsPerBatch;
+			const endExclusive = Math.min(rows.length, (i + 1) * rowsPerBatch);
+
+			if (endExclusive <= start) break;
+
+			const completeRows = new Array<DataStoreColumnJsType[]>(endExclusive - start);
+			for (let j = start; j < endExclusive; ++j) {
+				const insertArray: DataStoreColumnJsType[] = [];
+
+				for (let h = 0; h < columnNames.length; ++h) {
+					const column = columns[h];
+					// Fill missing columns with null values to support partial data insertion
+					const value = rows[j][column.name] ?? null;
+					insertArray[h] = normalizeValue(value, column.type, dbType);
+				}
+				completeRows[j - start] = insertArray;
+			}
+
+			const query = em.createQueryBuilder().insert().into(table, columnNames).values(completeRows);
+			await query.execute();
+			insertedRows += completeRows.length;
+		}
+		return { success: true, insertedRows } as const;
+	}
+
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: T,
-		em?: EntityManager,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
-	async insertRows(
+		returnType: T,
+		em: EntityManager,
+	): Promise<DataTableInsertRowsResult<T>>;
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: boolean,
-		em?: EntityManager,
-	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
-		em = em ?? this.dataSource.manager;
+		returnType: T,
+		em: EntityManager,
+	): Promise<DataTableInsertRowsResult> {
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
@@ -182,6 +227,10 @@ export class DataStoreRowsRepository {
 			this.dataSource.driver.escape(x),
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+
+		if (returnType === 'count') {
+			return await this.insertRowsBulk(table, rows, columns, em);
+		}
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
@@ -200,15 +249,16 @@ export class DataStoreRowsRepository {
 			const query = em.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
-				query.returning(returnData ? selectColumns.join(',') : 'id');
+				query.returning(returnType === 'all' ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = returnData
-					? normalizeRows(extractReturningData(result.raw), columns)
-					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
+				const returned =
+					returnType === 'all'
+						? normalizeRows(extractReturningData(result.raw), columns)
+						: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -219,7 +269,7 @@ export class DataStoreRowsRepository {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
-			if (!returnData) {
+			if (returnType === 'id') {
 				inserted.push(...ids.map((id) => ({ id })));
 				continue;
 			}

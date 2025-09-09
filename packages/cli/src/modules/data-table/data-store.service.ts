@@ -17,6 +17,8 @@ import type {
 	DataStoreRow,
 	DataStoreRowReturn,
 	DataStoreRows,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
@@ -145,8 +147,8 @@ export class DataStoreService {
 	private async insertRowsImpl(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		returnData?: boolean,
-		em?: EntityManager,
+		returnType: DataTableInsertRowsReturnType,
+		em: EntityManager,
 	) {
 		await this.validateRows(dataStoreId, rows, undefined, em);
 
@@ -155,26 +157,27 @@ export class DataStoreService {
 			dataStoreId,
 			rows,
 			columns,
-			returnData,
+			returnType,
 			em,
 		);
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+		returnType?: T,
+	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: boolean,
+		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
+		await this.validateRows(dataStoreId, rows);
 		return await this.dataStoreColumnRepository.manager.transaction(
-			async (em) => await this.insertRowsImpl(dataStoreId, rows, returnData, em),
+			async (em) => await this.insertRowsImpl(dataStoreId, rows, returnType, em),
 		);
 	}
 
@@ -200,7 +203,12 @@ export class DataStoreService {
 			}
 
 			// No rows were updated, so insert a new one
-			const inserted = await this.insertRowsImpl(dataTableId, [dto.data], returnData, em);
+			const inserted = await this.insertRowsImpl(
+				dataTableId,
+				[dto.data],
+				returnData ? 'all' : 'id',
+				em,
+			);
 			return returnData ? inserted : true;
 		});
 	}
