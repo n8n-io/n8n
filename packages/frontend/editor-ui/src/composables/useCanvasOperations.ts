@@ -1945,22 +1945,22 @@ export function useCanvasOperations() {
 			removeUnknownCredentials(workflowData);
 
 			try {
-				const nodeGraph = JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(
-						workflowData as IWorkflowBase,
-						workflowHelpers.getNodeTypes(),
-						{
-							nodeIdMap,
-							sourceInstanceId:
-								workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
-									? workflowData.meta.instanceId
-									: '',
-							isCloudDeployment: settingsStore.isCloudDeployment,
-						},
-					).nodeGraph,
-				);
-
 				if (trackEvents) {
+					const nodeGraph = JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							workflowHelpers.getNodeTypes(),
+							{
+								nodeIdMap,
+								sourceInstanceId:
+									workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+										? workflowData.meta.instanceId
+										: '',
+								isCloudDeployment: settingsStore.isCloudDeployment,
+							},
+						).nodeGraph,
+					);
+
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
 							workflow_id: workflowsStore.workflowId,

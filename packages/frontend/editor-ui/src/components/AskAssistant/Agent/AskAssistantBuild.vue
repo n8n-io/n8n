@@ -61,6 +61,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	workflowUpdated.value = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {

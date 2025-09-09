@@ -757,11 +757,7 @@ describe('useCanvasOperations', () => {
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event, { trackEvents: false });
 
-			expect(useTelemetry().track).not.toHaveBeenCalledWith('User tidied up canvas', {
-				nodes_count: 2,
-				source: 'canvas-button',
-				target: 'all',
-			});
+			expect(useTelemetry().track).not.toHaveBeenCalled();
 		});
 
 		it('should send telemetry event when trackEvents is undefined (default behavior)', () => {
