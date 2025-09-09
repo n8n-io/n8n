@@ -157,6 +157,7 @@ describe('DbConnectionOptions', () => {
 					port: 3306,
 					user: 'root',
 					password: 'password',
+					poolSize: 10,
 				};
 			});
 
