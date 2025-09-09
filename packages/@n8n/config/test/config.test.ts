@@ -55,6 +55,7 @@ describe('GlobalConfig', () => {
 		datatable: {
 			maxSize: 100,
 			warningThreshold: 95,
+			sizeCheckCacheDuration: 300,
 		},
 		database: {
 			logging: {
