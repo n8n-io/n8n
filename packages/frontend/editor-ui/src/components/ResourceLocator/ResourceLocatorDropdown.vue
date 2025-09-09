@@ -21,10 +21,8 @@ type Props = {
 	errorView?: boolean;
 	filterRequired?: boolean;
 	width?: number;
+	allowNewResources?: { label?: string };
 	eventBus?: EventBus;
-	allowNewResources?: {
-		label?: string;
-	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
