@@ -7,7 +7,7 @@ Official CLI for developing community nodes for n8n.
 **To create a new node**, run:
 
 ```bash
-npm create @n8n/node # or pnpm/yarn/...
+npm create @n8n/node@latest # or pnpm/yarn/...
 ```
 
 This will generate a project with `npm` scripts that use this CLI under the hood.

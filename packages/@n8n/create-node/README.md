@@ -7,7 +7,7 @@ A powerful scaffolding tool to quickly create custom n8n community nodes with be
 Create a new n8n node in seconds:
 
 ```bash
-npm create @n8n/node # or pnpm/yarn/...
+npm create @n8n/node@latest # or pnpm/yarn/...
 ```
 
 Follow the interactive prompts to configure your node, or specify options directly:
