@@ -1081,6 +1081,12 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../client-oauth2
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       '@n8n/errors':
         specifier: workspace:^
         version: link:../errors
