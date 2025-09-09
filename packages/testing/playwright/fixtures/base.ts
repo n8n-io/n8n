@@ -18,6 +18,7 @@ type N8NFixtures = {
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 	proxyServer: ProxyServer;
+	interceptorsSetup: boolean;
 };
 
 type N8NWorkerFixtures = {
@@ -130,29 +131,13 @@ export const test = base.extend<
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-
+	interceptorsSetup: async ({ context }, use) => {
 		await setupDefaultInterceptors(context);
-		await use(context);
+		await use(true);
 	},
 
-	page: async ({ context }, use, testInfo) => {
-		const page = await context.newPage();
-		const api = new ApiHelpers(context.request);
-
-		await api.setupFromTags(testInfo.tags);
-
-		await use(page);
-		await page.close();
-	},
-
-	n8n: async ({ page, api }, use) => {
+	n8n: async ({ page, api, interceptorsSetup }, use) => {
+		void interceptorsSetup;
 		const n8nInstance = new n8nPage(page, api);
 		await use(n8nInstance);
 	},
