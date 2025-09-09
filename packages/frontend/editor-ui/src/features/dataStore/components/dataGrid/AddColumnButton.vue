@@ -56,15 +56,17 @@ const onAddButtonClicked = async () => {
 
 	if (!response.success) {
 		let errorMessage = i18n.baseText('dataStore.addColumn.error');
+		let errorDescription = response.errorMessage;
 		// Provide custom error message for conflict (column already exists)
 		if (response.httpStatus === 409) {
 			errorMessage = i18n.baseText('dataStore.addColumn.alreadyExistsError', {
 				interpolate: { name: columnName.value },
 			});
+			errorDescription = i18n.baseText('dataStore.addColumn.alreadyExistsDescription');
 		}
 		error.value = {
 			message: errorMessage,
-			description: response.errorMessage,
+			description: errorDescription,
 		};
 
 		return;
