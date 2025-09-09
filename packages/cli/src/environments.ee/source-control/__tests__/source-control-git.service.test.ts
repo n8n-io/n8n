@@ -71,6 +71,107 @@ describe('SourceControlGitService', () => {
 				expect(branchSpy).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
 			});
 		});
+
+		describe('repository URL authorization', () => {
+			it('should use original URL for SSH connection type', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const originUrl = 'git@github.com:user/repo.git';
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: originUrl,
+					connectionType: 'ssh',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				const addRemoteSpy = jest.spyOn(git, 'addRemote');
+				jest.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				// Mock getBranches and fetch to avoid remote tracking logic
+				jest
+					.spyOn(gitService, 'getBranches')
+					.mockResolvedValue({ currentBranch: 'main', branches: [] });
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				gitService.git = git;
+
+				/**
+				 * Act
+				 */
+				await gitService.initRepository(prefs, user);
+
+				/**
+				 * Assert
+				 */
+				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
+				expect(mockPreferencesService.getDecryptedHttpsCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should add credentials to HTTPS URL when connection type is https', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const credentials = { username: 'testuser', password: 'test:pass#word' };
+				mockPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(credentials);
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const expectedUrl = 'https://testuser:test%3Apass%23word@github.com/user/repo.git';
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: 'https://github.com/user/repo.git',
+					connectionType: 'https',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				const addRemoteSpy = jest.spyOn(git, 'addRemote');
+				jest.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				// Mock getBranches and fetch to avoid remote tracking logic
+				jest
+					.spyOn(gitService, 'getBranches')
+					.mockResolvedValue({ currentBranch: 'main', branches: [] });
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				gitService.git = git;
+
+				/**
+				 * Act
+				 */
+				await gitService.initRepository(prefs, user);
+
+				/**
+				 * Assert
+				 */
+				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
+				expect(addRemoteSpy).toHaveBeenCalledWith('origin', expectedUrl);
+			});
+
+			it('should throw error when HTTPS connection type is specified but no credentials found', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				mockPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(null);
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const prefs = mock<SourceControlPreferences>({
+					repositoryUrl: 'https://github.com/user/repo.git',
+					connectionType: 'https',
+					branchName: 'main',
+				});
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+
+				/**
+				 * Act & Assert
+				 */
+				await expect(gitService.initRepository(prefs, user)).rejects.toThrow(
+					'HTTPS connection type specified but no credentials found',
+				);
+				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('getFileContent', () => {
