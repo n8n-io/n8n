@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { PrebuiltAgentTemplates, SampleTemplates } from '@/utils/templates/workflowSamples';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
-import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 
@@ -62,6 +62,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
+}));
+
+vi.mock('@/stores/projects.store', () => ({
+	useProjectsStore: () => ({
+		currentProjectId: 'test-project-id',
+	}),
 }));
 
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
@@ -132,6 +138,57 @@ describe('useCalloutHelpers()', () => {
 
 			expect(window.open).toHaveBeenCalledWith('n8n.io', '_blank');
 			expect(mocks.track).not.toHaveBeenCalled();
+		});
+
+		it('includes project ID in template URL when opening template', () => {
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+			mocks.resolve.mockReturnValue({ href: 'n8n.io/template/test' });
+
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
+
+			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
+				telemetry: {
+					source: 'ndv',
+					nodeType: 'testNode',
+				},
+			});
+
+			expect(mocks.resolve).toHaveBeenCalledWith({
+				name: VIEWS.TEMPLATE_IMPORT,
+				params: { id: SampleTemplates.RagStarterTemplate },
+				query: {
+					fromJson: 'true',
+					projectId: 'test-project-id',
+				},
+			});
+		});
+
+		it('includes folder ID in template URL when opening template', () => {
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+			mocks.resolve.mockReturnValue({ href: 'n8n.io/template/test' });
+			mocks.useRoute.mockReturnValueOnce({
+				query: {},
+				params: { folderId: 'my-folder-id' },
+			});
+
+			const { openSampleWorkflowTemplate } = useCalloutHelpers();
+
+			openSampleWorkflowTemplate(SampleTemplates.EasyAiTemplate, {
+				telemetry: {
+					source: 'ndv',
+					nodeType: 'testNode',
+				},
+			});
+
+			expect(mocks.resolve).toHaveBeenCalledWith({
+				name: VIEWS.TEMPLATE_IMPORT,
+				params: { id: SampleTemplates.EasyAiTemplate },
+				query: {
+					fromJson: 'true',
+					projectId: 'test-project-id',
+					parentFolderId: 'my-folder-id',
+				},
+			});
 		});
 
 		it.each(Object.values(PrebuiltAgentTemplates))(

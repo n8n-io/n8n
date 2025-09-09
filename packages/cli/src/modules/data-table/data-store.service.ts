@@ -18,6 +18,8 @@ import type {
 	DataStoreRow,
 	DataStoreRowReturn,
 	DataStoreRows,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
@@ -141,24 +143,24 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+		returnType?: T,
+	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData?: boolean,
+		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
+		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnType);
 	}
 
 	async upsertRow<T extends boolean | undefined>(
@@ -181,7 +183,12 @@ export class DataStoreService {
 		}
 
 		// No rows were updated, so insert a new one
-		const inserted = await this.insertRows(dataStoreId, projectId, [dto.data], returnData);
+		const inserted = await this.insertRows(
+			dataStoreId,
+			projectId,
+			[dto.data],
+			returnData ? 'all' : 'count',
+		);
 		return returnData ? inserted : true;
 	}
 
