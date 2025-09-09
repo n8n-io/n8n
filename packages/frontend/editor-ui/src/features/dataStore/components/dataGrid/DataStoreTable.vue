@@ -179,11 +179,11 @@ defineExpose({
 		</div>
 		<div :class="$style.footer">
 			<el-pagination
-				v-model:current-page="pagination.currentPage"
-				v-model:page-size="pagination.pageSize"
+				v-model:current-page="pagination.currentPage.value"
+				v-model:page-size="pagination.pageSize.value"
 				data-test-id="data-store-content-pagination"
 				background
-				:total="pagination.totalItems"
+				:total="pagination.totalItems.value"
 				:page-sizes="pagination.pageSizeOptions"
 				layout="total, prev, pager, next, sizes"
 				@update:current-page="pagination.setCurrentPage"
