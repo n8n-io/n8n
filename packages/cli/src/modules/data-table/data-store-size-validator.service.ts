@@ -8,16 +8,9 @@ export class DataStoreSizeValidator {
 	private lastCheck: Date | undefined;
 	private cachedSizeInBytes: number | undefined;
 	private pendingCheck: Promise<number> | null = null;
-	private readonly cacheDurationMs: number;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
-		this.cacheDurationMs = this.globalConfig.datatable.sizeCacheDuration * 1000;
-	}
-	async validateSize(
-		fetchSizeFn: () => Promise<number>,
-		maxSize: number,
-		now = new Date(),
-	): Promise<void> {
+	constructor(private readonly globalConfig: GlobalConfig) {}
+	async validateSize(fetchSizeFn: () => Promise<number>, now = new Date()): Promise<void> {
 		// If there's a pending check, wait for it to complete
 
 		if (this.pendingCheck) {
@@ -27,7 +20,8 @@ export class DataStoreSizeValidator {
 			const shouldRefresh =
 				this.cachedSizeInBytes === undefined ||
 				!this.lastCheck ||
-				now.getTime() - this.lastCheck.getTime() >= this.cacheDurationMs;
+				now.getTime() - this.lastCheck.getTime() >=
+					this.globalConfig.datatable.sizeCheckCacheDuration;
 
 			if (shouldRefresh) {
 				this.pendingCheck = fetchSizeFn();
@@ -41,9 +35,12 @@ export class DataStoreSizeValidator {
 		}
 
 		// Always validate against the cache size
-		if (this.cachedSizeInBytes !== undefined && this.cachedSizeInBytes >= maxSize) {
+		if (
+			this.cachedSizeInBytes !== undefined &&
+			this.cachedSizeInBytes >= this.globalConfig.datatable.maxSize
+		) {
 			throw new DataStoreValidationError(
-				`Data store size limit exceeded: ${this.toMb(this.cachedSizeInBytes)}MB used, limit is ${this.toMb(maxSize)}MB`,
+				`Data store size limit exceeded: ${this.toMb(this.cachedSizeInBytes)}MB used, limit is ${this.toMb(this.globalConfig.datatable.maxSize)}MB`,
 			);
 		}
 	}

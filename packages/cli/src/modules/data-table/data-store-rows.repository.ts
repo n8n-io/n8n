@@ -35,6 +35,7 @@ import {
 	toSqliteGlobFromPercent,
 	toTableName,
 } from './utils/sql-utils';
+import { DataStoreUserTableName } from './data-store.types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;

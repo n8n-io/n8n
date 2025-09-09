@@ -395,11 +395,8 @@ export class DataStoreService {
 	}
 
 	private async validateDataTableSize() {
-		const maxSize = this.globalConfig.datatable.maxSize;
-
 		await this.dataStoreSizeValidator.validateSize(
 			async () => await this.dataStoreRepository.findDataTablesSize(),
-			maxSize,
 		);
 	}
 }
