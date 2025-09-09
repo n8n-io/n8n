@@ -248,7 +248,16 @@ export class ToolCode implements INodeType {
 
 		const runFunction = async (query: string | IDataObject): Promise<unknown> => {
 			if (language === 'javaScript' && isRunnerEnabled) {
-				const sandbox = new JsTaskRunnerSandbox(code, 'runOnceForAllItems', workflowMode, this);
+				const sandbox = new JsTaskRunnerSandbox(
+					code,
+					'runOnceForAllItems',
+					workflowMode,
+					this,
+					undefined,
+					{
+						query,
+					},
+				);
 				const executionData = await sandbox.runCodeForTool();
 				return executionData;
 			} else {

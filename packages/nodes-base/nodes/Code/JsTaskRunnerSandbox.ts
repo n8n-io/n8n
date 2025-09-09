@@ -27,6 +27,7 @@ export class JsTaskRunnerSandbox {
 			'startJob' | 'continueOnFail' | 'helpers'
 		>,
 		private readonly chunkSize = 1000,
+		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
@@ -39,6 +40,7 @@ export class JsTaskRunnerSandbox {
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
 			},
 			itemIndex,
 		);
@@ -64,6 +66,7 @@ export class JsTaskRunnerSandbox {
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
 			},
 			itemIndex,
 		);
@@ -94,6 +97,7 @@ export class JsTaskRunnerSandbox {
 						startIndex: chunk.startIdx,
 						count: chunk.count,
 					},
+					additionalProperties: this.additionalProperties,
 				},
 				itemIndex,
 			);
