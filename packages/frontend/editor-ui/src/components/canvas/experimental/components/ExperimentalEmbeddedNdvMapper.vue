@@ -3,7 +3,7 @@ import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nPopover } from '@n8n/design-system';
+import { ElPopover } from 'element-plus';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
@@ -34,7 +34,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopover
+	<ElPopover
 		:visible="isVisible"
 		placement="left"
 		:show-arrow="false"
@@ -68,7 +68,7 @@ defineExpose({
 			:focused-mappable-input="ndvStore.focusedMappableInput"
 			node-not-run-message-variant="simple"
 		/>
-	</N8nPopover>
+	</ElPopover>
 </template>
 
 <style lang="scss" module>

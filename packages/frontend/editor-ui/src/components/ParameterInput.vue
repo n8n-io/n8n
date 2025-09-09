@@ -1264,7 +1264,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="node && expressionLocalResolveCtx?.inputNode"
+			v-if="isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
 			ref="mapperRef"
 			:workflow="expressionLocalResolveCtx?.workflow"
 			:node="node"
