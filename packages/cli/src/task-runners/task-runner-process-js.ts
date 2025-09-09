@@ -38,8 +38,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		'NODE_PATH',
 	] as const;
 
-	private readonly securityMode: 'insecure' | 'secure' = 'secure';
-
 	constructor(
 		readonly logger: Logger,
 		readonly runnerConfig: TaskRunnersConfig,
@@ -49,8 +47,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		super(logger, runnerConfig, authService);
 
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
-
-		this.securityMode = this.runnerConfig.insecureMode ? 'insecure' : 'secure';
 
 		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
 			this.logger.warn('Task runner failed heartbeat check, restarting...');
@@ -68,19 +64,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		const flags = this.runnerConfig.insecureMode
 			? []
 			: ['--disallow-code-generation-from-strings', '--disable-proto=delete'];
-
-		return spawn('node', [...flags, startScript], {
-			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
-		});
-	}
-
-	startNode(grantToken: string, taskBrokerUri: string) {
-		const startScript = require.resolve('@n8n/task-runner/start');
-
-		const flags =
-			this.securityMode === 'secure'
-				? ['--disallow-code-generation-from-strings', '--disable-proto=delete']
-				: [];
 
 		return spawn('node', [...flags, startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
