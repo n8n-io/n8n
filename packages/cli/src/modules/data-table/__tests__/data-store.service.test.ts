@@ -14,7 +14,7 @@ import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-fo
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
-import { ThrottledExecutor } from '../throttled-executor.service';
+import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
@@ -2368,10 +2368,8 @@ describe('dataStore', () => {
 	describe('size validation', () => {
 		it('should prevent insertRows when size limit exceeded', async () => {
 			// ARRANGE
-
-			const throttledExecutor = Container.get(ThrottledExecutor);
-
-			throttledExecutor.reset();
+			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
 
@@ -2395,10 +2393,8 @@ describe('dataStore', () => {
 
 		it('should prevent updateRow when size limit exceeded', async () => {
 			// ARRANGE
-
-			const throttledExecutor = Container.get(ThrottledExecutor);
-
-			throttledExecutor.reset();
+			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
 
@@ -2429,10 +2425,8 @@ describe('dataStore', () => {
 
 		it('should prevent upsertRow when size limit exceeded (insert case)', async () => {
 			// ARRANGE
-
-			const throttledExecutor = Container.get(ThrottledExecutor);
-
-			throttledExecutor.reset();
+			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			dataStoreSizeValidator.reset();
 
 			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
 

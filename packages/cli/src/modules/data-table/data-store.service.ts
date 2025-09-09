@@ -23,6 +23,7 @@ import { validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreSizeValidator } from './data-store-size-validator.service';
 import { DataStoreRepository } from './data-store.repository';
 import { columnTypeToFieldType } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
@@ -30,7 +31,6 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-import { ThrottledExecutor } from './throttled-executor.service';
 import { normalizeRows } from './utils/sql-utils';
 
 @Service()
@@ -44,7 +44,7 @@ export class DataStoreService {
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly throttledExecutor: ThrottledExecutor,
+		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -388,15 +388,11 @@ export class DataStoreService {
 	}
 
 	private async validateDataTableSize() {
-		await this.throttledExecutor.executeIfNeeded(async () => {
-			const maxSize = this.globalConfig.datatable.maxSize;
-			const currentSizeInMbs = await this.dataStoreRepository.findDataTablesSize();
+		const maxSize = this.globalConfig.datatable.maxSize;
 
-			if (currentSizeInMbs >= maxSize) {
-				throw new DataStoreValidationError(
-					`Data store size limit exceeded: ${currentSizeInMbs}MB used, limit is ${maxSize}MB`,
-				);
-			}
-		}, new Date());
+		await this.dataStoreSizeValidator.validateSize(
+			async () => await this.dataStoreRepository.findDataTablesSize(),
+			maxSize,
+		);
 	}
 }
