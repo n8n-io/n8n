@@ -30,6 +30,6 @@ export type DataStoreRow = Record<string, DataStoreValue>;
 
 export type AddColumnResponse = {
 	success: boolean;
-	httpStatus: number;
+	httpStatus?: number;
 	errorMessage?: string;
 };
