@@ -169,7 +169,7 @@ test.describe('Projects', () => {
 			await n8n.page.goto(`/home/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
-			const table = await n8n.projectSettings.getMembersTable();
+			const table = n8n.projectSettings.getMembersTable();
 
 			// Verify table headers are present
 			await expect(table.getByText('User')).toBeVisible();

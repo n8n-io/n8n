@@ -55,33 +55,33 @@ export class ProjectSettingsPage extends BasePage {
 		return await rows.count();
 	}
 
-	async getMemberByEmail(email: string) {
+	getMemberByEmail(email: string) {
 		const table = this.getMembersTable();
 		return table.locator('tr').filter({ hasText: email });
 	}
 
 	async changeMemberRole(memberEmail: string, newRole: string) {
-		const memberRow = await this.getMemberByEmail(memberEmail);
+		const memberRow = this.getMemberByEmail(memberEmail);
 		const roleDropdown = memberRow.getByTestId('project-member-role-dropdown');
 		await roleDropdown.click();
 		await this.page.getByText(newRole, { exact: true }).click();
 	}
 
 	async removeMember(memberEmail: string) {
-		const memberRow = await this.getMemberByEmail(memberEmail);
+		const memberRow = this.getMemberByEmail(memberEmail);
 		const roleDropdown = memberRow.getByTestId('project-member-role-dropdown');
 		await roleDropdown.click();
 		await this.page.getByText('Remove user').click();
 	}
 
 	async getMemberRole(memberEmail: string): Promise<string> {
-		const memberRow = await this.getMemberByEmail(memberEmail);
+		const memberRow = this.getMemberByEmail(memberEmail);
 		const roleCell = memberRow.locator('td').nth(1); // Role is the second column
 		return (await roleCell.textContent()) ?? '';
 	}
 
 	async canChangeMemberRole(memberEmail: string): Promise<boolean> {
-		const memberRow = await this.getMemberByEmail(memberEmail);
+		const memberRow = this.getMemberByEmail(memberEmail);
 		const roleDropdown = memberRow.getByTestId('project-member-role-dropdown');
 		return await roleDropdown.isVisible();
 	}
@@ -117,13 +117,13 @@ export class ProjectSettingsPage extends BasePage {
 
 	// Verification methods
 	async expectMemberInTable(memberEmail: string) {
-		const memberRow = await this.getMemberByEmail(memberEmail);
+		const memberRow = this.getMemberByEmail(memberEmail);
 		await expect(memberRow).toBeVisible();
 	}
 
 	async expectMemberNotInTable(memberEmail: string) {
-		const memberRow = await this.getMemberByEmail(memberEmail);
-		await expect(memberRow).not.toBeVisible();
+		const memberRow = this.getMemberByEmail(memberEmail);
+		await expect(memberRow).toBeHidden();
 	}
 
 	async expectMemberHasRole(memberEmail: string, expectedRole: string) {
