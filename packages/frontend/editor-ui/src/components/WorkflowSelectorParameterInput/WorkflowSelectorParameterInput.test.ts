@@ -255,7 +255,7 @@ describe('WorkflowSelectorParameterInput', () => {
 			expect(addResourceButton).toBeInTheDocument();
 
 			// Click the add resource button
-			await addResourceButton.click();
+			addResourceButton.click();
 			await flushPromises();
 
 			// Verify the toast error was shown
