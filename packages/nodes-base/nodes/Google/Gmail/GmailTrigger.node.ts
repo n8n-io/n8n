@@ -326,8 +326,11 @@ export class GmailTrigger implements INodeType {
 						continue;
 					}
 				}
-
-				if (node.typeVersion > 1.2 && fullMessage.labelIds?.includes('SENT')) {
+				if (
+					node.typeVersion > 1.2 &&
+					fullMessage.labelIds?.includes('SENT') &&
+					!fullMessage.labelIds?.includes('INBOX')
+				) {
 					continue;
 				}
 
