@@ -1540,6 +1540,7 @@ defineExpose({ enterEditMode });
 							:key="option"
 							:label="getRunLabel(option)"
 							:value="option - 1"
+							data-test-id="run-selection-option"
 						></N8nOption>
 					</N8nSelect>
 

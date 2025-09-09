@@ -618,7 +618,7 @@ describe('RunData', () => {
 			expect(container.querySelector('.run-selector')).not.toBeInTheDocument();
 		});
 
-		it('Show run selector when branch switch is shown (with all runs)', () => {
+		it('Show run selector when branch switch is shown (with all runs)', async () => {
 			// Create multiple runs with data in different outputs
 			const multipleRuns = [
 				{
@@ -659,7 +659,7 @@ describe('RunData', () => {
 				},
 			];
 
-			const { getByTestId } = render({
+			const { getByTestId, findAllByTestId } = render({
 				displayMode: 'json',
 				runs: multipleRuns,
 			});
@@ -667,10 +667,12 @@ describe('RunData', () => {
 			// When there are multiple branches and outputs, the run selector should be visible
 			const runSelector = getByTestId('run-selector');
 			expect(runSelector).toBeInTheDocument();
-			// TODO: check number of options in run selector
+
+			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
+			expect(runSelectorOptionsCount.length).toBe(3);
 		});
 
-		it('Show run selector when there is no branch selector (only runs for branch with data)', () => {
+		it('Show run selector when there is no branch selector (only runs for branch with data)', async () => {
 			// Create multiple runs with data in different outputs
 			const multipleRuns = [
 				{
@@ -711,7 +713,7 @@ describe('RunData', () => {
 				},
 			];
 
-			const { getByTestId } = render({
+			const { getByTestId, findAllByTestId } = render({
 				displayMode: 'json',
 				runs: multipleRuns,
 				overrideOutputs: [1],
@@ -720,7 +722,9 @@ describe('RunData', () => {
 			// Should show run selector since there are multiple runs
 			const runSelector = getByTestId('run-selector');
 			expect(runSelector).toBeInTheDocument();
-			// TODO: check number of options in run selector
+
+			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
+			expect(runSelectorOptionsCount.length).toBe(2);
 		});
 	});
 
