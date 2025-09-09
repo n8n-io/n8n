@@ -104,8 +104,8 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
-
-	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	const children = props.workflowObject.getChildNodes(activeNode.value.name, 'ALL');
+	return children.at(children.length - 1) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
