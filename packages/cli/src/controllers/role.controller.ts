@@ -22,7 +22,11 @@ export class RoleController {
 	constructor(private readonly roleService: RoleService) {}
 
 	@Get('/')
-	async getAllRoles(@Query query: RoleListQueryDto): Promise<Record<string, RoleDTO[]>> {
+	async getAllRoles(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RoleListQueryDto,
+	): Promise<Record<string, RoleDTO[]>> {
 		const allRoles = await this.roleService.getAllRoles(query.withUsageCount);
 		return {
 			global: allRoles.filter((r) => r.roleType === 'global'),
