@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { MissingRequirementsError } from './errors/missing-requirements.error';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
-import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-process-base';
+import { TaskRunnerProcessBase } from './task-runner-process-base';
 
 const asyncExec = promisify(exec);
 
@@ -51,8 +51,11 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		return spawn(venvPath, ['-m', 'src.main'], {
 			cwd: pythonDir,
 			env: {
+				// system environment
 				PATH: process.env.PATH,
 				HOME: process.env.HOME,
+
+				// runner
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
@@ -61,14 +64,5 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			},
 		});
-	}
-
-	setupProcessMonitoring(_process: ChildProcess) {
-		// Not recommended for production, so not implemented.
-	}
-
-	analyzeExitReason(_code: number | null): { reason: ExitReason } {
-		// Not recommended for production, so not implemented.
-		return { reason: 'unknown' };
 	}
 }

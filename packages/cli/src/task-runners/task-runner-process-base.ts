@@ -90,26 +90,6 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		this.isShuttingDown = false;
 	}
 
-	protected monitorProcess(taskRunnerProcess: ChildProcess) {
-		this._runPromise = new Promise((resolve) => {
-			this.setupProcessMonitoring(taskRunnerProcess);
-			taskRunnerProcess.on('exit', (code) => {
-				this.onProcessExit(code, resolve);
-			});
-		});
-	}
-
-	protected onProcessExit(code: number | null, resolveFn: () => void) {
-		this.process = null;
-		const exitReason = this.analyzeExitReason(code);
-		this.emit('exit', exitReason);
-		resolveFn();
-
-		if (!this.isShuttingDown) {
-			setImmediate(async () => await this.start());
-		}
-	}
-
 	/** Force-restart a task runner process suspected of being unresponsive. */
 	protected async forceRestart() {
 		if (!this.process) return;
@@ -118,7 +98,26 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		await this._runPromise;
 	}
 
+	protected onProcessExit(code: number | null, resolveFn: () => void) {
+		this.process = null;
+		const exitReason = this.analyzeExitReason?.(code) ?? { reason: 'unknown' };
+		this.emit('exit', exitReason);
+		resolveFn();
+		if (!this.isShuttingDown) {
+			setImmediate(async () => await this.start());
+		}
+	}
+
+	protected monitorProcess(taskRunnerProcess: ChildProcess) {
+		this._runPromise = new Promise((resolve) => {
+			this.setupProcessMonitoring?.(taskRunnerProcess);
+			taskRunnerProcess.on('exit', (code) => {
+				this.onProcessExit(code, resolve);
+			});
+		});
+	}
+
 	abstract startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess>;
-	abstract setupProcessMonitoring(process: ChildProcess): void;
-	abstract analyzeExitReason(code: number | null): { reason: ExitReason };
+	setupProcessMonitoring?(process: ChildProcess): void;
+	analyzeExitReason?(code: number | null): { reason: ExitReason };
 }

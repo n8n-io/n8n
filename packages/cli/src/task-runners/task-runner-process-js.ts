@@ -22,22 +22,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 
 	private oomDetector: NodeProcessOomDetector | null = null;
 
-	/** Environment variables inherited by the child process from the current environment. */
-	private readonly passthroughEnvVars = [
-		'PATH',
-		'HOME', // So home directory can be resolved correctly
-		'GENERIC_TIMEZONE',
-		'NODE_FUNCTION_ALLOW_BUILTIN',
-		'NODE_FUNCTION_ALLOW_EXTERNAL',
-		'N8N_SENTRY_DSN',
-		'N8N_RUNNERS_INSECURE_MODE',
-		// Metadata about the environment
-		'N8N_VERSION',
-		'ENVIRONMENT',
-		'DEPLOYMENT_NAME',
-		'NODE_PATH',
-	] as const;
-
 	constructor(
 		readonly logger: Logger,
 		readonly runnerConfig: TaskRunnersConfig,
@@ -69,14 +53,31 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 	}
 
 	private getProcessEnvVars(grantToken: string, taskBrokerUri: string) {
-		const envVars: Record<string, string> = {
+		const envVars: Record<string, string | undefined> = {
+			// system environment
+			PATH: process.env.PATH,
+			HOME: process.env.HOME,
+			NODE_PATH: process.env.NODE_PATH,
+
+			// n8n
+			GENERIC_TIMEZONE: process.env.GENERIC_TIMEZONE,
+			NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+			NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+
+			// sentry
+			N8N_SENTRY_DSN: process.env.N8N_SENTRY_DSN,
+			N8N_VERSION: process.env.N8N_VERSION,
+			ENVIRONMENT: process.env.ENVIRONMENT,
+			DEPLOYMENT_NAME: process.env.DEPLOYMENT_NAME,
+
+			// runner
 			N8N_RUNNERS_GRANT_TOKEN: grantToken,
 			N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 			N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 			N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
-			...this.getPassthroughEnvVars(),
+			N8N_RUNNERS_INSECURE_MODE: process.env.N8N_RUNNERS_INSECURE_MODE,
 		};
 
 		if (this.runnerConfig.maxOldSpaceSize) {
@@ -84,15 +85,5 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		}
 
 		return envVars;
-	}
-
-	private getPassthroughEnvVars() {
-		return this.passthroughEnvVars.reduce<Record<string, string>>((env, key) => {
-			if (process.env[key]) {
-				env[key] = process.env[key];
-			}
-
-			return env;
-		}, {});
 	}
 }
