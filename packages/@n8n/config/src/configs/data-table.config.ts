@@ -12,4 +12,11 @@ export class DataTableConfig {
 	 */
 	@Env('N8N_DATA_TABLES_WARNING_THRESHOLD_PERCENTAGE')
 	warningThreshold: number = 95;
+
+	/**
+	 * The duration in seconds for which the data table size is cached.
+	 * This prevents excessive database queries for size validation.
+	 */
+	@Env('N8N_DATA_TABLES_SIZE_CACHE_DURATION_SECONDS')
+	sizeCacheDuration: number = 30;
 }

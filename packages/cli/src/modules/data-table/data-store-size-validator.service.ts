@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { DataStoreValidationError } from './errors/data-store-validation.error';
@@ -9,10 +10,9 @@ export class DataStoreSizeValidator {
 	private pendingCheck: Promise<number> | null = null;
 	private readonly cacheDurationMs: number;
 
-	constructor(cacheDurationMs = 1000) {
-		this.cacheDurationMs = cacheDurationMs;
+	constructor(private readonly globalConfig: GlobalConfig) {
+		this.cacheDurationMs = this.globalConfig.datatable.sizeCacheDuration * 1000;
 	}
-
 	async validateSize(
 		fetchSizeFn: () => Promise<number>,
 		maxSize: number,
