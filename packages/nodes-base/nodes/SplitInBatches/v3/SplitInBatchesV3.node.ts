@@ -66,8 +66,21 @@ export class SplitInBatchesV3 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
+		const options = this.getNodeParameter('options', 0, {});
+
+		// Reset execution counter BEFORE infinite loop check when explicitly requested
+		if (options.reset === true) {
+			SplitInBatchesV3.resetExecutionCount(this);
+		}
+
 		// PAY-2940: Check for infinite loops on EVERY execution
-		SplitInBatchesV3.checkExecutionLimit(this);
+		try {
+			SplitInBatchesV3.checkExecutionLimit(this);
+		} catch (error) {
+			// Clean up counter on error to prevent memory leaks
+			SplitInBatchesV3.resetExecutionCount(this);
+			throw error;
+		}
 
 		// Get the input data and create a new array so that we can remove
 		// items without a problem
@@ -78,15 +91,8 @@ export class SplitInBatchesV3 implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const options = this.getNodeParameter('options', 0, {});
-
 		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs or reset is requested
-
-			// Reset execution counter on reset (but only if explicitly requested)
-			if (options.reset === true) {
-				SplitInBatchesV3.resetExecutionCount(this);
-			}
 
 			const sourceData = this.getInputSourceData();
 
@@ -218,5 +224,18 @@ export class SplitInBatchesV3 implements INodeType {
 		const globalKey = `${executionId}_${nodeName}`;
 
 		SplitInBatchesV3.executionCounters.delete(globalKey);
+	}
+
+	/**
+	 * Cleanup all counters for a specific execution ID to prevent memory leaks
+	 */
+	public static cleanupExecutionCounters(executionId: string): void {
+		const keysToDelete: string[] = [];
+		for (const key of SplitInBatchesV3.executionCounters.keys()) {
+			if (key.startsWith(`${executionId}_`)) {
+				keysToDelete.push(key);
+			}
+		}
+		keysToDelete.forEach((key) => SplitInBatchesV3.executionCounters.delete(key));
 	}
 }

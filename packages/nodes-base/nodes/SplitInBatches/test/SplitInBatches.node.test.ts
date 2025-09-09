@@ -471,5 +471,82 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 				expect(executionCounters.has(globalKey)).toBe(false);
 			}
 		});
+
+		it('should reset counter before infinite loop check when options.reset is true', async () => {
+			const splitInBatchesNode = new SplitInBatchesV3();
+			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const globalKey = 'test-execution-id_SplitInBatches';
+
+			// Set high counter to simulate previous executions
+			executionCounters.set(globalKey, 50);
+
+			const mockFunctions = {
+				getNode: jest.fn().mockReturnValue({ name: 'SplitInBatches' }),
+				getExecutionId: jest.fn().mockReturnValue('test-execution-id'),
+				getNodeParameter: jest.fn((name: string) => {
+					if (name === 'batchSize') return 1;
+					if (name === 'options') return { reset: true };
+					return {};
+				}),
+				getInputData: jest.fn().mockReturnValue([{ json: { value: 'test' } }]),
+				getContext: jest.fn().mockReturnValue({}),
+				getInputSourceData: jest.fn().mockReturnValue([]),
+			};
+
+			// Should not throw because counter is reset before check
+			const result = await splitInBatchesNode.execute.call(
+				mockFunctions as unknown as IExecuteFunctions,
+			);
+			expect(result).toBeTruthy();
+		});
+
+		it('should clean up counter on checkExecutionLimit error', async () => {
+			const splitInBatchesNode = new SplitInBatchesV3();
+			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const globalKey = 'test-execution-id_SplitInBatches';
+
+			// Set counter to exceed limit
+			executionCounters.set(globalKey, 1001);
+
+			const mockFunctions = {
+				getNode: jest.fn().mockReturnValue({ name: 'SplitInBatches' }),
+				getExecutionId: jest.fn().mockReturnValue('test-execution-id'),
+				getNodeParameter: jest.fn((name: string) => {
+					if (name === 'batchSize') return 1;
+					if (name === 'options') return {};
+					return {};
+				}),
+				getInputData: jest.fn().mockReturnValue([{ json: { value: 'test' } }]),
+				getContext: jest.fn().mockReturnValue({}),
+				getInputSourceData: jest.fn().mockReturnValue([]),
+			};
+
+			await expect(
+				splitInBatchesNode.execute.call(mockFunctions as unknown as IExecuteFunctions),
+			).rejects.toThrow('Infinite loop detected');
+
+			// Counter should be cleaned up after error
+			expect(executionCounters.has(globalKey)).toBe(false);
+		});
+
+		it('should provide cleanup method for execution counters', () => {
+			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const executionId = 'test-execution';
+
+			// Add some counters
+			executionCounters.set(`${executionId}_node1`, 5);
+			executionCounters.set(`${executionId}_node2`, 3);
+			executionCounters.set('other-execution_node1', 2);
+
+			// Cleanup specific execution
+			SplitInBatchesV3.cleanupExecutionCounters(executionId);
+
+			// Should remove counters for the specific execution
+			expect(executionCounters.has(`${executionId}_node1`)).toBe(false);
+			expect(executionCounters.has(`${executionId}_node2`)).toBe(false);
+
+			// Should keep counters for other executions
+			expect(executionCounters.has('other-execution_node1')).toBe(true);
+		});
 	});
 });
