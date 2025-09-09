@@ -35,7 +35,7 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -149,6 +149,7 @@ const {
 	removeSelectedNodes,
 	viewportRef,
 	fitView,
+	fitBounds,
 	zoomIn,
 	zoomOut,
 	zoomTo,
@@ -635,6 +636,10 @@ function onClickPane(event: MouseEvent) {
 	emit('click:pane', getProjectedPosition(event));
 }
 
+async function onFitBounds(nodes: GraphNode[]) {
+	await fitBounds(getRectOfNodes(nodes), { padding: 2 });
+}
+
 async function onFitView() {
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
@@ -769,7 +774,11 @@ async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: s
 	emit('tidy-up', { result, target, source: payload.source });
 
 	await nextTick();
-	await onFitView();
+	if (applyOnSelection) {
+		await onFitBounds(selectedNodes.value);
+	} else {
+		await onFitView();
+	}
 }
 
 /**
