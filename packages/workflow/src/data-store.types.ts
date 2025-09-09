@@ -41,7 +41,7 @@ export type ListDataStoreOptions = {
 	skip?: number;
 };
 
-export type ListDataStoreContentFilter = {
+export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
@@ -51,20 +51,20 @@ export type ListDataStoreContentFilter = {
 };
 
 export type ListDataStoreRowsOptions = {
-	filter?: ListDataStoreContentFilter;
+	filter?: DataTableFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
 };
 
-export type UpdateDataStoreRowsOptions = {
-	filter: Record<string, DataStoreColumnJsType>;
+export type UpdateDataStoreRowOptions = {
+	filter: DataTableFilter;
 	data: DataStoreRow;
 };
 
-export type UpsertDataStoreRowsOptions = {
-	rows: DataStoreRows;
-	matchFields: string[];
+export type UpsertDataStoreRowOptions = {
+	filter: DataTableFilter;
+	data: DataStoreRow;
 };
 
 export type MoveDataStoreColumnOptions = {
@@ -118,9 +118,9 @@ export interface IDataStoreProjectService {
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
 
-	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	updateRow(options: UpdateDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
 	deleteRows(ids: number[]): Promise<boolean>;
 }

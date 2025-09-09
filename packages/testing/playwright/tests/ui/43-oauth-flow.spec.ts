@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('OAuth Credentials', () => {
 	test('should create and connect with Google OAuth2', async ({ n8n, page }) => {
-		const projectId = await n8n.start.fromNewProject();
+		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		await page.goto(`projects/${projectId}/credentials`);
 		await n8n.credentials.emptyListCreateCredentialButton.click();
 		await n8n.credentials.openNewCredentialDialogFromCredentialList('Google OAuth2 API');

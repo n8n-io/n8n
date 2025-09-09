@@ -1435,6 +1435,7 @@ export interface ResourceMapperTypeOptionsBase {
 	noFieldsError?: string;
 	multiKeyMatch?: boolean;
 	supportAutoMap?: boolean;
+	hideNoDataError?: boolean; // Hide "No data found" error when no fields are available
 	matchingFieldsLabels?: {
 		title?: string;
 		description?: string;
@@ -2605,6 +2606,7 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	availableInMCP?: boolean;
 }
 
 export interface WorkflowFEMeta {
@@ -2757,7 +2759,7 @@ export interface INodeGraphItem {
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];
-	language?: string; // only for Code node: 'javascript' or 'python'
+	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 }
 
 export interface INodeNameIndex {

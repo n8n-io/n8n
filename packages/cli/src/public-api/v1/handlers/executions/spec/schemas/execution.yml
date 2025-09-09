@@ -33,3 +33,6 @@ properties:
     format: date-time
   customData:
     type: object
+  status:
+    type: string
+    enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting']

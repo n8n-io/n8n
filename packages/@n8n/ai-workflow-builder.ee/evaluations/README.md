@@ -123,6 +123,10 @@ Violations are categorized by severity:
 # Run with default settings
 pnpm eval
 
+# Run a specific test case
+pnpm eval --test-case google-sheets-processing
+pnpm eval --test-case extract-from-file
+
 # With additional generated test cases
 GENERATE_TEST_CASES=true pnpm eval
 

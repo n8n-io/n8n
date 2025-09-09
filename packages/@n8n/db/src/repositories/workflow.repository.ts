@@ -435,6 +435,30 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
+		this.applyAvailableInMCPFilter(qb, filter);
+	}
+
+	private applyAvailableInMCPFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.availableInMCP === 'boolean') {
+			const dbType = this.globalConfig.database.type;
+
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+					availableInMCP: filter.availableInMCP.toString(),
+				});
+			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP,
+				});
+			} else if (dbType === 'sqlite') {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
+			}
+		}
 	}
 
 	private applyNameFilter(

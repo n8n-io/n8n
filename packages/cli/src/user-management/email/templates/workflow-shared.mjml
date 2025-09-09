@@ -1,18 +1,18 @@
 <mjml>
 	<mj-include path="./_common.mjml" />
 	<mj-body>
+		<mj-include path="./_logo.mjml" />
 		<mj-section>
 			<mj-column>
-				<mj-text font-size="24px" color="#ff6f5c">A workflow has been shared with you</mj-text>
+				<mj-text font-size="24px">A workflow has been shared with you</mj-text>
 			</mj-column>
 		</mj-section>
-		<mj-section background-color="#FFFFFF" border="1px solid #ddd">
+		<mj-section>
 			<mj-column>
 				<mj-text><b>"{{ workflowName }}"</b> workflow has been shared with you.</mj-text>
 				<mj-text>To access it, please click the button below.</mj-text>
 				<mj-button href="{{workflowUrl}}">Open Workflow</mj-button>
 			</mj-column>
 		</mj-section>
-		<mj-include path="./_logo.mjml" />
 	</mj-body>
 </mjml>

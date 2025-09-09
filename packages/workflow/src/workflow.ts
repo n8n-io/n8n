@@ -697,15 +697,10 @@ export class Workflow {
 			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
 			const nonMainConnectionTypes: NodeConnectionType[] = [];
 
-			// Defensive check: NodeHelpers.getNodeOutputs should always return an array,
-			// but in some edge cases (particularly during testing with incomplete node setup),
-			// it may return undefined or null
-			if (Array.isArray(outputs)) {
-				for (const output of outputs) {
-					const type = typeof output === 'string' ? output : output.type;
-					if (type !== NodeConnectionTypes.Main) {
-						nonMainConnectionTypes.push(type);
-					}
+			for (const output of outputs) {
+				const type = typeof output === 'string' ? output : output.type;
+				if (type !== NodeConnectionTypes.Main) {
+					nonMainConnectionTypes.push(type);
 				}
 			}
 

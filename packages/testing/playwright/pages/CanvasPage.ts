@@ -2,9 +2,15 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
+import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { LogsPanel } from './components/LogsPanel';
+import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
+	readonly sticky = new StickyComponent(this.page);
+	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
@@ -15,6 +21,19 @@ export class CanvasPage extends BasePage {
 
 	nodeCreatorSubItem(subItemText: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
+	}
+
+	getNthCreatorItem(index: number): Locator {
+		return this.page.getByTestId('node-creator-item').nth(index);
+	}
+
+	getNodeCreatorHeader(text?: string) {
+		const header = this.page.getByTestId('nodes-list-header');
+		return text ? header.filter({ hasText: text }) : header.first();
+	}
+
+	async selectNodeCreatorItemByText(nodeName: string) {
+		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -55,6 +74,10 @@ export class CanvasPage extends BasePage {
 
 	async clickNodeCreatorItemName(text: string): Promise<void> {
 		await this.nodeCreatorItemByName(text).click();
+	}
+
+	async clickAddToWorkflowButton(): Promise<void> {
+		await this.page.getByText('Add to workflow').click();
 	}
 
 	/**
@@ -360,6 +383,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-wrapper');
 	}
 
+	canvasBody(): Locator {
+		return this.page.getByTestId('canvas');
+	}
+
 	toggleFocusPanelButton(): Locator {
 		return this.page.getByTestId('toggle-focus-panel-button');
 	}
@@ -477,12 +504,16 @@ export class CanvasPage extends BasePage {
 		// Set fixed time using Playwright's clock API
 		await this.page.clock.setFixedTime(timestamp);
 
-		await this.page.goto('/workflow/new');
+		await this.openNewWorkflow();
 	}
 
 	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
 		await this.addNode(searchText);
 		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	async openNewWorkflow() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
 	}
 
 	getRagCalloutTip(): Locator {
@@ -526,8 +557,93 @@ export class CanvasPage extends BasePage {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
-	async sendManualChatMessage(message: string): Promise<void> {
-		await this.getManualChatInput().fill(message);
-		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	getManualChatLatestBotMessage(): Locator {
+		return this.getManualChatModal()
+			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
+			.last();
+	}
+
+	getNodesWithSpinner(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=refresh-cw]'),
+		});
+	}
+
+	getWaitingNodes(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=clock]'),
+		});
+	}
+
+	/**
+	 * Get all currently selected nodes on the canvas
+	 */
+	getSelectedNodes() {
+		return this.page.locator('[data-test-id="canvas-node"].selected');
+	}
+
+	// Disable node via context menu
+	async disableNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.rightClickNode(nodeName);
+		await this.page
+			.getByTestId('context-menu')
+			.getByTestId('context-menu-item-toggle_activation')
+			.click();
+	}
+
+	// Chat open/close buttons (manual chat)
+	async clickManualChatButton(): Promise<void> {
+		await this.page.getByTestId('workflow-chat-button').click();
+		await this.getManualChatModal().waitFor({ state: 'visible' });
+	}
+
+	async closeManualChatModal(): Promise<void> {
+		// Same toggle button closes the chat
+		await this.page.getByTestId('workflow-chat-button').click();
+	}
+
+	// Input plus endpoints (to add supplemental nodes to parent inputs)
+	getInputPlusEndpointByType(nodeName: string, endpointType: string) {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			)
+			.first();
+	}
+
+	// Generic supplemental node addition, then wrappers for specific types
+	async addSupplementalNodeToParent(
+		childNodeName: string,
+		endpointType:
+			| 'main'
+			| 'ai_chain'
+			| 'ai_document'
+			| 'ai_embedding'
+			| 'ai_languageModel'
+			| 'ai_memory'
+			| 'ai_outputParser'
+			| 'ai_tool'
+			| 'ai_retriever'
+			| 'ai_textSplitter'
+			| 'ai_vectorRetriever'
+			| 'ai_vectorStore',
+		parentNodeName: string,
+		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+	): Promise<void> {
+		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (exactMatch) {
+			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
+		} else {
+			await this.nodeCreatorNodeItems().filter({ hasText: childNodeName }).first().click();
+		}
+
+		if (closeNDV) {
+			await this.page.keyboard.press('Escape');
+		}
+	}
+
+	async openExecutions() {
+		await this.page.getByTestId('radio-button-executions').click();
 	}
 }

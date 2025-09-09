@@ -6,7 +6,13 @@ import {
 } from 'n8n-workflow';
 
 import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
+import type { TextKeys } from './result-validation';
+import { validateRunCodeAllItems, validateRunCodeEachItem } from './result-validation';
 import { throwExecutionError } from './throw-execution-error';
+
+const JS_TEXT_KEYS: TextKeys = {
+	object: { singular: 'object', plural: 'objects' },
+};
 
 /**
  * JS Code execution sandbox that executes the JS code using task runner.
@@ -34,9 +40,15 @@ export class JsTaskRunnerSandbox {
 			itemIndex,
 		);
 
-		return executionResult.ok
-			? executionResult.result
-			: throwExecutionError('error' in executionResult ? executionResult.error : {});
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		return validateRunCodeAllItems(
+			executionResult.result,
+			JS_TEXT_KEYS,
+			this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+		);
 	}
 
 	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
@@ -64,6 +76,17 @@ export class JsTaskRunnerSandbox {
 
 			if (!executionResult.ok) {
 				return throwExecutionError('error' in executionResult ? executionResult.error : {});
+			}
+
+			for (let i = 0; i < executionResult.result.length; i++) {
+				const actualItemIndex = chunk.startIdx + i;
+				const validatedItem = validateRunCodeEachItem(
+					executionResult.result[i],
+					actualItemIndex,
+					JS_TEXT_KEYS,
+					this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+				);
+				executionResult.result[i] = validatedItem;
 			}
 
 			executionResults = executionResults.concat(executionResult.result);

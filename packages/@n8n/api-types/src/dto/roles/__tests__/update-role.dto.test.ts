@@ -1,6 +1,6 @@
 import { ALL_SCOPES } from '@n8n/permissions';
 
-import { updateRoleDtoSchema } from '../update-role.dto';
+import { UpdateRoleDto } from '../update-role.dto';
 
 describe('updateRoleDtoSchema', () => {
 	describe('Valid requests', () => {
@@ -144,7 +144,7 @@ describe('updateRoleDtoSchema', () => {
 				},
 			},
 		])('should validate $name', ({ request }) => {
-			const result = updateRoleDtoSchema.safeParse(request);
+			const result = UpdateRoleDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -327,7 +327,7 @@ describe('updateRoleDtoSchema', () => {
 				expectedErrorPath: ['scopes', 1],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
-			const result = updateRoleDtoSchema.safeParse(request);
+			const result = UpdateRoleDto.safeParse(request);
 
 			expect(result.success).toBe(false);
 
@@ -346,7 +346,7 @@ describe('updateRoleDtoSchema', () => {
 					scopes: [scope],
 				};
 
-				const result = updateRoleDtoSchema.safeParse(request);
+				const result = UpdateRoleDto.safeParse(request);
 				expect(result.success).toBe(true);
 			}
 		});
@@ -370,7 +370,7 @@ describe('updateRoleDtoSchema', () => {
 					scopes: [scope],
 				};
 
-				const result = updateRoleDtoSchema.safeParse(request);
+				const result = UpdateRoleDto.safeParse(request);
 				expect(result.success).toBe(false);
 			}
 		});
@@ -380,7 +380,7 @@ describe('updateRoleDtoSchema', () => {
 				scopes: ['project:read', 'invalid-scope', 'workflow:execute'],
 			};
 
-			const result = updateRoleDtoSchema.safeParse(request);
+			const result = UpdateRoleDto.safeParse(request);
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(['scopes', 1]);
 		});
@@ -403,7 +403,7 @@ describe('updateRoleDtoSchema', () => {
 			];
 
 			for (const request of validCombinations) {
-				const result = updateRoleDtoSchema.safeParse(request);
+				const result = UpdateRoleDto.safeParse(request);
 				expect(result.success).toBe(true);
 			}
 		});
@@ -415,7 +415,7 @@ describe('updateRoleDtoSchema', () => {
 				scopes: ['*'], // global wildcard
 			};
 
-			const result = updateRoleDtoSchema.safeParse(request);
+			const result = UpdateRoleDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -450,7 +450,7 @@ describe('updateRoleDtoSchema', () => {
 				request: { scopes: undefined },
 			},
 		])('should handle $name correctly', ({ request, expectedErrorPath }) => {
-			const result = updateRoleDtoSchema.safeParse(request);
+			const result = UpdateRoleDto.safeParse(request);
 
 			if (expectedErrorPath) {
 				expect(result.success).toBe(false);

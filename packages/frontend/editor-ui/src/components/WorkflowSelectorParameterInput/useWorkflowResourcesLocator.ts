@@ -95,7 +95,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		searchFilter.value = filter;
 	}
 
-	function renameDefaultNodeName(workflowId: NodeParameterValue) {
+	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
 		if (typeof workflowId !== 'string') return;
 
 		const nodeName = ndvStore.activeNodeName;
@@ -121,7 +121,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,
-		renameDefaultNodeName,
+		applyDefaultExecuteWorkflowNodeName,
 		populateNextWorkflowsPage,
 		setWorkflowsResources,
 	};

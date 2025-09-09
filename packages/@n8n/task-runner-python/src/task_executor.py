@@ -5,6 +5,7 @@ import textwrap
 import json
 import os
 import sys
+import tempfile
 
 from src.errors import (
     TaskResultMissingError,
@@ -14,12 +15,18 @@ from src.errors import (
 )
 
 from src.message_types.broker import NodeMode, Items
-from src.constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
+from src.constants import (
+    EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_USER_OUTPUT_KEY,
+    EXECUTOR_ALL_ITEMS_FILENAME,
+    EXECUTOR_PER_ITEM_FILENAME,
+)
 from typing import Any, Set
 
 from multiprocessing.context import SpawnProcess
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
+MAX_PRINT_ARGS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
@@ -92,7 +99,16 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            result = returned.get("result", [])
+            if "result_file" not in returned:
+                raise TaskResultMissingError()
+
+            result_file = returned["result_file"]
+            try:
+                with open(result_file, "r", encoding="utf-8") as f:
+                    result = json.load(f)
+            finally:
+                os.unlink(result_file)
+
             print_args = returned.get("print_args", [])
 
             return result, print_args
@@ -134,7 +150,8 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
-            code = TaskExecutor._wrap_code(raw_code)
+            wrapped_code = TaskExecutor._wrap_code(raw_code)
+            compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
@@ -144,11 +161,10 @@ class TaskExecutor:
                 else print,
             }
 
-            exec(code, globals)
+            exec(compiled_code, globals)
 
-            queue.put(
-                {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_args": print_args}
-            )
+            result = globals[EXECUTOR_USER_OUTPUT_KEY]
+            TaskExecutor._put_result(queue, result, print_args)
 
         except Exception as e:
             TaskExecutor._put_error(queue, e, print_args)
@@ -173,7 +189,7 @@ class TaskExecutor:
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
+            compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
             result = []
             for index, item in enumerate(items):
@@ -195,7 +211,7 @@ class TaskExecutor:
                 user_output["pairedItem"] = {"item": index}
                 result.append(user_output)
 
-            queue.put({"result": result, "print_args": print_args})
+            TaskExecutor._put_result(queue, result, print_args)
 
         except Exception as e:
             TaskExecutor._put_error(queue, e, print_args)
@@ -206,11 +222,29 @@ class TaskExecutor:
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
 
     @staticmethod
+    def _put_result(
+        queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
+    ):
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            prefix="n8n_result_",
+            suffix=".json",
+            encoding="utf-8",
+        ) as f:
+            json.dump(result, f, default=str, ensure_ascii=False)
+            result_file = f.name
+
+        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+        queue.put({"result_file": result_file, "print_args": print_args_to_send})
+
+    @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
+        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
         queue.put(
             {
                 "error": {"message": str(e), "stack": traceback.format_exc()},
-                "print_args": print_args,
+                "print_args": print_args_to_send,
             }
         )
 
@@ -267,6 +301,22 @@ class TaskExecutor:
 
         return formatted
 
+    @staticmethod
+    def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
+        """Truncate print_args to prevent pipe buffer overflow."""
+
+        if not print_args or len(print_args) <= MAX_PRINT_ARGS_ALLOWED:
+            return print_args
+
+        truncated = print_args[:MAX_PRINT_ARGS_ALLOWED]
+        truncated.append(
+            [
+                f"[Output truncated - {len(print_args) - MAX_PRINT_ARGS_ALLOWED} more print statements]"
+            ]
+        )
+
+        return truncated
+
     # ========== security ==========
 
     @staticmethod
@@ -286,6 +336,8 @@ class TaskExecutor:
             "sys",
             "traceback",
             "linecache",
+            "importlib",
+            "importlib.machinery",
         }
 
         if "*" in stdlib_allow:
