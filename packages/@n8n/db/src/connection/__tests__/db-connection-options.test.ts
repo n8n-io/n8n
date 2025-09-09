@@ -176,6 +176,7 @@ describe('DbConnectionOptions', () => {
 					password: 'password',
 					migrations: mysqlMigrations,
 					timezone: 'Z',
+					poolSize: 10,
 				});
 			});
 
@@ -194,6 +195,7 @@ describe('DbConnectionOptions', () => {
 					password: 'password',
 					migrations: mysqlMigrations,
 					timezone: 'Z',
+					poolSize: 10,
 				});
 			});
 		});
