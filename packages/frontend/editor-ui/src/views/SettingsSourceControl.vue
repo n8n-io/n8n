@@ -71,6 +71,11 @@ const onConnect = async () => {
 	loadingService.stopLoading();
 };
 
+const onSubmitConnectionForm = (event: Event) => {
+	event.preventDefault();
+	void onConnect();
+};
+
 const onDisconnect = async () => {
 	try {
 		const confirmation = await message.confirm(
@@ -273,181 +278,183 @@ watch(connectionType, () => {
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</n8n-heading>
 
-			<div v-if="!isConnected" :class="$style.group">
-				<label for="connectionType">{{
-					locale.baseText('settings.sourceControl.connectionType')
-				}}</label>
-				<n8n-form-input
-					id="connectionType"
-					v-model="connectionType"
-					label=""
-					type="select"
-					name="connectionType"
-					:options="connectionTypeOptions"
-					data-test-id="source-control-connection-type-select"
-				/>
-			</div>
-
-			<!-- Repository URL -->
-			<div :class="$style.group">
-				<label for="repoUrl">
-					{{
-						connectionType === 'ssh'
-							? locale.baseText('settings.sourceControl.sshRepoUrl')
-							: locale.baseText('settings.sourceControl.httpsRepoUrl')
-					}}
-				</label>
-				<div :class="$style.groupFlex">
+			<form @submit="onSubmitConnectionForm">
+				<div v-if="!isConnected" :class="$style.group">
+					<label for="connectionType">{{
+						locale.baseText('settings.sourceControl.connectionType')
+					}}</label>
 					<n8n-form-input
-						id="repoUrl"
-						v-model="sourceControlStore.preferences.repositoryUrl"
-						label=""
-						class="ml-0"
-						name="repoUrl"
-						validate-on-blur
-						:validation-rules="repoUrlValidationRules"
-						:disabled="isConnected"
-						:placeholder="
-							connectionType === 'ssh'
-								? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
-								: locale.baseText('settings.sourceControl.httpsRepoUrlPlaceholder')
-						"
-						@validate="(value: boolean) => onValidate('repoUrl', value)"
-					/>
-					<n8n-button
-						v-if="isConnected"
-						:class="$style.disconnectButton"
-						type="tertiary"
-						size="large"
-						icon="trash-2"
-						data-test-id="source-control-disconnect-button"
-						@click="onDisconnect"
-						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
-					>
-				</div>
-				<n8n-notice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
-					{{ locale.baseText('settings.sourceControl.sshFormatNotice') }}
-				</n8n-notice>
-				<n8n-notice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
-					{{ locale.baseText('settings.sourceControl.httpsFormatNotice') }}
-				</n8n-notice>
-			</div>
-
-			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsUsername">{{
-					locale.baseText('settings.sourceControl.httpsUsername')
-				}}</label>
-				<n8n-form-input
-					id="httpsUsername"
-					v-model="httpsUsername"
-					label=""
-					name="httpsUsername"
-					type="text"
-					validate-on-blur
-					:validation-rules="httpsCredentialValidationRules"
-					:placeholder="locale.baseText('settings.sourceControl.httpsUsernamePlaceholder')"
-					@validate="(value: boolean) => onValidate('httpsUsername', value)"
-				/>
-			</div>
-
-			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsPassword">{{
-					locale.baseText('settings.sourceControl.httpsPersonalAccessToken')
-				}}</label>
-				<n8n-form-input
-					id="httpsPassword"
-					v-model="httpsPassword"
-					label=""
-					name="httpsPassword"
-					type="password"
-					validate-on-blur
-					:validation-rules="httpsCredentialValidationRules"
-					:placeholder="
-						locale.baseText('settings.sourceControl.httpsPersonalAccessTokenPlaceholder')
-					"
-					@validate="(value: boolean) => onValidate('httpsPassword', value)"
-				/>
-				<n8n-notice type="warning" class="mt-s">
-					<I18nT keypath="settings.sourceControl.httpsWarningNotice" tag="span" scope="global">
-						<template #strong>
-							<strong>{{
-								locale.baseText('settings.sourceControl.httpsWarningNotice.strong')
-							}}</strong>
-						</template>
-						<template #repo>
-							<code>repo</code>
-						</template>
-						<template #publicRepo>
-							<code>public_repo</code>
-						</template>
-					</I18nT>
-				</n8n-notice>
-				<n8n-notice type="info" class="mt-s">
-					{{ locale.baseText('settings.sourceControl.httpsCredentialsNotice') }}
-				</n8n-notice>
-			</div>
-
-			<div
-				v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
-				:class="$style.group"
-			>
-				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
-				<div :class="{ [$style.sshInput]: !isConnected }">
-					<n8n-form-input
-						v-if="!isConnected"
-						id="keyGeneratorType"
-						:class="$style.sshKeyTypeSelect"
+						id="connectionType"
+						v-model="connectionType"
 						label=""
 						type="select"
-						name="keyGeneratorType"
-						data-test-id="source-control-ssh-key-type-select"
-						validate-on-blur
-						:validation-rules="keyGeneratorTypeValidationRules"
-						:options="sourceControlStore.sshKeyTypesWithLabel"
-						:model-value="sourceControlStore.preferences.keyGeneratorType"
-						@validate="(value: boolean) => onValidate('keyGeneratorType', value)"
-						@update:model-value="onSelectSshKeyType"
+						name="connectionType"
+						:options="connectionTypeOptions"
+						data-test-id="source-control-connection-type-select"
 					/>
-					<CopyInput
-						:class="$style.copyInput"
-						collapse
-						size="medium"
-						:value="sourceControlStore.preferences.publicKey"
-						:copy-button-text="locale.baseText('generic.clickToCopy')"
-					/>
-					<n8n-button
-						v-if="!isConnected"
-						size="large"
-						type="tertiary"
-						icon="refresh-cw"
-						data-test-id="source-control-refresh-ssh-key-button"
-						@click="refreshSshKey"
-					>
-						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
-					</n8n-button>
 				</div>
-				<n8n-notice type="info" class="mt-s">
-					<I18nT keypath="settings.sourceControl.sshKeyDescription" tag="span" scope="global">
-						<template #link>
-							<a
-								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
-								target="_blank"
-								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
-							>
-						</template>
-					</I18nT>
-				</n8n-notice>
-			</div>
 
-			<n8n-button
-				v-if="!isConnected"
-				size="large"
-				:disabled="!validForConnection"
-				:class="$style.connect"
-				data-test-id="source-control-connect-button"
-				@click="onConnect"
-				>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
-			>
+				<!-- Repository URL -->
+				<div :class="$style.group">
+					<label for="repoUrl">
+						{{
+							connectionType === 'ssh'
+								? locale.baseText('settings.sourceControl.sshRepoUrl')
+								: locale.baseText('settings.sourceControl.httpsRepoUrl')
+						}}
+					</label>
+					<div :class="$style.groupFlex">
+						<n8n-form-input
+							id="repoUrl"
+							v-model="sourceControlStore.preferences.repositoryUrl"
+							label=""
+							class="ml-0"
+							name="repoUrl"
+							validate-on-blur
+							:validation-rules="repoUrlValidationRules"
+							:disabled="isConnected"
+							:placeholder="
+								connectionType === 'ssh'
+									? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
+									: locale.baseText('settings.sourceControl.httpsRepoUrlPlaceholder')
+							"
+							@validate="(value: boolean) => onValidate('repoUrl', value)"
+						/>
+						<n8n-button
+							v-if="isConnected"
+							:class="$style.disconnectButton"
+							type="tertiary"
+							size="large"
+							icon="trash-2"
+							data-test-id="source-control-disconnect-button"
+							@click="onDisconnect"
+							>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
+						>
+					</div>
+					<n8n-notice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
+						{{ locale.baseText('settings.sourceControl.sshFormatNotice') }}
+					</n8n-notice>
+					<n8n-notice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
+						{{ locale.baseText('settings.sourceControl.httpsFormatNotice') }}
+					</n8n-notice>
+				</div>
+
+				<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+					<label for="httpsUsername">{{
+						locale.baseText('settings.sourceControl.httpsUsername')
+					}}</label>
+					<n8n-form-input
+						id="httpsUsername"
+						v-model="httpsUsername"
+						label=""
+						name="httpsUsername"
+						type="text"
+						validate-on-blur
+						:validation-rules="httpsCredentialValidationRules"
+						:placeholder="locale.baseText('settings.sourceControl.httpsUsernamePlaceholder')"
+						@validate="(value: boolean) => onValidate('httpsUsername', value)"
+					/>
+				</div>
+
+				<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+					<label for="httpsPassword">{{
+						locale.baseText('settings.sourceControl.httpsPersonalAccessToken')
+					}}</label>
+					<n8n-form-input
+						id="httpsPassword"
+						v-model="httpsPassword"
+						label=""
+						name="httpsPassword"
+						type="password"
+						validate-on-blur
+						:validation-rules="httpsCredentialValidationRules"
+						:placeholder="
+							locale.baseText('settings.sourceControl.httpsPersonalAccessTokenPlaceholder')
+						"
+						@validate="(value: boolean) => onValidate('httpsPassword', value)"
+					/>
+					<n8n-notice type="warning" class="mt-s">
+						<I18nT keypath="settings.sourceControl.httpsWarningNotice" tag="span" scope="global">
+							<template #strong>
+								<strong>{{
+									locale.baseText('settings.sourceControl.httpsWarningNotice.strong')
+								}}</strong>
+							</template>
+							<template #repo>
+								<code>repo</code>
+							</template>
+							<template #publicRepo>
+								<code>public_repo</code>
+							</template>
+						</I18nT>
+					</n8n-notice>
+					<n8n-notice type="info" class="mt-s">
+						{{ locale.baseText('settings.sourceControl.httpsCredentialsNotice') }}
+					</n8n-notice>
+				</div>
+
+				<div
+					v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
+					:class="$style.group"
+				>
+					<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
+					<div :class="{ [$style.sshInput]: !isConnected }">
+						<n8n-form-input
+							v-if="!isConnected"
+							id="keyGeneratorType"
+							:class="$style.sshKeyTypeSelect"
+							label=""
+							type="select"
+							name="keyGeneratorType"
+							data-test-id="source-control-ssh-key-type-select"
+							validate-on-blur
+							:validation-rules="keyGeneratorTypeValidationRules"
+							:options="sourceControlStore.sshKeyTypesWithLabel"
+							:model-value="sourceControlStore.preferences.keyGeneratorType"
+							@validate="(value: boolean) => onValidate('keyGeneratorType', value)"
+							@update:model-value="onSelectSshKeyType"
+						/>
+						<CopyInput
+							:class="$style.copyInput"
+							collapse
+							size="medium"
+							:value="sourceControlStore.preferences.publicKey"
+							:copy-button-text="locale.baseText('generic.clickToCopy')"
+						/>
+						<n8n-button
+							v-if="!isConnected"
+							size="large"
+							type="tertiary"
+							icon="refresh-cw"
+							data-test-id="source-control-refresh-ssh-key-button"
+							@click="refreshSshKey"
+						>
+							{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
+						</n8n-button>
+					</div>
+					<n8n-notice type="info" class="mt-s">
+						<I18nT keypath="settings.sourceControl.sshKeyDescription" tag="span" scope="global">
+							<template #link>
+								<a
+									:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
+									target="_blank"
+									>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
+								>
+							</template>
+						</I18nT>
+					</n8n-notice>
+				</div>
+
+				<n8n-button
+					v-if="!isConnected"
+					size="large"
+					:disabled="!validForConnection"
+					:class="$style.connect"
+					data-test-id="source-control-connect-button"
+					@click="onConnect"
+					>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
+				>
+			</form>
 
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
 				<div :class="$style.group">
