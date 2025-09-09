@@ -25,6 +25,8 @@ const $style = useCssModule();
 const {
 	hasPinnedData,
 	issues,
+	executionErrors,
+	validationErrors,
 	hasExecutionErrors,
 	hasValidationErrors,
 	executionStatus,
@@ -85,7 +87,7 @@ const commonClasses = computed(() => [
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="executionErrors" />
 			</template>
 			<N8nIcon icon="node-execution-error" :size="size" />
 		</N8nTooltip>
@@ -97,7 +99,7 @@ const commonClasses = computed(() => [
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="validationErrors" />
 			</template>
 			<N8nIcon icon="node-validation-error" :size="size" />
 		</N8nTooltip>
