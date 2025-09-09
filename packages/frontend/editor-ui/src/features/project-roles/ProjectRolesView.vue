@@ -153,6 +153,8 @@ function handleAction(action: string, item: Role) {
 			:items="rolesStore.processedProjectRoles"
 			:headers="headers"
 			:items-length="rolesStore.processedProjectRoles.length"
+			:items-per-page="rolesStore.processedProjectRoles.length"
+			:page-sizes="[rolesStore.processedProjectRoles.length]"
 		>
 			<template #[`item.displayName`]="{ item }">
 				<template v-if="item.systemRole">
