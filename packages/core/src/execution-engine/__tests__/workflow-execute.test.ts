@@ -2485,4 +2485,60 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 	});
+
+	describe('Cancellation', () => {
+		test('should update only running task statuses to cancelled when workflow is cancelled', () => {
+			// Arrange - create a workflow with some nodes
+			const startNode = createNodeData({ name: 'Start' });
+			const processingNode = createNodeData({ name: 'Processing' });
+			const completedNode = createNodeData({ name: 'Completed' });
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [startNode, processingNode, completedNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create run execution data with tasks in various statuses
+			const runExecutionData: IRunExecutionData = {
+				startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+				resultData: {
+					runData: {
+						Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+						Processing: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'running' })],
+						Completed: [
+							toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+							toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'running' }),
+							toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+						],
+					},
+					lastNodeExecuted: 'Processing',
+				},
+				executionData: {
+					nodeExecutionStack: [],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			// Set the run execution data on the workflow execute instance
+			workflowExecute.runExecutionData = runExecutionData;
+
+			// Act - call the private method
+			(workflowExecute as any).updateTaskStatusesToCancelled();
+
+			// Assert - verify that only running tasks were updated to cancelled
+			expect(runExecutionData.resultData.runData['Start'][0].executionStatus).toBe('success'); // Should remain unchanged
+			expect(runExecutionData.resultData.runData['Processing'][0].executionStatus).toBe('canceled'); // Should be updated from 'running' to 'canceled'
+			expect(runExecutionData.resultData.runData['Completed'][0].executionStatus).toBe('error'); // Should remain unchanged
+			expect(runExecutionData.resultData.runData['Completed'][1].executionStatus).toBe('canceled'); // Should be updated from 'running' to 'canceled'
+			expect(runExecutionData.resultData.runData['Completed'][2].executionStatus).toBe('waiting'); // Should remain unchanged
+		});
+	});
 });
