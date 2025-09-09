@@ -18,7 +18,7 @@ export default class Dev extends Command {
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
 		'<%= config.bin %> <%= command.id %> --external-n8n',
-		'<%= config.bin %> <%= command.id %> --custom-nodes-dir /opt/n8n-extensions',
+		'<%= config.bin %> <%= command.id %> --custom-user-folder /Users/test',
 	];
 	static override flags = {
 		'external-n8n': Flags.boolean({
@@ -29,7 +29,7 @@ export default class Dev extends Command {
 		'custom-user-folder': Flags.directory({
 			default: path.join(os.homedir(), '.n8n-node-cli'),
 			description:
-				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli. You probably want to enable this option if you run n8n with a custom N8N_CUSTOM_EXTENSIONS env variable.',
+				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli.',
 		}),
 	};
 
@@ -70,8 +70,9 @@ export default class Dev extends Command {
 		outro('✓ Setup complete');
 
 		if (!flags['external-n8n']) {
-			// Run n8n with hot reload enabled
-			runPersistentCommand('npx', ['-y', '--quiet', 'n8n'], {
+			// Run n8n with hot reload enabled, always attempt to use latest n8n
+			// TODO: Use n8n@latest. Currently using n8n@next because of broken hot reloading before n8n@1.111.0
+			runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
 				cwd: n8nUserFolder,
 				env: {
 					...process.env,
