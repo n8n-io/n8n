@@ -28,6 +28,7 @@ import { NodeTypes } from '@/node-types';
 import { WorkflowLoaderService } from './workflow-loader.service';
 import { User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { Logger } from '@n8n/backend-common';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -70,8 +71,7 @@ export class DynamicNodeParametersService {
 				projectId: payload.projectId,
 			}))
 		) {
-			this.logger.log(
-				this.logger.WARN,
+			this.logger.warn(
 				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
 			);
 			payload.projectId = undefined;
