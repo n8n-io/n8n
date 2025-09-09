@@ -193,7 +193,7 @@ export class DataStoreService {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId);
 		if (columns.length === 0) {
 			throw new DataStoreValidationError(
-				'No columns found for this data table or data table not found',
+				'No columns found for this data table, or data table not found',
 			);
 		}
 
