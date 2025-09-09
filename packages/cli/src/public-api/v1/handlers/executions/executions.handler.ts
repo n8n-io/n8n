@@ -165,14 +165,17 @@ export = {
 			}
 
 			try {
-				const retryResponse = await Container.get(ExecutionService).retry(req, sharedWorkflowsIds);
+				const retriedExecution = await Container.get(ExecutionService).retry(
+					req,
+					sharedWorkflowsIds,
+				);
 
 				Container.get(EventService).emit('user-retried-execution', {
 					userId: req.user.id,
 					publicApi: true,
 				});
 
-				return res.json({ status: retryResponse });
+				return res.json(replaceCircularReferences(retriedExecution));
 			} catch (error) {
 				if (
 					error instanceof QueuedExecutionRetryError ||
