@@ -18,7 +18,7 @@ export class RoleRepository extends Repository<Role> {
 		return await this.find({ relations: ['scopes'] });
 	}
 
-	async countUsersWithRole(role: Role) {
+	async countUsersWithRole(role: Role): Promise<number> {
 		if (role.roleType === 'global') {
 			return await this.manager.getRepository(User).count({
 				where: {
@@ -28,18 +28,18 @@ export class RoleRepository extends Repository<Role> {
 				},
 			});
 		} else if (role.roleType === 'project') {
-			const projectRelationsWithRole = await this.manager
+			const result = await this.manager
 				.createQueryBuilder(ProjectRelation, 'project_relation')
 				.select('COUNT(project_relation.user)', 'count')
 				.where('project_relation.role = :role', { role: role.slug })
-				.getRawOne<{ count: string }>();
-			if (typeof projectRelationsWithRole?.count === 'number') {
-				return projectRelationsWithRole.count;
-			} else if (typeof projectRelationsWithRole?.count === 'string') {
-				return parseInt(projectRelationsWithRole.count);
-			}
+				.getRawOne<{ count: string | number }>();
+
+			const count = result?.count ?? 0;
+			const parsedCount = typeof count === 'string' ? parseInt(count, 10) : count;
+			return isNaN(parsedCount) ? 0 : parsedCount;
 		}
-		return undefined;
+
+		return 0;
 	}
 
 	async findBySlug(slug: string) {
