@@ -30,6 +30,7 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+import { EntityManager } from '@n8n/typeorm';
 
 @Service()
 export class DataStoreService {
@@ -117,15 +118,22 @@ export class DataStoreService {
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		if (dto.filter) {
-			this.validateAndTransformFilters(dto.filter, columns);
-		}
-		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto, columns);
-		return {
-			count: result.count,
-			data: normalizeRows(result.data, columns),
-		};
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+			if (dto.filter) {
+				this.validateAndTransformFilters(dto.filter, columns);
+			}
+			const result = await this.dataStoreRowsRepository.getManyAndCount(
+				dataStoreId,
+				dto,
+				columns,
+				em,
+			);
+			return {
+				count: result.count,
+				data: normalizeRows(result.data, columns),
+			};
+		});
 	}
 
 	async getColumns(dataStoreId: string, projectId: string) {
@@ -139,18 +147,29 @@ export class DataStoreService {
 		projectId: string,
 		rows: DataStoreRows,
 		returnData?: T,
+		em?: EntityManager,
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
 		returnData?: boolean,
+		manager?: EntityManager,
 	) {
+		manager = manager ?? this.dataStoreColumnRepository.manager;
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, rows);
+		return await manager.transaction(async (em) => {
+			await this.validateRows(dataStoreId, rows, undefined, em);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+			return await this.dataStoreRowsRepository.insertRows(
+				dataStoreId,
+				rows,
+				columns,
+				returnData,
+				em,
+			);
+		});
 	}
 
 	async upsertRow<T extends boolean | undefined>(
@@ -165,15 +184,17 @@ export class DataStoreService {
 		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
-		const updated = await this.updateRow(dataStoreId, projectId, dto, true);
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const updated = await this.updateRow(dataStoreId, projectId, dto, true, em);
 
-		if (updated.length > 0) {
-			return returnData ? updated : true;
-		}
+			if (updated.length > 0) {
+				return returnData ? updated : true;
+			}
 
-		// No rows were updated, so insert a new one
-		const inserted = await this.insertRows(dataStoreId, projectId, [dto.data], returnData);
-		return returnData ? inserted : true;
+			// No rows were updated, so insert a new one
+			const inserted = await this.insertRows(dataStoreId, projectId, [dto.data], returnData, em);
+			return returnData ? inserted : true;
+		});
 	}
 
 	async updateRow<T extends boolean | undefined>(
@@ -181,40 +202,46 @@ export class DataStoreService {
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData?: T,
+		em?: EntityManager,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData = false,
+		manager?: EntityManager,
 	) {
 		await this.validateDataStoreExists(dataTableId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId);
-		if (columns.length === 0) {
-			throw new DataStoreValidationError(
-				'No columns found for this data table or data table not found',
+		manager = manager ?? this.dataStoreColumnRepository.manager;
+		return await manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+			if (columns.length === 0) {
+				throw new DataStoreValidationError(
+					'No columns found for this data table or data table not found',
+				);
+			}
+
+			const { data, filter } = dto;
+			if (!filter?.filters || filter.filters.length === 0) {
+				throw new DataStoreValidationError('Filter must not be empty');
+			}
+			if (!data || Object.keys(data).length === 0) {
+				throw new DataStoreValidationError('Data columns must not be empty');
+			}
+
+			this.validateRowsWithColumns([data], columns, false);
+			this.validateAndTransformFilters(filter, columns);
+
+			return await this.dataStoreRowsRepository.updateRow(
+				dataTableId,
+				data,
+				filter,
+				columns,
+				returnData,
+				em,
 			);
-		}
-
-		const { data, filter } = dto;
-		if (!filter?.filters || filter.filters.length === 0) {
-			throw new DataStoreValidationError('Filter must not be empty');
-		}
-		if (!data || Object.keys(data).length === 0) {
-			throw new DataStoreValidationError('Data columns must not be empty');
-		}
-
-		this.validateRowsWithColumns([data], columns, false);
-		this.validateAndTransformFilters(filter, columns);
-
-		return await this.dataStoreRowsRepository.updateRow(
-			dataTableId,
-			data,
-			filter,
-			columns,
-			returnData,
-		);
+		});
 	}
 
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
@@ -254,8 +281,9 @@ export class DataStoreService {
 		dataStoreId: string,
 		rows: DataStoreRows,
 		includeSystemColumns = false,
+		em?: EntityManager,
 	): Promise<void> {
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
 		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 

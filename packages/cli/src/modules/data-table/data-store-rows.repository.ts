@@ -10,6 +10,7 @@ import {
 	UpdateQueryBuilder,
 	In,
 	ObjectLiteral,
+	EntityManager,
 } from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
@@ -161,13 +162,16 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 		returnData?: T,
+		em?: EntityManager,
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 		returnData?: boolean,
+		em?: EntityManager,
 	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		em = em ?? this.dataSource.manager;
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
@@ -193,7 +197,7 @@ export class DataStoreRowsRepository {
 				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
-			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
+			const query = em.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
@@ -220,7 +224,7 @@ export class DataStoreRowsRepository {
 				continue;
 			}
 
-			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns);
+			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns, em);
 
 			inserted.push(...insertedRows);
 		}
@@ -234,7 +238,9 @@ export class DataStoreRowsRepository {
 		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		returnData: boolean = false,
+		em?: EntityManager,
 	) {
+		em = em ?? this.dataSource.manager;
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres';
 
@@ -256,17 +262,14 @@ export class DataStoreRowsRepository {
 		if (!useReturning && returnData) {
 			// Only Postgres supports RETURNING statement on updates (with our typeorm),
 			// on other engines we must query the list of updates rows later by ID
-			const selectQuery = this.dataSource
-				.createQueryBuilder()
-				.select('id')
-				.from(table, 'dataTable');
+			const selectQuery = em.createQueryBuilder().select('id').from(table, 'dataTable');
 			this.applyFilters(selectQuery, filter, 'dataTable', columns);
 			affectedRows = await selectQuery.getRawMany<{ id: number }>();
 		}
 
 		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
-		const query = this.dataSource.createQueryBuilder().update(table);
+		const query = em.createQueryBuilder().update(table);
 		// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
 		this.applyFilters(query, filter, undefined, columns);
 		query.set(setData);
@@ -286,7 +289,7 @@ export class DataStoreRowsRepository {
 		}
 
 		const ids = affectedRows.map((row) => row.id);
-		return await this.getManyByIds(dataStoreId, ids, columns);
+		return await this.getManyByIds(dataStoreId, ids, columns, em);
 	}
 
 	async deleteRows(dataStoreId: string, ids: number[]) {
@@ -345,8 +348,10 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
 		columns?: DataTableColumn[],
+		em?: EntityManager,
 	) {
-		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, columns);
+		em = em ?? this.dataSource.manager;
+		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, em, columns);
 		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
@@ -356,7 +361,12 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
+	async getManyByIds(
+		dataStoreId: string,
+		ids: number[],
+		columns: DataTableColumn[],
+		em: EntityManager,
+	) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
@@ -368,7 +378,7 @@ export class DataStoreRowsRepository {
 			return [];
 		}
 
-		const updatedRows = await this.dataSource
+		const updatedRows = await em
 			.createQueryBuilder()
 			.select(selectColumns)
 			.from(table, 'dataTable')
@@ -378,18 +388,13 @@ export class DataStoreRowsRepository {
 		return normalizeRows(updatedRows, columns);
 	}
 
-	async getRowIds(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
-		const [_, query] = this.getManyQuery(dataStoreId, dto);
-		const result = await query.select('dataStore.id').getRawMany<number>();
-		return result;
-	}
-
 	private getManyQuery(
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
+		em: EntityManager,
 		columns?: DataTableColumn[],
 	): [QueryBuilder, QueryBuilder] {
-		const query = this.dataSource.createQueryBuilder();
+		const query = em.createQueryBuilder();
 
 		const tableReference = 'dataTable';
 		query.from(this.toTableName(dataStoreId), tableReference);
