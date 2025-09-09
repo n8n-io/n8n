@@ -22,12 +22,11 @@ type NodeToBeExecuted = {
 	metadata?: ITaskMetadata;
 };
 
-// if runNodeData is Request
-// 1. stop executing current node and put it as paused on the stack
-//	- do any clean up of execution variables
-// 2. put actions nodes on the stack, rewiring the graph potentially?
-// 3. continue executionLoop
-// 4. when hitting the paused node again, restore the state and call the execute method on the paused node again
+/**
+ * Processes a Request object by scheduling the requested tool nodes for execution
+ * and preparing the current node to resume after tools complete. The current node
+ * is paused and will be re-executed with tool results once all actions finish.
+ */
 export function handleRequests({
 	workflow,
 	currentNode,
