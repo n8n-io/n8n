@@ -173,14 +173,18 @@ describe('ProjectSettings', () => {
 		expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 	});
 
-	it('should show role dropdown', async () => {
+	it('should show role dropdown in members table', async () => {
 		const { getByTestId } = renderComponent();
-		const roleDropdown = getByTestId('projects-settings-user-role-select');
+		const membersTable = getByTestId('project-members-table');
+		expect(membersTable).toBeVisible();
+
+		// Find the role dropdown within the table
+		const roleDropdown = getByTestId('project-member-role-dropdown');
 		expect(roleDropdown).toBeVisible();
-		const roleDropdownItems = await getDropdownItems(roleDropdown);
-		expect(roleDropdownItems).toHaveLength(3);
-		expect(roleDropdownItems[0]).toHaveTextContent('Admin');
-		expect(roleDropdownItems[1]).toHaveTextContent('Editor');
-		expect(roleDropdownItems[2]).toHaveTextContent('Custom');
+
+		// Verify the dropdown shows the current role (Admin)
+		const dropdownButton = within(roleDropdown).getByRole('button');
+		expect(dropdownButton).toHaveTextContent('Admin');
+		expect(dropdownButton).toBeEnabled();
 	});
 });

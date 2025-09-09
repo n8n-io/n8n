@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+
 import { BasePage } from './BasePage';
 
 export class ProjectSettingsPage extends BasePage {
@@ -44,7 +45,7 @@ export class ProjectSettingsPage extends BasePage {
 		}
 	}
 
-	async getMembersTable() {
+	getMembersTable() {
 		return this.page.getByTestId('project-members-table');
 	}
 
@@ -76,7 +77,7 @@ export class ProjectSettingsPage extends BasePage {
 	async getMemberRole(memberEmail: string): Promise<string> {
 		const memberRow = await this.getMemberByEmail(memberEmail);
 		const roleCell = memberRow.locator('td').nth(1); // Role is the second column
-		return (await roleCell.textContent()) || '';
+		return (await roleCell.textContent()) ?? '';
 	}
 
 	async canChangeMemberRole(memberEmail: string): Promise<boolean> {
