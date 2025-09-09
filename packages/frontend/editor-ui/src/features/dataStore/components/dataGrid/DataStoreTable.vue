@@ -78,7 +78,18 @@ const dataStoreGridBase = useDataStoreGridBase({
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const pagination = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
+const {
+	currentPage,
+	pageSize,
+	totalItems,
+	pageSizeOptions,
+	ensureItemOnPage,
+	setTotalItems,
+	setCurrentPage,
+	setPageSize,
+} = useDataStorePagination({
+	onChange: fetchDataStoreRowsFunction,
+});
 
 const selection = useDataStoreSelection({
 	gridApi: dataStoreGridBase.gridApi,
@@ -95,13 +106,13 @@ const dataStoreOperations = useDataStoreOperations({
 	addGridColumn: dataStoreGridBase.addColumn,
 	moveGridColumn: dataStoreGridBase.moveColumn,
 	gridApi: dataStoreGridBase.gridApi,
-	totalItems: pagination.totalItems,
-	setTotalItems: pagination.setTotalItems,
-	ensureItemOnPage: pagination.ensureItemOnPage,
+	totalItems,
+	setTotalItems,
+	ensureItemOnPage,
 	focusFirstEditableCell: dataStoreGridBase.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
-	currentPage: pagination.currentPage,
-	pageSize: pagination.pageSize,
+	currentPage,
+	pageSize,
 	currentSortBy: dataStoreGridBase.currentSortBy,
 	currentSortOrder: dataStoreGridBase.currentSortOrder,
 	handleClearSelection: selection.handleClearSelection,
@@ -134,7 +145,7 @@ const initialize = async (params: GridReadyEvent) => {
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
 
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
-	await pagination.setCurrentPage(1);
+	await setCurrentPage(1);
 });
 
 defineExpose({
@@ -179,15 +190,15 @@ defineExpose({
 		</div>
 		<div :class="$style.footer">
 			<el-pagination
-				v-model:current-page="pagination.currentPage.value"
-				v-model:page-size="pagination.pageSize.value"
+				v-model:current-page="currentPage"
+				v-model:page-size="pageSize"
 				data-test-id="data-store-content-pagination"
 				background
-				:total="pagination.totalItems.value"
-				:page-sizes="pagination.pageSizeOptions"
+				:total="totalItems"
+				:page-sizes="pageSizeOptions"
 				layout="total, prev, pager, next, sizes"
-				@update:current-page="pagination.setCurrentPage"
-				@size-change="pagination.setPageSize"
+				@update:current-page="setCurrentPage"
+				@size-change="setPageSize"
 			/>
 		</div>
 		<SelectedItemsInfo
