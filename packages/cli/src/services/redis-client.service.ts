@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { readFileSync } from 'fs';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 
@@ -131,7 +132,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, tlsCa, tlsServerName, tlsRejectUnauthorized, dualStack } =
+			this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -155,7 +157,14 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
-		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+		if (tls) {
+			options.tls = {
+				ca: tlsCa ? readFileSync(tlsCa as string).toString('utf-8') : undefined,
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				servername: (tlsServerName || undefined) as string | undefined,
+				rejectUnauthorized: tlsRejectUnauthorized ? undefined : false,
+			};
+		}
 
 		return options;
 	}

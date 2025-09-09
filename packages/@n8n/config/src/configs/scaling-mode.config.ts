@@ -53,6 +53,18 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
 
+	/** SSL certificate authority */
+	@Env('QUEUE_BULL_REDIS_TLS_CA')
+	tlsCa: string = '';
+
+	/** Server Name requested via SNI. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	tlsServerName: string = '';
+
+	/** If unauthorized SSL connections should be rejected */
+	@Env('QUEUE_BULL_REDIS_TLS_REJECT_UNAUTHORIZED')
+	tlsRejectUnauthorized: boolean = true;
+
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
