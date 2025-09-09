@@ -7,5 +7,6 @@ export default defineConfig(baseConfig, globalIgnores(['src/expressions/grammar*
 		'@typescript-eslint/naming-convention': 'warn',
 		'no-useless-escape': 'warn',
 		'@typescript-eslint/unbound-method': 'warn',
+		'id-denylist': 'warn',
 	},
 });

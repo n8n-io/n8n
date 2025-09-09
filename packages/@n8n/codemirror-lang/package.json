@@ -19,7 +19,8 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
-    "generate": "pnpm generate:expressions:grammar && pnpm format",
+    "generate:sql:grammar": "lezer-generator --typeScript --output src/sql/grammar.ts src/sql/sql.grammar",
+    "generate": "pnpm generate:expressions:grammar && pnpm generate:sql:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
     "lint": "eslint . --quiet",
@@ -28,12 +29,15 @@
     "format:check": "biome ci src test"
   },
   "peerDependencies": {
-    "@codemirror/language": "*",
+    "@codemirror/autocomplete": "^6.16.0",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/state": "^6.4.1",
     "@lezer/highlight": "*",
-    "@lezer/lr": "^1.4.0"
+    "@lezer/lr": "^1.4.2"
   },
   "devDependencies": {
+    "@lezer/generator": "^1.8.0",
     "@n8n/typescript-config": "workspace:*",
-    "@lezer/generator": "^1.7.0"
+    "ist": "^1.1.7"
   }
 }
