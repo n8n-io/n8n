@@ -113,10 +113,15 @@ export function handleRequests({
 	// 2. create metadata for current node
 	const parentNode = executionData.source?.main?.[0]?.previousNode;
 	if (!parentNode) {
-		logger.warn('Cannot find parent node for subnode execution', {
+		logger.warn('Cannot find parent node for subnode execution - request will be ignored', {
 			executionNode: executionData.node.name,
 			sourceData: executionData.source,
 			workflowId: workflow.id,
+			requestActions: request.actions.map((a) => ({
+				nodeName: a.nodeName,
+				actionType: a.actionType,
+				id: a.id,
+			})),
 		});
 
 		return { nodesToBeExecuted: [] };
