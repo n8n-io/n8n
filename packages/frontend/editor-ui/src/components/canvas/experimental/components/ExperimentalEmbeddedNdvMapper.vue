@@ -9,7 +9,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, ref, useTemplateRef } from 'vue';
-import { useElementSize } from '@vueuse/core';
+import { useElementBounding, useElementSize } from '@vueuse/core';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -28,6 +28,7 @@ const isOnceVisible = ref(isVisible.value);
 const canvasStore = useCanvasStore();
 const contentElRef = computed(() => contentRef.value?.$el ?? null);
 const contentSize = useElementSize(contentElRef);
+const refBounding = useElementBounding(virtualRef);
 
 watch(
 	isVisible,
@@ -63,6 +64,8 @@ defineExpose({
 					// Ensures that the popover is re-positioned when the reference element is resized
 					name: 'custom modifier',
 					options: {
+						refX: refBounding.x.value,
+						refY: refBounding.y.value,
 						width: contentSize.width.value,
 						height: contentSize?.height.value,
 					},
