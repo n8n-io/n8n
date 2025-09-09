@@ -208,15 +208,16 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 		returnType: T,
-		em: EntityManager,
+		em?: EntityManager,
 	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 		returnType: T,
-		em: EntityManager,
+		em?: EntityManager,
 	): Promise<DataTableInsertRowsResult> {
+		em = em ?? this.dataSource.manager;
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
