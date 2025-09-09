@@ -28,14 +28,6 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
-jest.mock('../source-control-helper.ee', () => ({
-	...jest.requireActual('../source-control-helper.ee'),
-	getTrackingInformationFromPostPushResult: jest.fn(() => ({
-		userId: 'mocked-user-id',
-	})),
-	getTagsPath: jest.fn(() => 'tags.json'),
-}));
-
 jest.mock('@n8n/backend-common', () => ({
 	...jest.requireActual('@n8n/backend-common'),
 	isContainedWithin: jest.fn(() => true),
@@ -102,7 +94,7 @@ describe('SourceControlService', () => {
 			const user = mock<User>();
 			const mockPushResult = mock<PushResult>();
 			const mockFile: SourceControlledFile = {
-				file: '/Users/my-user/.n8n/git/workflows/some-workflow.json',
+				file: 'some-workflow.json',
 				id: 'test',
 				name: 'some-workflow',
 				type: 'workflow',
@@ -123,6 +115,9 @@ describe('SourceControlService', () => {
 			gitService.push.mockResolvedValueOnce(mockPushResult);
 			(isContainedWithin as jest.Mock).mockReturnValueOnce(true);
 
+			const expectedTagsPath = `${preferencesService.gitFolder}/tags.json`;
+			const expectedFilePath = `${preferencesService.gitFolder}/some-workflow.json`;
+
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
 				fileNames: [mockFile],
@@ -131,7 +126,7 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.stage).toHaveBeenCalledWith(
-				expect.objectContaining(new Set(['tags.json', mockFile.file])),
+				new Set([expectedFilePath, expectedTagsPath]),
 				new Set(),
 			);
 			expect(gitService.commit).toHaveBeenCalledWith('A commit message');
