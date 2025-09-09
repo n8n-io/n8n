@@ -149,8 +149,9 @@ export class AuthService {
 		const keyOwner = await this.userRepository
 			.createQueryBuilder('user')
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.leftJoinAndSelect('user.role', 'role')
 			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select('user')
+			.select(['user', 'role'])
 			.getOne();
 
 		if (!keyOwner) {
