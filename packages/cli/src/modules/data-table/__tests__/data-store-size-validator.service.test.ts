@@ -1,3 +1,6 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+
 import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 
 describe('DataStoreSizeValidator', () => {
@@ -6,7 +9,10 @@ describe('DataStoreSizeValidator', () => {
 	const maxSize = 100 * 1024 * 1024; // 100MB limit for tests
 
 	beforeEach(() => {
-		validator = new DataStoreSizeValidator(1000);
+		const globalConfig = mockInstance(GlobalConfig, {
+			datatable: { sizeCacheDuration: 1, warningThreshold: 95, maxSize: 100 * 1024 * 1024 },
+		});
+		validator = new DataStoreSizeValidator(globalConfig);
 		fetchSizeFn = jest.fn();
 	});
 

@@ -18,5 +18,5 @@ export class DataTableConfig {
 	 * This prevents excessive database queries for size validation.
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CACHE_DURATION_SECONDS')
-	sizeCacheDuration: number = 30;
+	sizeCacheDuration: number = 5;
 }
