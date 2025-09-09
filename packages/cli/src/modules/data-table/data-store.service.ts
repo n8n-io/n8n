@@ -9,7 +9,6 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type {
