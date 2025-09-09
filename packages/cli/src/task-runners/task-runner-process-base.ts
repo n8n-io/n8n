@@ -9,6 +9,7 @@ import { TypedEmitter } from '@/typed-emitter';
 
 import { forwardToLogger } from './forward-to-logger';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 
 export type ChildProcess = ReturnType<typeof spawn>;
 
@@ -36,9 +37,20 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		protected readonly logger: Logger,
 		protected readonly runnerConfig: TaskRunnersConfig,
 		protected readonly authService: TaskBrokerAuthService,
+		protected readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super();
 		this.logger = logger.scoped(this.loggerScope);
+
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
+			this.logger.warn('Task runner failed heartbeat check, restarting...');
+			void this.forceRestart();
+		});
+
+		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
+			this.logger.warn('Task runner timed out during task, restarting...');
+			void this.forceRestart();
+		});
 	}
 
 	get isRunning() {
@@ -96,6 +108,14 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		if (!this.isShuttingDown) {
 			setImmediate(async () => await this.start());
 		}
+	}
+
+	/** Force-restart a task runner process suspected of being unresponsive. */
+	protected async forceRestart() {
+		if (!this.process) return;
+
+		this.process.kill('SIGKILL');
+		await this._runPromise;
 	}
 
 	abstract startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess>;

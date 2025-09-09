@@ -8,13 +8,14 @@ import { promisify } from 'node:util';
 
 import { MissingRequirementsError } from './errors/missing-requirements.error';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-process-base';
 
 const asyncExec = promisify(exec);
 
 /**
  * Responsible for managing a Python task runner as a child process.
- * This is internal mode, which is not recommended for production.
+ * This is for internal mode, which is NOT recommended for production.
  */
 @Service()
 export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
@@ -26,8 +27,9 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		readonly logger: Logger,
 		readonly runnerConfig: TaskRunnersConfig,
 		readonly authService: TaskBrokerAuthService,
+		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService);
+		super(logger, runnerConfig, authService, runnerLifecycleEvents);
 	}
 
 	async startProcess(grantToken: string, taskBrokerUri: string) {

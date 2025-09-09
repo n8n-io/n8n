@@ -12,7 +12,7 @@ import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-p
 
 /**
  * Responsible for managing a JavaScript task runner as a child process.
- * This is internal mode, which is not recommended for production.
+ * This is for internal mode, which is NOT recommended for production.
  */
 @Service()
 export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
@@ -42,21 +42,11 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		readonly logger: Logger,
 		readonly runnerConfig: TaskRunnersConfig,
 		readonly authService: TaskBrokerAuthService,
-		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService);
+		super(logger, runnerConfig, authService, runnerLifecycleEvents);
 
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
-
-		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
-			this.logger.warn('Task runner failed heartbeat check, restarting...');
-			void this.forceRestart();
-		});
-
-		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
-			this.logger.warn('Task runner timed out during task, restarting...');
-			void this.forceRestart();
-		});
 	}
 
 	async startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess> {
@@ -68,21 +58,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		return spawn('node', [...flags, startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
 		});
-	}
-
-	/** Force-restart a runner suspected of being unresponsive. */
-	async forceRestart() {
-		if (!this.process) return;
-
-		this.process.kill('SIGKILL');
-
-		await this._runPromise;
-	}
-
-	killNode() {
-		if (!this.process) return;
-
-		this.process.kill();
 	}
 
 	setupProcessMonitoring(process: ChildProcess) {
