@@ -24,7 +24,6 @@ const $style = useCssModule();
 
 const {
 	hasPinnedData,
-	issues,
 	executionErrors,
 	validationErrors,
 	hasExecutionErrors,
