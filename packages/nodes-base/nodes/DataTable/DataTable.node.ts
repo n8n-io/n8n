@@ -35,6 +35,7 @@ export class DataTable implements INodeType {
 				displayCondition: '={{ $parameter.columns?.schema?.length === 0 }}',
 				whenToDisplay: 'always',
 				location: 'ndv',
+				type: 'warning',
 			},
 		],
 		properties: [
