@@ -1554,9 +1554,12 @@ describe('dataStore', () => {
 			});
 
 			// Insert initial row
-			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') },
-			]);
+			const ids = await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') }],
+				'id',
+			);
 			expect(ids).toEqual([{ id: 1 }]);
 
 			// ACT
