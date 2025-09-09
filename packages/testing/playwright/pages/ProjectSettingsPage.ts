@@ -50,13 +50,13 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async getMemberRowCount() {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		const rows = table.locator('tbody tr');
 		return await rows.count();
 	}
 
 	async getMemberByEmail(email: string) {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		return table.locator('tr').filter({ hasText: email });
 	}
 
@@ -88,7 +88,7 @@ export class ProjectSettingsPage extends BasePage {
 
 	// Table state and pagination methods
 	async getTablePaginationInfo() {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		const pagination = table.locator('[data-testid*="pagination"]').first();
 		if (await pagination.isVisible()) {
 			return await pagination.textContent();
@@ -97,20 +97,20 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async clickNextPage() {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		const nextButton = table.locator('button').filter({ hasText: 'Next' });
 		await nextButton.click();
 	}
 
 	async clickPreviousPage() {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		const prevButton = table.locator('button').filter({ hasText: 'Previous' });
 		await prevButton.click();
 	}
 
 	// Sorting methods
 	async sortByColumn(columnName: string) {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		const header = table.locator('th').filter({ hasText: columnName });
 		await header.click();
 	}
@@ -142,7 +142,7 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async expectTableIsVisible() {
-		const table = await this.getMembersTable();
+		const table = this.getMembersTable();
 		await expect(table).toBeVisible();
 	}
 
