@@ -57,6 +57,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const $style = useCssModule();
 
@@ -139,6 +140,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
+const canvasStore = useCanvasStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -1025,6 +1027,8 @@ defineExpose({
 			/>
 		</Transition>
 
+		<div v-if="canvasStore.suppressInteraction" :class="$style.scrim" />
+
 		<CanvasControlButtons
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
@@ -1072,6 +1076,16 @@ defineExpose({
 
 	&.isExperimentalNdvActive {
 		--canvas-zoom-compensation-factor: 0.5;
+	}
+
+	.scrim {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		/* In front of canvas but behind control buttons */
+		z-index: 5;
 	}
 }
 </style>

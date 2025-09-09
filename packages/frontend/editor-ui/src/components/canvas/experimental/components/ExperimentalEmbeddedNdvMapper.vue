@@ -5,9 +5,11 @@ import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ElPopover } from 'element-plus';
 import { useVueFlow } from '@vue-flow/core';
-import { watchOnce } from '@vueuse/core';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, ref, useTemplateRef } from 'vue';
+import { useElementSize } from '@vueuse/core';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -23,13 +25,25 @@ const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
 const isOnceVisible = ref(isVisible.value);
+const canvasStore = useCanvasStore();
+const contentElRef = computed(() => contentRef.value?.$el ?? null);
+const contentSize = useElementSize(contentElRef);
 
-watchOnce(isVisible, (value) => {
-	isOnceVisible.value = isOnceVisible.value || value;
+watch(
+	isVisible,
+	(value) => {
+		isOnceVisible.value = isOnceVisible.value || value;
+		canvasStore.setSuppressInteraction(value);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	canvasStore.setSuppressInteraction(false);
 });
 
 defineExpose({
-	contentRef: computed<HTMLElement>(() => contentRef.value?.$el ?? null),
+	contentRef: contentElRef,
 });
 </script>
 
@@ -43,7 +57,17 @@ defineExpose({
 		:offset="8"
 		append-to="body"
 		:popper-options="{
-			modifiers: [{ name: 'flip', enabled: false }],
+			modifiers: [
+				{ name: 'flip', enabled: false },
+				{
+					// Ensures that the popover is re-positioned when the reference element is resized
+					name: 'custom modifier',
+					options: {
+						width: contentSize.width.value,
+						height: contentSize?.height.value,
+					},
+				},
+			],
 		}"
 		:persistent="isOnceVisible /* works like lazy initialization */"
 		virtual-triggering
