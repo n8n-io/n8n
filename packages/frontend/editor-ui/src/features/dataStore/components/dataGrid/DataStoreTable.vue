@@ -131,7 +131,7 @@ const initialize = async (params: GridReadyEvent) => {
 	await dataStoreOperations.fetchDataStoreRows();
 };
 
-const customNoRowsOverlay = `<div class="no-rows-overlay" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
+const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
 
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
 	await pagination.setCurrentPage(1);

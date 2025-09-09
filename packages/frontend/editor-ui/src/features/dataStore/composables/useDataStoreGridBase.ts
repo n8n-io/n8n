@@ -175,7 +175,7 @@ export const useDataStoreGridBase = ({
 			headerComponentParams: {
 				allowMenuActions: false,
 			},
-			cellClass: 'system-cell',
+			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
 			headerClass: 'system-column',
 		};
 		return [
