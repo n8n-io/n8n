@@ -129,7 +129,10 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 					</template>
 				</template>
 				<template #content>
-					<div class="add-ds-column-header-popover-content">
+					<div
+						class="add-ds-column-header-popover-content"
+						data-test-id="add-column-popover-content"
+					>
 						<div class="popover-body">
 							<N8nInputLabel
 								:label="i18n.baseText('dataStore.addColumn.nameInput.label')"
