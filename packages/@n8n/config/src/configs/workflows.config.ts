@@ -18,4 +18,8 @@ export class WorkflowsConfig {
 	/** How many workflows to activate simultaneously during startup. */
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
+
+	/** Whether workflows in personal projects can be activated. */
+	@Env('N8N_ALLOW_PERSONAL_PROJECT_WORKFLOW_ACTIVATION')
+	allowPersonalProjectWorkflowActivation: boolean = false;
 }

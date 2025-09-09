@@ -111,6 +111,7 @@ export const defaultSettings: FrontendSettings = {
 		whatsNewEndpoint: '',
 	},
 	workflowCallerPolicyDefaultOption: 'any',
+	allowPersonalProjectWorkflowActivation: false,
 	workflowTagsDisabled: false,
 	variables: {
 		limit: -1,

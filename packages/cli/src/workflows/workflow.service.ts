@@ -219,6 +219,20 @@ export class WorkflowService {
 			);
 		}
 
+		// Prevent activation of workflows in personal projects (if the setting is disabled)
+		if (
+			workflowUpdateData.active &&
+			!this.globalConfig.workflows.allowPersonalProjectWorkflowActivation
+		) {
+			const owningProject =
+				await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+			if (owningProject?.type === 'personal') {
+				throw new BadRequestError(
+					'Workflows in personal projects cannot be activated. Move the workflow to a shared project to activate it.',
+				);
+			}
+		}
+
 		if (
 			!forceSave &&
 			workflowUpdateData.versionId !== '' &&
