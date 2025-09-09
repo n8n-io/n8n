@@ -629,9 +629,10 @@ const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
 const isMapperAvailable = computed(
 	() =>
-		isModelValueExpression.value ||
-		props.forceShowExpression ||
-		(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime'),
+		props.path.startsWith('parameters.') &&
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
 );
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
