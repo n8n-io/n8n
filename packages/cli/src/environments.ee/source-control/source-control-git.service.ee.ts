@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type {
 	CommitResult,
@@ -204,7 +204,7 @@ export class SourceControlGitService {
 
 		const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
 		if (!credentials) {
-			throw new UserError('HTTPS connection type specified but no credentials found');
+			throw new UnexpectedError('HTTPS connection type specified but no credentials found');
 		}
 
 		const urlObj = new URL(repositoryUrl);

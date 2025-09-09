@@ -263,21 +263,24 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
-		if (noKeyPair && preferences.connectionType === 'ssh') await this.generateAndSaveKeyPair();
-
+		// Generate SSH key pair for SSH connections or when connectionType is undefined for backward compatibility
 		if (
-			preferences.connectionType === 'https' &&
-			preferences.httpsUsername &&
-			preferences.httpsPassword
+			noKeyPair &&
+			(preferences.connectionType === 'ssh' || preferences.connectionType === undefined)
 		) {
-			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
-			const sanitizedPreferences = { ...preferences };
-			delete sanitizedPreferences.httpsUsername;
-			delete sanitizedPreferences.httpsPassword;
-			this.sourceControlPreferences = sanitizedPreferences;
-		} else {
-			this.sourceControlPreferences = preferences;
+			await this.generateAndSaveKeyPair();
 		}
+
+		const sanitizedPreferences = { ...preferences };
+
+		if (preferences.httpsUsername && preferences.httpsPassword) {
+			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
+		}
+
+		delete sanitizedPreferences.httpsUsername;
+		delete sanitizedPreferences.httpsPassword;
+
+		this.sourceControlPreferences = sanitizedPreferences;
 
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
