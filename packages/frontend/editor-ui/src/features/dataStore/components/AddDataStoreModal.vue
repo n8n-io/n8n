@@ -96,7 +96,7 @@ const redirectToDataStores = () => {
 			<div :class="$style.footer">
 				<n8n-button
 					:disabled="!dataStoreName"
-					:label="i18n.baseText('dataStore.add.button.label')"
+					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-store-button"
 					@click="onSubmit"
 				/>

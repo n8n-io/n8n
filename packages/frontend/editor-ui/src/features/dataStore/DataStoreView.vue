@@ -143,7 +143,7 @@ watch(
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
 				:description="i18n.baseText('dataStore.empty.description')"
-				:button-text="i18n.baseText('generic.create')"
+				:button-text="i18n.baseText('dataStore.add.button.label')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>
