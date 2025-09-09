@@ -12,6 +12,7 @@ import type {
 	SortDirection,
 } from 'ag-grid-community';
 import type {
+	AddColumnResponse,
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
@@ -49,7 +50,7 @@ export const useDataStoreGridBase = ({
 	gridContainerRef: Ref<HTMLElement | null>;
 	onDeleteColumn: (columnId: string) => void;
 	onAddRowClick: () => void;
-	onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<boolean>;
+	onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<AddColumnResponse>;
 }) => {
 	const gridApi = ref<GridApi | null>(null);
 	const colDefs = ref<ColDef[]>([]);
