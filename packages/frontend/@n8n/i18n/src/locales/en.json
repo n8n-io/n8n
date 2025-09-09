@@ -1974,7 +1974,7 @@
 	"settings.communityNodes.confirmModal.update.message": "You are about to update {packageName} to version {version}",
 	"settings.communityNodes.confirmModal.includedNodes": "Package includes: {nodes}",
 	"settings.communityNodes.confirmModal.update.warning": "This version has not been verified by n8n and may contain breaking changes or bugs.",
-	"settings.communityNodes.confirmModal.update.description": "Updating to the latest version will update every instance of these nodes. The following workflows will be effected:",
+	"settings.communityNodes.confirmModal.update.description": "Updating to the latest version will update every instance of these nodes. The following workflows will be affected:",
 	"settings.communityNodes.confirmModal.update.buttonLabel": "Confirm update",
 	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
 	"settings.communityNodes.confirmModal.cancel": "Cancel",
