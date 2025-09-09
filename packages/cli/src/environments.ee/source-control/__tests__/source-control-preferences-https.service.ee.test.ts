@@ -250,11 +250,35 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 			expect(generateSpy).toHaveBeenCalled();
 		});
 
-		it('should not save HTTPS credentials for SSH connection', async () => {
+		it('should generate SSH key pair for undefined connectionType when no key pair exists (backward compatibility)', async () => {
+			// Arrange
+			const preferences: Partial<SourceControlPreferences> = {
+				repositoryUrl: 'git@github.com:user/repo.git',
+				branchName: 'main',
+				// connectionType is undefined for backward compatibility
+			};
+
+			jest
+				.spyOn(sourceControlPreferencesService as any, 'getKeyPairFromDatabase')
+				.mockResolvedValue(null);
+
+			const mockResult = { publicKey: 'mock-key' } as SourceControlPreferences;
+			const generateSpy = jest
+				.spyOn(sourceControlPreferencesService, 'generateAndSaveKeyPair')
+				.mockResolvedValue(mockResult);
+
+			// Act
+			await sourceControlPreferencesService.setPreferences(preferences);
+
+			// Assert - Should generate SSH key for backward compatibility
+			expect(generateSpy).toHaveBeenCalled();
+		});
+
+		it('should save HTTPS credentials and sanitize preferences even for SSH connection', async () => {
 			// Arrange
 			const preferences: Partial<SourceControlPreferences> = {
 				connectionType: 'ssh',
-				httpsUsername: 'user', // These should be ignored
+				httpsUsername: 'user', // These should be encrypted and removed from preferences
 				httpsPassword: 'token',
 			};
 
@@ -262,15 +286,23 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 				.spyOn(sourceControlPreferencesService as any, 'getKeyPairFromDatabase')
 				.mockResolvedValue({});
 
-			const saveSpy = jest.spyOn(sourceControlPreferencesService, 'saveHttpsCredentials');
+			const saveSpy = jest
+				.spyOn(sourceControlPreferencesService, 'saveHttpsCredentials')
+				.mockResolvedValue(undefined);
+
+			jest
+				.spyOn(mockCipher, 'encrypt')
+				.mockReturnValueOnce('encrypted_user')
+				.mockReturnValueOnce('encrypted_pass');
 
 			// Act
 			const result = await sourceControlPreferencesService.setPreferences(preferences);
 
-			// Assert
-			expect(saveSpy).not.toHaveBeenCalled();
-			expect(result.httpsUsername).toBe('user');
-			expect(result.httpsPassword).toBe('token');
+			// Assert - HTTPS credentials should always be encrypted and sanitized for security
+			expect(saveSpy).toHaveBeenCalledWith('user', 'token');
+			expect(result.httpsUsername).toBeUndefined();
+			expect(result.httpsPassword).toBeUndefined();
+			expect(result.connectionType).toBe('ssh');
 		});
 	});
 });
