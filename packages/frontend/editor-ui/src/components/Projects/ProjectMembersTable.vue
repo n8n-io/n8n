@@ -40,11 +40,7 @@ const tableOptions = defineModel<TableOptions>('tableOptions', {
 	default: () => ({
 		page: 0,
 		itemsPerPage: 10,
-		sortBy: [
-			{ id: 'firstName', desc: false },
-			{ id: 'lastName', desc: false },
-			{ id: 'email', desc: false },
-		],
+		sortBy: [],
 	}),
 });
 
@@ -54,6 +50,7 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 		title: i18n.baseText('projects.settings.table.header.user'),
 		key: 'name',
 		width: 400,
+		disableSort: true,
 		value(row) {
 			return {
 				...row,
@@ -65,6 +62,7 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 	{
 		title: i18n.baseText('projects.settings.table.header.role'),
 		key: 'role',
+		disableSort: true,
 	},
 ]);
 
@@ -119,7 +117,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		<N8nDataTableServer
 			v-model:sort-by="tableOptions.sortBy"
 			v-model:page="tableOptions.page"
-			v-model:items-per-page="tableOptions.itemsPerPage"
+			v-model:items-per-page="data.count"
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
