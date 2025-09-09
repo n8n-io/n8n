@@ -16,16 +16,18 @@ interface ProjectMemberData {
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;
-	actions: ActionDropdownItem[];
+	actions: ActionDropdownItem<string>[];
 }>();
 
 const emit = defineEmits<{
 	'update:role': [payload: { role: string; userId: string }];
 }>();
 
-const selectedRole = ref<ProjectRole>(props.data.role);
+const selectedRole = ref<string>(props.data.role);
 const isEditable = computed(() => props.data.role !== 'project:personalOwner');
-const roleLabel = computed(() => props.roles[selectedRole.value]?.label || selectedRole.value);
+const roleLabel = computed(
+	() => props.roles[selectedRole.value as ProjectRole]?.label || selectedRole.value,
+);
 
 const onActionSelect = (role: string) => {
 	emit('update:role', {
@@ -59,7 +61,7 @@ const onActionSelect = (role: string) => {
 					:model-value="selectedRole"
 					:label="item.id"
 					:disabled="item.disabled"
-					@update:model-value="selectedRole = item.id as ProjectRole"
+					@update:model-value="selectedRole = item.id"
 				>
 					<span :class="$style.radioLabel">
 						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>

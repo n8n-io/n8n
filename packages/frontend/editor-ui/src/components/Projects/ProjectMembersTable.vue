@@ -87,7 +87,7 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 	},
 }));
 
-const roleActions = computed<ActionDropdownItem[]>(() => [
+const roleActions = computed<Array<ActionDropdownItem<string>>>(() => [
 	...props.projectRoles.map((role) => ({
 		id: role.slug,
 		label: role.displayName,
