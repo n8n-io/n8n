@@ -22,8 +22,12 @@ export class JsTaskRunnerSandbox {
 		private readonly jsCode: string,
 		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
-		private readonly executeFunctions: IExecuteFunctions,
+		private readonly executeFunctions: Pick<
+			IExecuteFunctions,
+			'startJob' | 'continueOnFail' | 'helpers'
+		>,
 		private readonly chunkSize = 1000,
+		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
@@ -36,6 +40,7 @@ export class JsTaskRunnerSandbox {
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
 			},
 			itemIndex,
 		);
@@ -49,6 +54,28 @@ export class JsTaskRunnerSandbox {
 			JS_TEXT_KEYS,
 			this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
 		);
+	}
+
+	async runCodeForTool(): Promise<unknown> {
+		const itemIndex = 0;
+
+		const executionResult = await this.executeFunctions.startJob(
+			'javascript',
+			{
+				code: this.jsCode,
+				nodeMode: this.nodeMode,
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
+			},
+			itemIndex,
+		);
+
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		return executionResult.result;
 	}
 
 	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
@@ -70,6 +97,7 @@ export class JsTaskRunnerSandbox {
 						startIndex: chunk.startIdx,
 						count: chunk.count,
 					},
+					additionalProperties: this.additionalProperties,
 				},
 				itemIndex,
 			);

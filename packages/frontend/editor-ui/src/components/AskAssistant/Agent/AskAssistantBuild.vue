@@ -33,6 +33,7 @@ const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const planStatus = ref<'pending' | 'approved' | 'rejected'>();
 const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
+const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -60,6 +61,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	workflowUpdated.value = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -113,6 +115,33 @@ function shouldShowPlanControls(message: NodesPlanMessageType) {
 	return planMessageIndex === builderStore.chatMessages.length - 1;
 }
 
+function dedupeToolNames(toolNames: string[]): string[] {
+	return [...new Set(toolNames)];
+}
+
+function trackWorkflowModifications() {
+	if (workflowUpdated.value) {
+		// Track tool usage for telemetry
+		const newToolMessages = builderStore.toolMessages.filter(
+			(toolMsg) =>
+				toolMsg.status !== 'running' &&
+				toolMsg.toolCallId &&
+				!trackedTools.value.has(toolMsg.toolCallId),
+		);
+
+		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+		telemetry.track('Workflow modified by builder', {
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			session_id: builderStore.trackingSessionId,
+			start_workflow_json: workflowUpdated.value.start,
+			end_workflow_json: workflowUpdated.value.end,
+			workflow_id: workflowsStore.workflowId,
+		});
+
+		workflowUpdated.value = undefined;
+	}
+}
+
 // Watch for workflow updates and apply them
 watch(
 	() => builderStore.workflowMessages,
@@ -125,7 +154,8 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const currentWorkflowJson = builderStore.getWorkflowSnapshot();
+					const originalWorkflowJson =
+						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
@@ -135,25 +165,13 @@ watch(
 							tidyUp: true,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
+							trackEvents: false,
 						});
 
-						// Track tool usage for telemetry
-						const newToolMessages = builderStore.toolMessages.filter(
-							(toolMsg) =>
-								toolMsg.status !== 'running' &&
-								toolMsg.toolCallId &&
-								!trackedTools.value.has(toolMsg.toolCallId),
-						);
-
-						newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-
-						telemetry.track('Workflow modified by builder', {
-							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-							session_id: builderStore.trackingSessionId,
-							start_workflow_json: currentWorkflowJson,
-							end_workflow_json: msg.codeSnippet,
-							workflow_id: workflowsStore.workflowId,
-						});
+						workflowUpdated.value = {
+							start: originalWorkflowJson,
+							end: msg.codeSnippet,
+						};
 					}
 				}
 			});
@@ -171,10 +189,14 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async () => {
+	async (isStreaming) => {
+		if (!isStreaming) {
+			trackWorkflowModifications();
+		}
+
 		if (
 			builderStore.initialGeneration &&
-			!builderStore.streaming &&
+			!isStreaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
 			// Check if the generation completed successfully (no error or cancellation)

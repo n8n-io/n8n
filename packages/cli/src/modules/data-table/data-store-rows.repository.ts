@@ -31,7 +31,6 @@ import {
 	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
-	splitRowsByExistence,
 	toDslColumns,
 	toSqliteGlobFromPercent,
 } from './utils/sql-utils';
@@ -231,7 +230,7 @@ export class DataStoreRowsRepository {
 
 	async updateRow(
 		dataStoreId: string,
-		setData: Record<string, DataStoreColumnJsType | null>,
+		data: Record<string, DataStoreColumnJsType | null>,
 		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		returnData: boolean = false,
@@ -245,6 +244,7 @@ export class DataStoreRowsRepository {
 			this.dataSource.driver.escape(x),
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+		const setData = { ...data };
 
 		for (const column of columns) {
 			if (column.name in setData) {
@@ -287,66 +287,6 @@ export class DataStoreRowsRepository {
 
 		const ids = affectedRows.map((row) => row.id);
 		return await this.getManyByIds(dataStoreId, ids, columns);
-	}
-
-	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async upsertRows<T extends boolean | undefined>(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
-		columns: DataTableColumn[],
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	async upsertRows(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
-		columns: DataTableColumn[],
-		returnData?: boolean,
-	) {
-		returnData = returnData ?? false;
-		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
-			dataStoreId,
-			matchFields,
-			rows,
-		);
-
-		const output: DataStoreRowReturn[] = [];
-
-		if (rowsToInsert.length > 0) {
-			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
-			if (returnData) {
-				output.push.apply(output, result);
-			}
-		}
-
-		if (rowsToUpdate.length > 0) {
-			for (const row of rowsToUpdate) {
-				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-				if (updateKeys.length === 0) {
-					return true;
-				}
-
-				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
-				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
-
-				// Convert whereData object to DataTableFilter format
-				const filter: DataTableFilter = {
-					type: 'and',
-					filters: Object.entries(whereData).map(([columnName, value]) => ({
-						columnName,
-						condition: 'eq' as const,
-						value,
-					})),
-				};
-				const result = await this.updateRow(dataStoreId, setData, filter, columns, returnData);
-				if (returnData) {
-					output.push.apply(output, result);
-				}
-			}
-		}
-
-		return returnData ? output : true;
 	}
 
 	async deleteRows(dataStoreId: string, ids: number[]) {
@@ -504,29 +444,5 @@ export class DataStoreRowsRepository {
 	private applyPagination(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		query.skip(dto.skip);
 		query.take(dto.take);
-	}
-
-	private async fetchAndSplitRowsByExistence(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
-	): Promise<{ rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows }> {
-		const queryBuilder = this.dataSource
-			.createQueryBuilder()
-			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'datatable');
-
-		rows.forEach((row, index) => {
-			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));
-			if (index === 0) {
-				queryBuilder.where(matchData);
-			} else {
-				queryBuilder.orWhere(matchData);
-			}
-		});
-
-		const existing: Array<Record<string, DataStoreColumnJsType>> = await queryBuilder.getRawMany();
-
-		return splitRowsByExistence(existing, matchFields, rows);
 	}
 }

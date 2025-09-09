@@ -37,7 +37,7 @@ export async function execute(
 		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
 	}
 
-	const updatedRows = await dataStoreProxy.updateRows({
+	const updatedRows = await dataStoreProxy.updateRow({
 		data: row,
 		filter,
 	});
