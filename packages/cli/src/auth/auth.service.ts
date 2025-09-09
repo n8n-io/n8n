@@ -150,8 +150,9 @@ export class AuthService {
 			.createQueryBuilder('user')
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
 			.leftJoinAndSelect('user.role', 'role')
+			.leftJoinAndSelect('role.scopes', 'scopes')
 			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select(['user', 'role'])
+			.select(['user', 'role', 'scopes'])
 			.getOne();
 
 		if (!keyOwner) {
