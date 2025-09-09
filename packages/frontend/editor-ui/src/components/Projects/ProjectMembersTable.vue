@@ -51,12 +51,12 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 		key: 'name',
 		width: 400,
 		disableSort: true,
-		value(row) {
+		value(row: ProjectMemberData) {
 			return {
 				...row,
 				// Format for N8nUserInfo component
 				isPendingUser: false, // Project members are always confirmed users
-			};
+			} as UsersInfoProps;
 		},
 	},
 	{
@@ -117,7 +117,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 		<N8nDataTableServer
 			v-model:sort-by="tableOptions.sortBy"
 			v-model:page="tableOptions.page"
-			v-model:items-per-page="data.count"
+			:items-per-page="data.count"
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"

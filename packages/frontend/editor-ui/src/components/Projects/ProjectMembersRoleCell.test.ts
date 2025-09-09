@@ -134,7 +134,7 @@ const mockRoles: Record<ProjectRole, { label: string; desc: string }> = {
 	},
 };
 
-const mockActions: ActionDropdownItem<string>[] = [
+const mockActions: Array<ActionDropdownItem<string>> = [
 	{ id: 'project:admin', label: 'Admin' },
 	{ id: 'project:editor', label: 'Editor' },
 	{ id: 'project:viewer', label: 'Viewer', disabled: true },
@@ -370,7 +370,7 @@ describe('ProjectMembersRoleCell', () => {
 
 		it('should fallback to role string for unknown roles', () => {
 			const customRoles = { ...mockRoles };
-			delete (customRoles as any)['project:editor'];
+			delete (customRoles as Record<string, unknown>)['project:editor'];
 
 			renderComponent({
 				props: {

@@ -16,7 +16,7 @@ interface ProjectMemberData {
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;
-	actions: ActionDropdownItem<string>[];
+	actions: Array<ActionDropdownItem<string>>;
 }>();
 
 const emit = defineEmits<{
