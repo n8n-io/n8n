@@ -246,12 +246,22 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		// TODO: discuss wether we should add an additional this.executionRepository.findWithUnflattenedData(retriedExecutionId,sharedWorkflowIds)
-		// call in favor of manually creating the execution object
 		return {
-			...execution,
-			...executionData,
 			id: retriedExecutionId,
+			mode: executionData.mode,
+			createdAt: execution.createdAt,
+			startedAt: executionData.startedAt,
+			stoppedAt: executionData.stoppedAt,
+			workflowId: execution.workflowId,
+			finished: executionData.finished ?? false,
+			retryOf: execution.retryOf,
+			retrySuccessId: execution.retrySuccessId,
+			status: executionData.status,
+			waitTill: executionData.waitTill,
+			data: executionData.data,
+			workflowData: execution.workflowData,
+			customData: execution.customData,
+			annotation: execution.annotation,
 		};
 	}
 
