@@ -36,7 +36,7 @@ defineExpose({
 <template>
 	<ElPopover
 		:visible="isVisible"
-		placement="left"
+		placement="left-start"
 		:show-arrow="false"
 		:popper-class="`${$style.component} ignore-key-press-canvas`"
 		:width="360"
@@ -74,7 +74,7 @@ defineExpose({
 <style lang="scss" module>
 .component {
 	background-color: transparent !important;
-	padding: var(--spacing-s) 0 !important;
+	padding: 0 !important;
 	border: none !important;
 	box-shadow: none !important;
 	margin-top: -2px;
