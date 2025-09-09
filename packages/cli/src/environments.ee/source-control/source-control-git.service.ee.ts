@@ -41,10 +41,10 @@ export class SourceControlGitService {
 
 	/**
 	 * Run pre-checks before initialising git
-	 * Checks for existence of required binaries (git and ssh)
+	 * Checks for existence of required binaries (git; ssh only for SSH protocol)
 	 */
-	private preInitCheck(): boolean {
-		this.logger.debug('GitService.preCheck');
+	private preInitCheck(protocol: 'ssh' | 'https' = 'ssh'): boolean {
+		this.logger.debug('GitService.preCheck', { protocol });
 		try {
 			const gitResult = execSync('git --version', {
 				stdio: ['pipe', 'pipe', 'pipe'],
@@ -54,14 +54,16 @@ export class SourceControlGitService {
 			this.logger.error('Git binary check failed', { error });
 			throw new UnexpectedError('Git binary not found', { cause: error });
 		}
-		try {
-			const sshResult = execSync('ssh -V', {
-				stdio: ['pipe', 'pipe', 'pipe'],
-			});
-			this.logger.debug(`SSH binary found: ${sshResult.toString()}`);
-		} catch (error) {
-			this.logger.error('SSH binary check failed', { error });
-			throw new UnexpectedError('SSH binary not found', { cause: error });
+		if (protocol === 'ssh') {
+			try {
+				const sshResult = execSync('ssh -V', {
+					stdio: ['pipe', 'pipe', 'pipe'],
+				});
+				this.logger.debug(`SSH binary found: ${sshResult.toString()}`);
+			} catch (error) {
+				this.logger.error('SSH binary check failed', { error });
+				throw new UnexpectedError('SSH binary not found', { cause: error });
+			}
 		}
 		return true;
 	}
@@ -78,12 +80,27 @@ export class SourceControlGitService {
 			return;
 		}
 
-		this.preInitCheck();
+		const protocol = sourceControlPreferences.protocol ?? 'ssh';
+		this.preInitCheck(protocol);
 		this.logger.debug('Git pre-check passed');
 
-		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
+		if (protocol === 'ssh') {
+			sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
-		await this.setGitSshCommand(gitFolder, sshFolder);
+			await this.setGitSshCommand(gitFolder, sshFolder);
+		} else {
+			// HTTPS: only ensure git folder exists and create a git instance
+			sourceControlFoldersExistCheck([gitFolder]);
+			this.gitOptions = {
+				baseDir: gitFolder,
+				binary: 'git',
+				maxConcurrentProcesses: 6,
+				trimmed: false,
+			};
+			const { simpleGit } = await import('simple-git');
+
+			this.git = simpleGit(this.gitOptions).env('GIT_TERMINAL_PROMPT', '0');
+		}
 
 		if (!(await this.checkRepositorySetup())) {
 			await (this.git as unknown as SimpleGit).init();
@@ -158,25 +175,39 @@ export class SourceControlGitService {
 		}
 		try {
 			const remotes = await this.git.getRemotes(true);
-			const foundRemote = remotes.find(
-				(e) => e.name === SOURCE_CONTROL_ORIGIN && e.refs.push === remote,
-			);
+			const normalize = (url: string) => {
+				try {
+					const u = new URL(url);
+					u.username = '';
+					u.password = '';
+					return u.toString();
+				} catch {
+					return url.replace(/\/\/[^@/]+@/, '//');
+				}
+			};
+			const remoteNormalized = normalize(remote);
+			const foundRemote = remotes.find((e) => {
+				if (e.name !== SOURCE_CONTROL_ORIGIN) return false;
+				return normalize(e.refs.push) === remoteNormalized;
+			});
 			if (foundRemote) {
-				this.logger.debug(`Git remote found: ${foundRemote.name}: ${foundRemote.refs.push}`);
+				const sanitized = foundRemote.refs.push.replace(/\/\/[^@/]+@/, '//[REDACTED]@');
+				this.logger.debug(`Git remote found: ${foundRemote.name}: ${sanitized}`);
 				return true;
 			}
 		} catch (error) {
 			this.logger.error('Git remote check failed', { error });
 			throw new UnexpectedError('Git is not initialized', { cause: error });
 		}
-		this.logger.debug(`Git remote not found: ${remote}`);
+		const sanitized = remote.replace(/\/\/[^@/]+@/, '//[REDACTED]@');
+		this.logger.debug(`Git remote not found: ${sanitized}`);
 		return false;
 	}
 
 	async initRepository(
 		sourceControlPreferences: Pick<
 			SourceControlPreferences,
-			'repositoryUrl' | 'branchName' | 'initRepo'
+			'repositoryUrl' | 'branchName' | 'initRepo' | 'protocol' | 'username' | 'personalAccessToken'
 		>,
 		user: User,
 	): Promise<void> {
@@ -191,13 +222,31 @@ export class SourceControlGitService {
 			}
 		}
 		try {
-			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
-			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
+			let remoteUrl = sourceControlPreferences.repositoryUrl;
+			if (sourceControlPreferences.protocol === 'https') {
+				const username = sourceControlPreferences.username ?? '';
+				const token = sourceControlPreferences.personalAccessToken ?? '';
+				if (username && token) {
+					try {
+						const url = new URL(remoteUrl);
+						url.username = encodeURIComponent(username);
+						url.password = encodeURIComponent(token);
+						remoteUrl = url.toString();
+					} catch {
+						// leave as-is if URL constructor fails
+					}
+				}
+			}
+			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, remoteUrl);
+			const sanitized = remoteUrl.replace(/\/\/[^@/]+@/, '//[REDACTED]@');
+			this.logger.debug(`Git remote added: ${sanitized}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
 				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
 			} else {
-				throw error;
+				// sanitize any credential in error message
+				const msg = (error as Error).message.replace(/\/\/[^@/]+@/, '//[REDACTED]@');
+				throw new Error(msg);
 			}
 		}
 		await this.setGitUserDetails(
@@ -323,7 +372,10 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (fetch)');
 		}
-		await this.setGitSshCommand();
+		// Refresh SSH command in case the temp key path rotated
+		if ((this.sourceControlPreferencesService.getPreferences().protocol ?? 'ssh') === 'ssh') {
+			await this.setGitSshCommand();
+		}
 		return await this.git.fetch();
 	}
 
@@ -331,7 +383,9 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (pull)');
 		}
-		await this.setGitSshCommand();
+		if ((this.sourceControlPreferencesService.getPreferences().protocol ?? 'ssh') === 'ssh') {
+			await this.setGitSshCommand();
+		}
 		const params = {};
 		if (options.ffOnly) {
 			Object.assign(params, { '--ff-only': true });
@@ -349,7 +403,9 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized ({)');
 		}
-		await this.setGitSshCommand();
+		if ((this.sourceControlPreferencesService.getPreferences().protocol ?? 'ssh') === 'ssh') {
+			await this.setGitSshCommand();
+		}
 		if (force) {
 			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
 		}
