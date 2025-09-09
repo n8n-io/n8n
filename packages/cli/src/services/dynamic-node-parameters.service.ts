@@ -62,7 +62,9 @@ export class DynamicNodeParametersService {
 	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
 		if (
 			payload.projectId &&
-			!(await userHasScopes(user, ['project:read'], false, { projectId: payload.projectId }))
+			!(await userHasScopes(user, ['dataStore:listProject'], false, {
+				projectId: payload.projectId,
+			}))
 		) {
 			this.logger.log(
 				this.logger.WARN,

@@ -34,7 +34,7 @@ export class DynamicNodeParametersController {
 		} = payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		additionalData.projectId = projectId;
+		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
 			return await this.service.getOptionsViaMethodName(
@@ -80,7 +80,7 @@ export class DynamicNodeParametersController {
 		} = payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		additionalData.projectId = projectId;
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceLocatorResults(
 			methodName,
@@ -106,7 +106,7 @@ export class DynamicNodeParametersController {
 			payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		additionalData.projectId = projectId;
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceMappingFields(
 			methodName,
