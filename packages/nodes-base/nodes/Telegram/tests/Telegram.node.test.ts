@@ -4,7 +4,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	NodeExecutionWithMetadata,
-	IDataObject,
 } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
@@ -339,7 +338,6 @@ describe('Telegram node', () => {
 
 			expect(apiRequestSpy).toHaveBeenCalledTimes(2);
 
-			const firstCall = apiRequestSpy.mock.calls[0];
 			expect(apiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'POST',
@@ -359,8 +357,6 @@ describe('Telegram node', () => {
 					}),
 				}),
 			);
-
-			const secondCall = apiRequestSpy.mock.calls[1];
 
 			expect(apiRequestSpy).toHaveBeenNthCalledWith(
 				2,
@@ -432,27 +428,27 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			const firstCall = apiRequestSpy.mock.calls[0];
-			expect(firstCall[4]).toEqual({
-				formData: expect.objectContaining({
-					photo: expect.objectContaining({
-						options: expect.objectContaining({
-							filename: 'fallback-name.jpg',
+			const expectFileName = (index: number, filename: string) => {
+				expect(apiRequestSpy).toHaveBeenNthCalledWith(
+					index,
+					'POST',
+					'sendPhoto',
+					{},
+					{},
+					{
+						formData: expect.objectContaining({
+							photo: expect.objectContaining({
+								options: expect.objectContaining({
+									filename,
+								}),
+							}),
 						}),
-					}),
-				}),
-			});
+					},
+				);
+			};
 
-			const secondCall = apiRequestSpy.mock.calls[1];
-			expect(secondCall[4]).toEqual({
-				formData: expect.objectContaining({
-					photo: expect.objectContaining({
-						options: expect.objectContaining({
-							filename: 'custom-name.jpg',
-						}),
-					}),
-				}),
-			});
+			expectFileName(1, 'fallback-name.jpg');
+			expectFileName(2, 'custom-name.jpg');
 		});
 
 		it('should process different chat IDs for multiple items correctly', async () => {
@@ -499,10 +495,24 @@ describe('Telegram node', () => {
 
 			expect(apiRequestSpy).toHaveBeenCalledTimes(3);
 
-			const calls = apiRequestSpy.mock.calls;
-			expect((calls[0][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-0');
-			expect((calls[1][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-1');
-			expect((calls[2][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-2');
+			const expectChatId = (n: number, chatId: string) => {
+				expect(apiRequestSpy).toHaveBeenNthCalledWith(
+					n,
+					'POST',
+					'sendPhoto',
+					{},
+					{},
+					{
+						formData: expect.objectContaining({
+							chat_id: chatId,
+						}),
+					},
+				);
+			};
+
+			expectChatId(1, 'chat-id-0');
+			expectChatId(2, 'chat-id-1');
+			expectChatId(3, 'chat-id-2');
 		});
 	});
 });
