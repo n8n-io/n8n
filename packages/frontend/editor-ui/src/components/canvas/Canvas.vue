@@ -658,11 +658,6 @@ async function onResetZoom() {
 	await onZoomTo(defaultZoom);
 }
 
-function setReadonly(value: boolean) {
-	setInteractive(!value);
-	elementsSelectable.value = true;
-}
-
 function onPaneMove({ event }: { event: unknown }) {
 	// The event object is either D3ZoomEvent or WheelEvent.
 	// Here I'm ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event.
@@ -871,9 +866,16 @@ onNodesInitialized(() => {
 	initialized.value = true;
 });
 
-watch(() => props.readOnly, setReadonly, {
-	immediate: true,
-});
+watch(
+	[() => props.readOnly, () => canvasStore.suppressInteraction],
+	([readOnly, suppressInteraction]) => {
+		setInteractive(!readOnly && !suppressInteraction);
+		elementsSelectable.value = !suppressInteraction;
+	},
+	{
+		immediate: true,
+	},
+);
 
 watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
@@ -1027,8 +1029,6 @@ defineExpose({
 			/>
 		</Transition>
 
-		<div v-if="canvasStore.suppressInteraction" :class="$style.scrim" />
-
 		<CanvasControlButtons
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
@@ -1076,16 +1076,6 @@ defineExpose({
 
 	&.isExperimentalNdvActive {
 		--canvas-zoom-compensation-factor: 0.5;
-	}
-
-	.scrim {
-		position: absolute;
-		left: 0;
-		top: 0;
-		width: 100%;
-		height: 100%;
-		/* In front of canvas but behind control buttons */
-		z-index: 5;
 	}
 }
 </style>
