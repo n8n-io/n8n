@@ -45,7 +45,6 @@ export class DataStoreService {
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
 	) {
 		this.logger = this.logger.scoped('data-table');
