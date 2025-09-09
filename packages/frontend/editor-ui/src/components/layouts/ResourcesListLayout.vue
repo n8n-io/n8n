@@ -345,11 +345,11 @@ const setSorting = async (sort: string, persistUpdate = true) => {
 	sortBy.value = sort;
 	if (persistUpdate) {
 		await savePaginationPreferences();
+		sendSortingTelemetry();
 	}
 	emit('update:pagination-and-sort', {
 		sort,
 	});
-	sendSortingTelemetry();
 };
 
 const setCurrentPage = async (page: number, persistUpdate = true) => {

@@ -23,7 +23,6 @@ import { transformNodeType } from '@/components/Node/NodeCreator/utils';
 import type {
 	IDataObject,
 	INodeInputConfiguration,
-	NodeParameterValueType,
 	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
@@ -391,15 +390,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		trackNodeCreatorEvent('User clicked custom API from node actions', properties);
 	}
 
-	function onAddActions(properties: {
-		node_type?: string;
-		action: string;
-		source_mode: string;
-		resource: NodeParameterValueType;
-	}) {
-		trackNodeCreatorEvent('User added action', properties);
-	}
-
 	function onSubcategorySelected(properties: { subcategory: string }) {
 		trackNodeCreatorEvent('User viewed node category', {
 			category_name: properties.subcategory,
@@ -459,7 +449,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onCategoryExpanded,
 		onActionsCustomAPIClicked,
 		onViewActions,
-		onAddActions,
 		onSubcategorySelected,
 		onNodeAddedToCanvas,
 	};

@@ -30,6 +30,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import { N8nButton, N8nCallout, N8nNotice } from '@n8n/design-system';
 import isEqual from 'lodash/isEqual';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -46,6 +47,7 @@ type Props = {
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -310,6 +312,7 @@ const createRequestParams = (methodName: string) => {
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
+		projectId: projectsStore.currentProjectId,
 	};
 
 	return requestParams;

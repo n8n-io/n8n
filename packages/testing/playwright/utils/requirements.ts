@@ -42,7 +42,7 @@ export async function setupTestRequirements(
 
 	// 3. Setup API intercepts
 	if (requirements.intercepts) {
-		for (const [name, config] of Object.entries(requirements.intercepts)) {
+		for (const config of Object.values(requirements.intercepts)) {
 			await page.route(config.url, async (route) => {
 				await route.fulfill({
 					status: config.status ?? 200,
@@ -56,7 +56,12 @@ export async function setupTestRequirements(
 
 	// 4. Setup workflows
 	if (requirements.workflow) {
-		for (const [name, workflowData] of Object.entries(requirements.workflow)) {
+		const entries =
+			typeof requirements.workflow === 'string'
+				? [[requirements.workflow, requirements.workflow]]
+				: Object.entries(requirements.workflow);
+
+		for (const [name, workflowData] of entries) {
 			try {
 				// Import workflow using the n8n page object
 				await n8n.goHome();

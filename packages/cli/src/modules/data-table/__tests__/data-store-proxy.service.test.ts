@@ -7,7 +7,7 @@ import type {
 	INode,
 	ListDataStoreRowsOptions,
 	MoveDataStoreColumnOptions,
-	UpsertDataStoreRowsOptions,
+	UpsertDataStoreRowOptions,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -207,15 +207,23 @@ describe('DataStoreProxyService', () => {
 			node,
 			'dataStore-id',
 		);
-		await dataStoreOperations.insertRows(rows);
+		await dataStoreOperations.insertRows(rows, 'count');
 
-		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows, true);
+		expect(dataStoreServiceMock.insertRows).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			rows,
+			'count',
+		);
 	});
 
-	it('should call upsertRows with correct parameters', async () => {
-		const options: UpsertDataStoreRowsOptions = {
-			matchFields: ['name'],
-			rows: [{ id: 1, name: 'row1' }],
+	it('should call upsertRow with correct parameters', async () => {
+		const options: UpsertDataStoreRowOptions = {
+			filter: {
+				filters: [{ columnName: 'name', condition: 'eq', value: 'test' }],
+				type: 'and',
+			},
+			data: { name: 'newName' },
 		};
 
 		const dataStoreOperations = await dataStoreProxyService.getDataStoreProxy(
@@ -223,9 +231,9 @@ describe('DataStoreProxyService', () => {
 			node,
 			'dataStore-id',
 		);
-		await dataStoreOperations.upsertRows(options);
+		await dataStoreOperations.upsertRow(options);
 
-		expect(dataStoreServiceMock.upsertRows).toBeCalledWith(
+		expect(dataStoreServiceMock.upsertRow).toBeCalledWith(
 			'dataStore-id',
 			PROJECT_ID,
 			options,

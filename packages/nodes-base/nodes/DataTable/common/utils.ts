@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	INode,
-	ListDataStoreContentFilter,
+	DataTableFilter,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
 	IExecuteFunctions,
@@ -12,7 +12,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
-import { ALL_FILTERS, ANY_FILTER } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 
 type DateLike = { toISOString: () => string };
@@ -32,7 +32,7 @@ export async function getDataTableProxyExecute(
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
@@ -44,16 +44,20 @@ export async function getDataTableProxyExecute(
 
 export async function getDataTableProxyLoadOptions(
 	ctx: ILoadOptionsFunctions,
-): Promise<IDataStoreProjectService> {
+): Promise<IDataStoreProjectService | undefined> {
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, undefined, {
 		extractValue: true,
 	}) as string;
+
+	if (!dataStoreId) {
+		return;
+	}
 
 	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
@@ -64,7 +68,7 @@ export async function getDataTableAggregateProxy(
 	if (ctx.helpers.getDataStoreAggregateProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	return await ctx.helpers.getDataStoreAggregateProxy();
@@ -72,23 +76,40 @@ export async function getDataTableAggregateProxy(
 
 export function isFieldEntry(obj: unknown): obj is FieldEntry {
 	if (obj === null || typeof obj !== 'object') return false;
-	return 'keyName' in obj && 'condition' in obj && 'keyValue' in obj;
+	return 'keyName' in obj && 'condition' in obj; // keyValue is optional
 }
 
 export function isMatchType(obj: unknown): obj is FilterType {
-	return typeof obj === 'string' && (obj === ANY_FILTER || obj === ALL_FILTERS);
+	return typeof obj === 'string' && (obj === ANY_CONDITION || obj === ALL_CONDITIONS);
 }
 
 export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
-): ListDataStoreContentFilter {
-	const filters = fieldEntries.map((x) => ({
-		columnName: x.keyName,
-		condition: x.condition,
-		value: x.keyValue,
-	}));
-	return { type: matchType === 'allFilters' ? 'and' : 'or', filters };
+): DataTableFilter {
+	const filters = fieldEntries.map((x) => {
+		switch (x.condition) {
+			case 'isEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: null,
+				};
+			case 'isNotEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'neq' as const,
+					value: null,
+				};
+			default:
+				return {
+					columnName: x.keyName,
+					condition: x.condition,
+					value: x.keyValue,
+				};
+		}
+	});
+	return { type: matchType === ALL_CONDITIONS ? 'and' : 'or', filters };
 }
 
 export function isFieldArray(value: unknown): value is FieldEntry[] {

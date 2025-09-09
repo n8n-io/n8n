@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 
+import type { WorkflowPlan } from '../agents/workflow-planner-agent';
 import type {
 	AgentMessageChunk,
 	ToolProgressChunk,
@@ -44,6 +45,24 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 				workflowJSON?: unknown;
 				workflowOperations?: unknown;
 			};
+			create_plan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+			};
+			review_plan?: {
+				planStatus?: string;
+			};
+			adjust_plan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+			};
+			__interrupt__?: Array<{
+				value: unknown;
+				resumable: boolean;
+				ns: string[];
+				when: string;
+			}>;
 		};
 
 		if ((agentChunk?.delete_messages?.messages ?? []).length > 0) {
@@ -96,6 +115,40 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 				return null;
 			}
+		}
+
+		// Handle plan creation
+		if (agentChunk?.create_plan?.workflowPlan) {
+			const workflowPlan = agentChunk.create_plan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
+		} else if ((agentChunk?.create_plan?.messages ?? []).length > 0) {
+			// When planner didn't create a plan, but responded with a message
+			const lastMessage =
+				agentChunk.create_plan!.messages![agentChunk.create_plan!.messages!.length - 1];
+			const messageChunk: AgentMessageChunk = {
+				role: 'assistant',
+				type: 'message',
+				text: lastMessage.content as string,
+			};
+
+			return { messages: [messageChunk] };
+		}
+
+		if (agentChunk?.adjust_plan?.workflowPlan) {
+			const workflowPlan = agentChunk.adjust_plan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
 		}
 
 		// Handle process_operations updates - emit workflow update after operations are processed
@@ -197,6 +250,16 @@ function createToolCallMessage(
 	toolCall: ToolCall,
 	builderTool?: BuilderTool,
 ): Record<string, unknown> {
+	if (toolCall.name === 'generate_workflow_plan') {
+		const workflowPlan = toolCall.args as WorkflowPlan;
+		return {
+			role: 'assistant',
+			type: 'plan',
+			plan: workflowPlan.plan,
+			message: workflowPlan.intro,
+		};
+	}
+
 	return {
 		id: toolCall.id,
 		toolCallId: toolCall.id,

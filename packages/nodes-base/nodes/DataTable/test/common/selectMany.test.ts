@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 
 import type { FieldEntry } from '../../common/constants';
-import { ANY_FILTER, ALL_FILTERS } from '../../common/constants';
+import { ANY_CONDITION, ALL_CONDITIONS } from '../../common/constants';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 import { executeSelectMany } from '../../common/selectMany';
 
@@ -37,7 +37,7 @@ describe('selectMany utils', () => {
 					case 'filters.conditions':
 						return filters;
 					case 'matchType':
-						return ANY_FILTER;
+						return ANY_CONDITION;
 				}
 			}),
 		} as unknown as IExecuteFunctions;
@@ -226,7 +226,7 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([{ json: { id: 1, name: 'Anne-Marie' } }]);
 			});
 
-			it('should handle multiple conditions with ANY_FILTER (OR logic - matches records satisfying either condition)', async () => {
+			it('should handle multiple conditions with ANY_CONDITION (OR logic - matches records satisfying either condition)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
@@ -244,7 +244,7 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
 			});
 
-			it('should handle multiple conditions with ALL_FILTERS (AND logic - matches records satisfying all conditions)', async () => {
+			it('should handle multiple conditions with ALL_CONDITIONS (AND logic - matches records satisfying all conditions)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
@@ -257,7 +257,7 @@ describe('selectMany utils', () => {
 						case 'filters.conditions':
 							return filters;
 						case 'matchType':
-							return ALL_FILTERS;
+							return ALL_CONDITIONS;
 					}
 				});
 				getManyRowsAndCount.mockReturnValue({
@@ -272,7 +272,7 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
 			});
 
-			it('should handle ALL_FILTERS excluding records that match only one condition (proves AND logic)', async () => {
+			it('should handle ALL_CONDITIONS excluding records that match only one condition (proves AND logic)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
@@ -285,7 +285,7 @@ describe('selectMany utils', () => {
 						case 'filters.conditions':
 							return filters;
 						case 'matchType':
-							return ALL_FILTERS;
+							return ALL_CONDITIONS;
 					}
 				});
 				getManyRowsAndCount.mockReturnValue({
@@ -300,7 +300,7 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([]);
 			});
 
-			it('should handle ANY_FILTER including records that match only one condition (proves OR logic)', async () => {
+			it('should handle ANY_CONDITION including records that match only one condition (proves OR logic)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
@@ -313,7 +313,7 @@ describe('selectMany utils', () => {
 						case 'filters.conditions':
 							return filters;
 						case 'matchType':
-							return ANY_FILTER;
+							return ANY_CONDITION;
 					}
 				});
 				getManyRowsAndCount.mockReturnValue({
