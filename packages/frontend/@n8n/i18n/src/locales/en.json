@@ -1966,7 +1966,7 @@
 	"settings.communityNodes.messages.update.error.title": "Problem updating package",
 	"settings.communityNodes.confirmModal.uninstall.title": "Uninstall node package",
 	"settings.communityNodes.confirmModal.uninstall.message": "Any workflows that use nodes from the {packageName} package won't be able to run. Are you sure?",
-	"settings.communityNodes.confirmModal.uninstall.description": "Uninstalling the package will remove every instance of nodes included in this package. The following workflows will be effected:",
+	"settings.communityNodes.confirmModal.uninstall.description": "Uninstalling the package will remove every instance of nodes included in this package. The following workflows will be affected:",
 	"settings.communityNodes.confirmModal.noWorkflowsUsingNodes": "Nodes from this package are not used in any workflows",
 	"settings.communityNodes.confirmModal.uninstall.buttonLabel": "Confirm uninstall",
 	"settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel": "Uninstalling",
