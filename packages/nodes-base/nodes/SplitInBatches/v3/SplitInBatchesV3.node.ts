@@ -164,17 +164,9 @@ export class SplitInBatchesV3 implements INodeType {
 
 		if (returnItems.length === 0) {
 			nodeContext.done = true;
-			// Only reset counter if we're truly done (not in infinite loop)
-			// Check if counter indicates possible loop before resetting
-			const nodeName = this.getNode().name;
-			const executionId = this.getExecutionId();
-			const globalKey = `${executionId}_${nodeName}`;
-			const currentCount = SplitInBatchesV3.executionCounters.get(globalKey) || 0;
-
-			if (currentCount <= 1) {
-				// Normal completion - safe to reset
-				SplitInBatchesV3.resetExecutionCount(this);
-			}
+			// Normal completion - always reset counter to prevent memory leaks
+			// The infinite loop protection happens in checkExecutionLimit, not here
+			SplitInBatchesV3.resetExecutionCount(this);
 			return [nodeContext.processedItems, []];
 		}
 
@@ -187,7 +179,6 @@ export class SplitInBatchesV3 implements INodeType {
 	 * Prevents infinite loops by limiting executions (PAY-2940)
 	 */
 	private static checkExecutionLimit(executeFunctions: IExecuteFunctions): void {
-		const maxExecutions = 3; // Low limit for testing infinite loops
 		const nodeName = executeFunctions.getNode().name;
 		const executionId = executeFunctions.getExecutionId();
 		const globalKey = `${executionId}_${nodeName}`;
@@ -197,12 +188,22 @@ export class SplitInBatchesV3 implements INodeType {
 		const newCount = currentCount + 1;
 		SplitInBatchesV3.executionCounters.set(globalKey, newCount);
 
+		// Calculate dynamic limit based on input data and batch size
+		const inputItems = executeFunctions.getInputData();
+		const batchSize = executeFunctions.getNodeParameter('batchSize', 0) as number;
+
+		// Expected batches = ceil(inputItems / batchSize) + some buffer for edge cases
+		// Minimum of 10 to handle small datasets, maximum of 1000 to prevent true infinite loops
+		const expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
+		const bufferMultiplier = 2; // Allow 2x expected batches for safety
+		const maxExecutions = Math.min(Math.max(expectedBatches * bufferMultiplier, 10), 1000);
+
 		if (newCount > maxExecutions) {
 			// Clean up before throwing error
 			SplitInBatchesV3.executionCounters.delete(globalKey);
 			throw new NodeOperationError(
 				executeFunctions.getNode(),
-				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the limit of ${maxExecutions}. ` +
+				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the calculated limit of ${maxExecutions} (expected ~${expectedBatches} batches). ` +
 					'This indicates an infinite loop. Check that the "done" output is not connected back to this node\'s input.',
 			);
 		}
