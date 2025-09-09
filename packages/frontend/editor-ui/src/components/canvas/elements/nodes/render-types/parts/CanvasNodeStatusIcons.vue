@@ -87,7 +87,7 @@ const commonClasses = computed(() => [
 			<template #content>
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
-			<N8nIcon icon="node-error" :size="size" />
+			<N8nIcon icon="node-execution-error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
