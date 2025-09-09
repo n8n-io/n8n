@@ -3,7 +3,7 @@
   "version": "0.5.0",
   "description": "Official CLI to create new community nodes for n8n",
   "bin": {
-    "create-n8n-node": "bin/create.js"
+    "create-node": "bin/create.js"
   },
   "files": [
     "bin",
