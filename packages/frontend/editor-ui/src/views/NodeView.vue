@@ -491,7 +491,7 @@ async function fetchAndSetParentFolder(folderId?: string) {
 }
 
 async function fetchAndSetProject(projectId: string) {
-	if (!projectsStore.currentProject) {
+	if (projectsStore.currentProject?.id !== projectId) {
 		const project = await projectsStore.fetchProject(projectId);
 		projectsStore.setCurrentProject(project);
 	}
@@ -614,9 +614,15 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	isBlankRedirect.value = true;
 	const templateId = workflow.meta.templateId;
 	const parentFolderId = route.query.parentFolderId as string | undefined;
+
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
+	await fetchAndSetParentFolder(parentFolderId);
+
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId, parentFolderId },
+		query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
 	});
 
 	await importTemplate({

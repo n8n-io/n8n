@@ -144,4 +144,3 @@ ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
-ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
