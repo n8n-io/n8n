@@ -28,7 +28,7 @@ import {
 	Builtin,
 	Whitespace,
 	Function,
-} from './sql.grammar.terms';
+} from './grammar.sql.terms';
 
 const enum Ch {
 	Newline = 10,

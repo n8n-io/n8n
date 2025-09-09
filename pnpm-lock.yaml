@@ -637,6 +637,9 @@ importers:
       '@lezer/lr':
         specifier: ^1.0.0
         version: 1.4.0
+      '@n8n/codemirror-lang':
+        specifier: workspace:*
+        version: link:../codemirror-lang
     devDependencies:
       '@codemirror/buildhelper':
         specifier: ^0.1.5
@@ -644,6 +647,9 @@ importers:
       '@codemirror/text':
         specifier: ^0.19.6
         version: 0.19.6
+      '@lezer/generator':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config

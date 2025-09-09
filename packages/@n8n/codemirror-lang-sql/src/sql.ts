@@ -9,10 +9,10 @@ import {
 import type { Extension } from '@codemirror/state';
 import { parseMixed } from '@lezer/common';
 import { styleTags, tags as t } from '@lezer/highlight';
+import { expressionParser } from '@n8n/codemirror-lang';
 
 import { completeFromSchema, completeKeywords } from './complete';
-import { parser as expressionParser } from './expressions.grammar';
-import { parser as baseParser } from './sql.grammar';
+import { parser as baseParser } from './grammar.sql';
 import type { Dialect } from './tokens';
 import { dialect, SQLFunctions, SQLKeywords, SQLTypes, tokens, tokensFor } from './tokens';
 

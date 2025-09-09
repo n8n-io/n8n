@@ -4,7 +4,7 @@ import { syntaxTree } from '@codemirror/language';
 import type { EditorState, Text } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 
-import { Type, Keyword } from './sql.grammar.terms';
+import { Type, Keyword } from './grammar.sql.terms';
 
 const skippedTokens = ['Whitespace'];
 

@@ -4,9 +4,10 @@
   "description": "SQL + n8n expression language support for CodeMirror 6",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "test": "pnpm prepare && jest",
-    "prepare": "cm-buildhelper src/sql.ts",
-    "build": "pnpm prepare",
+    "test": "jest",
+    "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
+    "generate": "pnpm generate:sql:grammar && pnpm format",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
@@ -22,14 +23,17 @@
     "email": "ivov.src@gmail.com",
     "url": "https://ivov.dev"
   },
-  "type": "module",
-  "main": "dist/index.cjs",
-  "exports": {
-    "import": "./dist/index.js",
-    "require": "./dist/index.cjs"
-  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
   "types": "dist/index.d.ts",
-  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
@@ -37,11 +41,13 @@
     "@lezer/highlight": "^1.0.0",
     "@codemirror/language": "^6.0.0",
     "@codemirror/state": "^6.0.0",
-    "@lezer/lr": "^1.0.0"
+    "@lezer/lr": "^1.0.0",
+    "@n8n/codemirror-lang": "workspace:*"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@codemirror/buildhelper": "^0.1.5",
-    "@codemirror/text": "^0.19.6"
+    "@codemirror/text": "^0.19.6",
+    "@lezer/generator": "^1.7.0"
   }
 }
