@@ -46,30 +46,29 @@ export class EmbeddingsLemonade implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.debug('Supply data for embeddings Lemonade');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const credentials = await this.getCredentials('lemonadeApi');
 
 		// Ensure we have an API key for OpenAI client validation
 		const apiKey = credentials.apiKey || 'lemonade-placeholder-key';
 
-		// Build configuration with explicit apiKey
-		const config: any = {
-			apiKey,
-			modelName,
-			configuration: {
-				baseURL: credentials.baseUrl as string,
-			},
+		// Build configuration object separately like official OpenAI nodes
+		const configuration: any = {
+			baseURL: credentials.baseUrl as string,
 		};
 
 		// Add custom headers if API key is provided
 		if (credentials.apiKey) {
-			config.configuration.defaultHeaders = {
+			configuration.defaultHeaders = {
 				Authorization: `Bearer ${credentials.apiKey as string}`,
 			};
 		}
 
-		const embeddings = new OpenAIEmbeddings(config);
+		const embeddings = new OpenAIEmbeddings({
+			apiKey,
+			model: modelName,
+			configuration,
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

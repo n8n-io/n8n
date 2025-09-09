@@ -56,13 +56,19 @@ export class LmLemonade implements INodeType {
 		const credentials = await this.getCredentials('lemonadeApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			temperature?: number;
+			topP?: number;
+			frequencyPenalty?: number;
+			presencePenalty?: number;
+			maxTokens?: number;
+			stop?: string;
+		};
 
 		// Process stop sequences
 		let stop: string[] | undefined;
-		if ((options as any).stop) {
-			const stopString = (options as any).stop as string;
-			stop = stopString
+		if (options.stop) {
+			stop = options.stop
 				.split(',')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
@@ -71,31 +77,31 @@ export class LmLemonade implements INodeType {
 		// Ensure we have an API key for OpenAI client validation
 		const apiKey = credentials.apiKey || 'lemonade-placeholder-key';
 
-		// Build configuration with explicit apiKey
-		const config: any = {
-			apiKey,
-			modelName,
-			temperature: (options as any).temperature,
-			topP: (options as any).topP,
-			frequencyPenalty: (options as any).frequencyPenalty,
-			presencePenalty: (options as any).presencePenalty,
-			maxTokens: (options as any).maxTokens > 0 ? (options as any).maxTokens : undefined,
-			stop,
-			configuration: {
-				baseURL: credentials.baseUrl as string,
-			},
-			callbacks: [new N8nLlmTracing(this)],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+		// Build configuration object separately like official OpenAI node
+		const configuration: any = {
+			baseURL: credentials.baseUrl as string,
 		};
 
 		// Add custom headers if API key is provided
 		if (credentials.apiKey) {
-			config.configuration.defaultHeaders = {
+			configuration.defaultHeaders = {
 				Authorization: `Bearer ${credentials.apiKey as string}`,
 			};
 		}
 
-		const model = new OpenAI(config);
+		const model = new OpenAI({
+			apiKey,
+			model: modelName,
+			temperature: options.temperature,
+			topP: options.topP,
+			frequencyPenalty: options.frequencyPenalty,
+			presencePenalty: options.presencePenalty,
+			maxTokens: options.maxTokens && options.maxTokens > 0 ? options.maxTokens : undefined,
+			stop,
+			configuration,
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+		});
 
 		return {
 			response: model,

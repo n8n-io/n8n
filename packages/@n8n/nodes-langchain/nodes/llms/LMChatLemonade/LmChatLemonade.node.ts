@@ -56,46 +56,51 @@ export class LmChatLemonade implements INodeType {
 		const credentials = await this.getCredentials('lemonadeApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			temperature?: number;
+			topP?: number;
+			frequencyPenalty?: number;
+			presencePenalty?: number;
+			maxTokens?: number;
+			stop?: string;
+		};
 
-		// Process stop sequences
-		let stop: string[] | undefined;
-		if ((options as any).stop) {
-			const stopString = (options as any).stop as string;
-			stop = stopString
+		// Process stop sequences if provided
+		const processedOptions = { ...options };
+		if (options.stop) {
+			const stopSequences = options.stop
 				.split(',')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
+			(processedOptions as any).stop = stopSequences.length > 0 ? stopSequences : undefined;
 		}
 
-		// Ensure we have an API key for OpenAI client validation
-		const apiKey = credentials.apiKey || 'lemonade-placeholder-key';
-
-		// Build configuration with explicit apiKey
-		const config: any = {
-			apiKey,
-			modelName,
-			temperature: (options as any).temperature,
-			topP: (options as any).topP,
-			frequencyPenalty: (options as any).frequencyPenalty,
-			presencePenalty: (options as any).presencePenalty,
-			maxTokens: (options as any).maxTokens > 0 ? (options as any).maxTokens : undefined,
-			stop,
-			configuration: {
-				baseURL: credentials.baseUrl as string,
-			},
-			callbacks: [new N8nLlmTracing(this)],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+		// Build configuration object like official OpenAI node
+		const configuration: any = {
+			baseURL: credentials.baseUrl as string,
 		};
 
 		// Add custom headers if API key is provided
 		if (credentials.apiKey) {
-			config.configuration.defaultHeaders = {
+			configuration.defaultHeaders = {
 				Authorization: `Bearer ${credentials.apiKey as string}`,
 			};
 		}
 
-		const model = new ChatOpenAI(config);
+		const model = new ChatOpenAI({
+			apiKey: credentials.apiKey || 'lemonade-placeholder-key',
+			model: modelName,
+			...processedOptions,
+			configuration,
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+		});
+
+		// Ensure the model has the correct LangChain namespace for AI Agent compatibility
+		// This is required for the isChatInstance() check in ConversationalAgent
+		if (!model.lc_namespace.includes('chat_models')) {
+			model.lc_namespace = [...model.lc_namespace, 'chat_models'];
+		}
 
 		return {
 			response: model,
