@@ -891,6 +891,9 @@ $main-panel-width: 360px;
 	position: fixed;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
 
 	span {
 		color: var(--color-ndv-back-font);
@@ -898,10 +901,6 @@ $main-panel-width: 360px;
 
 	&:hover {
 		cursor: pointer;
-	}
-
-	> * {
-		margin-right: var(--spacing-3xs);
 	}
 }
 
