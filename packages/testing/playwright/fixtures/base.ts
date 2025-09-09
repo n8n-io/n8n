@@ -1,3 +1,5 @@
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures } from '@currents/playwright';
 import { test as base, expect } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
@@ -10,7 +12,7 @@ import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
-type TestFixtures = {
+type N8NFixtures = {
 	n8n: n8nPage;
 	api: ApiHelpers;
 	baseURL: string;
@@ -18,7 +20,7 @@ type TestFixtures = {
 	proxyServer: ProxyServer;
 };
 
-type WorkerFixtures = {
+type N8NWorkerFixtures = {
 	n8nUrl: string;
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
@@ -42,8 +44,14 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	N8NFixtures & CurrentsFixtures,
+	N8NWorkerFixtures & CurrentsWorkerFixtures
+>({
 	// Container configuration from the project use options
+	...fixtures.baseFixtures,
+	...fixtures.coverageFixtures,
+	...fixtures.actionFixtures,
 	containerConfig: [
 		async ({}, use, workerInfo) => {
 			const config =
