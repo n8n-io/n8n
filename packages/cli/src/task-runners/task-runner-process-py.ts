@@ -5,6 +5,7 @@ import { exec, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { access } from 'node:fs/promises';
 
 import { MissingRequirementsError } from './errors/missing-requirements.error';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
@@ -42,7 +43,11 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = path.join(pythonDir, '.venv/bin/python');
 
-		if (!existsSync(venvPath)) throw new MissingRequirementsError('venv');
+		try {
+			await access(venvPath);
+		} catch {
+			throw new MissingRequirementsError('venv');
+		}
 
 		return spawn(venvPath, ['-m', 'src.main'], {
 			cwd: pythonDir,
