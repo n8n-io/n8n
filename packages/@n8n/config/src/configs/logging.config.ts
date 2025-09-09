@@ -15,6 +15,7 @@ export const LOG_SCOPES = [
 	'redis',
 	'scaling',
 	'waiting-executions',
+	'task-runner',
 	'task-runner-js',
 	'task-runner-py',
 	'insights',

@@ -42,7 +42,7 @@ export class TaskRunnerModule {
 		private readonly errorReporter: ErrorReporter,
 		private readonly runnerConfig: TaskRunnersConfig,
 	) {
-		this.logger = this.logger.scoped('task-runner-js');
+		this.logger = this.logger.scoped('task-runner');
 	}
 
 	async start() {
