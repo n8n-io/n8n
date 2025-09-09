@@ -1010,6 +1010,8 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 1000 });
+
 function onClickOutsideMapper() {
 	if (!isFocused.value) {
 		isMapperShown.value = false;
@@ -1574,7 +1576,6 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 						:rows="editorRows"
 					/>
 				</div>
-
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1591,7 +1592,9 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@update:model-value="
+						(valueChangedDebounced($event) as undefined) && onUpdateTextInputDebounced($event)
+					"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
