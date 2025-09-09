@@ -2,9 +2,13 @@
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
-import { N8nButton, N8nCheckbox, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
+import isEqualWith from 'lodash/isEqualWith';
+import sortBy from 'lodash/sortBy';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const rolesStore = useRolesStore();
@@ -20,6 +24,7 @@ const defaultForm = () => ({
 	scopes: [],
 });
 
+const initialState = ref<Role | undefined>();
 const { state: form } = useAsyncState(
 	async () => {
 		if (!props.roleSlug) {
@@ -28,6 +33,7 @@ const { state: form } = useAsyncState(
 
 		try {
 			const role = await rolesStore.fetchRoleBySlug({ slug: props.roleSlug });
+			initialState.value = structuredClone(role);
 			return {
 				displayName: role.displayName,
 				description: role.description,
@@ -41,6 +47,26 @@ const { state: form } = useAsyncState(
 	defaultForm(),
 	{ shallow: false },
 );
+
+const hasUnsavedChanges = computed(() => {
+	if (!initialState.value) return false;
+
+	if (!isEqualWith(initialState.value.displayName, form.value.displayName)) return true;
+	if (!isEqualWith(initialState.value.description, form.value.description)) return true;
+	if (!isEqualWith(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
+
+	return false;
+});
+
+function resetForm(payload: Role | undefined) {
+	form.value = payload
+		? {
+				displayName: payload.displayName,
+				description: payload.description,
+				scopes: payload.scopes,
+			}
+		: defaultForm();
+}
 
 const project = (['read', 'update', 'delete'] as const).map(
 	(action) => `project:${action}` as const,
@@ -97,6 +123,8 @@ async function createProjectRole() {
 			message: 'Role created successfully',
 		});
 
+		initialState.value = structuredClone(role);
+
 		return role;
 	} catch (error) {
 		showError(error, 'Error creating role');
@@ -115,6 +143,8 @@ async function updateProjectRole(slug: string) {
 		if (index !== -1) {
 			rolesStore.roles.project.splice(index, 1, role);
 		}
+
+		initialState.value = structuredClone(role);
 
 		showMessage({
 			type: 'success',
@@ -165,7 +195,20 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : 'New Role' }}
 			</N8nHeading>
-			<N8nButton @click="handleSubmit"> {{ roleSlug ? 'Edit' : 'Create' }}</N8nButton>
+			<div v-if="initialState">
+				<N8nButton
+					type="secondary"
+					:disabled="!hasUnsavedChanges"
+					class="mr-xs"
+					@click="resetForm(initialState)"
+				>
+					Discard changes
+				</N8nButton>
+				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">Save</N8nButton>
+			</div>
+			<template v-else>
+				<N8nButton @click="handleSubmit">Create</N8nButton>
+			</template>
 		</div>
 
 		<div style="width: 415px" class="mb-l">
@@ -208,12 +251,14 @@ const displayNameValidationRules = [
 			>
 				<div style="width: 133px">{{ type }}</div>
 				<div>
-					<N8nCheckbox
+					<N8nFormInput
 						v-for="scope in scopes[type]"
 						:key="scope"
 						:data-test-id="`scope-checkbox-${scope}`"
 						:model-value="form.scopes.includes(scope)"
 						:label="i18n.baseText(`projectRoles.${scope}`)"
+						validate-on-blur
+						type="checkbox"
 						@update:model-value="() => toggleScope(scope)"
 					/>
 				</div>

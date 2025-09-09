@@ -382,6 +382,309 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('Action Buttons', () => {
+		describe('Editing Mode (initialState exists)', () => {
+			beforeEach(async () => {
+				rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
+			});
+
+			it('should render discard changes and save buttons when editing existing role', async () => {
+				const { getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+
+				await waitFor(() => {
+					expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+				});
+
+				await waitFor(() => {
+					expect(getByText('Discard changes')).toBeInTheDocument();
+					expect(getByText('Save', { selector: 'button' })).toBeInTheDocument();
+				});
+			});
+
+			it('should disable discard changes and save buttons when no unsaved changes', async () => {
+				const { getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+
+				await waitFor(() => {
+					expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+				});
+
+				await waitFor(() => {
+					const discardButton = getByText('Discard changes');
+					const saveButton = getByText('Save', { selector: 'button' });
+
+					expect(discardButton).toBeDisabled();
+					expect(saveButton).toBeDisabled();
+				});
+			});
+
+			it('should enable discard changes and save buttons when there are unsaved changes', async () => {
+				const { container, getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+
+				await waitFor(() => {
+					expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+				});
+
+				// Wait for form to be populated
+				await waitFor(() => {
+					const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+					expect(nameInput?.value).toBe('Test Role');
+				});
+
+				// Make changes to form
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				if (nameInput) {
+					await userEvent.clear(nameInput);
+					await userEvent.type(nameInput, 'Modified Role');
+				}
+
+				await waitFor(() => {
+					const discardButton = getByText('Discard changes');
+					const saveButton = getByText('Save', { selector: 'button' });
+
+					expect(discardButton).not.toBeDisabled();
+					expect(saveButton).not.toBeDisabled();
+				});
+			});
+
+			it('should reset form to initial state when discard changes is clicked', async () => {
+				const { container, getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+
+				await waitFor(() => {
+					expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+				});
+
+				// Wait for form to be populated
+				await waitFor(() => {
+					const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+					expect(nameInput?.value).toBe('Test Role');
+				});
+
+				// Make changes to form
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				if (nameInput) {
+					await userEvent.clear(nameInput);
+					await userEvent.type(nameInput, 'Modified Role');
+				}
+
+				// Click discard changes
+				await userEvent.click(getByText('Discard changes'));
+
+				// Form should be reset to original values
+				await waitFor(() => {
+					expect(nameInput?.value).toBe('Test Role');
+				});
+			});
+
+			it('should call handleSubmit when save button is clicked', async () => {
+				const updatedRole = { ...mockExistingRole, displayName: 'Updated Role' };
+				rolesStore.updateProjectRole.mockResolvedValueOnce(updatedRole);
+				rolesStore.roles.project = [mockExistingRole];
+
+				const { container, getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+
+				await waitFor(() => {
+					expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+				});
+
+				// Wait for form to be populated
+				await waitFor(() => {
+					const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+					expect(nameInput?.value).toBe('Test Role');
+				});
+
+				// Make changes to form
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				if (nameInput) {
+					await userEvent.clear(nameInput);
+					await userEvent.type(nameInput, 'Updated Role');
+				}
+
+				// Click save button
+				await userEvent.click(getByText('Save', { selector: 'button' }));
+
+				await waitFor(() => {
+					expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
+						displayName: 'Updated Role',
+						description: 'A test role for testing',
+						scopes: ['workflow:read', 'workflow:create', 'credential:read'],
+					});
+				});
+			});
+		});
+
+		describe('Creation Mode (no initialState)', () => {
+			it('should render only create button when creating new role', () => {
+				const { getByText, queryByText } = renderComponent();
+
+				expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
+				expect(queryByText('Discard changes')).not.toBeInTheDocument();
+				expect(queryByText('Save', { selector: 'button' })).not.toBeInTheDocument();
+			});
+
+			it('should call handleSubmit when create button is clicked', async () => {
+				const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
+				rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
+
+				const { container, getByText } = renderComponent();
+
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				if (nameInput) await userEvent.type(nameInput, 'New Test Role');
+
+				await userEvent.click(getByText('Create', { selector: 'button' }));
+
+				await waitFor(() => {
+					expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+						displayName: 'New Test Role',
+						description: '',
+						scopes: [],
+						roleType: 'project',
+					});
+				});
+			});
+		});
+	});
+
+	describe('Form states', () => {
+		it('should return false when form matches initial state', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
+
+			const { getByText } = renderComponent({
+				props: { roleSlug: 'test-role' },
+			});
+
+			await waitFor(() => {
+				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+			});
+
+			// Buttons should be disabled when no changes
+			await waitFor(() => {
+				const discardButton = getByText('Discard changes');
+				const saveButton = getByText('Save', { selector: 'button' });
+
+				expect(discardButton).toBeDisabled();
+				expect(saveButton).toBeDisabled();
+			});
+		});
+
+		it('should return true when displayName is changed', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
+
+			const { container, getByText } = renderComponent({
+				props: { roleSlug: 'test-role' },
+			});
+
+			await waitFor(() => {
+				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+			});
+
+			// Wait for form to be populated
+			await waitFor(() => {
+				const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+				expect(nameInput?.value).toBe('Test Role');
+			});
+
+			// Change display name
+			const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
+			if (nameInput) {
+				await userEvent.clear(nameInput);
+				await userEvent.type(nameInput, 'Changed Name');
+			}
+
+			// Buttons should be enabled when changes exist
+			await waitFor(() => {
+				const discardButton = getByText('Discard changes');
+				const saveButton = getByText('Save', { selector: 'button' });
+
+				expect(discardButton).not.toBeDisabled();
+				expect(saveButton).not.toBeDisabled();
+			});
+		});
+
+		it('should return true when description is changed', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
+
+			const { container, getByText } = renderComponent({
+				props: { roleSlug: 'test-role' },
+			});
+
+			await waitFor(() => {
+				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+			});
+
+			// Wait for form to be populated
+			await waitFor(() => {
+				const descriptionInput = container.querySelector(
+					'textarea[maxlength="500"]',
+				) as HTMLTextAreaElement;
+				expect(descriptionInput?.value).toBe('A test role for testing');
+			});
+
+			// Change description
+			const descriptionInput = container.querySelector(
+				'textarea[maxlength="500"]',
+			) as HTMLTextAreaElement;
+			if (descriptionInput) {
+				await userEvent.clear(descriptionInput);
+				await userEvent.type(descriptionInput, 'Changed description');
+			}
+
+			// Buttons should be enabled when changes exist
+			await waitFor(() => {
+				const discardButton = getByText('Discard changes');
+				const saveButton = getByText('Save', { selector: 'button' });
+
+				expect(discardButton).not.toBeDisabled();
+				expect(saveButton).not.toBeDisabled();
+			});
+		});
+
+		it('should return true when scopes are changed', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce(mockExistingRole);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: { roleSlug: 'test-role' },
+			});
+
+			await waitFor(() => {
+				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
+			});
+
+			// Wait for form to be loaded with initial scopes
+			await waitFor(() => {
+				const discardButton = getByText('Discard changes');
+				expect(discardButton).toBeDisabled();
+			});
+
+			// Change scopes by toggling a checkbox
+			const scopeCheckbox = getByTestId('scope-checkbox-project:read');
+			const checkboxContainer = scopeCheckbox.closest('.n8n-checkbox');
+			const checkbox = checkboxContainer?.querySelector(
+				'input[type="checkbox"]',
+			) as HTMLInputElement;
+
+			await userEvent.click(checkbox);
+
+			// Buttons should be enabled when scopes change
+			await waitFor(() => {
+				const discardButton = getByText('Discard changes');
+				const saveButton = getByText('Save', { selector: 'button' });
+
+				expect(discardButton).not.toBeDisabled();
+				expect(saveButton).not.toBeDisabled();
+			});
+		});
+	});
+
 	describe('Edge Cases', () => {
 		it('should handle empty description', async () => {
 			rolesStore.createProjectRole.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
