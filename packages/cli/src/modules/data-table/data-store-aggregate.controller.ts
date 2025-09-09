@@ -25,7 +25,7 @@ export class DataStoreAggregateController {
 	@Get('/limits')
 	@GlobalScope('dataStore:list')
 	getDataTablesSize() {
-		const sizeInMbs = this.dataStoreSizeValidator.getSize();
+		const sizeInMbs = this.dataStoreSizeValidator.getCachedSize();
 		return { sizeInMbs };
 	}
 }
