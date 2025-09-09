@@ -66,6 +66,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					itemData: { item: i },
 				});
 
+				// pushing here risks stack overflows for very high numbers (~100k) of results on filter-based queries (update, get, etc.)
 				operationResult = operationResult.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
