@@ -397,4 +397,8 @@ export class DataStoreService {
 			async () => await this.dataStoreRepository.findDataTablesSize(),
 		);
 	}
+
+	async getDataTablesSize() {
+		return await this.dataStoreRepository.findDataTablesSize();
+	}
 }

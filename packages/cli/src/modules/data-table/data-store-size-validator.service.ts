@@ -56,6 +56,6 @@ export class DataStoreSizeValidator {
 	}
 
 	getCachedSize() {
-		return this.toMb(this.cachedSizeInBytes ?? 0);
+		return this.cachedSizeInBytes;
 	}
 }
