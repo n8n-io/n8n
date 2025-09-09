@@ -6,6 +6,7 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useI18n } from '@n8n/i18n';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
@@ -18,6 +19,7 @@ const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
 
 export const useDataStoreTypes = () => {
 	const getIconForType = (type: DataStoreColumnType) => COLUMN_TYPE_ICONS[type];
+	const i18n = useI18n();
 
 	/**
 	 * Maps a DataStoreColumnType to an AGGridCellType.
@@ -60,7 +62,7 @@ export const useDataStoreTypes = () => {
 
 	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
 		const DEFAULT_HTTP_STATUS = 500;
-		const DEFAULT_MESSAGE = 'An unknown error occurred';
+		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
 
 		if (error instanceof ResponseError) {
 			return {

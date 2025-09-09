@@ -35,3 +35,7 @@ export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
 
 export const DATA_STORE_MODULE_NAME = 'data-table';
+
+export const NUMBER_WITH_SPACES_REGEX = /\B(?=(\d{3})+(?!\d))/g;
+export const NUMBER_THOUSAND_SEPARATOR = ' ';
+export const NUMBER_DECIMAL_SEPARATOR = '.';

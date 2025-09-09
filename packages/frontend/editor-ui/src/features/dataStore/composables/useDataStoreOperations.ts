@@ -19,7 +19,6 @@ import type {
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
-import { ResponseError } from '@n8n/rest-api-client';
 import { useDataStoreTypes } from './useDataStoreTypes';
 
 export type UseDataStoreOperationsParams = {
