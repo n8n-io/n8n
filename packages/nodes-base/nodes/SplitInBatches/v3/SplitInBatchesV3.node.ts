@@ -229,7 +229,7 @@ export class SplitInBatchesV3 implements INodeType {
 	/**
 	 * Cleanup all counters for a specific execution ID to prevent memory leaks
 	 */
-	public static cleanupExecutionCounters(executionId: string): void {
+	static cleanupExecutionCounters(executionId: string): void {
 		const keysToDelete: string[] = [];
 		for (const key of SplitInBatchesV3.executionCounters.keys()) {
 			if (key.startsWith(`${executionId}_`)) {
