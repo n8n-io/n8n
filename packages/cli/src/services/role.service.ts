@@ -47,9 +47,22 @@ export class RoleService {
 		};
 	}
 
-	async getAllRoles(): Promise<RoleDTO[]> {
+	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
 		const roles = await this.roleRepository.findAll();
-		return roles.map((r) => this.dbRoleToRoleDTO(r));
+
+		if (!withCount) {
+			return roles.map((r) => this.dbRoleToRoleDTO(r));
+		}
+
+		// When withCount is true, fetch usage counts for all roles efficiently
+		const rolesWithCounts = await Promise.all(
+			roles.map(async (role) => {
+				const usedByUsers = await this.roleRepository.countUsersWithRole(role);
+				return this.dbRoleToRoleDTO(role, usedByUsers);
+			}),
+		);
+
+		return rolesWithCounts;
 	}
 
 	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {

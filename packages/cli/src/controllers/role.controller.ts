@@ -1,4 +1,4 @@
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { CreateRoleDto, RoleGetQueryDto, RoleListQueryDto, UpdateRoleDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -10,6 +10,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
@@ -21,8 +22,8 @@ export class RoleController {
 	constructor(private readonly roleService: RoleService) {}
 
 	@Get('/')
-	async getAllRoles(): Promise<Record<string, RoleDTO[]>> {
-		const allRoles = await this.roleService.getAllRoles();
+	async getAllRoles(@Query query: RoleListQueryDto): Promise<Record<string, RoleDTO[]>> {
+		const allRoles = await this.roleService.getAllRoles(query.withUsageCount);
 		return {
 			global: allRoles.filter((r) => r.roleType === 'global'),
 			project: allRoles.filter((r) => r.roleType === 'project'),
@@ -36,8 +37,9 @@ export class RoleController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
+		@Query query: RoleGetQueryDto,
 	): Promise<RoleDTO> {
-		return await this.roleService.getRole(slug, true);
+		return await this.roleService.getRole(slug, query.withUsageCount);
 	}
 
 	@Patch('/:slug')

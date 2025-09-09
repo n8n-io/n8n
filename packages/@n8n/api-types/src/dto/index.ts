@@ -80,6 +80,8 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export { RoleListQueryDto } from './roles/role-list-query.dto';
+export { RoleGetQueryDto } from './roles/role-get-query.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
 
