@@ -9,7 +9,7 @@ container to the main n8n container.
 [Task runners](https://docs.n8n.io/hosting/configuration/task-runners/) are used to execute user-provided code
 in the [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/), isolated from the n8n instance.
 
-For official documentation, please see [here](https://docs.n8n.io/hosting/hosting/configuration/task-runners/).
+For official documentation, please see [here](https://docs.n8n.io/hosting/configuration/task-runners/).
 
 For development purposes only, see below.
 
