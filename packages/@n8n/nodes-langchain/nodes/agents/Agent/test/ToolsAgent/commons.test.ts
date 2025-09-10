@@ -575,6 +575,48 @@ describe('getAgentStepsParser', () => {
 			});
 		});
 
+		it('should handle null output correctly', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: 'null',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ result: null });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should wrap null in { output: null }
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('{"output":null}');
+			expect(result).toEqual({
+				returnValues: { output: '{"result":null}' },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should handle undefined-like values correctly', async () => {
+			const steps: AgentFinish = {
+				returnValues: {
+					output: 'undefined',
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ text: 'undefined' });
+
+			const parser = getAgentStepsParser(mockOutputParser, mockMemory);
+			const result = await parser(steps);
+
+			// Should fallback to raw string since "undefined" is not valid JSON
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('undefined');
+			expect(result).toEqual({
+				returnValues: { output: '{"text":"undefined"}' },
+				log: 'Final response formatted',
+			});
+		});
+
 		it('should return output as-is without memory', async () => {
 			const steps: AgentFinish = {
 				returnValues: {

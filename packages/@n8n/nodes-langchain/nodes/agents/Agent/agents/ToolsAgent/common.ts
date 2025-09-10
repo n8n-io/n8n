@@ -233,7 +233,12 @@ export const getAgentStepsParser =
 						// Check if the parsed output already has the expected structure
 						// If it already has { output: ... }, use it as-is to avoid double wrapping
 						// Otherwise, wrap it in { output: ... } as expected by the parser
-						if ('output' in parsedOutput && Object.keys(parsedOutput).length === 1) {
+						if (
+							parsedOutput !== null &&
+							typeof parsedOutput === 'object' &&
+							'output' in parsedOutput &&
+							Object.keys(parsedOutput).length === 1
+						) {
 							// Already has the expected structure, use as-is
 							parserInput = JSON.stringify(parsedOutput);
 						} else {
