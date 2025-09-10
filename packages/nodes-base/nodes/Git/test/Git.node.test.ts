@@ -112,7 +112,7 @@ describe('Git Node', () => {
 				.mockReturnValueOnce('none');
 
 			// Branch exists, so checkout succeeds
-			mockGit.checkout.mockResolvedValueOnce(undefined);
+			mockGit.checkout.mockResolvedValueOnce('Switched to branch existing-branch' as any);
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
