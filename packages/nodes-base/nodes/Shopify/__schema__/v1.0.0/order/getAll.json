@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "created_at": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
@@ -208,5 +211,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

@@ -171,4 +171,58 @@ describe('rewireGraph()', () => {
 		expect(executorNode.parameters.query).toEqual(agentRequest.query);
 		expect(executorNode.parameters.toolName).toEqual(agentRequest.tool.name);
 	});
+
+	it('rewires deeply nested tools', () => {
+		// Create a hierarchy: trigger -> topAgent <- agentTool <- leafTool
+		// This simulates an agent (topAgent) that has an agent tool, that has a tool that's being manually executed
+		const trigger = createNodeData({ name: 'trigger' });
+		const topAgent = createNodeData({ name: 'topAgent', type: 'n8n-nodes-base.ai-agent' });
+		const agentTool = createNodeData({ name: 'agentTool', type: 'n8n-nodes-base.ai-agent-tool' });
+		const leafTool = createNodeData({ name: 'leafTool', type: 'n8n-nodes-base.ai-tool' });
+
+		const graph = new DirectedGraph();
+		graph.addNodes(trigger, topAgent, agentTool, leafTool);
+		graph.addConnections(
+			{ from: trigger, to: topAgent, type: NodeConnectionTypes.Main },
+			{ from: agentTool, to: topAgent, type: NodeConnectionTypes.AiTool },
+			{ from: leafTool, to: agentTool, type: NodeConnectionTypes.AiTool },
+		);
+
+		// Test rewiring the deepest tool (leafTool) which creates multiple levels of indirection
+		const rewiredGraph = rewireGraph(leafTool, graph);
+
+		// Rewiring should create a new executor node
+		expect(rewiredGraph).not.toBe(graph);
+
+		const executorNode = rewiredGraph
+			.getNodesByNames(['PartialExecutionToolExecutor'])
+			.values()
+			.next().value as INode;
+
+		expect(executorNode).toBeDefined();
+
+		const executorConnections = rewiredGraph.getDirectParentConnections(executorNode);
+
+		// The executor should have a tool connection from leafTool
+		const toolConnection = executorConnections.find(
+			(cn) => cn.from === leafTool && cn.type === NodeConnectionTypes.AiTool,
+		);
+		expect(toolConnection).toBeDefined();
+
+		// The executor also should have a main connection - the rewire logic traces back through the hierarchy
+		const mainConnections = executorConnections.filter(
+			(cn) => cn.type === NodeConnectionTypes.Main,
+		);
+		expect(mainConnections.length).toBeGreaterThan(0);
+
+		// The root node (topAgent) gets removed (replaced by the executor)
+		expect(rewiredGraph.hasNode('topAgent')).toBe(false);
+
+		// We don't care about the intermediate agentTool - it can remain, as long as the connection
+		// is from executor to leafTool and connected to a trigger
+
+		// The tested tool (leafTool) and the trigger remain
+		expect(rewiredGraph.hasNode('trigger')).toBe(true);
+		expect(rewiredGraph.hasNode('leafTool')).toBe(true);
+	});
 });

@@ -41,7 +41,7 @@ export type ListDataStoreOptions = {
 	skip?: number;
 };
 
-export type ListDataStoreContentFilter = {
+export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
@@ -51,20 +51,20 @@ export type ListDataStoreContentFilter = {
 };
 
 export type ListDataStoreRowsOptions = {
-	filter?: ListDataStoreContentFilter;
+	filter?: DataTableFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
 };
 
-export type UpdateDataStoreRowsOptions = {
-	filter: Record<string, DataStoreColumnJsType>;
+export type UpdateDataStoreRowOptions = {
+	filter: DataTableFilter;
 	data: DataStoreRow;
 };
 
-export type UpsertDataStoreRowsOptions = {
-	rows: DataStoreRows;
-	matchFields: string[];
+export type UpsertDataStoreRowOptions = {
+	filter: DataTableFilter;
+	data: DataStoreRow;
 };
 
 export type MoveDataStoreColumnOptions = {
@@ -87,6 +87,22 @@ export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
+
+export type DataTableInsertRowsReturnType = 'all' | 'id' | 'count';
+export type DataTableInsertRowsBulkResult = { success: true; insertedRows: number };
+export type DataTableInsertRowsResult<
+	T extends DataTableInsertRowsReturnType = DataTableInsertRowsReturnType,
+> = T extends 'all'
+	? DataStoreRowReturn[]
+	: T extends 'id'
+		? Array<Pick<DataStoreRowReturn, 'id'>>
+		: DataTableInsertRowsBulkResult;
+
+export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
+export type DataTablesSizeResult = {
+	sizeBytes: number;
+	sizeState: DataTableSizeStatus;
+};
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
@@ -116,11 +132,14 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
-	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+	insertRows<T extends DataTableInsertRowsReturnType>(
+		rows: DataStoreRows,
+		returnType: T,
+	): Promise<DataTableInsertRowsResult<T>>;
 
-	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	updateRow(options: UpdateDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
 	deleteRows(ids: number[]): Promise<boolean>;
 }
