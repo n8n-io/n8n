@@ -7,6 +7,7 @@ import type {
 	DataStoreColumn,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
+import { DataTableSizeResult } from 'n8n-workflow';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -197,5 +198,13 @@ export const deleteDataStoreRowsApi = async (
 		{
 			ids: rowIds.join(','),
 		},
+	);
+};
+
+export const fetchDataStoreGlobalLimitInBytes = async (context: IRestApiContext) => {
+	return await makeRestApiRequest<DataTableSizeResult>(
+		context,
+		'GET',
+		'/data-tables-global/limits',
 	);
 };
