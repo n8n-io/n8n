@@ -1,0 +1,52 @@
+MANUAL PR CREATION STEPS FOR ISSUE #19319
+==========================================
+
+✅ COMPLETED:
+- All code changes are in place
+- Files modified:
+  * packages/nodes-base/nodes/Webhook/Webhook.node.ts (defensive JSON parsing)
+  * packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts (enhanced error messages)
+- Test files created in proper locations
+- PR_BODY.md created
+- repro-summary.txt created
+
+🔧 NEXT STEPS (run these commands manually):
+
+1. Check current status:
+   git status
+
+2. Add the modified files:
+   git add packages/nodes-base/nodes/Webhook/Webhook.node.ts
+   git add packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+   git add packages/nodes-base/__tests__/httprequest-json-validation.test.js
+   git add packages/nodes-base/__tests__/webhook-json-parsing.test.js
+   git add repro-summary.txt
+   git add PR_BODY.md
+   git add dev/.gitignore
+
+3. Check what's staged:
+   git status
+
+4. Commit the changes:
+   git commit -m "fix(webhook/http-request): defensive JSON parsing + clearer NodeOperationError messaging (#19319)
+
+   - Parse JSON strings at webhook ingress for JSON content-types and return 400 on parse failure.
+   - Add enhanced error messages in HttpRequest V3 with parse details and JSON.stringify guidance.
+   - Add unit/integration tests for parsing + edge cases."
+
+5. Push the branch:
+   git push origin fix/19319-webhook-httprequest-json
+
+6. Create PR (replace YOUR_USERNAME):
+   gh pr create --base n8n-io:main --head YOUR_USERNAME:fix/19319-webhook-httprequest-json --title "fix(webhook/http-request): defensive JSON parsing + contextual error messages (fixes #19319)" --body-file ./PR_BODY.md --label "bug,area:webhook,area:http-request,needs tests,changelog"
+
+ALTERNATIVE: If GitHub CLI not available, create PR manually on GitHub.com:
+- Go to https://github.com/n8n-io/n8n
+- Click "New Pull Request"
+- Use the title and body from PR_BODY.md
+- Upload repro-summary.txt as an attachment
+
+PR TITLE:
+fix(webhook/http-request): defensive JSON parsing + contextual error messages (fixes #19319)
+
+PR BODY: (use content from PR_BODY.md)
