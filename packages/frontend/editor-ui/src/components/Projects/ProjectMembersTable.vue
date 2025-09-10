@@ -11,6 +11,7 @@ import {
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
+import { isProjectRole } from '@/utils/typeGuards';
 
 interface ProjectMemberData {
 	id: string;
@@ -106,8 +107,10 @@ const canUpdateRole = (member: ProjectMemberData): boolean => {
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 	if (role === 'remove') {
 		emit('remove:member', { userId });
+	} else if (isProjectRole(role)) {
+		emit('update:role', { role, userId });
 	} else {
-		emit('update:role', { role: role as ProjectRole, userId });
+		console.warn(`Invalid role received: ${role}`);
 	}
 };
 </script>
@@ -138,7 +141,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 					@update:role="onRoleChange"
 				/>
 				<N8nText v-else color="text-dark">{{
-					roles[item.role as ProjectRole]?.label || item.role
+					isProjectRole(item.role) ? roles[item.role]?.label || item.role : item.role
 				}}</N8nText>
 			</template>
 		</N8nDataTableServer>

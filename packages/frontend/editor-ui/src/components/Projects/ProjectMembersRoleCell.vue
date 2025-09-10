@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import type { ProjectRole } from '@n8n/permissions';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import { ElRadio } from 'element-plus';
+import { isProjectRole } from '@/utils/typeGuards';
 
 interface ProjectMemberData {
 	id: string;
@@ -32,8 +33,10 @@ watch(
 		selectedRole.value = newRole;
 	},
 );
-const roleLabel = computed(
-	() => props.roles[selectedRole.value as ProjectRole]?.label || selectedRole.value,
+const roleLabel = computed(() =>
+	isProjectRole(selectedRole.value)
+		? props.roles[selectedRole.value]?.label || selectedRole.value
+		: selectedRole.value,
 );
 
 const onActionSelect = (role: string) => {
@@ -73,7 +76,7 @@ const onActionSelect = (role: string) => {
 					<span :class="$style.radioLabel">
 						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
 						<N8nText color="text-dark" size="small">{{
-							props.roles[item.id as ProjectRole]?.desc || ''
+							isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
 						}}</N8nText>
 					</span>
 				</ElRadio>

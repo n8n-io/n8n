@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
+import type { ProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
@@ -22,6 +22,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { isProjectRole, isTeamProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
 	name?: string;
@@ -52,6 +53,7 @@ const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	description: '',
 	relations: [],
 });
+
 const projectRoleTranslations = ref<{ [key: string]: string }>({
 	'project:viewer': i18n.baseText('projects.settings.role.viewer'),
 	'project:editor': i18n.baseText('projects.settings.role.editor'),
@@ -134,10 +136,12 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			description: formData.value.description!,
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role as TeamProjectRole,
-			})),
+			relations: formData.value.relations
+				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
+				.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role,
+				})),
 		});
 
 		toast.showMessage({
@@ -177,10 +181,12 @@ const onRemoveMember = async ({ userId }: { userId: string }) => {
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			description: formData.value.description!,
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role as TeamProjectRole,
-			})),
+			relations: formData.value.relations
+				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
+				.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role,
+				})),
 		});
 
 		toast.showMessage({
@@ -292,10 +298,12 @@ const updateProject = async () => {
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			description: formData.value.description!,
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role as TeamProjectRole,
-			})),
+			relations: formData.value.relations
+				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
+				.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role,
+				})),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -389,7 +397,7 @@ const relationUsers = computed(() =>
 		if (!user) {
 			return {
 				...relation,
-				role: relation.role as ProjectRole,
+				role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
 				firstName: null,
 				lastName: null,
 				email: null,
@@ -398,7 +406,7 @@ const relationUsers = computed(() =>
 		return {
 			...user,
 			...relation,
-			role: relation.role as ProjectRole, // Cast to ProjectRole for component compatibility
+			role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
 		};
 	}),
 );
