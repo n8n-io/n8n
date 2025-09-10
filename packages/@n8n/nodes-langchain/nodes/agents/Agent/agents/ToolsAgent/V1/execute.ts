@@ -13,6 +13,7 @@ import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, IDataObject } from 'n8n-workflow';
+import type { AgentTokenUsageRecord } from '../common';
 import type { TiktokenModel } from 'js-tiktoken';
 
 import { getPromptInputByType } from '@utils/helpers';
@@ -190,9 +191,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
 					try {
 						const key = this.runToModelKey[runId] ?? 'unknown:unknown';
-						const sep = key.indexOf(':');
-						const modelType = sep === -1 ? key : key.slice(0, sep);
-						const modelName = sep === -1 ? '' : key.slice(sep + 1);
+						const separatorIndex = key.indexOf(':');
+						const modelType = separatorIndex === -1 ? key : key.slice(0, separatorIndex);
+						const modelName = separatorIndex === -1 ? '' : key.slice(separatorIndex + 1);
 						let completionTokens = 0;
 						let promptTokens = 0;
 						const llmOutput = output?.llmOutput;
@@ -311,7 +312,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					...(usageCollector ? { callbacks: [usageCollector] } : {}),
 				},
 			);
-			const usageRecords = usageCollector?.getUsageRecords();
+			const usageRecords: AgentTokenUsageRecord[] | undefined = usageCollector?.getUsageRecords();
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {

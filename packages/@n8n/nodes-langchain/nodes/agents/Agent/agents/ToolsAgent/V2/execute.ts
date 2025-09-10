@@ -1,7 +1,7 @@
 import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
 import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+// Removed direct message type imports; using runtime guards instead
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import {
@@ -21,7 +21,13 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	IDataObject,
+} from 'n8n-workflow';
+import type { TiktokenModel } from 'js-tiktoken';
 import assert from 'node:assert';
 
 import { getPromptInputByType } from '@utils/helpers';
@@ -45,14 +51,7 @@ import { SYSTEM_MESSAGE } from '../prompt';
 /* -----------------------------------------------------------
    Token Usage Aggregator
 ----------------------------------------------------------- */
-type ModelUsage = {
-	modelType: string;
-	modelName: string;
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-	isEstimate: boolean;
-};
+import type { AgentTokenUsageRecord } from '../common';
 
 // helper removed (unused)
 
@@ -60,16 +59,20 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 	name = 'AgentTokenUsageCollector';
 
 	// Track usage per model key
-	usageByModel: Record<string, ModelUsage> = {};
+	usageByModel: Record<string, AgentTokenUsageRecord> = {};
 
 	// Track usage per (model, estimate-kind)
-	private usageByModelAndKind: Record<string, ModelUsage> = {};
+	private usageByModelAndKind: Record<string, AgentTokenUsageRecord> = {};
 
 	// Track runId -> model key and prompt estimates for fallback
 	private runToModelKey: Record<string, string> = {};
 	private promptEstimateByRun: Record<string, number> = {};
 
-	constructor(private readonly tiktokenModel: string = getModelNameForTiktoken('gpt-4o')) {
+	constructor(
+		private readonly tiktokenModel: TiktokenModel = getModelNameForTiktoken(
+			'gpt-4o',
+		) as TiktokenModel,
+	) {
 		super();
 	}
 
@@ -80,16 +83,37 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 	): Promise<void> {
 		try {
 			// Serialized object does not expose instance; infer identity from kwargs where possible
-			const llmAny = llm as any;
-			const modelName = llmAny?.kwargs?.model ?? llmAny?.kwargs?.modelName ?? 'unknown';
-			const modelType = llmAny?.id?.[0] ?? llmAny?.lc_namespace?.[0] ?? 'unknown';
+			const modelName = (() => {
+				if (typeof llm === 'object' && llm !== null && 'kwargs' in llm) {
+					const kwargs = (llm as { kwargs?: unknown }).kwargs;
+					if (kwargs && typeof kwargs === 'object') {
+						const k = kwargs as Record<string, unknown>;
+						if (typeof k.model === 'string') return k.model;
+						if (typeof k.modelName === 'string') return k.modelName;
+					}
+				}
+				return 'unknown';
+			})();
+			const modelType = (() => {
+				if (typeof llm === 'object' && llm !== null) {
+					if ('id' in llm) {
+						const idVal = (llm as { id?: unknown }).id;
+						if (Array.isArray(idVal) && typeof idVal[0] === 'string') return idVal[0];
+					}
+					if ('lc_namespace' in llm) {
+						const nsVal = (llm as { lc_namespace?: unknown }).lc_namespace;
+						if (Array.isArray(nsVal) && typeof nsVal[0] === 'string') return nsVal[0];
+					}
+				}
+				return 'unknown';
+			})();
 			const key = `${modelType}:${modelName}`;
 			this.runToModelKey[runId] = key;
 
 			// Estimate prompt tokens for fallback when usage is not provided
 			const estimatedPrompt = await estimateTokensFromStringList(
 				Array.isArray(prompts) ? prompts : [],
-				this.tiktokenModel as any,
+				this.tiktokenModel,
 			);
 			this.promptEstimateByRun[runId] = estimatedPrompt;
 		} catch {
@@ -141,17 +165,41 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 		aggKind.totalTokens += totalTokens;
 	}
 
-	getUsageRecords(): ModelUsage[] {
+	recordUsage(
+		modelKey: string,
+		modelType: string,
+		modelName: string,
+		promptTokens: number,
+		completionTokens: number,
+		isEstimate: boolean,
+	) {
+		this.addUsage(modelKey, modelType, modelName, promptTokens, completionTokens, isEstimate);
+	}
+
+	getUsageRecords(): AgentTokenUsageRecord[] {
 		return Object.values(this.usageByModelAndKind);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
 		try {
 			const key = this.runToModelKey[runId] ?? 'unknown:unknown';
-			const [modelType, modelName] = key.split(':');
+			const separatorIndex = key.indexOf(':');
+			const modelType = separatorIndex === -1 ? key : key.slice(0, separatorIndex);
+			const modelName = separatorIndex === -1 ? '' : key.slice(separatorIndex + 1);
 
-			const completionTokens = (output?.llmOutput as any)?.tokenUsage?.completionTokens ?? 0;
-			const promptTokens = (output?.llmOutput as any)?.tokenUsage?.promptTokens ?? 0;
+			let completionTokens = 0;
+			let promptTokens = 0;
+			const llmOutput = output?.llmOutput;
+			if (llmOutput && typeof llmOutput === 'object' && 'tokenUsage' in llmOutput) {
+				const tokenUsage = (llmOutput as { tokenUsage?: unknown }).tokenUsage;
+				if (tokenUsage && typeof tokenUsage === 'object') {
+					const tu = tokenUsage as Record<string, unknown>;
+					const ct = tu.completionTokens;
+					const pt = tu.promptTokens;
+					if (typeof ct === 'number') completionTokens = ct;
+					if (typeof pt === 'number') promptTokens = pt;
+				}
+			}
 
 			if (completionTokens > 0 || promptTokens > 0) {
 				this.addUsage(key, modelType, modelName, promptTokens || 0, completionTokens || 0, false);
@@ -159,11 +207,21 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 			}
 
 			// Fallback: estimate using generations and stored prompt estimate
-			const generationsTexts =
-				output?.generations?.flatMap((gen) => gen.map((g) => (g as any).text ?? '')) ?? [];
+			const generationsTexts: string[] = [];
+			const gens = Array.isArray(output?.generations) ? (output?.generations as unknown[]) : [];
+			for (const gen of gens) {
+				if (Array.isArray(gen)) {
+					for (const g of gen) {
+						if (g && typeof g === 'object' && 'text' in (g as Record<string, unknown>)) {
+							const t = (g as Record<string, unknown>).text;
+							if (typeof t === 'string') generationsTexts.push(t);
+						}
+					}
+				}
+			}
 			const estimatedCompletion = await estimateTokensFromStringList(
 				generationsTexts,
-				this.tiktokenModel as any,
+				this.tiktokenModel,
 			);
 			const estimatedPrompt = this.promptEstimateByRun[runId] ?? 0;
 			this.addUsage(key, modelType, modelName, estimatedPrompt, estimatedCompletion, true);
@@ -246,27 +304,44 @@ async function processEventStream(
 				break;
 			}
 			case 'on_chat_model_stream':
-				const chunk = event.data?.chunk as AIMessageChunk;
-				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							chunkText += (message as MessageContentText)?.text;
+				{
+					let chunkContent: unknown;
+					if (event.data && typeof event.data === 'object' && 'chunk' in event.data) {
+						const c = (event.data as { chunk?: unknown }).chunk;
+						if (c && typeof c === 'object' && 'content' in (c as Record<string, unknown>)) {
+							chunkContent = (c as Record<string, unknown>).content;
 						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
 
-					agentResult.output += chunkText;
+					if (chunkContent !== undefined) {
+						let chunkText = '';
+						if (Array.isArray(chunkContent)) {
+							for (const message of chunkContent) {
+								if (
+									message &&
+									typeof message === 'object' &&
+									'text' in (message as Record<string, unknown>)
+								) {
+									const t = (message as Record<string, unknown>).text as unknown;
+									if (typeof t === 'string') chunkText += t;
+								}
+							}
+						} else if (typeof chunkContent === 'string') {
+							chunkText = chunkContent;
+						}
+						ctx.sendChunk('item', itemIndex, chunkText);
+
+						agentResult.output += chunkText;
+					}
 				}
 				break;
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (returnIntermediateSteps && event.data) {
-					const chatModelData = event.data as any;
-					const output = chatModelData.output;
+					let output: any;
+					if (typeof event.data === 'object' && event.data !== null && 'output' in event.data) {
+						output = (event.data as Record<string, unknown>).output;
+					}
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
@@ -289,16 +364,48 @@ async function processEventStream(
 				// Try to capture usage metadata when available in stream events
 				if (usageCollector && event.data) {
 					try {
-						const data: any = event.data;
+						const data = event.data as Record<string, unknown>;
 						const usage =
-							data?.usage_metadata || (data?.output?.llmOutput?.tokenUsage ?? undefined);
-						const modelName = data?.kwargs?.model ?? data?.model ?? 'unknown';
+							(data?.usage_metadata as unknown) ||
+							(typeof data?.output === 'object' &&
+							data.output !== null &&
+							'llmOutput' in data.output &&
+							typeof (data.output as Record<string, unknown>).llmOutput === 'object' &&
+							(data.output as Record<string, unknown>).llmOutput !== null &&
+							'tokenUsage' in
+								((data.output as Record<string, unknown>).llmOutput as Record<string, unknown>)
+								? ((data.output as Record<string, unknown>).llmOutput as Record<string, unknown>)
+										.tokenUsage
+								: undefined);
+						const modelName = (() => {
+							if (
+								typeof data?.kwargs === 'object' &&
+								data?.kwargs &&
+								'model' in (data.kwargs as Record<string, unknown>)
+							) {
+								const model = (data.kwargs as Record<string, unknown>).model;
+								return typeof model === 'string' ? model : 'unknown';
+							}
+							const model = data?.model;
+							return typeof model === 'string' ? model : 'unknown';
+						})();
 						const modelType = event.name ?? 'unknown';
-						if (usage) {
-							const promptTokens = usage.input_tokens ?? usage.promptTokens ?? 0;
-							const completionTokens = usage.output_tokens ?? usage.completionTokens ?? 0;
+						if (usage && typeof usage === 'object' && usage !== null) {
+							const usageObj = usage as Record<string, unknown>;
+							const promptTokens =
+								typeof usageObj.input_tokens === 'number'
+									? usageObj.input_tokens
+									: typeof usageObj.promptTokens === 'number'
+										? usageObj.promptTokens
+										: 0;
+							const completionTokens =
+								typeof usageObj.output_tokens === 'number'
+									? usageObj.output_tokens
+									: typeof usageObj.completionTokens === 'number'
+										? usageObj.completionTokens
+										: 0;
 							const key = `${modelType}:${modelName}`;
-							(usageCollector as any).addUsage(
+							usageCollector.recordUsage(
 								key,
 								modelType,
 								modelName,
@@ -315,7 +422,7 @@ async function processEventStream(
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const toolData = event.data as any;
+					const toolData = event.data as Record<string, unknown>;
 					// Find the matching intermediate step for this tool call
 					const matchingStep = agentResult.intermediateSteps!.find(
 						(step) => !step.observation && step.action.tool === event.name,
@@ -430,7 +537,11 @@ export async function toolsAgentExecute(
 				formatting_instructions:
 					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 			};
-			const executeOptions: any = { signal: this.getExecutionCancelSignal() };
+			const signal = this.getExecutionCancelSignal();
+			const executeOptions: { signal?: AbortSignal; callbacks?: BaseCallbackHandler[] } = {};
+			if (signal) {
+				executeOptions.signal = signal;
+			}
 			if (usageCollector) executeOptions.callbacks = [usageCollector];
 
 			// Check if streaming is actually available
@@ -465,12 +576,12 @@ export async function toolsAgentExecute(
 				return {
 					...streamResult,
 					__tokenUsage: usageCollector?.getUsageRecords(),
-				} as any;
+				};
 			} else {
 				// Handle regular execution
-				const res: any = await executor.invoke(invokeParams, executeOptions);
-				if (usageCollector) {
-					res.__tokenUsage = usageCollector.getUsageRecords();
+				const res = await executor.invoke(invokeParams, executeOptions);
+				if (usageCollector && typeof res === 'object' && res !== null) {
+					(res as Record<string, unknown>).__tokenUsage = usageCollector.getUsageRecords();
 				}
 				return res;
 			}
@@ -519,9 +630,25 @@ export async function toolsAgentExecute(
 			};
 
 			// Attach token usage records (estimate vs actual per model)
-			const usageRecords = (response as any)?.__tokenUsage as ModelUsage[] | undefined;
+			let usageRecords: AgentTokenUsageRecord[] | undefined;
+			if (response && typeof response === 'object' && '__tokenUsage' in response) {
+				const val = (response as Record<string, unknown>).__tokenUsage as unknown;
+				if (Array.isArray(val)) {
+					usageRecords = val.filter(
+						(v): v is AgentTokenUsageRecord =>
+							v &&
+							typeof v === 'object' &&
+							typeof (v as Record<string, unknown>).modelType === 'string' &&
+							typeof (v as Record<string, unknown>).modelName === 'string' &&
+							typeof (v as Record<string, unknown>).promptTokens === 'number' &&
+							typeof (v as Record<string, unknown>).completionTokens === 'number' &&
+							typeof (v as Record<string, unknown>).totalTokens === 'number' &&
+							typeof (v as Record<string, unknown>).isEstimate === 'boolean',
+					);
+				}
+			}
 			if (usageRecords && usageRecords.length > 0) {
-				(itemResult.json as any).tokenUsage = usageRecords;
+				(itemResult.json as IDataObject).tokenUsage = usageRecords as unknown as IDataObject;
 			}
 
 			returnData.push(itemResult);

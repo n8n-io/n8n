@@ -33,7 +33,7 @@ export const commonOptions: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'When enabled, adds a tokenUsage array to the output with per-model token counts, split into actual vs estimated totals across the node execution.',
+			'Whether to add a tokenUsage array to the output with per-model token counts, split into actual vs estimated totals across the node execution',
 	},
 	{
 		displayName: 'Automatically Passthrough Binary Images',

@@ -676,4 +676,225 @@ describe('toolsAgentExecute', () => {
 		expect(result[0]).toHaveLength(1);
 		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
 	});
+
+	describe('token usage collection', () => {
+		let mockNode: INode;
+		let mockModel: BaseChatModel;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockNode = mock<INode>();
+			mockNode.typeVersion = 2;
+			mockContext.getNode.mockReturnValue(mockNode);
+			mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+			mockModel = mock<BaseChatModel>();
+			mockModel.bindTools = jest.fn();
+			mockModel.lc_namespace = ['chat_models'];
+			mockContext.getInputConnectionData.mockImplementation(async (type, _index) => {
+				if (type === 'ai_languageModel') return mockModel;
+				if (type === 'ai_memory') return undefined;
+				return undefined;
+			});
+
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+		});
+
+		it('should not collect token usage when collectTokenUsage is false', async () => {
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'text') return 'test input';
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						collectTokenUsage: false, // Disabled
+					};
+				return defaultValue;
+			});
+
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({ output: 'Test response' }),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json).toEqual({ output: 'Test response' });
+			expect(result[0][0].json.tokenUsage).toBeUndefined();
+		});
+
+		it('should collect token usage when collectTokenUsage is true', async () => {
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'text') return 'test input';
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						collectTokenUsage: true, // Enabled
+					};
+				return defaultValue;
+			});
+
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({
+					output: 'Test response',
+				}),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Test response');
+			// With mocked executor, the token usage collector is created but no tokens are actually collected
+			expect(result[0][0].json.tokenUsage).toBeUndefined();
+		});
+
+		it('should verify token usage collector is configured when enabled', async () => {
+			let capturedCallbacks: any[] = [];
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'text') return 'test input';
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						collectTokenUsage: true,
+					};
+				return defaultValue;
+			});
+
+			const mockExecutor = {
+				invoke: jest.fn().mockImplementation((_params, options) => {
+					capturedCallbacks = options?.callbacks || [];
+					return Promise.resolve({ output: 'Test response' });
+				}),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			await toolsAgentExecute.call(mockContext);
+
+			// Verify that a callback (token usage collector) was passed to the executor
+			expect(capturedCallbacks).toHaveLength(1);
+			expect(capturedCallbacks[0]).toHaveProperty('name', 'AgentTokenUsageCollector');
+		});
+
+		it('should not add tokenUsage field when no valid records exist', async () => {
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'text') return 'test input';
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						collectTokenUsage: true,
+					};
+				return defaultValue;
+			});
+
+			const mockExecutor = {
+				invoke: jest.fn().mockResolvedValue({
+					output: 'Test response',
+					__tokenUsage: [], // Empty array
+				}),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Test response');
+			expect(result[0][0].json.tokenUsage).toBeUndefined();
+		});
+
+		it('should handle token usage in streaming mode', async () => {
+			mockNode.typeVersion = 2.2;
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock memory to prevent the error
+			mockContext.getInputConnectionData.mockImplementation(async (type, _index) => {
+				if (type === 'ai_languageModel') return mockModel;
+				if (type === 'ai_memory')
+					return {
+						chatHistory: {
+							getMessages: jest.fn().mockResolvedValue([]),
+						},
+					};
+				return undefined;
+			});
+
+			let capturedUsageCollector: any = null;
+
+			mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+				if (param === 'enableStreaming') return true;
+				if (param === 'text') return 'test input';
+				if (param === 'needsFallback') return false;
+				if (param === 'options.batching.batchSize') return defaultValue;
+				if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+				if (param === 'options')
+					return {
+						systemMessage: 'You are a helpful assistant',
+						maxIterations: 10,
+						returnIntermediateSteps: false,
+						passthroughBinaryImages: true,
+						collectTokenUsage: true,
+					};
+				return defaultValue;
+			});
+
+			// Mock async generator for streamEvents
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'Hello world!',
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockImplementation((_params, options) => {
+					capturedUsageCollector = options?.callbacks?.[0];
+					return mockStreamEvents();
+				}),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Hello world!');
+			// Verify that the usage collector was passed to the streaming executor
+			expect(capturedUsageCollector).toBeDefined();
+			expect(capturedUsageCollector.name).toBe('AgentTokenUsageCollector');
+		});
+	});
 });
