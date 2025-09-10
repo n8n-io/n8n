@@ -14,9 +14,12 @@ export class SplitInBatchesV3 implements INodeType {
 	// Track executions for automatic cleanup after timeout
 	private static executionTracking = new Map<string, number>();
 
+	// Timer reference for cleanup
+	private static cleanupTimer: NodeJS.Timeout | null = null;
+
 	static {
-		// Periodic cleanup for abandoned executions (every 5 minutes)
-		setInterval(
+		// Start periodic cleanup for abandoned executions (every 5 minutes)
+		SplitInBatchesV3.cleanupTimer = setInterval(
 			() => {
 				const now = Date.now();
 				const timeout = 5 * 60 * 1000; // 5 minutes
@@ -30,6 +33,9 @@ export class SplitInBatchesV3 implements INodeType {
 			},
 			5 * 60 * 1000,
 		);
+
+		// Allow timer to be cleared on process shutdown
+		SplitInBatchesV3.cleanupTimer.unref();
 	}
 
 	description: INodeTypeDescription = {
