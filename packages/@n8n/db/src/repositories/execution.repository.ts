@@ -1129,8 +1129,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 *
-	 * @returns The number of executions that are currently running in `webhook` or `trigger` mode.
+	 * The number of executions that running and counting towards the concurrent executions limit.
+	 * Concurrency control only applies to executions started from a webhook or trigger node.
 	 */
 	async getConcurrentExecutionsCount() {
 		const concurrentExecutionsCount = await this.count({
