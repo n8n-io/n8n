@@ -859,6 +859,21 @@ describe('GET /workflows', () => {
 			});
 		});
 
+		test('should filter workflows by field: availableInMCP', async () => {
+			const workflow1 = await createWorkflow({ settings: { availableInMCP: true } }, owner);
+			await createWorkflow({ settings: {} }, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "availableInMCP": true }')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 1,
+				data: [objectContaining({ id: workflow1.id })],
+			});
+		});
+
 		test('should filter workflows by field: tags (AND operator)', async () => {
 			const workflow1 = await createWorkflow({ name: 'First' }, owner);
 			const workflow2 = await createWorkflow({ name: 'Second' }, owner);

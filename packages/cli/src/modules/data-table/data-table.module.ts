@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 
 const YELLOW = '\x1b[33m';
 const CLEAR = '\x1b[0m';
-const DATA_TABLE_WARNING_MESSAGE = `[Data Table] The data table module is experimental and subject to change.
+const DATA_TABLE_WARNING_MESSAGE = `[Data table] The Data table module is experimental and subject to change.
 Any tables added before the official release may become inaccessible at any point. Use at your own risk.`;
 
 @BackendModule({ name: 'data-table' })
