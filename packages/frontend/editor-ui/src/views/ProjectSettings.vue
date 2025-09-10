@@ -117,32 +117,41 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 	if (!projectsStore.currentProject) {
 		return;
 	}
+
+	const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
+	if (memberIndex === -1) {
+		return;
+	}
+
+	// Store original role for rollback
+	const originalRole = formData.value.relations[memberIndex].role;
+
+	// Update UI optimistically
+	formData.value.relations[memberIndex].role = role;
+
 	try {
-		// Update immediately to avoid admin conflicts
-		const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
-		if (memberIndex !== -1) {
-			formData.value.relations[memberIndex].role = role;
-			// Save the project with updated role
-			await projectsStore.updateProject(projectsStore.currentProject.id, {
-				name: formData.value.name!,
-				icon: projectIcon.value,
-				description: formData.value.description!,
-				relations: formData.value.relations.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role as TeamProjectRole,
-				})),
-			});
-			toast.showMessage({
-				type: 'success',
-				title: i18n.baseText('projects.settings.memberRole.updated.title'),
-			});
-			telemetry.track('User changed member role on project', {
-				project_id: projectsStore.currentProject.id,
-				target_user_id: userId,
-				role,
-			});
-		}
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			name: formData.value.name!,
+			icon: projectIcon.value,
+			description: formData.value.description!,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role as TeamProjectRole,
+			})),
+		});
+
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.memberRole.updated.title'),
+		});
+		telemetry.track('User changed member role on project', {
+			project_id: projectsStore.currentProject.id,
+			target_user_id: userId,
+			role,
+		});
 	} catch (error) {
+		// Rollback to original role on API failure
+		formData.value.relations[memberIndex].role = originalRole;
 		toast.showError(error, i18n.baseText('projects.settings.memberRole.update.error.title'));
 	}
 };
@@ -152,31 +161,39 @@ const onRemoveMember = async ({ userId }: { userId: string }) => {
 		return;
 	}
 
+	const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
+	if (memberIndex === -1) {
+		return;
+	}
+
+	// Store original member for rollback
+	const originalMember = { ...formData.value.relations[memberIndex] };
+
+	// Remove member optimistically from UI
+	formData.value.relations.splice(memberIndex, 1);
+
 	try {
-		// Remove member immediately
-		const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
-		if (memberIndex !== -1) {
-			formData.value.relations.splice(memberIndex, 1);
-			// Save the project with removed member
-			await projectsStore.updateProject(projectsStore.currentProject.id, {
-				name: formData.value.name!,
-				icon: projectIcon.value,
-				description: formData.value.description!,
-				relations: formData.value.relations.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role as TeamProjectRole,
-				})),
-			});
-			toast.showMessage({
-				type: 'success',
-				title: i18n.baseText('projects.settings.member.removed.title'),
-			});
-			telemetry.track('User removed member from project', {
-				project_id: projectsStore.currentProject.id,
-				target_user_id: userId,
-			});
-		}
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			name: formData.value.name!,
+			icon: projectIcon.value,
+			description: formData.value.description!,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role as TeamProjectRole,
+			})),
+		});
+
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.member.removed.title'),
+		});
+		telemetry.track('User removed member from project', {
+			project_id: projectsStore.currentProject.id,
+			target_user_id: userId,
+		});
 	} catch (error) {
+		// Rollback - restore the member at original position
+		formData.value.relations.splice(memberIndex, 0, originalMember);
 		toast.showError(error, i18n.baseText('projects.settings.member.remove.error.title'));
 	}
 };
