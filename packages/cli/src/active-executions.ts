@@ -241,20 +241,6 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
-	/**
-	 * Returns all the concurrent executions. This is useful when
-	 * users have the concurrency feature enabled and want to see
-	 * how many executions are currently running against their threshold
-	 */
-	getConcurrentExecutionsCount(): number {
-		const concurrentExecutions = this.getActiveExecutions().filter(
-			(execution) =>
-				execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-		);
-
-		return concurrentExecutions.length;
-	}
-
 	setStatus(executionId: string, status: ExecutionStatus) {
 		this.getExecutionOrFail(executionId).status = status;
 	}

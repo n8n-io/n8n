@@ -1127,4 +1127,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return executions.map(({ id }) => id);
 	}
+
+	/**
+	 *
+	 * @returns The number of executions that are currently running in `webhook` or `trigger` mode.
+	 */
+	async getConcurrentExecutionsCount() {
+		const concurrentExecutionsCount = await this.count({
+			where: { status: 'running', mode: In(['webhook', 'trigger']) },
+		});
+
+		return concurrentExecutionsCount;
+	}
 }

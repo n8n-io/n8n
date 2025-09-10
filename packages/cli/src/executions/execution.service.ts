@@ -356,7 +356,10 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		const concurrentExecutionsCount = this.activeExecutions.getConcurrentExecutionsCount();
+		let concurrentExecutionsCount = 0;
+		if (this.globalConfig.executions.concurrency.productionLimit !== -1) {
+			concurrentExecutionsCount = await this.executionRepository.getConcurrentExecutionsCount();
+		}
 
 		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
