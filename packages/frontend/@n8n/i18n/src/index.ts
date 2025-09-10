@@ -2,7 +2,6 @@
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { createI18n } from 'vue-i18n';
 
-import englishBaseText from './locales/en.json';
 import type { BaseTextKey, INodeTranslationHeaders } from './types';
 import {
 	deriveMiddleKey,
@@ -17,7 +16,7 @@ export const i18nInstance = createI18n({
 	legacy: false,
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	messages: { en: {} },
 	warnHtmlMessage: false,
 });
 
@@ -375,35 +374,31 @@ export class I18nClass {
 	};
 }
 
-const loadedLanguages = ['en'];
+const loadedLanguages: string[] = [];
 
-async function setLanguage(language: string) {
-	i18nInstance.global.locale.value = language as 'en';
-	document.querySelector('html')!.setAttribute('lang', language);
+function setLanguage(locale: string) {
+	i18nInstance.global.locale.value = locale as 'en';
+	document.querySelector('html')!.setAttribute('lang', locale);
 
-	return language;
+	return locale;
 }
 
-export async function loadLanguage(language: string) {
-	if (i18nInstance.global.locale.value === language) {
-		return await setLanguage(language);
+export function loadLanguage(locale: string, messages: Record<string, unknown>) {
+	if (loadedLanguages.includes(locale)) {
+		return setLanguage(locale);
 	}
 
-	if (loadedLanguages.includes(language)) {
-		return await setLanguage(language);
-	}
+	const { numberFormats, ...rest } = messages;
 
-	const { numberFormats, ...rest } = (await import(`@n8n/i18n/locales/${language}.json`)).default;
-
-	i18nInstance.global.setLocaleMessage(language, rest);
+	i18nInstance.global.setLocaleMessage(locale, rest);
 
 	if (numberFormats) {
-		i18nInstance.global.setNumberFormat(language, numberFormats);
+		i18nInstance.global.setNumberFormat(locale, numberFormats);
 	}
 
-	loadedLanguages.push(language);
+	loadedLanguages.push(locale);
 
-	return await setLanguage(language);
+	return setLanguage(locale);
 }
 
 /**
