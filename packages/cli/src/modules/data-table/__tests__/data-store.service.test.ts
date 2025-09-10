@@ -933,7 +933,12 @@ describe('dataStore', () => {
 			);
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }]);
 
-			await dataStoreService.deleteRows(dataStoreId, project1.id, [ids[0].id]);
+			await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'id', condition: 'eq', value: ids[0].id }],
+				},
+			});
 
 			// Insert a new row
 			const result = await dataStoreService.insertRows(
@@ -1591,7 +1596,53 @@ describe('dataStore', () => {
 	});
 
 	describe('deleteRows', () => {
-		it('deletes rows by IDs', async () => {
+		it('should delete rows by filter condition', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// Insert test rows
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30, active: true },
+					{ name: 'Bob', age: 25, active: false },
+					{ name: 'Charlie', age: 35, active: true },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'active', condition: 'eq', value: true }],
+				},
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(1);
+			expect(rows.data).toEqual([
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+					active: false,
+				}),
+			]);
+		});
+
+		it('should delete rows by ids', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1603,7 +1654,7 @@ describe('dataStore', () => {
 			const { id: dataStoreId } = dataStore;
 
 			// Insert test rows
-			const ids = await dataStoreService.insertRows(
+			const insertedIds = await dataStoreService.insertRows(
 				dataStoreId,
 				project1.id,
 				[
@@ -1613,10 +1664,18 @@ describe('dataStore', () => {
 				],
 				'id',
 			);
-			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
-			// ACT - Delete first and third rows
-			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
+			const filters = insertedIds
+				.slice(1)
+				.map(({ id }) => ({ columnName: 'id', condition: 'eq' as const, value: id }));
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'or',
+					filters,
+				},
+			});
 
 			// ASSERT
 			expect(result).toBe(true);
@@ -1625,35 +1684,24 @@ describe('dataStore', () => {
 			expect(rows.count).toBe(1);
 			expect(rows.data).toEqual([
 				expect.objectContaining({
-					name: 'Bob',
-					age: 25,
+					id: insertedIds[0].id,
 				}),
 			]);
 		});
 
-		it('returns true when deleting empty list of IDs', async () => {
-			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [{ name: 'name', type: 'string' }],
-			});
-			const { id: dataStoreId } = dataStore;
-
-			// ACT
-			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, []);
-
-			// ASSERT
-			expect(result).toBe(true);
-		});
-
 		it('fails when trying to delete from non-existent data store', async () => {
 			// ACT & ASSERT
-			const result = dataStoreService.deleteRows('non-existent-id', project1.id, [1, 2]);
+			const result = dataStoreService.deleteRows('non-existent-id', project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+				},
+			});
 
 			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 
-		it('succeeds even if some IDs do not exist', async () => {
+		it('should return true and do nothing when no rows match the filter', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1661,17 +1709,39 @@ describe('dataStore', () => {
 			});
 			const { id: dataStoreId } = dataStore;
 
-			// Insert one row
-			const ids = await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[{ name: 'Alice' }],
-				'id',
-			);
-			expect(ids).toEqual([{ id: 1 }]);
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
 
-			// ACT - Try to delete existing and non-existing IDs
-			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 999, 1000]);
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+				},
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(count).toBe(1);
+		});
+
+		it('should delete all rows when no filter is provided', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				{ name: 'Charlie' },
+			]);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {});
 
 			// ASSERT
 			expect(result).toBe(true);

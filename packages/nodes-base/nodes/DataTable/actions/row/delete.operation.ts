@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { DRY_RUN } from '../../common/fields';
-import { executeSelectMany, getSelectFields } from '../../common/selectMany';
+import { executeSelectMany, getSelectFields, getSelectFilter } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
 // named `deleteRows` since `delete` is a reserved keyword
@@ -48,14 +48,15 @@ export async function execute(
 		);
 	}
 
-	const matches = await executeSelectMany(this, index, dataStoreProxy);
-
 	if (!dryRun) {
-		const success = await dataStoreProxy.deleteRows(matches.map((x) => x.json.id));
+		const filter = getSelectFilter(this, index);
+		const success = await dataStoreProxy.deleteRows({ filter });
 		if (!success) {
 			throw new NodeOperationError(this.getNode(), `failed to delete rows for index ${index}`);
 		}
 	}
+
+	const matches = await executeSelectMany(this, index, dataStoreProxy);
 
 	return matches;
 }

@@ -10,6 +10,7 @@ import {
 	UpdateQueryBuilder,
 	In,
 	ObjectLiteral,
+	DeleteQueryBuilder,
 } from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
@@ -343,20 +344,16 @@ export class DataStoreRowsRepository {
 		return await this.getManyByIds(dataStoreId, ids, columns);
 	}
 
-	async deleteRows(dataStoreId: string, ids: number[]) {
-		if (ids.length === 0) {
-			return true;
-		}
+	async deleteRows(dataTableId: string, columns: DataTableColumn[], filter?: DataTableFilter) {
+		const table = this.toTableName(dataTableId);
 
-		const table = this.toTableName(dataStoreId);
-
-		await this.dataSource
-			.createQueryBuilder()
-			.delete()
-			.from(table, 'dataTable')
-			.where({ id: In(ids) })
-			.execute();
-
+		await this.dataSource.manager.transaction(async (em) => {
+			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+			if (filter) {
+				this.applyFilters(query, filter, undefined, columns);
+			}
+			await query.execute();
+		});
 		return true;
 	}
 
@@ -458,7 +455,7 @@ export class DataStoreRowsRepository {
 	}
 
 	private applyFilters<T extends ObjectLiteral>(
-		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
+		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
 		filter: DataTableFilter,
 		tableReference?: string,
 		columns?: DataTableColumn[],

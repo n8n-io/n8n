@@ -1,6 +1,7 @@
 import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
+	DeleteDataTableRowsDto,
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
@@ -224,10 +225,25 @@ export class DataStoreService {
 		);
 	}
 
-	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
+	async deleteRows(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		return await this.dataStoreRowsRepository.deleteRows(dataStoreId, ids);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		if (columns.length === 0) {
+			throw new DataStoreValidationError(
+				'No columns found for this data table or data table not found',
+			);
+		}
+
+		if (dto.filter?.filters && dto.filter.filters.length !== 0) {
+			this.validateAndTransformFilters(dto.filter, columns);
+		}
+
+		return await this.dataStoreRowsRepository.deleteRows(dataStoreId, columns, dto.filter);
 	}
 
 	private validateRowsWithColumns(
