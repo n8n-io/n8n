@@ -10,7 +10,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, sleep } from 'n8n-workflow';
+import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
@@ -288,9 +288,8 @@ describe('ActiveExecutions', () => {
 		beforeEach(async () => {
 			config.set('executions.mode', 'regular');
 
-			let executionIdCounter = 1000;
 			executionRepository.createNewExecution.mockImplementation(async () =>
-				(++executionIdCounter).toString(),
+				randomInt(1000, 2000).toString(),
 			);
 
 			(sleep as jest.Mock).mockImplementation(() => {
