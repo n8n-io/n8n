@@ -229,7 +229,11 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
-					tlsConfig: {},
+					tlsConfig: {
+						ca: '',
+						serverName: '',
+						rejectUnauthorized: true,
+					},
 					dualStack: false,
 				},
 				gracefulShutdownTimeout: 30,
