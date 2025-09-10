@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, nextTick } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
-import { DateTime } from 'luxon';
 
 const props = defineProps<{
 	params: ICellEditorParams;
@@ -18,9 +17,8 @@ onMounted(async () => {
 	if (initial === null || initial === undefined) {
 		dateValue.value = null;
 	} else if (initial instanceof Date) {
-		const dt = DateTime.fromJSDate(initial);
-		// the date editor shows local time but we want the UTC so we need to offset the value here
-		dateValue.value = dt.minus({ minutes: dt.offset }).toJSDate();
+		// Use the provided Date as-is (local time)
+		dateValue.value = initial;
 	}
 	initialValue.value = dateValue.value;
 
@@ -56,9 +54,8 @@ function onKeydown(e: KeyboardEvent) {
 defineExpose({
 	getValue: () => {
 		if (dateValue.value === null) return null;
-		const dt = DateTime.fromJSDate(dateValue.value);
-		// the editor returns local time but we initially offset the value to UTC so we need to add the offset back here
-		return dt.plus({ minutes: dt.offset }).toJSDate();
+		// Return the selected date in the user's local timezone
+		return dateValue.value;
 	},
 	isPopup: () => true,
 });
