@@ -111,6 +111,8 @@ export function useLogsPanelLayout(
 	watch(
 		[() => logsStore.state, resizer.size],
 		([state, height]) => {
+			document.documentElement.style.setProperty('--logs-panel-height', `${height}px`);
+
 			logsStore.setHeight(
 				state === LOGS_PANEL_STATE.FLOATING
 					? 0
