@@ -53,7 +53,7 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
-		[$style.success]: hasRunData.value && executionStatus.value === 'success',
+		[$style.success]: hasRunData.value && executionStatus.value !== 'canceled',
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',

@@ -123,14 +123,7 @@ const commonClasses = computed(() => [
 		</N8nTooltip>
 	</div>
 	<div
-		v-else-if="hasRunData && executionStatus === 'canceled'"
-		data-test-id="canvas-node-status-canceled"
-		:class="[...commonClasses, $style.runData]"
-	>
-		<N8nIcon icon="x" :size="size" color="text-light" />
-	</div>
-	<div
-		v-else-if="hasRunData"
+		v-else-if="hasRunData && executionStatus === 'success'"
 		data-test-id="canvas-node-status-success"
 		:class="[...commonClasses, $style.runData]"
 	>
