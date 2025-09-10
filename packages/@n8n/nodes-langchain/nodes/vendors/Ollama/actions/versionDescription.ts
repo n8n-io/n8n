@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+// eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as image from './image';

@@ -13,6 +13,15 @@ export interface ToolCall {
 	};
 }
 
+export interface OllamaTool {
+	type: 'function';
+	function: {
+		name: string;
+		description: string;
+		parameters: Record<string, unknown>;
+	};
+}
+
 export interface OllamaChatResponse {
 	model: string;
 	created_at: string;

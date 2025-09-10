@@ -1,11 +1,12 @@
 import type { Tool } from '@langchain/core/tools';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
-import zodToJsonSchema from 'zod-to-json-schema';
+import type { IDataObject } from 'n8n-workflow/src';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { OllamaChatResponse, OllamaMessage } from '../../helpers/interfaces';
+import type { OllamaChatResponse, OllamaMessage, OllamaTool } from '../../helpers';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -43,11 +44,6 @@ const properties: INodeProperties[] = [
 						type: 'options',
 						description: 'The role of this message in the conversation',
 						options: [
-							{
-								name: 'System',
-								value: 'system',
-								description: 'System message to set the context and behavior of the assistant',
-							},
 							{
 								name: 'User',
 								value: 'user',
@@ -103,16 +99,16 @@ const properties: INodeProperties[] = [
 				description: 'Controls randomness in responses. Lower values make output more focused.',
 			},
 			{
-				displayName: 'Top P',
+				displayName: 'Output Randomness (Top P)',
 				name: 'top_p',
+				default: 0.7,
+				description: 'The maximum cumulative probability of tokens to consider when sampling',
 				type: 'number',
-				default: 0.9,
 				typeOptions: {
 					minValue: 0,
 					maxValue: 1,
-					numberPrecision: 2,
+					numberPrecision: 1,
 				},
-				description: 'Controls diversity of responses by nucleus sampling',
 			},
 			{
 				displayName: 'Top K',
@@ -128,15 +124,240 @@ const properties: INodeProperties[] = [
 				displayName: 'Max Tokens',
 				name: 'num_predict',
 				type: 'number',
-				default: 128,
+				default: 1024,
 				typeOptions: {
 					minValue: 1,
+					numberPrecision: 0,
 				},
 				description: 'Maximum number of tokens to generate in the completion',
+			},
+			{
+				displayName: 'Frequency Penalty',
+				name: 'frequency_penalty',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 2,
+				},
+				description:
+					'Adjusts the penalty for tokens that have already appeared in the generated text. Higher values discourage repetition.',
+			},
+			{
+				displayName: 'Presence Penalty',
+				name: 'presence_penalty',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					numberPrecision: 2,
+				},
+				description:
+					'Adjusts the penalty for tokens based on their presence in the generated text so far. Positive values penalize tokens that have already appeared, encouraging diversity.',
+			},
+			{
+				displayName: 'Repetition Penalty',
+				name: 'repeat_penalty',
+				type: 'number',
+				default: 1.1,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 2,
+				},
+				description:
+					'Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient.',
+			},
+			{
+				displayName: 'Context Length',
+				name: 'num_ctx',
+				type: 'number',
+				default: 4096,
+				typeOptions: {
+					minValue: 1,
+					numberPrecision: 0,
+				},
+				description: 'Sets the size of the context window used to generate the next token',
+			},
+			{
+				displayName: 'Repeat Last N',
+				name: 'repeat_last_n',
+				type: 'number',
+				default: 64,
+				typeOptions: {
+					minValue: -1,
+					numberPrecision: 0,
+				},
+				description:
+					'Sets how far back for the model to look back to prevent repetition. (0 = disabled, -1 = num_ctx).',
+			},
+			{
+				displayName: 'Min P',
+				name: 'min_p',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1,
+					numberPrecision: 3,
+				},
+				description:
+					'Alternative to the top_p, and aims to ensure a balance of quality and variety. The parameter p represents the minimum probability for a token to be considered, relative to the probability of the most likely token.',
+			},
+			{
+				displayName: 'Seed',
+				name: 'seed',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
+				description:
+					'Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt.',
+			},
+			{
+				displayName: 'Stop Sequences',
+				name: 'stop',
+				type: 'string',
+				default: '',
+				description:
+					'Sets the stop sequences to use. When this pattern is encountered the LLM will stop generating text and return. Separate multiple patterns with commas',
+			},
+			{
+				displayName: 'Keep Alive',
+				name: 'keep_alive',
+				type: 'string',
+				default: '5m',
+				description:
+					'Specifies the duration to keep the loaded model in memory after use. Format: 1h30m (1 hour 30 minutes).',
+			},
+			{
+				displayName: 'Low VRAM Mode',
+				name: 'low_vram',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to activate low VRAM mode, which reduces memory usage at the cost of slower generation speed. Useful for GPUs with limited memory.',
+			},
+			{
+				displayName: 'Main GPU ID',
+				name: 'main_gpu',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
+				description:
+					'Specifies the ID of the GPU to use for the main computation. Only change this if you have multiple GPUs.',
+			},
+			{
+				displayName: 'Context Batch Size',
+				name: 'num_batch',
+				type: 'number',
+				default: 512,
+				typeOptions: {
+					minValue: 1,
+					numberPrecision: 0,
+				},
+				description:
+					'Sets the batch size for prompt processing. Larger batch sizes may improve generation speed but increase memory usage.',
+			},
+			{
+				displayName: 'Number of GPUs',
+				name: 'num_gpu',
+				type: 'number',
+				default: -1,
+				typeOptions: {
+					minValue: -1,
+					numberPrecision: 0,
+				},
+				description:
+					'Specifies the number of GPUs to use for parallel processing. Set to -1 for auto-detection.',
+			},
+			{
+				displayName: 'Number of CPU Threads',
+				name: 'num_thread',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+					numberPrecision: 0,
+				},
+				description:
+					'Specifies the number of CPU threads to use for processing. Set to 0 for auto-detection.',
+			},
+			{
+				displayName: 'Penalize Newlines',
+				name: 'penalize_newline',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether the model will be less likely to generate newline characters, encouraging longer continuous sequences of text',
+			},
+			{
+				displayName: 'Use Memory Locking',
+				name: 'use_mlock',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to lock the model in memory to prevent swapping. This can improve performance but requires sufficient available memory.',
+			},
+			{
+				displayName: 'Use Memory Mapping',
+				name: 'use_mmap',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to use memory mapping for loading the model. This can reduce memory usage but may impact performance.',
+			},
+			{
+				displayName: 'Load Vocabulary Only',
+				name: 'vocab_only',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to only load the model vocabulary without the weights. Useful for quickly testing tokenization.',
+			},
+			{
+				displayName: 'Output Format',
+				name: 'format',
+				type: 'options',
+				options: [
+					{ name: 'Default', value: '' },
+					{ name: 'JSON', value: 'json' },
+				],
+				default: '',
+				description: 'Specifies the format of the API response',
 			},
 		],
 	},
 ];
+
+interface MessageOptions {
+	system?: string;
+	temperature?: number;
+	top_p?: number;
+	top_k?: number;
+	num_predict?: number;
+	frequency_penalty?: number;
+	presence_penalty?: number;
+	repeat_penalty?: number;
+	num_ctx?: number;
+	repeat_last_n?: number;
+	min_p?: number;
+	seed?: number;
+	stop?: string | string[];
+	low_vram?: boolean;
+	main_gpu?: number;
+	num_batch?: number;
+	num_gpu?: number;
+	num_thread?: number;
+	penalize_newline?: boolean;
+	use_mlock?: boolean;
+	use_mmap?: boolean;
+	vocab_only?: boolean;
+	format?: string;
+}
 
 const displayOptions = {
 	show: {
@@ -149,96 +370,74 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-	const messagesParam = this.getNodeParameter('messages.values', i, []) as Array<{
-		content: string;
-		role: string;
-	}>;
-	const manualTools = this.getNodeParameter('tools.values', i, []) as Array<{
-		name: string;
-		description: string;
-		parameters: string;
-	}>;
+	const messages = this.getNodeParameter('messages.values', i, []) as OllamaMessage[];
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {});
+	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+	const { tools, connectedTools } = await getTools.call(this);
 
-	// Build messages array from user input
-	const messages: OllamaMessage[] = messagesParam.map((msg) => ({
-		role: msg.role as 'system' | 'user' | 'assistant',
-		content: msg.content,
-	}));
-
-	// Get tools from multiple sources
-	const tools: Array<{
-		type: string;
-		function: {
-			name: string;
-			description: string;
-			parameters: Record<string, unknown>;
-		};
-	}> = [];
-	let connectedTools: Tool[] = [];
-
-	// Add connected AI tools
-	const nodeInputs = this.getNodeInputs();
-	if (nodeInputs.some((input) => input.type === 'ai_tool')) {
-		connectedTools = await getConnectedTools(this, true);
-		const connectedToolsFormatted = connectedTools.map((tool) => ({
-			type: 'function',
-			function: {
-				name: tool.name,
-				description: tool.description,
-				parameters: zodToJsonSchema(tool.schema),
-			},
-		}));
-		tools.push.apply(tools, connectedToolsFormatted);
+	if (options.system) {
+		messages.unshift({
+			role: 'system',
+			content: options.system,
+		});
 	}
 
-	// Add manual tools from UI
-	const manualToolsFormatted = manualTools.map((tool) => {
-		let parameters: Record<string, unknown>;
-		try {
-			parameters = JSON.parse(tool.parameters);
-		} catch {
-			parameters = { type: 'object', properties: {}, required: [] };
-		}
-		return {
-			type: 'function',
-			function: {
-				name: tool.name,
-				description: tool.description,
-				parameters,
-			},
-		};
-	});
-	tools.push.apply(tools, manualToolsFormatted);
+	delete options.system;
+
+	const processedOptions = { ...options };
+	if (processedOptions.stop && typeof processedOptions.stop === 'string') {
+		processedOptions.stop = processedOptions.stop
+			.split(',')
+			.map((s: string) => s.trim())
+			.filter(Boolean);
+	}
 
 	const body = {
 		model,
 		messages,
 		stream: false,
-		...(tools.length > 0 && { tools }),
-		options: {
-			temperature: options.temperature,
-			top_p: options.top_p,
-			top_k: options.top_k,
-			num_predict: options.num_predict,
-		},
+		tools,
+		options: processedOptions,
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
 	})) as OllamaChatResponse;
 
-	// Handle tool calling if tools are available and model returned tool calls
 	if (tools.length > 0 && response.message.tool_calls && response.message.tool_calls.length > 0) {
-		response = await handleToolCalls.call(
-			this,
-			response,
-			messages,
-			connectedTools,
-			manualTools,
-			body,
-		);
+		const toolCalls = response.message.tool_calls;
+
+		for (const toolCall of toolCalls) {
+			messages.push(response.message);
+
+			let toolResponse = '';
+			for (const tool of connectedTools) {
+				if (tool.name === toolCall.function.name) {
+					try {
+						const result = (await tool.invoke(toolCall.function.arguments)) as IDataObject;
+						toolResponse = typeof result === 'object' ? JSON.stringify(result) : String(result);
+					} catch (error) {
+						toolResponse = `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
+					}
+
+					messages.push({
+						role: 'tool',
+						content: toolResponse,
+						tool_name: toolCall.function.name,
+					});
+					break;
+				}
+			}
+
+			const updatedBody = {
+				...body,
+				messages,
+			};
+
+			response = (await apiRequest.call(this, 'POST', '/api/chat', {
+				body: updatedBody,
+			})) as OllamaChatResponse;
+		}
 	}
 
 	if (simplify) {
@@ -258,75 +457,22 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	];
 }
 
-async function handleToolCalls(
-	this: IExecuteFunctions,
-	response: OllamaChatResponse,
-	messages: OllamaMessage[],
-	connectedTools: Tool[],
-	manualTools: Array<{ name: string; description: string; parameters: string }>,
-	requestBody: Record<string, unknown>,
-): Promise<OllamaChatResponse> {
-	const toolCalls = response.message.tool_calls;
-	if (!toolCalls?.length) {
-		return response;
+async function getTools(this: IExecuteFunctions) {
+	let connectedTools: Tool[] = [];
+	const nodeInputs = this.getNodeInputs();
+
+	if (nodeInputs.some((input) => input.type === 'ai_tool')) {
+		connectedTools = await getConnectedTools(this, true);
 	}
 
-	// Add the assistant's response with tool calls to the conversation
-	messages.push({
-		role: 'assistant',
-		content: response.message.content,
-		tool_calls: toolCalls,
-	});
+	const tools: OllamaTool[] = connectedTools.map((tool) => ({
+		type: 'function',
+		function: {
+			name: tool.name,
+			description: tool.description,
+			parameters: zodToJsonSchema(tool.schema),
+		},
+	}));
 
-	// Execute each tool call and add results
-	for (const toolCall of toolCalls) {
-		let toolResponse: string = '';
-		let toolFound = false;
-
-		// First, try to find and execute connected tools
-		for (const connectedTool of connectedTools) {
-			if (connectedTool.name === toolCall.function.name) {
-				try {
-					const result = await connectedTool.invoke(toolCall.function.arguments);
-					toolResponse = typeof result === 'object' ? JSON.stringify(result) : String(result);
-					toolFound = true;
-				} catch (error) {
-					toolResponse = `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
-					toolFound = true;
-				}
-				break;
-			}
-		}
-
-		// If not found in connected tools, check manual tools
-		if (!toolFound) {
-			const manualTool = manualTools.find((tool) => tool.name === toolCall.function.name);
-			if (manualTool) {
-				toolResponse = `Manual tool "${toolCall.function.name}" called with parameters: ${JSON.stringify(toolCall.function.arguments)}. This tool requires external implementation.`;
-				toolFound = true;
-			}
-		}
-
-		// If tool not found at all
-		if (!toolFound) {
-			toolResponse = `Tool "${toolCall.function.name}" not found or not implemented.`;
-		}
-
-		// Add tool result to messages
-		messages.push({
-			role: 'tool',
-			content: toolResponse,
-			tool_name: toolCall.function.name,
-		});
-	}
-
-	// Make another API call with the updated conversation including tool results
-	const updatedBody = {
-		...requestBody,
-		messages,
-	};
-
-	return (await apiRequest.call(this, 'POST', '/api/chat', {
-		body: updatedBody,
-	})) as OllamaChatResponse;
+	return { tools, connectedTools };
 }
