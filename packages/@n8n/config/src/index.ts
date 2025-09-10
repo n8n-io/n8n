@@ -5,6 +5,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
+import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
@@ -209,4 +210,7 @@ export class GlobalConfig {
 
 	@Nested
 	ai: AiConfig;
+
+	@Nested
+	dataTable: DataTableConfig;
 }

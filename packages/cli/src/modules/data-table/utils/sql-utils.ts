@@ -1,5 +1,7 @@
 import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -285,4 +287,9 @@ export function escapeLikeSpecials(input: string): string {
 	return input
 		.replace(/\\/g, '\\\\') // escape the escape char itself
 		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
+}
+
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
+	const { tablePrefix } = Container.get(GlobalConfig).database;
+	return `${tablePrefix}data_table_user_${dataStoreId}`;
 }
