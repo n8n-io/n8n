@@ -24,6 +24,7 @@ properties:
   stoppedAt:
     type: string
     format: date-time
+    nullable: true
   workflowId:
     type: number
     example: '1000'
