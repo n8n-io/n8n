@@ -606,6 +606,128 @@ describe('RunData', () => {
 		expect(getByTestId('ndv-items-count')).toBeInTheDocument();
 	});
 
+	describe('computed properties for branch handling', () => {
+		it('no run selector when no run data exists', () => {
+			const { container } = render({
+				displayMode: 'json',
+				runs: [],
+			});
+
+			// Component instance checks would need to be done differently in Vue 3
+			// For now, we verify the behavior through the UI
+			expect(container.querySelector('.run-selector')).not.toBeInTheDocument();
+		});
+
+		it('Show run selector when branch switch is shown (with all runs)', async () => {
+			// Create multiple runs with data in different outputs
+			const multipleRuns = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
+					data: {
+						main: [
+							[{ json: { value: 1 } }], // output 0
+							[{ json: { value: 2 } }], // output 1
+						],
+					},
+					source: [null],
+				},
+				{
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
+					data: {
+						main: [
+							[{ json: { value: 3 } }], // output 0
+							[], // output 1 empty
+						],
+					},
+					source: [null],
+				},
+				{
+					startTime: Date.now(),
+					executionIndex: 2,
+					executionTime: 1,
+					data: {
+						main: [
+							[], // output 0 empty
+							[{ json: { value: 4 } }], // output 1
+						],
+					},
+					source: [null],
+				},
+			];
+
+			const { getByTestId, findAllByTestId } = render({
+				displayMode: 'json',
+				runs: multipleRuns,
+			});
+
+			// When there are multiple branches and outputs, the run selector should be visible
+			const runSelector = getByTestId('run-selector');
+			expect(runSelector).toBeInTheDocument();
+
+			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
+			expect(runSelectorOptionsCount.length).toBe(3);
+		});
+
+		it('Show run selector when there is no branch selector (only runs for branch with data)', async () => {
+			// Create multiple runs with data in different outputs
+			const multipleRuns = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
+					data: {
+						main: [
+							[{ json: { value: 1 } }], // output 0
+							[{ json: { value: 2 } }], // output 1
+						],
+					},
+					source: [null],
+				},
+				{
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
+					data: {
+						main: [
+							[{ json: { value: 3 } }], // output 0
+							[], // output 1 empty
+						],
+					},
+					source: [null],
+				},
+				{
+					startTime: Date.now(),
+					executionIndex: 2,
+					executionTime: 1,
+					data: {
+						main: [
+							[], // output 0 empty
+							[{ json: { value: 4 } }], // output 1
+						],
+					},
+					source: [null],
+				},
+			];
+
+			const { getByTestId, findAllByTestId } = render({
+				displayMode: 'json',
+				runs: multipleRuns,
+				overrideOutputs: [1],
+			});
+
+			// Should show run selector since there are multiple runs
+			const runSelector = getByTestId('run-selector');
+			expect(runSelector).toBeInTheDocument();
+
+			const runSelectorOptionsCount = await findAllByTestId('run-selection-option');
+			expect(runSelectorOptionsCount.length).toBe(2);
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -627,6 +749,7 @@ describe('RunData', () => {
 		paneType = 'output',
 		metadata,
 		runs,
+		overrideOutputs,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -636,6 +759,7 @@ describe('RunData', () => {
 		paneType?: NodePanelType;
 		metadata?: ITaskMetadata;
 		runs?: ITaskData[];
+		overrideOutputs?: number[];
 	}) => {
 		const defaultRun: ITaskData = {
 			startTime: Date.now(),
@@ -735,6 +859,7 @@ describe('RunData', () => {
 				tooMuchDataTitle: '',
 				executingMessage: '',
 				noDataInBranchMessage: '',
+				overrideOutputs,
 			},
 			pinia,
 		});
