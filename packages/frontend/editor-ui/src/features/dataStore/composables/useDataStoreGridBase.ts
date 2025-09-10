@@ -100,15 +100,21 @@ export const useDataStoreGridBase = ({
 	const focusFirstEditableCell = (rowId: number) => {
 		const rowNode = initializedGridApi.value.getRowNode(String(rowId));
 		if (rowNode?.rowIndex === null) return;
+		const rowIndex = rowNode!.rowIndex;
 
 		const firstEditableCol = colDefs.value[1];
 		if (!firstEditableCol?.colId) return;
+		const columnId = firstEditableCol.colId;
 
-		initializedGridApi.value.ensureIndexVisible(rowNode!.rowIndex);
-		initializedGridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
-		initializedGridApi.value.startEditingCell({
-			rowIndex: rowNode!.rowIndex,
-			colKey: firstEditableCol.colId,
+		requestAnimationFrame(() => {
+			initializedGridApi.value.ensureIndexVisible(rowIndex);
+			requestAnimationFrame(() => {
+				initializedGridApi.value.setFocusedCell(rowIndex, columnId);
+				initializedGridApi.value.startEditingCell({
+					rowIndex,
+					colKey: columnId,
+				});
+			});
 		});
 	};
 
