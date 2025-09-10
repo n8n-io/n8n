@@ -158,9 +158,20 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		if (dualStack) options.family = 0;
 
 		if (tls) {
-			const { ca = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
+			const readCertFileSync = (path: string) => {
+				try {
+					return readFileSync(path).toString('utf-8');
+				} catch (e) {
+					const msg = `Error reading Redis TLS file: ${path}`;
+					this.logger.error(msg, { error: e });
+					throw new Error(msg, { cause: e });
+				}
+			};
+
+			const { ca = '', cert = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
 			options.tls = {
-				ca: ca ? readFileSync(ca).toString('utf-8') : undefined,
+				ca: ca ? readCertFileSync(ca) : undefined,
+				cert: cert ? readCertFileSync(cert) : undefined,
 				servername: serverName || undefined,
 				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};

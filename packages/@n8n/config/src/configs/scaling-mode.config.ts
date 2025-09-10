@@ -21,11 +21,20 @@ class HealthConfig {
 
 @Config
 class RedisTlsConfig {
-	/** SSL certificate authority */
+	/**
+	 * Redis TLS options matches nodejs tls ConnectionOptions.
+	 * https://bun.com/reference/node/tls/ConnectionOptions
+	 */
+
+	/** Override trusted CA certificates. File path to load pem certificate file. @example '/home/node/certs/ca.pem' */
 	@Env('QUEUE_BULL_REDIS_TLS_CA')
 	ca: string = '';
 
-	/** Server Name requested via SNI. */
+	/** Cert chains in PEM format. File path to load pem certificate file. @example '/home/node/certs/cert.pem' */
+	@Env('QUEUE_BULL_REDIS_TLS_CERT')
+	cert: string = '';
+
+	/** SNI extension servername for TLS handshake. */
 	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
 	serverName: string = '';
 

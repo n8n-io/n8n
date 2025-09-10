@@ -231,6 +231,7 @@ describe('GlobalConfig', () => {
 					tls: false,
 					tlsConfig: {
 						ca: '',
+						cert: '',
 						serverName: '',
 						rejectUnauthorized: true,
 					},
