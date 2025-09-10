@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "description": "Official CLI to create new community nodes for n8n",
   "bin": {
-    "create-node": "bin/create.js"
+    "create-node": "bin/create-node.cjs"
   },
   "files": [
     "bin",
@@ -18,5 +18,8 @@
   },
   "dependencies": {
     "@n8n/node-cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }
