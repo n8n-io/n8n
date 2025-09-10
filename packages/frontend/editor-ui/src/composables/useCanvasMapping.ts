@@ -662,6 +662,9 @@ export function useCanvasMapping({
 		const runDataTotal =
 			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
 
+		const sourceTasks = nodeExecutionRunDataById.value[connection.source] ?? [];
+		const lastSourceTask = sourceTasks[sourceTasks.length - 1];
+
 		let status: CanvasConnectionData['status'];
 		if (nodeExecutionRunningById.value[connection.source]) {
 			status = 'running';
@@ -672,7 +675,7 @@ export function useCanvasMapping({
 			status = 'pinned';
 		} else if (nodeHasIssuesById.value[connection.source]) {
 			status = 'error';
-		} else if (runDataTotal > 0) {
+		} else if (runDataTotal > 0 && lastSourceTask.executionStatus !== 'canceled') {
 			status = 'success';
 		}
 
