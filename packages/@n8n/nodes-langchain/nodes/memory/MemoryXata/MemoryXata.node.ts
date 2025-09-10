@@ -1,24 +1,67 @@
-import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
-import { BaseClient } from '@xata.io/client';
+import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
+import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
 } from 'n8n-workflow';
+import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { xataConnectionTest } from '../../../credentials/XataApi.credentialTest';
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
 } from '../descriptions';
+
+interface XataCredentials {
+	databaseConnectionString: string;
+}
+
+function parseConnectionString(connectionString: string): PostgresNodeCredentials {
+	try {
+		const url = new URL(connectionString);
+
+		if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+			throw new Error('Connection string must use postgres:// or postgresql:// protocol');
+		}
+
+		const host = url.hostname;
+		const port = parseInt(url.port) || 5432;
+		const database = url.pathname.slice(1) || 'postgres'; // Remove leading slash, default to postgres.
+		const user = url.username;
+		const password = url.password;
+
+		if (!host || !database || !user || !password) {
+			throw new Error('Connection string must include host, database, user, and password');
+		}
+
+		return {
+			host,
+			port,
+			database,
+			user,
+			password,
+			maxConnections: 100,
+			allowUnauthorizedCerts: false,
+			ssl: 'require',
+			sshTunnel: false,
+		};
+	} catch (error) {
+		throw new Error(
+			`Failed to parse connection string: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
 
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +99,7 @@ export class MemoryXata implements INodeType {
 			{
 				name: 'xataApi',
 				required: true,
+				testedBy: 'xataConnectionTest',
 			},
 		],
 		properties: [
@@ -98,11 +142,26 @@ export class MemoryXata implements INodeType {
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
 			},
+			{
+				displayName: 'Table Name',
+				name: 'tableName',
+				type: 'string',
+				default: 'n8n_chat_histories',
+				description:
+					'The table name to store the chat history in. If table does not exist, it will be created.',
+			},
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			xataConnectionTest,
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('xataApi');
+		const credentials = await this.getCredentials<XataCredentials>('xataApi');
+		const tableName = this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string;
 		const nodeVersion = this.getNode().typeVersion;
 
 		let sessionId;
@@ -113,28 +172,18 @@ export class MemoryXata implements INodeType {
 			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		}
 
-		const xataClient = new BaseClient({
-			apiKey: credentials.apiKey as string,
-			branch: (credentials.branch as string) || 'main',
-			databaseURL: credentials.databaseEndpoint as string,
-		});
+		// Parse the connection string into individual components
+		const postgresCredentials = parseConnectionString(credentials.databaseConnectionString);
 
-		const table = (credentials.databaseEndpoint as string).match(
-			/https:\/\/[^.]+\.[^.]+\.xata\.sh\/db\/([^\/:]+)/,
-		);
+		// Configure PostgreSQL connection
+		const pgConf = await configurePostgres.call(this, postgresCredentials);
+		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
-		if (table === null) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'It was not possible to extract the table from the Database Endpoint.',
-			);
-		}
-
-		const chatHistory = new XataChatMessageHistory({
-			table: table[1],
+		// Create PostgresChatMessageHistory
+		const pgChatHistory = new PostgresChatMessageHistory({
+			pool,
 			sessionId,
-			client: xataClient,
-			apiKey: credentials.apiKey as string,
+			tableName,
 		});
 
 		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;
@@ -144,8 +193,8 @@ export class MemoryXata implements INodeType {
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
 
 		const memory = new memClass({
-			chatHistory,
 			memoryKey: 'chat_history',
+			chatHistory: pgChatHistory,
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',
