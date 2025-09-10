@@ -59,7 +59,7 @@ export class MeController {
 			lastName: currentLastName,
 		} = req.user;
 
-		const { email, firstName, lastName } = payload;
+		const { email, firstName, lastName, currentPassword } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
 		const isFirstNameChanged = firstName !== currentFirstName;
 		const isLastNameChanged = lastName !== currentLastName;
@@ -100,6 +100,20 @@ export class MeController {
 			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
 			if (!isMfaCodeValid) {
 				throw new InvalidMfaCodeError();
+			}
+		}
+
+		if (!mfaEnabled && isEmailBeingChanged) {
+			if (!currentPassword || typeof currentPassword !== 'string') {
+				throw new BadRequestError('Current password is required to change email');
+			}
+
+			const isCurrentPwCorrect = await this.passwordUtility.compare(
+				currentPassword,
+				req.user.password,
+			);
+			if (!isCurrentPwCorrect) {
+				throw new BadRequestError('Provided current password is incorrect.');
 			}
 		}
 
