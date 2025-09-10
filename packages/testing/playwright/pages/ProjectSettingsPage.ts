@@ -123,7 +123,7 @@ export class ProjectSettingsPage extends BasePage {
 
 	async expectMemberNotInTable(memberEmail: string) {
 		const memberRow = this.getMemberByEmail(memberEmail);
-		await expect(memberRow).toBeHidden();
+		await expect(memberRow).toHaveCount(0);
 	}
 
 	async expectMemberHasRole(memberEmail: string, expectedRole: string) {
