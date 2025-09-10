@@ -1882,12 +1882,11 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections, nodeExecutionRunDataOutputMapById } =
-					useCanvasMapping({
-						nodes: ref(nodes),
-						connections: ref(connections),
-						workflowObject: ref(workflowObject) as Ref<Workflow>,
-					});
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
 
 				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
 			});
@@ -1936,12 +1935,11 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections, nodeExecutionRunDataOutputMapById } =
-					useCanvasMapping({
-						nodes: ref(nodes),
-						connections: ref(connections),
-						workflowObject: ref(workflowObject) as Ref<Workflow>,
-					});
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
 			});
@@ -1990,12 +1988,11 @@ describe('useCanvasMapping', () => {
 					return null;
 				});
 
-				const { connections: mappedConnections, nodeExecutionRunDataOutputMapById } =
-					useCanvasMapping({
-						nodes: ref(nodes),
-						connections: ref(connections),
-						workflowObject: ref(workflowObject) as Ref<Workflow>,
-					});
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
 
 				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
 			});
