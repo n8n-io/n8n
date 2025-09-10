@@ -280,8 +280,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		taskData = taskData!;
 
 		if (data instanceof Error) {
-			// if running node was already marked as "cancelled" because execution was aborted
-			// leave as "cancelled" instead of showing "This operation was aborted" error
+			// if running node was already marked as "canceled" because execution was aborted
+			// leave as "canceled" instead of showing "This operation was aborted" error
 			if (
 				!(type === 'output' && this.abortSignal?.aborted && taskData.executionStatus === 'canceled')
 			) {
