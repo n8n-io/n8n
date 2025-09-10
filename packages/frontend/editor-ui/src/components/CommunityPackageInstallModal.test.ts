@@ -34,9 +34,6 @@ const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 });
 
 describe('CommunityPackageInstallModal', () => {
-	beforeEach(() => {});
-
-	afterEach(() => {});
 	it('should disable install button until user agrees', async () => {
 		const { getByTestId } = renderComponent();
 

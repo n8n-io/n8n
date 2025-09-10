@@ -16,8 +16,6 @@ vi.mock('vue-router', () => {
 	};
 });
 
-beforeEach(() => {});
-
 const renderComponent = createComponentRenderer(ParameterOverrideSelectableList, {
 	pinia: createTestingPinia({
 		initialState: {

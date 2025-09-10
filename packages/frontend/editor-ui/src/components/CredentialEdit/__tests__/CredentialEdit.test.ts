@@ -212,8 +212,6 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
-	beforeEach(() => {});
-
 	afterEach(() => {
 		vi.clearAllMocks();
 	});

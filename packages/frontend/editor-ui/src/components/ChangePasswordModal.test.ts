@@ -12,8 +12,6 @@ describe('ChangePasswordModal', () => {
 		pinia = createTestingPinia({});
 	});
 
-	afterEach(() => {});
-
 	it('should render correctly', () => {
 		const wrapper = renderComponent({ pinia });
 

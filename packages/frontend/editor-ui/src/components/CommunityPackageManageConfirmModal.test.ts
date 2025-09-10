@@ -68,8 +68,6 @@ describe('CommunityPackageManageConfirmModal', () => {
 		nodeTypesStore = useNodeTypesStore();
 	});
 
-	afterEach(() => {});
-
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });

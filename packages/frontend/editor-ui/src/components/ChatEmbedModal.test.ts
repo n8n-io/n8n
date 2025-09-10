@@ -27,9 +27,6 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 });
 
 describe('ChatEmbedModal', () => {
-	beforeEach(() => {});
-
-	afterEach(() => {});
 	it('should render correctly', async () => {
 		const { getByTestId } = renderComponent();
 
