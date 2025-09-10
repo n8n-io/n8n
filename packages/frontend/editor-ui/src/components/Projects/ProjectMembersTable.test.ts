@@ -71,31 +71,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-// Mock i18n
-vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<object>();
-	return {
-		...actual,
-		useI18n: () => ({
-			baseText: vi.fn((key: string) => {
-				const translations: Record<string, string> = {
-					'projects.settings.table.header.user': 'User',
-					'projects.settings.table.header.role': 'Role',
-					'projects.settings.role.admin': 'Admin',
-					'projects.settings.role.admin.description': 'Can manage project settings',
-					'projects.settings.role.editor': 'Editor',
-					'projects.settings.role.editor.description': 'Can edit workflows',
-					'projects.settings.role.viewer': 'Viewer',
-					'projects.settings.role.viewer.description': 'Can view workflows',
-					'projects.settings.role.personalOwner': 'Personal Owner',
-					'projects.settings.table.row.removeUser': 'Remove User',
-				};
-				return translations[key] || key;
-			}),
-		}),
-	};
-});
-
 // Mock ProjectMembersRoleCell component
 vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 	default: {
@@ -108,7 +83,7 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 		emits: ['update:role'],
 		template: `
 			<div data-test-id="role-cell">
-				<button 
+				<button
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
 				>
