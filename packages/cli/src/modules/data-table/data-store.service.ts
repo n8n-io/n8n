@@ -36,9 +36,6 @@ import { normalizeRows } from './utils/sql-utils';
 
 @Service()
 export class DataStoreService {
-	lastCacheSizeCheck: Date;
-	pendingSizeCheck: Promise<void> | null = null;
-
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
