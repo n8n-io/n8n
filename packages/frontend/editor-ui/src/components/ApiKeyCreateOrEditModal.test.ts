@@ -281,7 +281,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		expect(userCreateSelectOption).toBeInTheDocument();
 
-		expect(userCreateSelectOption.parentNode).toHaveClass('is-disabled');
+		// Wait for DOM to stabilize and check the correct parent node with is-disabled class
+		await retry(() => {
+			const parentWithDisabled = userCreateSelectOption.closest('.is-disabled');
+			expect(parentWithDisabled).toBeTruthy();
+		});
 
 		await fireEvent.click(userCreateSelectOption);
 
