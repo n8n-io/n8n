@@ -75,28 +75,37 @@ export default class Dev extends Command {
 
 			// Run n8n with hot reload enabled, always attempt to use latest n8n
 			// TODO: Use n8n@latest. Currently using n8n@next because of broken hot reloading before n8n@1.111.0
-			await new Promise<void>((resolve) => {
-				runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
-					cwd: n8nUserFolder,
-					env: {
-						...process.env,
-						N8N_DEV_RELOAD: 'true',
-						N8N_RUNNERS_ENABLED: 'true',
-						DB_SQLITE_POOL_SIZE: '10',
-						N8N_USER_FOLDER: n8nUserFolder,
-						N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
-					},
-					name: 'n8n',
-					color: picocolors.green,
-					allowOutput: (line) => {
-						if (line.includes('Initializing n8n process')) {
-							resolve();
-						}
+			await Promise.race([
+				new Promise<void>((resolve) => {
+					runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
+						cwd: n8nUserFolder,
+						env: {
+							...process.env,
+							N8N_DEV_RELOAD: 'true',
+							N8N_RUNNERS_ENABLED: 'true',
+							DB_SQLITE_POOL_SIZE: '10',
+							N8N_USER_FOLDER: n8nUserFolder,
+							N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
+						},
+						name: 'n8n',
+						color: picocolors.green,
+						allowOutput: (line) => {
+							if (line.includes('Initializing n8n process')) {
+								resolve();
+							}
 
-						return setupComplete;
-					},
-				});
-			});
+							return setupComplete;
+						},
+					});
+				}),
+				new Promise<void>((_, reject) => {
+					setTimeout(() => {
+						const error = new Error('n8n startup timeout after 120 seconds');
+						onCancel(error.message);
+						reject(error);
+					}, 120_000);
+				}),
+			]);
 
 			setupComplete = true;
 			npxN8nSpinner.stop('Started n8n dev server');
