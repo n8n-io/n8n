@@ -288,8 +288,9 @@ describe('ActiveExecutions', () => {
 		beforeEach(async () => {
 			config.set('executions.mode', 'regular');
 
+			let executionIdCounter = 1000;
 			executionRepository.createNewExecution.mockImplementation(async () =>
-				randomInt(1000, 2000).toString(),
+				(++executionIdCounter).toString(),
 			);
 
 			(sleep as jest.Mock).mockImplementation(() => {
