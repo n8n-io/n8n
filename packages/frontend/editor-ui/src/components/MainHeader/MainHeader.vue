@@ -301,10 +301,6 @@ function hideGithubButton() {
 	align-items: center;
 }
 
-.collapsed {
-	padding-left: 18px;
-}
-
 .main-header {
 	min-height: var(--navbar--height);
 	background-color: var(--color-background-xlight);

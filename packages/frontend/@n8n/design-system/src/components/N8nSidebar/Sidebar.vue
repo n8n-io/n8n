@@ -53,7 +53,7 @@ function sidebarToggle() {
 			resizeWrapperHidden: state === 'hidden',
 		}"
 		:width="sidebarWidth"
-		:style="{ width: state === 'hidden' ? '0px' : `${sidebarWidth}px` }"
+		:style="{ width: state === 'hidden' ? '40px' : `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
@@ -62,8 +62,27 @@ function sidebarToggle() {
 		@resize="onResize"
 		@resizeend="onResizeEnd"
 	>
-		<header class="sidebarHeader">
-			<N8nPopoverReka :enable-scrolling="false" align="start">
+		<N8nTooltip v-if="state === 'hidden'" placement="right">
+			<template #content>
+				<div class="toggleTooltip">
+					<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
+					<N8nKeyboardShortcut :keys="['[']" />
+				</div>
+			</template>
+			<div class="showSidebarButton">
+				<N8nIconButton
+					icon-size="large"
+					size="mini"
+					:icon="panelIcon"
+					type="secondary"
+					text
+					square
+					@click="sidebarToggle"
+				/>
+			</div>
+		</N8nTooltip>
+		<header class="sidebarHeader" :class="{ sidebarHeaderCollapsed: state === 'hidden' }">
+			<N8nPopoverReka v-if="state === 'open'" :enable-scrolling="false" align="start">
 				<template #trigger>
 					<button class="sidebarHeaderLogo">
 						<N8nLogo location="sidebar" :release-channel="props.releaseChannel" />
@@ -81,6 +100,7 @@ function sidebarToggle() {
 								route: { to: `/settings` },
 								icon: 'settings',
 							}"
+							:isCollapsed="isCollapsed"
 						/>
 						<SidebarItem
 							@click="$emit('logout')"
@@ -90,12 +110,13 @@ function sidebarToggle() {
 								type: 'other',
 								icon: 'door-open',
 							}"
+							:isCollapsed="isCollapsed"
 						/>
 					</div>
 				</template>
 			</N8nPopoverReka>
 			<slot name="createButton" />
-			<N8nTooltip placement="right">
+			<N8nTooltip v-if="state === 'open'" placement="right">
 				<template #content>
 					<div class="toggleTooltip">
 						<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
@@ -114,16 +135,27 @@ function sidebarToggle() {
 			</N8nTooltip>
 		</header>
 		<nav :class="{ sidebar: true }" :style="{ width: `${sidebarWidth}px` }">
-			<SidebarTree :items="topItems" :open-project="openProject" />
+			<SidebarTree :items="topItems" :open-project="openProject" :isCollapsed="isCollapsed" />
 			<template v-if="showProjects">
-				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
+				<N8nText
+					v-if="state !== 'hidden'"
+					size="small"
+					color="text-light"
+					class="sidebarSubheader"
+					bold
+					>Projects</N8nText
+				>
 				<SidebarProjectsEmpty
 					v-if="projectItems.length === 0"
 					:can-create="canCreateProject"
 					@create-project="$emit('createProject')"
 				/>
 				<template v-else>
-					<SidebarTree :items="projectItems" :open-project="openProject" />
+					<SidebarTree
+						:items="projectItems"
+						:open-project="openProject"
+						:isCollapsed="isCollapsed"
+					/>
 				</template>
 			</template>
 			<div v-if="bottomItems?.length" class="sidebarBottomItems">
@@ -133,12 +165,13 @@ function sidebarToggle() {
 					:item="item as IMenuItem"
 					@click="handleSelect ? handleSelect(item.id) : undefined"
 					:level="1"
+					:isCollapsed="isCollapsed"
 				/>
 			</div>
 		</nav>
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
-		<div class="sidebarHelpArea">
+		<div class="sidebarHelpArea" :class="{ sidebarHelpAreaHidden: true }">
 			<N8nPopoverReka
 				@update:open="(state) => (subMenuOpen = state)"
 				:open="subMenuOpen"
@@ -180,6 +213,7 @@ function sidebarToggle() {
 									:item="subItem"
 									@click="handleSelect ? handleSelect(subItem.id) : undefined"
 									:ariaLabel="`Go to ${subItem.label}`"
+									:isCollapsed="false"
 								/>
 							</div>
 						</div>
@@ -188,25 +222,13 @@ function sidebarToggle() {
 			</N8nPopoverReka>
 		</div>
 	</N8nResizeWrapper>
-	<div v-if="state === 'hidden'" class="interactiveArea">
-		<N8nIconButton
-			v-if="state === 'hidden'"
-			size="small"
-			icon="panel-left"
-			class="showSidebarButton"
-			type="secondary"
-			square
-			@click="sidebarToggle"
-		/>
-	</div>
 </template>
 
 <style scoped>
 .resizeWrapper {
 	max-height: 100%;
 	height: 100%;
-	overflow-x: hidden;
-	overflow-y: auto;
+	position: relative;
 	border-right: var(--border-base);
 	border-color: var(--color-foreground-light);
 	display: flex;
@@ -248,13 +270,8 @@ function sidebarToggle() {
 	}
 }
 
-/* exit */
-.resizeWrapperHidden {
-	transform: translateX(-100%);
-}
-
 .sidebar {
-	padding: var(--spacing-xs);
+	padding: var(--spacing-2xs);
 	padding-top: var(--spacing-5xs);
 	padding-right: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
@@ -262,9 +279,14 @@ function sidebarToggle() {
 	max-height: 100%;
 	overflow-y: scroll;
 	overflow-x: hidden;
-	flex-grow: 1;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	max-width: 100%;
+}
+
+.sidebarHidden {
+	padding: 7px;
 }
 
 .sidebarHeader {
@@ -274,6 +296,10 @@ function sidebarToggle() {
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs);
 	background-color: var(--color-foreground-xlight);
+}
+
+.sidebarHeaderCollapsed {
+	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 8px;
 }
 
 .sidebarHeaderLogo {
@@ -327,7 +353,12 @@ function sidebarToggle() {
 }
 
 .showSidebarButton {
-	height: 100%;
+	padding: 5px;
+	position: absolute;
+	top: 50%;
+	right: -16px;
+	transform: translateY(-50%);
+	z-index: 1;
 }
 
 .toggleTooltip {
@@ -345,6 +376,10 @@ function sidebarToggle() {
 	display: flex;
 	gap: var(--spacing-2xs);
 	justify-content: flex-end;
+}
+
+.sidebarHelpAreaHidden {
+	padding-right: 5px;
 }
 
 .userName {

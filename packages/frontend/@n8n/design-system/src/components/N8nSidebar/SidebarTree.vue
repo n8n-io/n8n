@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { IMenuElement, IMenuItem } from '@n8n/design-system/types';
 import { TreeItem, TreeRoot, TreeVirtualizer } from 'reka-ui';
 import SidebarItem from './SidebarItem.vue';
 import N8nText from '../N8nText';
 
-defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void> }>();
+const props = defineProps<{
+	items: IMenuElement[];
+	openProject?: (id: string) => Promise<void>;
+	isCollapsed?: boolean;
+}>();
+
+// When sidebar is collapsed, force all tree items to be collapsed
+const shouldForceCollapse = computed(() => props.isCollapsed);
 </script>
 
 <template>
@@ -34,12 +42,16 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 							if (item.value.type === 'project' && openProject) {
 								await openProject(item.value.id);
 							}
-							handleToggle();
+							// Only allow toggle if sidebar is not collapsed
+							if (!shouldForceCollapse) {
+								handleToggle();
+							}
 						}
 					"
-					:open="isExpanded"
+					:open="shouldForceCollapse ? false : isExpanded"
 					:level="item.level"
 					:ariaLabel="`Open ${item.value.label}`"
+					:isCollapsed="props.isCollapsed"
 				/>
 			</TreeItem>
 		</TreeVirtualizer>

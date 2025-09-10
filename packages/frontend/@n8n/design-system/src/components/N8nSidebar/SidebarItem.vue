@@ -13,6 +13,7 @@ const props = defineProps<{
 	click?: () => void;
 	open?: boolean;
 	ariaLabel?: string;
+	isCollapsed?: boolean;
 }>();
 
 function click(event: MouseEvent) {
@@ -47,11 +48,15 @@ const icon = computed<IconName>(() => {
 	<div class="itemWrapper">
 		<span
 			class="itemIdent"
-			v-if="level && level > 1"
+			v-if="level && level > 1 && !isCollapsed"
 			v-for="level in new Array(level - 1)"
 			:key="level"
 		/>
-		<N8nRoute :to="to" class="sidebarItem" :aria-label="props.ariaLabel">
+		<N8nRoute
+			:to="to"
+			:class="{ sidebarItem: true, sidebarItemCollapsed: isCollapsed }"
+			:aria-label="props.ariaLabel"
+		>
 			<div
 				v-if="item.type !== 'workflow'"
 				:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
@@ -66,14 +71,14 @@ const icon = computed<IconName>(() => {
 				</div>
 			</div>
 			<button
-				v-if="item.type !== 'other' && item.type !== 'workflow'"
+				v-if="item.type !== 'other' && item.type !== 'workflow' && !isCollapsed"
 				class="sidebarItemDropdownButton"
 				@click="click"
 				:aria-label="ariaLabel"
 			>
 				<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
 			</button>
-			<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
+			<N8nText v-if="!isCollapsed" size="small" class="sidebarItemText">{{ item.label }}</N8nText>
 		</N8nRoute>
 	</div>
 </template>
@@ -105,6 +110,14 @@ const icon = computed<IconName>(() => {
 
 	&:hover .sidebarItemDropdownIcon {
 		color: var(--color-text-dark);
+	}
+
+	&.sidebarItemCollapsed {
+		padding: var(--spacing-3xs);
+		justify-content: center;
+		width: var(--spacing-l);
+		height: var(--spacing-l);
+		min-width: var(--spacing-l);
 	}
 }
 
