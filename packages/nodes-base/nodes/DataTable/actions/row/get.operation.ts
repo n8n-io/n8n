@@ -17,7 +17,20 @@ const displayOptions: IDisplayOptions = {
 	},
 };
 
-export const description: INodeProperties[] = [...getSelectFields(displayOptions)];
+export const description: INodeProperties[] = [
+	...getSelectFields(displayOptions),
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions,
+		default: null,
+		description: 'Max number of results to return',
+	},
+];
 
 export async function execute(
 	this: IExecuteFunctions,

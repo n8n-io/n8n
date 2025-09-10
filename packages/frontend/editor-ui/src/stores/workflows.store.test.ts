@@ -615,6 +615,67 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.pinData({ node, data });
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
+
+		it('should preserve binary data when pinning', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [
+				{
+					json: { test: 'data' },
+					binary: {
+						data: {
+							fileName: 'test.txt',
+							mimeType: 'text/plain',
+							data: 'dGVzdCBkYXRh',
+						},
+					},
+				},
+			] as unknown as INodeExecutionData[];
+
+			workflowsStore.pinData({ node, data });
+
+			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual([
+				{
+					json: { test: 'data' },
+					binary: {
+						data: {
+							fileName: 'test.txt',
+							mimeType: 'text/plain',
+							data: 'dGVzdCBkYXRh',
+						},
+					},
+				},
+			]);
+		});
+
+		it('should not update timestamp during restoration', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
+
+			// Set up existing pinned data with metadata
+			workflowsStore.workflow.pinData = { [node.name]: data };
+			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
+
+			workflowsStore.pinData({ node, data, isRestoration: true });
+
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
+		});
+
+		it('should clear timestamps during restoration', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
+
+			// Set up existing metadata with timestamps
+			workflowsStore.nodeMetadata[node.name] = {
+				pristine: false,
+				pinnedDataLastUpdatedAt: 1000,
+				pinnedDataLastRemovedAt: 2000,
+			};
+
+			workflowsStore.pinData({ node, data, isRestoration: true });
+
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt).toBeUndefined();
+		});
 	});
 
 	describe('updateNodeExecutionData', () => {

@@ -77,12 +77,23 @@ export namespace ChatUI {
 		type: 'tool';
 		toolName: string;
 		toolCallId?: string;
+		displayTitle?: string; // tool display name like "Searching for node"
+		customDisplayTitle?: string; // tool call specific custom title like "Searching for OpenAI"
 		status: 'running' | 'completed' | 'error';
 		updates: Array<{
 			type: 'input' | 'output' | 'progress' | 'error';
 			data: Record<string, unknown>;
 			timestamp?: string;
 		}>;
+	}
+
+	export interface CustomMessage {
+		id?: string;
+		role: 'assistant' | 'user';
+		type: 'custom';
+		message?: string;
+		customType: string;
+		data: unknown;
 	}
 
 	type MessagesWithReplies = (
@@ -104,6 +115,7 @@ export namespace ChatUI {
 		| AgentSuggestionMessage
 		| WorkflowUpdatedMessage
 		| ToolMessage
+		| CustomMessage
 	) & {
 		id?: string;
 		read?: boolean;
@@ -182,6 +194,12 @@ export function isToolMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.ToolMessage & { id?: string; read?: boolean } {
 	return msg.type === 'tool';
+}
+
+export function isCustomMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.CustomMessage & { id?: string; read?: boolean } {
+	return msg.type === 'custom';
 }
 
 // Helper to ensure message has required id and read properties

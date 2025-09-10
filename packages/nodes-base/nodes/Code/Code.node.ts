@@ -3,7 +3,6 @@ import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
-	type INodeProperties,
 	NodeConnectionTypes,
 	UserError,
 	type CodeExecutionMode,
@@ -26,7 +25,7 @@ import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
-const { CODE_ENABLE_STDOUT, N8N_NATIVE_PYTHON_RUNNER } = process.env;
+const { CODE_ENABLE_STDOUT } = process.env;
 
 class PythonDisabledError extends UserError {
 	constructor() {
@@ -35,43 +34,6 @@ class PythonDisabledError extends UserError {
 		);
 	}
 }
-
-const getV2LanguageProperty = (): INodeProperties => {
-	const options = [
-		{
-			name: 'JavaScript',
-			value: 'javaScript',
-			action: 'Code in JavaScript',
-		},
-		{
-			name: 'Python (Beta)',
-			value: 'python',
-			action: 'Code in Python (Beta)',
-		},
-	];
-
-	if (N8N_NATIVE_PYTHON_RUNNER === 'true') {
-		options.push({
-			name: 'Python (Native) (Beta)',
-			value: 'pythonNative',
-			action: 'Code in Python (Native) (Beta)',
-		});
-	}
-
-	return {
-		displayName: 'Language',
-		name: 'language',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				'@version': [2],
-			},
-		},
-		options,
-		default: 'javaScript',
-	};
-};
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -108,7 +70,35 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-			getV2LanguageProperty(),
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+						action: 'Code in JavaScript',
+					},
+					{
+						name: 'Python (Beta)',
+						value: 'python',
+						action: 'Code in Python (Beta)',
+					},
+					{
+						name: 'Python (Native) (Beta)',
+						value: 'pythonNative',
+						action: 'Code in Python (Native) (Beta)',
+					},
+				],
+				default: 'javaScript',
+			},
 			{
 				displayName: 'Language',
 				name: 'language',

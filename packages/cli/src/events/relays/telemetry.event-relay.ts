@@ -6,12 +6,16 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
+
+import { EventRelay } from './event-relay';
+import { Telemetry } from '../../telemetry';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -21,9 +25,6 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-
-import { EventRelay } from './event-relay';
-import { Telemetry } from '../../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -604,7 +605,7 @@ export class TelemetryEventRelay extends EventRelay {
 					projectId: workflowOwner.id,
 				});
 
-				if (projectRole && projectRole !== 'project:personalOwner') {
+				if (projectRole && projectRole?.slug !== PROJECT_OWNER_ROLE_SLUG) {
 					userRole = 'member';
 				}
 			}

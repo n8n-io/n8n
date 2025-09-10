@@ -156,7 +156,7 @@ export function useNodeSettingsParameters() {
 		});
 
 		if (ndvStore.activeNode) {
-			ndvStore.setActiveNodeName(null);
+			ndvStore.unsetActiveNodeName();
 			ndvStore.resetNDVPushRef();
 		}
 	}

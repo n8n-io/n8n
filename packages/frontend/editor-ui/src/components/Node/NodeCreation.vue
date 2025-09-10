@@ -85,10 +85,13 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 function toggleFocusPanel() {
 	focusPanelStore.toggleFocusPanel();
 
-	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
-		source: 'canvasButton',
-		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-	});
+	telemetry.track(
+		focusPanelStore.focusPanelActive ? 'User opened focus panel' : 'User closed focus panel',
+		{
+			source: 'canvasButton',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		},
+	);
 }
 
 function onAskAssistantButtonClick() {
@@ -142,6 +145,7 @@ function onAskAssistantButtonClick() {
 				icon="panel-right"
 				:class="focusPanelActive ? $style.activeButton : ''"
 				:active="focusPanelActive"
+				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>

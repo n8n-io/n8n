@@ -4,13 +4,17 @@ import {
 	UPDATED_SCHEMA,
 } from './__tests__/utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { cleanupAppModals, createAppModals, waitAllPromises } from '@/__tests__/utils';
+import type { MockedStore } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, mockedStore, waitAllPromises } from '@/__tests__/utils';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockInstance } from 'vitest';
+import { useProjectsStore } from '@/stores/projects.store';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
+
 let fetchFieldsSpy: MockInstance;
 
 const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
@@ -25,6 +29,8 @@ describe('ResourceMapper.vue', () => {
 
 	beforeEach(() => {
 		createAppModals();
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProjectId = 'aProjectId';
 	});
 
 	afterEach(() => {

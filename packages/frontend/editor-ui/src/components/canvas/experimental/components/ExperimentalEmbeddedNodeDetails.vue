@@ -15,6 +15,7 @@ import { getNodeSubTitleText } from '@/components/canvas/experimental/experiment
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/composables/useCanvas';
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
@@ -27,6 +28,9 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+
+useTelemetryContext({ view_shown: 'zoomed_view' });
+
 const node = computed(() => workflowsStore.getNodeById(nodeId) ?? null);
 const nodeType = computed(() => {
 	if (node.value) {
@@ -65,7 +69,7 @@ function handleToggleExpand() {
 
 function handleOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name);
+		ndvStore.setActiveNodeName(node.value.name, 'canvas_zoomed_view');
 	}
 }
 
@@ -98,6 +102,7 @@ watchOnce(isVisible, (visible) => {
 			:sub-title="subTitle"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
 			is-embedded-in-canvas
+			@dblclick-header="handleOpenNdv"
 		>
 			<template #actions>
 				<ExperimentalEmbeddedNdvActions

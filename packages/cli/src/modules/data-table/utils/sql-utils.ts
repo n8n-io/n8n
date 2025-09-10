@@ -1,18 +1,13 @@
 import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type {
-	DataStoreColumnJsType,
-	DataStoreRows,
-	DataStoreRowReturn,
-	DataStoreRowsReturn,
-} from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataStoreUserTableName } from '../data-store.types';
 import type { DataTableColumn } from '../data-table-column.entity';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -100,33 +95,6 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
-export function splitRowsByExistence(
-	existing: Array<Record<string, unknown>>,
-	matchFields: string[],
-	rows: DataStoreRows,
-): { rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows } {
-	// Extracts only the fields relevant to matching and serializes them for comparison
-	const getMatchKey = (row: Record<string, unknown>): string =>
-		JSON.stringify(Object.fromEntries(matchFields.map((field) => [field, row[field]])));
-
-	const existingSet = new Set(existing.map((row) => getMatchKey(row)));
-
-	const rowsToUpdate: DataStoreRows = [];
-	const rowsToInsert: DataStoreRows = [];
-
-	for (const row of rows) {
-		const key = getMatchKey(row);
-
-		if (existingSet.has(key)) {
-			rowsToUpdate.push(row);
-		} else {
-			rowsToInsert.push(row);
-		}
-	}
-
-	return { rowsToInsert, rowsToUpdate };
-}
-
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'mysql':
@@ -163,9 +131,9 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 		'id' in data &&
 		isNumber(data.id) &&
 		'createdAt' in data &&
-		isDate(data.createdAt) &&
+		(isDate(data.createdAt) || typeof data.createdAt === 'string') &&
 		'updatedAt' in data &&
-		isDate(data.updatedAt)
+		(isDate(data.updatedAt) || typeof data.updatedAt === 'string')
 	);
 }
 
@@ -259,21 +227,34 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColum
 	});
 }
 
+function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): string {
+	// MySQL/MariaDB DATETIME format doesn't accept ISO strings with 'Z' timezone
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		return date.toISOString().replace('T', ' ').replace('Z', '');
+	}
+	// PostgreSQL and SQLite accept ISO strings
+	return date.toISOString();
+}
+
 export function normalizeValue(
 	value: DataStoreColumnJsType,
 	columnType: string | undefined,
-	dbType: DataSourceOptions['type'],
+	dbType?: DataSourceOptions['type'],
 ): DataStoreColumnJsType {
-	if (['mysql', 'mariadb'].includes(dbType)) {
-		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value;
-			} else if (typeof value === 'string') {
-				const date = new Date(value);
-				if (!isNaN(date.getTime())) {
-					return date;
-				}
-			}
+	if (columnType !== 'date' || value === null || value === undefined) {
+		return value;
+	}
+
+	// Convert Date objects to appropriate string format for database parameter binding
+	if (value instanceof Date) {
+		return formatDateForDatabase(value, dbType);
+	}
+
+	if (typeof value === 'string') {
+		const date = new Date(value);
+		if (!isNaN(date.getTime())) {
+			// Convert parsed date strings to appropriate format
+			return formatDateForDatabase(date, dbType);
 		}
 	}
 

@@ -21,6 +21,7 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
+import { reorderItem } from '@/features/dataStore/utils';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
@@ -154,16 +155,11 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		if (moved) {
 			const dsIndex = dataStores.value.findIndex((store) => store.id === datastoreId);
 			const fromIndex = dataStores.value[dsIndex].columns.findIndex((col) => col.id === columnId);
-			dataStores.value[dsIndex].columns = dataStores.value[dsIndex].columns.map((col) => {
-				if (col.id === columnId) return { ...col, index: targetIndex };
-				if (fromIndex < targetIndex && col.index > fromIndex && col.index <= targetIndex) {
-					return { ...col, index: col.index - 1 };
-				}
-				if (fromIndex > targetIndex && col.index >= targetIndex && col.index < fromIndex) {
-					return { ...col, index: col.index + 1 };
-				}
-				return col;
-			});
+			dataStores.value[dsIndex].columns = reorderItem(
+				dataStores.value[dsIndex].columns,
+				fromIndex,
+				targetIndex,
+			);
 		}
 		return moved;
 	};
@@ -173,25 +169,23 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		projectId: string,
 		page: number,
 		pageSize: number,
+		sortBy: string,
 	) => {
 		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
+			sortBy,
 		});
 	};
 
-	const insertEmptyRow = async (dataStore: DataStore) => {
-		const emptyRow: DataStoreRow = {};
-		dataStore.columns.forEach((column) => {
-			emptyRow[column.name] = null;
-		});
+	const insertEmptyRow = async (dataStoreId: string, projectId: string) => {
 		const inserted = await insertDataStoreRowApi(
 			rootStore.restApiContext,
-			dataStore.id,
-			emptyRow,
-			dataStore.projectId,
+			dataStoreId,
+			{},
+			projectId,
 		);
-		return inserted[0].id;
+		return inserted[0];
 	};
 
 	const updateRow = async (

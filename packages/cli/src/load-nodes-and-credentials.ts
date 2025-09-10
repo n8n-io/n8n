@@ -346,23 +346,41 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(
-				types.credentials.map(({ supportedNodes, ...rest }) => ({
-					...rest,
+
+			const processedCredentials = types.credentials.map((credential) => {
+				if (this.shouldAddDomainRestrictions(credential)) {
+					const clonedCredential = { ...credential };
+					clonedCredential.properties = this.injectDomainRestrictionFields([
+						...(clonedCredential.properties ?? []),
+					]);
+					return {
+						...clonedCredential,
+						supportedNodes:
+							loader instanceof PackageDirectoryLoader
+								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+								: undefined,
+					};
+				}
+				return {
+					...credential,
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
-				})),
-			);
+				};
+			});
 
-			// Nodes and credentials that have been loaded immediately
-			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
-			}
+			this.types.credentials = this.types.credentials.concat(processedCredentials);
 
+			// Add domain restriction fields to loaded credentials
 			for (const credentialTypeName in loader.credentialTypes) {
-				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+				const credentialType = loader.credentialTypes[credentialTypeName];
+				if (this.shouldAddDomainRestrictions(credentialType)) {
+					// Access properties through the type field
+					credentialType.type.properties = this.injectDomainRestrictionFields([
+						...(credentialType.type.properties ?? []),
+					]);
+				}
 			}
 
 			for (const type in known.nodes) {
@@ -603,5 +621,68 @@ export class LoadNodesAndCredentials {
 				await subscribe(watchPath, onFileEvent, { ignore });
 			}
 		}
+	}
+
+	private shouldAddDomainRestrictions(
+		credential: ICredentialType | LoadedClass<ICredentialType>,
+	): boolean {
+		// Handle both credential types by extracting the actual ICredentialType
+		const credentialType = 'type' in credential ? credential.type : credential;
+
+		return (
+			credentialType.authenticate !== undefined ||
+			credentialType.genericAuth === true ||
+			(Array.isArray(credentialType.extends) &&
+				(credentialType.extends.includes('oAuth2Api') ||
+					credentialType.extends.includes('oAuth1Api') ||
+					credentialType.extends.includes('googleOAuth2Api')))
+		);
+	}
+
+	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
+		// Check if fields already exist to avoid duplicates
+		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
+			return properties;
+		}
+		const domainFields: INodeProperties[] = [
+			{
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Allow all requests when used in the HTTP Request node',
+					},
+					{
+						name: 'Specific Domains',
+						value: 'domains',
+						description: 'Restrict requests to specific domains',
+					},
+					{
+						name: 'None',
+						value: 'none',
+						description: 'Block all requests when used in the HTTP Request node',
+					},
+				],
+				default: 'all',
+				description: 'Control which domains this credential can be used with in HTTP Request nodes',
+			},
+			{
+				displayName: 'Allowed Domains',
+				name: 'allowedDomains',
+				type: 'string',
+				default: '',
+				placeholder: 'example.com, *.subdomain.com',
+				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
+				displayOptions: {
+					show: {
+						allowedHttpRequestDomains: ['domains'],
+					},
+				},
+			},
+		];
+		return [...properties, ...domainFields];
 	}
 }

@@ -257,8 +257,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Should show "aiAssistant.thinkingSteps.runningTools"
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+		// Should show "aiAssistant.thinkingSteps.thinking"
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Second tool starts (different toolCallId)
 		onMessageCallback({
@@ -274,8 +274,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still showing "aiAssistant.thinkingSteps.runningTools" with multiple tools
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+		// Still showing "aiAssistant.thinkingSteps.thinking" with multiple tools
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// First tool completes
 		onMessageCallback({
@@ -291,8 +291,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still "aiAssistant.thinkingSteps.runningTools" because second tool is still running
-		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+		// Still "aiAssistant.thinkingSteps.thinking" because second tool is still running
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Second tool completes
 		onMessageCallback({
@@ -308,19 +308,15 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Now should show "aiAssistant.thinkingSteps.processingResults" because all tools completed
-		expect(builderStore.assistantThinkingMessage).toBe(
-			'aiAssistant.thinkingSteps.processingResults',
-		);
+		// Now should show "aiAssistant.thinkingSteps.thinking" because all tools completed
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Call onDone to stop streaming
 		onDoneCallback();
 
 		// Message should persist after streaming ends
 		expect(builderStore.streaming).toBe(false);
-		expect(builderStore.assistantThinkingMessage).toBe(
-			'aiAssistant.thinkingSteps.processingResults',
-		);
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		vi.useRealTimers();
 	});
@@ -360,18 +356,14 @@ describe('AI Builder store', () => {
 
 		builderStore.sendChatMessage({ text: 'Add a node' });
 
-		// Should show "aiAssistant.thinkingSteps.processingResults" when tool completes
+		// Should show "aiAssistant.thinkingSteps.thinking" when tool completes
 		await vi.waitFor(() =>
-			expect(builderStore.assistantThinkingMessage).toBe(
-				'aiAssistant.thinkingSteps.processingResults',
-			),
+			expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking'),
 		);
 
-		// Should still show "aiAssistant.thinkingSteps.processingResults" after workflow-updated
+		// Should still show "aiAssistant.thinkingSteps.thinking" after workflow-updated
 		await vi.waitFor(() => expect(builderStore.chatMessages).toHaveLength(3)); // user + tool + workflow
-		expect(builderStore.assistantThinkingMessage).toBe(
-			'aiAssistant.thinkingSteps.processingResults',
-		);
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// Verify streaming has ended
 		expect(builderStore.streaming).toBe(false);

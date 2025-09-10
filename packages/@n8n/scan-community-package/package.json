@@ -1,0 +1,17 @@
+{
+  "name": "@n8n/scan-community-package",
+  "version": "0.3.0",
+  "description": "Static code analyser for n8n community packages",
+  "license": "none",
+  "bin": "scanner/cli.mjs",
+  "files": [
+    "scanner"
+  ],
+  "dependencies": {
+    "eslint": "catalog:",
+    "fast-glob": "catalog:",
+    "axios": "catalog:",
+    "semver": "^7.5.4",
+    "tmp": "0.2.4"
+  }
+}

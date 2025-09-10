@@ -93,6 +93,7 @@ import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import type { Migration } from '../migration-types';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -189,6 +190,7 @@ const sqliteMigrations: Migration[] = [
 	CreateDataStoreTables1754475614601,
 	RemoveOldRoleColumn1750252139170,
 	ReplaceDataStoreTablesWithDataTables1754475614602,
+	LinkRoleToProjectRelationTable1753953244168,
 ];
 
 export { sqliteMigrations };

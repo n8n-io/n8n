@@ -4,7 +4,7 @@ import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
 
 import { DataStoreAggregateService } from './data-store-aggregate.service';
 
-@RestController('/data-stores-global')
+@RestController('/data-tables-global')
 export class DataStoreAggregateController {
 	constructor(private readonly dataStoreAggregateService: DataStoreAggregateService) {}
 

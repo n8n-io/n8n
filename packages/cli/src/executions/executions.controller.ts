@@ -1,18 +1,18 @@
 import type { User, ExecutionSummaries } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
-import type { Scope } from '@n8n/permissions';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
-import { isPositiveInteger } from '@/utils';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import { validateExecutionUpdatePayload } from './validation';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { License } from '@/license';
+import { isPositiveInteger } from '@/utils';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -29,7 +29,7 @@ export class ExecutionsController {
 		} else {
 			return await this.workflowSharingService.getSharedWorkflowIds(user, {
 				workflowRoles: ['workflow:owner'],
-				projectRoles: ['project:personalOwner'],
+				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			});
 		}
 	}

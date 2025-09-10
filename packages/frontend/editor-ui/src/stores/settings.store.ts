@@ -64,11 +64,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		secureCookie: settings.value.authCookie.secure,
 	}));
 
-	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise);
+	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise ?? {});
 
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
 	const concurrency = computed(() => settings.value.concurrency);
+
+	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
 
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
@@ -329,6 +331,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		security,
 		nodeJsVersion,
 		concurrency,
+		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,

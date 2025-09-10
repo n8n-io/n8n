@@ -55,7 +55,7 @@ defineExpose({
 		:virtual-triggering="virtualRef !== undefined"
 		:virtual-ref="virtualRef"
 		:width="virtualRefSize.width.value"
-		:popper-class="$style.popper"
+		:popper-class="`${$style.popper} ignore-key-press-canvas`"
 		:popper-options="{
 			modifiers: [
 				{ name: 'flip', enabled: false },

@@ -313,6 +313,10 @@ export const setupTestServer = ({
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller');
 						break;
+
+					case 'third-party-licenses':
+						await import('@/controllers/third-party-licenses.controller');
+						break;
 				}
 			}
 

@@ -131,6 +131,8 @@ export class FrontendService {
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			isNativePythonRunnerEnabled:
+				this.globalConfig.taskRunners.enabled && process.env.N8N_NATIVE_PYTHON_RUNNER === 'true',
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},

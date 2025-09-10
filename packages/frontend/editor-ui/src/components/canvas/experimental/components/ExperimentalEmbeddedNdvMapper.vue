@@ -38,7 +38,7 @@ defineExpose({
 		:visible="isVisible"
 		placement="left"
 		:show-arrow="false"
-		:popper-class="$style.component"
+		:popper-class="`${$style.component} ignore-key-press-canvas`"
 		:width="360"
 		:offset="8"
 		append-to="body"

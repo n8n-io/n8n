@@ -10,7 +10,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
@@ -27,6 +27,8 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from './credentials-finder.service';
+
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
@@ -38,11 +40,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line import-x/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-
-import { CredentialsFinderService } from './credentials-finder.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -300,7 +299,7 @@ export class CredentialsService {
 				role: 'credential:owner',
 				project: {
 					projectRelations: {
-						role: 'project:personalOwner',
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
 						userId: user.id,
 					},
 				},

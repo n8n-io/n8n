@@ -55,6 +55,7 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
+import { useProjectsStore } from '@/stores/projects.store';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -144,6 +145,7 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -270,6 +272,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
+		projectId: projectsStore.currentProjectId,
 	};
 });
 
@@ -722,6 +725,7 @@ async function loadResources() {
 			methodName: loadOptionsMethod,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
+			projectId: projectsStore.currentProjectId,
 		};
 
 		if (params.filter) {

@@ -11,7 +11,7 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
-export * from './types';
+export type * from './types';
 
 export const i18nInstance = createI18n({
 	legacy: false,

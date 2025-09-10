@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { ProjectRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { ProjectRelation } from '../entities';
@@ -14,7 +14,7 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		return await this.find({
 			where: {
 				projectId: In(projectIds),
-				role: 'project:personalOwner',
+				role: { slug: PROJECT_OWNER_ROLE_SLUG },
 			},
 			relations: {
 				user: {
@@ -28,7 +28,7 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		const projectRelations = await this.find({
 			where: {
 				userId: In(userIds),
-				role: 'project:personalOwner',
+				role: { slug: PROJECT_OWNER_ROLE_SLUG },
 			},
 		});
 
@@ -73,6 +73,7 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			where: {
 				userId,
 			},
+			relations: { role: true },
 		});
 	}
 }

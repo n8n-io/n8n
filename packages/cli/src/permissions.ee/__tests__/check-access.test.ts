@@ -32,15 +32,20 @@ describe('userHasScopes', () => {
 			}),
 		);
 
+		const mockQueryBuilder = {
+			innerJoin: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			groupBy: jest.fn().mockReturnThis(),
+			having: jest.fn().mockReturnThis(),
+			select: jest.fn().mockReturnThis(),
+			getRawMany: jest.fn().mockResolvedValue([{ id: 'projectId' }]),
+		};
+
 		Container.set(
 			ProjectRepository,
 			mock<ProjectRepository>({
-				find: jest.fn().mockResolvedValue([
-					{
-						id: 'projectId',
-						projectRelations: [{ userId: 'userId', role: 'project:admin' }],
-					},
-				]),
+				createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
 			}),
 		);
 	});

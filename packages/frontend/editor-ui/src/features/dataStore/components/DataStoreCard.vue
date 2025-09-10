@@ -57,18 +57,6 @@ const dataStoreRoute = computed(() => {
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--record-count']]"
-							data-test-id="data-store-card-record-count"
-						>
-							{{
-								i18n.baseText('dataStore.card.row.count', {
-									interpolate: { count: props.dataStore.recordCount ?? 0 },
-								})
-							}}
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--column-count']]"
 							data-test-id="data-store-card-column-count"
 						>
@@ -155,7 +143,6 @@ const dataStoreRoute = computed(() => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--record-count,
 	.info-cell--column-count {
 		display: none;
 	}

@@ -52,19 +52,20 @@ const dataStoreResources = computed<DataStoreResource[]>(() =>
 	}),
 );
 
-const projectId = computed(() => {
-	return Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId;
-});
-
 const totalCount = computed(() => dataStoreStore.totalCount);
 
-const currentProject = computed(() => projectsStore.currentProject);
+const currentProject = computed(() => {
+	if (projectPages.isOverviewSubPage) {
+		return projectsStore.personalProject;
+	}
+	return projectsStore.currentProject;
+});
 
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
-	return currentProject.value?.name;
+	return currentProject.value?.name ?? '';
 });
 
 const emptyCalloutDescription = computed(() => {
@@ -72,9 +73,6 @@ const emptyCalloutDescription = computed(() => {
 });
 
 const emptyCalloutButtonText = computed(() => {
-	if (projectPages.isOverviewSubPage || !projectName.value) {
-		return '';
-	}
 	return i18n.baseText('dataStore.empty.button.label', {
 		interpolate: { projectName: projectName.value },
 	});
@@ -84,8 +82,9 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 
 const initialize = async () => {
 	loading.value = true;
+	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectId.value, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectIdFilter ?? '', currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -108,7 +107,7 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 const onAddModalClick = () => {
 	void router.push({
 		name: PROJECT_DATA_STORES,
-		params: { projectId: projectId.value, new: 'new' },
+		params: { projectId: currentProject.value?.id, new: 'new' },
 	});
 };
 

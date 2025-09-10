@@ -558,7 +558,10 @@ describe('calculateNodeSize', () => {
 function createTestGraphNode(data: Partial<GraphNode> = {}): GraphNode {
 	return {
 		computedPosition: { z: 0, ...(data.position ?? { x: 0, y: 0 }) },
-		handleBounds: {},
+		handleBounds: {
+			source: null,
+			target: null,
+		},
 		dimensions: { width: 0, height: 0 },
 		isParent: true,
 		selected: false,

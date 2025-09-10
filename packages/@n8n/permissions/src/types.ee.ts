@@ -5,10 +5,12 @@ import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
 	globalRoleSchema,
-	projectRoleSchema,
+	Role,
+	systemProjectRoleSchema,
 	roleNamespaceSchema,
 	teamRoleSchema,
 	workflowSharingRoleSchema,
+	assignableProjectRoleSchema,
 } from './schemas.ee';
 import { ALL_API_KEY_SCOPES } from './scope-information';
 
@@ -57,24 +59,17 @@ export type AssignableGlobalRole = z.infer<typeof assignableGlobalRoleSchema>;
 export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
-export type ProjectRole = z.infer<typeof projectRoleSchema>;
+export type ProjectRole = z.infer<typeof systemProjectRoleSchema>;
+export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
 
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
 
-type RoleObject<T extends AllRoleTypes> = {
-	role: T;
-	name: string;
-	description?: string | null;
-	scopes: Scope[];
-	licensed: boolean;
-};
-
 export type AllRolesMap = {
-	global: Array<RoleObject<GlobalRole>>;
-	project: Array<RoleObject<ProjectRole>>;
-	credential: Array<RoleObject<CredentialSharingRole>>;
-	workflow: Array<RoleObject<WorkflowSharingRole>>;
+	global: Role[];
+	project: Role[];
+	credential: Role[];
+	workflow: Role[];
 };
 
 export type DbScope = {

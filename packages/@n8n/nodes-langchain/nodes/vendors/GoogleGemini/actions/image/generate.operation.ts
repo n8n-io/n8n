@@ -103,7 +103,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 
 		return await Promise.all(promises);
-	} else if (model.includes('imagen')) {
+	} else if (model.includes('imagen') || model.includes('flash-image')) {
 		// Imagen models use a different endpoint and request/response structure
 		const sampleCount = this.getNodeParameter('options.sampleCount', i, 1) as number;
 		const body = {

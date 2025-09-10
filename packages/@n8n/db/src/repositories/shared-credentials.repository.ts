@@ -120,7 +120,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				project: {
 					projectRelations: {
 						userId: In(userIds),
-						role: In(projectRoles),
+						role: { slug: In(projectRoles) },
 					},
 				},
 			},

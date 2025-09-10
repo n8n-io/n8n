@@ -20,6 +20,7 @@ vi.mock('ag-grid-vue3', () => ({
 				api: {
 					refreshHeader: vi.fn(),
 					applyTransaction: vi.fn(),
+					setGridOption: vi.fn(),
 				},
 			});
 		},
@@ -44,6 +45,9 @@ vi.mock('ag-grid-community', () => ({
 	ValidationModule: {},
 	UndoRedoEditModule: {},
 	CellStyleModule: {},
+	ScrollApiModule: {},
+	PinnedRowModule: {},
+	ColumnApiModule: {},
 }));
 
 // Mock the n8n theme
@@ -67,6 +71,16 @@ vi.mock('@/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/dataStore/composables/useDataStorePagination', () => ({
+	useDataStorePagination: () => ({
+		totalItems: 0,
+		setTotalItems: vi.fn(),
+		ensureItemOnPage: vi.fn(),
+		currentPage: 1,
+		setCurrentPage: vi.fn(),
 	}),
 }));
 
@@ -109,7 +123,6 @@ const mockDataStore: DataStore = {
 	createdAt: '2024-01-01T00:00:00Z',
 	updatedAt: '2024-01-01T00:00:00Z',
 	sizeBytes: 0,
-	recordCount: 0,
 };
 
 describe('DataStoreTable', () => {
