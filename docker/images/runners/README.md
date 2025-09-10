@@ -52,5 +52,5 @@ docker run --rm -it \
 n8nio/runners
 ```
 
-If you need to add extra dependencies (custom image), follow [these instructions](https://docs.n8n.io/hosting/hosting/configuration/task-runners/#adding-extra-dependencies).
+If you need to add extra dependencies (custom image), follow [these instructions](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
 
