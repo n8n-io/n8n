@@ -120,12 +120,16 @@ describe('Push', () => {
 	});
 
 	describe('handleRequest', () => {
-		const req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
-		const res = mock<PushResponse>();
-		const ws = mock<WebSocket>();
 		const backendNames = ['sse', 'websocket'] as const;
+		let req: ReturnType<typeof mock<SSEPushRequest | WebSocketPushRequest>>;
+		let res: ReturnType<typeof mock<PushResponse>>;
+		let ws: ReturnType<typeof mock<WebSocket>>;
 
 		beforeEach(() => {
+			req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
+			res = mock<PushResponse>();
+			ws = mock<WebSocket>();
+
 			res.status.mockReturnThis();
 
 			req.headers.host = host;
@@ -140,13 +144,6 @@ describe('Push', () => {
 				config.backend = backendName;
 				push = new Push(config, mock(), logger, mock(), mock());
 				req.ws = backendName === 'sse' ? undefined : ws;
-
-				// Reset headers for each test to prevent pollution
-				req.headers.host = host;
-				req.headers.origin = `https://${host}`;
-				delete req.headers['x-forwarded-host'];
-				delete req.headers['x-forwarded-proto'];
-				delete req.headers.forwarded;
 			});
 
 			describe('should throw on invalid origin', () => {
