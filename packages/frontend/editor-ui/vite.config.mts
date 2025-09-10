@@ -140,6 +140,23 @@ const plugins: UserConfig['plugins'] = [
 	nodePolyfills({
 		include: ['fs', 'path', 'url', 'util', 'timers'],
 	}),
+	{
+		name: 'assets-watcher',
+		configureServer(server) {
+			const paths = [resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src', 'locales', 'en.json')];
+			paths.forEach((f) => {
+				server.watcher.add(f);
+			});
+
+			function onWatchChange(_: string) {
+				server.hot.send({ type: 'full-reload' });
+			}
+
+			server.watcher.on('add', onWatchChange);
+			server.watcher.on('unlink', onWatchChange);
+			server.watcher.on('change', onWatchChange);
+		},
+	},
 ];
 
 const { RELEASE: release } = process.env;
