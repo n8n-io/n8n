@@ -1,4 +1,4 @@
-import { intro, outro, spinner } from '@clack/prompts';
+import { intro, outro, spinner, log } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
@@ -67,25 +67,42 @@ export default class Dev extends Command {
 
 		linkingSpinner.stop('Linked custom node to n8n');
 
-		outro('✓ Setup complete');
-
 		if (!flags['external-n8n']) {
+			let setupComplete = false;
+			const npxN8nSpinner = spinner();
+			npxN8nSpinner.start('Starting n8n dev server');
+			log.warn(picocolors.dim('First run may take a few minutes while dependencies are installed'));
+
 			// Run n8n with hot reload enabled, always attempt to use latest n8n
 			// TODO: Use n8n@latest. Currently using n8n@next because of broken hot reloading before n8n@1.111.0
-			runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
-				cwd: n8nUserFolder,
-				env: {
-					...process.env,
-					N8N_DEV_RELOAD: 'true',
-					N8N_RUNNERS_ENABLED: 'true',
-					DB_SQLITE_POOL_SIZE: '10',
-					N8N_USER_FOLDER: n8nUserFolder,
-					N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
-				},
-				name: 'n8n',
-				color: picocolors.green,
+			await new Promise<void>((resolve) => {
+				runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
+					cwd: n8nUserFolder,
+					env: {
+						...process.env,
+						N8N_DEV_RELOAD: 'true',
+						N8N_RUNNERS_ENABLED: 'true',
+						DB_SQLITE_POOL_SIZE: '10',
+						N8N_USER_FOLDER: n8nUserFolder,
+						N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
+					},
+					name: 'n8n',
+					color: picocolors.green,
+					allowOutput: (line) => {
+						if (line.includes('Initializing n8n process')) {
+							resolve();
+						}
+
+						return setupComplete;
+					},
+				});
 			});
+
+			setupComplete = true;
+			npxN8nSpinner.stop('Started n8n dev server');
 		}
+
+		outro('✓ Setup complete');
 
 		// Run `tsc --watch` in background
 		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch'], {
