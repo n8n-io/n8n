@@ -1080,6 +1080,7 @@
 	"mainSidebar.confirmMessage.workflowDelete.message": "Are you sure that you want to delete '{workflowName}' permanently?",
 	"mainSidebar.credentials": "Credentials",
 	"mainSidebar.variables": "Variables",
+	"mainSidebar.insights": "Insights",
 	"mainSidebar.help": "Help",
 	"mainSidebar.helpMenuItems.course": "Course",
 	"mainSidebar.helpMenuItems.documentation": "Documentation",
