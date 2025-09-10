@@ -186,12 +186,18 @@ export function useCanvasOperations() {
 	 * Node operations
 	 */
 
-	function tidyUp({ result, source, target }: CanvasLayoutEvent) {
+	function tidyUp(
+		{ result, source, target }: CanvasLayoutEvent,
+		{ trackEvents = true }: { trackEvents?: boolean } = {},
+	) {
 		updateNodesPosition(
 			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
 			{ trackBulk: true, trackHistory: true },
 		);
-		trackTidyUp({ result, source, target });
+
+		if (trackEvents) {
+			trackTidyUp({ result, source, target });
+		}
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
@@ -1874,12 +1880,14 @@ export function useCanvasOperations() {
 			trackHistory = true,
 			viewport,
 			regenerateIds = true,
+			trackEvents = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
 			trackHistory?: boolean;
 			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
+			trackEvents?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -1937,37 +1945,39 @@ export function useCanvasOperations() {
 			removeUnknownCredentials(workflowData);
 
 			try {
-				const nodeGraph = JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(
-						workflowData as IWorkflowBase,
-						workflowHelpers.getNodeTypes(),
-						{
-							nodeIdMap,
-							sourceInstanceId:
-								workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
-									? workflowData.meta.instanceId
-									: '',
-							isCloudDeployment: settingsStore.isCloudDeployment,
-						},
-					).nodeGraph,
-				);
+				if (trackEvents) {
+					const nodeGraph = JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							workflowHelpers.getNodeTypes(),
+							{
+								nodeIdMap,
+								sourceInstanceId:
+									workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+										? workflowData.meta.instanceId
+										: '',
+								isCloudDeployment: settingsStore.isCloudDeployment,
+							},
+						).nodeGraph,
+					);
 
-				if (source === 'paste') {
-					telemetry.track('User pasted nodes', {
-						workflow_id: workflowsStore.workflowId,
-						node_graph_string: nodeGraph,
-					});
-				} else if (source === 'duplicate') {
-					telemetry.track('User duplicated nodes', {
-						workflow_id: workflowsStore.workflowId,
-						node_graph_string: nodeGraph,
-					});
-				} else {
-					telemetry.track('User imported workflow', {
-						source,
-						workflow_id: workflowsStore.workflowId,
-						node_graph_string: nodeGraph,
-					});
+					if (source === 'paste') {
+						telemetry.track('User pasted nodes', {
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else if (source === 'duplicate') {
+						telemetry.track('User duplicated nodes', {
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else {
+						telemetry.track('User imported workflow', {
+							source,
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					}
 				}
 			} catch {
 				// If telemetry fails, don't throw an error
