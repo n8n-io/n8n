@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { EventService } from '@/events/event.service';
 
@@ -109,6 +110,13 @@ export = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
+			// get running executions so we exclude them from the result
+			const runningExecutionsIds = Container.get(ActiveExecutions)
+				.getActiveExecutions()
+				.map(({ id }) => id);
+
+			console.log('runningExecutionsIds', runningExecutionsIds);
+
 			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
 				{
 					status,
@@ -116,6 +124,10 @@ export = {
 					lastId,
 					includeData,
 					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
+
+					// for backward compatibility `running` executions are always excluded
+					// unless the user explicitly filters by `running` status
+					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
 				};
 
 			const executions =

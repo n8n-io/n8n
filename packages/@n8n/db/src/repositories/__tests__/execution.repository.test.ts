@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { In, LessThan } from '@n8n/typeorm';
+import { In, LessThan, And, Not } from '@n8n/typeorm';
 
 import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -90,39 +90,51 @@ describe('ExecutionRepository', () => {
 			expect(result[0].id).toEqual(mockEntities[0].id);
 		});
 
-		test('should get executions with id less than the passed `lastId`', async () => {
-			const limit = 10;
-			const params = {
-				limit: 10,
-				lastId: '3',
-			};
-			const mockEntities = [{ id: '1' }, { id: '2' }];
+		describe('with id filters', () => {
+			test.each`
+				lastId       | excludedExecutionsIds | expectedIdCondition
+				${'5'}       | ${['2', '3']}         | ${And(LessThan('5'), Not(In(['2', '3'])))}
+				${'5'}       | ${[]}                 | ${LessThan('5')}
+				${'5'}       | ${undefined}          | ${LessThan('5')}
+				${undefined} | ${['2', '3']}         | ${Not(In(['2', '3']))}
+				${undefined} | ${[]}                 | ${undefined}
+				${undefined} | ${undefined}          | ${undefined}
+			`(
+				'should find with id less than "$lastId" and not in "$excludedExecutionsIds"',
+				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
+					const params = {
+						limit: 10,
+						lastId,
+						excludedExecutionsIds,
+					};
+					const mockEntities = [{ id: '1' }, { id: '2' }];
+					entityManager.find.mockResolvedValueOnce(mockEntities);
+					const result = await executionRepository.getExecutionsForPublicApi(params);
 
-			entityManager.find.mockResolvedValueOnce(mockEntities);
-			const result = await executionRepository.getExecutionsForPublicApi(params);
-
-			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
-				where: {
-					id: LessThan(params.lastId),
+					expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+						select: [
+							'id',
+							'mode',
+							'retryOf',
+							'retrySuccessId',
+							'startedAt',
+							'stoppedAt',
+							'workflowId',
+							'waitTill',
+							'finished',
+							'status',
+						],
+						where: {
+							id: expectedIdCondition,
+						},
+						order: { id: 'DESC' },
+						take: params.limit,
+						relations: ['executionData'],
+					});
+					expect(result.length).toBe(mockEntities.length);
+					expect(result[0].id).toEqual(mockEntities[0].id);
 				},
-				order: { id: 'DESC' },
-				take: limit,
-				relations: ['executionData'],
-			});
-			expect(result.length).toBe(mockEntities.length);
-			expect(result[0].id).toEqual(mockEntities[0].id);
+			);
 		});
 
 		describe('with status filter', () => {
@@ -230,26 +242,6 @@ describe('ExecutionRepository', () => {
 			expect(result).toBe(mockCount);
 		});
 
-		test('should get executions matching the lastId filter', async () => {
-			const limit = 10;
-			const mockCount = 15;
-			const params = {
-				limit: 10,
-				lastId: '5',
-			};
-
-			entityManager.count.mockResolvedValueOnce(mockCount);
-			const result = await executionRepository.getExecutionsCountForPublicApi(params);
-
-			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-				where: {
-					id: LessThan(params.lastId),
-				},
-				take: limit,
-			});
-			expect(result).toBe(mockCount);
-		});
-
 		test('should get executions matching the workflowIds filter', async () => {
 			const limit = 10;
 			const mockCount = 12;
@@ -268,6 +260,39 @@ describe('ExecutionRepository', () => {
 				take: limit,
 			});
 			expect(result).toBe(mockCount);
+		});
+
+		describe('with id filters', () => {
+			test.each`
+				lastId       | excludedExecutionsIds | expectedIdCondition
+				${'5'}       | ${['2', '3']}         | ${And(LessThan('5'), Not(In(['2', '3'])))}
+				${'5'}       | ${[]}                 | ${LessThan('5')}
+				${'5'}       | ${undefined}          | ${LessThan('5')}
+				${undefined} | ${['2', '3']}         | ${Not(In(['2', '3']))}
+				${undefined} | ${[]}                 | ${undefined}
+				${undefined} | ${undefined}          | ${undefined}
+			`(
+				'should find with id less than "$lastId" and not in "$excludedExecutionsIds"',
+				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
+					const mockCount = 15;
+					const params = {
+						limit: 10,
+						lastId,
+						excludedExecutionsIds,
+					};
+
+					entityManager.count.mockResolvedValueOnce(mockCount);
+					const result = await executionRepository.getExecutionsCountForPublicApi(params);
+
+					expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+						where: {
+							id: expectedIdCondition,
+						},
+						take: params.limit,
+					});
+					expect(result).toBe(mockCount);
+				},
+			);
 		});
 
 		describe('with status filter', () => {
