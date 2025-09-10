@@ -42,7 +42,6 @@ const onUpdateClick = async () => {
 			size="small"
 			theme="text"
 			data-test-id="version-update-next-versions-link"
-			:disabled="props.disabled"
 			@click="openUpdatesPanel"
 		>
 			{{
