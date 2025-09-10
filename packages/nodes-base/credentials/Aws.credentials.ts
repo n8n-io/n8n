@@ -234,7 +234,6 @@ function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
 	const hostname = url.hostname;
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
-	console.log('parse AwsUrl', { service, region, hostname });
 	return { service, region };
 }
 
