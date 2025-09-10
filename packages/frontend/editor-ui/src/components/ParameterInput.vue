@@ -1010,7 +1010,7 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
-const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 1000 });
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 300 });
 
 function onClickOutsideMapper() {
 	if (!isFocused.value) {
@@ -1153,6 +1153,7 @@ defineExpose({
 
 onBeforeUnmount(() => {
 	valueChangedDebounced.cancel();
+	onUpdateTextInputDebounced.cancel();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1592,9 +1593,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="
-						(valueChangedDebounced($event) as undefined) && onUpdateTextInputDebounced($event)
-					"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
