@@ -21,7 +21,16 @@ const props = defineProps<{ roleSlug?: string }>();
 const defaultForm = () => ({
 	displayName: '',
 	description: '',
-	scopes: [],
+	scopes: [
+		'project:read',
+		'project:list',
+		'folder:read',
+		'folder:list',
+		'workflow:read',
+		'workflow:list',
+		'credential:read',
+		'credential:list',
+	],
 });
 
 const initialState = ref<Role | undefined>();
@@ -95,10 +104,6 @@ const scopes = {
 } as const;
 
 function toggleScope(scope: string) {
-	if (scope.endsWith(':read')) {
-		toggleScope(scope.replace(':read', ':list'));
-	}
-
 	const index = form.value.scopes.indexOf(scope);
 	if (index !== -1) {
 		form.value.scopes.splice(index, 1);
@@ -257,6 +262,7 @@ const displayNameValidationRules = [
 						:data-test-id="`scope-checkbox-${scope}`"
 						:model-value="form.scopes.includes(scope)"
 						:label="i18n.baseText(`projectRoles.${scope}`)"
+						:disabled="scope.endsWith(':read')"
 						validate-on-blur
 						type="checkbox"
 						@update:model-value="() => toggleScope(scope)"

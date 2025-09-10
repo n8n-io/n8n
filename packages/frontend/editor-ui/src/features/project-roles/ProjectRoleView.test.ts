@@ -131,6 +131,17 @@ const setupEditingRoleComponent = async () => {
 	return component;
 };
 
+const defaultScopes = [
+	'project:read',
+	'project:list',
+	'folder:read',
+	'folder:list',
+	'workflow:read',
+	'workflow:list',
+	'credential:read',
+	'credential:list',
+];
+
 describe('ProjectRoleView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -144,13 +155,23 @@ describe('ProjectRoleView', () => {
 
 	describe('New Role Creation', () => {
 		it('should render new role form when no roleSlug prop provided', () => {
-			const { getByText, getByPlaceholderText } = renderComponent();
+			const { getByText, getByPlaceholderText, getByTestId } = renderComponent();
 
 			expect(getByText('New Role')).toBeInTheDocument();
 			expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
 			expect(getByText('Role name')).toBeInTheDocument();
 			expect(getByText('Description')).toBeInTheDocument();
 			expect(getByPlaceholderText('Optional')).toBeInTheDocument();
+
+			// default scopes should be checked and disabled
+			defaultScopes
+				.filter((scope) => scope.endsWith(':read'))
+				.forEach((scope) => {
+					const label = getByTestId(`scope-checkbox-${scope}`);
+					const checkbox = label.querySelector('input[type="checkbox"]') as HTMLInputElement;
+					expect(checkbox).toBeChecked();
+					expect(checkbox).toBeDisabled();
+				});
 		});
 
 		it('should render back button that calls router.back', async () => {
@@ -185,7 +206,7 @@ describe('ProjectRoleView', () => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
 					displayName: 'New Test Role',
 					description: 'A new test role',
-					scopes: [],
+					scopes: defaultScopes,
 					roleType: 'project',
 				});
 			});
@@ -311,11 +332,8 @@ describe('ProjectRoleView', () => {
 			const { getByTestId } = renderComponent();
 
 			// Find the checkbox by its label text
-			const workflowReadLabel = getByTestId('scope-checkbox-workflow:read');
-			const checkboxContainer = workflowReadLabel.closest('.n8n-checkbox');
-			const checkbox = checkboxContainer?.querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const label = getByTestId('scope-checkbox-project:update');
+			const checkbox = label.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
 			// Initially unchecked
 			expect(checkbox).not.toBeChecked();
@@ -333,9 +351,8 @@ describe('ProjectRoleView', () => {
 	describe('Form Validation', () => {
 		it('should have maxlength restrictions', () => {
 			const { container } = renderComponent();
-			const nameInput = container.querySelector('input[maxlength="100"]');
-			const descriptionInput = container.querySelector('textarea[maxlength="500"]');
 
+			const { nameInput, descriptionInput } = getFormElements(container);
 			expect(nameInput).toHaveAttribute('maxlength', '100');
 			expect(descriptionInput).toHaveAttribute('maxlength', '500');
 		});
@@ -427,7 +444,7 @@ describe('ProjectRoleView', () => {
 					expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
 						displayName: 'New Test Role',
 						description: '',
-						scopes: [],
+						scopes: defaultScopes,
 						roleType: 'project',
 					});
 				});
@@ -467,11 +484,8 @@ describe('ProjectRoleView', () => {
 				expect(discardButton).toBeDisabled();
 			});
 
-			const scopeCheckbox = getByTestId('scope-checkbox-project:read');
-			const checkboxContainer = scopeCheckbox.closest('.n8n-checkbox');
-			const checkbox = checkboxContainer?.querySelector(
-				'input[type="checkbox"]',
-			) as HTMLInputElement;
+			const scopeCheckbox = getByTestId('scope-checkbox-project:update');
+			const checkbox = scopeCheckbox.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
 			await userEvent.click(checkbox);
 			await waitForEditButtonsToBe(getByText, 'enabled');
@@ -491,7 +505,7 @@ describe('ProjectRoleView', () => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
 					displayName: 'Test Role',
 					description: '',
-					scopes: [],
+					scopes: defaultScopes,
 					roleType: 'project',
 				});
 			});
