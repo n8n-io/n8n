@@ -45,30 +45,20 @@ const handleClearSelection = () => {
 		<span>
 			{{ getSelectedText() }}
 		</span>
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('generic.list.deleteSelected.tooltip')"
-			:shortcut="{ keys: ['Del'] }"
-		>
-			<N8nButton
-				type="tertiary"
-				data-test-id="delete-selected-button"
-				:label="i18n.baseText('generic.delete')"
-				:class="$style.button"
-				@click="handleDeleteSelected"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('generic.list.clearSelection.tooltip')"
-			:shortcut="{ keys: ['Esc'] }"
-		>
-			<N8nButton
-				type="tertiary"
-				data-test-id="clear-selection-button"
-				:label="getClearSelectionText()"
-				:class="$style.button"
-				@click="handleClearSelection"
-			/>
-		</KeyboardShortcutTooltip>
+		<N8nButton
+			type="tertiary"
+			data-test-id="delete-selected-button"
+			:label="i18n.baseText('generic.delete')"
+			:class="$style.button"
+			@click="handleDeleteSelected"
+		/>
+		<N8nButton
+			type="tertiary"
+			data-test-id="clear-selection-button"
+			:label="getClearSelectionText()"
+			:class="$style.button"
+			@click="handleClearSelection"
+		/>
 	</div>
 </template>
 

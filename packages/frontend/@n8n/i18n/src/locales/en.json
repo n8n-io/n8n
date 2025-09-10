@@ -112,8 +112,6 @@
 	"generic.never": "Never",
 	"generic.list.clearSelection": "Clear selection",
 	"generic.list.selected": "{count} row selected | {count} rows selected",
-	"generic.list.clearSelection.tooltip": "Clear the current selection",
-	"generic.list.deleteSelected.tooltip": "Delete the selected rows",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",
