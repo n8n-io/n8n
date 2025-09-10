@@ -37,9 +37,9 @@ test.describe('Data pinning', () => {
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 			await n8n.ndv.execute();
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.get()).toBeVisible();
 
-			const prevValue = await n8n.ndv.getOutputTbodyCell(0, 0).textContent();
+			const prevValue = await n8n.ndv.outputPanel.getTbodyCell(0, 0).textContent();
 
 			await n8n.ndv.togglePinData();
 			await n8n.ndv.close();
@@ -48,7 +48,7 @@ test.describe('Data pinning', () => {
 			await n8n.canvas.clickExecuteWorkflowButton();
 			await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
 
-			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toHaveText(prevValue ?? '');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText(prevValue ?? '');
 		});
 
 		test('should be able to set custom pinned data', async ({ n8n }) => {
@@ -56,21 +56,21 @@ test.describe('Data pinning', () => {
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 			await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
-			await expect(n8n.ndv.getPinDataButton()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
 			await n8n.ndv.setPinnedData([{ test: 1 }]);
 
-			await expect(n8n.ndv.getOutputTableRows()).toHaveCount(2);
-			await expect(n8n.ndv.getOutputTableHeaders()).toHaveCount(2);
-			await expect(n8n.ndv.getOutputTableHeaders().first()).toContainText('test');
-			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toContainText('1');
+			await expect(n8n.ndv.outputPanel.getTableRows()).toHaveCount(2);
+			await expect(n8n.ndv.outputPanel.getTableHeaders()).toHaveCount(2);
+			await expect(n8n.ndv.outputPanel.getTableHeaders().first()).toContainText('test');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 
 			await n8n.ndv.close();
 			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
 
-			await expect(n8n.ndv.getOutputTableHeaders().first()).toContainText('test');
-			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toContainText('1');
+			await expect(n8n.ndv.outputPanel.getTableHeaders().first()).toContainText('test');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 		});
 
 		test('should display pin data edit button for Webhook node', async ({ n8n }) => {
@@ -92,7 +92,7 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 
 			await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
-			await expect(n8n.ndv.getPinDataButton()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
 			await n8n.ndv.setPinnedData([{ test: 1 }]);
 			await n8n.ndv.close();
@@ -101,8 +101,8 @@ test.describe('Data pinning', () => {
 			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode('Edit Fields1');
 
-			await expect(n8n.ndv.getOutputTableHeaders().first()).toContainText('test');
-			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toContainText('1');
+			await expect(n8n.ndv.outputPanel.getTableHeader(0)).toContainText('test');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 		});
 	});
 
@@ -125,7 +125,7 @@ test.describe('Data pinning', () => {
 
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 			await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
-			await expect(n8n.ndv.getPinDataButton()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
 			const largeData = [{ test: '1'.repeat(maxPinnedDataSize + 1000) }];
 			await n8n.ndv.setPinnedData(largeData);
@@ -146,7 +146,7 @@ test.describe('Data pinning', () => {
 
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 			await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
-			await expect(n8n.ndv.getPinDataButton()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
 			await n8n.ndv.setPinnedData('[ { "name": "First item", "code": 2dsa }]');
 
@@ -202,8 +202,8 @@ test.describe('Data pinning', () => {
 
 			await n8n.canvas.openNode(NODES.END);
 
-			await expect(n8n.ndv.getOutputTableRow(1)).toBeVisible();
-			await expect(n8n.ndv.getOutputTableRow(1)).toContainText('pin-overwritten');
+			await expect(n8n.ndv.outputPanel.getTableRow(1)).toBeVisible();
+			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('pin-overwritten');
 		});
 
 		test('should not use pin data in production webhook executions', async ({

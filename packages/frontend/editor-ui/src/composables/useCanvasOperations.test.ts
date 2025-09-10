@@ -119,10 +119,10 @@ describe('useCanvasOperations', () => {
 	};
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-
 		const pinia = createTestingPinia({ initialState });
 		setActivePinia(pinia);
+
+		vi.clearAllMocks();
 	});
 
 	describe('requireNodeTypeDescription', () => {
@@ -710,6 +710,71 @@ describe('useCanvasOperations', () => {
 
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
+
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'all',
+			});
+		});
+
+		it('should send telemetry event when trackEvents is true', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackEvents: true });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'all',
+			});
+		});
+
+		it('should not send telemetry event when trackEvents is false', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackEvents: false });
+
+			expect(useTelemetry().track).not.toHaveBeenCalled();
+		});
+
+		it('should send telemetry event when trackEvents is undefined (default behavior)', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, {}); // No trackEvents specified, should default to true
 
 			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
 				nodes_count: 2,
@@ -3398,6 +3463,116 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('importWorkflowData', () => {
+		const workflowData = {
+			nodes: [], //buildImportNodes(),
+			connections: {},
+		};
+
+		it('should track telemetry when trackEvents is true (default)', async () => {
+			const telemetry = useTelemetry();
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowData, 'paste');
+
+			expect(telemetry.track).toHaveBeenCalledWith('User pasted nodes', {
+				workflow_id: expect.any(String),
+				node_graph_string: expect.any(String),
+			});
+		});
+
+		it('should track telemetry when trackEvents is explicitly true', async () => {
+			const telemetry = useTelemetry();
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowData, 'duplicate', {
+				trackEvents: true,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User duplicated nodes', {
+				workflow_id: expect.any(String),
+				node_graph_string: expect.any(String),
+			});
+		});
+
+		it('should not track telemetry when trackEvents is false', async () => {
+			const telemetry = useTelemetry();
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowData, 'paste', {
+				trackEvents: false,
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalledWith('User pasted nodes', expect.any(Object));
+		});
+
+		it('should track different telemetry events for different sources with trackEvents true', async () => {
+			const telemetry = useTelemetry();
+			const canvasOperations = useCanvasOperations();
+
+			// Test 'paste' source
+			await canvasOperations.importWorkflowData(workflowData, 'paste', { trackEvents: true });
+			expect(telemetry.track).toHaveBeenCalledWith('User pasted nodes', {
+				workflow_id: expect.any(String),
+				node_graph_string: expect.any(String),
+			});
+		});
+
+		it('should track duplicate telemetry when source is duplicate with trackEvents true', async () => {
+			const telemetry = useTelemetry();
+			const canvasOperations = useCanvasOperations();
+
+			// Test 'duplicate' source
+			await canvasOperations.importWorkflowData(workflowData, 'duplicate', { trackEvents: true });
+			expect(telemetry.track).toHaveBeenCalledWith('User duplicated nodes', {
+				workflow_id: expect.any(String),
+				node_graph_string: expect.any(String),
+			});
+		});
+
+		it('should track import telemetry when source is file with trackEvents true', async () => {
+			const telemetry = useTelemetry();
+			const canvasOperations = useCanvasOperations();
+
+			// Test other source
+			await canvasOperations.importWorkflowData(workflowData, 'file', { trackEvents: true });
+			expect(telemetry.track).toHaveBeenCalledWith('User imported workflow', {
+				source: 'file',
+				workflow_id: expect.any(String),
+				node_graph_string: expect.any(String),
+			});
+		});
+
+		it('should not track any telemetry events when trackEvents is false regardless of source', async () => {
+			const telemetry = useTelemetry();
+			const canvasOperations = useCanvasOperations();
+
+			// Test 'paste' source with trackEvents: false
+			await canvasOperations.importWorkflowData(workflowData, 'paste', {
+				trackEvents: false,
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith('User pasted nodes', expect.any(Object));
+
+			// Test 'duplicate' source with trackEvents: false
+			await canvasOperations.importWorkflowData(workflowData, 'duplicate', {
+				trackEvents: false,
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith('User duplicated nodes', expect.any(Object));
+
+			// Test other source with trackEvents: false
+			await canvasOperations.importWorkflowData(workflowData, 'file', {
+				trackEvents: false,
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User imported workflow',
+				expect.any(Object),
+			);
+
+			// Ensure no telemetry was called at all
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('duplicateNodes', () => {
 		it('should duplicate nodes', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -3693,7 +3868,7 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
 		});
 		afterEach(() => {
-			vi.clearAllMocks();
+			// Mock cleanup handled automatically by test isolation
 		});
 
 		describe('common cases', () => {
