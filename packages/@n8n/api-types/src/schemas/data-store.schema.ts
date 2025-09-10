@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import type { ListDataStoreQueryDto } from '../dto';
 
+export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
+
 export const dataStoreNameSchema = z.string().trim().min(1).max(128);
 export const dataStoreIdSchema = z.string().max(36);
 

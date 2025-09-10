@@ -503,7 +503,7 @@ export class Wait extends Webhook {
 			if (!validateWaitAmount(waitAmount)) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'Invalid wait amount. It must be a positive number.',
+					'Invalid wait amount. Please enter a number that is 0 or greater.',
 				);
 			}
 

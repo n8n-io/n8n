@@ -27,7 +27,7 @@ export const fetchDataStoresApi = async (
 		'GET',
 		apiEndpoint,
 		{
-			options: options ?? undefined,
+			...options,
 			filter: filter ?? undefined,
 		},
 	);
@@ -157,7 +157,7 @@ export const insertDataStoreRowApi = async (
 		'POST',
 		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
-			returnData: true,
+			returnType: 'all',
 			data: [row],
 		},
 	);
@@ -175,7 +175,10 @@ export const updateDataStoreRowsApi = async (
 		'PATCH',
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
-			filter: { id: rowId },
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: rowId }],
+			},
 			data: rowData,
 		},
 	);

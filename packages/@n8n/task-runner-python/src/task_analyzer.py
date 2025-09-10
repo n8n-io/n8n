@@ -12,7 +12,6 @@ from src.constants import (
     ERROR_EXTERNAL_DISALLOWED,
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
-    ERROR_SECURITY_VIOLATIONS,
     ALWAYS_BLOCKED_ATTRIBUTES,
     UNSAFE_ATTRIBUTES,
 )
@@ -186,8 +185,9 @@ class TaskAnalyzer:
             self._raise_security_error(security_validator.violations)
 
     def _raise_security_error(self, violations: CachedViolations) -> None:
-        message = ERROR_SECURITY_VIOLATIONS.format(violations="\n".join(violations))
-        raise SecurityViolationError(message)
+        raise SecurityViolationError(
+            message="Security violations detected", description="\n".join(violations)
+        )
 
     def _to_cache_key(self, code: str) -> CacheKey:
         code_hash = hashlib.sha256(code.encode()).hexdigest()
