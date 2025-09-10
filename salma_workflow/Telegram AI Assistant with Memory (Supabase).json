@@ -1,0 +1,248 @@
+{
+  "name": "Telegram AI Assistant with Memory (Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "tableId": "ConversationMemory",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldValues0_Field_Value', ``, 'string') }}"
+            },
+            {
+              "fieldId": "sender",
+              "fieldValue": "={{ $('Receive User Message').item.json.message.from.id }}"
+            },
+            {
+              "fieldId": "recipient",
+              "fieldValue": "={{ $('Receive User Message').item.json.message.chat.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        528,
+        192
+      ],
+      "id": "c6d95e3f-ca2b-4fa7-afd6-7d98a8bafaa1",
+      "name": "SaveMemory",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hXffw1APyxD2Mt9i",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        -32
+      ],
+      "id": "d388dd19-8e7e-414e-a39d-0477703f436b",
+      "name": "Receive User Message",
+      "webhookId": "ba8df2b5-da26-46a2-ae67-9a3282df5a2d",
+      "credentials": {
+        "telegramApi": {
+          "id": "FdhiD6dkWOT8mYhX",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "ConversationMemory",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sender",
+              "condition": "eq",
+              "keyValue": "={{ $json.message.from.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -16
+      ],
+      "id": "26052a45-aedc-42ea-aa13-d5381c010608",
+      "name": "Fetch User Memories",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hXffw1APyxD2Mt9i",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "ConversationMemories",
+        "include": "={{ $json.message }}{{ $json.created_at }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -16
+      ],
+      "id": "eef76dc1-64b2-43d8-9528-56aa92737bab",
+      "name": "Format Memories"
+    },
+    {
+      "parameters": {
+        "model": "z-ai/glm-4.5-air:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        224,
+        192
+      ],
+      "id": "8452c4d9-f9d7-40ee-a315-3a7a067c9ec5",
+      "name": "Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "xxICll11FEfVQCtc",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Receive User Message').item.json.message.text }}",
+        "options": {
+          "systemMessage": "=# ROLE\nYou are a friendly AI assistant.\nYou are currently talking to a user over Telegram.\n\n# RULES\nWhen the user sends a new message, decide if they shared any \n**noteworthy information** that should be **saved in memory** \nfor future reference.\n\nIf so, use the **Save Memory** tool to store this information.\nDO NOT inform the user that you are saving this information.\n\nSimply continue the conversation as normal.\n\n## Tools\n## Save Memory\nUse this tool to **store any important facts** shared by the \nuser.\n\nSummarize the information clearly and pass it to this tool.\n\n# Memories\nThese are the **last stored facts** collected from the user \n(including date/time).\n {{ $json.ConversationMemories.toJsonString()  }}\n\n\n!! IMPORTANT !!\nTake these stored facts into account when replying.\nIf a fact was already stored, do not repeat asking for it.\n\nRespond naturally and conversationally.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        -16
+      ],
+      "id": "403da4e1-2f93-4572-94d0-67c57f169cfc",
+      "name": "AI Memory Agent"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Receive User Message').item.json.message.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        -16
+      ],
+      "id": "3bca3a7f-71c8-44b2-be5b-67f6f2badb36",
+      "name": "Send Reply to Telegram",
+      "webhookId": "3fa0ae07-37f1-4e89-80dd-fc7dbd938591",
+      "credentials": {
+        "telegramApi": {
+          "id": "FdhiD6dkWOT8mYhX",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "SaveMemory": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Memory Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive User Message": {
+      "main": [
+        [
+          {
+            "node": "Fetch User Memories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch User Memories": {
+      "main": [
+        [
+          {
+            "node": "Format Memories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Memories": {
+      "main": [
+        [
+          {
+            "node": "AI Memory Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Memory Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Memory Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Reply to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "97489a37-1935-42fb-9e5e-b9a045892844",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "87dcba0509563002ddfd7815c02e139f57ebab7999164e3e8c0ba9982099e9da"
+  },
+  "id": "hN7BDhtpYPpIwihC",
+  "tags": []
+}
