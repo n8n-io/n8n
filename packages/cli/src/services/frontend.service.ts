@@ -182,6 +182,10 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			dataTables: {
+				maxSize: this.globalConfig.dataTable.maxSize,
+				warningThreshold: this.globalConfig.dataTable.warningThreshold,
+			},
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,

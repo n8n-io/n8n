@@ -33,6 +33,22 @@
         "kind": {
             "type": "string"
         },
+        "localizations": {
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "title": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "player": {
             "type": "object",
             "properties": {
@@ -54,6 +70,9 @@
                     "type": "string"
                 },
                 "defaultAudioLanguage": {
+                    "type": "string"
+                },
+                "defaultLanguage": {
                     "type": "string"
                 },
                 "description": {
@@ -214,5 +233,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }
