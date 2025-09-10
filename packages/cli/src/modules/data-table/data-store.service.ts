@@ -36,9 +36,6 @@ import { normalizeRows } from './utils/sql-utils';
 
 @Service()
 export class DataStoreService {
-	lastCacheSizeCheck: Date;
-	pendingSizeCheck: Promise<void> | null = null;
-
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
@@ -399,6 +396,10 @@ export class DataStoreService {
 	}
 
 	async getDataTablesSize() {
-		return await this.dataStoreRepository.findDataTablesSize();
+		const sizeBytes = await this.dataStoreRepository.findDataTablesSize();
+		return {
+			sizeBytes,
+			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
+		};
 	}
 }

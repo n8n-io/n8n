@@ -212,5 +212,5 @@ export class GlobalConfig {
 	ai: AiConfig;
 
 	@Nested
-	datatable: DataTableConfig;
+	dataTable: DataTableConfig;
 }

@@ -285,7 +285,6 @@ export class DataStoreRepository extends Repository<DataTable> {
 		}
 
 		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
-
 		return result[0]?.total_bytes ?? 0;
 	}
 }

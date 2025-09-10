@@ -7,7 +7,7 @@ describe('DataStoreSizeValidator', () => {
 	let validator: DataStoreSizeValidator;
 	let fetchSizeFn: jest.Mock;
 	const globalConfig = mockInstance(GlobalConfig, {
-		datatable: {
+		dataTable: {
 			sizeCheckCacheDuration: 1000,
 			warningThreshold: 90 * 1024 * 1024,
 			maxSize: 100 * 1024 * 1024,

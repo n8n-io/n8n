@@ -2509,7 +2509,7 @@ describe('dataStore', () => {
 			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
 			dataStoreSizeValidator.reset();
 
-			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
+			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -2534,7 +2534,7 @@ describe('dataStore', () => {
 			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
 			dataStoreSizeValidator.reset();
 
-			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
+			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -2564,7 +2564,7 @@ describe('dataStore', () => {
 		it('should prevent upsertRow when size limit exceeded (insert case)', async () => {
 			// ARRANGE
 
-			const maxSize = Container.get(GlobalConfig).datatable.maxSize;
+			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
 
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
