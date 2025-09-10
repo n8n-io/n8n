@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nButton } from '@n8n/design-system';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 interface Props {
 	selectedCount: number;
@@ -45,7 +46,7 @@ const handleClearSelection = () => {
 			{{ getSelectedText() }}
 		</span>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('dataStore.deleteRows.tooltip')"
+			:label="i18n.baseText('generic.list.deleteSelected.tooltip')"
 			:shortcut="{ keys: ['Del'] }"
 		>
 			<N8nButton
@@ -57,7 +58,7 @@ const handleClearSelection = () => {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('dataStore.clearSelection.tooltip')"
+			:label="i18n.baseText('generic.list.clearSelection.tooltip')"
 			:shortcut="{ keys: ['Esc'] }"
 		>
 			<N8nButton
