@@ -25,8 +25,8 @@ describe('Aws Credential', () => {
 		expect(aws.documentationUrl).toBe('aws');
 		expect(aws.icon).toEqual({ light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' });
 		expect(aws.properties.length).toBeGreaterThan(0);
-		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 		expect(aws.test.request.baseURL).toBe(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			'={{$credentials.region.startsWith("cn-") ? `https://sts.${$credentials.region}.amazonaws.com.cn` : `https://sts.${$credentials.region}.amazonaws.com`}}',
 		);
 		expect(aws.test.request.url).toBe('?Action=GetCallerIdentity&Version=2011-06-15');

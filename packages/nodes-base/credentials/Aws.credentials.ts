@@ -545,8 +545,8 @@ export class Aws implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			baseURL:
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 				'={{$credentials.region.startsWith("cn-") ? `https://sts.${$credentials.region}.amazonaws.com.cn` : `https://sts.${$credentials.region}.amazonaws.com`}}',
 			url: '?Action=GetCallerIdentity&Version=2011-06-15',
 			method: 'POST',
