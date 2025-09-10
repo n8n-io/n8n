@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, assertParamIsString } from 'n8n-workflow';
+import { NodeConnectionTypes, assertParamIsBoolean, assertParamIsString } from 'n8n-workflow';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -244,9 +244,6 @@ export class Git implements INodeType {
 				setUpstream = false,
 				remoteName = 'origin',
 			} = options;
-
-			if (!branchName) return;
-
 			try {
 				if (force) {
 					await git.checkout(['-f', branchName]);
@@ -261,18 +258,6 @@ export class Git implements INodeType {
 						} else {
 							await git.checkoutLocalBranch(branchName);
 						}
-
-						// Set up upstream tracking if requested
-						if (setUpstream) {
-							try {
-								await git.addConfig(`branch.${branchName}.remote`, remoteName);
-								await git.addConfig(`branch.${branchName}.merge`, `refs/heads/${branchName}`);
-							} catch (upstreamError) {
-								// Non-fatal error - branch was created but upstream setup failed
-								// This could happen if remote doesn't exist or branch doesn't exist on remote
-								// We'll continue without failing the operation
-							}
-						}
 					} catch (createError) {
 						// If creation fails, throw original checkout error
 						throw error;
@@ -280,6 +265,15 @@ export class Git implements INodeType {
 				} else {
 					// Don't create branch, throw original error
 					throw error;
+				}
+			}
+
+			if (setUpstream) {
+				try {
+					await git.addConfig(`branch.${branchName}.remote`, remoteName);
+					await git.addConfig(`branch.${branchName}.merge`, `refs/heads/${branchName}`);
+				} catch (upstreamError) {
+					// Upstream setup failed but that's non-fatal
 				}
 			}
 		};
@@ -459,6 +453,7 @@ export class Git implements INodeType {
 						assertParamIsString('branch', options.branch, this.getNode());
 						await checkoutBranch(git, {
 							branchName: options.branch,
+							createBranch: false,
 							setUpstream: true,
 						});
 					}
@@ -553,12 +548,27 @@ export class Git implements INodeType {
 					//         switchBranch
 					// ----------------------------------
 
-					const branchName = this.getNodeParameter('branchName', itemIndex, '') as string;
+					const branchName = this.getNodeParameter('branchName', itemIndex);
+					assertParamIsString('branchName', branchName, this.getNode());
 					const createBranch = options.createBranch !== false; // default to true
+					const remoteName =
+						typeof options.remoteName === 'string' && options.remoteName
+							? options.remoteName
+							: 'origin';
+
+					if (options.startPoint !== undefined) {
+						assertParamIsString('startPoint', options.startPoint, this.getNode());
+					}
 					const startPoint = options.startPoint as string;
-					const force = options.force as boolean;
+
+					if (options.setUpstream !== undefined) {
+						assertParamIsBoolean('setUpstream', options.setUpstream, this.getNode());
+					}
 					const setUpstream = options.setUpstream as boolean;
-					const remoteName = (options.remoteName as string) || 'origin';
+					if (options.force !== undefined) {
+						assertParamIsBoolean('force', options.force, this.getNode());
+					}
+					const force = options.force as boolean;
 
 					await checkoutBranch(git, {
 						branchName,
