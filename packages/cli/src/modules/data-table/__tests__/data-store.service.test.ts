@@ -1689,6 +1689,48 @@ describe('dataStore', () => {
 			]);
 		});
 
+		it('should delete only one row with OR filter', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'or',
+					filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+				},
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(1);
+			expect(rows.data).toEqual([
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+				}),
+			]);
+		});
+
 		it('return full deleted data if returnData is set', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {

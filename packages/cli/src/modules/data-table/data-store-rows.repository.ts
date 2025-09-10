@@ -516,11 +516,17 @@ export class DataStoreRowsRepository {
 			getConditionAndParams(filter, i, dbType, tableReference, columns),
 		);
 
-		for (const [condition, params] of conditionsAndParams) {
-			if (filterType === 'or') {
-				query.orWhere(condition, params);
-			} else {
-				query.andWhere(condition, params);
+		if (conditionsAndParams.length === 1) {
+			// Always use AND for a single filter
+			const [condition, params] = conditionsAndParams[0];
+			query.andWhere(condition, params);
+		} else {
+			for (const [condition, params] of conditionsAndParams) {
+				if (filterType === 'or') {
+					query.orWhere(condition, params);
+				} else {
+					query.andWhere(condition, params);
+				}
 			}
 		}
 	}
