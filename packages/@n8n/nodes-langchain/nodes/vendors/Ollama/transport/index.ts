@@ -21,12 +21,17 @@ export async function apiRequest(
 	const { body, qs, option } = parameters ?? {};
 
 	const credentials = await this.getCredentials('ollamaApi');
+	const apiKey = credentials.apiKey;
+	if (apiKey !== undefined && typeof apiKey !== 'string') {
+		throw new Error('API key must be a string');
+	}
+
 	const baseUrl = credentials.baseUrl as string;
 	const url = `${baseUrl}${endpoint}`;
 
 	const headers = parameters?.headers ?? {};
-	if (credentials.apiKey) {
-		headers.Authorization = `Bearer ${String(credentials.apiKey)}`;
+	if (apiKey) {
+		headers.Authorization = `Bearer ${apiKey}`;
 	}
 
 	const options = {
