@@ -9,6 +9,7 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type {
@@ -42,6 +43,7 @@ export class DataStoreService {
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -401,6 +403,7 @@ export class DataStoreService {
 		);
 		return {
 			sizeBytes,
+			maxSizeBytes: this.globalConfig.dataTable.maxSize,
 			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
 		};
 	}

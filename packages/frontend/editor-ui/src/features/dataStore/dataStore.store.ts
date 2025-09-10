@@ -32,6 +32,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 	const dataStoreSize = ref(0);
+	const maxDataStoreSize = ref(0);
 	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
@@ -213,8 +214,9 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const fetchDataStoreSize = async () => {
 		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
-		dataStoreSize.value = Math.ceil(result.sizeBytes / 1024 / 1024);
+		dataStoreSize.value = Number((result.sizeBytes / 1024 / 1024).toFixed(2));
 		dataStoreSizeLimitState.value = result.sizeState;
+		maxDataStoreSize.value = Math.ceil(result.maxSizeBytes / 1024 / 1024);
 		return result;
 	};
 
@@ -225,6 +227,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreSize,
 		dataStoreSize: computed(() => dataStoreSize),
 		dataStoreSizeLimitState: computed(() => dataStoreSizeLimitState),
+		maxDataStoreSize: computed(() => maxDataStoreSize),
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,
