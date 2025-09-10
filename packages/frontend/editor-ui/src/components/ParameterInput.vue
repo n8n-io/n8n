@@ -1152,8 +1152,8 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.flush();
-	onUpdateTextInputDebounced.cancel();
+	valueChangedDebounced.cancel();
+	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
