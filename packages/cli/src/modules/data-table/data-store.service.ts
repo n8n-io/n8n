@@ -24,6 +24,7 @@ import { validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreSizeValidator } from './data-store-size-validator.service';
 import { DataStoreRepository } from './data-store.repository';
 import { columnTypeToFieldType } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
@@ -40,6 +41,7 @@ export class DataStoreService {
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
+		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -148,6 +150,7 @@ export class DataStoreService {
 		rows: DataStoreRows,
 		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
@@ -167,6 +170,7 @@ export class DataStoreService {
 		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
+		await this.validateDataTableSize();
 		const updated = await this.updateRow(dataStoreId, projectId, dto, true);
 
 		if (updated.length > 0) {
@@ -195,6 +199,7 @@ export class DataStoreService {
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData = false,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId);
@@ -382,5 +387,19 @@ export class DataStoreService {
 				}
 			}
 		}
+	}
+
+	private async validateDataTableSize() {
+		await this.dataStoreSizeValidator.validateSize(
+			async () => await this.dataStoreRepository.findDataTablesSize(),
+		);
+	}
+
+	async getDataTablesSize() {
+		const sizeBytes = await this.dataStoreRepository.findDataTablesSize();
+		return {
+			sizeBytes,
+			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
+		};
 	}
 }

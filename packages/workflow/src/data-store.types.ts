@@ -98,6 +98,12 @@ export type DataTableInsertRowsResult<
 		? Array<Pick<DataStoreRowReturn, 'id'>>
 		: DataTableInsertRowsBulkResult;
 
+export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
+export type DataTablesSizeResult = {
+	sizeBytes: number;
+	sizeState: DataTableSizeStatus;
+};
+
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
 	getProjectId(): string;
