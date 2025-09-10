@@ -125,9 +125,6 @@ export class WorkflowExecute {
 	): PCancelable<IRun> {
 		this.status = 'running';
 
-		// Get the nodes to start workflow execution from
-		startNode = startNode || workflow.getStartNode(destinationNode);
-
 		if (startNode === undefined) {
 			throw new ApplicationError('No node to start the workflow from could be found');
 		}

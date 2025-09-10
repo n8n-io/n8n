@@ -1823,16 +1823,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		chatMessages.value.push(message);
 	}
 
-	function checkIfNodeHasChatParent(nodeName: string): boolean {
+	function findChatParent(nodeName: string): INodeUi | undefined {
 		const parents = workflowObject.value.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
-		const matchedChatNode = parents.find((parent) => {
-			const parentNodeType = getNodeByName(parent)?.type;
+		for (const parent of parents) {
+			const parentNode = getNodeByName(parent);
 
-			return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
-		});
+			if (parentNode?.type === CHAT_TRIGGER_NODE_TYPE) {
+				return parentNode;
+			}
+		}
 
-		return !!matchedChatNode;
+		return undefined;
 	}
 
 	//
@@ -2069,7 +2071,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodePristine,
 		resetChatMessages,
 		appendChatMessage,
-		checkIfNodeHasChatParent,
+		findChatParent,
 		setNodePositionById,
 		removeNodeById,
 		removeNodeConnectionsById,

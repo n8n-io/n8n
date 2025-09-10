@@ -1,6 +1,7 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
+	INodeUi,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
@@ -41,6 +42,7 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
+import type { WorkflowData } from '@n8n/rest-api-client';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -101,6 +103,33 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		return response;
 	}
 
+	function findChatTriggerToOpen(
+		destinationNode: INodeUi,
+		workflowData: WorkflowData,
+	): INodeUi | undefined {
+		const chatToOpen =
+			workflowsStore.findChatParent(destinationNode.name) ??
+			(destinationNode && destinationNode.type === CHAT_TRIGGER_NODE_TYPE
+				? destinationNode
+				: undefined);
+
+		if (!chatToOpen) {
+			return undefined;
+		}
+
+		// Check if the chat node has input data
+		if ((nodeHelpers.getNodeInputData(chatToOpen, 0, 0, 'input') ?? []).length > 0) {
+			return undefined;
+		}
+
+		// Check if the chat node has pin data
+		if (workflowData.pinData?.[chatToOpen.name]) {
+			return undefined;
+		}
+
+		return chatToOpen;
+	}
+
 	async function runWorkflow(options: {
 		destinationNode?: string;
 		triggerNode?: string;
@@ -133,10 +162,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
 
-			const destinationNodeType = options.destinationNode
-				? workflowsStore.getNodeByName(options.destinationNode)?.type
-				: '';
-
+			const destinationNode = options.destinationNode
+				? workflowsStore.getNodeByName(options.destinationNode)
+				: undefined;
 			const executedNode =
 				options.destinationNode ??
 				(options.triggerNode && options.nodeData && !options.rerunTriggerNode
@@ -146,28 +174,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				? { name: options.triggerNode, data: options.nodeData }
 				: undefined;
 
-			// If the destination node is specified, check if it is a chat node or has a chat parent
-			if (
-				options.destinationNode &&
-				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
-					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
-			) {
-				const startNode = workflowObject.value.getStartNode(options.destinationNode);
-				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
-					// Check if the chat node has input data or pin data
-					const chatHasInputData =
-						nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-					const chatHasPinData = !!workflowData.pinData?.[startNode.name];
+			// If the destination node is specified, check if chat modal should open and halt execution
+			const chatToOpen =
+				options.source === 'RunData.ManualChatMessage' && destinationNode
+					? findChatTriggerToOpen(destinationNode, workflowData)
+					: undefined;
 
-					// If the chat node has no input data or pin data, open the chat modal
-					// and halt the execution
-					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						startChat();
-						return;
-					}
-				}
+			if (chatToOpen) {
+				workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode ?? null;
+				startChat();
+				return;
 			}
 
 			const triggers = workflowData.nodes.filter(

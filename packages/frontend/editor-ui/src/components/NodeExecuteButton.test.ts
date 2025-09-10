@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { createTestNode, mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/event-bus';
 import { AI_TRANSFORM_NODE_TYPE, AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
@@ -324,7 +325,7 @@ describe('NodeExecuteButton', () => {
 	it('opens chat when clicking button for chat child node', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		workflowsStore.getNodeByName.mockReturnValue(node);
-		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+		workflowsStore.findChatParent.mockReturnValue(createTestNode({ type: CHAT_NODE_TYPE }));
 
 		const { getByRole } = renderComponent();
 

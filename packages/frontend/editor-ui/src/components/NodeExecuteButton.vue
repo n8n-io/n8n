@@ -115,7 +115,7 @@ const isChatNode = computed(() =>
 	nodeType.value ? nodeType.value.name === CHAT_TRIGGER_NODE_TYPE : false,
 );
 
-const isChatChild = computed(() => workflowsStore.checkIfNodeHasChatParent(props.nodeName));
+const isChatChild = computed(() => workflowsStore.findChatParent(props.nodeName) !== undefined);
 
 const isFormTriggerNode = computed(() =>
 	nodeType.value ? nodeType.value.name === FORM_TRIGGER_NODE_TYPE : false,

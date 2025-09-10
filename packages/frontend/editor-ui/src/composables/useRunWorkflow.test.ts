@@ -48,7 +48,7 @@ vi.mock('@/stores/workflows.store', () => {
 				name === 'Test node' ? { name: 'Test node', id: 'Test id' } : undefined,
 			),
 		getExecution: vi.fn(),
-		checkIfNodeHasChatParent: vi.fn(),
+		findChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),
@@ -559,7 +559,7 @@ describe('useRunWorkflow({ router })', () => {
 				source: null,
 			} as IExecuteData);
 
-			vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
+			vi.mocked(workflowsStore).findChatParent.mockReturnValue(undefined);
 			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
 				if (name === executeName) return 2;
 				return undefined;

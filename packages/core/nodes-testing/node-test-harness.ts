@@ -228,15 +228,7 @@ export class NodeTestHarness {
 				contextData: {},
 				waitingExecution: {},
 				waitingExecutionSource: null,
-				nodeExecutionStack: [
-					{
-						node: workflowInstance.getStartNode()!,
-						data: {
-							main: [[testData.trigger?.input ?? { json: {} }]],
-						},
-						source: null,
-					},
-				],
+				nodeExecutionStack: [],
 			},
 		};
 
