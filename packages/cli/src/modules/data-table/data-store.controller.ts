@@ -337,7 +337,12 @@ export class DataStoreController {
 		@Body dto: DeleteDataTableRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.deleteRows(dataTableId, req.params.projectId, dto);
+			return await this.dataStoreService.deleteRows(
+				dataTableId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);

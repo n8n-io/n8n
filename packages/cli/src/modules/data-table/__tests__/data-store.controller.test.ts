@@ -2754,6 +2754,55 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
+
+	test('should return full deleted data if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+					second: 'another value 1',
+				},
+				{
+					first: 'test value 2',
+					second: 'another value 2',
+				},
+				{
+					first: 'test value 3',
+					second: 'another value 3',
+				},
+			],
+		});
+
+		const result = await authMemberAgent
+			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
+			.send({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 3' }],
+				},
+				returnData: true,
+			});
+
+		expect(result.body.data).toEqual([
+			{
+				id: expect.any(Number),
+				first: 'test value 3',
+				second: 'another value 3',
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
+	});
 });
 
 describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
