@@ -297,7 +297,8 @@ defineExpose({
 		padding: 0;
 
 		button {
-			justify-content: end;
+			position: relative;
+			left: calc(var(--spacing-4xs) * -1);
 		}
 	}
 
@@ -324,7 +325,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing-xs);
+			padding-top: var(--spacing-2xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid-cell-editing-border);
