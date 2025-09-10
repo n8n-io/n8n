@@ -13,7 +13,6 @@ env:
   NODE_OPTIONS: '--max-old-space-size=3072'
 
 jobs:
-
   mysql:
     name: MySQL 8.4 - Run ${{ matrix.run }}
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -23,7 +22,7 @@ jobs:
         run: [1, 2, 3, 4, 5]
     env:
       DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 5
+      DB_MYSQLDB_POOL_SIZE: 20
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
