@@ -1,0 +1,9 @@
+[
+  {
+    "name": "n8n-nodes-testapp",
+    "displayName": "Test App",
+    "description": "A simple test app integration for n8n",
+    "link": "https://www.npmjs.com/package/n8n-nodes-testapp",
+    "author": "Sekhar"
+  }
+]
