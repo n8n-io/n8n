@@ -63,7 +63,11 @@ export function useWorkflowResourcesLocator(router: Router) {
 		};
 	}
 
-	async function populateNextWorkflowsPage() {
+	async function populateNextWorkflowsPage(reset = false) {
+		if (reset) {
+			currentPage.value = 0;
+		}
+
 		currentPage.value++;
 		const workflows = await workflowsStore.fetchWorkflowsPage(
 			undefined,
@@ -73,7 +77,12 @@ export function useWorkflowResourcesLocator(router: Router) {
 			searchFilter.value ? { name: searchFilter.value } : undefined,
 		);
 		totalCount.value = workflowsStore.totalWorkflowCount;
-		workflowsResources.value.push(...workflows.map(workflowDbToResourceMapper));
+
+		if (reset) {
+			workflowsResources.value = workflows.map(workflowDbToResourceMapper);
+		} else {
+			workflowsResources.value.push(...workflows.map(workflowDbToResourceMapper));
+		}
 	}
 
 	async function setWorkflowsResources() {
@@ -84,9 +93,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 	async function onSearchFilter(filter: string) {
 		searchFilter.value = filter;
-		currentPage.value = 0;
-		workflowsResources.value = [];
-		await populateNextWorkflowsPage();
+		await populateNextWorkflowsPage(true);
 	}
 
 	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
