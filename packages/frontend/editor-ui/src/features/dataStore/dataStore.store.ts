@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { DATA_STORE_STORE } from '@/features/dataStore/constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	fetchDataStoresApi,
@@ -14,6 +14,7 @@ import {
 	insertDataStoreRowApi,
 	updateDataStoreRowsApi,
 	deleteDataStoreRowsApi,
+	fetchDataStoreGlobalLimitInBytes,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -22,6 +23,7 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import { reorderItem } from '@/features/dataStore/utils';
+import { type DataTableSizeStatus } from 'n8n-workflow';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
@@ -30,6 +32,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 	const dataStoreSize = ref(0);
+	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
@@ -209,9 +212,10 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	};
 
 	const fetchDataStoreSize = async () => {
-		// mock this for now
-		dataStoreSize.value = 100;
-		return dataStoreSize.value;
+		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
+		dataStoreSize.value = Math.ceil(result.sizeBytes / 1024 / 1024);
+		dataStoreSizeLimitState.value = result.sizeState;
+		return result;
 	};
 
 	return {
@@ -219,7 +223,8 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		totalCount,
 		fetchDataStores,
 		fetchDataStoreSize,
-		dataStoreSize,
+		dataStoreSize: computed(() => dataStoreSize),
+		dataStoreSizeLimitState: computed(() => dataStoreSizeLimitState),
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,

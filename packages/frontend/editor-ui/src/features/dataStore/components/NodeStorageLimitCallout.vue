@@ -19,10 +19,15 @@ const calloutType = computed(() => {
 		return null;
 	}
 
-	if (dataStoreStore.dataStoreSize >= settingsStore.dataTableLimits?.maxSize) {
-		return 'danger';
+	const sizeLimitState = dataStoreStore.dataStoreSizeLimitState.value;
+	switch (sizeLimitState) {
+		case 'error':
+			return 'danger';
+		case 'warn':
+			return 'warning';
+		default:
+			return null;
 	}
-	return 'warning';
 });
 </script>
 <template>
@@ -31,7 +36,7 @@ const calloutType = computed(() => {
 			{{
 				i18n.baseText('dataStore.banner.storageLimitError.message', {
 					interpolate: {
-						usage: `${dataStoreStore.dataStoreSize} / ${settingsStore.dataTableLimits?.maxSize}mb`,
+						usage: `${dataStoreStore.dataStoreSize.value} / ${settingsStore.dataTableLimits?.maxSize}MB`,
 					},
 				})
 			}}
@@ -40,7 +45,7 @@ const calloutType = computed(() => {
 			{{
 				i18n.baseText('dataStore.banner.storageLimitWarning.message', {
 					interpolate: {
-						usage: `${dataStoreStore.dataStoreSize} / ${settingsStore.dataTableLimits?.maxSize}mb`,
+						usage: `${dataStoreStore.dataStoreSize.value} / ${settingsStore.dataTableLimits?.maxSize}MB`,
 					},
 				})
 			}}

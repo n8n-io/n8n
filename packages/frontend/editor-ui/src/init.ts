@@ -175,17 +175,10 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		const storeSize = await dataStoreStore.fetchDataStoreSize();
-		// TODO: do we have to take care of some rounding here in order for the condition to be correct?
-		if (
-			settingsStore.dataTableLimits?.maxSize &&
-			storeSize >= settingsStore.dataTableLimits.maxSize
-		) {
+		const { sizeState } = await dataStoreStore.fetchDataStoreSize();
+		if (sizeState === 'error') {
 			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
-		} else if (
-			settingsStore.dataTableLimits?.warningThreshold &&
-			storeSize >= settingsStore.dataTableLimits.warningThreshold
-		) {
+		} else if (sizeState === 'warn') {
 			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
 		}
 	}
