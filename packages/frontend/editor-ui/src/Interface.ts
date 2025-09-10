@@ -568,6 +568,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	maxParallel?: number;
 }
 
 export interface ITimeoutHMS {

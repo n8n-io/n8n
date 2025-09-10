@@ -24,4 +24,10 @@ properties:
     example: America/New_York
   executionOrder:
     type: string
+    enum: ['v0', 'v1', 'v2']
     example: v1
+    description: 'Workflow execution order: v0 (legacy), v1 (recommended), v2 (parallel)'
+  maxParallel:
+    type: integer
+    example: 5
+    description: 'Maximum number of nodes that can execute simultaneously in v2 parallel mode'

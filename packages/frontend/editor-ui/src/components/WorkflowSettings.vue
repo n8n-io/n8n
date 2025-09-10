@@ -47,6 +47,7 @@ const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([
 const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v0', value: 'v0 (legacy)' },
 	{ key: 'v1', value: 'v1 (recommended)' },
+	{ key: 'v2', value: 'v2 (parallel)' },
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
@@ -66,6 +67,8 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
+	executionOrder: i18n.baseText('workflowSettings.helpTexts.executionOrder'),
+	maxParallel: i18n.baseText('workflowSettings.helpTexts.maxParallel'),
 }));
 const defaultValues = ref({
 	timezone: 'America/New_York',
@@ -500,6 +503,12 @@ onBeforeUnmount(() => {
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.executionOrder') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-n8n-html="helpTexts.executionOrder"></div>
+							</template>
+							<n8n-icon icon="circle-help" />
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
@@ -519,6 +528,31 @@ onBeforeUnmount(() => {
 							>
 							</N8nOption>
 						</N8nSelect>
+					</el-col>
+				</el-row>
+
+				<!-- Max Parallel field - only show for v2 execution order -->
+				<el-row v-if="workflowSettings.executionOrder === 'v2'">
+					<el-col :span="10" class="setting-name">
+						{{ i18n.baseText('workflowSettings.maxParallel') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-n8n-html="helpTexts.maxParallel"></div>
+							</template>
+							<n8n-icon icon="circle-help" />
+						</N8nTooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press-canvas">
+						<N8nInput
+							v-model="workflowSettings.maxParallel"
+							type="number"
+							:min="1"
+							:max="20"
+							placeholder="5"
+							size="medium"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							data-test-id="workflow-settings-max-parallel"
+						/>
 					</el-col>
 				</el-row>
 
