@@ -22,6 +22,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import { z } from 'zod';
 
 export type UsageCount = {
 	usageCount: number;
@@ -272,7 +273,13 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+
+export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
+
+export function isAuthProviderType(value: string): value is AuthProviderType {
+	return ALL_AUTH_PROVIDERS.safeParse(value).success;
+}
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
