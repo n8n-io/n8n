@@ -18,10 +18,29 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('getExecutionsForPublicApi', () => {
+		const defaultLimit = 10;
+		const defaultQuery = {
+			select: [
+				'id',
+				'mode',
+				'retryOf',
+				'retrySuccessId',
+				'startedAt',
+				'stoppedAt',
+				'workflowId',
+				'waitTill',
+				'finished',
+				'status',
+			],
+			where: {},
+			order: { id: 'DESC' },
+			take: defaultLimit,
+			relations: ['executionData'],
+		};
+
 		test('should get executions matching all filter parameters', async () => {
-			const limit = 10;
 			const params = {
-				limit: 10,
+				limit: defaultLimit,
 				lastId: '3',
 				workflowIds: ['3', '4'],
 			};
@@ -31,32 +50,17 @@ describe('ExecutionRepository', () => {
 			const result = await executionRepository.getExecutionsForPublicApi(params);
 
 			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
+				...defaultQuery,
 				where: {
 					id: LessThan(params.lastId),
 					workflowId: In(params.workflowIds),
 				},
-				order: { id: 'DESC' },
-				take: limit,
-				relations: ['executionData'],
 			});
 			expect(result.length).toBe(mockEntities.length);
 			expect(result[0].id).toEqual(mockEntities[0].id);
 		});
 
 		test('should get executions matching the workflowIds filter', async () => {
-			const limit = 10;
 			const params = {
 				limit: 10,
 				workflowIds: ['3', '4'],
@@ -67,24 +71,10 @@ describe('ExecutionRepository', () => {
 			const result = await executionRepository.getExecutionsForPublicApi(params);
 
 			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
+				...defaultQuery,
 				where: {
 					workflowId: In(params.workflowIds),
 				},
-				order: { id: 'DESC' },
-				take: limit,
-				relations: ['executionData'],
 			});
 			expect(result.length).toBe(mockEntities.length);
 			expect(result[0].id).toEqual(mockEntities[0].id);
@@ -103,7 +93,7 @@ describe('ExecutionRepository', () => {
 				'should find with id less than "$lastId" and not in "$excludedExecutionsIds"',
 				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
 					const params = {
-						limit: 10,
+						limit: defaultLimit,
 						...(lastId ? { lastId } : {}),
 						...(excludedExecutionsIds ? { excludedExecutionsIds } : {}),
 					};
@@ -112,24 +102,10 @@ describe('ExecutionRepository', () => {
 					const result = await executionRepository.getExecutionsForPublicApi(params);
 
 					expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-						select: [
-							'id',
-							'mode',
-							'retryOf',
-							'retrySuccessId',
-							'startedAt',
-							'stoppedAt',
-							'workflowId',
-							'waitTill',
-							'finished',
-							'status',
-						],
+						...defaultQuery,
 						where: {
 							...(expectedIdCondition ? { id: expectedIdCondition } : {}),
 						},
-						order: { id: 'DESC' },
-						take: params.limit,
-						relations: ['executionData'],
 					});
 					expect(result.length).toBe(mockEntities.length);
 					expect(result[0].id).toEqual(mockEntities[0].id);
@@ -146,32 +122,17 @@ describe('ExecutionRepository', () => {
 				${'success'}  | ${'success'}
 				${'waiting'}  | ${'waiting'}
 			`('should find all "$filterStatus" executions', async ({ filterStatus, entityStatus }) => {
-				const limit = 10;
 				const mockEntities = [{ id: '1' }, { id: '2' }];
 
 				entityManager.find.mockResolvedValueOnce(mockEntities);
 				const result = await executionRepository.getExecutionsForPublicApi({
-					limit,
+					limit: defaultLimit,
 					status: filterStatus,
 				});
 
 				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					select: [
-						'id',
-						'mode',
-						'retryOf',
-						'retrySuccessId',
-						'startedAt',
-						'stoppedAt',
-						'workflowId',
-						'waitTill',
-						'finished',
-						'status',
-					],
+					...defaultQuery,
 					where: { status: entityStatus },
-					order: { id: 'DESC' },
-					take: limit,
-					relations: ['executionData'],
 				});
 				expect(result.length).toBe(mockEntities.length);
 				expect(result[0].id).toEqual(mockEntities[0].id);
@@ -185,32 +146,17 @@ describe('ExecutionRepository', () => {
 			`(
 				'should find all executions and ignore status filter "$filterStatus"',
 				async ({ filterStatus }) => {
-					const limit = 10;
 					const mockEntities = [{ id: '1' }, { id: '2' }];
 
 					entityManager.find.mockResolvedValueOnce(mockEntities);
 					const result = await executionRepository.getExecutionsForPublicApi({
-						limit,
+						limit: defaultLimit,
 						status: filterStatus,
 					});
 
 					expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-						select: [
-							'id',
-							'mode',
-							'retryOf',
-							'retrySuccessId',
-							'startedAt',
-							'stoppedAt',
-							'workflowId',
-							'waitTill',
-							'finished',
-							'status',
-						],
+						...defaultQuery,
 						where: {},
-						order: { id: 'DESC' },
-						take: limit,
-						relations: ['executionData'],
 					});
 					expect(result.length).toBe(mockEntities.length);
 					expect(result[0].id).toEqual(mockEntities[0].id);
@@ -221,7 +167,6 @@ describe('ExecutionRepository', () => {
 
 	describe('getExecutionsCountForPublicApi', () => {
 		test('should get executions matching all filter parameters', async () => {
-			const limit = 10;
 			const mockCount = 20;
 			const params = {
 				limit: 10,
@@ -237,13 +182,12 @@ describe('ExecutionRepository', () => {
 					id: LessThan(params.lastId),
 					workflowId: In(params.workflowIds),
 				},
-				take: limit,
+				take: params.limit,
 			});
 			expect(result).toBe(mockCount);
 		});
 
 		test('should get executions matching the workflowIds filter', async () => {
-			const limit = 10;
 			const mockCount = 12;
 			const params = {
 				limit: 10,
@@ -257,7 +201,7 @@ describe('ExecutionRepository', () => {
 				where: {
 					workflowId: In(params.workflowIds),
 				},
-				take: limit,
+				take: params.limit,
 			});
 			expect(result).toBe(mockCount);
 		});
