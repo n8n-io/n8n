@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { ProjectRole } from '@n8n/permissions';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import { ElRadio } from 'element-plus';
@@ -25,6 +25,13 @@ const emit = defineEmits<{
 
 const selectedRole = ref<string>(props.data.role);
 const isEditable = computed(() => props.data.role !== 'project:personalOwner');
+
+watch(
+	() => props.data.role,
+	(newRole) => {
+		selectedRole.value = newRole;
+	},
+);
 const roleLabel = computed(
 	() => props.roles[selectedRole.value as ProjectRole]?.label || selectedRole.value,
 );
