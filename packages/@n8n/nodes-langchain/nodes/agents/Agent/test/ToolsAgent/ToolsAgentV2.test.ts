@@ -784,9 +784,9 @@ describe('toolsAgentExecute', () => {
 			});
 
 			const mockExecutor = {
-				invoke: jest.fn().mockImplementation((_params, options) => {
+				invoke: jest.fn().mockImplementation(async (_params, options) => {
 					capturedCallbacks = options?.callbacks || [];
-					return Promise.resolve({ output: 'Test response' });
+					return { output: 'Test response' };
 				}),
 			};
 
