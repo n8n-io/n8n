@@ -1010,7 +1010,7 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
-const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 300 });
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
 
 function onClickOutsideMapper() {
 	if (!isFocused.value) {
@@ -1152,7 +1152,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.cancel();
+	valueChangedDebounced.flush();
 	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
@@ -1292,7 +1292,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1312,7 +1312,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:path="path"
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1593,7 +1593,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="onUpdateTextInput($event)"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1639,7 +1639,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
