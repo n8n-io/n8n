@@ -231,7 +231,11 @@ export async function getInputConnectionData(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
-		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
+		const contextFactory = (
+			runIndex: number,
+			inputData: ITaskDataConnections,
+			itemIndexOverride?: number,
+		) =>
 			new SupplyDataContext(
 				workflow,
 				connectedNode,
@@ -246,6 +250,7 @@ export async function getInputConnectionData(
 				closeFunctions,
 				abortSignal,
 				parentNode,
+				itemIndexOverride,
 			);
 
 		if (!connectedNodeType.supplyData) {
@@ -254,7 +259,7 @@ export async function getInputConnectionData(
 					node: connectedNode,
 					nodeType: connectedNodeType,
 					handleToolInvocation: makeHandleToolInvocation(
-						(i) => contextFactory(i, {}),
+						(i) => contextFactory(i, {}, itemIndex),
 						connectedNode,
 						connectedNodeType,
 						runExecutionData,
