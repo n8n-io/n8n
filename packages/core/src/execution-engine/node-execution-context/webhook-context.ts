@@ -177,7 +177,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await getInputConnectionData.call(
 			this,
 			this.workflow,
-			this.runExecutionData!,
+			this.runExecutionData ?? { resultData: { runData: {} } },
 			this.runIndex,
 			connectionInputData,
 			{} as ITaskDataConnections,
