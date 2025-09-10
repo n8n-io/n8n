@@ -159,12 +159,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const { tlsCa = '', tlsServerName = '', tlsRejectUnauthorized = true } = tlsConfig;
+			const { ca = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
 			options.tls = {
-				ca: tlsCa ? readFileSync(tlsCa as string).toString('utf-8') : undefined,
+				ca: ca ? readFileSync(ca as string).toString('utf-8') : undefined,
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				servername: (tlsServerName || undefined) as string | undefined,
-				rejectUnauthorized: tlsRejectUnauthorized ? undefined : false,
+				servername: (serverName || undefined) as string | undefined,
+				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};
 		}
 

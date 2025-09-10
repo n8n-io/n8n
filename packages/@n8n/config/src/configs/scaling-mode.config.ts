@@ -23,15 +23,15 @@ class HealthConfig {
 class RedisTlsConfig {
 	/** SSL certificate authority */
 	@Env('QUEUE_BULL_REDIS_TLS_CA')
-	tlsCa?: string;
+	ca?: string;
 
 	/** Server Name requested via SNI. */
 	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
-	tlsServerName?: string;
+	serverName?: string;
 
 	/** If unauthorized SSL connections should be rejected */
 	@Env('QUEUE_BULL_REDIS_TLS_REJECT_UNAUTHORIZED')
-	tlsRejectUnauthorized?: boolean;
+	rejectUnauthorized?: boolean;
 }
 
 @Config
