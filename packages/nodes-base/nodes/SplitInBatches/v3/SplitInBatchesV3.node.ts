@@ -11,6 +11,27 @@ export class SplitInBatchesV3 implements INodeType {
 	// Global tracking across all instances within the same workflow execution
 	private static executionCounters = new Map<string, number>();
 
+	// Track executions for automatic cleanup after timeout
+	private static executionTracking = new Map<string, number>();
+
+	static {
+		// Periodic cleanup for abandoned executions (every 5 minutes)
+		setInterval(
+			() => {
+				const now = Date.now();
+				const timeout = 5 * 60 * 1000; // 5 minutes
+
+				for (const [executionId, timestamp] of SplitInBatchesV3.executionTracking) {
+					if (now - timestamp > timeout) {
+						SplitInBatchesV3.cleanupExecutionCounters(executionId);
+						SplitInBatchesV3.executionTracking.delete(executionId);
+					}
+				}
+			},
+			5 * 60 * 1000,
+		);
+	}
+
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
@@ -189,6 +210,9 @@ export class SplitInBatchesV3 implements INodeType {
 		const executionId = executeFunctions.getExecutionId();
 		const globalKey = `${executionId}_${nodeName}`;
 
+		// Track execution timestamp for cleanup
+		SplitInBatchesV3.executionTracking.set(executionId, Date.now());
+
 		// Initialize and increment counter in static map
 		const currentCount = SplitInBatchesV3.executionCounters.get(globalKey) || 0;
 		const newCount = currentCount + 1;
@@ -224,6 +248,9 @@ export class SplitInBatchesV3 implements INodeType {
 		const globalKey = `${executionId}_${nodeName}`;
 
 		SplitInBatchesV3.executionCounters.delete(globalKey);
+
+		// Clean up tracking when execution completes normally
+		SplitInBatchesV3.executionTracking.delete(executionId);
 	}
 
 	/**
@@ -237,5 +264,8 @@ export class SplitInBatchesV3 implements INodeType {
 			}
 		}
 		keysToDelete.forEach((key) => SplitInBatchesV3.executionCounters.delete(key));
+
+		// Also clean up execution tracking
+		SplitInBatchesV3.executionTracking.delete(executionId);
 	}
 }
