@@ -183,8 +183,8 @@ export class FrontendService {
 				},
 			},
 			dataTables: {
-				maxSize: this.globalConfig.datatable.maxSize,
-				warningThreshold: this.globalConfig.datatable.warningThreshold,
+				maxSize: this.globalConfig.dataTable.maxSize,
+				warningThreshold: this.globalConfig.dataTable.warningThreshold,
 			},
 			publicApi: {
 				enabled: isApiEnabled(),
