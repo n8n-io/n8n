@@ -429,20 +429,6 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const nodeIssuesById = computed(() =>
-		nodes.value.reduce<Record<string, { execution: string[]; validation: string[] }>>(
-			(acc, node) => {
-				acc[node.id] = {
-					execution: nodeExecutionErrorsById.value[node.id] ?? [],
-					validation: nodeValidationErrorsById.value[node.id] ?? [],
-				};
-
-				return acc;
-			},
-			{},
-		),
-	);
-
 	const nodeHasIssuesById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			const hasExecutionErrors = nodeExecutionErrorsById.value[node.id]?.length > 0;
@@ -763,7 +749,6 @@ export function useCanvasMapping({
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		nodeExecutionWaitingForNextById,
-		nodeIssuesById,
 		nodeHasIssuesById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
