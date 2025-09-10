@@ -145,8 +145,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const dataTableLimits = computed(() => settings.value.dataTables);
-
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -187,13 +185,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
 	const setSettings = (newSettings: FrontendSettings) => {
-		settings.value = {
-			...newSettings,
-			dataTables: {
-				maxSize: 100,
-				warningThreshold: 95,
-			},
-		};
+		settings.value = newSettings;
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
@@ -395,6 +388,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isDataTableFeatureEnabled,
-		dataTableLimits,
 	};
 });
