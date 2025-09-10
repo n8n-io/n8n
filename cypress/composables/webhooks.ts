@@ -47,6 +47,7 @@ export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	if (responseCode) {
 		cy.get('.param-options').click();
+		// wait for selector debounce
 		getVisibleSelect().contains('Response Code').click().wait(300);
 		cy.get('.parameter-item-wrapper > .parameter-input-list-wrapper').children().click();
 		getVisibleSelect().contains('201').click();

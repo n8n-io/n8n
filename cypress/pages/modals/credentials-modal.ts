@@ -75,6 +75,7 @@ export class CredentialsModal extends BasePage {
 				.each(($el) => {
 					cy.wrap($el).type('test');
 				})
+				// wait for text input debounce
 				.wait(300);
 			saveCredential();
 			if (closeModal) {
