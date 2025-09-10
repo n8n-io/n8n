@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { validateOriginHeaders } from '../origin-validator';
 
 describe('validateOriginHeaders', () => {
@@ -264,7 +266,7 @@ describe('validateOriginHeaders', () => {
 		test('should handle array x-forwarded-host headers (use first)', () => {
 			const result = validateOriginHeaders({
 				origin: `https://${host}`,
-				'x-forwarded-host': [host, 'other-host.com'] as any,
+				'x-forwarded-host': [host, 'other-host.com'],
 			});
 			expect(result.isValid).toBe(true);
 			expect(result.expectedHost).toBe(host);
@@ -274,7 +276,7 @@ describe('validateOriginHeaders', () => {
 			const result = validateOriginHeaders({
 				origin: `https://${host}`,
 				'x-forwarded-host': host,
-				'x-forwarded-proto': ['https', 'http'] as any,
+				'x-forwarded-proto': ['https', 'http'],
 			});
 			expect(result.isValid).toBe(true);
 			expect(result.expectedProtocol).toBe('https');
@@ -383,7 +385,7 @@ describe('validateOriginHeaders', () => {
 		test('should handle empty x-forwarded-host array', () => {
 			const result = validateOriginHeaders({
 				origin: `https://${host}`,
-				'x-forwarded-host': [] as any,
+				'x-forwarded-host': [],
 				host,
 			});
 			expect(result.isValid).toBe(true);
