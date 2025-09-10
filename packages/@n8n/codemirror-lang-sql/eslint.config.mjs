@@ -1,7 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
 
-export default defineConfig(baseConfig, globalIgnores(['src/*.grammar*.ts']), {
+export default defineConfig(baseConfig, globalIgnores(['src/grammar*.ts']), {
 	rules: {
 		'@typescript-eslint/naming-convention': 'warn',
 		'no-useless-escape': 'warn',
