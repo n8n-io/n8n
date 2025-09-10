@@ -360,18 +360,18 @@ export class DataStoreRowsRepository {
 
 		let affectedRows: DataStoreRowReturn[] = [];
 
-		if (!useReturning) {
-			const selectQuery = this.dataSource.createQueryBuilder().select('*').from(table, 'dataTable');
+		await this.dataSource.manager.transaction(async (em) => {
+			if (!useReturning) {
+				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
-			if (filter) {
-				this.applyFilters(selectQuery, filter, 'dataTable', columns);
+				if (filter) {
+					this.applyFilters(selectQuery, filter, 'dataTable', columns);
+				}
+
+				const rawRows = await selectQuery.getRawMany<DataStoreRowReturn>();
+				affectedRows = normalizeRows(rawRows, columns);
 			}
 
-			const rawRows = await selectQuery.getRawMany<DataStoreRowReturn>();
-			affectedRows = normalizeRows(rawRows, columns);
-		}
-
-		await this.dataSource.manager.transaction(async (em) => {
 			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
 
 			if (useReturning) {
