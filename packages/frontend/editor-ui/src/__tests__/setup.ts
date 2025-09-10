@@ -23,8 +23,16 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	// Clean up DOM containers
-	document.body.innerHTML = '';
+	// Clean up only our specific DOM containers to avoid interfering with Vue's unmounting
+	const appGrid = document.getElementById('app-grid');
+	const appModals = document.getElementById(APP_MODALS_ELEMENT_ID);
+
+	if (appGrid) {
+		appGrid.remove();
+	}
+	if (appModals) {
+		appModals.remove();
+	}
 });
 
 window.ResizeObserver =
