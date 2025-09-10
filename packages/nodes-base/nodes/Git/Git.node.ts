@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, assertParamIsString } from 'n8n-workflow';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL } from 'url';
@@ -373,13 +373,13 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
-					const branch = options.branch as string;
-
-					// Switch to branch if specified
-					await checkoutBranch(git, {
-						branchName: branch,
-						setUpstream: true, // Auto-setup upstream for newly created branches
-					});
+					if (options.branch) {
+						assertParamIsString('branch', options.branch, this.getNode());
+						await checkoutBranch(git, {
+							branchName: options.branch,
+							setUpstream: true,
+						});
+					}
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
@@ -455,13 +455,13 @@ export class Git implements INodeType {
 					//         push
 					// ----------------------------------
 
-					const branch = options.branch as string;
-
-					// Switch to branch if specified
-					await checkoutBranch(git, {
-						branchName: branch,
-						setUpstream: true, // Auto-setup upstream for newly created branches
-					});
+					if (options.branch) {
+						assertParamIsString('branch', options.branch, this.getNode());
+						await checkoutBranch(git, {
+							branchName: options.branch,
+							setUpstream: true,
+						});
+					}
 
 					if (options.repository) {
 						const targetRepository = await prepareRepository(options.targetRepository as string);
