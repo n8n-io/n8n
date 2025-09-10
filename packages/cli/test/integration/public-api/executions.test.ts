@@ -315,6 +315,10 @@ describe('GET /executions', () => {
 				const workflow = await createWorkflow({}, owner);
 
 				await createdExecutionWithStatus(workflow, queryStatus === 'success' ? 'error' : 'success');
+				if (queryStatus !== 'running') {
+					// ensure there is a running execution that gets excluded unless filtering by `running`
+					await createdExecutionWithStatus(workflow, 'running');
+				}
 
 				const expectedExecution = await createdExecutionWithStatus(workflow, entityStatus);
 

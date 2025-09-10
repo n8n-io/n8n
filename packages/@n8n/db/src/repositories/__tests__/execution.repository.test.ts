@@ -220,7 +220,7 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('getExecutionsCountForPublicApi', () => {
-		test('should get executions matching the all filter parameters', async () => {
+		test('should get executions matching all filter parameters', async () => {
 			const limit = 10;
 			const mockCount = 20;
 			const params = {
