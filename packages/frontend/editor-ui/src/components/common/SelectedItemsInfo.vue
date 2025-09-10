@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nKeyboardShortcut } from '@n8n/design-system';
 
 interface Props {
 	selectedCount: number;
@@ -44,18 +44,30 @@ const handleClearSelection = () => {
 		<span>
 			{{ getSelectedText() }}
 		</span>
-		<N8nButton
-			:label="i18n.baseText('generic.delete')"
-			type="tertiary"
-			data-test-id="delete-selected-button"
-			@click="handleDeleteSelected"
-		/>
-		<N8nButton
-			:label="getClearSelectionText()"
-			type="tertiary"
-			data-test-id="clear-selection-button"
-			@click="handleClearSelection"
-		/>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('dataStore.deleteRows.tooltip')"
+			:shortcut="{ keys: ['Del'] }"
+		>
+			<N8nButton
+				type="tertiary"
+				data-test-id="delete-selected-button"
+				:label="i18n.baseText('generic.delete')"
+				:class="$style.button"
+				@click="handleDeleteSelected"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('dataStore.clearSelection.tooltip')"
+			:shortcut="{ keys: ['Esc'] }"
+		>
+			<N8nButton
+				type="tertiary"
+				data-test-id="clear-selection-button"
+				:label="getClearSelectionText()"
+				:class="$style.button"
+				@click="handleClearSelection"
+			/>
+		</KeyboardShortcutTooltip>
 	</div>
 </template>
 
@@ -73,9 +85,11 @@ const handleClearSelection = () => {
 	border-radius: var(--border-radius-base);
 	color: var(--execution-selector-text);
 	font-size: var(--font-size-2xs);
+	gap: var(--spacing-2xs);
+}
 
-	button {
-		margin-left: var(--spacing-2xs);
-	}
+.button {
+	display: flex;
+	align-items: center;
 }
 </style>

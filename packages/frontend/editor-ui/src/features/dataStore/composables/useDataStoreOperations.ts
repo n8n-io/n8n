@@ -289,14 +289,25 @@ export const useDataStoreOperations = ({
 	};
 
 	const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
-		if (params.api.getEditingCells().length > 0) {
+		const event = params.event as KeyboardEvent;
+		const target = event.target as HTMLElement;
+
+		const isSelectionColumn = params.column.getColId() === 'ag-Grid-SelectionColumn';
+		const isEditing =
+			params.api.getEditingCells().length > 0 ||
+			(target instanceof HTMLInputElement && !isSelectionColumn);
+		if (isEditing) {
 			return;
 		}
 
-		const event = params.event as KeyboardEvent;
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
 			event.preventDefault();
 			await handleCopyFocusedCell(params);
+			return;
+		}
+
+		if (event.key === 'Escape') {
+			handleClearSelection();
 			return;
 		}
 
