@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
@@ -21,6 +22,8 @@ const props = defineProps<{
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	helpItems: IMenuElement[];
 	handleSelect?: (key: string) => void;
+	isCollapsed: boolean;
+	onToggleSidebar: () => void;
 }>();
 
 const emit = defineEmits<{
@@ -29,19 +32,16 @@ const emit = defineEmits<{
 	logout: [];
 }>();
 
-const {
-	state,
-	sidebarWidth,
-	panelIcon,
-	onResizeStart,
-	onResize,
-	onResizeEnd,
-	toggleSidebar,
-	subMenuOpen,
-} = useSidebarLayout({});
+const { sidebarWidth, onResizeStart, onResize, onResizeEnd, subMenuOpen } = useSidebarLayout({});
+
+const state = computed(() => (props.isCollapsed ? 'hidden' : 'open'));
+const panelIcon = computed(() => {
+	return props.isCollapsed ? 'panel-left-open' : 'panel-left-close';
+});
 
 function sidebarToggle() {
-	toggleSidebar();
+	console.log('Toggling sidebar');
+	// props.onToggleSidebar();
 	emit('sidebarToggle', state.value);
 }
 </script>

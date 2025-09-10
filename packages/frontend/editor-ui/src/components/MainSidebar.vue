@@ -84,6 +84,16 @@ const showWhatsNewNotification = computed(
 
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
+const handleKeydown = (event: KeyboardEvent) => {
+	if (event.key === '[') {
+		const target = event.target as HTMLElement;
+		if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+			return;
+		}
+		toggleSidebar();
+	}
+};
+
 onMounted(async () => {
 	basePath.value = rootStore.baseUrl;
 	if (user.value) {
@@ -93,10 +103,12 @@ onMounted(async () => {
 	}
 
 	becomeTemplateCreatorStore.startMonitoringCta();
+	window.addEventListener('keydown', handleKeydown);
 });
 
 onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
+	window.removeEventListener('keydown', handleKeydown);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -265,7 +277,6 @@ const helpMenuItems = ref<IMenuElement[]>([
 
 function toggleSidebar() {
 	uiStore.toggleSidebarMenuCollapse();
-	console.log(uiStore.sidebarMenuCollapsed);
 }
 </script>
 
@@ -281,6 +292,8 @@ function toggleSidebar() {
 		:release-channel="settingsStore.settings.releaseChannel"
 		:help-items="helpMenuItems"
 		:handle-select="handleSelect"
+		:is-collapsed="uiStore.sidebarMenuCollapsed"
+		:on-toggle-sidebar="toggleSidebar"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
 		@sidebar-toggle="toggleSidebar"
