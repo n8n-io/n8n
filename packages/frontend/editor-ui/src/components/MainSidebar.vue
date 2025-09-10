@@ -262,6 +262,11 @@ const helpMenuItems = ref<IMenuElement[]>([
 		],
 	},
 ]);
+
+function toggleSidebar() {
+	uiStore.toggleSidebarMenuCollapse();
+	console.log(uiStore.sidebarMenuCollapsed);
+}
 </script>
 
 <template>
@@ -278,6 +283,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 		:handle-select="handleSelect"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
+		@sidebar-toggle="toggleSidebar"
 	>
 		<template #createButton>
 			<N8nNavigationDropdown

@@ -248,7 +248,7 @@ function hideGithubButton() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{ [$style['main-header']]: true, [$style.collapsed]: uiStore.sidebarMenuCollapsed }"
 		>
 			<div v-show="!hideMenuBar" :class="$style['top-menu']">
 				<WorkflowDetails
@@ -299,6 +299,10 @@ function hideGithubButton() {
 	position: relative;
 	width: 100%;
 	align-items: center;
+}
+
+.collapsed {
+	padding-left: 18px;
 }
 
 .main-header {

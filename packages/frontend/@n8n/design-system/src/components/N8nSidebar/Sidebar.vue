@@ -23,9 +23,10 @@ const props = defineProps<{
 	handleSelect?: (key: string) => void;
 }>();
 
-defineEmits<{
-	createProject: void;
-	logout: void;
+const emit = defineEmits<{
+	createProject: [];
+	sidebarToggle: [s: string];
+	logout: [];
 }>();
 
 const {
@@ -38,6 +39,11 @@ const {
 	toggleSidebar,
 	subMenuOpen,
 } = useSidebarLayout({});
+
+function sidebarToggle() {
+	toggleSidebar();
+	emit('sidebarToggle', state.value);
+}
 </script>
 
 <template>
@@ -47,7 +53,7 @@ const {
 			resizeWrapperHidden: state === 'hidden',
 		}"
 		:width="sidebarWidth"
-		:style="{ width: state === 'hidden' ? '24px' : `${sidebarWidth}px` }"
+		:style="{ width: state === 'hidden' ? '0px' : `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
@@ -103,7 +109,7 @@ const {
 					type="secondary"
 					text
 					square
-					@click="toggleSidebar"
+					@click="sidebarToggle"
 				/>
 			</N8nTooltip>
 		</header>
@@ -185,14 +191,12 @@ const {
 	<div v-if="state === 'hidden'" class="interactiveArea">
 		<N8nIconButton
 			v-if="state === 'hidden'"
-			icon-size="large"
-			size="xmini"
-			icon="chevron-right"
+			size="small"
+			icon="panel-left"
 			class="showSidebarButton"
-			type="tertiary"
-			text
+			type="secondary"
 			square
-			@click="toggleSidebar"
+			@click="sidebarToggle"
 		/>
 	</div>
 </template>
@@ -201,7 +205,6 @@ const {
 .resizeWrapper {
 	max-height: 100%;
 	height: 100%;
-
 	overflow-x: hidden;
 	overflow-y: auto;
 	border-right: var(--border-base);
@@ -317,16 +320,10 @@ const {
 }
 
 .interactiveArea {
-	position: absolute;
-	left: 0;
-	top: 0;
-	height: 100%;
+	position: fixed;
+	left: 14px;
+	top: 20px;
 	pointer-events: auto;
-	border-right: 1px solid var(--color-foreground-base);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--color-foreground-xlight);
 }
 
 .showSidebarButton {

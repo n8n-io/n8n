@@ -146,6 +146,7 @@ import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
+import IconLucidePanelLeft from '~icons/lucide/panel-left';
 import IconLucidePanelLeftOpen from '~icons/lucide/panel-left-open';
 import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePause from '~icons/lucide/pause';
@@ -563,6 +564,7 @@ export const updatedIconSet = {
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-right': IconLucidePanelRight,
+	'panel-left': IconLucidePanelLeft,
 	'panel-left-open': IconLucidePanelLeftOpen,
 	'panel-left-close': IconLucidePanelLeftClose,
 	pause: IconLucidePause,
