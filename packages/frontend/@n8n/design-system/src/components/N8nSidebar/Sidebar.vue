@@ -47,7 +47,7 @@ const {
 			resizeWrapperHidden: state === 'hidden',
 		}"
 		:width="sidebarWidth"
-		:style="{ width: `${sidebarWidth}px` }"
+		:style="{ width: state === 'hidden' ? '24px' : `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
@@ -187,8 +187,9 @@ const {
 			v-if="state === 'hidden'"
 			icon-size="large"
 			size="xmini"
-			icon="panel-left-open"
-			type="secondary"
+			icon="chevron-right"
+			class="showSidebarButton"
+			type="tertiary"
 			text
 			square
 			@click="toggleSidebar"
@@ -321,7 +322,15 @@ const {
 	top: 0;
 	height: 100%;
 	pointer-events: auto;
-	border-right: 1px solid var(--color-foreground-light);
+	border-right: 1px solid var(--color-foreground-base);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color-foreground-xlight);
+}
+
+.showSidebarButton {
+	height: 100%;
 }
 
 .toggleTooltip {
