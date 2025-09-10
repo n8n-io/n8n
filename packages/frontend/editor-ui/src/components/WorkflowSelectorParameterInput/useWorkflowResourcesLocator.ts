@@ -20,23 +20,24 @@ export function useWorkflowResourcesLocator(router: Router) {
 	const PAGE_SIZE = 40;
 
 	const sortedWorkflows = computed(() =>
-		sortBy(workflowsStore.allWorkflows, (workflow) =>
+		sortBy(workflowsStore.allWorkflowsForSubworkflowSelection, (workflow) =>
 			new Date(workflow.updatedAt).valueOf(),
 		).reverse(),
 	);
 
 	const hasMoreWorkflowsToLoad = computed(
-		() => workflowsStore.allWorkflows.length > workflowsResources.value.length,
+		() =>
+			workflowsStore.allWorkflowsForSubworkflowSelection.length > workflowsResources.value.length,
 	);
 
 	const filteredResources = computed(() => {
-		return workflowsStore.allWorkflows
+		return workflowsStore.allWorkflowsForSubworkflowSelection
 			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
 			.map(workflowDbToResourceMapper);
 	});
 
 	async function populateNextWorkflowsPage() {
-		await workflowsStore.fetchAllWorkflows();
+		await workflowsStore.fetchAllWorkflowsForSubworkflowSelection();
 		const nextPage = sortedWorkflows.value.slice(
 			workflowsResources.value.length,
 			workflowsResources.value.length + PAGE_SIZE,
@@ -53,7 +54,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 	async function reloadWorkflows() {
 		isLoadingResources.value = true;
-		await workflowsStore.fetchAllWorkflows();
+		await workflowsStore.fetchAllWorkflowsForSubworkflowSelection();
 		isLoadingResources.value = false;
 	}
 
@@ -72,7 +73,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowName(id: string): string {
-		const workflow = workflowsStore.getWorkflowById(id);
+		const workflow = workflowsStore.getSubworkflowWorkflowById(id);
 		if (workflow) {
 			// Add the project name if it's not a personal project
 			if (workflow.homeProject && workflow.homeProject.type !== 'personal') {
@@ -84,7 +85,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowBaseName(id: string): string | null {
-		const workflow = workflowsStore.getWorkflowById(id);
+		const workflow = workflowsStore.getSubworkflowWorkflowById(id);
 		if (workflow) {
 			return workflow.name;
 		}

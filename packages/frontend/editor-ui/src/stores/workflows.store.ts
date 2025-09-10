@@ -159,6 +159,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
+	const workflowsForSubworkflowSelectionById = ref<Record<string, IWorkflowDb>>({});
 	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
@@ -186,6 +187,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const allWorkflows = computed(() =>
 		Object.values(workflowsById.value).sort((a, b) => a.name.localeCompare(b.name)),
+	);
+
+	const allWorkflowsForSubworkflowSelection = computed(() =>
+		Object.values(workflowsForSubworkflowSelectionById.value).sort((a, b) =>
+			a.name.localeCompare(b.name),
+		),
 	);
 
 	const isNewWorkflow = computed(() => workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID);
@@ -390,6 +397,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getWorkflowById(id: string): IWorkflowDb {
 		return workflowsById.value[id];
+	}
+
+	function getSubworkflowWorkflowById(id: string): IWorkflowDb {
+		return workflowsForSubworkflowSelectionById.value[id];
 	}
 
 	function getNodeByName(nodeName: string): INodeUi | null {
@@ -620,9 +631,44 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflows;
 	}
 
+	async function searchWorkflowsWithCallerPolicy({
+		projectId,
+		name,
+	}: {
+		projectId?: string;
+		name?: string;
+	}): Promise<IWorkflowDb[]> {
+		const filter = {
+			projectId,
+			name,
+		};
+
+		const { data: workflows } = await workflowsApi.getWorkflowsForSubworkflowExecution(
+			rootStore.restApiContext,
+			isEmpty(filter) ? undefined : filter,
+		);
+		return workflows;
+	}
+
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const workflows = await searchWorkflows({ projectId });
 		setWorkflows(workflows);
+		return workflows;
+	}
+
+	async function fetchAllWorkflowsForSubworkflowSelection(
+		projectId?: string,
+	): Promise<IWorkflowDb[]> {
+		const workflows = await searchWorkflowsWithCallerPolicy({ projectId });
+		workflowsForSubworkflowSelectionById.value = workflows.reduce<IWorkflowsMap>(
+			(acc, workflow: IWorkflowDb) => {
+				if (workflow.id) {
+					acc[workflow.id] = workflow;
+				}
+				return acc;
+			},
+			{},
+		);
 		return workflows;
 	}
 
@@ -1950,6 +1996,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowSettings,
 		workflowTags,
 		allWorkflows,
+		allWorkflowsForSubworkflowSelection,
 		isNewWorkflow,
 		isWorkflowActive,
 		workflowTriggerNodes,
@@ -1998,6 +2045,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		searchWorkflows,
 		fetchAllWorkflows,
+		fetchAllWorkflowsForSubworkflowSelection,
 		fetchWorkflowsPage,
 		fetchWorkflow,
 		fetchWorkflowsWithNodesIncluded,
@@ -2056,6 +2104,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeExecutionData,
 		clearNodeExecutionData,
 		pinDataByNodeName,
+		getSubworkflowWorkflowById,
 		activeNode,
 		getPastExecutions,
 		getExecution,

@@ -44,6 +44,18 @@ export async function getWorkflows(context: IRestApiContext, filter?: object, op
 	});
 }
 
+export async function getWorkflowsForSubworkflowExecution(
+	context: IRestApiContext,
+	filter?: object,
+	options?: object,
+) {
+	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows/caller-policy-any', {
+		includeScopes: true,
+		...(filter ? { filter } : {}),
+		...(options ? options : {}),
+	});
+}
+
 export async function getWorkflowsWithNodesIncluded(context: IRestApiContext, nodeTypes: string[]) {
 	return await getFullApiResponse<WorkflowResource[]>(
 		context,
