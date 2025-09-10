@@ -1,5 +1,4 @@
 import type { InsightsSummaryType } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
 export const INSIGHT_TYPES = {
