@@ -158,12 +158,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		if (dualStack) options.family = 0;
 
 		if (tls) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const { ca = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
 			options.tls = {
-				ca: ca ? readFileSync(ca as string).toString('utf-8') : undefined,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				servername: (serverName || undefined) as string | undefined,
+				ca: ca ? readFileSync(ca).toString('utf-8') : undefined,
+				servername: serverName || undefined,
 				rejectUnauthorized: rejectUnauthorized ? undefined : false,
 			};
 		}
