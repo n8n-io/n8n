@@ -224,6 +224,7 @@ watch(
 .sidebar {
 	grid-area: sidebar;
 	z-index: var(--z-index-app-sidebar);
+	position: relative;
 }
 
 .modals {

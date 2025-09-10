@@ -32,12 +32,10 @@ const {
 	state,
 	sidebarWidth,
 	panelIcon,
-	togglePeak,
-	peakSidebar,
 	onResizeStart,
 	onResize,
 	onResizeEnd,
-	peakMouseOver,
+	toggleSidebar,
 	subMenuOpen,
 } = useSidebarLayout({});
 </script>
@@ -47,7 +45,6 @@ const {
 		:class="{
 			resizeWrapper: true,
 			resizeWrapperHidden: state === 'hidden',
-			resizeWrapperPeak: state === 'peak',
 		}"
 		:width="sidebarWidth"
 		:style="{ width: `${sidebarWidth}px` }"
@@ -55,7 +52,6 @@ const {
 		:min-width="200"
 		:max-width="500"
 		:grid-size="8"
-		:outset="state === 'peak'"
 		@resizestart="onResizeStart"
 		@resize="onResize"
 		@resizeend="onResizeEnd"
@@ -92,13 +88,12 @@ const {
 					</div>
 				</template>
 			</N8nPopoverReka>
-
 			<slot name="createButton" />
 			<N8nTooltip placement="right">
 				<template #content>
 					<div class="toggleTooltip">
 						<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
-						<N8nKeyboardShortcut :keys="[']']" />
+						<N8nKeyboardShortcut :keys="['[']" />
 					</div>
 				</template>
 				<N8nIconButton
@@ -108,15 +103,11 @@ const {
 					type="secondary"
 					text
 					square
-					@click="togglePeak"
+					@click="toggleSidebar"
 				/>
 			</N8nTooltip>
 		</header>
-		<nav
-			:class="{ sidebar: true, sidebarHidden: state === 'hidden', sidebarPeak: state === 'peak' }"
-			:style="{ width: `${sidebarWidth}px` }"
-			@mouseleave="peakMouseOver"
-		>
+		<nav :class="{ sidebar: true }" :style="{ width: `${sidebarWidth}px` }">
 			<SidebarTree :items="topItems" :open-project="openProject" />
 			<template v-if="showProjects">
 				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
@@ -191,13 +182,18 @@ const {
 			</N8nPopoverReka>
 		</div>
 	</N8nResizeWrapper>
-	<div
-		v-if="state === 'hidden' || state === 'peak'"
-		:style="{ width: `${state === 'peak' ? sidebarWidth + 30 : 30}px` }"
-		class="interactiveArea"
-		@mouseenter="peakSidebar"
-		@mouseleave="peakMouseOver"
-	></div>
+	<div v-if="state === 'hidden'" class="interactiveArea">
+		<N8nIconButton
+			v-if="state === 'hidden'"
+			icon-size="large"
+			size="xmini"
+			icon="panel-left-open"
+			type="secondary"
+			text
+			square
+			@click="toggleSidebar"
+		/>
+	</div>
 </template>
 
 <style scoped>
@@ -248,29 +244,9 @@ const {
 	}
 }
 
-.resizeWrapperHidden,
-.resizeWrapperPeak {
-	position: fixed;
-	height: calc(100vh - var(--spacing-3xl));
-	top: var(--spacing-l);
-	z-index: 1000;
-	border-bottom-right-radius: var(--border-radius-large);
-	border-top-right-radius: var(--border-radius-large);
-	border-top: var(--border-base);
-	border-bottom: var(--border-base);
-	border-color: var(--color-foreground-light);
-}
-
 /* exit */
 .resizeWrapperHidden {
 	transform: translateX(-100%);
-	transition: transform 0.25s ease-in;
-}
-
-/* entrance */
-.resizeWrapperPeak {
-	transform: translateX(0%);
-	transition: transform 0.21s ease-out;
 }
 
 .sidebar {
@@ -345,6 +321,7 @@ const {
 	top: 0;
 	height: 100%;
 	pointer-events: auto;
+	border-right: 1px solid var(--color-foreground-light);
 }
 
 .toggleTooltip {
