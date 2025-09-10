@@ -104,8 +104,8 @@ describe('ExecutionRepository', () => {
 				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
 					const params = {
 						limit: 10,
-						lastId,
-						excludedExecutionsIds,
+						...(lastId ? { lastId } : {}),
+						...(excludedExecutionsIds ? { excludedExecutionsIds } : {}),
 					};
 					const mockEntities = [{ id: '1' }, { id: '2' }];
 					entityManager.find.mockResolvedValueOnce(mockEntities);
@@ -125,7 +125,7 @@ describe('ExecutionRepository', () => {
 							'status',
 						],
 						where: {
-							id: expectedIdCondition,
+							...(expectedIdCondition ? { id: expectedIdCondition } : {}),
 						},
 						order: { id: 'DESC' },
 						take: params.limit,
@@ -277,16 +277,15 @@ describe('ExecutionRepository', () => {
 					const mockCount = 15;
 					const params = {
 						limit: 10,
-						lastId,
-						excludedExecutionsIds,
+						...(lastId ? { lastId } : {}),
+						...(excludedExecutionsIds ? { excludedExecutionsIds } : {}),
 					};
-
 					entityManager.count.mockResolvedValueOnce(mockCount);
 					const result = await executionRepository.getExecutionsCountForPublicApi(params);
 
 					expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
 						where: {
-							id: expectedIdCondition,
+							...(expectedIdCondition ? { id: expectedIdCondition } : {}),
 						},
 						take: params.limit,
 					});
