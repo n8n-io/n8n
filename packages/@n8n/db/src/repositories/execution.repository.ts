@@ -675,7 +675,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.id = Not(In(params.excludedExecutionsIds));
 		}
 
-		console.log('condition', condition);
 		return condition;
 	}
 
@@ -693,8 +692,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...this.getStatusCondition(params.status),
 			...(params.workflowIds && { workflowId: In(params.workflowIds) }),
 		};
-
-		console.log('where', where);
 
 		return where;
 	}

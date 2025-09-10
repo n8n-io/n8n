@@ -115,8 +115,6 @@ export = {
 				.getActiveExecutions()
 				.map(({ id }) => id);
 
-			console.log('runningExecutionsIds', runningExecutionsIds);
-
 			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
 				{
 					status,
