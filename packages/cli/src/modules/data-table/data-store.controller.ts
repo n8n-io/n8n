@@ -7,8 +7,8 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
-	UpdateDataStoreRowDto,
-	UpsertDataStoreRowsDto,
+	UpdateDataTableRowDto,
+	UpsertDataStoreRowDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -238,11 +238,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean | undefined>(
+	async appendDataStoreRows<T extends DataStoreRowReturn | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData?: T },
+		dto: AddDataStoreRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
@@ -257,7 +257,7 @@ export class DataStoreController {
 				dataStoreId,
 				req.params.projectId,
 				dto.data,
-				dto.returnData,
+				dto.returnType,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
@@ -274,14 +274,14 @@ export class DataStoreController {
 
 	@Post('/:dataStoreId/upsert')
 	@ProjectScope('dataStore:writeRow')
-	async upsertDataStoreRows(
+	async upsertDataStoreRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpsertDataStoreRowsDto,
+		@Body dto: UpsertDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(
+			return await this.dataStoreService.upsertRow(
 				dataStoreId,
 				req.params.projectId,
 				dto,
@@ -306,7 +306,7 @@ export class DataStoreController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpdateDataStoreRowDto,
+		@Body dto: UpdateDataTableRowDto,
 	) {
 		try {
 			return await this.dataStoreService.updateRow(

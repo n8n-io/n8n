@@ -2880,7 +2880,7 @@
 	"dataStore.deleteColumn.confirm.title": "Delete column",
 	"dataStore.deleteColumn.confirm.message": "Are you sure you want to delete the column \"{name}\"? This action cannot be undone.",
 	"dataStore.addColumn.invalidName.error": "Invalid column name",
-	"dataStore.addColumn.invalidName.description": "Only alphanumeric characters and non-leading dashes are allowed for column names",
+	"dataStore.addColumn.invalidName.description": "Column names must begin with a letter and can only include letters, numbers, or underscores",
 	"dataStore.fetchContent.error": "Error fetching data store content",
 	"dataStore.addRow.label": "Add Row",
 	"dataStore.addRow.error": "Error adding row",

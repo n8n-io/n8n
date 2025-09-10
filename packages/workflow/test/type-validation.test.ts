@@ -1,6 +1,11 @@
 import { DateTime, Settings } from 'luxon';
 
-import { getValueDescription, tryToParseDateTime, validateFieldType } from '../src/type-validation';
+import {
+	getValueDescription,
+	tryToParseDateTime,
+	tryToParseJsonToFormFields,
+	validateFieldType,
+} from '../src/type-validation';
 
 describe('Type Validation', () => {
 	describe('string-alphanumeric', () => {
@@ -357,6 +362,14 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('Asia/Tokyo');
 			expect(result.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
+		});
+	});
+
+	describe('tryToParseJsonToFormFields', () => {
+		it('should parse html field', () => {
+			const json = '[{"fieldType": "html", "html": "<div>test</div>"}]';
+			const fields = tryToParseJsonToFormFields(json);
+			expect(fields).toEqual([{ fieldType: 'html', html: '<div>test</div>' }]);
 		});
 	});
 });
