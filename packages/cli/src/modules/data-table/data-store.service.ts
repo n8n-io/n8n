@@ -150,8 +150,6 @@ export class DataStoreService {
 		returnType: DataTableInsertRowsReturnType,
 		em: EntityManager,
 	) {
-		await this.validateRows(dataStoreId, rows, undefined, em);
-
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
 		return await this.dataStoreRowsRepository.insertRows(
 			dataStoreId,
