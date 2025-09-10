@@ -13,11 +13,14 @@ export class DataStoreSizeValidator {
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
 	private shouldRefresh(sizeInBytes: number | undefined, now: Date): sizeInBytes is undefined {
-		return (
-			sizeInBytes === undefined ||
+		if (
 			!this.lastCheck ||
 			now.getTime() - this.lastCheck.getTime() >= this.globalConfig.dataTable.sizeCheckCacheDuration
-		);
+		) {
+			sizeInBytes = undefined;
+		}
+
+		return sizeInBytes === undefined;
 	}
 
 	private async getCachedSize(
