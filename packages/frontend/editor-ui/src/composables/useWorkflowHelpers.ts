@@ -1019,7 +1019,7 @@ export function useWorkflowHelpers() {
 
 	function getMethod(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
-			return (trigger.parameters.method as string) ?? 'GET';
+			return (trigger.parameters.httpMethod as string) ?? 'GET';
 		}
 		return 'POST';
 	}

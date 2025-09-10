@@ -311,7 +311,7 @@ describe('useWorkflowHelpers', () => {
 						type: WEBHOOK_NODE_TYPE,
 						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -332,7 +332,7 @@ describe('useWorkflowHelpers', () => {
 				},
 				trigger: {
 					parameters: {
-						method: 'GET',
+						httpMethod: 'GET',
 						path: 'test-path',
 					},
 					type: 'n8n-nodes-base.webhook',
@@ -416,7 +416,7 @@ describe('useWorkflowHelpers', () => {
 						type: WEBHOOK_NODE_TYPE,
 						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -534,7 +534,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 						webhookId: 'test-webhook-id',
@@ -559,7 +559,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: '',
 						},
 						webhookId: 'test-webhook-id',
