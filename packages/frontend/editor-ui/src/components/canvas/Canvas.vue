@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
@@ -35,7 +35,7 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -103,7 +103,7 @@ const emit = defineEmits<{
 	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
-	'tidy-up': [CanvasLayoutEvent];
+	'tidy-up': [CanvasLayoutEvent, { trackEvents?: boolean }];
 	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
@@ -149,6 +149,7 @@ const {
 	removeSelectedNodes,
 	viewportRef,
 	fitView,
+	fitBounds,
 	zoomIn,
 	zoomOut,
 	zoomTo,
@@ -635,6 +636,10 @@ function onClickPane(event: MouseEvent) {
 	emit('click:pane', getProjectedPosition(event));
 }
 
+async function onFitBounds(nodes: GraphNode[]) {
+	await fitBounds(getRectOfNodes(nodes), { padding: 2 });
+}
+
 async function onFitView() {
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
@@ -757,7 +762,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 	}
 }
 
-async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
+async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
 		clearSelectedNodes();
 		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
@@ -766,10 +771,12 @@ async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: s
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source: payload.source });
+	emit('tidy-up', { result, target, source: payload.source }, { trackEvents: payload.trackEvents });
 
-	if (!applyOnSelection) {
-		await nextTick();
+	await nextTick();
+	if (applyOnSelection) {
+		await onFitBounds(selectedNodes.value);
+	} else {
 		await onFitView();
 	}
 }

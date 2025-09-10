@@ -10,6 +10,7 @@ import {
 	DataStoreRows,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
+	DataTableInsertRowsReturnType,
 	INode,
 	ListDataStoreOptions,
 	ListDataStoreRowsOptions,
@@ -131,8 +132,11 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 				return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
 			},
 
-			async insertRows(rows: DataStoreRows) {
-				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
+			async insertRows<T extends DataTableInsertRowsReturnType>(
+				rows: DataStoreRows,
+				returnType: T,
+			) {
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows, returnType);
 			},
 
 			async updateRow(options: UpdateDataStoreRowOptions) {

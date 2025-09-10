@@ -326,11 +326,9 @@ export class SourceControlService {
 			});
 		}
 
-		const tagChanges = filesToPush.find((e) => e.type === 'tags');
-		if (tagChanges) {
-			filesToBePushed.add(tagChanges.file);
-			await this.sourceControlExportService.exportTagsToWorkFolder(context);
-		}
+		// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
+		filesToBePushed.add(getTagsPath(this.gitFolder));
+		await this.sourceControlExportService.exportTagsToWorkFolder(context);
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {

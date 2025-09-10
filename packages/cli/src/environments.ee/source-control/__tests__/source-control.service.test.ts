@@ -1,28 +1,37 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { isContainedWithin } from '@n8n/backend-common';
 import {
-	type Variables,
+	type FolderRepository,
 	type FolderWithWorkflowAndSubFolderCount,
 	type TagEntity,
-	type User,
-	type FolderRepository,
 	type TagRepository,
+	type User,
+	type Variables,
 	type WorkflowEntity,
-	GLOBAL_MEMBER_ROLE,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { PushResult } from 'simple-git';
 
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-
+import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
+
+import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+
+jest.mock('@n8n/backend-common', () => ({
+	...jest.requireActual('@n8n/backend-common'),
+	isContainedWithin: jest.fn(() => true),
+}));
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
@@ -33,20 +42,22 @@ describe('SourceControlService', () => {
 		mock(),
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
+	const sourceControlExportService = mock<SourceControlExportService>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const tagRepository = mock<TagRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const gitService = mock<SourceControlGitService>();
+	const eventService = mock<EventService>();
 	const sourceControlService = new SourceControlService(
 		mock(),
 		gitService,
 		preferencesService,
-		mock(),
+		sourceControlExportService,
 		sourceControlImportService,
 		sourceControlScopedService,
 		tagRepository,
 		folderRepository,
-		mock(),
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -55,8 +66,10 @@ describe('SourceControlService', () => {
 	});
 
 	describe('pushWorkfolder', () => {
-		it('should throw an error if a file is given that is not in the workfolder', async () => {
+		it('should throw an error if file path validation fails', async () => {
 			const user = mock<User>();
+			(isContainedWithin as jest.Mock).mockReturnValueOnce(false);
+
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
@@ -74,6 +87,54 @@ describe('SourceControlService', () => {
 					],
 				}),
 			).rejects.toThrow('File path /etc/passwd is invalid');
+		});
+
+		it('should include the tags file even if not explicitly specified', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockPushResult = mock<PushResult>();
+			const mockFile: SourceControlledFile = {
+				file: 'some-workflow.json',
+				id: 'test',
+				name: 'some-workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			jest.spyOn(sourceControlService, 'getStatus').mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			eventService.emit.mockReturnValueOnce(true);
+			gitService.push.mockResolvedValueOnce(mockPushResult);
+			(isContainedWithin as jest.Mock).mockReturnValueOnce(true);
+
+			const expectedTagsPath = `${preferencesService.gitFolder}/tags.json`;
+			const expectedFilePath = `${preferencesService.gitFolder}/some-workflow.json`;
+
+			// ACT
+			const result = await sourceControlService.pushWorkfolder(user, {
+				fileNames: [mockFile],
+				commitMessage: 'A commit message',
+			});
+
+			// ASSERT
+			expect(gitService.stage).toHaveBeenCalledWith(
+				new Set([expectedFilePath, expectedTagsPath]),
+				new Set(),
+			);
+			expect(gitService.commit).toHaveBeenCalledWith('A commit message');
+			expect(gitService.push).toHaveBeenCalledWith({
+				branch: 'main', // default branch
+				force: false,
+			});
+			expect(result).toHaveProperty('statusCode', 200);
 		});
 	});
 
