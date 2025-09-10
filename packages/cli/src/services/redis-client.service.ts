@@ -132,7 +132,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, tlsCa, tlsServerName, tlsRejectUnauthorized, dualStack } =
+		const { username, password, db, tls, tlsConfig, dualStack } =
 			this.globalConfig.queue.bull.redis;
 
 		/**
@@ -158,6 +158,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		if (dualStack) options.family = 0;
 
 		if (tls) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const { tlsCa = '', tlsServerName = '', tlsRejectUnauthorized = true } = tlsConfig;
 			options.tls = {
 				ca: tlsCa ? readFileSync(tlsCa as string).toString('utf-8') : undefined,
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

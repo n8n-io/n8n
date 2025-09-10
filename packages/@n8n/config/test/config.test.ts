@@ -229,6 +229,7 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					tlsConfig: {},
 					dualStack: false,
 				},
 				gracefulShutdownTimeout: 30,
