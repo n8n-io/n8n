@@ -44,6 +44,7 @@ import {
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -53,7 +54,6 @@ import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
-import assert from 'node:assert';
 
 const nodeTypes = Helpers.NodeTypes();
 
