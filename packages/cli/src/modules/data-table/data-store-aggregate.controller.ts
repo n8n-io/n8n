@@ -5,15 +5,6 @@ import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
 import { DataStoreAggregateService } from './data-store-aggregate.service';
 import { DataStoreService } from './data-store.service';
 
-type DataTablesSizeResult = {
-	sizeBytes: number;
-	sizeState: 'ok' | 'warn' | 'error';
-};
-type DataTablesSizesResult = DataTablesSizeResult &
-	Array<{
-		tables: Record<string, number>;
-	}>;
-
 @RestController('/data-tables-global')
 export class DataStoreAggregateController {
 	constructor(
