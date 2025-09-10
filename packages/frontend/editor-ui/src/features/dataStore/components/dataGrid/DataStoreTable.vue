@@ -294,6 +294,11 @@ defineExpose({
 	:global(.add-row-cell) {
 		border: none !important;
 		background-color: transparent !important;
+		padding: 0;
+
+		button {
+			justify-content: end;
+		}
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
