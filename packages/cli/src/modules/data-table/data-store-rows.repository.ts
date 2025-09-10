@@ -344,17 +344,65 @@ export class DataStoreRowsRepository {
 		return await this.getManyByIds(dataStoreId, ids, columns);
 	}
 
-	async deleteRows(dataTableId: string, columns: DataTableColumn[], filter?: DataTableFilter) {
+	async deleteRows(
+		dataTableId: string,
+		columns: DataTableColumn[],
+		filter: DataTableFilter | undefined,
+		returnData: boolean = false,
+	) {
+		const dbType = this.dataSource.options.type;
+		const useReturning = dbType === 'postgres';
 		const table = this.toTableName(dataTableId);
+
+		if (!returnData) {
+			// Just delete and return true
+			await this.dataSource.manager.transaction(async (em) => {
+				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+				if (filter) {
+					this.applyFilters(query, filter, undefined, columns);
+				}
+				await query.execute();
+			});
+			return true;
+		}
+
+		let affectedRows: DataStoreRowReturn[] = [];
+
+		if (!useReturning) {
+			const selectQuery = this.dataSource.createQueryBuilder().select('*').from(table, 'dataTable');
+
+			if (filter) {
+				this.applyFilters(selectQuery, filter, 'dataTable', columns);
+			}
+
+			const rawRows = await selectQuery.getRawMany<DataStoreRowReturn>();
+			affectedRows = normalizeRows(rawRows, columns);
+		}
 
 		await this.dataSource.manager.transaction(async (em) => {
 			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+
+			if (useReturning) {
+				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+				const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+					this.dataSource.driver.escape(x),
+				);
+				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+				query.returning(selectColumns.join(','));
+			}
+
 			if (filter) {
 				this.applyFilters(query, filter, undefined, columns);
 			}
-			await query.execute();
+
+			const result = await query.execute();
+
+			if (useReturning) {
+				affectedRows = normalizeRows(extractReturningData(result.raw), columns);
+			}
 		});
-		return true;
+
+		return affectedRows;
 	}
 
 	async createTableWithColumns(

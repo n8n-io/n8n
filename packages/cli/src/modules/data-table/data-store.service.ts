@@ -225,10 +225,17 @@ export class DataStoreService {
 		);
 	}
 
+	async deleteRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async deleteRows(
 		dataStoreId: string,
 		projectId: string,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+		returnData: boolean = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
@@ -243,7 +250,13 @@ export class DataStoreService {
 			this.validateAndTransformFilters(dto.filter, columns);
 		}
 
-		return await this.dataStoreRowsRepository.deleteRows(dataStoreId, columns, dto.filter);
+		const result = await this.dataStoreRowsRepository.deleteRows(
+			dataStoreId,
+			columns,
+			dto.filter,
+			returnData,
+		);
+		return returnData ? result : true;
 	}
 
 	private validateRowsWithColumns(

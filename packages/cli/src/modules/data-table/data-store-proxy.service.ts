@@ -149,7 +149,7 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 			},
 
 			async deleteRows(options: DeleteDataTableRowsOptions) {
-				return await dataStoreService.deleteRows(dataStoreId, projectId, options);
+				return await dataStoreService.deleteRows(dataStoreId, projectId, options, true);
 			},
 		};
 	}

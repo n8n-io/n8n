@@ -50,15 +50,12 @@ export async function execute(
 
 	const filter = getSelectFilter(this, index);
 
-	// Get the rows that would be affected first
-	const { data: rowsToDelete } = await dataStoreProxy.getManyRowsAndCount({ filter });
-
-	if (!dryRun) {
-		const success = await dataStoreProxy.deleteRows({ filter });
-		if (!success) {
-			throw new NodeOperationError(this.getNode(), `failed to delete rows for index ${index}`);
-		}
+	if (dryRun) {
+		const { data: rowsToDelete } = await dataStoreProxy.getManyRowsAndCount({ filter });
+		return rowsToDelete.map((json) => ({ json }));
 	}
 
-	return rowsToDelete.map((json) => ({ json }));
+	const result = await dataStoreProxy.deleteRows({ filter });
+
+	return result.map((json) => ({ json }));
 }

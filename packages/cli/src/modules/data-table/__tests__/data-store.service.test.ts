@@ -1689,6 +1689,49 @@ describe('dataStore', () => {
 			]);
 		});
 
+		it('return full deleted data if returnData is set', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ name: 'Alice', age: 30 }],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+				},
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				{
+					id: expect.any(Number),
+					name: 'Alice',
+					age: 30,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+		});
+
 		it('fails when trying to delete from non-existent data store', async () => {
 			// ACT & ASSERT
 			const result = dataStoreService.deleteRows('non-existent-id', project1.id, {
