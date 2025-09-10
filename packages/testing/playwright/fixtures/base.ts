@@ -34,6 +34,7 @@ interface ContainerConfig {
 	};
 	env?: Record<string, string>;
 	proxyServerEnabled?: boolean;
+	taskRunner?: boolean;
 }
 
 /**
@@ -182,7 +183,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 		const serverUrl = `http://${proxyServerContainer?.getHost()}:${proxyServerContainer?.getFirstMappedPort()}`;
 		const proxyServer = new ProxyServer(serverUrl);
-		await proxyServer.loadExpectations();
 
 		await use(proxyServer);
 	},

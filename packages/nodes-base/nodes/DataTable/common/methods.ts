@@ -44,17 +44,22 @@ export async function tableSearch(
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	const returnData: Array<INodePropertyOptions & { type: string }> = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'id - (number)', value: 'id', type: 'number' },
+		{ name: 'id (number)', value: 'id', type: 'number' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt - (date)', value: 'createdAt', type: 'date' },
+		{ name: 'createdAt (date)', value: 'createdAt', type: 'date' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt - (date)', value: 'updatedAt', type: 'date' },
+		{ name: 'updatedAt (date)', value: 'updatedAt', type: 'date' },
 	];
+
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return returnData;
+	}
+
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
-			name: `${column.name} - (${column.type})`,
+			name: `${column.name} (${column.type})`,
 			value: column.name,
 			type: column.type,
 		});
@@ -69,6 +74,10 @@ const systemColumns = [
 ] as const;
 
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
+	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return [];
+	}
 	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
 	// Base conditions available for all column types
@@ -87,18 +96,8 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	];
 
 	const stringConditions: INodePropertyOptions[] = [
-		{
-			name: 'LIKE operator',
-			value: 'like',
-			description:
-				'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
-		},
-		{
-			name: 'ILIKE operator',
-			value: 'ilike',
-			description:
-				'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
-		},
+		{ name: 'Contains (Case-Sensitive)', value: 'like' },
+		{ name: 'Contains (Case-Insensitive)', value: 'ilike' },
 	];
 
 	const allConditions = [...baseConditions, ...comparableConditions, ...stringConditions];
@@ -111,9 +110,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	// Get column type to determine available conditions
 	const column =
 		systemColumns.find((col) => col.name === keyName) ??
-		(await (await getDataTableProxyLoadOptions(this)).getColumns()).find(
-			(col) => col.name === keyName,
-		);
+		(await proxy.getColumns()).find((col) => col.name === keyName);
 
 	if (!column) {
 		return baseConditions;
@@ -135,6 +132,9 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return { fields: [] };
+	}
 	const result = await proxy.getColumns();
 
 	const fields: ResourceMapperField[] = [];
