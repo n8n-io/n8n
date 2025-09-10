@@ -164,7 +164,12 @@ watch(
 					size="small"
 					@update:model-value="onRoleAction(project, $event)"
 				>
-					<N8nOption v-for="role in roles" :key="role.role" :value="role.role" :label="role.name" />
+					<N8nOption
+						v-for="role in roles"
+						:key="role.slug"
+						:value="role.slug"
+						:label="role.displayName"
+					/>
 				</N8nSelect>
 				<N8nButton
 					v-if="!props.static"

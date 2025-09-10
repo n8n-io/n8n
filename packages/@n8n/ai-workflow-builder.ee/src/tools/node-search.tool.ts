@@ -112,9 +112,11 @@ function buildResponseMessage(
  * Factory function to create the node search tool
  */
 export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
-		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'search_nodes');
+	const DISPLAY_TITLE = 'Searching nodes';
+
+	const dynamicTool = tool(
+		(input, config) => {
+			const reporter = createProgressReporter(config, 'search_nodes', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -210,4 +212,9 @@ You can search for multiple different criteria at once by providing an array of 
 			schema: nodeSearchSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

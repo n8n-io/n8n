@@ -123,6 +123,10 @@ Violations are categorized by severity:
 # Run with default settings
 pnpm eval
 
+# Run a specific test case
+pnpm eval --test-case google-sheets-processing
+pnpm eval --test-case extract-from-file
+
 # With additional generated test cases
 GENERATE_TEST_CASES=true pnpm eval
 
@@ -161,6 +165,7 @@ The AI Workflow Builder agent needs access to node definitions to generate workf
 1. Run your n8n instance
 2. Download the node definitions from locally running n8n instance(http://localhost:5678/types/nodes.json)
 3. Save the node definitions to `evaluations/nodes.json`
+` curl -o evaluations/nodes.json http://localhost:5678/types/nodes.json`
 
 The evaluation will fail with a clear error message if `nodes.json` is missing.
 

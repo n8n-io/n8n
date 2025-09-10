@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository, DbConnection } from '@n8n/db';
+import { WorkflowRepository, DbConnection, AuthRolesService } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -39,6 +39,7 @@ mockInstance(CommunityPackagesService);
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
+mockInstance(AuthRolesService);
 
 test('should start a task runner when task runners are enabled', async () => {
 	// arrange

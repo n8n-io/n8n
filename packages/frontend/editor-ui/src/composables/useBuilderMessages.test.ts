@@ -269,7 +269,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages[2].id).toBe('batch-id-2');
 		});
 
-		it('should show running tools message when tools are in progress', () => {
+		it('should show thinking message when tools are in progress', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -289,11 +289,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			expect(result.thinkingMessage).toBe(undefined);
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
-		it('should show processing message when tools are completed but no text response yet', () => {
+		it('should show thinking message when tools are completed but no text response yet', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -316,7 +316,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -389,11 +389,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should show "aiAssistant.thinkingSteps.runningTools" for the new running tool, not "aiAssistant.thinkingSteps.processingResults"
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			// Should not show thinking message as new tool is running
+			expect(result.thinkingMessage).toBe(undefined);
 		});
 
-		it('should show processing message when second tool completes', () => {
+		it('should show thinking message when second tool completes', () => {
 			// Both tools completed
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -426,7 +426,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should keep showing running tools message when parallel tools complete one by one', () => {
@@ -473,8 +473,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "aiAssistant.thinkingSteps.runningTools" because call-456 is still running
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			// Should not show thinking because call-456 is still running
+			expect(result.thinkingMessage).toBe(undefined);
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -489,7 +489,7 @@ describe('useBuilderMessages', () => {
 			expect(secondTool.status).toBe('running');
 		});
 
-		it('should show processing results when all parallel tools complete', () => {
+		it('should show thinking message when all parallel tools complete', () => {
 			// One tool already completed, one still running
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -533,11 +533,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should now show "aiAssistant.thinkingSteps.processingResults" because all tools are completed
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			// Should now show thinking because all tools are completed but no text response yet
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
-		it('should keep processing message when workflow-updated arrives after tools complete', () => {
+		it('should keep thinking message when workflow-updated arrives after tools complete', () => {
 			// Tool completed
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -568,13 +568,13 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "aiAssistant.thinkingSteps.processingResults" because workflow-updated is not a text response
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			// Should still show thinking because workflow-updated is not a text response
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			// Should NOT clear thinking for workflow updates
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
-		it('should clear processing message only when text arrives after workflow-updated', () => {
+		it('should clear thinking message only when text arrives after workflow-updated', () => {
 			// Tool completed and workflow updated
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -1263,7 +1263,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			expect(result.thinkingMessage).toBe(undefined);
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
@@ -1279,7 +1279,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch2, 'batch-2');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			currentMessages = result.messages;
 
 			// Third batch: workflow updated
@@ -1292,7 +1292,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch3, 'batch-3');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			currentMessages = result.messages;
 
 			// Fourth batch: final text response

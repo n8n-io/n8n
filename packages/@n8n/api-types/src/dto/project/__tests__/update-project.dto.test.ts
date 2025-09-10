@@ -120,7 +120,7 @@ describe('UpdateProjectDto', () => {
 					relations: [
 						{
 							userId: 'user-123',
-							role: 'invalid-role',
+							role: 'project:personalOwner',
 						},
 					],
 				},

@@ -69,7 +69,7 @@ test.describe('Projects', () => {
 
 		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
 
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = new n8nPage(await subWorkflowPagePromise, n8n.api);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
@@ -95,7 +95,7 @@ test.describe('Projects', () => {
 		await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
 
 		// Navigate to Credentials
-		await subn8n.page.getByRole('link', { name: 'Credentials' }).click();
+		await subn8n.page.getByRole('link', { name: 'Credentials', exact: true }).click();
 
 		// Assert that the credential is in the list
 		await expect(subn8n.page.locator('[data-test-id="resources-list-item"]')).toHaveCount(1);

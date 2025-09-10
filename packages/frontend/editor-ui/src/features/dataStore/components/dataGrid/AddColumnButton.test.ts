@@ -43,7 +43,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 describe('AddColumnButton', () => {
-	const addColumnHandler = vi.fn();
+	const addColumnHandler = vi.fn().mockResolvedValue(true);
 	const renderComponent = createComponentRenderer(AddColumnButton, {
 		props: {
 			params: {
@@ -132,7 +132,7 @@ describe('AddColumnButton', () => {
 		const nameInput = getByPlaceholderText('Enter column name');
 
 		// Test valid names
-		const validNames = ['column1', 'my-column', 'Column123', 'a1b2c3'];
+		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
 
 		for (const name of validNames) {
 			await fireEvent.update(nameInput, name);
@@ -241,6 +241,24 @@ describe('AddColumnButton', () => {
 
 		await waitFor(() => {
 			expect(queryByText('Column name')).not.toBeInTheDocument();
+		});
+	});
+
+	it('should not close popover if submission fails', async () => {
+		const { getByPlaceholderText, getByTestId } = renderComponent();
+		addColumnHandler.mockResolvedValueOnce(false);
+		const addButton = getByTestId('data-store-add-column-trigger-button');
+
+		await fireEvent.click(addButton);
+
+		const nameInput = getByPlaceholderText('Enter column name');
+		await fireEvent.update(nameInput, 'testColumn');
+
+		const submitButton = getByTestId('data-store-add-column-submit-button');
+		await fireEvent.click(submitButton);
+
+		await waitFor(() => {
+			expect(getByTestId('data-store-add-column-submit-button')).toBeInTheDocument();
 		});
 	});
 

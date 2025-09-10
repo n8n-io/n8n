@@ -3,7 +3,7 @@ import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
@@ -13,6 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -86,8 +87,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -266,9 +267,28 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
+	// Custom replacer to exclude certain properties and format others
+	function replacer(key: string, value: unknown, nodeType?: string) {
+		if (key === 'position') {
+			return undefined; // exclude this property
+		}
+
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
+		}
+
+		return value;
+	}
+
+	const withNodeType = (type?: string) => (key: string, value: unknown) =>
+		replacer(key, value, type);
+
 	return {
-		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
-		newString: JSON.stringify(targetNode, null, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
+		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
 	};
 });
 
@@ -398,7 +418,7 @@ const modifiers = [
 						icon-size="large"
 						@click="handleBeforeClose"
 					></N8nIconButton>
-					<N8nHeading tag="h1" size="xlarge">
+					<N8nHeading tag="h4" size="medium">
 						{{
 							sourceWorkFlow.state.value?.workflow?.name ||
 							targetWorkFlow.state.value?.workflow?.name

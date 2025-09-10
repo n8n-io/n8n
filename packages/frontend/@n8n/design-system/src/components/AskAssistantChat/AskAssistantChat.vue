@@ -4,12 +4,14 @@ import { computed, nextTick, ref, watch } from 'vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../types/assistant';
+import { isToolMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
 
@@ -22,6 +24,7 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	disabled?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
 	title?: string;
@@ -54,13 +57,105 @@ const props = withDefaults(defineProps<Props>(), {
 	scrollOnNewMessage: false,
 });
 
-// Ensure all messages have required id and read properties
-const normalizedMessages = computed(() => {
-	return props.messages.map((msg, index) => ({
+function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.map((msg, index) => ({
 		...msg,
 		id: msg.id || `msg-${index}`,
 		read: msg.read ?? true,
 	}));
+}
+
+// filter out these messages so that tool collapsing works correctly
+function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.filter(
+		(message) => Boolean(getSupportedMessageComponent(message.type)) || message.type === 'custom',
+	);
+}
+
+function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	const result: ChatUI.AssistantMessage[] = [];
+	let i = 0;
+
+	while (i < messages.length) {
+		const currentMsg = messages[i];
+
+		// If it's not a tool message, add it as-is and continue
+		if (!isToolMessage(currentMsg)) {
+			result.push(currentMsg);
+			i++;
+			continue;
+		}
+
+		// Collect consecutive tool messages with the same toolName
+		const toolMessagesGroup = [currentMsg];
+		let j = i + 1;
+
+		while (j < messages.length) {
+			const nextMsg = messages[j];
+			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
+				toolMessagesGroup.push(nextMsg);
+				j++;
+			} else {
+				break;
+			}
+		}
+
+		// If we have multiple tool messages with the same toolName, collapse them
+		if (toolMessagesGroup.length > 1) {
+			// Determine the status to show based on priority rules
+			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
+			let titleSource = lastMessage;
+
+			// Check if we have running messages - if so, show the last running one and use its titles
+			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
+			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
+			if (runningMessages.length > 0) {
+				const lastRunning = runningMessages[runningMessages.length - 1];
+				titleSource = lastRunning;
+			} else if (errorMessage) {
+				titleSource = errorMessage;
+			}
+
+			// Combine all updates from all tool messages
+			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
+
+			// Create collapsed message with title logic based on final status
+			const collapsedMessage: ChatUI.ToolMessage = {
+				...lastMessage,
+				status: titleSource.status,
+				updates: combinedUpdates,
+				displayTitle: titleSource.displayTitle,
+				// Only set customDisplayTitle if status is running (for example "Adding X node")
+				customDisplayTitle:
+					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
+			};
+
+			result.push(collapsedMessage);
+		} else {
+			// Single tool message, add as-is
+			result.push(currentMsg);
+		}
+
+		i = j;
+	}
+
+	return result;
+}
+
+// Ensure all messages have required id and read properties, and collapse tool messages
+const normalizedMessages = computed(() => {
+	const normalized = normalizeMessages(props.messages);
+	return collapseToolMessages(filterOutHiddenMessages(normalized));
+});
+
+// Get quickReplies from the last message in the original messages (before filtering)
+const lastMessageQuickReplies = computed(() => {
+	if (!props.messages?.length || props.streaming) return [];
+
+	const lastMessage = props.messages[props.messages.length - 1];
+	return 'quickReplies' in lastMessage && lastMessage.quickReplies?.length
+		? lastMessage.quickReplies
+		: [];
 });
 
 const textInputValue = ref<string>('');
@@ -73,7 +168,7 @@ const sessionEnded = computed(() => {
 });
 
 const sendDisabled = computed(() => {
-	return !textInputValue.value || props.streaming || sessionEnded.value;
+	return !textInputValue.value || props.streaming || sessionEnded.value || props.disabled;
 });
 
 const showPlaceholder = computed(() => {
@@ -134,6 +229,13 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// Expose focusInput method to parent components
+defineExpose({
+	focusInput: () => {
+		chatInput.value?.focus();
+	},
+});
 </script>
 
 <template>
@@ -173,21 +275,24 @@ watch(
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 							@feedback="onRateMessage"
-						/>
+						>
+							<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
+								<slot name="custom-message" v-bind="customMessageProps" />
+							</template>
+						</MessageWrapper>
 
 						<div
-							v-if="
-								!streaming &&
-								'quickReplies' in message &&
-								message.quickReplies?.length &&
-								i === normalizedMessages.length - 1
-							"
+							v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
 							:class="$style.quickReplies"
 						>
 							<div :class="$style.quickRepliesTitle">
 								{{ t('assistantChat.quickRepliesTitle') }}
 							</div>
-							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
+							<div
+								v-for="opt in lastMessageQuickReplies"
+								:key="opt.type"
+								data-test-id="quick-replies"
+							>
 								<N8nButton
 									v-if="opt.text"
 									type="secondary"
@@ -245,8 +350,8 @@ watch(
 					ref="chatInput"
 					v-model="textInputValue"
 					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming }"
-					:disabled="sessionEnded || streaming"
+					:class="{ [$style.disabled]: sessionEnded || streaming || disabled }"
+					:disabled="sessionEnded || streaming || disabled"
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"

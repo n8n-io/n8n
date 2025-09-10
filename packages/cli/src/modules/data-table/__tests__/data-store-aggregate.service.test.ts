@@ -1,10 +1,12 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
+	type Role,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	type Project,
 	type User,
+	PROJECT_ADMIN_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -71,7 +73,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -81,7 +83,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project2.id,
-					role: 'project:viewer',
+					role: { slug: 'project:viewer' } as Role,
 					user,
 					project: project2,
 					createdAt: new Date(),
@@ -147,7 +149,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -157,7 +159,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project2.id,
-					role: 'project:viewer',
+					role: { slug: 'project:viewer' } as Role,
 					user,
 					project: project2,
 					createdAt: new Date(),
@@ -196,7 +198,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),

@@ -108,13 +108,20 @@ const workflowRoleTranslations = computed(() => ({
 }));
 
 const workflowRoles = computed(() =>
-	rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed, description }) => ({
-		role,
-		name: workflowRoleTranslations.value[role],
-		scopes,
-		licensed,
-		description,
-	})),
+	rolesStore.processedWorkflowRoles.map(
+		({ slug, scopes, displayName, licensed, description, systemRole, roleType }) => ({
+			slug,
+			displayName:
+				slug in workflowRoleTranslations.value
+					? workflowRoleTranslations.value[slug as keyof typeof workflowRoleTranslations.value]
+					: displayName,
+			scopes,
+			licensed,
+			description,
+			systemRole,
+			roleType,
+		}),
+	),
 );
 
 const trackTelemetry = (eventName: string, data: ITelemetryTrackProperties) => {

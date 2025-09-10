@@ -41,6 +41,9 @@ export class CredentialsPage extends BasePage {
 		await field.click();
 		await field.fill(value);
 	}
+	get saveCredentialButton() {
+		return this.page.getByRole('button', { name: 'Save' });
+	}
 
 	async saveCredential() {
 		await this.clickButtonByName('Save');
@@ -61,5 +64,17 @@ export class CredentialsPage extends BasePage {
 		await this.saveCredential();
 		await this.page.getByText('Connection tested successfully').waitFor({ state: 'visible' });
 		await this.closeCredentialDialog();
+	}
+
+	getOauthConnectButton() {
+		return this.page.getByTestId('oauth-connect-button');
+	}
+
+	getOauthConnectSuccessBanner() {
+		return this.page.getByTestId('oauth-connect-success-banner');
+	}
+
+	getSaveButton() {
+		return this.page.getByTestId('credential-save-button');
 	}
 }

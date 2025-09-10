@@ -1,11 +1,20 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { ToolCall } from '@langchain/core/messages/tool';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 
+import type { WorkflowPlan } from '../agents/workflow-planner-agent';
 import type {
 	AgentMessageChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
+
+export interface BuilderTool {
+	tool: DynamicStructuredTool;
+	displayTitle: string;
+	getCustomDisplayTitle?: (values: Record<string, unknown>) => string;
+}
 
 /**
  * Tools which should trigger canvas updates
@@ -36,6 +45,24 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 				workflowJSON?: unknown;
 				workflowOperations?: unknown;
 			};
+			create_plan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
+			};
+			review_plan?: {
+				planStatus?: string;
+			};
+			adjust_plan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+			};
+			__interrupt__?: Array<{
+				value: unknown;
+				resumable: boolean;
+				ns: string[];
+				when: string;
+			}>;
 		};
 
 		if ((agentChunk?.delete_messages?.messages ?? []).length > 0) {
@@ -51,6 +78,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
 			const lastMessage =
 				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
+
 			const messageChunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
@@ -75,14 +103,52 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 					content = lastMessage.content;
 				}
 
-				const messageChunk: AgentMessageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				};
+				if (content) {
+					const messageChunk: AgentMessageChunk = {
+						role: 'assistant',
+						type: 'message',
+						text: content,
+					};
 
-				return { messages: [messageChunk] };
+					return { messages: [messageChunk] };
+				}
+
+				return null;
 			}
+		}
+
+		// Handle plan creation
+		if (agentChunk?.create_plan?.workflowPlan) {
+			const workflowPlan = agentChunk.create_plan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
+		} else if ((agentChunk?.create_plan?.messages ?? []).length > 0) {
+			// When planner didn't create a plan, but responded with a message
+			const lastMessage =
+				agentChunk.create_plan!.messages![agentChunk.create_plan!.messages!.length - 1];
+			const messageChunk: AgentMessageChunk = {
+				role: 'assistant',
+				type: 'message',
+				text: lastMessage.content as string,
+			};
+
+			return { messages: [messageChunk] };
+		}
+
+		if (agentChunk?.adjust_plan?.workflowPlan) {
+			const workflowPlan = agentChunk.adjust_plan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
 		}
 
 		// Handle process_operations updates - emit workflow update after operations are processed
@@ -129,78 +195,145 @@ export async function* createStreamProcessor(
 	}
 }
 
+/**
+ * Format a HumanMessage into the expected output format
+ */
+function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
+	return {
+		role: 'user',
+		type: 'message',
+		text: msg.content,
+	};
+}
+
+/**
+ * Process array content from AIMessage and return formatted text messages
+ */
+function processArrayContent(content: unknown[]): Array<Record<string, unknown>> {
+	const textMessages = content.filter(
+		(c): c is { type: string; text: string } =>
+			typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
+	);
+
+	return textMessages.map((textMessage) => ({
+		role: 'assistant',
+		type: 'message',
+		text: textMessage.text,
+	}));
+}
+
+/**
+ * Process AIMessage content and return formatted messages
+ */
+function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
+	if (!msg.content) {
+		return [];
+	}
+
+	if (Array.isArray(msg.content)) {
+		return processArrayContent(msg.content);
+	}
+
+	return [
+		{
+			role: 'assistant',
+			type: 'message',
+			text: msg.content,
+		},
+	];
+}
+
+/**
+ * Create a formatted tool call message
+ */
+function createToolCallMessage(
+	toolCall: ToolCall,
+	builderTool?: BuilderTool,
+): Record<string, unknown> {
+	if (toolCall.name === 'generate_workflow_plan') {
+		const workflowPlan = toolCall.args as WorkflowPlan;
+		return {
+			role: 'assistant',
+			type: 'plan',
+			plan: workflowPlan.plan,
+			message: workflowPlan.intro,
+		};
+	}
+
+	return {
+		id: toolCall.id,
+		toolCallId: toolCall.id,
+		role: 'assistant',
+		type: 'tool',
+		toolName: toolCall.name,
+		displayTitle: builderTool?.displayTitle,
+		customDisplayTitle: toolCall.args && builderTool?.getCustomDisplayTitle?.(toolCall.args),
+		status: 'completed',
+		updates: [
+			{
+				type: 'input',
+				data: toolCall.args || {},
+			},
+		],
+	};
+}
+
+/**
+ * Process tool calls from AIMessage and return formatted tool messages
+ */
+function processToolCalls(
+	toolCalls: ToolCall[],
+	builderTools?: BuilderTool[],
+): Array<Record<string, unknown>> {
+	return toolCalls.map((toolCall) => {
+		const builderTool = builderTools?.find((bt) => bt.tool.name === toolCall.name);
+		return createToolCallMessage(toolCall, builderTool);
+	});
+}
+
+/**
+ * Process a ToolMessage and add its output to the corresponding tool call
+ */
+function processToolMessage(
+	msg: ToolMessage,
+	formattedMessages: Array<Record<string, unknown>>,
+): void {
+	const toolCallId = msg.tool_call_id;
+
+	// Find the tool message by ID (search backwards for efficiency)
+	for (let i = formattedMessages.length - 1; i >= 0; i--) {
+		const m = formattedMessages[i];
+		if (m.type === 'tool' && m.id === toolCallId) {
+			// Add output to updates array
+			m.updates ??= [];
+			(m.updates as Array<Record<string, unknown>>).push({
+				type: 'output',
+				data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
+			});
+			break;
+		}
+	}
+}
+
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
+	builderTools?: BuilderTool[],
 ): Array<Record<string, unknown>> {
 	const formattedMessages: Array<Record<string, unknown>> = [];
 
 	for (const msg of messages) {
 		if (msg instanceof HumanMessage) {
-			formattedMessages.push({
-				role: 'user',
-				type: 'message',
-				text: msg.content,
-			});
+			formattedMessages.push(formatHumanMessage(msg));
 		} else if (msg instanceof AIMessage) {
-			// Add the AI message content if it exists
-			if (msg.content) {
-				if (Array.isArray(msg.content)) {
-					// Handle array content (multi-part messages)
-					const textMessages = msg.content.filter((c) => c.type === 'text');
+			// Add AI message content
+			formattedMessages.push(...processAIMessageContent(msg));
 
-					textMessages.forEach((textMessage) => {
-						if (textMessage.type !== 'text') {
-							return;
-						}
-						formattedMessages.push({
-							role: 'assistant',
-							type: 'message',
-							text: textMessage.text,
-						});
-					});
-				} else {
-					formattedMessages.push({
-						role: 'assistant',
-						type: 'message',
-						text: msg.content,
-					});
-				}
-			}
-			// Handle tool calls in AI messages
-			if (msg.tool_calls && msg.tool_calls.length > 0) {
-				// Add tool messages for each tool call
-				for (const toolCall of msg.tool_calls) {
-					formattedMessages.push({
-						id: toolCall.id,
-						toolCallId: toolCall.id,
-						role: 'assistant',
-						type: 'tool',
-						toolName: toolCall.name,
-						status: 'completed',
-						updates: [
-							{
-								type: 'input',
-								data: toolCall.args || {},
-							},
-						],
-					});
-				}
+			// Add tool calls if present
+			if (msg.tool_calls?.length) {
+				formattedMessages.push(...processToolCalls(msg.tool_calls, builderTools));
 			}
 		} else if (msg instanceof ToolMessage) {
-			// Find the tool message by ID and add the output
-			const toolCallId = msg.tool_call_id;
-			for (let i = formattedMessages.length - 1; i >= 0; i--) {
-				const m = formattedMessages[i];
-				if (m.type === 'tool' && m.id === toolCallId) {
-					// Add output to updates array
-					m.updates ??= [];
-					(m.updates as Array<Record<string, unknown>>).push({
-						type: 'output',
-						data: typeof msg.content === 'string' ? { result: msg.content } : msg.content,
-					});
-					break;
-				}
-			}
+			processToolMessage(msg, formattedMessages);
 		}
 	}
 

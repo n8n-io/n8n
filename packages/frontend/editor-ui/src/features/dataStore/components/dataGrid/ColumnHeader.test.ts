@@ -38,6 +38,7 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 			displayName: 'My Column',
 			column: { getColId: () => 'col-1', getColDef: () => ({ cellDataType: 'string' }) },
 			onDelete: onDeleteMock,
+			allowMenuActions: true,
 		},
 	},
 });

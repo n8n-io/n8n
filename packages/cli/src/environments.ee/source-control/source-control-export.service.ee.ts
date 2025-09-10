@@ -10,6 +10,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
@@ -17,8 +18,6 @@ import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
-
-import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -43,6 +42,8 @@ import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../variables/variables.service.ee';
+
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 @Service()
 export class SourceControlExportService {
@@ -145,7 +146,7 @@ export class SourceControlExportService {
 
 				if (project.type === 'personal') {
 					const ownerRelation = project.projectRelations.find(
-						(pr) => pr.role === 'project:personalOwner',
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
 					);
 					if (!ownerRelation) {
 						throw new UnexpectedError(
@@ -251,7 +252,7 @@ export class SourceControlExportService {
 			}
 
 			const allowedProjects =
-				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 			const fileName = getFoldersPath(this.gitFolder);
 
@@ -409,7 +410,7 @@ export class SourceControlExportService {
 					let owner: RemoteResourceOwner | null = null;
 					if (sharing.project.type === 'personal') {
 						const ownerRelation = sharing.project.projectRelations.find(
-							(pr) => pr.role === 'project:personalOwner',
+							(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
 						);
 						if (ownerRelation) {
 							owner = {

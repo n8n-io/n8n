@@ -38,6 +38,7 @@ export const NEW_GOOGLE_ACCOUNT_NAME = 'Gmail account';
 export const NEW_TRELLO_ACCOUNT_NAME = 'Trello account';
 export const NEW_NOTION_ACCOUNT_NAME = 'Notion account';
 export const NEW_QUERY_AUTH_ACCOUNT_NAME = 'Query Auth account';
+export const E2E_TEST_NODE_NAME = 'E2E Test';
 
 export const ROUTES = {
 	NEW_WORKFLOW_PAGE: '/workflow/new',

@@ -70,7 +70,7 @@ const errorMessage = computed<string>(() => {
 			});
 		}
 		// No data error message
-		if (props.fieldsToMap.length === 0) {
+		if (props.fieldsToMap.length === 0 && !props.typeOptions?.resourceMapper?.hideNoDataError) {
 			return (
 				// Use custom error message if defined
 				resourceMapperTypeOptions.value?.noFieldsError ||

@@ -225,14 +225,15 @@ $container-height: 22px;
 }
 
 .noExpressionSelector {
-	margin-bottom: var(--spacing-4xs);
-
 	span {
 		padding-right: 0 !important;
 	}
 }
 
 .focusButton {
+	outline: none;
+	color: var(--color-text-light);
+
 	&:hover {
 		cursor: pointer;
 		color: var(--color-primary);

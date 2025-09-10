@@ -13,6 +13,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -106,6 +107,7 @@ const router = useRouter();
 const message = useMessage();
 const toast = useToast();
 const folderHelpers = useFolders();
+const calloutHelpers = useCalloutHelpers();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
@@ -410,6 +412,19 @@ const showAIStarterCollectionCallout = computed(() => {
 		!loading.value &&
 		aiStarterTemplatesStore.isFeatureEnabled &&
 		!aiStarterTemplatesStore.calloutDismissed &&
+		!readOnlyEnv.value &&
+		// We want to show the callout only if the user has permissions to create folders and workflows
+		// but also on the overview page
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
+const showPrebuiltAgentsCallout = computed(() => {
+	return (
+		!loading.value &&
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+		!calloutHelpers.isCalloutDismissed('preBuiltAgentsModalCallout') &&
 		!readOnlyEnv.value &&
 		// We want to show the callout only if the user has permissions to create folders and workflows
 		// but also on the overview page
@@ -882,6 +897,10 @@ const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
+const openPrebuiltAgentsModal = (source: 'workflowsEmptyState' | 'workflowsList') => {
+	void calloutHelpers.openPreBuiltAgentsModal(source);
+};
+
 const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
 	try {
 		const projectId = projectPages.isOverviewSubPage
@@ -929,6 +948,10 @@ const dismissStarterCollectionCallout = () => {
 
 const dismissEasyAICallout = () => {
 	easyAICalloutVisible.value = false;
+};
+
+const dismissPreBuiltAgentsCallout = () => {
+	void calloutHelpers.dismissCallout('preBuiltAgentsModalCallout');
 };
 
 const openAIWorkflow = async (source: string) => {
@@ -1769,7 +1792,39 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showAIStarterCollectionCallout"
+				v-if="showPrebuiltAgentsCallout"
+				theme="secondary"
+				icon="bot"
+				icon-size="large"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				<N8nText size="small">
+					{{ i18n.baseText('workflows.preBuiltAgents.callout') }}
+					{{ ' ' }}
+					<N8nLink
+						theme="secondary"
+						size="small"
+						:bold="true"
+						:underline="true"
+						@click="openPrebuiltAgentsModal('workflowsEmptyState')"
+					>
+						{{ i18n.baseText('workflows.preBuiltAgents.linkText') }}
+					</N8nLink>
+				</N8nText>
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="dismissPreBuiltAgentsCallout()"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="showAIStarterCollectionCallout"
 				theme="secondary"
 				icon="gift"
 				:class="$style['easy-ai-workflow-callout']"
@@ -2001,7 +2056,26 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 					<N8nCard
-						v-if="showAIStarterCollectionCallout"
+						v-if="showPrebuiltAgentsCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="prebuilt-agents-card"
+						@click="openPrebuiltAgentsModal('workflowsList')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="bot"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.preBuiltAgents') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-else-if="showAIStarterCollectionCallout"
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="easy-ai-workflow-card"

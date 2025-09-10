@@ -1,11 +1,17 @@
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, SharedCredentials } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+} from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import { mockEntityManager } from '@test/mocking';
 import { mock } from 'jest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { mockEntityManager } from '@test/mocking';
 
 describe('CredentialsFinderService', () => {
 	const entityManager = mockEntityManager(SharedCredentials);
@@ -56,10 +62,10 @@ describe('CredentialsFinderService', () => {
 					project: {
 						projectRelations: {
 							role: In([
-								'project:admin',
-								'project:personalOwner',
-								'project:editor',
-								'project:viewer',
+								PROJECT_ADMIN_ROLE_SLUG,
+								PROJECT_OWNER_ROLE_SLUG,
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
 							]),
 							userId: member.id,
 						},
@@ -84,10 +90,10 @@ describe('CredentialsFinderService', () => {
 					project: {
 						projectRelations: {
 							role: In([
-								'project:admin',
-								'project:personalOwner',
-								'project:editor',
-								'project:viewer',
+								PROJECT_ADMIN_ROLE_SLUG,
+								PROJECT_OWNER_ROLE_SLUG,
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
 							]),
 							userId: member.id,
 						},

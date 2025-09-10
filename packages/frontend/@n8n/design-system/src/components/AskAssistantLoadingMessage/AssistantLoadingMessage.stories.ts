@@ -22,6 +22,11 @@ Default.args = {
 	message: 'Searching n8n documentation for the best possible answer...',
 };
 
+export const Thinking = Template.bind({});
+Thinking.args = {
+	message: 'Thinking...',
+};
+
 export const NarrowContainer = Template.bind({});
 NarrowContainer.args = {
 	...Default.args,

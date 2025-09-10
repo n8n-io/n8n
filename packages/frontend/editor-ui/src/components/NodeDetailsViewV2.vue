@@ -44,6 +44,7 @@ import InputPanel from './InputPanel.vue';
 import OutputPanel from './OutputPanel.vue';
 import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -77,6 +78,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
@@ -370,7 +372,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -491,7 +493,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -625,6 +627,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip

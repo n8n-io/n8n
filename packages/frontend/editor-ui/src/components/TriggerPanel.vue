@@ -350,7 +350,7 @@ const onLinkClick = (e: MouseEvent) => {
 				pane: 'input',
 				type: 'open-executions-log',
 			});
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 			void router.push({
 				name: VIEWS.EXECUTIONS,
 			});

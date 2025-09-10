@@ -1,4 +1,5 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -197,4 +198,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateDataStoreTables1754475614601,
 	RemoveOldRoleColumn1750252139170,
 	ReplaceDataStoreTablesWithDataTables1754475614602,
+	LinkRoleToProjectRelationTable1753953244168,
 ];

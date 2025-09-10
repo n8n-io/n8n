@@ -416,7 +416,7 @@ const onOpenErrorNodeDetailClick = () => {
 		});
 		window.open(link.href, '_blank');
 	} else {
-		ndvStore.activeNodeName = props.error.node.name;
+		ndvStore.setActiveNodeName(props.error.node.name, 'other');
 	}
 };
 

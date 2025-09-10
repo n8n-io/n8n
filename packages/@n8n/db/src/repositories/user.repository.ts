@@ -1,5 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
@@ -106,8 +107,8 @@ export class UserRepository extends Repository<User> {
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
-					userId: userWithRole.id,
-					role: 'project:personalOwner',
+					userId: savedUser.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 				}),
 			);
 			return { user: userWithRole, project: savedProject };
@@ -129,7 +130,7 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
 				},
 			},
@@ -146,7 +147,7 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId,
 				},
 			},
@@ -232,15 +233,15 @@ export class UserRepository extends Repository<User> {
 		expand: UsersListFilterDto['expand'],
 	): SelectQueryBuilder<User> {
 		if (expand?.includes('projectRelations')) {
-			queryBuilder.leftJoinAndSelect(
-				'user.projectRelations',
-				'projectRelations',
-				'projectRelations.role <> :projectRole',
-				{
-					projectRole: 'project:personalOwner', // Exclude personal project relations
-				},
-			);
-			queryBuilder.leftJoinAndSelect('projectRelations.project', 'project');
+			queryBuilder
+				.leftJoinAndSelect(
+					'user.projectRelations',
+					'projectRelations',
+					'projectRelations.role <> :projectRole',
+					{ projectRole: PROJECT_OWNER_ROLE_SLUG },
+				)
+				.leftJoinAndSelect('projectRelations.project', 'project')
+				.leftJoinAndSelect('projectRelations.role', 'projectRole');
 		}
 
 		return queryBuilder;

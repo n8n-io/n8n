@@ -39,6 +39,11 @@ class TaskSettings:
     node_mode: NodeMode
     continue_on_fail: bool
     items: Items
+    workflow_name: str
+    workflow_id: str
+    node_name: str
+    node_id: str
+    can_log: bool
 
 
 @dataclass

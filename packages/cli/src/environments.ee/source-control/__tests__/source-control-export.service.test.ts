@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { GLOBAL_ADMIN_ROLE, User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import type {
 	SharedCredentials,
 	SharedWorkflow,
@@ -83,7 +83,7 @@ describe('SourceControlExportService', () => {
 						type: 'personal',
 						projectRelations: [
 							{
-								role: 'project:personalOwner',
+								role: PROJECT_OWNER_ROLE,
 								user: mock({ email: 'user@example.com' }),
 							},
 						],
@@ -268,7 +268,7 @@ describe('SourceControlExportService', () => {
 				mock<SharedWorkflow>({
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: 'project:personalOwner', user: mock() }],
+						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
 					}),
 					workflow: mock(),
 				}),
