@@ -1,0 +1,94 @@
+{
+	"name": "Google Analytics V1 User Activity with Filters Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 300],
+			"id": "trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "userActivity",
+				"operation": "search",
+				"viewId": "12345678",
+				"userId": "123.456",
+				"returnAll": true,
+				"additionalFields": {
+					"activityTypes": ["PAGEVIEW", "EVENT"]
+				}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 1,
+			"position": [540, 300],
+			"id": "analytics",
+			"name": "Google Analytics",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "test-credential",
+					"name": "Test Google Analytics"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google Analytics": [
+			{
+				"json": {
+					"sessionId": "1234567890",
+					"sessionDate": "20230101",
+					"activities": [
+						{
+							"activityTime": "2023-01-01T10:30:00.000Z",
+							"activityType": "PAGEVIEW",
+							"pageview": {
+								"pagePath": "/home",
+								"pageTitle": "Home Page"
+							}
+						},
+						{
+							"activityTime": "2023-01-01T10:35:00.000Z",
+							"activityType": "EVENT",
+							"event": {
+								"eventCategory": "engagement",
+								"eventAction": "scroll",
+								"eventLabel": "90%"
+							}
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"sessionId": "0987654321",
+					"sessionDate": "20230102",
+					"activities": [
+						{
+							"activityTime": "2023-01-02T14:20:00.000Z",
+							"activityType": "PAGEVIEW",
+							"pageview": {
+								"pagePath": "/products",
+								"pageTitle": "Products"
+							}
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Analytics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

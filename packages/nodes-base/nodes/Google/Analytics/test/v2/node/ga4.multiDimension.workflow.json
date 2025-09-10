@@ -1,0 +1,97 @@
+{
+	"name": "Google Analytics V2 GA4 Multi-Dimension Report Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 300],
+			"id": "trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"propertyId": {
+					"__rl": true,
+					"value": "123456789",
+					"mode": "list"
+				},
+				"simple": true,
+				"options": {
+					"dateRange": {
+						"values": {
+							"startDate": "2023-01-01",
+							"endDate": "2023-01-31"
+						}
+					},
+					"dimensionsUi": {
+						"dimensionValues": [
+							{
+								"name": "date"
+							},
+							{
+								"name": "deviceCategory"
+							}
+						]
+					},
+					"metricsUi": {
+						"metricValues": [
+							{
+								"name": "activeUsers"
+							},
+							{
+								"name": "bounceRate"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 2,
+			"position": [540, 300],
+			"id": "analytics",
+			"name": "Google Analytics",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "test-credential",
+					"name": "Test Google Analytics"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google Analytics": [
+			{
+				"json": {
+					"date": "20230101",
+					"deviceCategory": "desktop",
+					"activeUsers": "100",
+					"bounceRate": "0.45"
+				}
+			},
+			{
+				"json": {
+					"date": "20230101",
+					"deviceCategory": "mobile",
+					"activeUsers": "50",
+					"bounceRate": "0.52"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Analytics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

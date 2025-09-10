@@ -1,0 +1,74 @@
+{
+	"name": "Google Analytics V2 GA4 Empty Report Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 300],
+			"id": "trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"propertyId": {
+					"__rl": true,
+					"value": "987654321",
+					"mode": "list"
+				},
+				"simple": true,
+				"options": {
+					"dateRange": {
+						"values": {
+							"startDate": "2023-01-01",
+							"endDate": "2023-01-31"
+						}
+					},
+					"dimensionsUi": {
+						"dimensionValues": [
+							{
+								"name": "date"
+							}
+						]
+					},
+					"metricsUi": {
+						"metricValues": [
+							{
+								"name": "activeUsers"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 2,
+			"position": [540, 300],
+			"id": "analytics",
+			"name": "Google Analytics",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "test-credential",
+					"name": "Test Google Analytics"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google Analytics": []
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Analytics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
