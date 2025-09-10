@@ -1,5 +1,4 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
@@ -29,14 +28,12 @@ describe('ExpressionEditModal', () => {
 	let pinia: Pinia;
 
 	beforeEach(() => {
-		createAppModals();
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		useSettingsStore().setSettings(defaultSettings);
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

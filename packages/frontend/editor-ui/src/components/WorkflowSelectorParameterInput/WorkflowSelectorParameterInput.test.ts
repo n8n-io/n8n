@@ -3,7 +3,7 @@ import WorkflowSelectorParameterInput, {
 	type Props,
 } from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -41,12 +41,7 @@ projectsStore.isTeamProjectFeatureEnabled = false;
 const workflowsStore = mockedStore(useWorkflowsStore);
 
 describe('WorkflowSelectorParameterInput', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

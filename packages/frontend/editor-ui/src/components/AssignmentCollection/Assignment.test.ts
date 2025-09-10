@@ -7,7 +7,6 @@ import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import * as useResolvedExpression from '@/composables/useResolvedExpression';
 
 const DEFAULT_SETUP = {
@@ -28,12 +27,7 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

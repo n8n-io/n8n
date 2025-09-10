@@ -3,7 +3,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ParameterOverrideSelectableList from './ParameterOverrideSelectableList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
-import { createAppModals } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 
 vi.mock('vue-router', () => {
@@ -17,9 +16,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-beforeEach(() => {
-	createAppModals();
-});
+beforeEach(() => {});
 
 const renderComponent = createComponentRenderer(ParameterOverrideSelectableList, {
 	pinia: createTestingPinia({
