@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -18,9 +19,10 @@ vi.mock('vue-router', () => {
 	const params = {};
 	const push = vi.fn();
 	return {
-		useRoute: () => ({
-			params,
-		}),
+		useRoute: () =>
+			reactive({
+				params,
+			}),
 		useRouter: () => ({
 			push,
 		}),
