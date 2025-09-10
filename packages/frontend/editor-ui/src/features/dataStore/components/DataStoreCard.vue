@@ -43,7 +43,7 @@ const dataStoreRoute = computed(() => {
 					/>
 				</template>
 				<template #header>
-					<div :class="$style['card-header']" @click.prevent>
+					<div :class="$style['card-header']">
 						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
 						</n8n-text>
