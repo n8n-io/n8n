@@ -57,7 +57,6 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
-import { useCanvasStore } from '@/stores/canvas.store';
 
 const $style = useCssModule();
 
@@ -124,6 +123,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -135,12 +135,12 @@ const props = withDefaults(
 		executing: false,
 		keyBindings: true,
 		loading: false,
+		suppressInteraction: false,
 	},
 );
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
-const canvasStore = useCanvasStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -867,7 +867,7 @@ onNodesInitialized(() => {
 });
 
 watch(
-	[() => props.readOnly, () => canvasStore.suppressInteraction],
+	[() => props.readOnly, () => props.suppressInteraction],
 	([readOnly, suppressInteraction]) => {
 		setInteractive(!readOnly && !suppressInteraction);
 		elementsSelectable.value = !suppressInteraction;
