@@ -115,6 +115,7 @@ export const defaultSettings: FrontendSettings = {
 		warningThreshold: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
+	allowPersonalProjectWorkflowActivation: false,
 	workflowTagsDisabled: false,
 	variables: {
 		limit: -1,
