@@ -258,7 +258,7 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_TRANSFORM_NODE_TYPE,
 ];
 export const MODULE_ENABLED_NODES = [
-	DATA_STORE_NODES.map((nodeType) => ({ nodeType, module: DATA_STORE_MODULE_NAME })),
+	...DATA_STORE_NODES.map((nodeType) => ({ nodeType, module: DATA_STORE_MODULE_NAME })),
 ];
 
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
