@@ -8,6 +8,7 @@ import {
 	DataStoreColumn,
 	DataStoreProxyProvider,
 	DataStoreRows,
+	DeleteDataTableRowsOptions,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
 	DataTableInsertRowsReturnType,
@@ -147,8 +148,8 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 				return await dataStoreService.upsertRow(dataStoreId, projectId, options, true);
 			},
 
-			async deleteRows(ids: number[]) {
-				return await dataStoreService.deleteRows(dataStoreId, projectId, ids);
+			async deleteRows(options: DeleteDataTableRowsOptions) {
+				return await dataStoreService.deleteRows(dataStoreId, projectId, options, true);
 			},
 		};
 	}
