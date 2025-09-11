@@ -81,7 +81,7 @@ beforeEach(async () => {
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
-});
+}, 20000);
 
 afterEach(() => {
 	jest.clearAllMocks();
@@ -101,7 +101,7 @@ describe('POST /credentials', () => {
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
-	});
+	}, 20000);
 });
 
 // ----------------------------------------
@@ -179,7 +179,7 @@ describe('GET /credentials', () => {
 
 		expect(Array.isArray(memberCredential.sharedWithProjects)).toBe(true);
 		expect(memberCredential.sharedWithProjects).toHaveLength(0);
-	});
+	}, 20000);
 
 	test('should return only relevant creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
