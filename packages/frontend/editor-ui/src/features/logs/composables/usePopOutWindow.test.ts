@@ -6,6 +6,7 @@ import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
+import { Mock } from 'vitest';
 
 describe(usePopOutWindow, () => {
 	beforeEach(() => {
@@ -107,7 +108,7 @@ describe(usePopOutWindow, () => {
 			});
 
 			// Simulate window resize event
-			const resizeCallback = mockWindow.addEventListener.mock.calls.find(
+			const resizeCallback = (mockWindow.addEventListener as Mock).mock.calls.find(
 				(call) => call[0] === 'resize',
 			)?.[1] as () => void;
 
