@@ -221,7 +221,9 @@ describe('ParameterInput.vue', () => {
 
 		await userEvent.click(options[1]);
 
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]);
+		await waitFor(() =>
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]),
+		);
 	});
 
 	test('should render a string parameter', async () => {
@@ -241,7 +243,9 @@ describe('ParameterInput.vue', () => {
 
 		await userEvent.type(input, 'foo');
 
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+		await waitFor(() =>
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
+		);
 	});
 
 	describe('paste events', () => {
@@ -269,17 +273,23 @@ describe('ParameterInput.vue', () => {
 			await userEvent.click(input);
 
 			await paste(input, 'foo');
-			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
+			);
 
 			await paste(input, '={{ $json.foo }}');
-			expect(emitted('update')).toContainEqual([
-				expect.objectContaining({ value: '={{ $json.foo }}' }),
-			]);
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '={{ $json.foo }}' }),
+				]),
+			);
 
 			await paste(input, '=flDvzj%y1nP');
-			expect(emitted('update')).toContainEqual([
-				expect.objectContaining({ value: '==flDvzj%y1nP' }),
-			]);
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '==flDvzj%y1nP' }),
+				]),
+			);
 		});
 
 		test('should handle pasting an expression into a number parameter', async () => {
@@ -299,9 +309,11 @@ describe('ParameterInput.vue', () => {
 			await userEvent.click(input);
 
 			await paste(input, '{{ $json.foo }}');
-			expect(emitted('update')).toContainEqual([
-				expect.objectContaining({ value: '={{ $json.foo }}' }),
-			]);
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '={{ $json.foo }}' }),
+				]),
+			);
 		});
 	});
 
@@ -601,6 +613,43 @@ describe('ParameterInput.vue', () => {
 			expect(expressionEditor).toBeInTheDocument();
 			const expressionEditorInput = within(expressionEditor).getByRole('textbox');
 			await waitFor(() => expect(expressionEditorInput).not.toHaveFocus());
+		});
+	});
+
+	describe('debounced input', () => {
+		test('should debounce text input and emit update event only once', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'textField',
+					parameter: {
+						displayName: 'Text Field',
+						name: 'textField',
+						type: 'string',
+					},
+					modelValue: '',
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+
+			await userEvent.click(input);
+
+			await userEvent.type(input, 'h');
+			await userEvent.type(input, 'e');
+			await userEvent.type(input, 'l');
+			await userEvent.type(input, 'l');
+			await userEvent.type(input, 'o');
+			// by now the update event should not have been emitted because of debouncing
+			expect(emitted('update')).not.toContainEqual([expect.objectContaining({ value: 'hello' })]);
+
+			// Now the update event should have been emitted
+			await waitFor(() => {
+				const updateEvents = emitted('update');
+				expect(updateEvents).toBeDefined();
+				expect(updateEvents.length).toBeLessThan(5);
+				expect(updateEvents).toContainEqual([expect.objectContaining({ value: 'hello' })]);
+			});
 		});
 	});
 });
