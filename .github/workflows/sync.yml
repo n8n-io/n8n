@@ -29,13 +29,12 @@ jobs:
         run: |
           git config merge.ours.driver true
           
-          # Check if repo has n8n content (package.json indicates n8n repo)
           if [ ! -f "package.json" ]; then
             echo "Initial setup - pulling n8n content"
             git merge upstream/main --allow-unrelated-histories --no-edit
           else
             echo "Merging upstream changes"
-            git merge upstream/main --no-edit
+            git merge upstream/main --allow-unrelated-histories --no-edit
           fi
           
       - name: Sync releases
