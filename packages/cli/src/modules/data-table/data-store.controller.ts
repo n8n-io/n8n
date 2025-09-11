@@ -22,6 +22,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { DataStoreRowReturn } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -34,7 +35,6 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-import { DataStoreRowReturn } from 'n8n-workflow';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataStoreController {
@@ -238,11 +238,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean | undefined>(
+	async appendDataStoreRows<T extends DataStoreRowReturn | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData?: T },
+		dto: AddDataStoreRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
@@ -257,7 +257,7 @@ export class DataStoreController {
 				dataStoreId,
 				req.params.projectId,
 				dto.data,
-				dto.returnData,
+				dto.returnType,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
