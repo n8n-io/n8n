@@ -125,7 +125,7 @@ export class MeController {
 		]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
-		await this.userService.update(userId, payload);
+		await this.userService.update(userId, payloadWithoutPassword);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
 			relations: ['role'],
