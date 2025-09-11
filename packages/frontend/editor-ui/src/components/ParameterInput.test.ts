@@ -8,7 +8,7 @@ import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -51,7 +51,6 @@ beforeEach(() => {
 	mockNdvState = getNdvStateMock();
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
-	createAppModals();
 });
 
 vi.mock('@/stores/ndv.store', () => {
@@ -117,12 +116,10 @@ describe('ParameterInput.vue', () => {
 			allNodeTypes: [],
 			getNodeType: vi.fn().mockReturnValue(null),
 		};
-		createAppModals();
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

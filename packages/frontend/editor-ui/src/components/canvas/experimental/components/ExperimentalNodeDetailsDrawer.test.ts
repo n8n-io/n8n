@@ -1,6 +1,5 @@
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import { SET_NODE_TYPE } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -51,11 +50,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 			},
 		]);
 		ndvStore = useNDVStore();
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should show updated parameter after closing NDV', async () => {

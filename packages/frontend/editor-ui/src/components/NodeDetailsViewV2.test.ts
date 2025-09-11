@@ -17,7 +17,6 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
 	return {
@@ -74,12 +73,7 @@ describe('NodeDetailsViewV2', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
