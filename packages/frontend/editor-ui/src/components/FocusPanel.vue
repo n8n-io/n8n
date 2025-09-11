@@ -425,6 +425,7 @@ function onOpenNdv() {
 	<div
 		v-if="focusPanelActive"
 		ref="wrapper"
+		data-test-id="focus-panel"
 		:class="[
 			$style.wrapper,
 			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },

@@ -24,7 +24,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<N8nText tag="div" size="small" bold :class="$style.component">
+	<N8nText tag="header" size="small" bold :class="$style.component">
 		<NodeIcon :node-type="nodeType" :size="16" />
 		<div :class="$style.breadcrumbs">
 			<template v-if="parameter">
