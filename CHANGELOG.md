@@ -3,6 +3,8 @@
 
 ### Bug Fixes
 
+* **HTTP Request V3 Node:** Improve JSON parameter error messages with contextual guidance ([#19319](https://github.com/n8n-io/n8n/issues/19319)) ([f50109c](https://github.com/n8n-io/n8n/commit/f50109cb39))
+* **Webhook Node:** Add defensive JSON parsing with enhanced content-type support ([#19319](https://github.com/n8n-io/n8n/issues/19319)) ([f50109c](https://github.com/n8n-io/n8n/commit/f50109cb39))
 * Add folder scopes to global owner and admin roles ([#19230](https://github.com/n8n-io/n8n/issues/19230)) ([2113532](https://github.com/n8n-io/n8n/commit/2113532946d32b1e6c842c68524e06e5d3daebd0))
 * **AMQP Trigger Node:** Update rhea library, tweak reconnection options ([#18980](https://github.com/n8n-io/n8n/issues/18980)) ([efc3a2d](https://github.com/n8n-io/n8n/commit/efc3a2d66484a14338cb67aa1135e71d25fb5c4e))
 * **API:** Fix public api workflow openApi examples ([#19170](https://github.com/n8n-io/n8n/issues/19170)) ([e822cf5](https://github.com/n8n-io/n8n/commit/e822cf58d0d1307b737a7e03020bc35c70c690d6))
