@@ -48,4 +48,30 @@ export class CredentialsPage extends BasePage {
 			closeDialog: options?.closeDialog,
 		});
 	}
+
+	async clearSearch() {
+		await this.page.getByTestId('resources-list-search').clear();
+	}
+
+	async sortByNameDescending() {
+		await this.page.getByTestId('resources-list-sort').click();
+		await this.page.getByText('Name (Z-A)').click();
+	}
+
+	async sortByNameAscending() {
+		await this.page.getByTestId('resources-list-sort').click();
+		await this.page.getByText('Name (A-Z)').click();
+	}
+
+	/**
+	 * Select credential type without auto-saving (for tests that need to handle save manually)
+	 */
+	async selectCredentialType(credentialType: string): Promise<void> {
+		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(credentialType);
+		await this.page
+			.getByTestId('new-credential-type-select-option')
+			.filter({ hasText: credentialType })
+			.click();
+		await this.page.getByTestId('new-credential-type-button').click();
+	}
 }
