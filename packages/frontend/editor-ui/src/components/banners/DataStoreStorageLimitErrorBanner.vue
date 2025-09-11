@@ -13,7 +13,7 @@ const i18n = useI18n();
 			<span>{{
 				i18n.baseText('dataStore.banner.storageLimitError.message', {
 					interpolate: {
-						usage: `${dataStoreStore.dataStoreSize.value} / ${dataStoreStore.maxSizeMB}MB`,
+						usage: `${dataStoreStore.dataStoreSize} / ${dataStoreStore.maxSizeMB}MB`,
 					},
 				})
 			}}</span>
