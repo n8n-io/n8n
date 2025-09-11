@@ -629,7 +629,7 @@ const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
 const isMapperAvailable = computed(
 	() =>
-		props.path.startsWith('parameters.') &&
+		!props.parameter.isNodeSetting &&
 		(isModelValueExpression.value ||
 			props.forceShowExpression ||
 			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
