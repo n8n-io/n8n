@@ -21,7 +21,6 @@ interface UsePopOutWindowOptions {
 	content: Readonly<ShallowRef<HTMLElement | null>>;
 	shouldPopOut: ComputedRef<boolean>;
 	onRequestClose: () => void;
-	onPopOutResize?: (options: { popOutWindow: Window }) => void;
 }
 
 interface UsePopOutWindowReturn {
