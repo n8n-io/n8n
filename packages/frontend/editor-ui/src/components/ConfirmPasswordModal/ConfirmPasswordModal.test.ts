@@ -61,7 +61,7 @@ describe('ConfirmPasswordModal', () => {
 	it('should emit password entered by the user when submitting form', async () => {
 		const eventBusSpy = vi.spyOn(confirmPasswordEventBus, 'emit');
 
-		const { getByRole, getByTestId } = renderModal({
+		const { getByTestId } = renderModal({
 			global,
 			pinia,
 		});
