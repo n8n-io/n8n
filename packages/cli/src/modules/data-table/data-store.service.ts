@@ -147,17 +147,11 @@ export class DataStoreService {
 	private async insertRowsImpl(
 		dataStoreId: string,
 		rows: DataStoreRows,
+		columns: DataTableColumn[],
 		returnType: DataTableInsertRowsReturnType,
 		em: EntityManager,
 	) {
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
-		return await this.dataStoreRowsRepository.insertRows(
-			dataStoreId,
-			rows,
-			columns,
-			returnType,
-			em,
-		);
+		return;
 	}
 
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
@@ -173,10 +167,18 @@ export class DataStoreService {
 		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, rows);
-		return await this.dataStoreColumnRepository.manager.transaction(
-			async (em) => await this.insertRowsImpl(dataStoreId, rows, returnType, em),
-		);
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+			this.validateRowsWithColumns(rows, columns);
+
+			return await this.dataStoreRowsRepository.insertRows(
+				dataStoreId,
+				rows,
+				columns,
+				returnType,
+				em,
+			);
+		});
 	}
 
 	async upsertRow<T extends boolean | undefined>(
@@ -194,16 +196,18 @@ export class DataStoreService {
 		await this.validateDataStoreExists(dataTableId, projectId);
 
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
-			const updated = await this.updateRowImpl(dataTableId, dto, true, em);
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+			const updated = await this.updateRowImpl(dataTableId, columns, dto, true, em);
 
 			if (updated.length > 0) {
 				return returnData ? updated : true;
 			}
 
 			// No rows were updated, so insert a new one
-			const inserted = await this.insertRowsImpl(
+			const inserted = await this.dataStoreRowsRepository.insertRows(
 				dataTableId,
 				[dto.data],
+				columns,
 				returnData ? 'all' : 'id',
 				em,
 			);
@@ -211,26 +215,16 @@ export class DataStoreService {
 		});
 	}
 
-	private async updateRowImpl<T extends boolean | undefined>(
-		dataTableId: string,
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData?: T,
-		em?: EntityManager,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	private async updateRowImpl(
-		dataTableId: string,
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData = false,
-		em?: EntityManager,
+	validateUpdateParams(
+		{ filter, data }: Pick<UpdateDataTableRowDto, 'filter' | 'data'>,
+		columns: DataTableColumn[],
 	) {
-		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
 		if (columns.length === 0) {
 			throw new DataStoreValidationError(
 				'No columns found for this data table or data table not found',
 			);
 		}
 
-		const { data, filter } = dto;
 		if (!filter?.filters || filter.filters.length === 0) {
 			throw new DataStoreValidationError('Filter must not be empty');
 		}
@@ -240,11 +234,26 @@ export class DataStoreService {
 
 		this.validateRowsWithColumns([data], columns, false);
 		this.validateAndTransformFilters(filter, columns);
+	}
 
+	private async updateRowImpl<T extends boolean | undefined>(
+		dataTableId: string,
+		columns: DataTableColumn[],
+		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
+		returnData?: T,
+		em?: EntityManager,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
+	private async updateRowImpl(
+		dataTableId: string,
+		columns: DataTableColumn[],
+		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
+		returnData = false,
+		em?: EntityManager,
+	) {
 		return await this.dataStoreRowsRepository.updateRow(
 			dataTableId,
-			data,
-			filter,
+			dto.data,
+			dto.filter,
 			columns,
 			returnData,
 			em,
@@ -265,9 +274,11 @@ export class DataStoreService {
 	) {
 		await this.validateDataStoreExists(dataTableId, projectId);
 
-		return await this.dataStoreColumnRepository.manager.transaction(
-			async (em) => await this.updateRowImpl(dataTableId, dto, returnData, em),
-		);
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+			this.validateUpdateParams(dto, columns);
+			return await this.updateRowImpl(dataTableId, columns, dto, returnData, em);
+		});
 	}
 
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
@@ -301,16 +312,6 @@ export class DataStoreService {
 				this.validateCell(row, key, columnTypeMap);
 			}
 		}
-	}
-
-	private async validateRows(
-		dataStoreId: string,
-		rows: DataStoreRows,
-		includeSystemColumns = false,
-		em?: EntityManager,
-	): Promise<void> {
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
-		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 
 	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {
