@@ -72,7 +72,19 @@ function parseLooseLocalDate(text: string): Date | null {
 	if (mm < 0 || mm > 59) return null;
 	if (ss < 0 || ss > 59) return null;
 
-	return new Date(y, mo - 1, d, hh, mm, ss, 0);
+	const dt = new Date(y, mo - 1, d, hh, mm, ss, 0);
+	if (
+		dt.getFullYear() !== y ||
+		dt.getMonth() !== mo - 1 ||
+		dt.getDate() !== d ||
+		dt.getHours() !== hh ||
+		dt.getMinutes() !== mm ||
+		dt.getSeconds() !== ss
+	) {
+		return null;
+	}
+
+	return dt;
 }
 
 function commitIfParsedFromInput(target?: EventTarget | null) {
