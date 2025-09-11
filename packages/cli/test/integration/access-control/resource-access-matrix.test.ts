@@ -45,12 +45,8 @@ let testUserPersonalProject: Project;
 
 // Custom role definitions (8 total - covering all combinations)
 let workflowReadOnlyRole: Role;
-let workflowWriteOnlyRole: Role;
-let workflowDeleteOnlyRole: Role;
 let workflowAllOperationsRole: Role;
 let credentialReadOnlyRole: Role;
-let credentialWriteOnlyRole: Role;
-let credentialDeleteOnlyRole: Role;
 let credentialAllOperationsRole: Role;
 
 // Authentication agents
