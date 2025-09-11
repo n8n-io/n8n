@@ -5,6 +5,7 @@ import { waitFor } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 
 describe(usePopOutWindow, () => {
 	beforeEach(() => {
@@ -58,14 +59,14 @@ describe(usePopOutWindow, () => {
 
 	describe('onPopOutResize', () => {
 		it('should call onPopOutResize on initial pop out and on window resize', async () => {
-			const mockWindow = {
+			const mockWindow = mock<Window>({
 				document: {
 					body: { append: vi.fn() },
 					head: { appendChild: vi.fn() },
 				},
 				addEventListener: vi.fn(),
 				close: vi.fn(),
-			} as unknown as Window;
+			});
 
 			Object.assign(window, {
 				open: () => mockWindow,
