@@ -212,15 +212,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 			description: i18n.baseText('codeNodeEditor.completer.$today'),
 		}),
 	},
-	{
-		label: '$vars',
-		section: METADATA_SECTION,
-		info: createInfoBoxRenderer({
-			name: '$vars',
-			returnType: 'Object',
-			description: i18n.baseText('codeNodeEditor.completer.$vars'),
-		}),
-	},
+	// {
+	// 	label: '$vars',
+	// 	section: METADATA_SECTION,
+	// 	info: createInfoBoxRenderer({
+	// 		name: '$vars',
+	// 		returnType: 'Object',
+	// 		description: i18n.baseText('codeNodeEditor.completer.$vars'),
+	// 	}),
+	// },
 	{
 		label: '$workflow',
 		section: METADATA_SECTION,

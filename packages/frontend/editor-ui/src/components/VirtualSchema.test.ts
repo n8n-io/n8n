@@ -706,7 +706,7 @@ describe('VirtualSchema.vue', () => {
 		await waitFor(() => {
 			headers = getAllByTestId('run-data-schema-header');
 			expect(headers).toHaveLength(2);
-			expect(headers[1]).toHaveTextContent('Variables and context');
+			expect(headers[1]).toHaveTextContent('Context');
 		});
 
 		await userEvent.click(headers[1]);

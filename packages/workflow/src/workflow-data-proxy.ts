@@ -119,6 +119,7 @@ export class WorkflowDataProxy {
 			{
 				has: () => true,
 				ownKeys(target) {
+					console.log('WorkflowDataProxy.nodeContextGetter.ownKeys', { target });
 					if (Reflect.ownKeys(target).length === 0) {
 						// Target object did not get set yet
 						Object.assign(target, NodeHelpers.getContext(that.runExecutionData!, 'node', node));
@@ -132,7 +133,8 @@ export class WorkflowDataProxy {
 						configurable: true,
 					};
 				},
-				get(_, name) {
+				get(target, name) {
+					console.log('WorkflowDataProxy.nodeContextGetter.get', { name });
 					if (name === 'isProxy') return true;
 
 					name = name.toString();
@@ -152,10 +154,12 @@ export class WorkflowDataProxy {
 			{
 				has: () => true,
 				ownKeys(target) {
+					console.log('WorkflowDataProxy.selfGetter.ownKeys', { target });
 					return Reflect.ownKeys(target);
 				},
 
-				get(_, name) {
+				get(target, name) {
+					console.log('WorkflowDataProxy.selfGetter.get', { name });
 					if (name === 'isProxy') return true;
 					name = name.toString();
 					return that.selfData[name];
@@ -263,6 +267,7 @@ export class WorkflowDataProxy {
 		return new Proxy(node?.parameters ?? {}, {
 			has: () => true,
 			ownKeys(target) {
+				console.log('WorkflowDataProxy.nodeParameterGetter.ownKeys', { target });
 				return Reflect.ownKeys(target);
 			},
 			getOwnPropertyDescriptor() {
@@ -272,6 +277,7 @@ export class WorkflowDataProxy {
 				};
 			},
 			get(target, name) {
+				console.log('WorkflowDataProxy.nodeParameterGetter.get', { name });
 				if (name === 'isProxy') return true;
 				if (name === 'toJSON') return () => deepCopy(target);
 
@@ -497,6 +503,7 @@ export class WorkflowDataProxy {
 			{
 				has: () => true,
 				get(target, name, receiver) {
+					console.log('WorkflowDataProxy.nodeDataGetter.get', { name });
 					if (name === 'isProxy') return true;
 					name = name.toString();
 
@@ -612,6 +619,7 @@ export class WorkflowDataProxy {
 			{
 				has: () => true,
 				ownKeys() {
+					console.log('WorkflowDataProxy.prevNodeGetter.ownKeys', {});
 					return allowedValues;
 				},
 				getOwnPropertyDescriptor() {
@@ -621,6 +629,7 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					console.log('WorkflowDataProxy.prevNodeGetter.get', { name });
 					if (name === 'isProxy') return true;
 
 					if (!that.executeData?.source) {
@@ -660,6 +669,7 @@ export class WorkflowDataProxy {
 			{
 				has: () => true,
 				ownKeys() {
+					console.log('WorkflowDataProxy.workflowGetter.ownKeys', {});
 					return allowedValues;
 				},
 				getOwnPropertyDescriptor() {
@@ -669,6 +679,7 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					console.log('WorkflowDataProxy.workflowGetter.get', { name });
 					if (name === 'isProxy') return true;
 
 					if (allowedValues.includes(name.toString())) {
@@ -702,7 +713,8 @@ export class WorkflowDataProxy {
 			{},
 			{
 				has: () => true,
-				get(_, name) {
+				get(target, name) {
+					console.log('WorkflowDataProxy.nodeGetter.get', { name });
 					if (name === 'isProxy') return true;
 
 					const nodeName = name.toString();
@@ -1101,6 +1113,7 @@ export class WorkflowDataProxy {
 					{
 						has: () => true,
 						ownKeys() {
+							console.log('WorkflowDataProxy.getDataProxy.base.ownKeys', {});
 							return [
 								PAIRED_ITEM_METHOD.PAIRED_ITEM,
 								'isExecuted',
@@ -1114,6 +1127,7 @@ export class WorkflowDataProxy {
 							];
 						},
 						get(target, property, receiver) {
+							console.log('WorkflowDataProxy.getDataProxy.base.get', { property });
 							if (property === 'isProxy') return true;
 
 							if (property === 'isExecuted') {
@@ -1284,6 +1298,7 @@ export class WorkflowDataProxy {
 			$input: new Proxy({} as ProxyInput, {
 				has: () => true,
 				ownKeys() {
+					console.log('WorkflowDataProxy.getDataProxy.$input.ownKeys', {});
 					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
 				getOwnPropertyDescriptor() {
@@ -1293,6 +1308,7 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, property, receiver) {
+					console.log('WorkflowDataProxy.getDataProxy.$input.ownKeys', { property });
 					if (property === 'isProxy') return true;
 
 					if (that.connectionInputData.length === 0) {
@@ -1475,7 +1491,19 @@ export class WorkflowDataProxy {
 
 		return new Proxy(base, {
 			has: () => true,
+			ownKeys(target) {
+				console.log('WorkflowDataProxy.getDataProxy.ownKeys', {});
+				// remove $vars from the list of available properties
+				let keys = Reflect.ownKeys(target);
+				console.log('WorkflowDataProxy.getDataProxy.ownKeys', { keys });
+				keys = keys.filter((k) => k !== '$vars');
+				return keys;
+			},
 			get(target, name, receiver) {
+				console.log('WorkflowDataProxy.getDataProxy.get', { name });
+				// remove $vars from the list of available properties
+				if (name === '$vars') return [];
+
 				if (name === 'isProxy') return true;
 
 				if (['$data', '$json'].includes(name as string)) {

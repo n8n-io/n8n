@@ -17,7 +17,7 @@ import { useJsonFieldCompletions } from './completions/jsonField.completions';
 import { useLuxonCompletions } from './completions/luxon.completions';
 import { usePrevNodeCompletions } from './completions/prevNode.completions';
 import { useRequireCompletions } from './completions/require.completions';
-import { useVariablesCompletions } from './completions/variables.completions';
+// import { useVariablesCompletions } from './completions/variables.completions';
 import { useWorkflowCompletions } from './completions/workflow.completions';
 
 export const useCompleter = (
@@ -54,7 +54,7 @@ export const useCompleter = (
 		const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
 		const { prevNodeCompletions } = usePrevNodeCompletions();
 		const { requireCompletions } = useRequireCompletions();
-		const { variablesCompletions } = useVariablesCompletions();
+		// const { variablesCompletions } = useVariablesCompletions();
 		const { workflowCompletions } = useWorkflowCompletions();
 
 		const completions = [];
@@ -79,7 +79,7 @@ export const useCompleter = (
 				nodeSelectorCompletions,
 				prevNodeCompletions,
 				workflowCompletions,
-				variablesCompletions,
+				// variablesCompletions,
 				executionCompletions,
 
 				// luxon
@@ -199,14 +199,14 @@ export const useCompleter = (
 		const { inputCompletions, selectorCompletions } = useItemIndexCompletions(mode);
 		const { matcherJsonFieldCompletions } = useJsonFieldCompletions();
 		const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
-		const { variablesCompletions } = useVariablesCompletions();
+		// const { variablesCompletions } = useVariablesCompletions();
 		const { workflowCompletions } = useWorkflowCompletions();
 
 		for (const [variable, value] of Object.entries(variablesToValueMap)) {
 			const { prevNodeCompletions } = usePrevNodeCompletions(variable);
 
 			if (value === '$execution') return executionCompletions(context, variable);
-			if (value === '$vars') return variablesCompletions(context, variable);
+			// if (value === '$vars') return variablesCompletions(context, variable);
 
 			if (value === '$workflow') return workflowCompletions(context, variable);
 			if (value === '$prevNode') return prevNodeCompletions(context);

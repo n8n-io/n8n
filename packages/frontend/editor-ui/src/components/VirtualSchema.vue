@@ -175,7 +175,7 @@ const isVariablesEnabled = computed(
 );
 
 const contextSchema = computed(() => {
-	const $vars = environmentsStore.variablesAsObject;
+	const $vars = {}; //environmentsStore.variablesAsObject;
 
 	const schemaSource: Record<string, unknown> = {
 		$now: DateTime.now().toISO(),

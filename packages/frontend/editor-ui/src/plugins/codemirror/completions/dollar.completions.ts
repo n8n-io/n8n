@@ -96,15 +96,15 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 	if (isCredentialsModalOpen()) {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
 			? [
-					{
-						label: '$vars',
-						section: METADATA_SECTION,
-						info: createInfoBoxRenderer({
-							name: '$vars',
-							returnType: 'Object',
-							description: i18n.baseText('codeNodeEditor.completer.$vars'),
-						}),
-					},
+					// {
+					// 	label: '$vars',
+					// 	section: METADATA_SECTION,
+					// 	info: createInfoBoxRenderer({
+					// 		name: '$vars',
+					// 		returnType: 'Object',
+					// 		description: i18n.baseText('codeNodeEditor.completer.$vars'),
+					// 	}),
+					// },
 					{
 						label: '$secrets',
 						section: METADATA_SECTION,

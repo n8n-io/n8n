@@ -65,7 +65,7 @@ export function getAdditionalKeys(
 					}
 				: undefined,
 		},
-		$vars: additionalData.variables,
+		$vars: additionalData.variables, // [] as unknown as IDataObject, //
 		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated

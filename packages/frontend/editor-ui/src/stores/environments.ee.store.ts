@@ -11,8 +11,8 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	const variables = ref<EnvironmentVariable[]>([]);
 
 	async function fetchAllVariables() {
-		const data = await environmentsApi.getVariables(rootStore.restApiContext);
-
+		//const data = await environmentsApi.getVariables(rootStore.restApiContext);
+		const data: EnvironmentVariable[] = await Promise.resolve([]);
 		variables.value = data;
 
 		return data;
