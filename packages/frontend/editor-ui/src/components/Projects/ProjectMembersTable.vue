@@ -12,15 +12,7 @@ import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 import { isProjectRole } from '@/utils/typeGuards';
-
-interface ProjectMemberData {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-	role: ProjectRole;
-	[key: string]: unknown;
-}
+import type { ProjectMemberData } from '@/types/projects.types';
 
 const i18n = useI18n();
 

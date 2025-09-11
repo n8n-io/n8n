@@ -4,15 +4,7 @@ import type { ProjectRole } from '@n8n/permissions';
 import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import { ElRadio } from 'element-plus';
 import { isProjectRole } from '@/utils/typeGuards';
-
-interface ProjectMemberData {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-	role: ProjectRole;
-	[key: string]: unknown;
-}
+import type { ProjectMemberData } from '@/types/projects.types';
 
 const props = defineProps<{
 	data: ProjectMemberData;
@@ -48,42 +40,40 @@ const onActionSelect = (role: string) => {
 </script>
 
 <template>
-	<div>
-		<N8nActionDropdown
-			v-if="isEditable"
-			placement="bottom-start"
-			:items="props.actions"
-			data-test-id="project-member-role-dropdown"
-			@select="onActionSelect"
-		>
-			<template #activator>
-				<button :class="$style.roleLabel" type="button">
-					<N8nText color="text-dark">{{ roleLabel }}</N8nText>
-					<N8nIcon color="text-dark" icon="chevron-down" size="large" />
-				</button>
-			</template>
-			<template #menuItem="item">
-				<N8nText v-if="item.id === 'remove'" color="text-dark" :class="$style.removeUser">{{
-					item.label
-				}}</N8nText>
-				<ElRadio
-					v-else
-					:model-value="selectedRole"
-					:label="item.id"
-					:disabled="item.disabled"
-					@update:model-value="selectedRole = item.id"
-				>
-					<span :class="$style.radioLabel">
-						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
-						<N8nText color="text-dark" size="small">{{
-							isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
-						}}</N8nText>
-					</span>
-				</ElRadio>
-			</template>
-		</N8nActionDropdown>
-		<span v-else>{{ roleLabel }}</span>
-	</div>
+	<N8nActionDropdown
+		v-if="isEditable"
+		placement="bottom-start"
+		:items="props.actions"
+		data-test-id="project-member-role-dropdown"
+		@select="onActionSelect"
+	>
+		<template #activator>
+			<button :class="$style.roleLabel" type="button">
+				<N8nText color="text-dark">{{ roleLabel }}</N8nText>
+				<N8nIcon color="text-dark" icon="chevron-down" size="large" />
+			</button>
+		</template>
+		<template #menuItem="item">
+			<N8nText v-if="item.id === 'remove'" color="text-dark" :class="$style.removeUser">{{
+				item.label
+			}}</N8nText>
+			<ElRadio
+				v-else
+				:model-value="selectedRole"
+				:label="item.id"
+				:disabled="item.disabled"
+				@update:model-value="selectedRole = item.id"
+			>
+				<span :class="$style.radioLabel">
+					<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
+					<N8nText color="text-dark" size="small">{{
+						isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
+					}}</N8nText>
+				</span>
+			</ElRadio>
+		</template>
+	</N8nActionDropdown>
+	<span v-else>{{ roleLabel }}</span>
 </template>
 
 <style lang="scss" module>

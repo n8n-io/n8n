@@ -5,6 +5,7 @@ import type { ProjectRole } from '@n8n/permissions';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { ProjectMemberData } from '@/types/projects.types';
 
 // Mock N8nActionDropdown and other design system components
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -89,15 +90,6 @@ vi.mock('element-plus', async (importOriginal) => {
 		},
 	};
 });
-
-interface ProjectMemberData {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-	role: ProjectRole;
-	[key: string]: unknown;
-}
 
 const mockMemberData: ProjectMemberData = {
 	id: '123',

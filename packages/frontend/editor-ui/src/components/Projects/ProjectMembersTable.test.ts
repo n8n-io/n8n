@@ -6,6 +6,7 @@ import type { ProjectRole } from '@n8n/permissions';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersTable from '@/components/Projects/ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { ProjectMemberData } from '@/types/projects.types';
 
 // Mock design system components
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -93,15 +94,6 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 		`,
 	},
 }));
-
-interface ProjectMemberData {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-	role: ProjectRole;
-	[key: string]: unknown;
-}
 
 const mockMembers: ProjectMemberData[] = [
 	{
