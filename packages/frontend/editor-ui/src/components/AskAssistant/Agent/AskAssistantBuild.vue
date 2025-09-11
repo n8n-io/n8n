@@ -1,19 +1,16 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, nextTick } from 'vue';
+import { computed, watch, ref } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { ChatUI, RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
-import type { NodesPlanMessageType } from './NodesPlanMessage.vue';
-import NodesPlanMessage from './NodesPlanMessage.vue';
-import { PLAN_APPROVAL_MESSAGE } from '@/constants';
 
 const emit = defineEmits<{
 	close: [];
@@ -31,7 +28,6 @@ const workflowSaver = useWorkflowSaving({ router });
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const planStatus = ref<'pending' | 'approved' | 'rejected'>();
 const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
@@ -79,40 +75,6 @@ function onFeedback(feedback: RatingFeedback) {
 			session_id: builderStore.trackingSessionId,
 		});
 	}
-}
-
-function isNodesPlanMessage(message: ChatUI.AssistantMessage): message is NodesPlanMessageType {
-	return (
-		message.type === 'custom' && message.customType === 'nodesPlan' && Array.isArray(message.data)
-	);
-}
-
-function onApprovePlan() {
-	planStatus.value = 'approved';
-
-	telemetry.track('User clicked Approve plan', {
-		session_id: builderStore.trackingSessionId,
-	});
-
-	void onUserMessage(PLAN_APPROVAL_MESSAGE);
-}
-
-function onRequestChanges() {
-	planStatus.value = 'rejected';
-
-	telemetry.track('User clicked Request changes', {
-		session_id: builderStore.trackingSessionId,
-	});
-
-	// Focus the input after rejecting the plan
-	void nextTick(() => {
-		assistantChatRef.value?.focusInput();
-	});
-}
-
-function shouldShowPlanControls(message: NodesPlanMessageType) {
-	const planMessageIndex = builderStore.chatMessages.findIndex((msg) => msg.id === message.id);
-	return planMessageIndex === builderStore.chatMessages.length - 1;
 }
 
 function dedupeToolNames(toolNames: string[]): string[] {
@@ -175,12 +137,6 @@ watch(
 					}
 				}
 			});
-
-		// Check if last message is a plan message and if so, whether to show controls
-		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-		if (lastMessage && isNodesPlanMessage(lastMessage)) {
-			planStatus.value = 'pending';
-		}
 	},
 	{ deep: true },
 );
@@ -229,7 +185,6 @@ watch(currentRoute, () => {
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
-			:disabled="planStatus === 'pending'"
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
@@ -244,16 +199,6 @@ watch(currentRoute, () => {
 		>
 			<template #header>
 				<slot name="header" />
-			</template>
-			<template #custom-message="{ message, ...props }">
-				<NodesPlanMessage
-					v-if="message.customType === 'nodesPlan' && isNodesPlanMessage(message)"
-					:message="message"
-					:show-controls="shouldShowPlanControls(message)"
-					v-bind="props"
-					@approve-plan="onApprovePlan"
-					@request-changes="onRequestChanges"
-				/>
 			</template>
 			<template #placeholder>
 				<n8n-text :class="$style.topText">{{

@@ -67,6 +67,10 @@ export type UpsertDataStoreRowOptions = {
 	data: DataStoreRow;
 };
 
+export type DeleteDataTableRowsOptions = {
+	filter?: DataTableFilter;
+};
+
 export type MoveDataStoreColumnOptions = {
 	targetIndex: number;
 };
@@ -141,5 +145,5 @@ export interface IDataStoreProjectService {
 
 	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	deleteRows(ids: number[]): Promise<boolean>;
+	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataStoreRowReturn[]>;
 }
