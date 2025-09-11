@@ -2,12 +2,11 @@ import { computed, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import * as useResolvedExpression from '@/composables/useResolvedExpression';
 
 const DEFAULT_SETUP = {
@@ -28,12 +27,7 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(Assignment, DEFAULT_SETUP);
 
 describe('Assignment.vue', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -53,9 +47,11 @@ describe('Assignment.vue', () => {
 
 		await userEvent.click(baseElement.querySelectorAll('.option')[3]);
 
-		expect(emitted('update:model-value')[0]).toEqual([
-			{ name: 'New name', type: 'array', value: 'New value' },
-		]);
+		await waitFor(() =>
+			expect(emitted('update:model-value')[0]).toEqual([
+				{ name: 'New name', type: 'array', value: 'New value' },
+			]),
+		);
 	});
 
 	it('can remove itself', async () => {
