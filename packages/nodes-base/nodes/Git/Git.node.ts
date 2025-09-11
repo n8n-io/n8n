@@ -367,10 +367,11 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
-					if (options.branch) {
-						assertParamIsString('branch', options.branch, this.getNode());
+					const branch = options.branch;
+					if (branch !== undefined) {
+						assertParamIsString('branch', branch, this.getNode());
 						await checkoutBranch(git, {
-							branchName: options.branch,
+							branchName: branch,
 							setUpstream: true,
 						});
 					}
@@ -449,10 +450,11 @@ export class Git implements INodeType {
 					//         push
 					// ----------------------------------
 
-					if (options.branch) {
-						assertParamIsString('branch', options.branch, this.getNode());
+					const branch = options.branch;
+					if (branch !== undefined) {
+						assertParamIsString('branch', branch, this.getNode());
 						await checkoutBranch(git, {
-							branchName: options.branch,
+							branchName: branch,
 							createBranch: false,
 							setUpstream: true,
 						});
@@ -550,25 +552,27 @@ export class Git implements INodeType {
 
 					const branchName = this.getNodeParameter('branchName', itemIndex);
 					assertParamIsString('branchName', branchName, this.getNode());
-					const createBranch = options.createBranch !== false; // default to true
+
+					const createBranch = options.createBranch !== false;
 					const remoteName =
 						typeof options.remoteName === 'string' && options.remoteName
 							? options.remoteName
 							: 'origin';
 
-					if (options.startPoint !== undefined) {
-						assertParamIsString('startPoint', options.startPoint, this.getNode());
+					const startPoint = options.startPoint;
+					if (startPoint !== undefined) {
+						assertParamIsString('startPoint', startPoint, this.getNode());
 					}
-					const startPoint = options.startPoint as string;
 
-					if (options.setUpstream !== undefined) {
-						assertParamIsBoolean('setUpstream', options.setUpstream, this.getNode());
+					const setUpstream = options.setUpstream;
+					if (setUpstream !== undefined) {
+						assertParamIsBoolean('setUpstream', setUpstream, this.getNode());
 					}
-					const setUpstream = options.setUpstream as boolean;
-					if (options.force !== undefined) {
-						assertParamIsBoolean('force', options.force, this.getNode());
+
+					const force = options.force;
+					if (force !== undefined) {
+						assertParamIsBoolean('force', force, this.getNode());
 					}
-					const force = options.force as boolean;
 
 					await checkoutBranch(git, {
 						branchName,

@@ -35,6 +35,8 @@ jest.mock('fs/promises', () => ({
 	mkdir: jest.fn(),
 }));
 
+const mockFsPromises = jest.mocked(require('fs/promises'));
+
 describe('Git Node', () => {
 	let gitNode: Git;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
@@ -64,6 +66,30 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).toHaveBeenCalledWith('feature');
 			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+		});
+
+		it('should commit specific files when pathsToAdd is provided', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('commit')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					branch: 'feature-branch',
+					files: true,
+					pathsToAdd: 'src/file1.js,src/file2.js,README.md',
+				})
+				.mockReturnValueOnce('Add specific files');
+
+			mockGit.checkout.mockResolvedValueOnce('Switched to branch feature-branch' as any);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			expect(mockGit.commit).toHaveBeenCalledWith('Add specific files', [
+				'src/file1.js',
+				'src/file2.js',
+				'README.md',
+			]);
+			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
 		it('should fail when trying to push to non-existent branch', async () => {
@@ -124,6 +150,26 @@ describe('Git Node', () => {
 				'refs/heads/existing-branch',
 			);
 			expect(mockGit.push).toHaveBeenCalled();
+		});
+
+		it('should push to specific repository when repository option is provided', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					branch: 'feature-branch',
+					repository: true,
+					targetRepository: 'https://github.com/example/repo.git',
+				})
+				.mockReturnValueOnce('none');
+
+			// Branch exists, so checkout succeeds
+			mockGit.checkout.mockResolvedValueOnce('Switched to branch feature-branch' as any);
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			expect(mockGit.push).toHaveBeenCalledWith('https://github.com/example/repo.git');
 		});
 
 		it('should handle switchBranch operation to existing branch', async () => {
@@ -307,15 +353,39 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
-		it('should handle clone operation', async () => {
+		it('should handle clone operation and create directory when it does not exist', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
-				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce('/new-repo')
 				.mockReturnValueOnce({})
 				.mockReturnValueOnce('https://github.com/test/repo.git');
 
+			// Simulate directory not existing - access() throws
+			mockFsPromises.access.mockRejectedValueOnce(new Error('Directory does not exist'));
+			mockFsPromises.mkdir.mockResolvedValueOnce(undefined);
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockFsPromises.access).toHaveBeenCalledWith('/new-repo');
+			expect(mockFsPromises.mkdir).toHaveBeenCalledWith('/new-repo');
+			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
+			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
+		});
+
+		it('should handle clone operation when directory already exists', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/existing-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('https://github.com/test/repo.git');
+
+			// Simulate directory already exists - access() succeeds
+			mockFsPromises.access.mockResolvedValueOnce(undefined);
+
 			await gitNode.execute.call(mockExecuteFunctions);
 
+			expect(mockFsPromises.access).toHaveBeenCalledWith('/existing-repo');
+			expect(mockFsPromises.mkdir).not.toHaveBeenCalled();
 			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', '.');
 		});
 
@@ -349,11 +419,26 @@ describe('Git Node', () => {
 				.mockReturnValueOnce(false) // returnAll
 				.mockReturnValueOnce(10); // limit
 
-			mockGit.log.mockResolvedValueOnce({ all: [{ hash: 'abc123', message: 'test' }] } as any);
+			const mockLogData = [
+				{ hash: 'abc123', message: 'test commit', author_name: 'John Doe' },
+				{ hash: 'def456', message: 'another commit', author_name: 'Jane Smith' },
+			];
+			mockGit.log.mockResolvedValueOnce({ all: mockLogData } as any);
 
-			await gitNode.execute.call(mockExecuteFunctions);
+			const result = await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.log).toHaveBeenCalledWith({ maxCount: 10 });
+			expect(result[0]).toHaveLength(2);
+			expect(result[0]).toEqual([
+				{
+					json: { hash: 'abc123', message: 'test commit', author_name: 'John Doe' },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { hash: 'def456', message: 'another commit', author_name: 'Jane Smith' },
+					pairedItem: { item: 0 },
+				},
+			]);
 		});
 
 		it('should handle pushTags operation', async () => {
