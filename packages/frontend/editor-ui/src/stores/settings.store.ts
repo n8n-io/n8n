@@ -149,8 +149,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
 
-	const dataTableLimits = computed(() => settings.value.dataTables);
-
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
 
 	const isTemplatesEnabled = computed(() =>
@@ -390,6 +388,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isDataTableFeatureEnabled,
-		dataTableLimits,
 	};
 });

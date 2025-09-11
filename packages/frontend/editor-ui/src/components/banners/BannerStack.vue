@@ -21,11 +21,11 @@ export const N8N_BANNERS: N8nBanners = {
 	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
 	DATA_STORE_STORAGE_LIMIT_WARNING: {
 		priority: 300,
-		component: DataStoreStorageLimitWarningBanner,
+		component: DataStoreStorageLimitWarningBanner as Component,
 	},
 	DATA_STORE_STORAGE_LIMIT_ERROR: {
 		priority: 400,
-		component: DataStoreStorageLimitErrorBanner,
+		component: DataStoreStorageLimitErrorBanner as Component,
 	},
 };
 </script>
