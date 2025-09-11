@@ -67,6 +67,10 @@ export type UpsertDataStoreRowOptions = {
 	data: DataStoreRow;
 };
 
+export type DeleteDataTableRowsOptions = {
+	filter?: DataTableFilter;
+};
+
 export type MoveDataStoreColumnOptions = {
 	targetIndex: number;
 };
@@ -87,6 +91,22 @@ export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
+
+export type DataTableInsertRowsReturnType = 'all' | 'id' | 'count';
+export type DataTableInsertRowsBulkResult = { success: true; insertedRows: number };
+export type DataTableInsertRowsResult<
+	T extends DataTableInsertRowsReturnType = DataTableInsertRowsReturnType,
+> = T extends 'all'
+	? DataStoreRowReturn[]
+	: T extends 'id'
+		? Array<Pick<DataStoreRowReturn, 'id'>>
+		: DataTableInsertRowsBulkResult;
+
+export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
+export type DataTablesSizeResult = {
+	sizeBytes: number;
+	sizeState: DataTableSizeStatus;
+};
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
@@ -116,11 +136,14 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
-	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+	insertRows<T extends DataTableInsertRowsReturnType>(
+		rows: DataStoreRows,
+		returnType: T,
+	): Promise<DataTableInsertRowsResult<T>>;
 
 	updateRow(options: UpdateDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
 	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	deleteRows(ids: number[]): Promise<boolean>;
+	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataStoreRowReturn[]>;
 }
