@@ -4,12 +4,14 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { CredentialModal } from './components/CredentialModal';
 import { LogsPanel } from './components/LogsPanel';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });

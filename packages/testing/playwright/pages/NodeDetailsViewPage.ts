@@ -18,6 +18,18 @@ export class NodeDetailsViewPage extends BasePage {
 		this.editFields = new EditFieldsNode(page);
 	}
 
+	getNodeCredentialsSelect() {
+		return this.page.getByTestId('node-credentials-select');
+	}
+
+	credentialDropdownCreateNewCredential() {
+		return this.page.getByText('Create new credential');
+	}
+
+	getCredentialSelect() {
+		return this.page.getByRole('combobox', { name: 'Select Credential' });
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}
