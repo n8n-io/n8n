@@ -69,13 +69,6 @@ export function useLogsPanelLayout(
 		container: popOutContainer,
 		content: popOutContent,
 		shouldPopOut,
-		onPopOutResize: ({ popOutWindow }) => {
-			// must be dynamically set as px. setting 100% or 100v breaks chat input responsiveness
-			popOutWindow.document.documentElement.style.setProperty(
-				'--logs-panel-height',
-				`${popOutWindow.innerHeight}px`,
-			);
-		},
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
@@ -119,7 +112,7 @@ export function useLogsPanelLayout(
 	}
 
 	watch(
-		[() => logsStore.state, resizer.size],
+		[() => logsStore.state, resizer.size, isPoppedOut],
 		([state, height]) => {
 			const updatedHeight =
 				state === LOGS_PANEL_STATE.FLOATING
@@ -128,7 +121,14 @@ export function useLogsPanelLayout(
 						? height
 						: COLLAPSED_PANEL_HEIGHT;
 
-			document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+			if (state === LOGS_PANEL_STATE.FLOATING) {
+				popOutWindow?.value?.document.documentElement.style.setProperty(
+					'--logs-panel-height',
+					'100vh',
+				);
+			} else {
+				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+			}
 
 			logsStore.setHeight(updatedHeight);
 		},

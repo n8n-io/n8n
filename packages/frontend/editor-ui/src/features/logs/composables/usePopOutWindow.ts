@@ -83,7 +83,6 @@ export function usePopOutWindow({
 	initialWidth,
 	shouldPopOut,
 	onRequestClose,
-	onPopOutResize,
 }: UsePopOutWindowOptions): UsePopOutWindowReturn {
 	const popOutWindow = ref<Window>();
 	const isUnmounting = ref(false);
@@ -144,21 +143,6 @@ export function usePopOutWindow({
 		// Move the content to child window.
 		popOutWindow.value.document.body.append(content.value);
 		popOutWindow.value.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
-
-		if (onPopOutResize) {
-			popOutWindow.value.addEventListener('resize', () => {
-				if (popOutWindow.value) {
-					onPopOutResize({
-						popOutWindow: popOutWindow.value,
-					});
-				}
-			});
-
-			// Set initial heights
-			onPopOutResize({
-				popOutWindow: popOutWindow.value,
-			});
-		}
 	}
 
 	function hidePopOut() {
