@@ -76,7 +76,7 @@ function parseLooseLocalDate(text: string): Date | null {
 }
 
 function commitIfParsedFromInput(target?: EventTarget | null) {
-	const input = target as HTMLInputElement | null;
+	const input = target instanceof HTMLInputElement ? target : null;
 	const value = input?.value ?? '';
 	const parsed = parseLooseLocalDate(value);
 	if (parsed) {

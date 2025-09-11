@@ -6,6 +6,7 @@ import type {
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
+	DataStoreColumnType,
 } from '@/features/dataStore/datastore.types';
 import { ref, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -18,8 +19,8 @@ import type {
 } from 'ag-grid-community';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
-import { isDataStoreValue } from '@/features/dataStore/typeGuards';
-import { useDataStoreTypes } from './useDataStoreTypes';
+import { isDataStoreValue, isDataStoreColumnType } from '@/features/dataStore/typeGuards';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -193,27 +194,27 @@ export const useDataStoreOperations = ({
 		}
 	}
 
+	const areValuesEqual = (
+		oldValue: unknown,
+		newValue: unknown,
+		type: DataStoreColumnType | undefined,
+	) => {
+		if (type && type === 'date') {
+			if (oldValue instanceof Date && newValue instanceof Date) {
+				return oldValue.getTime() === newValue.getTime();
+			}
+		}
+		return oldValue === newValue;
+	};
+
 	const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
 		const { data, api, oldValue, colDef } = params;
 		const value = params.data[colDef.field!];
 
-		const cellType = colDef.cellDataType;
+		const cellType = isDataStoreColumnType(colDef.cellDataType) ? colDef.cellDataType : undefined;
 
-		if (cellType === 'date') {
-			if (value instanceof Date && oldValue instanceof Date) {
-				// Compare time values for Date objects
-				if (value.getTime() === oldValue.getTime()) {
-					return;
-				}
-			} else if (value === null && oldValue === null) {
-				// Both are null, no change
-				return;
-			}
-		} else {
-			// Primitive strict equality check for non-date types
-			if (value === undefined || value === oldValue) {
-				return;
-			}
+		if (areValuesEqual(oldValue, value, cellType)) {
+			return;
 		}
 
 		if (typeof data.id !== 'number') {

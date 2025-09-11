@@ -1,4 +1,8 @@
-import type { AGGridCellType, DataStoreValue } from '@/features/dataStore/datastore.types';
+import type {
+	AGGridCellType,
+	DataStoreValue,
+	DataStoreColumnType,
+} from '@/features/dataStore/datastore.types';
 
 export const isDataStoreValue = (value: unknown): value is DataStoreValue => {
 	return (
@@ -15,4 +19,8 @@ export const isAGGridCellType = (value: unknown): value is AGGridCellType => {
 		typeof value === 'string' &&
 		['text', 'number', 'boolean', 'date', 'dateString', 'object'].includes(value)
 	);
+};
+
+export const isDataStoreColumnType = (type: unknown): type is DataStoreColumnType => {
+	return type === 'string' || type === 'number' || type === 'boolean' || type === 'date';
 };
