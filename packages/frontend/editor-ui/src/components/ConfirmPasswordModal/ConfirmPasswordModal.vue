@@ -69,7 +69,9 @@ onMounted(() => {
 		@enter="onSubmitClick"
 	>
 		<template #content>
-			<n8n-text>{{ i18n.baseText('auth.confirmPassword.confirmPasswordToChangeEmail') }}</n8n-text>
+			<n8n-text :class="$style.description" tag="p">{{
+				i18n.baseText('auth.confirmPassword.confirmPasswordToChangeEmail')
+			}}</n8n-text>
 			<n8n-form-inputs
 				v-if="config"
 				:inputs="config"
@@ -90,3 +92,8 @@ onMounted(() => {
 		</template>
 	</Modal>
 </template>
+<style lang="scss" module>
+.description {
+	margin-bottom: var(--spacing-s);
+}
+</style>
