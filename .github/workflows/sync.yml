@@ -25,17 +25,16 @@ jobs:
           git remote add upstream https://github.com/n8n-io/n8n.git
           git fetch upstream
           
-      - name: Initial setup or merge upstream changes
+      - name: Force sync with upstream
         run: |
-          git config merge.ours.driver true
+          # Save current branch
+          git branch backup-branch
           
-          if [ ! -f "package.json" ]; then
-            echo "Initial setup - pulling n8n content"
-            git merge upstream/main --allow-unrelated-histories --no-edit
-          else
-            echo "Merging upstream changes"
-            git merge upstream/main --allow-unrelated-histories --no-edit
-          fi
+          # Force reset to upstream (this always works)
+          git reset --hard upstream/main
+          
+          # Push the reset (this creates the sync)
+          git push --force-with-lease
           
       - name: Sync releases
         run: |
