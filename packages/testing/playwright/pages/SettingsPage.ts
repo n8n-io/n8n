@@ -135,4 +135,28 @@ export class SettingsPage extends BasePage {
 		await this.goToPersonalSettings();
 		await this.disableMfaWithCode(code);
 	}
+
+	/**
+	 * Complete MFA enable flow with recovery code extraction
+	 * Includes QR code request handling and delegates to MfaSetupModal
+	 * @returns Object containing the MFA secret and extracted recovery code
+	 */
+	async enableMfaWithRecovery(): Promise<{ secret: string; recoveryCode: string }> {
+		await this.goToPersonalSettings();
+
+		// Set up intercept for MFA QR code request (like Cypress @getMfaQrCode)
+		const qrCodePromise = this.page.waitForResponse(
+			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
+		);
+
+		await this.clickEnableMfa();
+
+		// Wait for QR code request to complete (like Cypress cy.wait('@getMfaQrCode'))
+		await qrCodePromise;
+
+		// Complete MFA setup and return credentials
+		const { MfaSetupModal } = await import('./MfaSetupModal');
+		const mfaSetupModal = new MfaSetupModal(this.page);
+		return await mfaSetupModal.setupMfaWithRecoveryCode();
+	}
 }

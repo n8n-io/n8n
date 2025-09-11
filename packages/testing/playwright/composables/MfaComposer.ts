@@ -1,4 +1,5 @@
 import { authenticator } from 'otplib';
+import { expect } from '@playwright/test';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -104,5 +105,37 @@ export class MfaComposer {
 
 		// Complete MFA login with recovery code
 		await this.completeMfaLoginWithRecoveryCode(recoveryCode);
+	}
+
+	/**
+	 * Complete workflow: Login → Enable MFA → Logout
+	 * @param email - User email
+	 * @param password - User password
+	 * @returns The MFA secret for subsequent login
+	 */
+	async setupMfaWorkflow(email: string, password: string): Promise<string> {
+		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
+		const secret = await this.n8n.settings.enableMfa();
+		await this.n8n.sideBar.clickSignout();
+		return secret;
+	}
+
+	/**
+	 * Login with MFA code flow - handles email/password + MFA token submission
+	 * @param email - User email
+	 * @param password - User password
+	 * @param secret - MFA secret for token generation
+	 */
+	async loginWithMfaCode(email: string, password: string, secret: string): Promise<void> {
+		// Login with email/password (exactly like original test)
+		await this.n8n.signIn.fillEmail(email);
+		await this.n8n.signIn.fillPassword(password);
+		await this.n8n.signIn.clickSubmit();
+
+		// Complete MFA flow (exactly like original test)
+		await expect(this.n8n.mfaLogin.getForm()).toBeVisible();
+		const loginMfaCode = authenticator.generate(secret);
+		await this.n8n.mfaLogin.submitMfaCode(loginMfaCode);
+		await expect(this.n8n.page).toHaveURL(/\/workflow/);
 	}
 }

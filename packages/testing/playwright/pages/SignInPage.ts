@@ -35,10 +35,24 @@ export class SignInPage extends BasePage {
 		await this.getSubmitButton().click();
 	}
 
-	async loginWithEmailAndPassword(email: string, password: string): Promise<void> {
+	/**
+	 * Complete login flow with email and password
+	 * @param email - User email
+	 * @param password - User password
+	 * @param waitForWorkflow - Whether to wait for redirect to workflow page after login
+	 */
+	async loginWithEmailAndPassword(
+		email: string,
+		password: string,
+		waitForWorkflow = false,
+	): Promise<void> {
 		await this.goToSignIn();
 		await this.fillEmail(email);
 		await this.fillPassword(password);
 		await this.clickSubmit();
+
+		if (waitForWorkflow) {
+			await this.page.waitForURL(/\/workflow/);
+		}
 	}
 }
