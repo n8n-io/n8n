@@ -22,7 +22,6 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	ExecutionBaseError,
-	ApplicationError,
 	UserError,
 	sleepWithAbort,
 } from 'n8n-workflow';
@@ -31,6 +30,26 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+
+function filterParentInputDataForCurrentItem(
+	parentInputData: ITaskDataConnections,
+	itemIndex: number,
+): ITaskDataConnections {
+	const filteredData: ITaskDataConnections = {};
+
+	for (const [connectionType, connectionData] of Object.entries(parentInputData)) {
+		if (connectionData && Array.isArray(connectionData)) {
+			filteredData[connectionType] = connectionData.map((dataArray) => {
+				if (dataArray && Array.isArray(dataArray) && dataArray[itemIndex]) {
+					return [dataArray[itemIndex]];
+				}
+				return dataArray;
+			});
+		}
+	}
+
+	return filteredData;
+}
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
@@ -254,25 +273,28 @@ export async function getInputConnectionData(
 			);
 
 		if (!connectedNodeType.supplyData) {
-			if (connectedNodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
-				const supplyData = createNodeAsTool({
-					node: connectedNode,
-					nodeType: connectedNodeType,
-					handleToolInvocation: makeHandleToolInvocation(
-						(i) => contextFactory(i, {}, itemIndex),
-						connectedNode,
-						connectedNodeType,
-						runExecutionData,
-					),
-				});
-				nodes.push(supplyData);
-			} else {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
-					extra: { nodeName: connectedNode.name },
-				});
+			let filteredParentInputData = parentInputData;
+			if (connectionType === NodeConnectionTypes.AiTool) {
+				filteredParentInputData = filterParentInputDataForCurrentItem(parentInputData, itemIndex);
 			}
+			const supplyData = createNodeAsTool({
+				node: connectedNode,
+				nodeType: connectedNodeType,
+				handleToolInvocation: makeHandleToolInvocation(
+					(i) => contextFactory(i, filteredParentInputData, itemIndex),
+					connectedNode,
+					connectedNodeType,
+					runExecutionData,
+				),
+			});
+			nodes.push(supplyData);
 		} else {
-			const context = contextFactory(parentRunIndex, parentInputData);
+			const inputDataForContext =
+				connectionType === NodeConnectionTypes.AiTool
+					? filterParentInputDataForCurrentItem(parentInputData, itemIndex)
+					: parentInputData;
+			const context = contextFactory(parentRunIndex, inputDataForContext);
+
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
 				if (supplyData.closeFunction) {
