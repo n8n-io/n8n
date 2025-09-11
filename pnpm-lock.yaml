@@ -620,6 +620,37 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/codemirror-lang-sql:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: ^6.0.0
+        version: 6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.2.1)
+      '@codemirror/language':
+        specifier: ^6.0.0
+        version: 6.10.1
+      '@codemirror/state':
+        specifier: ^6.0.0
+        version: 6.4.1
+      '@lezer/highlight':
+        specifier: ^1.0.0
+        version: 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
+      '@lezer/lr':
+        specifier: ^1.0.0
+        version: 1.4.0
+      '@n8n/codemirror-lang':
+        specifier: workspace:*
+        version: link:../codemirror-lang
+    devDependencies:
+      '@codemirror/text':
+        specifier: ^0.19.6
+        version: 0.19.6
+      '@lezer/generator':
+        specifier: ^1.7.0
+        version: 1.7.0
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/config:
     dependencies:
       '@n8n/di':
@@ -2507,8 +2538,8 @@ importers:
         specifier: workspace:*
         version: link:../../@n8n/codemirror-lang
       '@n8n/codemirror-lang-sql':
-        specifier: ^1.0.2
-        version: 1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
+        specifier: workspace:*
+        version: link:../../@n8n/codemirror-lang-sql
       '@n8n/composables':
         specifier: workspace:*
         version: link:../@n8n/composables
@@ -4371,6 +4402,10 @@ packages:
   '@codemirror/state@6.4.1':
     resolution: {integrity: sha512-QkEyUiLhsJoZkbumGZlswmAhA7CBU02Wrz7zvH4SrcifbsqwlXShVXg65f3v/ts57W3dqyamEriMhij1Z3Zz4A==}
 
+  '@codemirror/text@0.19.6':
+    resolution: {integrity: sha512-T9jnREMIygx+TPC1bOuepz18maGq/92q2a+n4qTqObKwvNMg+8cMTslb8yxeEDEq7S3kpgGWxgO1UWbQRij0dA==}
+    deprecated: As of 0.20.0, this package has been merged into @codemirror/state
+
   '@codemirror/view@6.22.3':
     resolution: {integrity: sha512-rqnq+Zospwoi3x1vZ8BGV1MlRsaGljX+6qiGYmIpJ++M+LCC+wjfDaPklhwpWSgv7pr/qx29KiAKQBH5+DOn4w==}
 
@@ -5755,9 +5790,6 @@ packages:
   '@mswjs/interceptors@0.37.5':
     resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
     engines: {node: '>=18'}
-
-  '@n8n/codemirror-lang-sql@1.0.2':
-    resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
 
   '@n8n/localtunnel@3.0.0':
     resolution: {integrity: sha512-0t/AUiZ8Oqo7AqYp2q2qmEC2p2lPP4CEdrGRB0J6nSC7ivOtr0p46Pw739UvUfJMU1bIKvzHIc5M9wCjH5Byjg==}
@@ -13186,6 +13218,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-ensure@0.0.0:
     resolution: {integrity: sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==}
@@ -18913,6 +18946,8 @@ snapshots:
 
   '@codemirror/state@6.4.1': {}
 
+  '@codemirror/text@0.19.6': {}
+
   '@codemirror/view@6.22.3':
     dependencies:
       '@codemirror/state': 6.4.1
@@ -20224,17 +20259,6 @@ snapshots:
       is-node-process: 1.2.0
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
-
-  '@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.26.3)(@lezer/common@1.1.0)':
-    dependencies:
-      '@codemirror/autocomplete': 6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.1.0)
-      '@codemirror/language': 6.10.1
-      '@codemirror/state': 6.4.1
-      '@lezer/highlight': 1.1.1(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
-      '@lezer/lr': 1.4.0
-    transitivePeerDependencies:
-      - '@codemirror/view'
-      - '@lezer/common'
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
