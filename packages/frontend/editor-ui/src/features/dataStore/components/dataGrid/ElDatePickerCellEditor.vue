@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, nextTick, useTemplateRef } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
+import { LOOSE_DATE_REGEX } from '@/features/dataStore/constants';
 
 const props = defineProps<{
 	params: ICellEditorParams;
@@ -55,9 +56,7 @@ function onClear() {
 // - YYYY-MM-DD HH:mm:ss (also accepted, though typically handled by the picker)
 function parseLooseLocalDate(text: string): Date | null {
 	const trimmed = text.trim();
-	const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})(?:[ T]([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?)?$/.exec(
-		trimmed,
-	);
+	const m = LOOSE_DATE_REGEX.exec(trimmed);
 	if (!m) return null;
 	const y = Number(m[1]);
 	const mo = Number(m[2]);
