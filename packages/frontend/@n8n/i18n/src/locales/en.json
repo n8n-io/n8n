@@ -3084,7 +3084,7 @@
 	"projects.settings.role.upgrade.message": "You're currently limited to {limit} on the {planName} plan and can only assign the admin role to users within this project. To create more projects and unlock additional roles, upgrade your plan.",
 	"projects.settings.table.header.user": "@:_reusableBaseText.user",
 	"projects.settings.table.header.role": "@:_reusableBaseText.role",
-	"projects.settings.table.row.removeUser": "@:credentialEdit.credentialSharing.list.delete",
+	"projects.settings.table.row.removeUser": "Remove user",
 	"projects.settings.role.admin.description": "Can edit workflows, credentials, and project settings",
 	"projects.settings.role.editor.description": "Can edit workflows and credentials",
 	"projects.settings.role.viewer.description": "Can view workflows and executions",
