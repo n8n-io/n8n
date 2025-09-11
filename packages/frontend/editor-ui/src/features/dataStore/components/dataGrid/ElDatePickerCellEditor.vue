@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref, nextTick } from 'vue';
+import { onMounted, ref, nextTick, useTemplateRef } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
 
 const props = defineProps<{
 	params: ICellEditorParams;
 }>();
 
-const pickerRef = ref<HTMLElement | null>(null);
+const pickerRef = useTemplateRef('pickerRef');
+const wrapperRef = useTemplateRef('wrapperRef');
 const dateValue = ref<Date | null>(null);
 const initialValue = ref<Date | null>(null);
 
@@ -33,6 +34,10 @@ onMounted(async () => {
 		(pickerRef.value as unknown as { focus?: () => void })?.focus?.();
 	} catch {}
 });
+
+function getInnerInput(): HTMLInputElement | null {
+	return (wrapperRef.value?.querySelector('input') ?? null) as HTMLInputElement | null;
+}
 
 function onChange() {
 	props.params.stopEditing();
@@ -98,23 +103,43 @@ function onKeydown(e: KeyboardEvent) {
 	}
 }
 
-function onBlur(e: FocusEvent) {
-	if (commitIfParsedFromInput(e.target)) return;
-}
-
 defineExpose({
 	getValue: () => {
-		if (dateValue.value === null) return null;
-		// Return the selected date in the user's local timezone
+		// Prefer what's typed in the input (in case Element Plus didn't commit it)
+		const input = getInnerInput();
+		const typed = input?.value ?? '';
+		const parsed = parseLooseLocalDate(typed);
+		if (parsed) return parsed;
+
+		// Fallback to the v-model value
 		return dateValue.value;
 	},
 	isPopup: () => true,
+	// This is triggered when cell editing is ending
+	// Using this one since, `visible-changed` event from the picker is not firing
+	// We want to commit any manually typed value when the user clicks outside
+	isCancelAfterEnd: () => {
+		const input = getInnerInput();
+		if (!input) return true;
+		const value = input.value ?? '';
+		const parsed = parseLooseLocalDate(value);
+		if (parsed) {
+			dateValue.value = parsed;
+			return false;
+		}
+		if (value.trim() === '') {
+			dateValue.value = null;
+			return false;
+		}
+		return true;
+	},
 });
 </script>
 
 <template>
-	<div class="datastore-datepicker-wrapper">
+	<div ref="wrapperRef" class="datastore-datepicker-wrapper">
 		<el-date-picker
+			id="datastore-datepicker"
 			ref="pickerRef"
 			v-model="dateValue"
 			type="datetime"
@@ -129,7 +154,6 @@ defineExpose({
 			@change="onChange"
 			@clear="onClear"
 			@keydown="onKeydown"
-			@blur="onBlur"
 		/>
 	</div>
 </template>
