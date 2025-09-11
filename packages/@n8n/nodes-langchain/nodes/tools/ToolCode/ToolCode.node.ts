@@ -1,24 +1,27 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
+	ExecutionError,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
-	ExecutionError,
-	IDataObject,
 } from 'n8n-workflow';
+
 import {
 	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
 	nodeNameToToolName,
+	NodeOperationError,
 } from 'n8n-workflow';
-
 import {
 	buildInputSchemaField,
 	buildJsonSchemaExampleField,
@@ -200,6 +203,9 @@ export class ToolCode implements INodeType {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isRunnerEnabled = runnersConfig.enabled;
+
 		const { typeVersion } = node;
 		const name =
 			typeVersion <= 1.1
@@ -218,6 +224,7 @@ export class ToolCode implements INodeType {
 			code = this.getNodeParameter('pythonCode', itemIndex) as string;
 		}
 
+		// @deprecated - TODO: Remove this after a new python runner is implemented
 		const getSandbox = (query: string | IDataObject, index = 0) => {
 			const context = getSandboxContext.call(this, index);
 			context.query = query;
@@ -239,15 +246,31 @@ export class ToolCode implements INodeType {
 			return sandbox;
 		};
 
-		const runFunction = async (query: string | IDataObject): Promise<string> => {
-			const sandbox = getSandbox(query, itemIndex);
-			return await sandbox.runCode<string>();
+		const runFunction = async (query: string | IDataObject): Promise<unknown> => {
+			if (language === 'javaScript' && isRunnerEnabled) {
+				const sandbox = new JsTaskRunnerSandbox(
+					code,
+					'runOnceForAllItems',
+					workflowMode,
+					this,
+					undefined,
+					{
+						query,
+					},
+				);
+				const executionData = await sandbox.runCodeForTool();
+				return executionData;
+			} else {
+				// use old vm2-based sandbox for python or when without runner enabled
+				const sandbox = getSandbox(query, itemIndex);
+				return await sandbox.runCode<string>();
+			}
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
 			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
-			let response: string = '';
+			let response: any = '';
 			let executionError: ExecutionError | undefined;
 			try {
 				response = await runFunction(query);

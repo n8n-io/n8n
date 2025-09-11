@@ -137,11 +137,12 @@ watch(
 <style lang="scss" module>
 .data-store-breadcrumbs {
 	display: flex;
-	align-items: end;
+	align-items: center;
 }
 
 .data-store-actions {
 	position: relative;
+	top: var(--spacing-5xs);
 }
 
 .separator {

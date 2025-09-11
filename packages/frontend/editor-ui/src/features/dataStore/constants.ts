@@ -8,10 +8,10 @@ export const DATA_STORE_STORE = 'dataStoreStore';
 
 export const DEFAULT_DATA_STORE_PAGE_SIZE = 10;
 
-export const DATA_STORE_ID_COLUMN_WIDTH = 46;
+export const DATA_STORE_ID_COLUMN_WIDTH = 60;
 
 export const DATA_STORE_HEADER_HEIGHT = 36;
-export const DATA_STORE_ROW_HEIGHT = 43;
+export const DATA_STORE_ROW_HEIGHT = 33;
 
 export const ADD_ROW_ROW_ID = '__n8n_add_row__';
 
@@ -35,3 +35,7 @@ export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
 
 export const DATA_STORE_MODULE_NAME = 'data-table';
+
+export const NUMBER_WITH_SPACES_REGEX = /\B(?=(\d{3})+(?!\d))/g;
+export const NUMBER_THOUSAND_SEPARATOR = ' ';
+export const NUMBER_DECIMAL_SEPARATOR = '.';
