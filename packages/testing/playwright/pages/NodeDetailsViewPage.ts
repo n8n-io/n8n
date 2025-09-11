@@ -141,6 +141,11 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
+	/**
+	 * Get the inline expression editor input
+	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
+	 * @returns The inline expression editor input
+	 */
 	getInlineExpressionEditorInput(parameterName?: string) {
 		if (parameterName) {
 			const parameterInput = this.getParameterInput(parameterName);
