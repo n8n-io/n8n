@@ -20,6 +20,30 @@ class HealthConfig {
 }
 
 @Config
+class RedisTlsConfig {
+	/**
+	 * Redis TLS options matches nodejs tls ConnectionOptions.
+	 * https://bun.com/reference/node/tls/ConnectionOptions
+	 */
+
+	/** Override trusted CA certificates. File path to load pem certificate file. @example '/home/node/certs/ca.pem' */
+	@Env('QUEUE_BULL_REDIS_TLS_CA')
+	ca: string = '';
+
+	/** Cert chains in PEM format. File path to load pem certificate file. @example '/home/node/certs/cert.pem' */
+	@Env('QUEUE_BULL_REDIS_TLS_CERT')
+	cert: string = '';
+
+	/** SNI extension servername for TLS handshake. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	serverName: string = '';
+
+	/** If unauthorized SSL connections should be rejected */
+	@Env('QUEUE_BULL_REDIS_TLS_REJECT_UNAUTHORIZED')
+	rejectUnauthorized: boolean = true;
+}
+
+@Config
 class RedisConfig {
 	/** Redis database for Bull queue. */
 	@Env('QUEUE_BULL_REDIS_DB')
@@ -52,6 +76,9 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	@Nested
+	tlsConfig: RedisTlsConfig;
 
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
