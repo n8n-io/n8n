@@ -114,7 +114,7 @@ export class MeController {
 				req.user.password,
 			);
 			if (!isCurrentPwCorrect) {
-				throw new BadRequestError('Provided current password is incorrect.');
+				throw new BadRequestError('Unable to update profile. Please check your credentials and try again.');
 			}
 		}
 
