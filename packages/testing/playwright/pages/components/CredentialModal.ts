@@ -91,4 +91,30 @@ export class CredentialModal {
 	get oauthConnectSuccessBanner() {
 		return this.root.getByTestId('oauth-connect-success-banner');
 	}
+
+	async editCredential(): Promise<void> {
+		await this.root.page().getByTestId('credential-edit-button').click();
+	}
+
+	async deleteCredential(): Promise<void> {
+		await this.root.page().getByTestId('credential-delete-button').click();
+	}
+
+	async confirmDelete(): Promise<void> {
+		await this.root.page().getByRole('button', { name: 'Yes' }).click();
+	}
+
+	async renameCredential(newName: string): Promise<void> {
+		await this.getCredentialName().click();
+		await this.getNameInput().fill(newName);
+		await this.getNameInput().press('Enter');
+	}
+
+	getAuthMethodSelector() {
+		return this.root.page().getByText('Select Authentication Method');
+	}
+
+	getOAuthRedirectUrl() {
+		return this.root.page().getByTestId('oauth-redirect-url');
+	}
 }

@@ -26,6 +26,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByText('Create new credential');
 	}
 
+	getCredentialOptionByText(text: string) {
+		return this.page.getByText(text);
+	}
+
+	getCredentialDropdownOptions() {
+		return this.page.getByRole('option');
+	}
+
 	getCredentialSelect() {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
@@ -557,7 +565,7 @@ export class NodeDetailsViewPage extends BasePage {
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
 		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').click();
+		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
 	}
 
 	// Run selector and linking helpers
