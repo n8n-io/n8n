@@ -3571,6 +3571,32 @@ describe('useCanvasOperations', () => {
 			// Ensure no telemetry was called at all
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
+
+		it('should set workflow name when importing with name', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			// This mock is needed for addImportedNodesToWorkflow to work
+			workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			});
+
+			const canvasOperations = useCanvasOperations();
+			const workflowDataWithName = {
+				name: 'Test Workflow Name',
+				nodes: [],
+				connections: {},
+			};
+
+			await canvasOperations.importWorkflowData(workflowDataWithName, 'file');
+
+			expect(workflowsStore.setWorkflowName).toHaveBeenCalledWith({
+				newName: 'Test Workflow Name',
+				setStateDirty: true,
+			});
+		});
 	});
 
 	describe('duplicateNodes', () => {

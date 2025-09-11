@@ -116,7 +116,8 @@ describe('useCanvasMapping', () => {
 							waitingForNext: false,
 						},
 						issues: {
-							items: [],
+							execution: [],
+							validation: [],
 							visible: false,
 						},
 						pinnedData: {
@@ -705,8 +706,8 @@ describe('useCanvasMapping', () => {
 			});
 		});
 
-		describe('nodeIssuesById', () => {
-			it('should return empty array when node has no issues', () => {
+		describe('node issues', () => {
+			it('should return empty arrays when node has no issues', () => {
 				const workflowsStore = mockedStore(useWorkflowsStore);
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
@@ -715,13 +716,17 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: [],
+					validation: [],
+					visible: false,
+				});
 			});
 
 			it('should handle execution errors', () => {
@@ -748,13 +753,17 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([`${errorMessage} (${errorDescription})`]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: [`${errorMessage} (${errorDescription})`],
+					validation: [],
+					visible: true,
+				});
 			});
 
 			it('should handle execution error without description', () => {
@@ -780,13 +789,17 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([errorMessage]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: [errorMessage],
+					validation: [],
+					visible: true,
+				});
 			});
 
 			it('should handle multiple execution errors', () => {
@@ -821,16 +834,17 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Error 1 (Description 1)',
-					'Error 2 (Description 2)',
-				]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: ['Error 1 (Description 1)', 'Error 2 (Description 2)'],
+					validation: [],
+					visible: true,
+				});
 			});
 
 			it('should handle node issues', () => {
@@ -847,15 +861,17 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowRunData = {};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: [],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+					visible: true,
+				});
 			});
 
 			it('should combine execution errors and node issues', () => {
@@ -885,16 +901,17 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Execution error (Error description)',
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: ['Execution error (Error description)'],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+					visible: true,
+				});
 			});
 
 			it('should handle multiple nodes with different issues', () => {
@@ -925,16 +942,22 @@ describe('useCanvasMapping', () => {
 					],
 				};
 
-				const { nodeIssuesById } = useCanvasMapping({
+				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
 					connections: ref(connections),
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node1.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
-				expect(nodeIssuesById.value[node2.id]).toEqual(['Execution error (Error description)']);
+				expect(mappedNodes.value[0]?.data?.issues).toEqual({
+					execution: [],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+					visible: true,
+				});
+				expect(mappedNodes.value[1]?.data?.issues).toEqual({
+					execution: ['Execution error (Error description)'],
+					validation: [],
+					visible: true,
+				});
 			});
 		});
 
