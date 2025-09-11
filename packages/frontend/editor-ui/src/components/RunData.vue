@@ -88,7 +88,7 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
-import { isTrimmedNodeExecutionData } from '@/utils/executionUtils';
+import { hasTrimmedRunData } from '@/utils/executionUtils';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -295,10 +295,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const isTrimmedManualExecutionDataItem = computed(() =>
-	isTrimmedNodeExecutionData(rawInputData.value),
-);
-
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -353,6 +349,10 @@ const workflowRunData = computed(() => {
 });
 const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
+
+const isTrimmedManualExecutionDataItem = computed(() =>
+	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -669,13 +669,24 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
-watch(hasNodeRun, () => {
-	if (props.paneType === 'output') setDisplayMode();
-	else {
+watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	} else {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
 });
+
+watch(
+	rawInputData,
+	(newValue, oldValue) => {
+		if (newValue.length !== oldValue.length) {
+			outputIndex.value = determineInitialOutputIndex();
+		}
+	},
+	{ deep: true },
+);
 
 watch(
 	inputDataPage,
