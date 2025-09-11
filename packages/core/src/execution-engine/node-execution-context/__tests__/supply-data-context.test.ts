@@ -219,4 +219,38 @@ describe('SupplyDataContext', () => {
 			expect(latestRunIndex).toBe(2);
 		});
 	});
+
+	describe('logNodeOutput', () => {
+		it('it should parse JSON', () => {
+			const json = '{"key": "value", "nested": {"foo": "bar"}}';
+			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
+			const numberArg = 42;
+			const stringArg = 'hello world!';
+
+			const supplyDataContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const sendMessageSpy = jest.spyOn(supplyDataContext, 'sendMessageToUI');
+
+			supplyDataContext.logNodeOutput(json, numberArg, stringArg);
+
+			expect(sendMessageSpy.mock.calls[0][0]).toEqual(expectedParsedObject);
+			expect(sendMessageSpy.mock.calls[0][1]).toBe(numberArg);
+			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
+
+			sendMessageSpy.mockRestore();
+		});
+	});
 });
