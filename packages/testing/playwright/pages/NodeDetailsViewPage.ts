@@ -186,17 +186,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId(`parameter-input-${parameterName}`);
 	}
 
-	getInputOptionsContainer(parameterName: string) {
-		return this.page.getByTestId(`${parameterName}-parameter-input-options-container`);
-	}
-
-	async openParameterInputExpressionEditor(parameterName: string) {
-		const optionsContainer = this.getInputOptionsContainer(parameterName);
-		await optionsContainer.hover();
-		await optionsContainer.getByText('Expression').click();
-		return this.getInlineExpressionEditorInput(parameterName);
-	}
-
 	getParameterInputField(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('input');
 	}
