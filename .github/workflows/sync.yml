@@ -24,15 +24,16 @@ jobs:
           
       - name: Backup ALL custom files automatically
         run: |
-          
+          # Sichere ALLES was nicht von n8n original kommt
           git ls-files > /tmp/current_files.txt
           git remote add upstream https://github.com/n8n-io/n8n.git || true
           git fetch upstream
           git ls-tree -r --name-only upstream/master > /tmp/upstream_files.txt
           
-          
+          # Finde alle Dateien die NUR in deinem Repo sind
           comm -23 <(sort /tmp/current_files.txt) <(sort /tmp/upstream_files.txt) > /tmp/custom_files.txt
           
+          # Sichere diese custom files
           mkdir -p /tmp/backup
           while read file; do
             if [ -f "$file" ]; then
@@ -47,6 +48,7 @@ jobs:
           
       - name: Restore ALL custom files
         run: |
+          # Stelle ALLE custom files wieder her
           cp -r /tmp/backup/* . 2>/dev/null || true
           git add .
           git commit -m "Auto-sync: Restored all custom files" || echo "No changes"
