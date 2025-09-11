@@ -7,8 +7,7 @@ export class OracleDBApi implements ICredentialType {
 
 	displayName = 'Oracle Database Credentials API';
 
-	documentationUrl =
-		'https://node-oracledb.readthedocs.io/en/latest/user_guide/connection_handling.html';
+	documentationUrl = 'oracledb';
 
 	properties: INodeProperties[] = [
 		{
