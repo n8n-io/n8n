@@ -197,8 +197,23 @@ export const useDataStoreOperations = ({
 		const { data, api, oldValue, colDef } = params;
 		const value = params.data[colDef.field!];
 
-		if (value === undefined || value === oldValue) {
-			return;
+		const cellType = colDef.cellDataType;
+
+		if (cellType === 'date') {
+			if (value instanceof Date && oldValue instanceof Date) {
+				// Compare time values for Date objects
+				if (value.getTime() === oldValue.getTime()) {
+					return;
+				}
+			} else if (value === null && oldValue === null) {
+				// Both are null, no change
+				return;
+			}
+		} else {
+			// Primitive strict equality check for non-date types
+			if (value === undefined || value === oldValue) {
+				return;
+			}
 		}
 
 		if (typeof data.id !== 'number') {
