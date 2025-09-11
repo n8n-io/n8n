@@ -130,10 +130,11 @@ test.describe('Inline expression editor', () => {
 				'[Execute previous nodes for preview]',
 			);
 
-			// FIXME: This should not be Monday
 			await n8n.ndv.clearExpressionEditor();
-			await n8n.ndv.typeInExpressionEditor("{{ $('Schedule Trigger').item.json.myStr");
-			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('Monday');
+			await n8n.ndv.typeInExpressionEditor("{{ $('No Operation, do nothing').item.json.myStr");
+			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText(
+				'[Execute previous nodes for preview]',
+			);
 
 			// Run workflow
 			await n8n.ndv.close();
@@ -151,7 +152,7 @@ test.describe('Inline expression editor', () => {
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('Monday');
 
 			await n8n.ndv.clearExpressionEditor();
-			await n8n.ndv.typeInExpressionEditor("{{ $('Schedule Trigger').item.json.myStr");
+			await n8n.ndv.typeInExpressionEditor("{{ $('No Operation, do nothing').item.json.myStr");
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('Monday');
 		});
 	});
