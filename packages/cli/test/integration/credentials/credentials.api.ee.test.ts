@@ -34,6 +34,7 @@ import {
 } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
+import { RoleCacheService } from '@/services/role-cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -59,6 +60,10 @@ const mailer = mockInstance(UserManagementMailer);
 let projectService: ProjectService;
 let projectRepository: ProjectRepository;
 
+beforeAll(async () => {
+	await Container.get(RoleCacheService).refreshCache();
+});
+
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);
 	projectRepository = Container.get(ProjectRepository);
@@ -81,7 +86,7 @@ beforeEach(async () => {
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
-}, 20000);
+});
 
 afterEach(() => {
 	jest.clearAllMocks();
@@ -97,13 +102,11 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
-		console.log(response.body);
-
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
-	}, 30000);
+	});
 });
 
 // ----------------------------------------
@@ -181,7 +184,7 @@ describe('GET /credentials', () => {
 
 		expect(Array.isArray(memberCredential.sharedWithProjects)).toBe(true);
 		expect(memberCredential.sharedWithProjects).toHaveLength(0);
-	}, 20000);
+	});
 
 	test('should return only relevant creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
