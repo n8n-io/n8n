@@ -78,6 +78,12 @@ const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 
+// In 'queue' mode concurrency control is applied per worker and returning a global count
+// of concurrent executions would not be meaningful/helpful.
+const showConcurrencyHeader = computed(
+	() => settingsStore.isConcurrencyEnabled && !settingsStore.isQueueModeEnabled,
+);
+
 watch(
 	() => props.executions,
 	() => {
@@ -329,7 +335,7 @@ const goToUpgrade = () => {
 
 			<div style="margin-left: auto">
 				<ConcurrentExecutionsHeader
-					v-if="settingsStore.isConcurrencyEnabled"
+					v-if="showConcurrencyHeader"
 					:running-executions-count="concurrentTotal"
 					:concurrency-cap="settingsStore.concurrency"
 					:is-cloud-deployment="settingsStore.isCloudDeployment"

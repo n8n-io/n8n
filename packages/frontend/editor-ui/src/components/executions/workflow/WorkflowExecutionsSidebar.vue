@@ -54,6 +54,12 @@ const executionListRef = ref<HTMLElement | null>(null);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
+// In 'queue' mode concurrency control is applied per worker and returning a global count
+// of concurrent executions would not be meaningful/helpful.
+const showConcurrencyHeader = computed(
+	() => settingsStore.isConcurrencyEnabled && !settingsStore.isQueueModeEnabled,
+);
+
 watch(
 	() => route,
 	(to: RouteLocationNormalizedLoaded, from: RouteLocationNormalizedLoaded) => {
@@ -185,7 +191,7 @@ const goToUpgrade = () => {
 			</n8n-heading>
 
 			<ConcurrentExecutionsHeader
-				v-if="settingsStore.isConcurrencyEnabled"
+				v-if="showConcurrencyHeader"
 				:running-executions-count="executionsStore.concurrentExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"

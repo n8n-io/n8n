@@ -1,4 +1,3 @@
-import config from '@/config';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionSummaries } from '@n8n/db';
@@ -6,6 +5,7 @@ import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } 
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import config from '@/config';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
