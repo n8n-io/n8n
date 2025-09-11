@@ -107,7 +107,7 @@ describe('RoleCacheService', () => {
 
 			expect(cacheService.get).toHaveBeenCalledWith('roles:scope-map', {
 				refreshFn: expect.any(Function),
-				fallbackValue: {},
+				fallbackValue: undefined,
 			});
 			expect(result).toContain('project:admin');
 			expect(result).toContain('project:editor');
