@@ -1,1 +1,7 @@
 *.sh text eol=lf
+.devcontainer/** merge=ours
+workflows/** merge=ours
+initial-credentials/** merge=ours
+updates/** merge=ours
+docker-compose.yml merge=ours
+requirements.txt merge=ours
