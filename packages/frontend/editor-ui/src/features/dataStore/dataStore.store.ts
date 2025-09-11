@@ -37,7 +37,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
 
 	const maxSizeMB = computed(() =>
-		Math.floor(settingsStore.settings?.dataTables.maxSize / 1024 / 1024),
+		Math.floor(settingsStore.settings?.dataTables?.maxSize / 1024 / 1024),
 	);
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
