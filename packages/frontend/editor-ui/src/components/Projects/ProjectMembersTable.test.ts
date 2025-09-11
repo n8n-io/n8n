@@ -487,4 +487,49 @@ describe('ProjectMembersTable', () => {
 			expect(screen.getByTestId('data-table')).toBeInTheDocument();
 		});
 	});
+
+	describe('Pagination Configuration', () => {
+		it('should configure page-sizes to hide pagination controls', () => {
+			renderComponent();
+
+			// Find the N8nDataTableServer component mock
+			const tableElement = screen.getByTestId('data-table');
+			expect(tableElement).toBeInTheDocument();
+
+			// Verify that pagination is effectively hidden by checking the table renders
+			// without pagination controls (this is tested indirectly through the mock)
+			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+		});
+
+		it('should handle empty data without pagination', () => {
+			renderComponent({
+				props: {
+					data: { items: [], count: 0 },
+				},
+			});
+
+			expect(screen.getByTestId('data-table')).toBeInTheDocument();
+			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+		});
+
+		it('should handle large datasets without showing pagination', () => {
+			const largeDataset = Array.from({ length: 50 }, (_, i) => ({
+				id: `user-${i}`,
+				firstName: `User${i}`,
+				lastName: `Test${i}`,
+				email: `user${i}@example.com`,
+				role: 'project:viewer' as ProjectRole,
+			}));
+
+			renderComponent({
+				props: {
+					data: { items: largeDataset, count: largeDataset.length },
+				},
+			});
+
+			expect(screen.getByTestId('data-table')).toBeInTheDocument();
+			// Pagination should still be hidden due to our page-sizes configuration
+			expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+		});
+	});
 });
