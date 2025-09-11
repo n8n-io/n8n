@@ -2,7 +2,7 @@ import {
 	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreRowsQueryDto,
+	DeleteDataTableRowsDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
@@ -328,20 +328,26 @@ export class DataStoreController {
 		}
 	}
 
-	@Delete('/:dataStoreId/rows')
+	@Delete('/:dataTableId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async deleteDataStoreRows(
+	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Query dto: DeleteDataStoreRowsQueryDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: DeleteDataTableRowsDto,
 	) {
 		try {
-			const { ids } = dto;
-			return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
+			return await this.dataStoreService.deleteRows(
+				dataTableId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
 			} else {
