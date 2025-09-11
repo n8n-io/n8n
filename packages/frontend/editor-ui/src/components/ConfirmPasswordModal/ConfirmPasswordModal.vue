@@ -30,7 +30,7 @@ const onSubmit = async (data: FormValues) => {
 	loading.value = true;
 
 	confirmPasswordEventBus.emit('close', {
-		currentPassword: currentPassword,
+		currentPassword,
 	});
 };
 
