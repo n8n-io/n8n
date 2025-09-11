@@ -2311,7 +2311,7 @@ export interface IRunExecutionDataV0 {
 	/**
 	 * This is used to prevent breaking change
 	 * for waiting executions started before signature validation was added
-	 * @deprecated Left only so we can still the presence of this. Should be removed some time later
+	 * @deprecated Left only so we can still detect the presence of this. Should be removed some time later
 	 */
 	validateSignature?: boolean;
 	waitTill?: Date;
