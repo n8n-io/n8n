@@ -141,7 +141,11 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
-	getInlineExpressionEditorInput() {
+	getInlineExpressionEditorInput(parameterName?: string) {
+		if (parameterName) {
+			const parameterInput = this.getParameterInput(parameterName);
+			return parameterInput.getByTestId('inline-expression-editor-input');
+		}
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
 
@@ -165,21 +169,32 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.el-popper:visible');
 	}
 
-	async clearExpressionEditor() {
-		const editor = this.getInlineExpressionEditorInput();
+	async clearExpressionEditor(parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
-	async typeInExpressionEditor(text: string) {
-		const editor = this.getInlineExpressionEditorInput();
+	async typeInExpressionEditor(text: string, parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await editor.type(text);
 	}
 
 	getParameterInput(parameterName: string) {
 		return this.page.getByTestId(`parameter-input-${parameterName}`);
+	}
+
+	getInputOptionsContainer(parameterName: string) {
+		return this.page.getByTestId(`${parameterName}-parameter-input-options-container`);
+	}
+
+	async openParameterInputExpressionEditor(parameterName: string) {
+		const optionsContainer = this.getInputOptionsContainer(parameterName);
+		await optionsContainer.hover();
+		await optionsContainer.getByText('Expression').click();
+		return this.getInlineExpressionEditorInput(parameterName);
 	}
 
 	getParameterInputField(parameterName: string) {
