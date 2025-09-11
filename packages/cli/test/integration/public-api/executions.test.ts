@@ -7,10 +7,8 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
-import type { ExecutionStatus } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { Telemetry } from '@/telemetry';
+import { Container } from '@n8n/di';
+import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
 
 import {
 	createdExecutionWithStatus,
@@ -22,6 +20,12 @@ import {
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
 let owner: User;
 let user1: User;
@@ -231,6 +235,107 @@ describe('DELETE /executions/:id', () => {
 		expect(waitTill).toBeNull();
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
+	});
+});
+
+describe('POST /executions/:id/retry', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
+	);
+
+	test('should retry an execution', async () => {
+		const mockedExecutionResponse = { status: 'waiting' } as any;
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedExecutionResponse);
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedExecutionResponse);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when execution is not found', async () => {
+		const nonExistentExecutionId = 99999999;
+
+		const response = await authUser1Agent.post(`/executions/${nonExistentExecutionId}/retry`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+	});
+
+	test('should return 409 when trying to retry a queued execution', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new QueuedExecutionRetryError());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toBe(
+			'Execution is queued to run (not yet started) so it cannot be retried',
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 409 when trying to retry an aborted execution without execution data', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new AbortedExecutionRetryError());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				status: 'error',
+				finished: false,
+				data: JSON.stringify({ executionData: null }),
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toBe(
+			'The execution was aborted before starting, so it cannot be retried',
+		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 400 when trying to retry a finished execution', async () => {
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockRejectedValue(new UnexpectedError('The execution succeeded, so it cannot be retried.'));
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution(
+			{
+				status: 'success',
+				finished: true,
+				data: {} as any,
+			},
+			workflow,
+		);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('The execution succeeded, so it cannot be retried.');
+
+		executionServiceSpy.mockRestore();
 	});
 });
 
