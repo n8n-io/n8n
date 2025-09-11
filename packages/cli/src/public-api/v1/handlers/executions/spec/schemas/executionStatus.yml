@@ -1,5 +1,0 @@
-type: object
-properties:
-  status:
-    type: string
-    enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting']
