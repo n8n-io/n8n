@@ -67,6 +67,10 @@ export type UpsertDataStoreRowOptions = {
 	data: DataStoreRow;
 };
 
+export type DeleteDataTableRowsOptions = {
+	filter?: DataTableFilter;
+};
+
 export type MoveDataStoreColumnOptions = {
 	targetIndex: number;
 };
@@ -97,6 +101,12 @@ export type DataTableInsertRowsResult<
 	: T extends 'id'
 		? Array<Pick<DataStoreRowReturn, 'id'>>
 		: DataTableInsertRowsBulkResult;
+
+export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
+export type DataTablesSizeResult = {
+	sizeBytes: number;
+	sizeState: DataTableSizeStatus;
+};
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
@@ -135,5 +145,5 @@ export interface IDataStoreProjectService {
 
 	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	deleteRows(ids: number[]): Promise<boolean>;
+	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataStoreRowReturn[]>;
 }

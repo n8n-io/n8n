@@ -18,6 +18,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
 
+import { validateOriginHeaders } from './origin-validator';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
@@ -111,24 +112,25 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		let connectionError = '';
 
-		// Extract host domain from origin
-		const originHost = headers.origin?.replace(/^https?:\/\//, '');
-
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (!originHost) {
-			this.logger.warn('Origin header is missing');
-
-			connectionError = 'Invalid origin!';
 		} else if (inProduction) {
-			const expectedHost =
-				typeof headers['x-forwarded-host'] === 'string'
-					? headers['x-forwarded-host']
-					: headers.host;
-			if (expectedHost !== originHost) {
+			const validation = validateOriginHeaders(headers);
+			if (!validation.isValid) {
 				this.logger.warn(
-					`Origin header does NOT match the expected origin. (Origin: "${originHost}", Expected: "${expectedHost}")`,
-					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
+					'Origin header does NOT match the expected origin. ' +
+						`(Origin: "${headers.origin}" -> "${validation.originInfo?.host || 'N/A'}", ` +
+						`Expected: "${validation.rawExpectedHost}" -> "${validation.expectedHost}", ` +
+						`Protocol: "${validation.expectedProtocol}")`,
+					{
+						headers: pick(headers, [
+							'host',
+							'origin',
+							'x-forwarded-proto',
+							'x-forwarded-host',
+							'forwarded',
+						]),
+					},
 				);
 				connectionError = 'Invalid origin!';
 			}

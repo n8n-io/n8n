@@ -4,8 +4,8 @@ import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
-import { DataTable } from './data-table.entity';
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTable } from './data-table.entity';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 

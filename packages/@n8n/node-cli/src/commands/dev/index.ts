@@ -1,4 +1,4 @@
-import { intro, outro, spinner } from '@clack/prompts';
+import { intro, outro, spinner, log } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,7 +18,7 @@ export default class Dev extends Command {
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
 		'<%= config.bin %> <%= command.id %> --external-n8n',
-		'<%= config.bin %> <%= command.id %> --custom-nodes-dir /opt/n8n-extensions',
+		'<%= config.bin %> <%= command.id %> --custom-user-folder /Users/test',
 	];
 	static override flags = {
 		'external-n8n': Flags.boolean({
@@ -29,7 +29,7 @@ export default class Dev extends Command {
 		'custom-user-folder': Flags.directory({
 			default: path.join(os.homedir(), '.n8n-node-cli'),
 			description:
-				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli. You probably want to enable this option if you run n8n with a custom N8N_CUSTOM_EXTENSIONS env variable.',
+				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli.',
 		}),
 	};
 
@@ -67,24 +67,51 @@ export default class Dev extends Command {
 
 		linkingSpinner.stop('Linked custom node to n8n');
 
-		outro('✓ Setup complete');
-
 		if (!flags['external-n8n']) {
-			// Run n8n with hot reload enabled
-			runPersistentCommand('npx', ['-y', '--quiet', 'n8n'], {
-				cwd: n8nUserFolder,
-				env: {
-					...process.env,
-					N8N_DEV_RELOAD: 'true',
-					N8N_RUNNERS_ENABLED: 'true',
-					DB_SQLITE_POOL_SIZE: '10',
-					N8N_USER_FOLDER: n8nUserFolder,
-					N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
-				},
-				name: 'n8n',
-				color: picocolors.green,
-			});
+			let setupComplete = false;
+			const npxN8nSpinner = spinner();
+			npxN8nSpinner.start('Starting n8n dev server');
+			log.warn(picocolors.dim('First run may take a few minutes while dependencies are installed'));
+
+			// Run n8n with hot reload enabled, always attempt to use latest n8n
+			// TODO: Use n8n@latest. Currently using n8n@next because of broken hot reloading before n8n@1.111.0
+			await Promise.race([
+				new Promise<void>((resolve) => {
+					runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
+						cwd: n8nUserFolder,
+						env: {
+							...process.env,
+							N8N_DEV_RELOAD: 'true',
+							N8N_RUNNERS_ENABLED: 'true',
+							DB_SQLITE_POOL_SIZE: '10',
+							N8N_USER_FOLDER: n8nUserFolder,
+							N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
+						},
+						name: 'n8n',
+						color: picocolors.green,
+						allowOutput: (line) => {
+							if (line.includes('Initializing n8n process')) {
+								resolve();
+							}
+
+							return setupComplete;
+						},
+					});
+				}),
+				new Promise<void>((_, reject) => {
+					setTimeout(() => {
+						const error = new Error('n8n startup timeout after 120 seconds');
+						onCancel(error.message);
+						reject(error);
+					}, 120_000);
+				}),
+			]);
+
+			setupComplete = true;
+			npxN8nSpinner.stop('Started n8n dev server');
 		}
+
+		outro('✓ Setup complete');
 
 		// Run `tsc --watch` in background
 		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch'], {
