@@ -16,7 +16,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import type { MeRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { badPasswords } from '@test/test-data';
 
