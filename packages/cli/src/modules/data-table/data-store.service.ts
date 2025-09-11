@@ -34,7 +34,6 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
-import { EntityManager } from '@n8n/typeorm';
 
 @Service()
 export class DataStoreService {
@@ -192,7 +191,15 @@ export class DataStoreService {
 
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
-			const updated = await this.updateRowImpl(dataTableId, columns, dto, true, em);
+			this.validateUpdateParams(dto, columns);
+			const updated = await this.dataStoreRowsRepository.updateRow(
+				dataTableId,
+				dto.data,
+				dto.filter,
+				columns,
+				true,
+				em,
+			);
 
 			if (updated.length > 0) {
 				return returnData ? updated : true;
@@ -231,30 +238,6 @@ export class DataStoreService {
 		this.validateAndTransformFilters(filter, columns);
 	}
 
-	private async updateRowImpl<T extends boolean | undefined>(
-		dataTableId: string,
-		columns: DataTableColumn[],
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData?: T,
-		em?: EntityManager,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	private async updateRowImpl(
-		dataTableId: string,
-		columns: DataTableColumn[],
-		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
-		returnData = false,
-		em?: EntityManager,
-	) {
-		return await this.dataStoreRowsRepository.updateRow(
-			dataTableId,
-			dto.data,
-			dto.filter,
-			columns,
-			returnData,
-			em,
-		);
-	}
-
 	async updateRow<T extends boolean | undefined>(
 		dataTableId: string,
 		projectId: string,
@@ -273,7 +256,14 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
 			this.validateUpdateParams(dto, columns);
-			return await this.updateRowImpl(dataTableId, columns, dto, returnData, em);
+			return await this.dataStoreRowsRepository.updateRow(
+				dataTableId,
+				dto.data,
+				dto.filter,
+				columns,
+				returnData,
+				em,
+			);
 		});
 	}
 

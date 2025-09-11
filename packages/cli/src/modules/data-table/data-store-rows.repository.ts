@@ -276,6 +276,14 @@ export class DataStoreRowsRepository {
 		return inserted;
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		data: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		returnData?: T,
+		em?: EntityManager,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		data: Record<string, DataStoreColumnJsType | null>,
