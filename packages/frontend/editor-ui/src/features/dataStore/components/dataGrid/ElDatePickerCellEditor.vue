@@ -123,7 +123,7 @@ defineExpose({
 			:editable="true"
 			:teleported="false"
 			:default-time="defaultMidnight"
-			popper-class="datastore-datepicker-popper"
+			popper-class="ag-custom-component-popup datastore-datepicker-popper"
 			placeholder="YYYY-MM-DD (HH:mm:ss)"
 			size="small"
 			@change="onChange"

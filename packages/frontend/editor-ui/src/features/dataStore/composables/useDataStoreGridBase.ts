@@ -148,6 +148,7 @@ export const useDataStoreGridBase = ({
 				component: ElDatePickerCellEditor,
 			});
 			columnDef.valueFormatter = dateValueFormatter;
+			columnDef.cellEditorPopup = true;
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
 		}
