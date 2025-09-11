@@ -1,3 +1,4 @@
+import * as fsPromises from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { SimpleGit } from 'simple-git';
@@ -35,7 +36,7 @@ jest.mock('fs/promises', () => ({
 	mkdir: jest.fn(),
 }));
 
-const mockFsPromises = jest.mocked(require('fs/promises'));
+const mockFsPromises = jest.mocked(fsPromises);
 
 describe('Git Node', () => {
 	let gitNode: Git;
