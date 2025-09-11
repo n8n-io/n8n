@@ -147,16 +147,6 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	private async insertRowsImpl(
-		dataStoreId: string,
-		rows: DataStoreRows,
-		columns: DataTableColumn[],
-		returnType: DataTableInsertRowsReturnType,
-		em: EntityManager,
-	) {
-		return;
-	}
-
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
 		dataStoreId: string,
 		projectId: string,
