@@ -24,6 +24,9 @@ RUN echo '#!/bin/sh' > /usr/local/bin/setup-defaults.sh && \
     chmod +x /usr/local/bin/setup-defaults.sh && \
     rm /tmp/setup-defaults.sh
 
+COPY workflows-static/ /usr/src/app/workflows-static/
+
+
 # Step 4: Set correct ownership and switch back to the non-root user
 RUN chown -R node:node /home/node /usr/src/app
 USER node

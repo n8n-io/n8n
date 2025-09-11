@@ -21,6 +21,12 @@ if [ ! -f "/home/node/.n8n/workflows-initialized" ]; then
     touch /home/node/.n8n/workflows-initialized
 fi
 
+echo "=== IMPORTING STATIC WORKFLOWS always ==="
+if [ -d "/usr/src/app/workflows-static" ]; then
+    n8n import:workflow --input="/usr/src/app/workflows-static/" --separate
+fi
+
+
 echo "=== IMPORTING CREDENTIALS ==="
 if [ ! -f "/home/node/.n8n/credentials-initialized" ]; then
     n8n import:credentials --input="/usr/src/app/initial-credentials/" --separate || echo "Credential import failed - will create manually"
