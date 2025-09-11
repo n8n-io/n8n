@@ -357,7 +357,12 @@ export class ExecutionService {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		let concurrentExecutionsCount = 0;
-		if (this.globalConfig.executions.concurrency.productionLimit !== -1) {
+		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
+		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
+
+		// In 'queue' mode concurrency control is applied per worker and returning a global count
+		// of concurrent executions would not be meaningful/helpful.
+		if (isConcurrencyEnabled && isInRegularMode) {
 			concurrentExecutionsCount = await this.executionRepository.getConcurrentExecutionsCount();
 		}
 

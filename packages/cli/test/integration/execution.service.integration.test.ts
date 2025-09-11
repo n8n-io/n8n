@@ -1,5 +1,6 @@
+import config from '@/config';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { ExecutionSummaries } from '@n8n/db';
 import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -12,18 +13,12 @@ import { annotateExecution, createAnnotationTags, createExecution } from './shar
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
 	let executionRepository: ExecutionRepository;
+	const globalConfig = Container.get(GlobalConfig);
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		executionRepository = Container.get(ExecutionRepository);
-		const globalConfig = mock<GlobalConfig>({
-			executions: {
-				concurrency: {
-					productionLimit: -1,
-				},
-			},
-		});
 
 		executionService = new ExecutionService(
 			globalConfig,
@@ -40,6 +35,11 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 		);
+	});
+
+	beforeEach(() => {
+		globalConfig.executions.concurrency.productionLimit = -1;
+		config.set('executions.mode', 'regular');
 	});
 
 	afterEach(async () => {
@@ -514,6 +514,109 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+		});
+
+		describe('concurrentExecutionsCount', () => {
+			test('should return concurrentExecutionsCount when concurrency is enabled', async () => {
+				globalConfig.executions.concurrency.productionLimit = 4;
+
+				const workflow = await createWorkflow();
+				const concurrentExecutionsData = await Promise.all([
+					createExecution({ status: 'running', mode: 'webhook' }, workflow),
+					createExecution({ status: 'running', mode: 'trigger' }, workflow),
+				]);
+
+				const nonConcurrentExecutionsData = await Promise.all([
+					createExecution({ status: 'success' }, workflow),
+					createExecution({ status: 'crashed' }, workflow),
+					createExecution({ status: 'new' }, workflow),
+					createExecution({ status: 'running', mode: 'manual' }, workflow),
+				]);
+
+				const executions = [...concurrentExecutionsData, ...nonConcurrentExecutionsData];
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [workflow.id],
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: executions.length,
+					estimated: false,
+					results: expect.arrayContaining(
+						executions.map((e) => expect.objectContaining({ id: e.id })),
+					),
+					concurrentExecutionsCount: concurrentExecutionsData.length,
+				});
+			});
+
+			test('should set concurrentExecutionsCount to 0 when concurrency is disabled', async () => {
+				globalConfig.executions.concurrency.productionLimit = -1;
+
+				const workflow = await createWorkflow();
+
+				const executions = await Promise.all([
+					createExecution({ status: 'running', mode: 'webhook' }, workflow),
+					createExecution({ status: 'running', mode: 'trigger' }, workflow),
+					createExecution({ status: 'success' }, workflow),
+					createExecution({ status: 'crashed' }, workflow),
+					createExecution({ status: 'new' }, workflow),
+					createExecution({ status: 'running', mode: 'manual' }, workflow),
+				]);
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [workflow.id],
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: executions.length,
+					estimated: false,
+					results: expect.arrayContaining(
+						executions.map((e) => expect.objectContaining({ id: e.id })),
+					),
+					concurrentExecutionsCount: 0,
+				});
+			});
+
+			test('should set concurrentExecutionsCount to 0 in queue mode', async () => {
+				config.set('executions.mode', 'queue');
+				globalConfig.executions.concurrency.productionLimit = 4;
+
+				const workflow = await createWorkflow();
+
+				const executions = await Promise.all([
+					createExecution({ status: 'running', mode: 'webhook' }, workflow),
+					createExecution({ status: 'running', mode: 'trigger' }, workflow),
+					createExecution({ status: 'success' }, workflow),
+					createExecution({ status: 'crashed' }, workflow),
+					createExecution({ status: 'new' }, workflow),
+					createExecution({ status: 'running', mode: 'manual' }, workflow),
+				]);
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [workflow.id],
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: executions.length,
+					estimated: false,
+					results: expect.arrayContaining(
+						executions.map((e) => expect.objectContaining({ id: e.id })),
+					),
+					concurrentExecutionsCount: 0,
+				});
+			});
 		});
 	});
 
