@@ -150,16 +150,15 @@ input {
 }
 
 .dateFieldSegment:hover {
-	background-color: var(--color-foreground-light);
+	outline: 1px solid var(--color-foreground-base);
 }
 
-.dateFieldSegment:focus {
-	background-color: var(--color-foreground-base);
-	outline: none;
+.dateFieldSegment:focus-visible {
+	outline: 1px solid var(--color-secondary);
 }
 
 .dateFieldSegment[aria-valuetext='Empty'] {
-	color: var(--color-text-light);
+	color: var(--color-foreground-dark);
 }
 
 .clearButton {
