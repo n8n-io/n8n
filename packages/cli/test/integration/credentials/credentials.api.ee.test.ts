@@ -97,6 +97,8 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
+		console.log(response.body);
+
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
