@@ -19,14 +19,13 @@ export const N8N_BANNERS: N8nBanners = {
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
 	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
-	// TODO: figure out the priority for this banner
 	DATA_STORE_STORAGE_LIMIT_WARNING: {
 		priority: 300,
-		component: DataStoreStorageLimitWarningBanner as Component,
+		component: DataStoreStorageLimitWarningBanner,
 	},
 	DATA_STORE_STORAGE_LIMIT_ERROR: {
 		priority: 400,
-		component: DataStoreStorageLimitErrorBanner as Component,
+		component: DataStoreStorageLimitErrorBanner,
 	},
 };
 </script>
