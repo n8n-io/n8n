@@ -29,7 +29,7 @@ export class UserUpdateRequestDto extends Z.class({
 	lastName: nameSchema().optional(),
 	mfaCode: z.string().optional(),
 	/**
-	 * The current password is required when changing the email address.
+	 * The current password is required when changing the email address and MFA is disabled.
 	 */
 	currentPassword: z.string().optional(),
 }) {}
