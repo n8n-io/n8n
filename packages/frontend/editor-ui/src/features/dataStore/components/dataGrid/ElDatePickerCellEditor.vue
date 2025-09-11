@@ -14,41 +14,6 @@ const initialValue = ref<Date | null>(null);
 
 const inputWidth = ref(props.params.column.getActualWidth() - 4); // -4 for the border
 
-const defaultMidnight = new Date();
-defaultMidnight.setHours(0, 0, 0, 0);
-
-onMounted(async () => {
-	const initial = props.params.value as unknown;
-	if (initial === null || initial === undefined) {
-		dateValue.value = null;
-	} else if (initial instanceof Date) {
-		// Use the provided Date as-is (local time)
-		dateValue.value = initial;
-	}
-	initialValue.value = dateValue.value;
-
-	await nextTick();
-	try {
-		// Focus to open the calendar popover
-		// Element Plus exposes a focus() method on the picker instance
-		// Using any to avoid tying to internal types
-		(pickerRef.value as unknown as { focus?: () => void })?.focus?.();
-	} catch {}
-});
-
-function getInnerInput(): HTMLInputElement | null {
-	return (wrapperRef.value?.querySelector('input') ?? null) as HTMLInputElement | null;
-}
-
-function onChange() {
-	props.params.stopEditing();
-}
-
-function onClear() {
-	dateValue.value = null;
-	props.params.stopEditing();
-}
-
 // Accepts the following loose formats and constructs a local Date:
 // - YYYY-MM-DD -> 00:00:00
 // - YYYY-MM-DD HH:mm -> seconds default to 00
@@ -114,6 +79,38 @@ function onKeydown(e: KeyboardEvent) {
 	}
 }
 
+function getInnerInput(): HTMLInputElement | null {
+	return (wrapperRef.value?.querySelector('input') ?? null) as HTMLInputElement | null;
+}
+
+function onChange() {
+	props.params.stopEditing();
+}
+
+function onClear() {
+	dateValue.value = null;
+	props.params.stopEditing();
+}
+
+onMounted(async () => {
+	const initial = props.params.value as unknown;
+	if (initial === null || initial === undefined) {
+		dateValue.value = null;
+	} else if (initial instanceof Date) {
+		// Use the provided Date as-is (local time)
+		dateValue.value = initial;
+	}
+	initialValue.value = dateValue.value;
+
+	await nextTick();
+	try {
+		// Focus to open the calendar popover
+		// Element Plus exposes a focus() method on the picker instance
+		// Using any to avoid tying to internal types
+		(pickerRef.value as unknown as { focus?: () => void })?.focus?.();
+	} catch {}
+});
+
 defineExpose({
 	getValue: () => {
 		// Prefer what's typed in the input (in case Element Plus didn't commit it)
@@ -127,8 +124,8 @@ defineExpose({
 	},
 	isPopup: () => true,
 	// This is triggered when cell editing is ending
-	// Using this one since, `visible-changed` event from the picker is not firing
-	// We want to commit any manually typed value when the user clicks outside
+	// We want to permit loose date formats, so parse and accept them here
+	// If parsing fails, cancel the edit
 	isCancelAfterEnd: () => {
 		const input = getInnerInput();
 		if (!input) return true;
@@ -158,7 +155,6 @@ defineExpose({
 			:clearable="true"
 			:editable="true"
 			:teleported="false"
-			:default-time="defaultMidnight"
 			popper-class="ag-custom-component-popup datastore-datepicker-popper"
 			placeholder="YYYY-MM-DD (HH:mm:ss)"
 			size="small"
