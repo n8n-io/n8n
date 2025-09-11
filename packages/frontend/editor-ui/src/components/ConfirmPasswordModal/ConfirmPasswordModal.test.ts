@@ -2,10 +2,9 @@ import { createTestingPinia } from '@pinia/testing';
 import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
 import type { createPinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CONFIRM_PASSWORD_MODAL_KEY } from '@/constants';
 import { confirmPasswordEventBus } from './confirm-password.event-bus';
 import { STORES } from '@n8n/stores';
@@ -44,12 +43,7 @@ describe('ConfirmPasswordModal', () => {
 	let pinia: ReturnType<typeof createPinia>;
 
 	beforeEach(() => {
-		createAppModals();
 		pinia = createTestingPinia({ initialState });
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	it('should render correctly', () => {
