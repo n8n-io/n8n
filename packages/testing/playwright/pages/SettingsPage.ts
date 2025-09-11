@@ -80,7 +80,8 @@ export class SettingsPage extends BasePage {
 		await this.getMfaSaveButton().click();
 	}
 
-	async disableMfaWithCode(code: string) {
+	async disableMfa(code: string) {
+		await this.goToPersonalSettings();
 		await this.clickDisableMfa();
 		await this.fillMfaCodeOrRecoveryCode(code);
 		await this.clickMfaSave();
@@ -108,55 +109,10 @@ export class SettingsPage extends BasePage {
 		await this.saveSettings();
 	}
 
-	// Complete MFA enable flow matching Cypress exactly
-	async enableMfa(): Promise<string> {
-		await this.goToPersonalSettings();
-
-		// Set up intercept for MFA QR code request (like Cypress @getMfaQrCode)
-		const qrCodePromise = this.page.waitForResponse(
+	// Simple method to wait for MFA QR code response (like other settings methods)
+	async waitForMfaQrResponse(): Promise<void> {
+		await this.page.waitForResponse(
 			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
 		);
-
-		await this.clickEnableMfa();
-
-		// Wait for QR code request to complete (like Cypress cy.wait('@getMfaQrCode'))
-		await qrCodePromise;
-
-		// Complete the MFA setup using the modal (gets secret from clipboard like Cypress)
-		const { MfaSetupModal } = await import('./MfaSetupModal');
-		const mfaSetupModal = new MfaSetupModal(this.page);
-		const actualSecret = await mfaSetupModal.completeMfaSetup();
-
-		// Return the actual secret so tests can use it for login
-		return actualSecret;
-	}
-
-	async disableMfa(code: string) {
-		await this.goToPersonalSettings();
-		await this.disableMfaWithCode(code);
-	}
-
-	/**
-	 * Complete MFA enable flow with recovery code extraction
-	 * Includes QR code request handling and delegates to MfaSetupModal
-	 * @returns Object containing the MFA secret and extracted recovery code
-	 */
-	async enableMfaWithRecovery(): Promise<{ secret: string; recoveryCode: string }> {
-		await this.goToPersonalSettings();
-
-		// Set up intercept for MFA QR code request (like Cypress @getMfaQrCode)
-		const qrCodePromise = this.page.waitForResponse(
-			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
-		);
-
-		await this.clickEnableMfa();
-
-		// Wait for QR code request to complete (like Cypress cy.wait('@getMfaQrCode'))
-		await qrCodePromise;
-
-		// Complete MFA setup and return credentials
-		const { MfaSetupModal } = await import('./MfaSetupModal');
-		const mfaSetupModal = new MfaSetupModal(this.page);
-		return await mfaSetupModal.setupMfaWithRecoveryCode();
 	}
 }
