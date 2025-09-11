@@ -13,7 +13,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: string; userId: string }];
+	'update:role': [payload: { role: ProjectRole | 'remove'; userId: string }];
 }>();
 
 const selectedRole = ref<string>(props.data.role);
@@ -31,7 +31,7 @@ const roleLabel = computed(() =>
 		: selectedRole.value,
 );
 
-const onActionSelect = (role: string) => {
+const onActionSelect = (role: ProjectRole | 'remove') => {
 	emit('update:role', {
 		role,
 		userId: props.data.id,

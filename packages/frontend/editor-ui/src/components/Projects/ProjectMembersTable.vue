@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
-	'update:role': [payload: { role: ProjectRole; userId: string }];
+	'update:role': [payload: { role: ProjectRole | 'remove'; userId: string }];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -71,9 +71,9 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 	},
 }));
 
-const roleActions = computed<Array<ActionDropdownItem<string>>>(() => [
+const roleActions = computed<Array<ActionDropdownItem<ProjectRole | 'remove'>>>(() => [
 	...props.projectRoles.map((role) => ({
-		id: role.slug,
+		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
 	})),
@@ -89,12 +89,8 @@ const canUpdateRole = (member: ProjectMemberData): boolean => {
 	return member.id !== props.currentUserId;
 };
 
-const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
-	if (role === 'remove') {
-		emit('update:role', { role: 'remove' as ProjectRole, userId });
-	} else if (isProjectRole(role)) {
-		emit('update:role', { role, userId });
-	}
+const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: string }) => {
+	emit('update:role', { role, userId });
 };
 </script>
 
