@@ -252,16 +252,13 @@ export class Git implements INodeType {
 				}
 			} catch (error) {
 				if (createBranch) {
-					try {
-						if (startPoint) {
-							await git.checkoutBranch(branchName, startPoint);
-						} else {
-							await git.checkoutLocalBranch(branchName);
-						}
-					} catch (createError) {
-						// If creation fails, throw original checkout error
-						throw error;
+					// Try to create the branch when checkout fails
+					if (startPoint) {
+						await git.checkoutBranch(branchName, startPoint);
+					} else {
+						await git.checkoutLocalBranch(branchName);
 					}
+					// If we reach here, branch creation succeeded
 				} else {
 					// Don't create branch, throw original error
 					throw error;
@@ -368,7 +365,7 @@ export class Git implements INodeType {
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
 					const branch = options.branch;
-					if (branch !== undefined) {
+					if (branch !== undefined && branch !== '') {
 						assertParamIsString('branch', branch, this.getNode());
 						await checkoutBranch(git, {
 							branchName: branch,
@@ -553,7 +550,10 @@ export class Git implements INodeType {
 					const branchName = this.getNodeParameter('branchName', itemIndex);
 					assertParamIsString('branchName', branchName, this.getNode());
 
-					const createBranch = options.createBranch !== false;
+					const createBranch = options.createBranch;
+					if (createBranch !== undefined) {
+						assertParamIsBoolean('createBranch', createBranch, this.getNode());
+					}
 					const remoteName =
 						typeof options.remoteName === 'string' && options.remoteName
 							? options.remoteName

@@ -325,6 +325,19 @@ describe('Git Node', () => {
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
 		});
+
+		it('should not switch branch when empty string is provided', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('commit')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ branch: '' }) // empty string branch
+				.mockReturnValueOnce('test commit');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.commit).toHaveBeenCalledWith('test commit', undefined);
+		});
 	});
 
 	describe('All operations coverage', () => {
@@ -510,7 +523,7 @@ describe('Git Node', () => {
 
 			expect(result[0]).toEqual([
 				{
-					json: { error: 'Error: Branch error' },
+					json: { error: 'Error: Create error' },
 					pairedItem: { item: 0 },
 				},
 			]);
