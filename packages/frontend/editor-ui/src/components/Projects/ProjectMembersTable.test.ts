@@ -2,7 +2,6 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { ProjectRole } from '@n8n/permissions';
-// Removed unused ActionDropdownItem import
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersTable from '@/components/Projects/ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -272,16 +271,6 @@ describe('ProjectMembersTable', () => {
 					userId: '1',
 				},
 			]);
-		});
-
-		it('should emit remove:member when remove action is triggered', async () => {
-			const { emitted } = renderComponent();
-
-			// We can't directly call component methods in this test setup,
-			// but we can verify that the component renders correctly and
-			// the event handling structure is in place
-			expect(screen.getByTestId('data-table')).toBeInTheDocument();
-			expect(emitted()).toBeDefined();
 		});
 	});
 

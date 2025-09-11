@@ -77,6 +77,8 @@ const membersTableState = ref<TableOptions>({
 	],
 });
 
+const pendingRemovals = ref<Set<string>>(new Set());
+
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find(
@@ -115,7 +117,20 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
+const onUpdateMemberRole = async ({
+	userId,
+	role,
+}: {
+	userId: string;
+	role: ProjectRole | 'remove';
+}) => {
+	if (role === 'remove') {
+		// Mark for pending removal instead of immediate removal
+		pendingRemovals.value.add(userId);
+		isDirty.value = true;
+		return;
+	}
+
 	if (!projectsStore.currentProject) {
 		return;
 	}
@@ -160,50 +175,6 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 	}
 };
 
-const onRemoveMember = async ({ userId }: { userId: string }) => {
-	if (!projectsStore.currentProject) {
-		return;
-	}
-
-	const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
-	if (memberIndex === -1) {
-		return;
-	}
-
-	// Store original member for rollback
-	const originalMember = { ...formData.value.relations[memberIndex] };
-
-	// Remove member optimistically from UI
-	formData.value.relations.splice(memberIndex, 1);
-
-	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name!,
-			icon: projectIcon.value,
-			description: formData.value.description!,
-			relations: formData.value.relations
-				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
-				.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
-		});
-
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('projects.settings.member.removed.title'),
-		});
-		telemetry.track('User removed member from project', {
-			project_id: projectsStore.currentProject.id,
-			target_user_id: userId,
-		});
-	} catch (error) {
-		// Rollback - restore the member at original position
-		formData.value.relations.splice(memberIndex, 0, originalMember);
-		toast.showError(error, i18n.baseText('projects.settings.member.remove.error.title'));
-	}
-};
-
 const onTextInput = () => {
 	isDirty.value = true;
 };
@@ -214,6 +185,7 @@ const onCancel = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	pendingRemovals.value.clear();
 	isDirty.value = false;
 };
 
@@ -294,17 +266,27 @@ const updateProject = async () => {
 		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
 			throw new Error('Invalid role selected for this project.');
 		}
+
+		// Remove pending removal members from relations before saving
+		const relationsToSave = formData.value.relations.filter(
+			(r: ProjectRelation) => !pendingRemovals.value.has(r.id),
+		);
+
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			description: formData.value.description!,
-			relations: formData.value.relations
+			relations: relationsToSave
 				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
 				.map((r: ProjectRelation) => ({
 					userId: r.id,
 					role: r.role,
 				})),
 		});
+
+		// After successful save, actually remove pending members from formData
+		formData.value.relations = relationsToSave;
+		pendingRemovals.value.clear();
 		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -391,24 +373,27 @@ watch(
 
 // Add users property to the relation objects,
 // So that the table has access to the full user data
+// Filter out users marked for pending removal
 const relationUsers = computed(() =>
-	formData.value.relations.map((relation: ProjectRelation) => {
-		const user = usersStore.usersById[relation.id];
-		if (!user) {
+	formData.value.relations
+		.filter((relation: ProjectRelation) => !pendingRemovals.value.has(relation.id))
+		.map((relation: ProjectRelation) => {
+			const user = usersStore.usersById[relation.id];
+			if (!user) {
+				return {
+					...relation,
+					role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
+					firstName: null,
+					lastName: null,
+					email: null,
+				};
+			}
 			return {
+				...user,
 				...relation,
 				role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
-				firstName: null,
-				lastName: null,
-				email: null,
 			};
-		}
-		return {
-			...user,
-			...relation,
-			role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
-		};
-	}),
+		}),
 );
 
 const membersTableData = computed(() => ({
@@ -538,7 +523,6 @@ onMounted(() => {
 						:project-roles="projectRoles"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
-						@remove:member="onRemoveMember"
 					/>
 				</div>
 			</fieldset>

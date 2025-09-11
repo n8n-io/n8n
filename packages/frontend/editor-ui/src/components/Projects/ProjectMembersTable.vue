@@ -26,7 +26,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: ProjectRole; userId: string }];
-	'remove:member': [payload: { userId: string }];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -44,13 +43,7 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 		key: 'name',
 		width: 400,
 		disableSort: true,
-		value(row: ProjectMemberData) {
-			return {
-				...row,
-				// Format for N8nUserInfo component
-				isPendingUser: false, // Project members are always confirmed users
-			} as UsersInfoProps;
-		},
+		value: (row: ProjectMemberData) => row,
 	},
 	{
 		title: i18n.baseText('projects.settings.table.header.role'),
@@ -98,11 +91,9 @@ const canUpdateRole = (member: ProjectMemberData): boolean => {
 
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 	if (role === 'remove') {
-		emit('remove:member', { userId });
+		emit('update:role', { role: 'remove' as ProjectRole, userId });
 	} else if (isProjectRole(role)) {
 		emit('update:role', { role, userId });
-	} else {
-		console.warn(`Invalid role received: ${role}`);
 	}
 };
 </script>
