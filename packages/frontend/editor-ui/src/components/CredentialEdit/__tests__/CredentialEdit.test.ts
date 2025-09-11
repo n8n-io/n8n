@@ -3,7 +3,7 @@ import CredentialEdit from '@/components/CredentialEdit/CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
-import { cleanupAppModals, createAppModals, retry, mockedStore } from '@/__tests__/utils';
+import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { ICredentialsResponse } from '@/Interface';
 import { within } from '@testing-library/vue';
@@ -212,12 +212,7 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

@@ -13,12 +13,7 @@ import {
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
-import {
-	cleanupAppModals,
-	createAppModals,
-	mockedStore,
-	type MockedStore,
-} from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -112,7 +107,6 @@ let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
-		createAppModals();
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -151,7 +145,6 @@ describe('SettingsUsersView', () => {
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

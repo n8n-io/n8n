@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationsView from '@/views/Evaluations.ee/EvaluationsView.vue';
 
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import userEvent from '@testing-library/user-event';
 import type { TestRunRecord } from '@/api/evaluation.ee';
@@ -49,12 +49,10 @@ describe('EvaluationsView', () => {
 
 	beforeEach(() => {
 		createTestingPinia();
-		createAppModals();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		cleanupAppModals();
 	});
 
 	describe('Test Runs functionality', () => {
