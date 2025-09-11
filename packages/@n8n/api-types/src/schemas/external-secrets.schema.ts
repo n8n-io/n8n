@@ -8,7 +8,7 @@ export type ExternalSecretsProviderData = Record<string, NodeParameterValueType>
 
 export type ExternalSecretsProviderProperty = INodeProperties;
 
-export type ExternalSecretsProviderState = 'connected' | 'tested' | 'initializing' | 'error';
+export type ExternalSecretsProviderState = 'connected' | 'initializing' | 'error';
 
 export interface ExternalSecretsProvider {
 	icon: string;
