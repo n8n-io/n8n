@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
+import {
+	PopoverAnchor,
+	type PopoverAnchorProps,
+	PopoverContent,
+	type PopoverContentProps,
+	PopoverPortal,
+	PopoverRoot,
+	type PopoverRootProps,
+	PopoverTrigger,
+} from 'reka-ui';
 
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
-interface Props {
-	open?: boolean;
+interface Props
+	extends Pick<PopoverContentProps, 'side' | 'align'>,
+		Pick<PopoverRootProps, 'open'>,
+		Pick<PopoverAnchorProps, 'reference'> {
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
@@ -21,10 +32,6 @@ interface Props {
 	 * Popover max height
 	 */
 	maxHeight?: string;
-	/**
-	 * The preferred alignment against the trigger. May change when collisions occur.
-	 */
-	align?: 'start' | 'center' | 'end';
 }
 
 interface Emits {
@@ -32,12 +39,10 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	open: undefined,
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
 	scrollType: 'hover',
-	align: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -48,8 +53,9 @@ const emit = defineEmits<Emits>();
 		<PopoverTrigger :as-child="true">
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
+		<PopoverAnchor v-if="reference" :reference="reference" />
 		<PopoverPortal>
-			<PopoverContent side="bottom" :align="align" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent :side="side" :align="align" :side-offset="5" :class="$style.popoverContent">
 				<N8nScrollArea
 					v-if="enableScrolling"
 					:max-height="props.maxHeight"
