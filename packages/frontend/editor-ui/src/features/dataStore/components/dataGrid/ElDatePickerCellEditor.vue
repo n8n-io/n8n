@@ -123,6 +123,7 @@ defineExpose({
 			:editable="true"
 			:teleported="false"
 			:default-time="defaultMidnight"
+			popper-class="datastore-datepicker-popper"
 			placeholder="YYYY-MM-DD (HH:mm:ss)"
 			size="small"
 			@change="onChange"
@@ -156,6 +157,13 @@ defineExpose({
 	&:where(:focus-within, :active) {
 		box-shadow: none;
 		border: var(--grid-cell-editing-border);
+	}
+}
+
+.datastore-datepicker-popper {
+	// Hide the date input because in the popper, we only want to show the time picker
+	.el-date-picker__time-header .el-date-picker__editor-wrap:first-child {
+		display: none;
 	}
 }
 </style>
