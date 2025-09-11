@@ -1,6 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { PLAN_APPROVAL_MESSAGE } from '../../src/constants';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
@@ -52,10 +51,7 @@ export async function runSingleTest(
 	try {
 		// Generate workflow
 		const startTime = Date.now();
-		// First generate plan
 		await consumeGenerator(agent.chat(getChatPayload(testCase.prompt, testCase.id), userId));
-		// Confirm plan
-		await consumeGenerator(agent.chat(getChatPayload(PLAN_APPROVAL_MESSAGE, testCase.id), userId));
 		const generationTime = Date.now() - startTime;
 
 		// Get generated workflow with validation
