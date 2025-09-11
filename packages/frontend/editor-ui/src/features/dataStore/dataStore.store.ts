@@ -24,15 +24,21 @@ import type {
 import { useProjectsStore } from '@/stores/projects.store';
 import { reorderItem } from '@/features/dataStore/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
+	const settingsStore = useSettingsStore();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 	const dataStoreSize = ref(0);
 	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
+
+	const maxSizeMB = computed(() =>
+		Math.floor(settingsStore.settings?.dataTables.maxSize / 1024 / 1024),
+	);
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
@@ -225,6 +231,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreSize,
 		dataStoreSize: computed(() => dataStoreSize),
 		dataStoreSizeLimitState: computed(() => dataStoreSizeLimitState),
+		maxSizeMB,
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,
