@@ -75,6 +75,7 @@ defineExpose({
 			:editable="false"
 			:teleported="false"
 			:placeholder="''"
+			size="small"
 			@change="onChange"
 			@clear="onClear"
 			@keydown="onKeydown"

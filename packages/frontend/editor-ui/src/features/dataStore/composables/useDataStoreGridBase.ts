@@ -12,6 +12,7 @@ import type {
 	SortDirection,
 } from 'ag-grid-community';
 import type {
+	AddColumnResponse,
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
@@ -37,6 +38,7 @@ import {
 	createStringValueSetter,
 	stringCellEditorParams,
 	dateValueFormatter,
+	numberValueFormatter,
 } from '@/features/dataStore/utils/columnUtils';
 
 export const useDataStoreGridBase = ({
@@ -48,7 +50,7 @@ export const useDataStoreGridBase = ({
 	gridContainerRef: Ref<HTMLElement | null>;
 	onDeleteColumn: (columnId: string) => void;
 	onAddRowClick: () => void;
-	onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<boolean>;
+	onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<AddColumnResponse>;
 }) => {
 	const gridApi = ref<GridApi | null>(null);
 	const colDefs = ref<ColDef[]>([]);
@@ -98,15 +100,21 @@ export const useDataStoreGridBase = ({
 	const focusFirstEditableCell = (rowId: number) => {
 		const rowNode = initializedGridApi.value.getRowNode(String(rowId));
 		if (rowNode?.rowIndex === null) return;
+		const rowIndex = rowNode!.rowIndex;
 
 		const firstEditableCol = colDefs.value[1];
 		if (!firstEditableCol?.colId) return;
+		const columnId = firstEditableCol.colId;
 
-		initializedGridApi.value.ensureIndexVisible(rowNode!.rowIndex);
-		initializedGridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
-		initializedGridApi.value.startEditingCell({
-			rowIndex: rowNode!.rowIndex,
-			colKey: firstEditableCol.colId,
+		requestAnimationFrame(() => {
+			initializedGridApi.value.ensureIndexVisible(rowIndex);
+			requestAnimationFrame(() => {
+				initializedGridApi.value.setFocusedCell(rowIndex, columnId);
+				initializedGridApi.value.startEditingCell({
+					rowIndex,
+					colKey: columnId,
+				});
+			});
 		});
 	};
 
@@ -140,6 +148,8 @@ export const useDataStoreGridBase = ({
 				component: ElDatePickerCellEditor,
 			});
 			columnDef.valueFormatter = dateValueFormatter;
+		} else if (col.type === 'number') {
+			columnDef.valueFormatter = numberValueFormatter;
 		}
 
 		return {
@@ -171,6 +181,8 @@ export const useDataStoreGridBase = ({
 			headerComponentParams: {
 				allowMenuActions: false,
 			},
+			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
+			headerClass: 'system-column',
 		};
 		return [
 			// Always add the ID column, it's not returned by the back-end but all data stores have it
@@ -184,13 +196,14 @@ export const useDataStoreGridBase = ({
 				},
 				{
 					editable: false,
-					sortable: false,
+					sortable: true,
 					suppressMovable: true,
 					headerComponent: null,
 					lockPosition: true,
 					minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					resizable: false,
+					headerClass: 'system-column',
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {

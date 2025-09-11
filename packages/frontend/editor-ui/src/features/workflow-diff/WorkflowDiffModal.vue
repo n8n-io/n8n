@@ -3,7 +3,7 @@ import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
@@ -267,16 +267,28 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
-	function replacer(key: string, value: unknown) {
+	// Custom replacer to exclude certain properties and format others
+	function replacer(key: string, value: unknown, nodeType?: string) {
 		if (key === 'position') {
 			return undefined; // exclude this property
 		}
+
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
+		}
+
 		return value;
 	}
 
+	const withNodeType = (type?: string) => (key: string, value: unknown) =>
+		replacer(key, value, type);
+
 	return {
-		oldString: JSON.stringify(sourceNode, replacer, 2) ?? '',
-		newString: JSON.stringify(targetNode, replacer, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
+		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
 	};
 });
 

@@ -5,7 +5,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
-import { PLAN_APPROVAL_MESSAGE } from '../../src/constants';
 import type { WorkflowState } from '../../src/workflow-state';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import {
@@ -43,14 +42,8 @@ function createWorkflowGenerator(
 
 		// Create agent for this run
 		const agent = createAgent(parsedNodeTypes, llm, tracer);
-
-		// First generate plan
 		await consumeGenerator(
 			agent.chat(getChatPayload(messageContent, runId), 'langsmith-eval-user'),
-		);
-		// Confirm plan
-		await consumeGenerator(
-			agent.chat(getChatPayload(PLAN_APPROVAL_MESSAGE, runId), 'langsmith-eval-user'),
 		);
 
 		// Get generated workflow with validation

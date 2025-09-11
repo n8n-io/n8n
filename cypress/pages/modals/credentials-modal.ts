@@ -74,7 +74,9 @@ export class CredentialsModal extends BasePage {
 				.filter(':not([readonly])')
 				.each(($el) => {
 					cy.wrap($el).type('test');
-				});
+				})
+				// wait for text input debounce
+				.wait(300);
 			saveCredential();
 			if (closeModal) {
 				this.getters.closeButton().click();

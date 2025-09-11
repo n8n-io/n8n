@@ -111,9 +111,9 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 				nodeTypeDescription,
 			);
 			if (customParsedItems) {
-				// temporary filter until native Python runner is GA
+				// temporary until native Python runner is GA
 				return useSettingsStore().isNativePythonRunnerEnabled
-					? customParsedItems
+					? customParsedItems.filter((item) => item.actionKey !== 'language_python')
 					: customParsedItems.filter((item) => item.actionKey !== 'language_pythonNative');
 			}
 		}

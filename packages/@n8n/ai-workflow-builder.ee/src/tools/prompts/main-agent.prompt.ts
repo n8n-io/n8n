@@ -1,6 +1,5 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
-import type { WorkflowPlan } from '../../agents/workflow-planner-agent';
 import { instanceUrlPrompt } from '../../chains/prompts/instance-url';
 
 const systemPrompt = `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
@@ -408,34 +407,6 @@ const previousConversationSummary = `
 {previousSummary}
 </previous_summary>`;
 
-const workflowPlan = '{workflowPlan}';
-
-export const planFormatter = (plan?: WorkflowPlan | null) => {
-	if (!plan) return '<workflow_plan>EMPTY</workflow_plan>';
-
-	const nodesPlan = plan.plan.map((node) => {
-		return `
-			<workflow_plan_node>
-				<type>${node.nodeType}</type>
-				<name>${node.nodeName}</name>
-				<reasoning>${node.reasoning}</reasoning>
-			</workflow_plan_node>
-		`;
-	});
-
-	return `
-	<workflow_plan>
-		<workflow_plan_intro>
-			${plan.intro}
-		</workflow_plan_intro>
-
-		<workflow_plan_nodes>
-			${nodesPlan.join('\n')}
-		</workflow_plan_nodes>
-	</workflow_plan>
-	`;
-};
-
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -469,11 +440,6 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: previousConversationSummary,
-				cache_control: { type: 'ephemeral' },
-			},
-			{
-				type: 'text',
-				text: workflowPlan,
 				cache_control: { type: 'ephemeral' },
 			},
 		],

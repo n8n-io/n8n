@@ -495,14 +495,14 @@ function confirmFolderDelete(folderName: string) {
 function deleteFolderAndMoveContents(folderName: string, destinationName: string) {
 	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
 	getFolderDeleteModal().should('be.visible');
-	getFolderDeleteModal().find('h1').first().contains(`Delete "${folderName}"`);
+	getFolderDeleteModal().find('h1').first().contains(`Delete '${folderName}'`);
 	getTransferContentRadioButton().should('be.visible').click();
 	getMoveToFolderDropdown().click();
 	getMoveToFolderInput().type(destinationName);
 	getMoveToFolderOption(destinationName).click();
 	getDeleteFolderModalConfirmButton().should('be.enabled').click();
 	cy.wait('@deleteFolder');
-	successToast().should('contain.text', `Data transferred to "${destinationName}"`);
+	successToast().should('contain.text', `Data transferred to '${destinationName}'`);
 }
 
 function moveFolder(folderName: string, destinationName: string) {

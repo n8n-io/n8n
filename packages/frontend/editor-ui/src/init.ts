@@ -1,32 +1,32 @@
-import { h } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useVersionsStore } from '@/stores/versions.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { useRolesStore } from './stores/roles.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
-import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
-import type { BannerName } from '@n8n/api-types';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { usePostHog } from '@/stores/posthog.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useToast } from '@/composables/useToast';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
+	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
-	registerModuleModals,
 } from '@/moduleInitializer/moduleInitializer';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useRBACStore } from '@/stores/rbac.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import type { BannerName } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { h } from 'vue';
+import { useRolesStore } from './stores/roles.store';
 
 export const state = {
 	initialized: false,
@@ -209,7 +209,7 @@ function registerAuthenticationHooks() {
 
 	usersStore.registerLoginHook((user) => {
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id);
+		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();

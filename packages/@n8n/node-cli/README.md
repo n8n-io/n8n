@@ -7,45 +7,45 @@ Official CLI for developing community nodes for n8n.
 **To create a new node**, run:
 
 ```bash
-pnpm create @n8n/node
+npm create @n8n/node@latest # or pnpm/yarn/...
 ```
 
-This will generate a project with `pnpm` scripts that use this CLI under the hood.
+This will generate a project with `npm` scripts that use this CLI under the hood.
 
 ## 📦 Generated Project Commands
 
-After creating your node with `pnpm create @n8n/node`, you'll use these commands in your project:
+After creating your node with `npm create @n8n/node`, you'll use these commands in your project:
 
 ### Development
 ```bash
-pnpm dev
+npm run dev
 # Runs: n8n-node dev
 ```
 
 ### Building
 ```bash
-pnpm build
+npm run build
 # Runs: n8n-node build
 ```
 
 ### Linting
 ```bash
-pnpm lint
+npm run lint
 # Runs: n8n-node lint
 
-pnpm lint:fix
+npm run lint:fix
 # Runs: n8n-node lint --fix
 ```
 
 ### Publishing
 ```bash
-pnpm run release
+npm run release
 # Runs: n8n-node release
 ```
 
 ## 🛠️ CLI Reference
 
-> **Note:** These commands are typically wrapped by `pnpm` scripts in generated projects.
+> **Note:** These commands are typically wrapped by `npm` scripts in generated projects.
 
 ```bash
 n8n-node [COMMAND] [OPTIONS]
@@ -76,7 +76,7 @@ n8n-node new n8n-nodes-my-app --force
 n8n-node new n8n-nodes-my-app --template declarative/custom
 ```
 
-> **Note:** This command is used internally by `pnpm create @n8n/node` to provide the interactive scaffolding experience.
+> **Note:** This command is used internally by `npm create @n8n/node` to provide the interactive scaffolding experience.
 
 #### `n8n-node dev`
 
@@ -172,13 +172,13 @@ The recommended workflow using the scaffolding tool:
 
 1. **Create your node**:
    ```bash
-   pnpm create @n8n/node my-awesome-node
+   npm create @n8n/node my-awesome-node
    cd my-awesome-node
    ```
 
 2. **Start development**:
    ```bash
-   pnpm dev
+   npm run dev
    ```
    - Starts n8n on `http://localhost:5678`
    - Links your node automatically
@@ -188,17 +188,17 @@ The recommended workflow using the scaffolding tool:
 
 4. **Lint your code**:
    ```bash
-   pnpm lint
+   npm run lint
    ```
 
 5. **Build for production**:
    ```bash
-   pnpm build
+   npm run build
    ```
 
 6. **Publish**:
    ```bash
-   pnpm run release
+   npm run release
    ```
 
 ## 📁 Project Structure
@@ -244,16 +244,16 @@ The CLI reads configuration from your `package.json`:
 rm -rf ~/.n8n-node-cli/.n8n/custom
 
 # Restart development server
-pnpm dev
+npm run dev
 ```
 
 ### Build failures
 ```bash
 # Run linting first
-pnpm lint
+npm run lint
 
 # Clean build
-pnpm build
+npm run build
 ```
 
 ## 📚 Resources

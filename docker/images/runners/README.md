@@ -9,6 +9,9 @@ container to the main n8n container.
 [Task runners](https://docs.n8n.io/hosting/configuration/task-runners/) are used to execute user-provided code
 in the [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/), isolated from the n8n instance.
 
+For official documentation, please see [here](https://docs.n8n.io/hosting/configuration/task-runners/).
+
+For development purposes only, see below.
 
 ## Testing locally
 
@@ -49,145 +52,5 @@ docker run --rm -it \
 n8nio/runners
 ```
 
-## Adding extra dependencies (custom image)
+If you need to add extra dependencies (custom image), follow [these instructions](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
 
-To make additional packages available on the Code node you can bake extra packages into your custom runners image at build time.
-
-* **JavaScript** — edit `docker/images/runners/package.json`
-  (package.json manifest used to install runtime-only deps into the JS runner)
-* **Python (Native)** — edit `docker/images/runners/extras.txt`
-  (requirements.txt-style list installed into the Python runner venv)
-
-> Important: for security, any external libraries must be explicitly allowed for Code node use. Update `n8n-task-runners.json` to allowlist what you add.
-
-### 1) JavaScript packages
-
-Edit the runtime extras manifest `docker/images/runners/package.json`:
-
-```json
-{
-  "name": "task-runner-runtime-extras",
-  "description": "Runtime-only deps for the JS task-runner image, installed at image build.",
-  "private": true,
-  "dependencies": {
-    "moment": "2.30.1"
-  }
-}
-```
-
-Add any packages you want under `"dependencies"` (pin them for reproducibility), e.g.:
-
-```json
-"dependencies": {
-  "moment": "2.30.1",
-  "uuid": "9.0.0"
-}
-```
-
-### 2) Python packages
-
-Edit the requirements file `docker/images/runners/extras.txt`:
-
-```
-# Runtime-only extras for the Python task runner (installed at image build)
-numpy==2.3.2
-# add more, one per line, e.g.:
-# pandas==2.2.2
-```
-
-> Tip: pin versions (e.g., `==2.3.2`) for deterministic builds.
-
-### 3) Allowlist packages for the Code node
-
-Open `docker/images/runners/n8n-task-runners.json` and add your packages to the env overrides:
-
-```json
-{
-  "task-runners": [
-    {
-      "runner-type": "javascript",
-      "env-overrides": {
-        "NODE_FUNCTION_ALLOW_BUILTIN": "crypto",
-        "NODE_FUNCTION_ALLOW_EXTERNAL": "moment,uuid",   // <-- add JS packages here
-      }
-    },
-    {
-      "runner-type": "python",
-      "env-overrides": {
-        "PYTHONPATH": "/opt/runners/task-runner-python",
-        "N8N_RUNNERS_STDLIB_ALLOW": "json",
-        "N8N_RUNNERS_EXTERNAL_ALLOW": "numpy,pandas"     // <-- add Python packages here
-      }
-    }
-  ]
-}
-```
-
-* `NODE_FUNCTION_ALLOW_BUILTIN` — comma-separated list of allowed node builtin modules.
-* `NODE_FUNCTION_ALLOW_EXTERNAL` — comma-separated list of allowed JS packages.
-* `N8N_RUNNERS_STDLIB_ALLOW` — comma-separated list of allowed Python standard library packages.
-* `N8N_RUNNERS_EXTERNAL_ALLOW` — comma-separated list of allowed Python packages.
-
-### 4) Build your custom image
-
-From the repo root:
-
-```bash
-docker buildx build \
-  -f docker/images/runners/Dockerfile \
-  -t n8nio/runners:custom \
-  .
-```
-
-### 5) Run it
-
-Same as before, but use your custom image's tag:
-
-```bash
-docker run --rm -it \
-  -e N8N_RUNNERS_AUTH_TOKEN=test \
-  -e N8N_RUNNERS_LAUNCHER_LOG_LEVEL=debug \
-  -e N8N_RUNNERS_TASK_BROKER_URI=http://host.docker.internal:5679 \
-  -p 5680:5680 \
-  n8nio/runners:custom
-```
-
-## Test deployment for self-hosting
-
-Use the following docker compose as a reference to add a task runner sidecar container to your n8n deployment.
-
-Keep in mind:
-
-- The `n8nio/runners` image version must match that of the `n8nio/n8n` image.
-- See [n8n docs](https://docs.n8n.io/hosting/configuration/task-runners/) on task runners configuration.
-
-```yaml
-services:
-  n8n:
-    image: n8nio/n8n:1.111.0
-    container_name: n8n-main
-    environment:
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=external
-      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
-      - N8N_RUNNERS_AUTH_TOKEN=your-secret-here
-      - N8N_NATIVE_PYTHON_RUNNER=true
-    ports:
-      - "5678:5678"
-    volumes:
-      - n8n_data:/home/node/.n8n
-    # etc.
-
-  task-runners:
-    image: n8nio/runners:1.111.0
-    container_name: n8n-runners
-    environment:
-      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n-main:5679
-      - N8N_RUNNERS_AUTH_TOKEN=your-secret-here
-      # etc.
-    depends_on:
-      - n8n
-
-volumes:
-  n8n_data:
-```

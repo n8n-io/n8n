@@ -52,6 +52,11 @@ describe('GlobalConfig', () => {
 		ssl_key: '',
 		ssl_cert: '',
 		editorBaseUrl: '',
+		dataTable: {
+			maxSize: 100 * 1024 * 1024,
+			warningThreshold: 95 * 1024 * 1024,
+			sizeCheckCacheDuration: 5000,
+		},
 		database: {
 			logging: {
 				enabled: false,
@@ -64,6 +69,7 @@ describe('GlobalConfig', () => {
 				password: '',
 				port: 3306,
 				user: 'root',
+				poolSize: 10,
 			},
 			postgresdb: {
 				database: 'n8n',
@@ -254,6 +260,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			heartbeatInterval: 30,
 			insecureMode: false,
+			isNativePythonRunnerEnabled: false,
 		},
 		sentry: {
 			backendDsn: '',

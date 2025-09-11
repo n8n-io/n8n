@@ -114,7 +114,7 @@ export class ExecutionService {
 	async findOne(
 		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
 		sharedWorkflowIds: string[],
-	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
+	): Promise<IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
@@ -131,7 +131,10 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retry(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
+	async retry(
+		req: ExecutionRequest.Retry,
+		sharedWorkflowIds: string[],
+	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const { id: executionId } = req.params;
 		const execution = await this.executionRepository.findWithUnflattenedData(
 			executionId,
@@ -243,7 +246,20 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		return executionData.status;
+		return {
+			id: retriedExecutionId,
+			mode: executionData.mode,
+			startedAt: executionData.startedAt,
+			workflowId: execution.workflowId,
+			finished: executionData.finished ?? false,
+			retryOf: executionId,
+			status: executionData.status,
+			waitTill: executionData.waitTill,
+			data: executionData.data,
+			workflowData: execution.workflowData,
+			customData: execution.customData,
+			annotation: execution.annotation,
+		};
 	}
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {

@@ -118,7 +118,7 @@ export class TaskRunnerModule {
 
 		await this.jsRunnerProcess.start();
 
-		if (process.env.N8N_NATIVE_PYTHON_RUNNER === 'true') {
+		if (this.runnerConfig.isNativePythonRunnerEnabled) {
 			const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
 			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
 			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(

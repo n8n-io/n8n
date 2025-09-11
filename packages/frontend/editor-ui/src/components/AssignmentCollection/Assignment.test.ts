@@ -2,7 +2,7 @@ import { computed, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
@@ -53,9 +53,11 @@ describe('Assignment.vue', () => {
 
 		await userEvent.click(baseElement.querySelectorAll('.option')[3]);
 
-		expect(emitted('update:model-value')[0]).toEqual([
-			{ name: 'New name', type: 'array', value: 'New value' },
-		]);
+		await waitFor(() =>
+			expect(emitted('update:model-value')[0]).toEqual([
+				{ name: 'New name', type: 'array', value: 'New value' },
+			]),
+		);
 	});
 
 	it('can remove itself', async () => {

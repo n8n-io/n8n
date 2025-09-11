@@ -110,6 +110,10 @@ export const defaultSettings: FrontendSettings = {
 		whatsNewEnabled: true,
 		whatsNewEndpoint: '',
 	},
+	dataTables: {
+		maxSize: 0,
+		warningThreshold: 0,
+	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
 	variables: {

@@ -33,6 +33,7 @@ import { useDataStorePagination } from '@/features/dataStore/composables/useData
 import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataStoreGridBase';
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 import { useDataStoreOperations } from '@/features/dataStore/composables/useDataStoreOperations';
+import { useI18n } from '@n8n/i18n';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -66,6 +67,8 @@ const emit = defineEmits<{
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
+const i18n = useI18n();
+
 const dataStoreGridBase = useDataStoreGridBase({
 	gridContainerRef,
 	onDeleteColumn: onDeleteColumnFunction,
@@ -75,7 +78,18 @@ const dataStoreGridBase = useDataStoreGridBase({
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const pagination = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
+const {
+	currentPage,
+	pageSize,
+	totalItems,
+	pageSizeOptions,
+	ensureItemOnPage,
+	setTotalItems,
+	setCurrentPage,
+	setPageSize,
+} = useDataStorePagination({
+	onChange: fetchDataStoreRowsFunction,
+});
 
 const selection = useDataStoreSelection({
 	gridApi: dataStoreGridBase.gridApi,
@@ -92,13 +106,13 @@ const dataStoreOperations = useDataStoreOperations({
 	addGridColumn: dataStoreGridBase.addColumn,
 	moveGridColumn: dataStoreGridBase.moveColumn,
 	gridApi: dataStoreGridBase.gridApi,
-	totalItems: pagination.totalItems,
-	setTotalItems: pagination.setTotalItems,
-	ensureItemOnPage: pagination.ensureItemOnPage,
+	totalItems,
+	setTotalItems,
+	ensureItemOnPage,
 	focusFirstEditableCell: dataStoreGridBase.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
-	currentPage: pagination.currentPage,
-	pageSize: pagination.pageSize,
+	currentPage,
+	pageSize,
 	currentSortBy: dataStoreGridBase.currentSortBy,
 	currentSortOrder: dataStoreGridBase.currentSortOrder,
 	handleClearSelection: selection.handleClearSelection,
@@ -128,8 +142,10 @@ const initialize = async (params: GridReadyEvent) => {
 	await dataStoreOperations.fetchDataStoreRows();
 };
 
+const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
+
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
-	await pagination.setCurrentPage(1);
+	await setCurrentPage(1);
 });
 
 defineExpose({
@@ -159,6 +175,7 @@ defineExpose({
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
 				@cell-value-changed="dataStoreOperations.onCellValueChanged"
 				@column-moved="dataStoreOperations.onColumnMoved"
@@ -173,15 +190,15 @@ defineExpose({
 		</div>
 		<div :class="$style.footer">
 			<el-pagination
-				v-model:current-page="pagination.currentPage"
-				v-model:page-size="pagination.pageSize"
+				v-model:current-page="currentPage"
+				v-model:page-size="pageSize"
 				data-test-id="data-store-content-pagination"
 				background
-				:total="pagination.totalItems"
-				:page-sizes="pagination.pageSizeOptions"
+				:total="totalItems"
+				:page-sizes="pageSizeOptions"
 				layout="total, prev, pager, next, sizes"
-				@update:current-page="pagination.setCurrentPage"
-				@size-change="pagination.setPageSize"
+				@update:current-page="setCurrentPage"
+				@size-change="setPageSize"
 			/>
 		</div>
 		<SelectedItemsInfo
@@ -263,7 +280,11 @@ defineExpose({
 
 	:global(.id-column) {
 		color: var(--color-text-light);
-		justify-content: center;
+	}
+
+	:global(.system-column),
+	:global(.system-cell) {
+		color: var(--color-text-light);
 	}
 
 	:global(.ag-header-cell[col-id='id']) {
@@ -273,6 +294,12 @@ defineExpose({
 	:global(.add-row-cell) {
 		border: none !important;
 		background-color: transparent !important;
+		padding: 0;
+
+		button {
+			position: relative;
+			left: calc(var(--spacing-4xs) * -1);
+		}
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
@@ -298,7 +325,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing-xs);
+			padding-top: var(--spacing-2xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid-cell-editing-border);
@@ -339,6 +366,10 @@ defineExpose({
 	}
 
 	:global(.ag-row[row-id='__n8n_add_row__']) {
+		border-bottom: none;
+	}
+
+	:global(.ag-row-last) {
 		border-bottom: none;
 	}
 }

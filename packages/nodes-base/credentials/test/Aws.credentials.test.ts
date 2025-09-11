@@ -25,7 +25,10 @@ describe('Aws Credential', () => {
 		expect(aws.documentationUrl).toBe('aws');
 		expect(aws.icon).toEqual({ light: 'file:icons/AWS.svg', dark: 'file:icons/AWS.dark.svg' });
 		expect(aws.properties.length).toBeGreaterThan(0);
-		expect(aws.test.request.baseURL).toBe('=https://sts.{{$credentials.region}}.amazonaws.com');
+		expect(aws.test.request.baseURL).toBe(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'={{$credentials.region.startsWith("cn-") ? `https://sts.${$credentials.region}.amazonaws.com.cn` : `https://sts.${$credentials.region}.amazonaws.com`}}',
+		);
 		expect(aws.test.request.url).toBe('?Action=GetCallerIdentity&Version=2011-06-15');
 		expect(aws.test.request.method).toBe('POST');
 	});
@@ -177,6 +180,104 @@ describe('Aws Credential', () => {
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe('https://iam.amazonaws.com/');
+		});
+
+		describe('China regions', () => {
+			const chinaCredentials: AwsCredentialsType = {
+				region: 'cn-north-1',
+				accessKeyId: 'hakuna',
+				secretAccessKey: 'matata',
+				customEndpoints: false,
+				temporaryCredentials: false,
+			};
+
+			it('should use amazonaws.com.cn domain for cn-north-1 region', async () => {
+				const result = await aws.authenticate(chinaCredentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 's3' },
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						host: 's3.cn-north-1.amazonaws.com.cn',
+						region: 'cn-north-1',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+				expect(result.url).toBe('https://s3.cn-north-1.amazonaws.com.cn/');
+			});
+
+			it('should handle custom endpoints for China regions', async () => {
+				const customEndpoint = 'https://custom.china.endpoint.com.cn';
+				const result = await aws.authenticate(
+					{ ...chinaCredentials, customEndpoints: true, s3Endpoint: customEndpoint },
+					{ ...requestOptions, url: '', baseURL: '', qs: { service: 's3' } },
+				);
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						host: 'custom.china.endpoint.com.cn',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+				expect(result.url).toBe(`${customEndpoint}/`);
+			});
+
+			it('should parse China region URLs correctly', async () => {
+				const result = await aws.authenticate(chinaCredentials, {
+					...requestOptions,
+					url: 'https://s3.cn-north-1.amazonaws.com.cn/bucket/key',
+					baseURL: '',
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						host: 's3.cn-north-1.amazonaws.com.cn',
+						region: 'cn-north-1',
+						path: '/bucket/key',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+				expect(result.url).toBe('https://s3.cn-north-1.amazonaws.com.cn/bucket/key');
+			});
+		});
+
+		describe('Regular regions (non-China)', () => {
+			it('should use amazonaws.com domain for regular regions', async () => {
+				const result = await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 's3' },
+				});
+
+				expect(mockSign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						host: 's3.eu-central-1.amazonaws.com',
+						region: 'eu-central-1',
+					}),
+					{
+						accessKeyId: 'hakuna',
+						secretAccessKey: 'matata',
+						sessionToken: undefined,
+					},
+				);
+				expect(result.url).toBe('https://s3.eu-central-1.amazonaws.com/');
+			});
 		});
 	});
 });

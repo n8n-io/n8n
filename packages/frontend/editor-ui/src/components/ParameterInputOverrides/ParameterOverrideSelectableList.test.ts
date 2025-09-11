@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import { createAppModals } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => {
 	return {
@@ -107,15 +108,16 @@ describe('ParameterOverrideSelectableList', () => {
 		});
 
 		await userEvent.type(getByTestId('parameter-input-field'), '2');
-		expect(model.value.extraPropValues.description).toBe('Test description2');
-		expect(emitted('update')).toHaveLength(1);
-		expect(emitted('update')[0]).toEqual([
-			{
-				name: 'parameters.workflowInputs.value["test"]',
-				value:
-					"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('test', `Test description2`, 'string') }}",
-			},
-		]);
+		await waitFor(() => {
+			expect(model.value.extraPropValues.description).toBe('Test description2');
+			expect(emitted('update')).toContainEqual([
+				{
+					name: 'parameters.workflowInputs.value["test"]',
+					value:
+						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('test', `Test description2`, 'string') }}",
+				},
+			]);
+		});
 	});
 
 	it('should reset extra prop back to default when removed', async () => {

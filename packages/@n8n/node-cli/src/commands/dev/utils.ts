@@ -25,8 +25,14 @@ export function commands() {
 	function runPersistentCommand(
 		cmd: string,
 		args: string[],
-		opts: { cwd?: string; env?: NodeJS.ProcessEnv; name?: string; color?: Formatter } = {},
-	): void {
+		opts: {
+			cwd?: string;
+			env?: NodeJS.ProcessEnv;
+			name?: string;
+			color?: Formatter;
+			allowOutput?: (line: string) => boolean;
+		} = {},
+	) {
 		const child = spawn(cmd, args, {
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
@@ -46,6 +52,7 @@ export function commands() {
 		}
 
 		const log = (text: string) => {
+			if (opts.allowOutput && !opts.allowOutput(text)) return;
 			if (opts.name) {
 				const rawPrefix = `[${opts.name}]`;
 				const prefix = opts.color ? opts.color(rawPrefix) : rawPrefix;
@@ -71,6 +78,8 @@ export function commands() {
 			console.log(`${opts.name ?? cmd} exited with code ${code}`);
 			process.exit(code);
 		});
+
+		return child;
 	}
 
 	return {

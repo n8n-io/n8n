@@ -27,3 +27,9 @@ export type DataStoreColumnCreatePayload = Pick<DataStoreColumn, 'name' | 'type'
 export type DataStoreValue = string | number | boolean | Date | null;
 
 export type DataStoreRow = Record<string, DataStoreValue>;
+
+export type AddColumnResponse = {
+	success: boolean;
+	httpStatus?: number;
+	errorMessage?: string;
+};

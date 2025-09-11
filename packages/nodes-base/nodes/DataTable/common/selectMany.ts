@@ -125,7 +125,7 @@ export async function executeSelectMany(
 	const PAGE_SIZE = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
 
-	const limit = ctx.getNodeParameter('limit', index, undefined);
+	const limit = ctx.getNodeParameter('limit', index, 0);
 
 	let expectedTotal: number | undefined;
 	let skip = 0;

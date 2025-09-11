@@ -37,7 +37,7 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 
-type LoginHook = (user: CurrentUserResponse) => void;
+export type LoginHook = (user: CurrentUserResponse) => void;
 type LogoutHook = () => void;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {

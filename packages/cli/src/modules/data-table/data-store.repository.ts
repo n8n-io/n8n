@@ -3,6 +3,7 @@ import {
 	type DataStoreCreateColumnSchema,
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
@@ -10,12 +11,14 @@ import { UnexpectedError } from 'n8n-workflow';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
+import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
 	constructor(
 		dataSource: DataSource,
 		private dataStoreRowsRepository: DataStoreRowsRepository,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		super(DataTable, dataSource.manager);
 	}
@@ -237,5 +240,51 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 	private getProjectFields(alias: string): string[] {
 		return [`${alias}.id`, `${alias}.name`, `${alias}.type`, `${alias}.icon`];
+	}
+
+	async findDataTablesSize(): Promise<number> {
+		const dbType = this.globalConfig.database.type;
+		const schemaName = this.globalConfig.database.postgresdb.schema;
+
+		let sql = '';
+
+		switch (dbType) {
+			case 'sqlite':
+				sql = `
+        	SELECT SUM(pgsize) AS total_bytes
+					FROM dbstat
+					WHERE name LIKE '${toTableName('%')}'
+				`;
+				break;
+
+			case 'postgresdb':
+				sql = `
+        	SELECT SUM(pg_relation_size(c.oid)) AS total_bytes
+					FROM pg_class c
+					JOIN pg_namespace n ON n.oid = c.relnamespace
+					WHERE n.nspname = '${schemaName}'
+					AND c.relname LIKE '${toTableName('%')}'
+					AND c.relkind IN ('r', 'm', 'p')
+    		`;
+				break;
+
+			case 'mysqldb':
+			case 'mariadb': {
+				const databaseName = this.globalConfig.database.mysqldb.database;
+				sql = `
+        	SELECT SUM((DATA_LENGTH + INDEX_LENGTH)) AS total_bytes
+					FROM information_schema.tables
+					WHERE table_schema = '${databaseName}'
+					AND table_name LIKE '${toTableName('%')}'
+				`;
+				break;
+			}
+
+			default:
+				return 0;
+		}
+
+		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
+		return result[0]?.total_bytes ?? 0;
 	}
 }
