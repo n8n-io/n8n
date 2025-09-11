@@ -1,7 +1,7 @@
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
-	SharedCredentials,
+	type SharedCredentials,
 	CredentialsRepository,
 	SharedCredentialsRepository,
 } from '@n8n/db';
