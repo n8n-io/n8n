@@ -2505,7 +2505,6 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not delete rows when project does not exist', async () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-store-id/rows')
-			.query({ ids: '1,2' })
 			.expect(403);
 	});
 
@@ -2514,7 +2513,6 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-tables/non-existing-id/rows`)
-			.query({ ids: '1,2' })
 			.expect(404);
 	});
 
@@ -2540,7 +2538,6 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '1' })
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2571,7 +2568,6 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '1' })
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2611,7 +2607,15 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '1,3' })
+			.send({
+				filter: {
+					type: 'or',
+					filters: [
+						{ columnName: 'first', condition: 'eq', value: 'test value 1' },
+						{ columnName: 'first', condition: 'eq', value: 'test value 3' },
+					],
+				},
+			})
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2651,7 +2655,12 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authAdminAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '2' })
+			.send({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
+				},
+			})
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2690,11 +2699,17 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '1,2' })
+			.send({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
+				},
+			})
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
-		expect(rowsInDb.count).toBe(0);
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
 	});
 
 	test('should delete rows in personal project', async () => {
@@ -2727,7 +2742,12 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '2' })
+			.send({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
+				},
+			})
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2735,81 +2755,53 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
 
-	test('should return true when deleting empty ids array', async () => {
+	test('should return full deleted data if returnData is set', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
 					name: 'first',
 					type: 'string',
 				},
-			],
-			data: [
 				{
-					first: 'test value',
-				},
-			],
-		});
-
-		const response = await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '' })
-			.expect(200);
-
-		expect(response.body.data).toBe(true);
-
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
-		expect(rowsInDb.count).toBe(1);
-	});
-
-	test('should handle deletion of non-existing row ids gracefully', async () => {
-		const dataStore = await createDataStore(memberProject, {
-			columns: [
-				{
-					name: 'first',
-					type: 'string',
-				},
-			],
-			data: [
-				{
-					first: 'test value',
-				},
-			],
-		});
-
-		await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '999,1000' })
-			.expect(200);
-
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
-		expect(rowsInDb.count).toBe(1);
-	});
-
-	test('should handle mixed existing and non-existing row ids', async () => {
-		const dataStore = await createDataStore(memberProject, {
-			columns: [
-				{
-					name: 'first',
+					name: 'second',
 					type: 'string',
 				},
 			],
 			data: [
 				{
 					first: 'test value 1',
+					second: 'another value 1',
 				},
 				{
 					first: 'test value 2',
+					second: 'another value 2',
+				},
+				{
+					first: 'test value 3',
+					second: 'another value 3',
 				},
 			],
 		});
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.query({ ids: '1,999,2,1000' })
-			.expect(200);
+			.send({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 3' }],
+				},
+				returnData: true,
+			});
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
-		expect(rowsInDb.count).toBe(0);
+		expect(result.body.data).toEqual([
+			{
+				id: expect.any(Number),
+				first: 'test value 3',
+				second: 'another value 3',
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 });
 

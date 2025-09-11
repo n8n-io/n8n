@@ -647,6 +647,10 @@ importers:
       '@n8n/node-cli':
         specifier: workspace:*
         version: link:../node-cli
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/db:
     dependencies:

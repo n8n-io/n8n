@@ -1,6 +1,7 @@
 import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
+	DeleteDataTableRowsDto,
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
@@ -24,6 +25,7 @@ import { validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreSizeValidator } from './data-store-size-validator.service';
 import { DataStoreRepository } from './data-store.repository';
 import { columnTypeToFieldType } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
@@ -41,6 +43,7 @@ export class DataStoreService {
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
+		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -166,6 +169,7 @@ export class DataStoreService {
 		rows: DataStoreRows,
 		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
@@ -193,6 +197,7 @@ export class DataStoreService {
 		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
@@ -272,6 +277,7 @@ export class DataStoreService {
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData = false,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
 		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
@@ -281,10 +287,38 @@ export class DataStoreService {
 		});
 	}
 
-	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
+	async deleteRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
+	async deleteRows(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+		returnData: boolean = false,
+	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		return await this.dataStoreRowsRepository.deleteRows(dataStoreId, ids);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		if (columns.length === 0) {
+			throw new DataStoreValidationError(
+				'No columns found for this data table or data table not found',
+			);
+		}
+
+		if (dto.filter?.filters && dto.filter.filters.length !== 0) {
+			this.validateAndTransformFilters(dto.filter, columns);
+		}
+
+		const result = await this.dataStoreRowsRepository.deleteRows(
+			dataStoreId,
+			columns,
+			dto.filter,
+			returnData,
+		);
+		return returnData ? result : true;
 	}
 
 	private validateRowsWithColumns(
@@ -430,5 +464,19 @@ export class DataStoreService {
 				}
 			}
 		}
+	}
+
+	private async validateDataTableSize() {
+		await this.dataStoreSizeValidator.validateSize(
+			async () => await this.dataStoreRepository.findDataTablesSize(),
+		);
+	}
+
+	async getDataTablesSize() {
+		const sizeBytes = await this.dataStoreRepository.findDataTablesSize();
+		return {
+			sizeBytes,
+			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
+		};
 	}
 }

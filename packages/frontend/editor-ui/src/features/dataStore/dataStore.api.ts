@@ -190,12 +190,16 @@ export const deleteDataStoreRowsApi = async (
 	rowIds: number[],
 	projectId: string,
 ) => {
+	const filters = rowIds.map((id) => ({ columnName: 'id', condition: 'eq', value: id }));
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
-			ids: rowIds.join(','),
+			filter: {
+				type: 'or',
+				filters,
+			},
 		},
 	);
 };
