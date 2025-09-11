@@ -2,13 +2,22 @@
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { RELEASE_NOTES_URL, VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/constants';
-import { N8nCallout, N8nHeading, N8nIcon, N8nLink, N8nMarkdown, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nHeading,
+	N8nIcon,
+	N8nLink,
+	N8nMarkdown,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@/stores/versions.store';
 import { computed, nextTick, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -24,6 +33,7 @@ const i18n = useI18n();
 const modalBus = createEventBus();
 const versionsStore = useVersionsStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 
 const nextVersions = computed(() => versionsStore.nextVersions);
@@ -112,13 +122,20 @@ modalBus.on('opened', () => {
 					</div>
 				</div>
 
-				<n8n-button
-					:size="'large'"
-					:label="i18n.baseText('whatsNew.update')"
-					:disabled="!versionsStore.hasVersionUpdates"
-					data-test-id="whats-new-modal-update-button"
-					@click="onUpdateClick"
-				/>
+				<N8nTooltip
+					v-if="versionsStore.hasVersionUpdates"
+					:disabled="usersStore.canUserUpdateVersion"
+					:content="i18n.baseText('whatsNew.updateNudgeTooltip')"
+					placement="bottom"
+				>
+					<n8n-button
+						:size="'large'"
+						:label="i18n.baseText('whatsNew.update')"
+						:disabled="!usersStore.canUserUpdateVersion"
+						data-test-id="whats-new-modal-update-button"
+						@click="onUpdateClick"
+					/>
+				</N8nTooltip>
 			</div>
 		</template>
 		<template #content>
