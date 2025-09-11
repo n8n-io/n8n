@@ -1,0 +1,231 @@
+{
+  "name": "1️⃣📁Create Files and Test Data Access",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "35f18e67-1d87-41b5-b0a4-18631d775672",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "command": "python -c \"\nimport os\nfrom datetime import datetime\n\n# Create temp file\ntemp_file = '/tmp/n8n_test.txt'\nwith open(temp_file, 'w') as f:\n    f.write(f'Temp file created: {datetime.now()}\\\\n')\n    f.write('This will be deleted when container restarts\\\\n')\n\nprint(f'Created: {temp_file}')\n\n# Read temp file\nwith open(temp_file, 'r') as f:\n    print('Content:', f.read().strip())\n\n# List temp files\nprint('Temp files:', [f for f in os.listdir('/tmp') if 'n8n' in f])\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -144
+      ],
+      "id": "87e21968-f1f8-4a12-9be4-7c0490a8c3d6",
+      "name": "Create Tmp Files ",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Create Tmp Files (Deleted on Restart e.g. Update)",
+        "height": 80,
+        "width": 368,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -272
+      ],
+      "id": "e8a0a256-3111-4800-a966-32970d10f307",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "command": "python -c \"\nimport os\nfrom datetime import datetime\n\n# Create persistent file\npersist_file = '/home/node/.n8n/my_data.txt'\nwith open(persist_file, 'w') as f:\n    f.write(f'Persistent file created: {datetime.now()}\\\\n')\n    f.write('This survives container restarts\\\\n')\n\nprint(f'Created: {persist_file}')\n\n# Read persistent file\nwith open(persist_file, 'r') as f:\n    print('Content:', f.read().strip())\n\n# List persistent files in .n8n\nfiles = [f for f in os.listdir('/home/node/.n8n') if f.endswith('.txt')]\nprint('Persistent .txt files:', files)\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        368,
+        208
+      ],
+      "id": "a0d0ce75-8f46-4cd0-862e-5becdd434f36",
+      "name": "Create Persistent Files",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Create Persistent Files ",
+        "height": 80,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        288,
+        80
+      ],
+      "id": "42e3a9c2-4d99-4f73-a08b-cef9ce3e0d4f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { task: \"process_data\" } },\n  { json: { task: \"process_data\" } },\n  { json: { task: \"process_data\" } },\n  { json: { task: \"process_data\" } },\n  { json: { task: \"process_data\" } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -32
+      ],
+      "id": "a04c16f1-7f9f-4e2f-9f45-c5c4fa170e91",
+      "name": "5 items"
+    },
+    {
+      "parameters": {
+        "content": "## Access Previous Values in Python Code Node",
+        "height": 80,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -240
+      ],
+      "id": "6e7db33b-b0fe-4286-8e75-d5038cc2a85b",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        976,
+        -32
+      ],
+      "id": "4d09b40d-b5d9-4809-893c-b76094174e67",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1424,
+        96
+      ],
+      "id": "393d69a8-47d0-4777-b8a8-f99add89ae32",
+      "name": "1s",
+      "webhookId": "4af85d4d-106a-4e07-9ddd-1fa91cda4a94"
+    },
+    {
+      "parameters": {
+        "command": "python -c \"\nimport json\nimport random\n\n# Read previous result (or start with 1)\ntry:\n    with open('/home/node/.n8n/state.json', 'r') as f:\n        data = json.load(f)\n        previous_result = data['last_result']\nexcept:\n    previous_result = 1\n\n# Calculate based on PREVIOUS iteration not (not possible in normal code node)\ncurrent_result = previous_result * random.randint(2, 5) + random.randint(1, 10)\n\n# Save for NEXT iteration\nwith open('/home/node/.n8n/state.json', 'w') as f:\n    json.dump({'last_result': current_result}, f)\n\nprint(f'Previous: {previous_result}, Current: {current_result}')\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        96
+      ],
+      "id": "6e32fad4-795d-43bd-b97c-4839d688ba5f",
+      "name": "Read Previous Value"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Create Tmp Files ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Persistent Files",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "5 items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5 items": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Read Previous Value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1s": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Previous Value": {
+      "main": [
+        [
+          {
+            "node": "1s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bb094680-dfe2-4589-873d-2a8ca0e90631",
+  "meta": {
+    "instanceId": "6a48c63ad0c214f22c6278c15dc0d6d0301e1768b448b8982f554a7f671548be"
+  },
+  "id": "NiGQAXbLoZ82A6kn",
+  "tags": [
+    {
+      "name": "Setup",
+      "id": "dnSnXKqAl8X7Rn73",
+      "createdAt": "2025-09-10T12:08:30.227Z",
+      "updatedAt": "2025-09-10T12:08:30.227Z"
+    }
+  ]
+}

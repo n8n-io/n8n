@@ -5,8 +5,6 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=n8n
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     networks:
       - n8n-network
     # No port exposing - just n8n internal access
@@ -60,7 +58,6 @@ services:
       - PYTHON_UNBUFFERED=1
     volumes:
       - n8n_data:/home/node/.n8n
-      - python_packages:/usr/local/lib/python3.12/site-packages
     restart: unless-stopped
     depends_on:
       - postgres
@@ -78,8 +75,6 @@ services:
 
 volumes:
   n8n_data:
-  postgres_data:
-  python_packages:
 
 networks:
   n8n-network:

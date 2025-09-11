@@ -11,22 +11,27 @@ RUN apk update && apk add --no-cache \
     libx11-dev libxtst-dev xorg-server tesseract-ocr python3 py3-pip \
     git curl wget vim bash postgresql-client mysql-client
 
-# Step 2: Copy files only (no Python package installation)
+# Step 2: Upgrade pip and install packages globally inside the container
+RUN pip install --upgrade pip setuptools wheel --break-system-packages
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --verbose --no-cache-dir --timeout 600 -r /tmp/requirements.txt --break-system-packages
+
+# Step 3: Copy default workflows and credentials
 RUN mkdir -p /usr/src/app/default-workflows
 COPY workflows/ /usr/src/app/default-workflows/
 COPY initial-credentials/ /usr/src/app/initial-credentials/
-COPY requirements.txt /tmp/requirements.txt
 
-# Step 3: Copy and fix the setup script
+# Step 4: Copy and fix the setup script
+# FIX: Create script directly in container with proper shebang
 COPY .devcontainer/setup-defaults.sh /tmp/setup-defaults.sh
 RUN echo '#!/bin/sh' > /usr/local/bin/setup-defaults.sh && \
     tr -d '\r' < /tmp/setup-defaults.sh >> /usr/local/bin/setup-defaults.sh && \
     chmod +x /usr/local/bin/setup-defaults.sh && \
     rm /tmp/setup-defaults.sh
 
-# Step 4: Set correct ownership and switch back to the non-root user
+# Step 5: Set correct ownership and switch back to the non-root user
 RUN chown -R node:node /home/node /usr/src/app
 USER node
 
-# Step 5: Use sh explicitly to run the script
+# Step 6: Use sh explicitly to run the script
 ENTRYPOINT ["/bin/sh", "/usr/local/bin/setup-defaults.sh"]

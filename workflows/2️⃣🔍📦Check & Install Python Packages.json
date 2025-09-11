@@ -1,0 +1,260 @@
+{
+  "name": "2️⃣🔍📦Check & Install Python Packages",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fe8a4d8f-564d-4dbb-ba6e-7ce85eb6ceaa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "command": "python -c \"\nimport subprocess\nimport sys\n\nprint('=== INSTALLED PYTHON PACKAGES ===')\nresult = subprocess.run([sys.executable, '-m', 'pip', 'list'], \n                       capture_output=True, text=True)\nprint(result.stdout)\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c9abb208-e5c4-40c1-a0b1-5f2790944d09",
+      "name": "Return Installed Python Packages"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "15eb740e-2dea-49dd-8988-81696d99bfbf",
+      "name": "Wait",
+      "webhookId": "f65e60ef-7b76-4169-bb73-79d18d27cc66"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f47871f-5984-4504-a516-9006d548a671",
+              "name": "package_name",
+              "value": "colorama",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "0f11d225-3f8c-45cb-b70f-9d4e01e7845f",
+      "name": "Enter New Package to be Installed"
+    },
+    {
+      "parameters": {
+        "command": "=python -c \"\nimport subprocess\nimport sys\nimport json\n\n# Get package name from n8n input\npackage_name = '{{ $json.package_name }}'\n\nprint(f'Installing package: {package_name}')\n\n# Install package\ntry:\n    result = subprocess.run([\n        sys.executable, '-m', 'pip', 'install', \n        '--break-system-packages', package_name\n    ], capture_output=True, text=True, check=True)\n    \n    print('INSTALLATION SUCCESS:')\n    print(result.stdout)\n    \n    # Verify installation\n    import_result = subprocess.run([\n        sys.executable, '-c', f'import {package_name}; print(f\\\"{package_name} imported successfully!\\\")'\n    ], capture_output=True, text=True)\n    \n    if import_result.returncode == 0:\n        print('IMPORT TEST SUCCESS:')\n        print(import_result.stdout)\n    else:\n        print('IMPORT TEST FAILED:')\n        print(import_result.stderr)\n        \nexcept subprocess.CalledProcessError as e:\n    print('INSTALLATION FAILED:')\n    print(e.stderr)\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "9ace5b68-8086-4903-867b-4d02ea0150f6",
+      "name": "Install Listed Package"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { package_name: \"selenium\" } },\n  { json: { package_name: \"scrapy\" } },\n  { json: { package_name: \"fake-useragent\" } },\n  { json: { package_name: \"httpx\" } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        256
+      ],
+      "id": "0d6ff5ae-6aa0-4c3c-a1dd-7c3da839a7a9",
+      "name": "Enter MULTIPLE New Packages to be Installed"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        848,
+        256
+      ],
+      "id": "f3166ab8-6440-43ff-8e04-691639c4e29f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "command": "=python -c \"\nimport subprocess\nimport sys\nimport json\n\n# Get package name from n8n input\npackage_name = '{{ $json.package_name }}'\n\nprint(f'Installing package: {package_name}')\n\n# Install package\ntry:\n    result = subprocess.run([\n        sys.executable, '-m', 'pip', 'install', \n        '--break-system-packages', package_name\n    ], capture_output=True, text=True, check=True)\n    \n    print('INSTALLATION SUCCESS:')\n    print(result.stdout)\n    \n    # Verify installation\n    import_result = subprocess.run([\n        sys.executable, '-c', f'import {package_name}; print(f\\\"{package_name} imported successfully!\\\")'\n    ], capture_output=True, text=True)\n    \n    if import_result.returncode == 0:\n        print('IMPORT TEST SUCCESS:')\n        print(import_result.stdout)\n    else:\n        print('IMPORT TEST FAILED:')\n        print(import_result.stderr)\n        \nexcept subprocess.CalledProcessError as e:\n    print('INSTALLATION FAILED:')\n    print(e.stderr)\n\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        480
+      ],
+      "id": "74e17f8b-a0db-4979-aead-560e95a14731",
+      "name": "Install Listed Package1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9e121ea8-11ab-4724-97bf-22b46a005672",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "={{ $('Enter MULTIPLE New Packages to be Installed').item.json.package_name }} imported successfully!",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        480
+      ],
+      "id": "13b9f7d4-7017-474d-8498-0b08d45f875f",
+      "name": "Installation successful?"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Return Installed Python Packages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Installed Python Packages": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Enter New Package to be Installed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enter New Package to be Installed": {
+      "main": [
+        [
+          {
+            "node": "Install Listed Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enter MULTIPLE New Packages to be Installed": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Install Listed Package1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Install Listed Package1": {
+      "main": [
+        [
+          {
+            "node": "Installation successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Installation successful?": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eef02519-b6cc-4a91-b5cd-ec361e6f6397",
+  "meta": {
+    "instanceId": "6a48c63ad0c214f22c6278c15dc0d6d0301e1768b448b8982f554a7f671548be"
+  },
+  "id": "SSdgDRFaiphzHPYy",
+  "tags": [
+    {
+      "name": "Setup",
+      "id": "dnSnXKqAl8X7Rn73",
+      "createdAt": "2025-09-10T12:08:30.227Z",
+      "updatedAt": "2025-09-10T12:08:30.227Z"
+    }
+  ]
+}

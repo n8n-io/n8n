@@ -1,0 +1,17 @@
+{
+  "id": "1",
+  "name": "N8N Internal PostgreSQL",
+  "type": "postgres",
+  "nodesAccess": [
+    {
+      "nodeType": "n8n-nodes-base.postgres"
+    }
+  ],
+  "data": {
+    "host": "postgres",
+    "port": 5432,
+    "database": "n8n",
+    "user": "admin",
+    "password": "password"
+  }
+}
