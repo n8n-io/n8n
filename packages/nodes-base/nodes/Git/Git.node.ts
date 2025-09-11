@@ -448,7 +448,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const branch = options.branch;
-					if (branch !== undefined) {
+					if (branch !== undefined && branch !== '') {
 						assertParamIsString('branch', branch, this.getNode());
 						await checkoutBranch(git, {
 							branchName: branch,

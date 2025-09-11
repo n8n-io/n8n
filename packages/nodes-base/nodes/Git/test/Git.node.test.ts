@@ -173,6 +173,24 @@ describe('Git Node', () => {
 			expect(mockGit.push).toHaveBeenCalledWith('https://github.com/example/repo.git');
 		});
 
+		it('should not switch branch when pushing with empty branch string', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ branch: '' }) // empty string branch
+				.mockReturnValueOnce('gitPassword');
+
+			// Mock git config for push operation
+			mockGit.listConfig.mockResolvedValueOnce({
+				values: { '.git/config': { 'remote.origin.url': 'https://github.com/test/repo.git' } },
+			} as any);
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.push).toHaveBeenCalled();
+		});
+
 		it('should handle switchBranch operation to existing branch', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('switchBranch')
