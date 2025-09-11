@@ -241,9 +241,13 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary filter until native Python runner is GA
-	if (props.parameter.name === 'language' && !settingsStore.isNativePythonRunnerEnabled) {
-		return safeOptions.filter((o) => o.value !== 'pythonNative');
+	// temporary until native Python runner is GA
+	if (props.parameter.name === 'language') {
+		if (settingsStore.isNativePythonRunnerEnabled) {
+			return safeOptions.filter((o) => o.value !== 'python');
+		} else {
+			return safeOptions.filter((o) => o.value !== 'pythonNative');
+		}
 	}
 
 	return safeOptions;
