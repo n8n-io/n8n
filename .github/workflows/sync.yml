@@ -1,7 +1,7 @@
 name: Auto Sync n8n-advanced with Upstream
 on:
   schedule:
-    - cron: '0 3 * * 0'  # Every Sunday at 3 AM
+    - cron: '0 3 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-        
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -22,18 +24,12 @@ jobs:
           
       - name: Add upstream and fetch
         run: |
-          git remote add upstream https://github.com/n8n-io/n8n.git
+          git remote add upstream https://github.com/n8n-io/n8n.git || true
           git fetch upstream
           
       - name: Force sync with upstream
         run: |
-          # Save current branch
-          git branch backup-branch
-          
-          # Force reset to upstream (this always works)
-          git reset --hard upstream/main
-          
-          # Push the reset (this creates the sync)
+          git reset --hard upstream/master
           git push --force-with-lease
           
       - name: Sync releases
@@ -43,13 +39,7 @@ jobs:
           gh release create "$LATEST_RELEASE" \
             --repo "$GITHUB_REPOSITORY" \
             --title "n8n-advanced Release $LATEST_RELEASE" \
-            --notes "Automatically synced from n8n upstream with Python libraries and enhanced features included" \
-            --latest
+            --notes "Auto-sync von n8n upstream" \
+            --latest || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Commit and push changes
-        run: |
-          git add .
-          git commit -m "Auto-sync: n8n updated to latest version, custom enhancements preserved" || exit 0
-          git push
