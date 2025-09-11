@@ -761,7 +761,7 @@ test.describe('NDV', () => {
 	});
 
 	test.describe('Complex Edge Cases', () => {
-		test.only('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', async ({
+		test('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.importWorkflow(
