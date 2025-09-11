@@ -102,6 +102,7 @@ export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
 export type DataTablesSizeResult = {
 	sizeBytes: number;
 	sizeState: DataTableSizeStatus;
+	maxSizeBytes: number;
 };
 
 // APIs for a data store service operating on a specific projectId
