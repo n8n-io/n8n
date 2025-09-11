@@ -1,7 +1,7 @@
 name: Auto Sync n8n-advanced with Upstream
 on:
   schedule:
-    - cron: '0 * * * *'  # Every Sunday at 3 AM
+    - cron: '0 3 * * 0'  # Every Sunday at 3 AM
   workflow_dispatch:
 
 permissions:
@@ -25,10 +25,18 @@ jobs:
           git remote add upstream https://github.com/n8n-io/n8n.git
           git fetch upstream
           
-      - name: Merge upstream changes but keep our files
+      - name: Initial setup or merge upstream changes
         run: |
           git config merge.ours.driver true
-          git merge upstream/main --no-edit
+          
+          # Check if repo has n8n content (package.json indicates n8n repo)
+          if [ ! -f "package.json" ]; then
+            echo "Initial setup - pulling n8n content"
+            git merge upstream/main --allow-unrelated-histories --no-edit
+          else
+            echo "Merging upstream changes"
+            git merge upstream/main --no-edit
+          fi
           
       - name: Sync releases
         run: |
