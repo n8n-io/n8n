@@ -34,10 +34,7 @@ export async function configureOracleDB(
 
 		if (credentials.useThickMode) {
 			if (!initializeDriverMode) {
-				oracledb.initOracleClient({
-					libDir: process.env.NODE_ORACLEDB_CLIENT_LIB_DIR,
-					configDir: process.env.NODE_ORACLEDB_CLIENT_CONFIG_DIR,
-				});
+				oracledb.initOracleClient();
 				initializeDriverMode = true;
 			}
 		} else if (initializeDriverMode) {
