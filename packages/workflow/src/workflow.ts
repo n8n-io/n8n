@@ -9,11 +9,9 @@ import {
 } from './common';
 
 import {
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
-	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
 import { ApplicationError } from '@n8n/errors';
@@ -810,86 +808,6 @@ export class Workflow {
 		}
 
 		return undefined;
-	}
-
-	/**
-	 * Returns from which of the given nodes the workflow should get started from
-	 *
-	 * @param {string[]} nodeNames The potential start nodes
-	 */
-	__getStartNode(nodeNames: string[]): INode | undefined {
-		// Check if there are any trigger or poll nodes and then return the first one
-		let node: INode;
-		let nodeType: INodeType;
-
-		if (nodeNames.length === 1) {
-			node = this.nodes[nodeNames[0]];
-			if (node && !node.disabled) {
-				return node;
-			}
-		}
-
-		for (const nodeName of nodeNames) {
-			node = this.nodes[nodeName];
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-			// TODO: Identify later differently
-			if (nodeType.description.name === MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE) {
-				continue;
-			}
-
-			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
-				if (node.disabled === true) {
-					continue;
-				}
-				return node;
-			}
-		}
-
-		const sortedNodeNames = Object.values(this.nodes)
-			.sort((a, b) => STARTING_NODE_TYPES.indexOf(a.type) - STARTING_NODE_TYPES.indexOf(b.type))
-			.map((n) => n.name);
-
-		for (const nodeName of sortedNodeNames) {
-			node = this.nodes[nodeName];
-			if (STARTING_NODE_TYPES.includes(node.type)) {
-				if (node.disabled === true) {
-					continue;
-				}
-				return node;
-			}
-		}
-
-		return undefined;
-	}
-
-	/**
-	 * Returns the start node to start the workflow from
-	 *
-	 */
-	getStartNode(destinationNode?: string): INode | undefined {
-		if (destinationNode) {
-			// Find the highest parent nodes of the given one
-			const nodeNames = this.getHighestNode(destinationNode);
-
-			if (nodeNames.length === 0) {
-				// If no parent nodes have been found then only the destination-node
-				// is in the tree so add that one
-				nodeNames.push(destinationNode);
-			}
-
-			// Check which node to return as start node
-			const node = this.__getStartNode(nodeNames);
-			if (node !== undefined) {
-				return node;
-			}
-
-			// If none of the above did find anything simply return the
-			// first parent node in the list
-			return this.nodes[nodeNames[0]];
-		}
-
-		return this.__getStartNode(Object.keys(this.nodes));
 	}
 
 	getConnectionsBetweenNodes(

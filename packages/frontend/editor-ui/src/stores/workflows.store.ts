@@ -137,7 +137,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const workflowObject = ref<Workflow>(
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -1757,7 +1756,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
+				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=2`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
@@ -1824,16 +1823,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		chatMessages.value.push(message);
 	}
 
-	function checkIfNodeHasChatParent(nodeName: string): boolean {
+	function findChatParent(nodeName: string): INodeUi | undefined {
 		const parents = workflowObject.value.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
-		const matchedChatNode = parents.find((parent) => {
-			const parentNodeType = getNodeByName(parent)?.type;
+		for (const parent of parents) {
+			const parentNode = getNodeByName(parent);
 
-			return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
-		});
+			if (parentNode?.type === CHAT_TRIGGER_NODE_TYPE) {
+				return parentNode;
+			}
+		}
 
-		return !!matchedChatNode;
+		return undefined;
 	}
 
 	//
@@ -2070,7 +2071,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodePristine,
 		resetChatMessages,
 		appendChatMessage,
-		checkIfNodeHasChatParent,
+		findChatParent,
 		setNodePositionById,
 		removeNodeById,
 		removeNodeConnectionsById,

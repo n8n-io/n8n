@@ -269,33 +269,31 @@ export class WorkflowExecutionService {
 					failedNode ?? undefined,
 				);
 			} catch (error) {
-				const initialNode = workflowInstance.getStartNode();
-				if (initialNode) {
-					const errorWorkflowPermissionError = new SubworkflowOperationError(
-						`Another workflow: (ID ${workflowErrorData.workflow.id}) tried to invoke this workflow to handle errors.`,
-						"Unfortunately current permissions do not allow this. Please check that this workflow's settings allow it to be called by others",
-					);
+				const errorWorkflowPermissionError = new SubworkflowOperationError(
+					`Another workflow: (ID ${workflowErrorData.workflow.id}) tried to invoke this workflow to handle errors.`,
+					"Unfortunately current permissions do not allow this. Please check that this workflow's settings allow it to be called by others",
+				);
 
-					// Create a fake execution and save it to DB.
-					const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
-						'error',
-						errorWorkflowPermissionError,
-						initialNode,
-					);
+				// Create a fake execution and save it to DB.
+				const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
+					'error',
+					errorWorkflowPermissionError,
+					undefined,
+				);
 
-					const fullExecutionData: CreateExecutionPayload = {
-						data: fakeExecution.data,
-						mode: fakeExecution.mode,
-						finished: false,
-						stoppedAt: new Date(),
-						workflowData,
-						waitTill: null,
-						status: fakeExecution.status,
-						workflowId: workflowData.id,
-					};
+				const fullExecutionData: CreateExecutionPayload = {
+					data: fakeExecution.data,
+					mode: fakeExecution.mode,
+					finished: false,
+					stoppedAt: new Date(),
+					workflowData,
+					waitTill: null,
+					status: fakeExecution.status,
+					workflowId: workflowData.id,
+				};
 
-					await this.executionRepository.createNewExecution(fullExecutionData);
-				}
+				await this.executionRepository.createNewExecution(fullExecutionData);
+
 				this.logger.info('Error workflow execution blocked due to subworkflow settings', {
 					erroredWorkflowId: workflowErrorData.workflow.id,
 					errorWorkflowId: workflowId,
