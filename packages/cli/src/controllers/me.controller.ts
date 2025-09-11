@@ -59,7 +59,8 @@ export class MeController {
 			lastName: currentLastName,
 		} = req.user;
 
-		const { email, firstName, lastName, currentPassword } = payload;
+		const { currentPassword, ...payloadWithoutPassword } = payload;
+		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
 		const isFirstNameChanged = firstName !== currentFirstName;
 		const isLastNameChanged = lastName !== currentLastName;
@@ -72,7 +73,7 @@ export class MeController {
 				`Request to update user failed because ${getCurrentAuthenticationMethod()} user may not change their profile information`,
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
 			throw new BadRequestError(
@@ -86,7 +87,7 @@ export class MeController {
 				'Request to update user failed because SAML user may not change their email',
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
 			throw new BadRequestError('SAML user may not change their email');
@@ -117,7 +118,11 @@ export class MeController {
 			}
 		}
 
-		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+		await this.externalHooks.run('user.profile.beforeUpdate', [
+			userId,
+			currentEmail,
+			payloadWithoutPassword,
+		]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
 		await this.userService.update(userId, payload);
