@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCallout } from '@n8n/design-system';
 import { useNDVStore } from '@/stores/ndv.store';
-import { DATA_STORE_NODE_TYPE, DATA_STORE_TOOL_NODE_TYPE } from '@/constants';
+import { DATA_STORE_NODES } from '@/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 const i18n = useI18n();
@@ -11,9 +11,7 @@ const nvdStore = useNDVStore();
 const dataStoreStore = useDataStoreStore();
 
 const calloutType = computed(() => {
-	if (
-		![DATA_STORE_NODE_TYPE, DATA_STORE_TOOL_NODE_TYPE].includes(nvdStore.activeNode?.type ?? '')
-	) {
+	if (!DATA_STORE_NODES.includes(nvdStore.activeNode?.type ?? '')) {
 		return null;
 	}
 
