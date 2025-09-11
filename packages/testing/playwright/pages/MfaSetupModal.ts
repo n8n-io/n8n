@@ -4,9 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class MfaSetupModal extends BasePage {
-	// Element getters (no async, return Locator)
 	getModalContainer(): Locator {
-		// Use the MFA-specific modal test-id
 		return this.page.getByTestId('mfaSetup-modal');
 	}
 
@@ -26,7 +24,6 @@ export class MfaSetupModal extends BasePage {
 		return this.page.getByTestId('mfa-save-button');
 	}
 
-	// Simple actions (async, return void)
 	async fillToken(token: string): Promise<void> {
 		await this.getTokenInput().fill(token);
 	}

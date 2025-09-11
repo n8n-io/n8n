@@ -16,9 +16,9 @@ export class MfaComposer {
 		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
 
 		// Simple page actions
-		await this.n8n.settings.goToPersonalSettings();
-		await this.n8n.settings.clickEnableMfa();
-		await this.n8n.settings.waitForMfaQrResponse();
+		await this.n8n.personalSettings.goToPersonalSettings();
+		await this.n8n.personalSettings.clickEnableMfa();
+		await this.n8n.personalSettings.waitForMfaQrResponse();
 
 		// Complete MFA setup and return secret
 		const secret = await this.completeMfaSetup();
@@ -39,9 +39,9 @@ export class MfaComposer {
 		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
 
 		// Simple page actions
-		await this.n8n.settings.goToPersonalSettings();
-		await this.n8n.settings.clickEnableMfa();
-		await this.n8n.settings.waitForMfaQrResponse();
+		await this.n8n.personalSettings.goToPersonalSettings();
+		await this.n8n.personalSettings.clickEnableMfa();
+		await this.n8n.personalSettings.waitForMfaQrResponse();
 
 		// Complete MFA setup with recovery code
 		const result = await this.setupMfaWithRecoveryCode();
@@ -161,12 +161,10 @@ export class MfaComposer {
 	/**
 	 * Extract recovery code from the MFA setup modal after download
 	 * Business logic moved from MfaSetupModal
-	 * @returns The extracted recovery code or fallback code if extraction fails
+	 * @returns The extracted recovery code
+	 * @throws Error if recovery code extraction fails
 	 */
 	private async extractRecoveryCode(): Promise<string> {
-		// Use the same fallback recovery code as defined in test constants
-		const FALLBACK_RECOVERY_CODE = 'd04ea17f-e8b2-4afa-a9aa-57a2c735b30e';
-
 		try {
 			// Get recovery code elements from the modal
 			const recoveryCodeElements = await this.n8n.mfaSetupModal.getRecoveryCodeElements();
@@ -178,13 +176,13 @@ export class MfaComposer {
 					return match[0]; // Use the first matched recovery code
 				}
 			}
-		} catch (error) {
-			// Log the extraction failure for debugging
-			console.warn('Failed to extract recovery code from modal, using fallback:', error);
-		}
 
-		// Log that we're using the fallback code for debugging
-		console.warn('Using fallback recovery code - this may not work with dynamic test data');
-		return FALLBACK_RECOVERY_CODE;
+			// If no recovery code found in modal elements
+			throw new Error('No UUID-formatted recovery code found in modal elements');
+		} catch (error) {
+			throw new Error(
+				`Failed to extract recovery code from MFA setup modal: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 }

@@ -16,6 +16,8 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { PersonalSettingsPage } from './PersonalSettingsPage';
+import { PromptMfaCodeModal } from './PromptMfaCodeModal';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
@@ -51,6 +53,7 @@ export class n8nPage {
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
+	readonly personalSettings: PersonalSettingsPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -70,6 +73,7 @@ export class n8nPage {
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly credentialsModal: CredentialsEditModal;
 	readonly mfaSetupModal: MfaSetupModal;
+	readonly promptMfaCodeModal: PromptMfaCodeModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -96,6 +100,7 @@ export class n8nPage {
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
+		this.personalSettings = new PersonalSettingsPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
@@ -115,6 +120,7 @@ export class n8nPage {
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.credentialsModal = new CredentialsEditModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
+		this.promptMfaCodeModal = new PromptMfaCodeModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

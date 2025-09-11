@@ -3,7 +3,6 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class MfaLoginPage extends BasePage {
-	// Element getters (no async, return Locator)
 	getForm(): Locator {
 		return this.page.getByTestId('mfa-login-form');
 	}
@@ -24,7 +23,6 @@ export class MfaLoginPage extends BasePage {
 		return this.page.getByRole('button', { name: 'Verify' });
 	}
 
-	// Simple actions (async, return void)
 	async goToMfaLogin(): Promise<void> {
 		await this.page.goto('/mfa');
 	}
@@ -46,15 +44,12 @@ export class MfaLoginPage extends BasePage {
 	}
 
 	async submitMfaCode(code: string): Promise<void> {
-		// Match Cypress behavior - just fill the code, form auto-submits
 		await this.fillMfaCode(code);
-		// Cypress doesn't click submit - the form auto-submits after typing
 	}
 
 	async submitMfaRecoveryCode(recoveryCode: string): Promise<void> {
 		await this.clickEnterRecoveryCode();
 		await this.fillMfaRecoveryCode(recoveryCode);
-		// Recovery codes need manual verification (unlike regular MFA codes that auto-submit)
 		await this.clickSubmit();
 	}
 }
