@@ -62,6 +62,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 20
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -86,6 +87,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
+      DB_MYSQLDB_POOL_SIZE: 20
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 

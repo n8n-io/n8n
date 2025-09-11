@@ -5,8 +5,6 @@ import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import {
-	cleanupAppModals,
-	createAppModals,
 	getDropdownItems,
 	getSelectedDropdownValue,
 	mockedStore,
@@ -140,7 +138,6 @@ const mockEventBus = {
 
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
-		createAppModals();
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalsById = {
@@ -183,7 +180,6 @@ describe('MoveToFolderModal', () => {
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

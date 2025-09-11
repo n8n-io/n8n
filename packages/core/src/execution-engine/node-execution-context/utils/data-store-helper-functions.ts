@@ -17,14 +17,14 @@ export function getDataStoreHelperFunctions(
 			await dataStoreProxyProvider.getDataStoreAggregateProxy(
 				workflow,
 				node,
-				additionalData.dataStoreProjectId,
+				additionalData.dataTableProjectId,
 			),
 		getDataStoreProxy: async (dataStoreId: string) =>
 			await dataStoreProxyProvider.getDataStoreProxy(
 				workflow,
 				node,
 				dataStoreId,
-				additionalData.dataStoreProjectId,
+				additionalData.dataTableProjectId,
 			),
 	};
 }

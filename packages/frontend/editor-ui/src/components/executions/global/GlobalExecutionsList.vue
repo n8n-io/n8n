@@ -245,8 +245,8 @@ async function retryOriginalExecution(execution: ExecutionSummary) {
 
 async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 	try {
-		const retryStatus = await executionsStore.retryExecution(execution.id, loadWorkflow);
-		const retryMessage = executionRetryMessage(retryStatus);
+		const retriedExecution = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryMessage = executionRetryMessage(retriedExecution.status);
 
 		if (retryMessage) {
 			toast.showMessage(retryMessage);
