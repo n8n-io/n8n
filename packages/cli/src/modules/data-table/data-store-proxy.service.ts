@@ -49,10 +49,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	async getDataStoreAggregateProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectAggregateService> {
 		this.validateRequest(node);
-		const projectId = dataStoreProjectId ?? (await this.getProjectId(workflow));
+		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeAggregateOperations(projectId);
 	}
@@ -61,10 +61,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 		workflow: Workflow,
 		node: INode,
 		dataStoreId: string,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectService> {
 		this.validateRequest(node);
-		const projectId = dataStoreProjectId ?? (await this.getProjectId(workflow));
+		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeDataStoreOperations(projectId, dataStoreId);
 	}
