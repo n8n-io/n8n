@@ -54,3 +54,14 @@ jobs:
           git push origin master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Create Release
+        run: |
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/n8n-io/n8n/releases/latest | jq -r '.tag_name')
+          gh release create "$LATEST_RELEASE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "n8n-advanced Release $LATEST_RELEASE" \
+            --notes "Auto-sync mit custom files" \
+            --latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
