@@ -43,7 +43,6 @@ export class DataStoreService {
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
-		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -403,7 +402,6 @@ export class DataStoreService {
 		);
 		return {
 			sizeBytes,
-			maxSizeBytes: this.globalConfig.dataTable.maxSize,
 			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
 		};
 	}
