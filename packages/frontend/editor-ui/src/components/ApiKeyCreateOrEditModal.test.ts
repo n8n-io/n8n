@@ -4,7 +4,7 @@ import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { mockedStore, retry } from '@/__tests__/utils';
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
-import { fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { DateTime } from 'luxon';
@@ -66,9 +66,9 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(inputLabel).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.update(inputLabel, 'new label');
+		await userEvent.type(inputLabel, 'new label');
 
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(getByText('API Key Created')).toBeInTheDocument();
 
@@ -112,23 +112,23 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(saveButton).toBeInTheDocument();
 		expect(expirationSelect).toBeInTheDocument();
 
-		await fireEvent.update(inputLabel, 'new label');
+		await userEvent.type(inputLabel, 'new label');
 
-		await fireEvent.click(expirationSelect);
+		await userEvent.click(expirationSelect);
 
 		const customOption = getByText('Custom');
 
 		expect(customOption).toBeInTheDocument();
 
-		await fireEvent.click(customOption);
+		await userEvent.click(customOption);
 
 		const customExpirationInput = getByPlaceholderText('yyyy-mm-dd');
 
 		expect(customExpirationInput).toBeInTheDocument();
 
-		await fireEvent.input(customExpirationInput, '2029-12-31');
+		await userEvent.type(customExpirationInput, '2029-12-31');
 
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(getByText('***456')).toBeInTheDocument();
 
@@ -165,17 +165,17 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(saveButton).toBeInTheDocument();
 		expect(expirationSelect).toBeInTheDocument();
 
-		await fireEvent.update(inputLabel, 'new label');
+		await userEvent.type(inputLabel, 'new label');
 
-		await fireEvent.click(expirationSelect);
+		await userEvent.click(expirationSelect);
 
 		const noExpirationOption = getByText('No Expiration');
 
 		expect(noExpirationOption).toBeInTheDocument();
 
-		await fireEvent.click(noExpirationOption);
+		await userEvent.click(noExpirationOption);
 
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(getByText('API Key Created')).toBeInTheDocument();
 
@@ -213,22 +213,22 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(scopesSelect).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.update(inputLabel, 'new label');
+		await userEvent.type(inputLabel, 'new label');
 
-		await fireEvent.click(scopesSelect);
+		await userEvent.click(scopesSelect);
 
 		const userCreateScope = getByText('user:create');
 
 		expect(userCreateScope).toBeInTheDocument();
 
-		await fireEvent.click(userCreateScope);
+		await userEvent.click(userCreateScope);
 
 		const [userCreateTag, userCreateSelectOption] = getAllByText('user:create');
 
 		expect(userCreateTag).toBeInTheDocument();
 		expect(userCreateSelectOption).toBeInTheDocument();
 
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(getByText('API Key Created')).toBeInTheDocument();
 
@@ -248,7 +248,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText, getByTestId, getAllByText } = renderComponent({
+		const { getByText, getByPlaceholderText, getByTestId, getByRole } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -269,27 +269,23 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(scopesSelect).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.update(inputLabel, 'new label');
+		await userEvent.type(inputLabel, 'new label');
 
-		await fireEvent.click(scopesSelect);
+		await userEvent.click(scopesSelect);
 
-		const userCreateScope = getAllByText('user:create');
+		// Use separate semantic queries instead of destructuring
+		// The text is nested inside .el-select__tags-text which is inside .el-tag
+		const userCreateTag = getByText('user:create', { selector: '.el-select__tags-text' });
+		const userCreateSelectOption = getByRole('option', { name: 'user:create' });
 
-		const [userCreateTag, userCreateSelectOption] = userCreateScope;
 		expect(userCreateTag).toBeInTheDocument();
 		expect(userCreateSelectOption).toBeInTheDocument();
 
-		expect(userCreateSelectOption).toBeInTheDocument();
+		expect(userCreateSelectOption).toHaveClass('is-disabled');
 
-		// Wait for DOM to stabilize and check the correct parent node with is-disabled class
-		await retry(() => {
-			const parentWithDisabled = userCreateSelectOption.closest('.is-disabled');
-			expect(parentWithDisabled).toBeTruthy();
-		});
+		await userEvent.click(userCreateSelectOption);
 
-		await fireEvent.click(userCreateSelectOption);
-
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(getByText('API Key Created')).toBeInTheDocument();
 
@@ -330,13 +326,14 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		expect((labelInput as unknown as HTMLInputElement).value).toBe('new api key');
 
-		await fireEvent.update(labelInput, 'updated api key');
+		await userEvent.clear(labelInput);
+		await userEvent.type(labelInput, 'updated api key');
 
 		const saveButton = getByText('Save');
 
 		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.click(saveButton);
+		await userEvent.click(saveButton);
 
 		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
 			label: 'updated api key',
