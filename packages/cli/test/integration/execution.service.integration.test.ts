@@ -1,4 +1,5 @@
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionSummaries } from '@n8n/db';
 import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -16,9 +17,16 @@ describe('ExecutionService', () => {
 		await testDb.init();
 
 		executionRepository = Container.get(ExecutionRepository);
+		const globalConfig = mock<GlobalConfig>({
+			executions: {
+				concurrency: {
+					productionLimit: -1,
+				},
+			},
+		});
 
 		executionService = new ExecutionService(
-			mock(),
+			globalConfig,
 			mock(),
 			mock(),
 			mock(),
@@ -290,6 +298,7 @@ describe('ExecutionService', () => {
 				count: 1,
 				estimated: false,
 				results: [expect.objectContaining({ status: 'success' })],
+				concurrentExecutionsCount: 0,
 			});
 		});
 
@@ -320,6 +329,7 @@ describe('ExecutionService', () => {
 					expect.objectContaining({ status: 'success' }),
 					expect.objectContaining({ status: 'success' }),
 				],
+				concurrentExecutionsCount: 0,
 			});
 		});
 
@@ -351,6 +361,7 @@ describe('ExecutionService', () => {
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
 					// execution for workflow in second project was filtered out
 				]),
+				concurrentExecutionsCount: 0,
 			});
 		});
 
@@ -381,6 +392,7 @@ describe('ExecutionService', () => {
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
 				]),
+				concurrentExecutionsCount: 0,
 			});
 		});
 
@@ -439,6 +451,7 @@ describe('ExecutionService', () => {
 					results: expect.arrayContaining([
 						expect.objectContaining({ workflowId: firstWorkflow.id }),
 					]),
+					concurrentExecutionsCount: 0,
 				});
 			},
 		);
