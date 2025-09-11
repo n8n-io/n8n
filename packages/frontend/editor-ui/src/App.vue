@@ -23,7 +23,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
-import { loadLanguage } from '@n8n/i18n';
+import { loadLanguage, setLanguage } from '@n8n/i18n';
 import englishBaseText from '@n8n/i18n/locales/en.json';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
@@ -105,16 +105,18 @@ watch(
 	defaultLocale,
 	async (newLocale) => {
 		if (newLocale === 'en') {
-			// English is loaded by default
-			return;
+			setLanguage('en');
+		} else {
+			const messages = (
+				(await import(`@n8n/i18n/locales/${newLocale}.json`)) as { default: typeof englishBaseText }
+			).default;
+
+			loadLanguage(newLocale, messages);
+
+			axios.defaults.headers.common['Accept-Language'] = newLocale;
 		}
 
-		const messages = (
-			(await import(`@n8n/i18n/locales/${newLocale}.json`)) as { default: typeof englishBaseText }
-		).default;
-		loadLanguage(newLocale, messages);
 		void locale.use(newLocale);
-		axios.defaults.headers.common['Accept-Language'] = newLocale;
 	},
 	{ immediate: true },
 );
