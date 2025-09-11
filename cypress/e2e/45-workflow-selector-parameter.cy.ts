@@ -11,8 +11,8 @@ describe('Workflow Selector Parameter', () => {
 		cy.signinAsOwner();
 		['Get_Weather', 'Search_DB'].forEach((workflowName) => {
 			workflowPage.actions.visit();
-			cy.createFixtureWorkflow(`Test_Subworkflow_${workflowName}.json`, workflowName);
-			workflowPage.actions.saveWorkflowOnButtonClick();
+			cy.createFixtureWorkflow(`Test_Subworkflow_${workflowName}.json`);
+			workflowPage.actions.setWorkflowName(workflowName);
 		});
 		workflowPage.actions.visit();
 		workflowPage.actions.addInitialNodeToCanvas(EXECUTE_WORKFLOW_NODE_NAME, {
