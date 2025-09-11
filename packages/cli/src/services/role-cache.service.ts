@@ -58,7 +58,7 @@ export class RoleCacheService {
 		// Get cached role map with refresh function
 		const roleScopeMap = await this.cacheService.get<RoleScopeMap>(RoleCacheService.CACHE_KEY, {
 			refreshFn: async () => await this.buildRoleScopeMap(),
-			fallbackValue: {},
+			fallbackValue: undefined,
 		});
 
 		if (roleScopeMap === undefined) {
