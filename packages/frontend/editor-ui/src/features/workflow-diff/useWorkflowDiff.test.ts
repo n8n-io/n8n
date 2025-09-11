@@ -37,9 +37,6 @@ vi.mock('@/composables/useCanvasMapping', () => ({
 		additionalNodePropertiesById: computed(() => ({})),
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
-		nodeIssuesById: computed(
-			() => ({}) as Record<string, { execution: string[]; validation: string[] }>,
-		),
 		nodeHasIssuesById: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
@@ -403,9 +400,6 @@ describe('useWorkflowDiff', () => {
 			additionalNodePropertiesById: computed(() => ({}) as Record<string, Partial<CanvasNode>>),
 			nodeExecutionRunDataOutputMapById: computed(() => ({}) as Record<string, ExecutionOutputMap>),
 			nodeExecutionWaitingForNextById: computed(() => ({}) as Record<string, boolean>),
-			nodeIssuesById: computed(
-				() => ({}) as Record<string, { execution: string[]; validation: string[] }>,
-			),
 			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),
