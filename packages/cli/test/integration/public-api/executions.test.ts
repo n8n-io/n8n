@@ -325,7 +325,7 @@ describe('POST /executions/:id/retry', () => {
 			{
 				status: 'success',
 				finished: true,
-				data: {} as any,
+				data: JSON.stringify({ executionData: null }),
 			},
 			workflow,
 		);

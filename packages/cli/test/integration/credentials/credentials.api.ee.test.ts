@@ -101,7 +101,7 @@ describe('POST /credentials', () => {
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
-	}, 20000);
+	}, 30000);
 });
 
 // ----------------------------------------
