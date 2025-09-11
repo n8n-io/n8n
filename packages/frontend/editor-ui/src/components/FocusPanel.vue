@@ -450,7 +450,7 @@ function onOpenNdv() {
 					@open-ndv="onOpenNdv"
 					@clear-parameter="closeFocusPanel"
 				/>
-				<div v-if="resolvedParameter" :class="$style.content">
+				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
 					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
 							<N8nText color="text-dark" size="small">

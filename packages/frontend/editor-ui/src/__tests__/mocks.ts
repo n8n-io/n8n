@@ -68,44 +68,29 @@ export const mockNodeTypeDescription = ({
 	hidden,
 	description,
 	webhooks,
-}: {
-	name?: INodeTypeDescription['name'];
-	displayName?: INodeTypeDescription['displayName'];
-	icon?: INodeTypeDescription['icon'];
-	version?: INodeTypeDescription['version'];
-	credentials?: INodeTypeDescription['credentials'];
-	inputs?: INodeTypeDescription['inputs'];
-	outputs?: INodeTypeDescription['outputs'];
-	codex?: INodeTypeDescription['codex'];
-	properties?: INodeTypeDescription['properties'];
-	group?: INodeTypeDescription['group'];
-	hidden?: INodeTypeDescription['hidden'];
-	description?: INodeTypeDescription['description'];
-	webhooks?: INodeTypeDescription['webhooks'];
-} = {}) =>
-	mock<INodeTypeDescription>({
+}: Partial<INodeTypeDescription> = {}): INodeTypeDescription => ({
+	name,
+	icon,
+	displayName,
+	description: description ?? '',
+	version,
+	defaults: {
 		name,
-		icon,
-		displayName,
-		description: description ?? '',
-		version,
-		defaults: {
-			name,
-		},
-		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
-		properties: properties as [],
-		maxNodes: Infinity,
-		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
-		inputs,
-		outputs,
-		codex,
-		credentials,
-		documentationUrl: 'https://docs',
-		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks,
-		parameterPane: undefined,
-		hidden,
-	});
+	},
+	defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
+	properties: properties as [],
+	maxNodes: Infinity,
+	group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
+	inputs,
+	outputs,
+	codex,
+	credentials,
+	documentationUrl: 'https://docs',
+	iconUrl: 'nodes/test-node/icon.svg',
+	webhooks,
+	parameterPane: undefined,
+	hidden,
+});
 
 export const mockLoadedNodeType = (name: string) =>
 	mock<LoadedClass<INodeType>>({
