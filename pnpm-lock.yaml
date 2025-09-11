@@ -3186,6 +3186,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
+      otplib:
+        specifier: ^12.0.1
+        version: 12.0.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
