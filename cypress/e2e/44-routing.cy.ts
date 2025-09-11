@@ -24,7 +24,7 @@ describe('Workflows', () => {
 		getNewWorkflowCardButton().should('be.visible');
 		getNewWorkflowCardButton().click();
 
-		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+		cy.createFixtureWorkflow('Test_workflow_1.json');
 
 		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
@@ -43,7 +43,7 @@ describe('Workflows', () => {
 	it('should correct route after cancelling saveChangesModal', () => {
 		getCreateWorkflowButton().click();
 
-		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+		cy.createFixtureWorkflow('Test_workflow_1.json');
 		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 
 		// Here we go back via browser rather than the home button
@@ -63,7 +63,7 @@ describe('Workflows', () => {
 		getCreateWorkflowButton().click();
 		saveWorkflowOnButtonClick();
 		cy.url().then((startUrl) => {
-			cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+			cy.createFixtureWorkflow('Test_workflow_1.json');
 			cy.url().should('equal', startUrl);
 
 			addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
@@ -80,7 +80,7 @@ describe('Workflows', () => {
 	it('should open ndv via URL', () => {
 		getCreateWorkflowButton().click();
 		saveWorkflowOnButtonClick();
-		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+		cy.createFixtureWorkflow('Test_workflow_1.json');
 
 		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		cy.url().then((ndvUrl) => {
@@ -98,7 +98,7 @@ describe('Workflows', () => {
 	it('should open show warning and drop nodeId from URL if it contained an unknown nodeId', () => {
 		getCreateWorkflowButton().click();
 		saveWorkflowOnButtonClick();
-		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+		cy.createFixtureWorkflow('Test_workflow_1.json');
 
 		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		cy.url().then((ndvUrl) => {
