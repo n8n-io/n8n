@@ -357,8 +357,6 @@ describe('Resolution-based completions', () => {
 	describe('secrets', () => {
 		const { $input } = mockProxy;
 
-		beforeEach(() => {});
-
 		test('should return completions for: {{ $secrets.| }}', () => {
 			const provider = 'infisical';
 			const secrets = ['SECRET'];
