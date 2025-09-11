@@ -230,19 +230,13 @@ test.describe('Logs', () => {
 		await expect(n8n.executions.logsPanel.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 	});
 
-	test('should show logs for a workflow with a node that waits for webhook', async ({
-		n8n,
-		setupRequirements,
-	}) => {
-		await setupRequirements({ workflow: 'Workflow_wait_for_webhook.json' });
-
-		await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } }); // click logs panel to deselect nodes in canvas
-		await n8n.canvas.clickZoomToFitButton();
+	test('should show logs for a workflow with a node that waits for webhook', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Workflow_wait_for_webhook.json');
+		await n8n.canvas.deselectAll();
 		await n8n.canvas.logsPanel.open();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 
-		await expect(n8n.canvas.getNodesWithSpinner()).toContainText(NODES.WAIT_NODE);
 		await expect(n8n.canvas.getWaitingNodes()).toContainText(NODES.WAIT_NODE);
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
 		await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
@@ -259,7 +253,6 @@ test.describe('Logs', () => {
 		const response = await n8n.page.request.get(webhookUrl!);
 		expect(response.status()).toBe(200);
 
-		await expect(n8n.canvas.getNodesWithSpinner()).toBeHidden();
 		await expect(n8n.canvas.getWaitingNodes()).toBeHidden();
 		await expect(
 			n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),

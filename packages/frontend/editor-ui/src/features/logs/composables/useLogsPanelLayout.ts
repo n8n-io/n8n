@@ -11,6 +11,9 @@ import {
 	LOCAL_STORAGE_PANEL_WIDTH,
 } from '@/features/logs/logs.constants';
 
+const INITIAL_POPUP_HEIGHT = 400;
+const COLLAPSED_PANEL_HEIGHT = 32;
+
 export function useLogsPanelLayout(
 	workflowName: ComputedRef<string>,
 	popOutContainer: Readonly<ShallowRef<HTMLElement | null>>,
@@ -61,7 +64,7 @@ export function useLogsPanelLayout(
 		popOutWindow: popOutWindow,
 	} = usePopOutWindow({
 		title: popOutWindowTitle,
-		initialHeight: 400,
+		initialHeight: INITIAL_POPUP_HEIGHT,
 		initialWidth: window.document.body.offsetWidth * 0.8,
 		container: popOutContainer,
 		content: popOutContent,
@@ -109,15 +112,25 @@ export function useLogsPanelLayout(
 	}
 
 	watch(
-		[() => logsStore.state, resizer.size],
+		[() => logsStore.state, resizer.size, isPoppedOut],
 		([state, height]) => {
-			logsStore.setHeight(
+			const updatedHeight =
 				state === LOGS_PANEL_STATE.FLOATING
 					? 0
 					: state === LOGS_PANEL_STATE.ATTACHED
 						? height
-						: 32 /* collapsed panel height */,
-			);
+						: COLLAPSED_PANEL_HEIGHT;
+
+			if (state === LOGS_PANEL_STATE.FLOATING) {
+				popOutWindow?.value?.document.documentElement.style.setProperty(
+					'--logs-panel-height',
+					'100vh',
+				);
+			} else {
+				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
+			}
+
+			logsStore.setHeight(updatedHeight);
 		},
 		{ immediate: true },
 	);

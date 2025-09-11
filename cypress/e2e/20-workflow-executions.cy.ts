@@ -14,7 +14,7 @@ describe('Workflow Executions', () => {
 	describe('when workflow is saved', () => {
 		beforeEach(() => {
 			workflowPage.actions.visit();
-			cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', 'My test workflow');
+			cy.createFixtureWorkflow('Test_workflow_4_executions_view.json');
 		});
 
 		it('should render executions tab correctly', () => {
