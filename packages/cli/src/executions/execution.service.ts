@@ -1,16 +1,16 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
-	User,
 	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	User,
 } from '@n8n/db';
 import {
+	AnnotationTagMappingRepository,
 	ExecutionAnnotationRepository,
 	ExecutionRepository,
-	AnnotationTagMappingRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,8 +21,8 @@ import type {
 	INode,
 	IRunExecutionData,
 	IWorkflowBase,
-	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	ExecutionStatusList,
@@ -372,25 +372,53 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		if (this.globalConfig.database.type === 'postgresdb') {
-			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
-
-			if (liveRows === -1) return { count: -1, estimated: false, results };
-
-			if (liveRows > 100_000) {
-				// likely too high to fetch exact count fast
-				return { count: liveRows, estimated: true, results };
-			}
-		}
-
 		const { range: _, ...countQuery } = query;
 
-		const [count, concurrentExecutionsCount] = await Promise.all([
-			this.executionRepository.fetchCount({ ...countQuery, kind: 'count' }),
+		const [executionCount, concurrentExecutionsCount] = await Promise.all([
+			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
 			this.getConcurrentExecutionsCount(),
 		]);
 
-		return { results, count, estimated: false, concurrentExecutionsCount };
+		return { results, ...executionCount, concurrentExecutionsCount };
+	}
+
+	/**
+	 * Return:
+	 *
+	 * - the summaries of latest current and completed executions that satisfy a query,
+	 * - the total count of all completed executions that satisfy the query, and
+	 * - whether the total of completed executions is an estimate.
+	 *
+	 * By default, "current" means executions starting and running. With concurrency
+	 * control, "current" means executions enqueued to start and running.
+	 */
+	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
+		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
+
+		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
+		const { range: _, ...countQuery } = query;
+
+		const [current, completed, completedCount, concurrentExecutionsCount] = await Promise.all([
+			this.executionRepository.findManyByRangeQuery({
+				...query,
+				status: currentStatuses,
+				order: { top: 'running' }, // ensure limit cannot exclude running
+			}),
+			this.executionRepository.findManyByRangeQuery({
+				...query,
+				status: completedStatuses,
+				order: { startedAt: 'DESC' },
+			}),
+			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
+			this.getConcurrentExecutionsCount(),
+		]);
+
+		return {
+			results: current.concat(completed),
+			count: completedCount.count, // exclude current from count for pagination
+			estimated: completedCount.estimated,
+			concurrentExecutionsCount,
+		};
 	}
 
 	/**
@@ -413,39 +441,26 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Return:
-	 *
-	 * - the summaries of latest current and completed executions that satisfy a query,
-	 * - the total count of all completed executions that satisfy the query, and
-	 * - whether the total of completed executions is an estimate.
-	 *
-	 * By default, "current" means executions starting and running. With concurrency
-	 * control, "current" means executions enqueued to start and running.
+	 * @param countQuery the query to count executions
+	 * @returns
+	 *  - the count of executions that satisfy the query
+	 *  - whether the count is an estimate or not
 	 */
-	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
-		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
+	private async getExecutionsCountForQuery(countQuery: ExecutionSummaries.CountQuery) {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
-		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
+			if (liveRows === -1) return { count: -1, estimated: false };
 
-		const [current, completed] = await Promise.all([
-			this.findRangeWithCount({
-				...query,
-				status: currentStatuses,
-				order: { top: 'running' }, // ensure limit cannot exclude running
-			}),
-			this.findRangeWithCount({
-				...query,
-				status: completedStatuses,
-				order: { startedAt: 'DESC' },
-			}),
-		]);
+			if (liveRows > 100_000) {
+				// likely too high to fetch exact count fast
+				return { count: liveRows, estimated: true };
+			}
+		}
 
-		return {
-			results: current.results.concat(completed.results),
-			count: completed.count, // exclude current from count for pagination
-			estimated: completed.estimated,
-			concurrentExecutionsCount: completed.concurrentExecutionsCount,
-		};
+		const count = await this.executionRepository.fetchCount(countQuery);
+
+		return { count, estimated: false };
 	}
 
 	async findAllEnqueuedExecutions() {
