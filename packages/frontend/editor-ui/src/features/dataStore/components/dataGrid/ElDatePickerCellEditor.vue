@@ -192,7 +192,7 @@ defineExpose({
 }
 
 .datastore-datepicker-popper {
-	// Hide the date input because in the popper, we only want to show the time picker
+	// Hide the date input because in the popper
 	.el-date-picker__time-header .el-date-picker__editor-wrap:first-child {
 		display: none;
 	}

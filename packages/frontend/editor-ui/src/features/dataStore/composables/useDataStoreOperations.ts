@@ -213,7 +213,7 @@ export const useDataStoreOperations = ({
 
 		const cellType = isDataStoreColumnType(colDef.cellDataType) ? colDef.cellDataType : undefined;
 
-		if (areValuesEqual(oldValue, value, cellType)) {
+		if (value === undefined || areValuesEqual(oldValue, value, cellType)) {
 			return;
 		}
 
