@@ -24,6 +24,7 @@ const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);
+const personalAccessToken = ref('');
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
 		value: branch,
@@ -35,9 +36,15 @@ const onConnect = async () => {
 	loadingService.startLoading();
 	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
-		await sourceControlStore.savePreferences({
+		const payload: Partial<SourceControlPreferences> & { personalAccessToken?: string } = {
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
-		});
+			protocol: sourceControlStore.preferences.protocol,
+		};
+		if (sourceControlStore.preferences.protocol === 'https') {
+			payload.username = sourceControlStore.preferences.username;
+			payload.personalAccessToken = personalAccessToken.value;
+		}
+		await sourceControlStore.savePreferences(payload);
 		await sourceControlStore.getBranches();
 		isConnected.value = true;
 		toast.showMessage({
@@ -66,6 +73,7 @@ const onDisconnect = async () => {
 			loadingService.startLoading();
 			await sourceControlStore.disconnect(true);
 			isConnected.value = false;
+			personalAccessToken.value = '';
 			toast.showMessage({
 				title: locale.baseText('settings.sourceControl.toast.disconnected.title'),
 				message: locale.baseText('settings.sourceControl.toast.disconnected.message'),
@@ -124,27 +132,46 @@ onMounted(async () => {
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
 	keyGeneratorType: false,
+	username: false,
+	personalAccessToken: false,
 });
 
 function onValidate(key: string, value: boolean) {
 	formValidationStatus[key] = value;
 }
 
-const repoUrlValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex:
-				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
-			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
-		},
-	},
-];
+const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
+	const base: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+	if (sourceControlStore.preferences.protocol === 'ssh') {
+		base.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex:
+					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
+			},
+		});
+	} else {
+		base.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^https?:\/\/.+$/,
+				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
+			},
+		});
+	}
+	return base;
+});
 
 const keyGeneratorTypeValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
-const validForConnection = computed(() => formValidationStatus.repoUrl);
+const validForConnection = computed(() => {
+	if (!formValidationStatus.repoUrl) return false;
+	if (sourceControlStore.preferences.protocol === 'https') {
+		return formValidationStatus.username && formValidationStatus.personalAccessToken;
+	}
+	return true;
+});
 const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
 async function refreshSshKey() {
@@ -213,6 +240,24 @@ const onSelectSshKeyType = (value: Validatable) => {
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</n8n-heading>
 			<div :class="$style.group">
+				<label for="protocol">Protocol</label>
+				<n8n-form-input
+					id="protocol"
+					label=""
+					type="select"
+					name="protocol"
+					:options="[
+						{ value: 'ssh', label: 'SSH' },
+						{ value: 'https', label: 'HTTPS' },
+					]"
+					:model-value="sourceControlStore.preferences.protocol || 'ssh'"
+					:disabled="isConnected"
+					@update:model-value="
+						(v: string) => (sourceControlStore.preferences.protocol = v as 'ssh' | 'https')
+					"
+				/>
+			</div>
+			<div :class="$style.group">
 				<label for="repoUrl">{{ locale.baseText('settings.sourceControl.repoUrl') }}</label>
 				<div :class="$style.groupFlex">
 					<n8n-form-input
@@ -239,7 +284,43 @@ const onSelectSshKeyType = (value: Validatable) => {
 					>
 				</div>
 			</div>
-			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
+			<div
+				v-if="sourceControlStore.preferences.protocol === 'https' && !isConnected"
+				:class="$style.group"
+			>
+				<label for="username">Username</label>
+				<n8n-form-input
+					id="username"
+					v-model="sourceControlStore.preferences.username"
+					label=""
+					name="username"
+					validate-on-blur
+					:validation-rules="[{ name: 'REQUIRED' }]"
+					:disabled="isConnected"
+					placeholder="e.g. octocat"
+					@validate="(value: boolean) => onValidate('username', value)"
+				/>
+				<label for="pat" class="mt-s">Personal Access Token</label>
+				<n8n-form-input
+					id="pat"
+					v-model="personalAccessToken"
+					label=""
+					name="pat"
+					type="password"
+					validate-on-blur
+					:validation-rules="[{ name: 'REQUIRED' }]"
+					:disabled="isConnected"
+					placeholder="••••••••"
+					@validate="(value: boolean) => onValidate('personalAccessToken', value)"
+				/>
+			</div>
+			<div
+				v-if="
+					sourceControlStore.preferences.protocol !== 'https' &&
+					sourceControlStore.preferences.publicKey
+				"
+				:class="$style.group"
+			>
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
 					<n8n-form-input

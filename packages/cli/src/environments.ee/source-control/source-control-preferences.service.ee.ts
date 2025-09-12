@@ -57,6 +57,14 @@ export class SourceControlPreferencesService {
 		);
 	}
 
+	/**
+	 * Return preferences with sensitive fields removed for API responses
+	 */
+	getPreferencesForResponse(): Omit<SourceControlPreferences, 'personalAccessToken'> {
+		const { personalAccessToken, ...rest } = this.sourceControlPreferences;
+		return rest;
+	}
+
 	isSourceControlSetup() {
 		return (
 			this.isSourceControlLicensedAndEnabled() &&
@@ -115,6 +123,43 @@ export class SourceControlPreferencesService {
 		}
 
 		return tempFilePath;
+	}
+
+	/**
+	 * Prepare preferences for storage by encrypting sensitive values (e.g., PAT)
+	 */
+	private preparePreferencesForStorage(
+		preferences: SourceControlPreferences,
+	): SourceControlPreferences {
+		const copy: SourceControlPreferences = { ...preferences };
+		if (copy.personalAccessToken) {
+			try {
+				copy.personalAccessToken = this.cipher.encrypt(copy.personalAccessToken);
+			} catch (e) {
+				// If encryption fails, do not persist a plaintext token
+				throw new UnexpectedError('Failed to encrypt personal access token', { cause: e });
+			}
+		}
+		return copy;
+	}
+
+	/**
+	 * Prepare preferences from storage by decrypting sensitive values (e.g., PAT)
+	 */
+	private preparePreferencesFromStorage(
+		preferences: SourceControlPreferences,
+	): SourceControlPreferences {
+		const copy: SourceControlPreferences = { ...preferences };
+		if (copy.personalAccessToken) {
+			try {
+				// Attempt to decrypt; if not in expected format, treat as plaintext
+				const decrypted = this.cipher.decrypt(copy.personalAccessToken);
+				copy.personalAccessToken = decrypted;
+			} catch {
+				// Leave as-is for backward compatibility
+			}
+		}
+		return copy;
 	}
 
 	async getPublicKey() {
@@ -203,6 +248,18 @@ export class SourceControlPreferencesService {
 			stopAtFirstError: false,
 			validationError: { target: false },
 		});
+		// Hybrid: add cross-field validation for HTTPS
+		const protocol = preferencesObject.protocol ?? 'ssh';
+		if (protocol === 'https') {
+			if (!preferencesObject.username) {
+				const err = new Error('Username is required for HTTPS protocol');
+				throw new UnexpectedError('Invalid source control preferences', { cause: err });
+			}
+			if (!preferencesObject.personalAccessToken) {
+				const err = new Error('Personal access token is required for HTTPS protocol');
+				throw new UnexpectedError('Invalid source control preferences', { cause: err });
+			}
+		}
 		if (validationResult.length > 0) {
 			throw new UnexpectedError('Invalid source control preferences', {
 				extra: { preferences: validationResult },
@@ -216,12 +273,18 @@ export class SourceControlPreferencesService {
 		saveToDb = true,
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
+		const targetProtocol = preferences.protocol ?? this.getPreferences().protocol ?? 'ssh';
 
-		if (noKeyPair) await this.generateAndSaveKeyPair();
+		// Only generate SSH key pair for SSH protocol
+		if (noKeyPair && targetProtocol !== 'https') await this.generateAndSaveKeyPair();
 
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
-			const settingsValue = JSON.stringify(this._sourceControlPreferences);
+			// Store encrypted token
+			const preferencesForStorage = this.preparePreferencesForStorage(
+				this._sourceControlPreferences,
+			);
+			const settingsValue = JSON.stringify(preferencesForStorage);
 			try {
 				await this.settingsRepository.save(
 					{
@@ -246,8 +309,9 @@ export class SourceControlPreferencesService {
 		});
 		if (loadedPreferences) {
 			try {
-				const preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);
-				if (preferences) {
+				const raw = jsonParse<SourceControlPreferences>(loadedPreferences.value);
+				if (raw) {
+					const preferences = this.preparePreferencesFromStorage(raw);
 					// set local preferences but don't write back to db
 					await this.setPreferences(preferences, false);
 					return preferences;
