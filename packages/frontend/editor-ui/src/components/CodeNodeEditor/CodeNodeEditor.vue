@@ -20,6 +20,7 @@ import { useLinter } from './linter';
 import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { valueToInsert } from './utils';
 
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
@@ -203,12 +204,11 @@ function onAiLoadEnd() {
 async function onDrop(value: string, event: MouseEvent) {
 	if (!editor.value) return;
 
-	const valueToInsert =
-		props.mode === 'runOnceForAllItems'
-			? value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()')
-			: value;
-
-	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
+	await dropInCodeEditor(
+		toRaw(editor.value),
+		event,
+		valueToInsert(value, props.language, props.mode),
+	);
 }
 
 defineExpose({

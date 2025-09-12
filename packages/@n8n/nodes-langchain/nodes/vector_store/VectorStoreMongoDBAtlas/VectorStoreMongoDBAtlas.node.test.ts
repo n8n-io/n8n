@@ -55,12 +55,16 @@ describe('VectorStoreMongoDBAtlas', () => {
 				connectionString: 'mongodb://localhost:27017',
 			});
 
-			const client1 = await getMongoClient(mockContext);
-			const client2 = await getMongoClient(mockContext);
+			const client1 = await getMongoClient(mockContext, 1.1);
+			const client2 = await getMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
 			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://localhost:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: '1.1',
+				},
 			});
 			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
 			expect(mockClient1.close).not.toHaveBeenCalled();
@@ -81,15 +85,23 @@ describe('VectorStoreMongoDBAtlas', () => {
 					connectionString: 'mongodb://different-host:27017',
 				});
 
-			const client1 = await getMongoClient(mockContext);
-			const client2 = await getMongoClient(mockContext);
+			const client1 = await getMongoClient(mockContext, 1.1);
+			const client2 = await getMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(2);
 			expect(MockMongoClient).toHaveBeenNthCalledWith(1, 'mongodb://localhost:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: '1.1',
+				},
 			});
 			expect(MockMongoClient).toHaveBeenNthCalledWith(2, 'mongodb://different-host:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: '1.1',
+				},
 			});
 			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
 			expect(mockClient1.close).toHaveBeenCalledTimes(1);
