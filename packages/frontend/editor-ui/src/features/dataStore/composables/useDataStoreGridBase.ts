@@ -103,9 +103,15 @@ export const useDataStoreGridBase = ({
 		if (rowNode?.rowIndex === null) return;
 		const rowIndex = rowNode!.rowIndex;
 
-		const firstEditableCol = colDefs.value[1];
-		if (!firstEditableCol?.colId) return;
-		const columnId = firstEditableCol.colId;
+		const displayed = initializedGridApi.value.getAllDisplayedColumns();
+		const firstEditable = displayed.find((col) => {
+			const def = col.getColDef();
+			if (!def) return false;
+			if (def.colId === DEFAULT_ID_COLUMN_NAME) return false;
+			return !!def.editable;
+		});
+		if (!firstEditable) return;
+		const columnId = firstEditable.getColId();
 
 		requestAnimationFrame(() => {
 			initializedGridApi.value.ensureIndexVisible(rowIndex);
