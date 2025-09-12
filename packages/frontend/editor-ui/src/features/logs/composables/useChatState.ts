@@ -3,7 +3,7 @@ import { useChatMessaging } from '@/features/logs/composables/useChatMessaging';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ChatOptionsSymbol } from '@n8n/chat/constants';
@@ -44,8 +44,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const ws = ref<WebSocket | null>(null);
-	const messages = ref<ChatMessage[]>([]);
-	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
+	const messages = logsStore.chatSessionMessages;
+	const currentSessionId = logsStore.chatSessionId;
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
@@ -216,8 +216,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	function refreshSession() {
 		workflowsStore.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
-		messages.value = [];
-		currentSessionId.value = uuid().replace(/-/g, '');
+		logsStore.resetChatSessionId();
+		logsStore.resetMessages();
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
@@ -231,6 +231,17 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		});
 		window.open(route.href, '_blank');
 	}
+
+	watch(
+		() => workflowsStore.workflowId,
+		() => {
+			if (workflowsStore.workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				return;
+			}
+
+			refreshSession();
+		},
+	);
 
 	return {
 		currentSessionId,

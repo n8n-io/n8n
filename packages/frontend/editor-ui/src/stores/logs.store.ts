@@ -10,6 +10,8 @@ import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { LOG_DETAILS_PANEL_STATE, LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
+import type { ChatMessage } from '@n8n/chat/types';
+import { v4 as uuid } from 'uuid';
 
 export const useLogsStore = defineStore('logs', () => {
 	const isOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
@@ -39,8 +41,23 @@ export const useLogsStore = defineStore('logs', () => {
 
 	const telemetry = useTelemetry();
 
+	const chatSessionId = ref<string>(getNewSessionId());
+	const chatSessionMessages = ref<ChatMessage[]>([]);
+
 	function setHeight(value: number) {
 		height.value = value;
+	}
+
+	function getNewSessionId(): string {
+		return uuid().replace(/-/g, '');
+	}
+
+	function resetChatSessionId() {
+		chatSessionId.value = getNewSessionId();
+	}
+
+	function resetMessages() {
+		chatSessionMessages.value = [];
 	}
 
 	function toggleOpen(value?: boolean) {
@@ -109,6 +126,8 @@ export const useLogsStore = defineStore('logs', () => {
 		),
 		height: computed(() => height.value),
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
+		chatSessionId: computed(() => chatSessionId),
+		chatSessionMessages: computed(() => chatSessionMessages),
 		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,
@@ -116,5 +135,7 @@ export const useLogsStore = defineStore('logs', () => {
 		toggleInputOpen,
 		toggleOutputOpen,
 		toggleLogSelectionSync,
+		resetChatSessionId,
+		resetMessages,
 	};
 });
