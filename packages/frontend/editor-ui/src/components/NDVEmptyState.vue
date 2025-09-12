@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ title: string }>();
+defineProps<{ title?: string }>();
 
 defineSlots<{
 	icon(): unknown;
@@ -10,7 +10,7 @@ defineSlots<{
 <template>
 	<article :class="$style.empty">
 		<slot name="icon" />
-		<h1 :class="$style.title">{{ title }}</h1>
+		<h1 v-if="title" :class="$style.title">{{ title }}</h1>
 		<p :class="$style.description"><slot name="description" /></p>
 	</article>
 </template>
@@ -36,7 +36,8 @@ defineSlots<{
 
 .description {
 	font-size: var(--font-size-s);
-	max-width: 180px;
+	max-width: 240px;
 	margin: 0;
+	text-align: center;
 }
 </style>

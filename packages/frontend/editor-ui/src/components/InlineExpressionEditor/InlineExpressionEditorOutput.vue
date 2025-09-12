@@ -104,8 +104,9 @@ defineExpose({
 	padding: 0 !important;
 	border: none !important;
 
-	/* Override break-all set for el-popper */
+	/* Override styles set for el-popper */
 	word-break: normal;
+	text-align: unset;
 }
 
 .dropdown {
