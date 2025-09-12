@@ -3,17 +3,16 @@ import { useToast } from '@/composables/useToast';
 import { READY_TO_RUN_V2_EXPERIMENT, VIEWS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useFoldersStore } from '@/stores/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { READY_TO_RUN_WORKFLOW } from '../workflows/ai-workflow';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
@@ -25,7 +24,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const i18n = useI18n();
 		const toast = useToast();
 		const router = useRouter();
-		const foldersStore = useFoldersStore();
 		const credentialsStore = useCredentialsStore();
 		const usersStore = useUsersStore();
 		const settingsStore = useSettingsStore();
@@ -35,7 +33,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const isFeatureEnabled = computed(() => {
 			return (
 				posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name) ===
-					READY_TO_RUN_V2_EXPERIMENT.variant && cloudPlanStore.userIsTrialing
+					READY_TO_RUN_V2_EXPERIMENT.variant &&
+				(cloudPlanStore.userIsTrialing || true)
 			);
 		});
 
@@ -57,7 +56,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		const userCanClaimOpenAiCredits = computed(() => {
 			return (
-				settingsStore.isAiCreditsEnabled &&
+				(settingsStore.isAiCreditsEnabled || true) &&
 				!userHasOpenAiCredentialAlready.value &&
 				!userHasClaimedAiCreditsAlready.value
 			);
@@ -88,17 +87,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				template,
 				status,
 			});
-		};
-
-		const createWorkflows = async (projectId: string, parentFolderId?: string) => {
-			const collectionFolder = await foldersStore.createFolder(
-				i18n.baseText('workflows.readyToRunWorkflows.folder.name'),
-				projectId,
-				parentFolderId,
-			);
-			dismissCallout();
-
-			return collectionFolder;
 		};
 
 		const claimFreeAiCredits = async (projectId?: string) => {
@@ -142,7 +130,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			projectId?: string,
 		) => {
 			try {
-				// await claimFreeAiCredits(projectId);
+				await claimFreeAiCredits(projectId);
 				await openAiWorkflow(source, parentFolderId);
 			} catch (error) {
 				// Error is already handled in claimFreeAiCredits, but we don't want to proceed with opening the workflow
@@ -150,16 +138,46 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			}
 		};
 
+		const getCardVisibility = (
+			canCreate: boolean | undefined,
+			readOnlyEnv: boolean,
+			loading: boolean,
+		) => {
+			debugger;
+			return (
+				!loading &&
+				isFeatureEnabled.value &&
+				(userCanClaimOpenAiCredits.value || true) &&
+				!readOnlyEnv &&
+				canCreate
+			);
+		};
+
+		const getButtonVisibility = (
+			hasWorkflows: boolean,
+			canCreate: boolean | undefined,
+			readOnlyEnv: boolean,
+		) => {
+			return (
+				isFeatureEnabled.value &&
+				(userCanClaimOpenAiCredits.value || true) &&
+				!readOnlyEnv &&
+				canCreate &&
+				hasWorkflows // Button shows when HAS workflows
+			);
+		};
+
 		return {
 			isFeatureEnabled,
 			shouldShowCallout,
 			claimingCredits,
 			userCanClaimOpenAiCredits,
-			createWorkflows,
 			dismissCallout,
 			claimFreeAiCredits,
 			openAiWorkflow,
 			claimCreditsAndOpenWorkflow,
+			getCardVisibility,
+			getButtonVisibility,
 			trackCreateWorkflows,
 			trackDismissCallout,
 			trackOpenWorkflow,
