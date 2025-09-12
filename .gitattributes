@@ -1,6 +1,7 @@
 *.sh text eol=lf
 .devcontainer/** merge=ours
 workflows/** merge=ours
+.github/** merge=ours
 workflows-static/** merge=ours
 initial-credentials/** merge=ours
 updates/** merge=ours
