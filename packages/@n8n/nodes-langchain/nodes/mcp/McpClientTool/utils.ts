@@ -11,6 +11,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type Result,
+	jsonParse,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -29,6 +30,20 @@ export async function getAllTools(client: Client, cursor?: string): Promise<McpT
 	}
 
 	return tools as McpTool[];
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+	if (!value || typeof value !== 'object') return false;
+	const entries = Object.entries(value as Record<string, unknown>);
+	return (
+		!Array.isArray(value) && entries.length > 0 && entries.every(([, v]) => typeof v === 'string')
+	);
+}
+
+function hasHeadersRecord(value: unknown): value is { headers: Record<string, string> } {
+	if (!value || typeof value !== 'object') return false;
+	const maybe = value as { headers?: unknown };
+	return isStringRecord(maybe.headers);
 }
 
 export function getSelectedTools({
@@ -149,7 +164,7 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	const parsedUrl = safeCreateUrl(withProtocol);
 
 	if (!parsedUrl.ok) {
-		return createResultError(parsedUrl.error);
+		return parsedUrl;
 	}
 
 	return parsedUrl;
@@ -181,10 +196,44 @@ export async function connectMcpClient({
 
 	if (serverTransport === 'httpStreamable') {
 		try {
+			const defaultHeaders: Record<string, string> = {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+			};
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
+				requestInit: { headers: { ...defaultHeaders, ...(headers ?? {}) } },
 			});
-			await client.connect(transport);
+			// Wrap to a minimal transport shape without asserting the transport type
+			const clientTransport = {
+				start: () => (transport as any).start(),
+				send: (message: unknown, options?: unknown) =>
+					(transport as any).send(message as any, options as any),
+				close: () => (transport as any).close(),
+				get onclose() {
+					return (transport as any).onclose;
+				},
+				set onclose(handler: (() => void) | undefined) {
+					(transport as any).onclose = handler;
+				},
+				get onerror() {
+					return (transport as any).onerror;
+				},
+				set onerror(handler: ((error: Error) => void) | undefined) {
+					(transport as any).onerror = handler;
+				},
+				get onmessage() {
+					return (transport as any).onmessage as any;
+				},
+				set onmessage(handler:
+					| ((message: unknown, extra?: { authInfo?: unknown }) => void)
+					| undefined) {
+					(transport as any).onmessage = handler as any;
+				},
+				get sessionId() {
+					return (transport as any).sessionId;
+				},
+			};
+			await client.connect(clientTransport);
 			return createResultOk(client);
 		} catch (error) {
 			return createResultError({ type: 'connection', error });
@@ -234,6 +283,22 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'customAuth': {
+			const customAuth = await ctx
+				.getCredentials<{ json: string }>('httpCustomAuth')
+				.catch(() => null);
+
+			if (!customAuth) return {};
+
+			const raw = jsonParse<unknown>((customAuth.json as string) || '{}', {
+				errorMessage: 'Invalid Custom Auth JSON',
+			});
+
+			if (hasHeadersRecord(raw)) return { headers: raw.headers };
+			if (isStringRecord(raw)) return { headers: raw };
+
+			return {};
 		}
 		case 'none':
 		default: {

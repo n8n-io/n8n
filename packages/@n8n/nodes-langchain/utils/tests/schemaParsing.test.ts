@@ -126,8 +126,10 @@ describe('generateSchemaFromExample', () => {
 		expect(schema.type).toBe('object');
 		expect(schema.properties).toHaveProperty('metadata');
 		expect(schema.properties).toHaveProperty('data');
-		expect((schema.properties?.data as JSONSchema7).type).toBe('array');
-		expect(((schema.properties?.data as JSONSchema7).items as JSONSchema7).type).toBe('object');
+		expect(((schema.properties as any)?.data as JSONSchema7).type).toBe('array');
+		expect((((schema.properties as any)?.data as JSONSchema7).items as JSONSchema7).type).toBe(
+			'object',
+		);
 	});
 
 	it('should handle null values', () => {
@@ -190,11 +192,14 @@ describe('generateSchemaFromExample', () => {
 
 		expect(schema.required).toEqual(['user']);
 
-		const userSchema = schema.properties?.user as JSONSchema7;
+		const userSchema = (schema.properties as any)?.user as JSONSchema7;
 
 		expect(userSchema.required).toEqual(['profile', 'preferences']);
-		expect((userSchema.properties?.profile as JSONSchema7).required).toEqual(['name', 'email']);
-		expect((userSchema.properties?.preferences as JSONSchema7).required).toEqual([
+		expect(((userSchema.properties as any)?.profile as JSONSchema7).required).toEqual([
+			'name',
+			'email',
+		]);
+		expect(((userSchema.properties as any)?.preferences as JSONSchema7).required).toEqual([
 			'theme',
 			'notifications',
 		]);
