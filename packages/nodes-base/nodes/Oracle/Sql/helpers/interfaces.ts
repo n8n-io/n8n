@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import type { DateTime } from 'luxon';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type * as oracleDBTypes from 'oracledb';

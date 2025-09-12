@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type {
