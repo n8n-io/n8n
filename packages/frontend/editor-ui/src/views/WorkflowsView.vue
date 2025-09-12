@@ -29,6 +29,7 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
@@ -445,6 +446,10 @@ const showReadyToRunV2Card = computed(() => {
 		readOnlyEnv.value,
 		loading.value,
 	);
+});
+
+const shouldUseSimplifiedLayout = computed(() => {
+	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
 });
 
 /**
@@ -1736,7 +1741,10 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+
 	<ResourcesListLayout
+		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
@@ -1913,11 +1921,14 @@ const onNameSubmit = async (name: string) => {
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
+			<div
+				v-if="!shouldUseSimplifiedLayout && breadcrumbsLoading"
+				:class="$style['breadcrumbs-loading']"
+			>
 				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
-				v-else-if="showFolders && currentFolder"
+				v-else-if="!shouldUseSimplifiedLayout && showFolders && currentFolder"
 				:class="$style['breadcrumbs-container']"
 				data-test-id="main-breadcrumbs"
 			>
@@ -2060,25 +2071,6 @@ const onNameSubmit = async (name: string) => {
 					v-if="!readOnlyEnv && projectPermissions.workflow.create"
 					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 				>
-					<N8nCard
-						v-if="showReadyToRunV2Card"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="ready-to-run-v2-card"
-						@click="handleReadyToRunV2Click"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								icon="sparkles"
-								color="foreground-dark"
-								:stroke-width="1.5"
-							/>
-							<N8nText size="large" class="mt-xs">
-								{{ i18n.baseText('workflows.empty.readyToRunV2') }}
-							</N8nText>
-						</div>
-					</N8nCard>
 					<N8nCard
 						:class="$style.emptyStateCard"
 						hoverable

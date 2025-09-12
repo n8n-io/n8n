@@ -12,8 +12,9 @@ import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { READY_TO_RUN_WORKFLOW } from '../workflows/ai-workflow';
+import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
 
@@ -143,7 +144,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			readOnlyEnv: boolean,
 			loading: boolean,
 		) => {
-			debugger;
 			return (
 				!loading &&
 				isFeatureEnabled.value &&
@@ -167,6 +167,12 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			);
 		};
 
+		const { shouldShowSimplifiedLayout } = useEmptyStateDetection();
+
+		const getSimplifiedLayoutVisibility = (route: RouteLocationNormalized, loading: boolean) => {
+			return shouldShowSimplifiedLayout(route, isFeatureEnabled.value, loading);
+		};
+
 		return {
 			isFeatureEnabled,
 			shouldShowCallout,
@@ -178,6 +184,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			claimCreditsAndOpenWorkflow,
 			getCardVisibility,
 			getButtonVisibility,
+			getSimplifiedLayoutVisibility,
 			trackCreateWorkflows,
 			trackDismissCallout,
 			trackOpenWorkflow,
