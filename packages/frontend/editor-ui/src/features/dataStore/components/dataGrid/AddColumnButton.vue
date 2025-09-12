@@ -44,6 +44,15 @@ const isSelectOpen = ref(false);
 
 const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
+const columnTypeOptions = computed(() => {
+	// Renaming 'date' to 'datetime' but only in UI label
+	// we still want to use 'date' as value so nothing breaks
+	return columnTypes.map((type) => ({
+		label: type === 'date' ? 'datetime' : type,
+		value: type,
+	}));
+});
+
 const onAddButtonClicked = async () => {
 	validateName();
 	if (!columnName.value || !columnType.value || error.value) {
@@ -178,10 +187,15 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									:append-to="`#${popoverId}`"
 									@visible-change="isSelectOpen = $event"
 								>
-									<N8nOption v-for="type in columnTypes" :key="type" :value="type">
+									<N8nOption
+										v-for="option in columnTypeOptions"
+										:key="option.value"
+										:label="option.label"
+										:value="option.value"
+									>
 										<div class="add-column-option-content">
-											<N8nIcon :icon="getIconForType(type)" />
-											<N8nText>{{ type }}</N8nText>
+											<N8nIcon :icon="getIconForType(option.value)" />
+											<N8nText>{{ option.label }}</N8nText>
 										</div>
 									</N8nOption>
 								</N8nSelect>
