@@ -1883,6 +1883,7 @@
 	"runData.editValue": "Edit Value",
 	"runData.executionStatus.success": "Executed successfully",
 	"runData.executionStatus.failed": "Execution failed",
+	"runData.executionStatus.canceled": "Execution canceled",
 	"runData.downloadBinaryData": "Download",
 	"runData.executeNode": "Test Node",
 	"runData.executionTime": "Execution Time",
