@@ -38,7 +38,6 @@ test.describe('If Node (filter component)', () => {
 	test('should correctly evaluate conditions', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_filter.json');
 
-		await n8n.canvas.clickZoomToFitButton();
 		await n8n.canvas.clickExecuteWorkflowButton();
 
 		await n8n.canvas.openNode('Then');
