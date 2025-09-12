@@ -19,6 +19,7 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	ExecutionBaseError,
@@ -250,6 +251,7 @@ export async function getInputConnectionData(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
+
 		const contextFactory = (
 			runIndex: number,
 			inputData: ITaskDataConnections,
@@ -273,21 +275,28 @@ export async function getInputConnectionData(
 			);
 
 		if (!connectedNodeType.supplyData) {
-			let filteredParentInputData = parentInputData;
 			if (connectionType === NodeConnectionTypes.AiTool) {
-				filteredParentInputData = filterParentInputDataForCurrentItem(parentInputData, itemIndex);
+				const filteredParentInputData = filterParentInputDataForCurrentItem(
+					parentInputData,
+					itemIndex,
+				);
+
+				const supplyData = createNodeAsTool({
+					node: connectedNode,
+					nodeType: connectedNodeType,
+					handleToolInvocation: makeHandleToolInvocation(
+						(i) => contextFactory(i, filteredParentInputData, itemIndex),
+						connectedNode,
+						connectedNodeType,
+						runExecutionData,
+					),
+				});
+				nodes.push(supplyData);
+			} else {
+				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+					extra: { nodeName: connectedNode.name },
+				});
 			}
-			const supplyData = createNodeAsTool({
-				node: connectedNode,
-				nodeType: connectedNodeType,
-				handleToolInvocation: makeHandleToolInvocation(
-					(i) => contextFactory(i, filteredParentInputData, itemIndex),
-					connectedNode,
-					connectedNodeType,
-					runExecutionData,
-				),
-			});
-			nodes.push(supplyData);
 		} else {
 			const inputDataForContext =
 				connectionType === NodeConnectionTypes.AiTool

@@ -60,7 +60,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		parentNode?: INode,
-		itemIndexOverride?: number,
+		private readonly itemIndexOverride?: number,
 	) {
 		super(
 			workflow,
@@ -93,9 +93,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getDataStoreHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndexOverride ?? itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndexOverride ?? itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
@@ -112,7 +112,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		) =>
 			this._getNodeParameter(
 				parameterName,
-				itemIndexOverride ?? itemIndex,
+				this.itemIndexOverride ?? itemIndex,
 				fallbackValue,
 				options,
 			)) as ISupplyDataFunctions['getNodeParameter'];
@@ -157,7 +157,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.mode,
 			this.closeFunctions,
 			connectionType,
-			itemIndex,
+			this.itemIndexOverride ?? itemIndex,
 			this.abortSignal,
 		);
 	}
