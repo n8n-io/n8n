@@ -8,7 +8,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ALL_CONDITIONS, ANY_CONDITION, type FilterType } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
@@ -125,7 +125,8 @@ export async function executeSelectMany(
 	const PAGE_SIZE = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
 
-	const limit = ctx.getNodeParameter('limit', index, 0);
+	const returnAll = ctx.getNodeParameter('returnAll', index, false);
+	const limit = !returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0;
 
 	let expectedTotal: number | undefined;
 	let skip = 0;

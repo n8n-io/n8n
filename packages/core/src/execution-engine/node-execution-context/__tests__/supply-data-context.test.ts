@@ -16,7 +16,7 @@ import type {
 	NodeConnectionType,
 	IRunData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -217,6 +217,72 @@ describe('SupplyDataContext', () => {
 			const latestRunIndex = supplyDataContext.getNextRunIndex();
 
 			expect(latestRunIndex).toBe(2);
+		});
+	});
+
+	describe('addExecutionDataFunctions', () => {
+		it('should preserve canceled status when execution is aborted and output has error', async () => {
+			const errorData = new ExecutionCancelledError('Execution was aborted');
+			const abortedSignal = mock<AbortSignal>({ aborted: true });
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+			const testRunExecutionData = mock<IRunExecutionData>({
+				resultData: {
+					runData: {
+						[node.name]: [
+							{
+								executionStatus: 'canceled',
+								startTime: Date.now(),
+								executionTime: 0,
+								executionIndex: 0,
+								error: undefined,
+							},
+						],
+					},
+					error: undefined,
+				},
+				executionData: { metadata: {} },
+			});
+
+			const contextWithAbort = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				'ai_agent',
+				executeData,
+				[closeFn],
+				abortedSignal,
+			);
+
+			await contextWithAbort.addExecutionDataFunctions(
+				'output',
+				errorData,
+				'ai_agent',
+				node.name,
+				0,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.executionStatus).toBe('canceled');
+			expect(taskData.error).toBeUndefined();
+
+			// Verify nodeExecuteAfter hook was called correctly
+			expect(mockHooks.runHook).toHaveBeenCalledWith('nodeExecuteAfter', [
+				node.name,
+				taskData,
+				testRunExecutionData,
+			]);
 		});
 	});
 });

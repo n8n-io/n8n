@@ -185,7 +185,6 @@ export class FrontendService {
 			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
-				warningThreshold: this.globalConfig.dataTable.warningThreshold,
 			},
 			publicApi: {
 				enabled: isApiEnabled(),
