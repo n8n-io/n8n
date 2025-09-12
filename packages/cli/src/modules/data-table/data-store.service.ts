@@ -122,15 +122,22 @@ export class DataStoreService {
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		if (dto.filter) {
-			this.validateAndTransformFilters(dto.filter, columns);
-		}
-		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto, columns);
-		return {
-			count: result.count,
-			data: normalizeRows(result.data, columns),
-		};
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+			if (dto.filter) {
+				this.validateAndTransformFilters(dto.filter, columns);
+			}
+			const result = await this.dataStoreRowsRepository.getManyAndCount(
+				dataStoreId,
+				dto,
+				columns,
+				em,
+			);
+			return {
+				count: result.count,
+				data: normalizeRows(result.data, columns),
+			};
+		});
 	}
 
 	async getColumns(dataStoreId: string, projectId: string) {
@@ -153,39 +160,82 @@ export class DataStoreService {
 	) {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, rows);
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+			this.validateRowsWithColumns(rows, columns);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnType);
+			return await this.dataStoreRowsRepository.insertRows(
+				dataStoreId,
+				rows,
+				columns,
+				returnType,
+				em,
+			);
+		});
 	}
 
 	async upsertRow<T extends boolean | undefined>(
-		dataStoreId: string,
+		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRow(
-		dataStoreId: string,
+		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		const updated = await this.updateRow(dataStoreId, projectId, dto, true);
+		await this.validateDataStoreExists(dataTableId, projectId);
 
-		if (updated.length > 0) {
-			return returnData ? updated : true;
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+			this.validateUpdateParams(dto, columns);
+			const updated = await this.dataStoreRowsRepository.updateRow(
+				dataTableId,
+				dto.data,
+				dto.filter,
+				columns,
+				true,
+				em,
+			);
+
+			if (updated.length > 0) {
+				return returnData ? updated : true;
+			}
+
+			// No rows were updated, so insert a new one
+			const inserted = await this.dataStoreRowsRepository.insertRows(
+				dataTableId,
+				[dto.data],
+				columns,
+				returnData ? 'all' : 'id',
+				em,
+			);
+			return returnData ? inserted : true;
+		});
+	}
+
+	validateUpdateParams(
+		{ filter, data }: Pick<UpdateDataTableRowDto, 'filter' | 'data'>,
+		columns: DataTableColumn[],
+	) {
+		if (columns.length === 0) {
+			throw new DataStoreValidationError(
+				'No columns found for this data table or data table not found',
+			);
 		}
 
-		// No rows were updated, so insert a new one
-		const inserted = await this.insertRows(
-			dataStoreId,
-			projectId,
-			[dto.data],
-			returnData ? 'all' : 'count',
-		);
-		return returnData ? inserted : true;
+		if (!filter?.filters || filter.filters.length === 0) {
+			throw new DataStoreValidationError('Filter must not be empty');
+		}
+		if (!data || Object.keys(data).length === 0) {
+			throw new DataStoreValidationError('Data columns must not be empty');
+		}
+
+		this.validateRowsWithColumns([data], columns, false);
+		this.validateAndTransformFilters(filter, columns);
 	}
 
 	async updateRow<T extends boolean | undefined>(
@@ -203,31 +253,18 @@ export class DataStoreService {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId);
-		if (columns.length === 0) {
-			throw new DataStoreValidationError(
-				'No columns found for this data table or data table not found',
+		return await this.dataStoreColumnRepository.manager.transaction(async (em) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+			this.validateUpdateParams(dto, columns);
+			return await this.dataStoreRowsRepository.updateRow(
+				dataTableId,
+				dto.data,
+				dto.filter,
+				columns,
+				returnData,
+				em,
 			);
-		}
-
-		const { data, filter } = dto;
-		if (!filter?.filters || filter.filters.length === 0) {
-			throw new DataStoreValidationError('Filter must not be empty');
-		}
-		if (!data || Object.keys(data).length === 0) {
-			throw new DataStoreValidationError('Data columns must not be empty');
-		}
-
-		this.validateRowsWithColumns([data], columns, false);
-		this.validateAndTransformFilters(filter, columns);
-
-		return await this.dataStoreRowsRepository.updateRow(
-			dataTableId,
-			data,
-			filter,
-			columns,
-			returnData,
-		);
+		});
 	}
 
 	async deleteRows<T extends boolean | undefined>(
@@ -289,15 +326,6 @@ export class DataStoreService {
 				this.validateCell(row, key, columnTypeMap);
 			}
 		}
-	}
-
-	private async validateRows(
-		dataStoreId: string,
-		rows: DataStoreRows,
-		includeSystemColumns = false,
-	): Promise<void> {
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 
 	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {
