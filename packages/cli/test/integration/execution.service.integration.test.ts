@@ -553,7 +553,7 @@ describe('ExecutionService', () => {
 				});
 			});
 
-			test('should set concurrentExecutionsCount to 0 when concurrency is disabled', async () => {
+			test('should set concurrentExecutionsCount to -1 when concurrency is disabled', async () => {
 				globalConfig.executions.concurrency.productionLimit = -1;
 
 				const workflow = await createWorkflow();
@@ -585,7 +585,7 @@ describe('ExecutionService', () => {
 				});
 			});
 
-			test('should set concurrentExecutionsCount to 0 in queue mode', async () => {
+			test('should set concurrentExecutionsCount to -1 in queue mode', async () => {
 				config.set('executions.mode', 'queue');
 				globalConfig.executions.concurrency.productionLimit = 4;
 
