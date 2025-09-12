@@ -25,53 +25,30 @@ test.describe('Form Trigger', () => {
 
 		// Add first field - Number type with required flag
 		await n8n.ndv.addFixedCollectionItem();
-		await n8n.ndv
-			.getParameterInput('fieldLabel')
-			.getByTestId('parameter-input-field')
-			.fill('Test Field 1');
+		await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field 1');
 		await n8n.ndv.selectOptionInParameterDropdown('fieldType', 'Number');
 		await n8n.ndv.setParameterSwitch('requiredField', true);
 
 		// Add second field - Text type
-		await n8n.page.getByRole('button', { name: 'Add Form Element' }).click();
-		await n8n.ndv
-			.getParameterInput('fieldLabel')
-			.nth(1)
-			.getByTestId('parameter-input-field')
-			.fill('Test Field 2');
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.getParameterInputField('fieldLabel').nth(1).fill('Test Field 2');
 
 		// Add third field - Date type
-		await n8n.page.getByRole('button', { name: 'Add Form Element' }).click();
-		await n8n.ndv
-			.getParameterInput('fieldLabel')
-			.nth(2)
-			.getByTestId('parameter-input-field')
-			.fill('Test Field 3');
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.getParameterInputField('fieldLabel').nth(2).fill('Test Field 3');
 		await n8n.ndv.getParameterInput('fieldType').nth(2).click();
 		await n8n.ndv.selectFromVisibleDropdown('Date');
 
 		// Add fourth field - Dropdown type with options
-		await n8n.page.getByRole('button', { name: 'Add Form Element' }).click();
-		await n8n.ndv
-			.getParameterInput('fieldLabel')
-			.nth(3)
-			.getByTestId('parameter-input-field')
-			.fill('Test Field 4');
+		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.getParameterInputField('fieldLabel').nth(3).fill('Test Field 4');
 		await n8n.ndv.getParameterInput('fieldType').nth(3).click();
 		await n8n.ndv.selectFromVisibleDropdown('Dropdown');
 
 		// Configure dropdown field options
 		await n8n.page.getByRole('button', { name: 'Add Field Option' }).click();
-		await n8n.ndv
-			.getParameterInput('option')
-			.first()
-			.getByTestId('parameter-input-field')
-			.fill('Option 1');
-		await n8n.ndv
-			.getParameterInput('option')
-			.nth(1)
-			.getByTestId('parameter-input-field')
-			.fill('Option 2');
+		await n8n.ndv.getParameterInputField('option').first().fill('Option 1');
+		await n8n.ndv.getParameterInputField('option').nth(1).fill('Option 2');
 
 		// Add optional submitted message
 		await n8n.ndv.clickParameterOptions();
