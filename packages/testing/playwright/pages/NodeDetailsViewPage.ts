@@ -141,7 +141,16 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
-	getInlineExpressionEditorInput() {
+	/**
+	 * Get the inline expression editor input
+	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
+	 * @returns The inline expression editor input
+	 */
+	getInlineExpressionEditorInput(parameterName?: string) {
+		if (parameterName) {
+			const parameterInput = this.getParameterInput(parameterName);
+			return parameterInput.getByTestId('inline-expression-editor-input');
+		}
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
 
@@ -165,15 +174,15 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.el-popper:visible');
 	}
 
-	async clearExpressionEditor() {
-		const editor = this.getInlineExpressionEditorInput();
+	async clearExpressionEditor(parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
-	async typeInExpressionEditor(text: string) {
-		const editor = this.getInlineExpressionEditorInput();
+	async typeInExpressionEditor(text: string, parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await editor.type(text);
 	}
