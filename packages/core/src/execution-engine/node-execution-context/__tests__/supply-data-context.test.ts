@@ -20,6 +20,11 @@ import { ApplicationError, ExecutionCancelledError, NodeConnectionTypes } from '
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
+import { getInputConnectionData } from './../utils/get-input-connection-data';
+
+jest.mock('./../utils/get-input-connection-data', () => ({
+	getInputConnectionData: jest.fn(),
+}));
 
 describe('SupplyDataContext', () => {
 	const testCredentialType = 'testCredential';
@@ -52,7 +57,11 @@ describe('SupplyDataContext', () => {
 	});
 	node.parameters = {
 		testParameter: 'testValue',
+		testParameterExpression: '={{ $json.item }}',
 	};
+	const parentNode = mock<INode>({
+		name: 'Parent Test Node',
+	});
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
 	const mode: WorkflowExecuteMode = 'manual';
@@ -283,6 +292,83 @@ describe('SupplyDataContext', () => {
 				taskData,
 				testRunExecutionData,
 			]);
+		});
+	});
+
+	describe('itemIndexOverride', () => {
+		beforeEach(() => {
+			expression.getParameterValue.mockClear();
+			expression.getParameterValue.mockImplementation((value) => value);
+		});
+
+		it('should not affect getInputData', () => {
+			const contextWithOverride = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+				parentNode,
+				5, // itemIndexOverride
+			);
+
+			const inputDataResult = contextWithOverride.getInputData(0, connectionType);
+			expect(inputDataResult).toEqual([{ json: { test: 'data' } }]);
+		});
+
+		it('should use itemIndexOverride when getting node parameters', () => {
+			const contextWithOverride = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+				parentNode,
+				5, // itemIndexOverride
+			);
+
+			contextWithOverride.getNodeParameter('testParameterExpression', 0);
+
+			// itemIndexOverride is used when resolving expression instead of 0
+			expect(expression.getParameterValue.mock.calls[0][3]).toBe(5);
+		});
+
+		it('should pass down itemIndexOverride when getting context for nested sub-nodes', async () => {
+			const contextWithOverride = new SupplyDataContext(
+				workflow,
+				parentNode,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+				undefined,
+				5, // itemIndexOverride
+			);
+
+			await contextWithOverride.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			// getInputConnectionData should receive itemIndexOverride instead of 0
+			expect(jest.mocked(getInputConnectionData).mock.calls[0][10]).toBe(5);
 		});
 	});
 });
