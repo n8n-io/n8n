@@ -17,17 +17,17 @@ import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVec
 /**
  * Constants for the name of the credentials and Node parameters.
  */
-export const REDIS_CREDENTIALS = 'redis';
-export const REDIS_INDEX_NAME = 'redisIndex';
-export const REDIS_KEY_PREFIX = 'keyPrefix';
-export const REDIS_OVERWRITE_DOCUMENTS = 'overwriteDocuments';
-export const REDIS_METADATA_KEY = 'metadataKey';
-export const REDIS_METADATA_FILTER = 'metadataFilter';
-export const REDIS_CONTENT_KEY = 'contentKey';
-export const REDIS_EMBEDDING_KEY = 'vectorKey';
-export const REDIS_TTL = 'ttl';
+const REDIS_CREDENTIALS = 'redis';
+const REDIS_INDEX_NAME = 'redisIndex';
+const REDIS_KEY_PREFIX = 'keyPrefix';
+const REDIS_OVERWRITE_DOCUMENTS = 'overwriteDocuments';
+const REDIS_METADATA_KEY = 'metadataKey';
+const REDIS_METADATA_FILTER = 'metadataFilter';
+const REDIS_CONTENT_KEY = 'contentKey';
+const REDIS_EMBEDDING_KEY = 'vectorKey';
+const REDIS_TTL = 'ttl';
 
-export const redisIndexRLC: INodeProperties = {
+const redisIndexRLC: INodeProperties = {
 	displayName: 'Redis Index',
 	name: REDIS_INDEX_NAME,
 	type: 'resourceLocator',
@@ -255,14 +255,14 @@ class ExtendedRedisVectorSearch extends RedisVectorStore {
 	}
 }
 
-export const getIndexName = getParameter.bind(null, REDIS_INDEX_NAME);
-export const getKeyPrefix = getParameter.bind(null, `options.${REDIS_KEY_PREFIX}`);
-export const getOverwrite = getParameter.bind(null, `options.${REDIS_OVERWRITE_DOCUMENTS}`);
-export const getContentKey = getParameter.bind(null, `options.${REDIS_CONTENT_KEY}`);
-export const getMetadataFilter = getParameter.bind(null, `options.${REDIS_METADATA_FILTER}`);
-export const getMetadataKey = getParameter.bind(null, `options.${REDIS_METADATA_KEY}`);
-export const getEmbeddingKey = getParameter.bind(null, `options.${REDIS_EMBEDDING_KEY}`);
-export const getTtl = getParameter.bind(null, `options.${REDIS_TTL}`);
+const getIndexName = getParameter.bind(null, REDIS_INDEX_NAME);
+const getKeyPrefix = getParameter.bind(null, `options.${REDIS_KEY_PREFIX}`);
+const getOverwrite = getParameter.bind(null, `options.${REDIS_OVERWRITE_DOCUMENTS}`);
+const getContentKey = getParameter.bind(null, `options.${REDIS_CONTENT_KEY}`);
+const getMetadataFilter = getParameter.bind(null, `options.${REDIS_METADATA_FILTER}`);
+const getMetadataKey = getParameter.bind(null, `options.${REDIS_METADATA_KEY}`);
+const getEmbeddingKey = getParameter.bind(null, `options.${REDIS_EMBEDDING_KEY}`);
+const getTtl = getParameter.bind(null, `options.${REDIS_TTL}`);
 
 export class VectorStoreRedis extends createVectorStoreNode({
 	meta: {
@@ -320,7 +320,7 @@ export class VectorStoreRedis extends createVectorStoreNode({
 							.split(',')
 							.map((s) => s.trim())
 							.filter((s) => s)
-					: null,
+					: undefined,
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
