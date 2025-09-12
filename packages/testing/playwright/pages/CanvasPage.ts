@@ -648,4 +648,8 @@ export class CanvasPage extends BasePage {
 	async openExecutions() {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
+
+	waitingForTriggerEvent() {
+		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
+	}
 }
