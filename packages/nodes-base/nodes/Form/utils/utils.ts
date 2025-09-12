@@ -54,6 +54,12 @@ export function sanitizeHtml(text: string) {
 			'ol',
 			'li',
 			'p',
+			'table',
+			'thead',
+			'tbody',
+			'td',
+			'tr',
+			'th',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],

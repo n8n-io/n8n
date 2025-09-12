@@ -89,6 +89,160 @@ describe('FormTrigger, sanitizeHtml', () => {
 			expect(sanitizeHtml(html)).toBe(expected);
 		});
 	});
+
+	it('should allow table elements and preserve structure', () => {
+		const tableTestCases = [
+			{
+				html: '<table><tr><td>Cell content</td></tr></table>',
+				expected: '<table><tr><td>Cell content</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+			},
+		];
+
+		tableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should remove malicious attributes from table elements', () => {
+		const maliciousTableCases = [
+			{
+				html: '<table onclick="alert(\'XSS\')" class="malicious"><tr><td>Content</td></tr></table>',
+				expected: '<table><tr><td>Content</td></tr></table>',
+			},
+			{
+				html: '<thead onmouseover="steal()" id="header"><tr><th onclick="hack()">Header</th></tr></thead>',
+				expected: '<thead><tr><th>Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody style="background: red;" data-evil="payload"><tr><td onerror="malicious()">Data</td></tr></tbody>',
+				expected: '<tbody><tr><td>Data</td></tr></tbody>',
+			},
+			{
+				html: '<tr onload="alert(\'XSS\')" class="row"><td onblur="steal()" title="tooltip">Cell</td></tr>',
+				expected: '<tr><td>Cell</td></tr>',
+			},
+			{
+				html: '<th onclick="javascript:alert(\'XSS\')" style="color: red;">Header</th>',
+				expected: '<th>Header</th>',
+			},
+			{
+				html: '<td onmouseover="malicious()" data-payload="evil">Cell Data</td>',
+				expected: '<td>Cell Data</td>',
+			},
+		];
+
+		maliciousTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle nested content within table elements', () => {
+		const nestedTableCases = [
+			{
+				html: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+				expected: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+				expected:
+					'<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+			},
+			{
+				html: '<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+				expected:
+					'<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+				expected:
+					'<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+			},
+		];
+
+		nestedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle malformed table structures gracefully', () => {
+		const malformedTableCases = [
+			{
+				html: '<table><td>Cell without row</td></table>',
+				expected: '<table><td>Cell without row</td></table>',
+			},
+			{
+				html: '<thead><th>Header without table</th></thead>',
+				expected: '<thead><th>Header without table</th></thead>',
+			},
+			{
+				html: '<tbody><tr><td>Unclosed table',
+				expected: '<tbody><tr><td>Unclosed table</td></tr></tbody>',
+			},
+			{
+				html: '<tr><th>Mixed header</th><td>and data</td></tr>',
+				expected: '<tr><th>Mixed header</th><td>and data</td></tr>',
+			},
+		];
+
+		malformedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should prevent XSS attacks through table elements', () => {
+		const xssTableCases = [
+			{
+				html: '<table><tr><td><script>alert("XSS")</script>Safe content</td></tr></table>',
+				expected: '<table><tr><td>Safe content</td></tr></table>',
+			},
+			{
+				html: '<thead><tr><th><img src="x" onerror="alert(\'XSS\')">Header</th></tr></thead>',
+				expected: '<thead><tr><th><img src="x" />Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody><tr><td><a href="javascript:alert(\'XSS\')">Malicious Link</a></td></tr></tbody>',
+				expected: '<tbody><tr><td><a>Malicious Link</a></td></tr></tbody>',
+			},
+			{
+				html: '<table><tr><td><iframe src="javascript:alert(\'XSS\')"></iframe></td></tr></table>',
+				expected:
+					'<table><tr><td><iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe></td></tr></table>',
+			},
+		];
+
+		xssTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve complex table layouts', () => {
+		const complexTableCases = [
+			{
+				html: '<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+				expected:
+					'<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+			},
+		];
+
+		complexTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
 });
 
 describe('FormTrigger, formWebhook', () => {
