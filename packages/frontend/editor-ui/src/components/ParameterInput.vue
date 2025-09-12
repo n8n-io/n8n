@@ -78,7 +78,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onClickOutside, useElementSize } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import {
@@ -277,7 +277,7 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 
 const editorRows = computed(() => getTypeOption<number>('rows'));
 
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
 	return getTypeOption<EditorType>('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
@@ -636,7 +636,8 @@ const isMapperAvailable = computed(
 		!props.parameter.isNodeSetting &&
 		(isModelValueExpression.value ||
 			props.forceShowExpression ||
-			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime') ||
+			editorType.value !== undefined),
 );
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
@@ -825,7 +826,6 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
-		isMapperShown.value = isMapperAvailable.value;
 	}
 
 	emit('focus');
@@ -966,10 +966,18 @@ function expressionUpdated(value: string) {
 	valueChanged(val);
 }
 
-function onBlur(event?: FocusEvent | KeyboardEvent) {
+function onBlur() {
 	emit('blur');
 	isFocused.value = false;
+}
 
+function onFocusIn() {
+	if (isMapperAvailable.value) {
+		isMapperShown.value = true;
+	}
+}
+
+function onFocusOut(event: FocusEvent) {
 	if (
 		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
 		!(
@@ -1026,12 +1034,6 @@ function onUpdateTextInput(value: string) {
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
-
-function onClickOutsideMapper() {
-	if (!isFocused.value) {
-		isMapperShown.value = false;
-	}
-}
 
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
@@ -1246,8 +1248,6 @@ onUpdated(async () => {
 		}
 	}
 });
-
-onClickOutside(mapperElRef, onClickOutsideMapper);
 </script>
 
 <template>
@@ -1290,6 +1290,8 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 			]"
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
+			@focusin="onFocusIn"
+			@focusout="onFocusOut"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
