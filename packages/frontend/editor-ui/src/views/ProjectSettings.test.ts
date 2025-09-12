@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, nextTick } from 'vue';
 import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -10,6 +10,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';
+import { createUser } from '@/__tests__/data/users';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { ProjectTypes } from '@/types/projects.types';
@@ -100,6 +101,23 @@ describe('ProjectSettings', () => {
 				systemRole: false,
 			},
 		]);
+		// Set up test users using store methods
+		const testUser = createUser({
+			id: '1',
+			firstName: 'John',
+			lastName: 'Doe',
+			email: 'admin@example.com',
+		});
+
+		// Use the store's addUsers method to properly add users
+		usersStore.addUsers([testUser]);
+
+		// Mock the computed properties
+		vi.spyOn(usersStore, 'allUsers', 'get').mockReturnValue([testUser]);
+		vi.spyOn(usersStore, 'usersById', 'get').mockReturnValue({
+			'1': testUser,
+		});
+
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
@@ -188,5 +206,178 @@ describe('ProjectSettings', () => {
 		const dropdownButton = within(roleDropdown).getByRole('button');
 		expect(dropdownButton).toHaveTextContent('Admin');
 		expect(dropdownButton).toBeEnabled();
+	});
+
+	describe('Form Operations', () => {
+		it('should mark form as dirty on text input', async () => {
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const cancelButton = getByTestId('project-settings-cancel-button');
+
+			// Initially cancel button should be disabled (form not dirty)
+			expect(cancelButton).toBeDisabled();
+
+			// Find the actual input element within the N8nFormInput
+			const actualInput = nameInput.querySelector('input');
+			expect(actualInput).toBeTruthy();
+
+			// Type in the name field
+			await userEvent.type(actualInput!, ' Updated');
+
+			// Wait for the component to process the change
+			await nextTick();
+
+			// Cancel button should now be enabled (form is dirty)
+			expect(cancelButton).toBeEnabled();
+		});
+
+		it('should reset form on cancel button click', async () => {
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const descriptionInput = getByTestId('project-settings-description-input');
+			const cancelButton = getByTestId('project-settings-cancel-button');
+
+			// Find the actual input elements
+			const actualNameInput = nameInput.querySelector('input')!;
+			const actualDescInput = descriptionInput.querySelector('textarea')!;
+
+			// Make changes to form (don't clear first, just add to existing value)
+			await userEvent.type(actualNameInput, ' Updated');
+			await userEvent.type(actualDescInput, 'Updated Description');
+
+			// Wait for processing
+			await nextTick();
+
+			// Verify form is dirty
+			expect(cancelButton).toBeEnabled();
+
+			// Click cancel
+			await userEvent.click(cancelButton);
+
+			// Verify form is reset
+			expect(cancelButton).toBeDisabled();
+			expect(actualNameInput.value).toBe('Test Project'); // Back to original
+			expect(actualDescInput.value).toBe(''); // Back to original (empty)
+		});
+
+		it('should enable save button when form is dirty and valid', async () => {
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const saveButton = getByTestId('project-settings-save-button');
+
+			// Initially save button should be disabled
+			expect(saveButton).toBeDisabled();
+
+			// Find the actual input element
+			const actualInput = nameInput.querySelector('input')!;
+
+			// Make a change
+			await userEvent.type(actualInput, ' Updated');
+			await nextTick();
+
+			// Save button should now be enabled
+			expect(saveButton).toBeEnabled();
+		});
+	});
+
+	describe('Form Validation', () => {
+		it('should have proper initial form state', async () => {
+			const { getByTestId } = renderComponent();
+
+			const nameInput = getByTestId('project-settings-name-input');
+			const descriptionInput = getByTestId('project-settings-description-input');
+			const saveButton = getByTestId('project-settings-save-button');
+			const cancelButton = getByTestId('project-settings-cancel-button');
+
+			// Check initial values
+			const actualNameInput = nameInput.querySelector('input')!;
+			const actualDescInput = descriptionInput.querySelector('textarea')!;
+
+			expect(actualNameInput.value).toBe('Test Project');
+			expect(actualDescInput.value).toBe('');
+
+			// Check initial button states
+			expect(saveButton).toBeDisabled();
+			expect(cancelButton).toBeDisabled();
+		});
+	});
+
+	describe('Save Functionality', () => {
+		it('should save project updates through form submission', async () => {
+			const updateProjectSpy = vi
+				.spyOn(projectsStore, 'updateProject')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const descriptionInput = getByTestId('project-settings-description-input');
+			const saveButton = getByTestId('project-settings-save-button');
+
+			// Find the actual input elements
+			const actualNameInput = nameInput.querySelector('input')!;
+			const actualDescInput = descriptionInput.querySelector('textarea')!;
+
+			// Make changes
+			await userEvent.type(actualNameInput, ' - Updated');
+			await userEvent.type(actualDescInput, 'Updated project description');
+
+			// Save
+			await userEvent.click(saveButton);
+			await nextTick();
+
+			// Verify API call
+			expect(updateProjectSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					name: 'Test Project - Updated',
+					description: 'Updated project description',
+				}),
+			);
+
+			// Verify form is no longer dirty after successful save
+			expect(saveButton).toBeDisabled();
+		});
+
+		it('should handle save errors', async () => {
+			const error = new Error('Save failed');
+			vi.spyOn(projectsStore, 'updateProject').mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const saveButton = getByTestId('project-settings-save-button');
+
+			// Find the actual input element
+			const actualInput = nameInput.querySelector('input')!;
+
+			// Make changes
+			await userEvent.type(actualInput, ' Updated');
+			await nextTick();
+
+			// Try to save
+			await userEvent.click(saveButton);
+			await nextTick();
+
+			// Verify the API was called and would have failed
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+		});
+	});
+
+	describe('Additional UI Tests', () => {
+		it('should render project settings form elements', async () => {
+			const { getByTestId } = renderComponent();
+
+			// Verify main form elements are present
+			const nameInput = getByTestId('project-settings-name-input');
+			const descriptionInput = getByTestId('project-settings-description-input');
+			const saveButton = getByTestId('project-settings-save-button');
+			const cancelButton = getByTestId('project-settings-cancel-button');
+			const deleteButton = getByTestId('project-settings-delete-button');
+
+			expect(nameInput).toBeInTheDocument();
+			expect(descriptionInput).toBeInTheDocument();
+			expect(saveButton).toBeInTheDocument();
+			expect(cancelButton).toBeInTheDocument();
+			expect(deleteButton).toBeInTheDocument();
+		});
 	});
 });

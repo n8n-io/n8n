@@ -440,7 +440,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.projectSettings">
+	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
 		</div>
