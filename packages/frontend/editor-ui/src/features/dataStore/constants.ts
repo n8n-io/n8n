@@ -10,6 +10,8 @@ export const DEFAULT_DATA_STORE_PAGE_SIZE = 10;
 
 export const DATA_STORE_ID_COLUMN_WIDTH = 60;
 
+export const DEFAULT_COLUMN_WIDTH = 250;
+
 export const DATA_STORE_HEADER_HEIGHT = 36;
 export const DATA_STORE_ROW_HEIGHT = 33;
 

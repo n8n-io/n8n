@@ -20,6 +20,7 @@ import type {
 import {
 	ADD_ROW_ROW_ID,
 	DATA_STORE_ID_COLUMN_WIDTH,
+	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
 } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
@@ -124,7 +125,6 @@ export const useDataStoreGridBase = ({
 			field: col.name,
 			headerName: col.name,
 			sortable: true,
-			flex: 1,
 			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 			resizable: true,
 			lockPinned: true,
@@ -135,6 +135,7 @@ export const useDataStoreGridBase = ({
 			cellClass: getCellClass,
 			valueGetter: createValueGetter(col),
 			cellRendererSelector: createCellRendererSelector(col),
+			width: DEFAULT_COLUMN_WIDTH,
 		};
 
 		if (col.type === 'string') {
@@ -184,6 +185,7 @@ export const useDataStoreGridBase = ({
 			},
 			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
 			headerClass: 'system-column',
+			width: DEFAULT_COLUMN_WIDTH,
 		};
 		return [
 			// Always add the ID column, it's not returned by the back-end but all data stores have it
@@ -251,6 +253,7 @@ export const useDataStoreGridBase = ({
 					lockPinned: true,
 					lockPosition: 'right',
 					resizable: false,
+					flex: 1,
 					headerComponent: AddColumnButton,
 					headerComponentParams: { onAddColumn },
 				},
