@@ -283,7 +283,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			}
 
 			default:
-				return { totalBytes: 0, tables: [] };
+				return { totalBytes: 0, tables: {} };
 		}
 
 		const result = (await this.query(sql)) as Array<{
@@ -291,17 +291,17 @@ export class DataStoreRepository extends Repository<DataTable> {
 			table_bytes: number | null;
 		}>;
 
-		const tables = result
-			.filter((row) => row.table_bytes !== null)
-			.map((row) => {
-				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
-				return {
-					dataStoreId,
-					sizeBytes: row.table_bytes ?? 0,
-				};
-			});
+		const tables: Record<string, number> = {};
+		let totalBytes = 0;
 
-		const totalBytes = tables.reduce((sum, table) => sum + table.sizeBytes, 0);
+		result
+			.filter((row) => row.table_bytes !== null)
+			.forEach((row) => {
+				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+				const sizeBytes = row.table_bytes ?? 0;
+				tables[dataStoreId] = sizeBytes;
+				totalBytes += sizeBytes;
+			});
 
 		return { totalBytes, tables };
 	}
