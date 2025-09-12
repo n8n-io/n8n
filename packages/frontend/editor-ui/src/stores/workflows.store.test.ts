@@ -679,7 +679,17 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('updateNodeExecutionData', () => {
-		const { successEvent, errorEvent, executionResponse } = generateMockExecutionEvents();
+		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
+		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
+		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
+
+		beforeEach(() => {
+			const events = generateMockExecutionEvents();
+			successEvent = events.successEvent;
+			errorEvent = events.errorEvent;
+			executionResponse = events.executionResponse;
+		});
+
 		it('should throw error if not initialized', () => {
 			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
 		});
@@ -1420,6 +1430,7 @@ function generateMockExecutionEvents() {
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',
 		nodeName: 'When clicking ‘Execute workflow’',
+		itemCount: 1,
 		data: {
 			hints: [],
 			startTime: 1727867966633,
@@ -1427,18 +1438,6 @@ function generateMockExecutionEvents() {
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
-			data: {
-				main: [
-					[
-						{
-							json: {},
-							pairedItem: {
-								item: 0,
-							},
-						},
-					],
-				],
-			},
 		},
 	};
 
