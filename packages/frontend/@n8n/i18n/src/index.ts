@@ -376,7 +376,7 @@ export class I18nClass {
 
 const loadedLanguages: string[] = [];
 
-function setLanguage(locale: string) {
+export function setLanguage(locale: string) {
 	i18nInstance.global.locale.value = locale as 'en';
 	document.querySelector('html')!.setAttribute('lang', locale);
 
