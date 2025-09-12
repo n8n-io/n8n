@@ -60,6 +60,7 @@ export function sanitizeHtml(text: string) {
 			'td',
 			'tr',
 			'th',
+			'br',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
