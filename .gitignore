@@ -41,3 +41,4 @@ packages/testing/**/.cursor/rules/
 .ruff_cache
 __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
+.coverage

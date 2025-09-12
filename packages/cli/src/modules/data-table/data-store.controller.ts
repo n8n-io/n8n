@@ -2,13 +2,13 @@ import {
 	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreRowsQueryDto,
+	DeleteDataTableRowsDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
-	UpdateDataStoreRowDto,
-	UpsertDataStoreRowsDto,
+	UpdateDataTableRowDto,
+	UpsertDataStoreRowDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -22,6 +22,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { DataStoreRowReturn } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -34,7 +35,6 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-import { DataStoreRowReturn } from 'n8n-workflow';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataStoreController {
@@ -238,11 +238,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean | undefined>(
+	async appendDataStoreRows<T extends DataStoreRowReturn | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData?: T },
+		dto: AddDataStoreRowsDto & { returnType?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
@@ -257,7 +257,7 @@ export class DataStoreController {
 				dataStoreId,
 				req.params.projectId,
 				dto.data,
-				dto.returnData,
+				dto.returnType,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
@@ -274,14 +274,14 @@ export class DataStoreController {
 
 	@Post('/:dataStoreId/upsert')
 	@ProjectScope('dataStore:writeRow')
-	async upsertDataStoreRows(
+	async upsertDataStoreRow(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpsertDataStoreRowsDto,
+		@Body dto: UpsertDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(
+			return await this.dataStoreService.upsertRow(
 				dataStoreId,
 				req.params.projectId,
 				dto,
@@ -306,7 +306,7 @@ export class DataStoreController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpdateDataStoreRowDto,
+		@Body dto: UpdateDataTableRowDto,
 	) {
 		try {
 			return await this.dataStoreService.updateRow(
@@ -328,20 +328,26 @@ export class DataStoreController {
 		}
 	}
 
-	@Delete('/:dataStoreId/rows')
+	@Delete('/:dataTableId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async deleteDataStoreRows(
+	async deleteDataTableRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Param('dataStoreId') dataStoreId: string,
-		@Query dto: DeleteDataStoreRowsQueryDto,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: DeleteDataTableRowsDto,
 	) {
 		try {
-			const { ids } = dto;
-			return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
+			return await this.dataStoreService.deleteRows(
+				dataTableId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
 			} else {

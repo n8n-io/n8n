@@ -145,7 +145,7 @@ export function useBuilderMessages() {
 		messageId: string,
 	): void {
 		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId || messageId;
+		const toolMessageId = msg.toolCallId ?? messageId;
 
 		// Check if we already have this tool message
 		const existingIndex = msg.toolCallId
@@ -214,14 +214,15 @@ export function useBuilderMessages() {
 			}
 		}
 
-		// Check if there's any text message after the last completed tool
+		// Check if there's any text or custom message after the last completed tool
 		// Note: workflow-updated messages shouldn't count as they're just canvas state updates
-		let hasTextAfterTools = false;
+		// Custom messages (like plan messages) should count as responses
+		let hasResponseAfterTools = false;
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text') {
-					hasTextAfterTools = true;
+				if (msg.type === 'text' || msg.type === 'custom') {
+					hasResponseAfterTools = true;
 					break;
 				}
 			}
@@ -229,7 +230,7 @@ export function useBuilderMessages() {
 
 		return {
 			hasAnyRunningTools: false,
-			isStillThinking: hasCompletedTools && !hasTextAfterTools,
+			isStillThinking: hasCompletedTools && !hasResponseAfterTools,
 		};
 	}
 

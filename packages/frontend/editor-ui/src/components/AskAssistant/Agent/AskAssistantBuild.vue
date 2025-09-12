@@ -28,6 +28,8 @@ const workflowSaver = useWorkflowSaving({ router });
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
+const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
+const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -51,85 +53,11 @@ async function onUserMessage(content: string) {
 	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
 }
 
-// Watch for workflow updates and apply them
-watch(
-	() => builderStore.workflowMessages,
-	(messages) => {
-		messages
-			.filter((msg) => {
-				return msg.id && !processedWorkflowUpdates.value.has(msg.id);
-			})
-			.forEach((msg) => {
-				if (msg.id && isWorkflowUpdatedMessage(msg)) {
-					processedWorkflowUpdates.value.add(msg.id);
-
-					const currentWorkflowJson = builderStore.getWorkflowSnapshot();
-					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
-
-					if (result.success) {
-						// Import the updated workflow
-						nodeViewEventBus.emit('importWorkflowData', {
-							data: result.workflowData,
-							tidyUp: true,
-							nodesIdsToTidyUp: result.newNodeIds,
-							regenerateIds: false,
-						});
-
-						// Track tool usage for telemetry
-						const newToolMessages = builderStore.toolMessages.filter(
-							(toolMsg) =>
-								toolMsg.status !== 'running' &&
-								toolMsg.toolCallId &&
-								!trackedTools.value.has(toolMsg.toolCallId),
-						);
-
-						newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-
-						telemetry.track('Workflow modified by builder', {
-							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-							session_id: builderStore.trackingSessionId,
-							start_workflow_json: currentWorkflowJson,
-							end_workflow_json: msg.codeSnippet,
-							workflow_id: workflowsStore.workflowId,
-						});
-					}
-				}
-			});
-	},
-	{ deep: true },
-);
-
-// If this is the initial generation, streaming has ended, and there were workflow updates,
-// we want to save the workflow
-watch(
-	() => builderStore.streaming,
-	async () => {
-		if (
-			builderStore.initialGeneration &&
-			!builderStore.streaming &&
-			workflowsStore.workflow.nodes.length > 0
-		) {
-			// Check if the generation completed successfully (no error or cancellation)
-			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-			const successful =
-				lastMessage &&
-				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
-
-			builderStore.initialGeneration = false;
-
-			// Only save if generation completed successfully
-			if (successful) {
-				await workflowSaver.saveCurrentWorkflow();
-			}
-		}
-	},
-);
-
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	workflowUpdated.value = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -149,6 +77,101 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
+function dedupeToolNames(toolNames: string[]): string[] {
+	return [...new Set(toolNames)];
+}
+
+function trackWorkflowModifications() {
+	if (workflowUpdated.value) {
+		// Track tool usage for telemetry
+		const newToolMessages = builderStore.toolMessages.filter(
+			(toolMsg) =>
+				toolMsg.status !== 'running' &&
+				toolMsg.toolCallId &&
+				!trackedTools.value.has(toolMsg.toolCallId),
+		);
+
+		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+		telemetry.track('Workflow modified by builder', {
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			session_id: builderStore.trackingSessionId,
+			start_workflow_json: workflowUpdated.value.start,
+			end_workflow_json: workflowUpdated.value.end,
+			workflow_id: workflowsStore.workflowId,
+		});
+
+		workflowUpdated.value = undefined;
+	}
+}
+
+// Watch for workflow updates and apply them
+watch(
+	() => builderStore.workflowMessages,
+	(messages) => {
+		messages
+			.filter((msg) => {
+				return msg.id && !processedWorkflowUpdates.value.has(msg.id);
+			})
+			.forEach((msg) => {
+				if (msg.id && isWorkflowUpdatedMessage(msg)) {
+					processedWorkflowUpdates.value.add(msg.id);
+
+					const originalWorkflowJson =
+						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
+					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
+
+					if (result.success) {
+						// Import the updated workflow
+						nodeViewEventBus.emit('importWorkflowData', {
+							data: result.workflowData,
+							tidyUp: true,
+							nodesIdsToTidyUp: result.newNodeIds,
+							regenerateIds: false,
+							trackEvents: false,
+						});
+
+						workflowUpdated.value = {
+							start: originalWorkflowJson,
+							end: msg.codeSnippet,
+						};
+					}
+				}
+			});
+	},
+	{ deep: true },
+);
+
+// If this is the initial generation, streaming has ended, and there were workflow updates,
+// we want to save the workflow
+watch(
+	() => builderStore.streaming,
+	async (isStreaming) => {
+		if (!isStreaming) {
+			trackWorkflowModifications();
+		}
+
+		if (
+			builderStore.initialGeneration &&
+			!isStreaming &&
+			workflowsStore.workflow.nodes.length > 0
+		) {
+			// Check if the generation completed successfully (no error or cancellation)
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			const successful =
+				lastMessage &&
+				lastMessage.type !== 'error' &&
+				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+
+			builderStore.initialGeneration = false;
+
+			// Only save if generation completed successfully
+			if (successful) {
+				await workflowSaver.saveCurrentWorkflow();
+			}
+		}
+	},
+);
+
 // Reset on route change
 watch(currentRoute, () => {
 	onNewWorkflow();
@@ -158,6 +181,7 @@ watch(currentRoute, () => {
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<AskAssistantChat
+			ref="assistantChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"

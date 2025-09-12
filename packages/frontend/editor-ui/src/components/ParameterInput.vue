@@ -87,6 +87,7 @@ import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -152,6 +153,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const projectsStore = useProjectsStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -238,6 +240,15 @@ const hasRemoteMethod = computed<boolean>(() => {
 const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
+
+	// temporary until native Python runner is GA
+	if (props.parameter.name === 'language') {
+		if (settingsStore.isNativePythonRunnerEnabled) {
+			return safeOptions.filter((o) => o.value !== 'python');
+		} else {
+			return safeOptions.filter((o) => o.value !== 'pythonNative');
+		}
+	}
 
 	return safeOptions;
 });
@@ -688,6 +699,7 @@ async function loadRemoteParameterOptions() {
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
+			projectId: projectsStore.currentProjectId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -923,6 +935,7 @@ function valueChanged(untypedValue: unknown) {
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
+			value: value as string,
 		});
 	}
 	// Track workflow input data mode change
@@ -1000,6 +1013,8 @@ function onUpdateTextInput(value: string) {
 	valueChanged(value);
 	onTextInputChange(value);
 }
+
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
 
 function onClickOutsideMapper() {
 	if (!isFocused.value) {
@@ -1141,7 +1156,8 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.cancel();
+	valueChangedDebounced.flush();
+	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1280,7 +1296,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1300,7 +1316,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:path="path"
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1565,7 +1581,6 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 						:rows="editorRows"
 					/>
 				</div>
-
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1582,7 +1597,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1628,7 +1643,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"

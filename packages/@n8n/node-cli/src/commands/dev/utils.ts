@@ -22,39 +22,17 @@ export function commands() {
 	process.on('SIGINT', () => cleanup('SIGINT'));
 	process.on('SIGTERM', () => cleanup('SIGTERM'));
 
-	async function runCommand(
+	function runPersistentCommand(
 		cmd: string,
 		args: string[],
 		opts: {
 			cwd?: string;
 			env?: NodeJS.ProcessEnv;
+			name?: string;
+			color?: Formatter;
+			allowOutput?: (line: string) => boolean;
 		} = {},
-	): Promise<void> {
-		return await new Promise((resolve, reject) => {
-			const child = spawn(cmd, args, {
-				cwd: opts.cwd,
-				env: { ...process.env, ...opts.env },
-				stdio: ['inherit', 'pipe', 'pipe'],
-			});
-
-			child.on('error', (error) => {
-				reject(error);
-			});
-
-			child.on('close', (code) => {
-				if (code === 0) resolve();
-				else reject(new Error(`${cmd} exited with code ${code}`));
-			});
-
-			registerChild(child);
-		});
-	}
-
-	function runPersistentCommand(
-		cmd: string,
-		args: string[],
-		opts: { cwd?: string; env?: NodeJS.ProcessEnv; name?: string; color?: Formatter } = {},
-	): void {
+	) {
 		const child = spawn(cmd, args, {
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
@@ -74,6 +52,7 @@ export function commands() {
 		}
 
 		const log = (text: string) => {
+			if (opts.allowOutput && !opts.allowOutput(text)) return;
 			if (opts.name) {
 				const rawPrefix = `[${opts.name}]`;
 				const prefix = opts.color ? opts.color(rawPrefix) : rawPrefix;
@@ -99,20 +78,11 @@ export function commands() {
 			console.log(`${opts.name ?? cmd} exited with code ${code}`);
 			process.exit(code);
 		});
-	}
 
-	async function isN8nInstalled(): Promise<boolean> {
-		try {
-			await runCommand('n8n', ['--version'], {});
-			return true;
-		} catch {
-			return false;
-		}
+		return child;
 	}
 
 	return {
-		isN8nInstalled,
-		runCommand,
 		runPersistentCommand,
 	};
 }

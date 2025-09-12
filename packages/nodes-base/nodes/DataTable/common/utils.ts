@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	INode,
-	ListDataStoreContentFilter,
+	DataTableFilter,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
 	IExecuteFunctions,
@@ -32,7 +32,7 @@ export async function getDataTableProxyExecute(
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
@@ -44,16 +44,20 @@ export async function getDataTableProxyExecute(
 
 export async function getDataTableProxyLoadOptions(
 	ctx: ILoadOptionsFunctions,
-): Promise<IDataStoreProjectService> {
+): Promise<IDataStoreProjectService | undefined> {
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, undefined, {
 		extractValue: true,
 	}) as string;
+
+	if (!dataStoreId) {
+		return;
+	}
 
 	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
@@ -64,7 +68,7 @@ export async function getDataTableAggregateProxy(
 	if (ctx.helpers.getDataStoreAggregateProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Table node but the module is disabled',
+			'Attempted to use Data table node but the module is disabled',
 		);
 
 	return await ctx.helpers.getDataStoreAggregateProxy();
@@ -82,7 +86,7 @@ export function isMatchType(obj: unknown): obj is FilterType {
 export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
-): ListDataStoreContentFilter {
+): DataTableFilter {
 	const filters = fieldEntries.map((x) => {
 		switch (x.condition) {
 			case 'isEmpty':

@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,11 +9,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import { createRole } from '@test-integration/db/roles';
 
 import { createMember } from '../shared/db/users';
+import { LicenseMocker } from '@test-integration/license';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 let projectRelationRepository: ProjectRelationRepository;
-let license: License;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -20,7 +21,12 @@ beforeAll(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 	projectRelationRepository = Container.get(ProjectRelationRepository);
-	license = Container.get(License);
+	const license: LicenseMocker = new LicenseMocker();
+	license.mock(Container.get(License));
+	license.mockLicenseState(Container.get(LicenseState));
+	license.enable('feat:projectRole:editor');
+	license.enable('feat:projectRole:viewer');
+	license.enable('feat:customRoles');
 });
 
 afterAll(async () => {
@@ -287,7 +293,6 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			jest.spyOn(license, 'isProjectRoleEditorLicensed').mockReturnValue(true);
 
 			//
 			// ACT
@@ -342,7 +347,6 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			jest.spyOn(license, 'isProjectRoleEditorLicensed').mockReturnValue(true);
 
 			//
 			// ACT
@@ -371,7 +375,6 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			jest.spyOn(license, 'isProjectRoleEditorLicensed').mockReturnValue(true);
 
 			//
 			// ACT

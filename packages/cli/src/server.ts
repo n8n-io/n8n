@@ -1,4 +1,3 @@
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION } from '@/constants';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -14,7 +13,9 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -274,22 +275,6 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
-
-			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
-				const frontendSentryConfig = JSON.stringify({
-					dsn: this.globalConfig.sentry.frontendDsn,
-					environment: process.env.ENVIRONMENT || 'development',
-					serverName: process.env.DEPLOYMENT_NAME,
-					release: `n8n@${N8N_VERSION}`,
-				});
-				const frontendConfig = [
-					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
-					`window.sentry = ${frontendSentryConfig};`,
-				].join('\n');
-
-				res.type('application/javascript');
-				res.send(frontendConfig);
-			});
 		}
 
 		// ----------------------------------------
@@ -334,6 +319,23 @@ export class Server extends AbstractServer {
 		const maxAge = Time.days.toMilliseconds;
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
+
+		// Protect type files with authentication regardless of UI availability
+		const authService = Container.get(AuthService);
+		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		protectedTypeFiles.forEach((path) => {
+			this.app.get(
+				path,
+				authService.createAuthMiddleware(true),
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(path.substring(1), {
+						root: staticCacheDir,
+					});
+				},
+			);
+		});
+
 		if (frontendService) {
 			this.app.use(
 				[

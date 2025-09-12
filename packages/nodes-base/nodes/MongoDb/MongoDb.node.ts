@@ -75,7 +75,9 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client = await connectMongoClient(connectionString, credentials);
+					// Note: ICredentialTestFunctions doesn't have a way to get the Node instance
+					// so we set the version to 0
+					const client = await connectMongoClient(connectionString, 0, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -102,7 +104,8 @@ export class MongoDb implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mongoDb');
 		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
-		const client = await connectMongoClient(connectionString, credentials);
+		const nodeVersion = this.getNode().typeVersion;
+		const client = await connectMongoClient(connectionString, nodeVersion, credentials);
 		let returnData: INodeExecutionData[] = [];
 
 		try {
@@ -110,7 +113,6 @@ export class MongoDb implements INodeType {
 
 			const items = this.getInputData();
 			const operation = this.getNodeParameter('operation', 0);
-			const nodeVersion = this.getNode().typeVersion;
 
 			let itemsLength = items.length ? 1 : 0;
 			let fallbackPairedItems: IPairedItemData[] | null = null;

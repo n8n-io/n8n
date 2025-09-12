@@ -44,6 +44,7 @@ import {
 	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -2483,6 +2484,89 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			]);
+		});
+	});
+
+	describe('Cancellation', () => {
+		test('should update only running task statuses to cancelled when workflow is cancelled', () => {
+			// Arrange - create a workflow with some nodes
+			const startNode = createNodeData({ name: 'Start' });
+			const processingNode = createNodeData({ name: 'Processing' });
+			const completedNode = createNodeData({ name: 'Completed' });
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [startNode, processingNode, completedNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create run execution data with tasks in various statuses
+			const runExecutionData: IRunExecutionData = {
+				startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+				resultData: {
+					runData: {
+						Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+						Processing: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'running' })],
+						Completed: [
+							toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+							toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'running' }),
+							toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+						],
+					},
+					lastNodeExecuted: 'Processing',
+				},
+				executionData: mock<IRunExecutionData['executionData']>({
+					nodeExecutionStack: [],
+					metadata: {},
+				}),
+			};
+
+			// Set the run execution data on the workflow execute instance
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			assert(additionalData.hooks);
+			const runHook = jest.fn();
+			additionalData.hooks.runHook = runHook;
+
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			promise.cancel('reason');
+
+			const updatedExecutionData = {
+				data: {
+					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+					resultData: {
+						runData: {
+							Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+							Processing: [
+								toITaskData([{ data: { test: 'data' } }], { executionStatus: 'canceled' }),
+							],
+							Completed: [
+								toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+								toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'canceled' }),
+								toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+							],
+						},
+						lastNodeExecuted: 'Processing',
+					},
+					executionData: mock<IRunExecutionData['executionData']>({
+						nodeExecutionStack: [],
+						metadata: {},
+					}),
+				},
+			};
+
+			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
+			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
+				JSON.stringify(updatedExecutionData.data),
+			);
+			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
 		});
 	});
 });

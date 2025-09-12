@@ -126,14 +126,21 @@ export class SourceControlService {
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
+			const preferences = this.sourceControlPreferencesService.getPreferences();
+
 			await this.sourceControlPreferencesService.setPreferences({
 				connected: false,
 				branchName: '',
+				connectionType: 'ssh',
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
-			if (!options.keepKeyPair) {
+
+			if (preferences.connectionType === 'https') {
+				await this.sourceControlPreferencesService.deleteHttpsCredentials();
+			} else if (!options.keepKeyPair) {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
+
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
@@ -212,6 +219,9 @@ export class SourceControlService {
 			await this.initGitService();
 		}
 		try {
+			const currentBranch = this.sourceControlPreferencesService.getBranchName();
+			await this.gitService.fetch();
+			await this.gitService.setBranch(currentBranch);
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
@@ -326,11 +336,9 @@ export class SourceControlService {
 			});
 		}
 
-		const tagChanges = filesToPush.find((e) => e.type === 'tags');
-		if (tagChanges) {
-			filesToBePushed.add(tagChanges.file);
-			await this.sourceControlExportService.exportTagsToWorkFolder(context);
-		}
+		// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
+		filesToBePushed.add(getTagsPath(this.gitFolder));
+		await this.sourceControlExportService.exportTagsToWorkFolder(context);
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {

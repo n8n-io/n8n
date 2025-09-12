@@ -21,9 +21,6 @@ const node_type = 'node-type';
 const node_id = 'node-id';
 const node_version = 1;
 const input_node_type = 'input-node-type';
-const action = 'action';
-const source_mode = 'source-mode';
-const resource = 'resource';
 const actions = ['action1'];
 
 vi.mock('@/composables/useTelemetry', () => {
@@ -159,28 +156,6 @@ describe('useNodeCreatorStore', () => {
 			input_node_type,
 			nodes_panel_session_id: getSessionId(now),
 			workflow_id,
-		});
-	});
-
-	it('tracks event when action is added', () => {
-		nodeCreatorStore.onCreatorOpened({
-			source,
-			mode,
-			workflow_id,
-		});
-		nodeCreatorStore.onAddActions({
-			node_type,
-			action,
-			source_mode,
-			resource,
-		});
-
-		expect(useTelemetry().track).toHaveBeenCalledWith('User added action', {
-			node_type,
-			action,
-			source_mode,
-			resource,
-			nodes_panel_session_id: getSessionId(now),
 		});
 	});
 

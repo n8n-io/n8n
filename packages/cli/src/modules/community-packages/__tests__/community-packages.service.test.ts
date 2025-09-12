@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { randomName, mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import axios from 'axios';
 import { mocked } from 'jest-mock';
@@ -7,8 +7,8 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { exec } from 'node:child_process';
-import { mkdir, readFile, writeFile, rm, access, constants } from 'node:fs/promises';
-import { join } from 'node:path';
+import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import path, { join } from 'node:path';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -54,7 +54,7 @@ describe('CommunityPackagesService', () => {
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
 
-	const nodesDownloadDir = '/tmp/n8n-jest-global-downloads';
+	const nodesDownloadDir = path.join('tmp', 'n8n-jest-global-downloads');
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 
 	const logger = mock<Logger>();
@@ -441,7 +441,10 @@ describe('CommunityPackagesService', () => {
 			// ASSERT:
 			expect(rm).toHaveBeenCalledTimes(2);
 			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
-			expect(rm).toHaveBeenNthCalledWith(2, `${nodesDownloadDir}/n8n-nodes-test-latest.tgz`);
+			expect(rm).toHaveBeenNthCalledWith(
+				2,
+				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
+			);
 
 			expect(exec).toHaveBeenCalledTimes(3);
 			expect(exec).toHaveBeenNthCalledWith(
@@ -672,7 +675,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 
 			expect(writeFile).toHaveBeenCalledWith(
-				`${nodesDownloadDir}/package.json`,
+				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
 				'utf-8',
 			);
@@ -682,7 +685,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 
 			expect(writeFile).toHaveBeenCalledWith(
-				`${nodesDownloadDir}/package.json`,
+				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
 				'utf-8',
 			);
