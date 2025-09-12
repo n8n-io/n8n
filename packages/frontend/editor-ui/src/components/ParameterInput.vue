@@ -627,18 +627,12 @@ const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM
 
 const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
-function t<T>(s: T) {
-	console.log(s);
-	return s;
-}
-
-const isMapperAvailable = computed(() =>
-	t(
+const isMapperAvailable = computed(
+	() =>
 		!props.parameter.isNodeSetting &&
-			(isModelValueExpression.value ||
-				props.forceShowExpression ||
-				(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
-	),
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
 );
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
