@@ -78,7 +78,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useElementSize } from '@vueuse/core';
+import { onClickOutside, useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import {
@@ -977,11 +977,12 @@ function onFocusIn() {
 	}
 }
 
-function onFocusOut(event: FocusEvent) {
+function onFocusOutOrOutsideClickMapper(event: FocusEvent | MouseEvent) {
 	if (
+		!(event?.target instanceof Node && wrapper.value?.contains(event.target)) &&
 		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
 		!(
-			event instanceof FocusEvent &&
+			'relatedTarget' in event &&
 			event.relatedTarget instanceof Node &&
 			mapperElRef.value?.contains(event.relatedTarget)
 		)
@@ -1248,6 +1249,8 @@ onUpdated(async () => {
 		}
 	}
 });
+
+onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 </script>
 
 <template>
@@ -1291,7 +1294,7 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 			@focusin="onFocusIn"
-			@focusout="onFocusOut"
+			@focusout="onFocusOutOrOutsideClickMapper"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
