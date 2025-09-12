@@ -9,7 +9,7 @@ import type { ProjectMemberData } from '@/types/projects.types';
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<string>>;
+	actions: Array<ActionDropdownItem<ProjectRole | 'remove'>>;
 }>();
 
 const emit = defineEmits<{
