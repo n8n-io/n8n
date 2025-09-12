@@ -1139,7 +1139,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * The number of executions that running and counting towards the concurrent executions limit.
+	 * The number of executions that are running and count towards the concurrent executions limit.
 	 * Concurrency control only applies to executions started from a webhook or trigger node.
 	 */
 	async getConcurrentExecutionsCount() {
