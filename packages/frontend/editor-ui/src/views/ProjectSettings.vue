@@ -286,6 +286,7 @@ const updateProject = async () => {
 		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		throw error;
 	}
 };
 
@@ -293,15 +294,20 @@ const onSubmit = async () => {
 	if (!isDirty.value) {
 		return;
 	}
-	await updateProject();
-	const diff = makeFormDataDiff();
-	sendTelemetry(diff);
-	toast.showMessage({
-		title: i18n.baseText('projects.settings.save.successful.title', {
-			interpolate: { projectName: formData.value.name ?? '' },
-		}),
-		type: 'success',
-	});
+	try {
+		await updateProject();
+		const diff = makeFormDataDiff();
+		sendTelemetry(diff);
+		toast.showMessage({
+			title: i18n.baseText('projects.settings.save.successful.title', {
+				interpolate: { projectName: formData.value.name ?? '' },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		// Error already handled and displayed by updateProject()
+		// Just prevent success toast/telemetry from executing
+	}
 };
 
 const onDelete = async () => {
