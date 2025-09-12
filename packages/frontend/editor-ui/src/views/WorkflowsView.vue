@@ -440,14 +440,6 @@ const showPersonalizedTemplates = computed(
 	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
 );
 
-const showReadyToRunV2Card = computed(() => {
-	return readyToRunWorkflowsV2Store.getCardVisibility(
-		projectPermissions.value.workflow.create,
-		readOnlyEnv.value,
-		loading.value,
-	);
-});
-
 const shouldUseSimplifiedLayout = computed(() => {
 	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
 });
@@ -993,18 +985,6 @@ const onShowArchived = async () => {
 const handleDismissReadyToRunCallout = () => {
 	readyToRunWorkflowsStore.dismissCallout();
 	readyToRunWorkflowsStore.trackDismissCallout();
-};
-
-const handleReadyToRunV2Click = async (source = 'card') => {
-	const projectId = projectPages.isOverviewSubPage
-		? personalProject.value?.id
-		: (route.params.projectId as string);
-
-	await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
-		source,
-		route.params.folderId as string,
-		projectId,
-	);
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
@@ -1921,14 +1901,11 @@ const onNameSubmit = async (name: string) => {
 			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
-			<div
-				v-if="!shouldUseSimplifiedLayout && breadcrumbsLoading"
-				:class="$style['breadcrumbs-loading']"
-			>
+			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
 				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
-				v-else-if="!shouldUseSimplifiedLayout && showFolders && currentFolder"
+				v-else-if="showFolders && currentFolder"
 				:class="$style['breadcrumbs-container']"
 				data-test-id="main-breadcrumbs"
 			>
