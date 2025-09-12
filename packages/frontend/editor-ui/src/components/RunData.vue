@@ -679,16 +679,6 @@ watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
 });
 
 watch(
-	rawInputData,
-	(newValue, oldValue) => {
-		if (newValue.length !== oldValue.length) {
-			outputIndex.value = determineInitialOutputIndex();
-		}
-	},
-	{ deep: true },
-);
-
-watch(
 	inputDataPage,
 	(data: INodeExecutionData[]) => {
 		if (props.paneType && data) {
