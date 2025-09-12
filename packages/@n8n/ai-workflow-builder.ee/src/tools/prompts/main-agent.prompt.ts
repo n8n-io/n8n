@@ -1,6 +1,5 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
-import type { WorkflowPlan } from '../../agents/workflow-planner-agent';
 import { instanceUrlPrompt } from '../../chains/prompts/instance-url';
 
 const systemPrompt = `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
@@ -201,7 +200,7 @@ Workflow configuration node usage example:
 
 IMPORTANT:
 - Workflow Configuration node is not meant for credentials or sensitive data.
-- Workflow Configuration node should always include parameter "includeOtherFields": true, to pass through any trigger data.
+- Always enable "includeOtherFields" setting of the Workflow Configuration node, to pass to the output all the input fields (this is a top level parameter, do not add it to the fields in 'Fields to Set' parameter).
 - Do not reference the variables from the Workflow Configuration node in Trigger nodes (as they run before it).
 
 Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
@@ -408,34 +407,6 @@ const previousConversationSummary = `
 {previousSummary}
 </previous_summary>`;
 
-const workflowPlan = '{workflowPlan}';
-
-export const planFormatter = (plan?: WorkflowPlan | null) => {
-	if (!plan) return '<workflow_plan>EMPTY</workflow_plan>';
-
-	const nodesPlan = plan.plan.map((node) => {
-		return `
-			<workflow_plan_node>
-				<type>${node.nodeType}</type>
-				<name>${node.nodeName}</name>
-				<reasoning>${node.reasoning}</reasoning>
-			</workflow_plan_node>
-		`;
-	});
-
-	return `
-	<workflow_plan>
-		<workflow_plan_intro>
-			${plan.intro}
-		</workflow_plan_intro>
-
-		<workflow_plan_nodes>
-			${nodesPlan.join('\n')}
-		</workflow_plan_nodes>
-	</workflow_plan>
-	`;
-};
-
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -469,11 +440,6 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: previousConversationSummary,
-				cache_control: { type: 'ephemeral' },
-			},
-			{
-				type: 'text',
-				text: workflowPlan,
 				cache_control: { type: 'ephemeral' },
 			},
 		],

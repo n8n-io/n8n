@@ -64,6 +64,39 @@ describe('verifyIntegrity', () => {
 			expect(error.cause.message).toContain('Network failure');
 		}
 	});
+
+	it('should return generic message for DNS getaddrinfo errors', async () => {
+		const integrity = 'sha512-somerandomhash==';
+
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('getaddrinfo ENOTFOUND internal.registry.local');
+
+		try {
+			await verifyIntegrity(packageName, version, registryUrl, integrity);
+			throw new Error('Expected error was not thrown');
+		} catch (error: any) {
+			expect(error).toBeInstanceOf(UnexpectedError);
+			expect(error.message).toBe(
+				'Checksum verification failed. Please check your network connection and try again.',
+			);
+			expect(error.cause).toBeUndefined();
+		}
+	});
+
+	it('should return generic message for DNS ENOTFOUND errors', async () => {
+		const integrity = 'sha512-somerandomhash==';
+
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('ENOTFOUND some.internal.registry');
+
+		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
+			new UnexpectedError(
+				'Checksum verification failed. Please check your network connection and try again.',
+			),
+		);
+	});
 });
 
 describe('isVersionExists', () => {
@@ -136,5 +169,39 @@ describe('isVersionExists', () => {
 		await expect(isVersionExists(packageName, version, registryUrl)).rejects.toThrow(
 			UnexpectedError,
 		);
+	});
+
+	it('should return generic message for DNS getaddrinfo errors', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('getaddrinfo ENOTFOUND internal.registry.local');
+
+		try {
+			await isVersionExists(packageName, version, registryUrl);
+			throw new Error('Expected error was not thrown');
+		} catch (error: any) {
+			expect(error).toBeInstanceOf(UnexpectedError);
+			expect(error.message).toBe(
+				'The community nodes service is temporarily unreachable. Please try again later.',
+			);
+			expect(error.cause).toBeUndefined();
+		}
+	});
+
+	it('should return generic message for DNS ENOTFOUND errors', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('ENOTFOUND some.internal.registry');
+
+		try {
+			await isVersionExists(packageName, version, registryUrl);
+			throw new Error('Expected error was not thrown');
+		} catch (error: any) {
+			expect(error).toBeInstanceOf(UnexpectedError);
+			expect(error.message).toBe(
+				'The community nodes service is temporarily unreachable. Please try again later.',
+			);
+			expect(error.cause).toBeUndefined();
+		}
 	});
 });
