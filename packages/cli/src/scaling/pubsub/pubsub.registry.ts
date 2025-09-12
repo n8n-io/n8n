@@ -27,6 +27,9 @@ export class PubSubRegistry {
 		for (const { eventName, handler } of this.eventHandlers) {
 			this.pubsubEventBus.off(eventName, handler);
 		}
+		this.eventHandlers = [];
+
+		// Register all event handlers that match the current instance type and role
 		const handlers = pubSubMetadata.getHandlers();
 		for (const { eventHandlerClass, methodName, eventName, filter } of handlers) {
 			const handlerClass = Container.get(eventHandlerClass);

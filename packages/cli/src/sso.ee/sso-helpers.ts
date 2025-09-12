@@ -33,11 +33,11 @@ export async function reloadAuthenticationMethod(): Promise<void> {
 		if (isAuthProviderType(settings.value)) {
 			const authenticationMethod = settings.value;
 			config.set('userManagement.authenticationMethod', authenticationMethod);
-			Container.get(Logger).debug('Reloaded authentication method form the database', {
+			Container.get(Logger).debug('Reloaded authentication method from the database', {
 				authenticationMethod,
 			});
 		} else {
-			Container.get(Logger).warn('Invalid authentication method read form the database', {
+			Container.get(Logger).warn('Invalid authentication method read from the database', {
 				value: settings.value,
 			});
 		}
