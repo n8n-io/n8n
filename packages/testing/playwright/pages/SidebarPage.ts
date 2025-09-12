@@ -57,9 +57,16 @@ export class SidebarPage {
 	}
 
 	async clickSignout(): Promise<void> {
-		await this.page.goto('/workflows');
-
 		await this.openUserMenu();
 		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
 	}
 }

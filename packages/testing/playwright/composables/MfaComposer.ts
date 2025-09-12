@@ -94,12 +94,10 @@ export class MfaComposer {
 	 * @param secret - MFA secret for token generation
 	 */
 	async loginWithMfaCode(email: string, password: string, secret: string): Promise<void> {
-		// Login with email/password (exactly like original test)
 		await this.n8n.signIn.fillEmail(email);
 		await this.n8n.signIn.fillPassword(password);
 		await this.n8n.signIn.clickSubmit();
 
-		// Complete MFA flow (exactly like original test)
 		await expect(this.n8n.mfaLogin.getForm()).toBeVisible();
 		const loginMfaCode = authenticator.generate(secret);
 		await this.n8n.mfaLogin.submitMfaCode(loginMfaCode);
@@ -166,18 +164,15 @@ export class MfaComposer {
 	 */
 	private async extractRecoveryCode(): Promise<string> {
 		try {
-			// Get recovery code elements from the modal
 			const recoveryCodeElements = await this.n8n.mfaSetupModal.getRecoveryCodeElements();
 
-			// Look for UUID-like recovery codes in the modal content
 			for (const text of recoveryCodeElements) {
 				const match = text.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/);
 				if (match) {
-					return match[0]; // Use the first matched recovery code
+					return match[0];
 				}
 			}
 
-			// If no recovery code found in modal elements
 			throw new Error('No UUID-formatted recovery code found in modal elements');
 		} catch (error) {
 			throw new Error(

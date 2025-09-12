@@ -73,7 +73,6 @@ export class PersonalSettingsPage extends BasePage {
 		await this.clickDisableMfa();
 	}
 
-	// Simple method to wait for MFA QR code response (like other settings methods)
 	async waitForMfaQrResponse(): Promise<void> {
 		await this.page.waitForResponse(
 			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,

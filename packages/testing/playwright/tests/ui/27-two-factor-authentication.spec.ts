@@ -16,17 +16,17 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
 		const secret = await n8n.mfaComposer.setupUser(email, password);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 
 		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should be able to login with MFA recovery code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
 		const { recoveryCode } = await n8n.mfaComposer.setupUserWithRecoveryCode(email, password);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 
 		await n8n.signIn.fillEmail(email);
 		await n8n.signIn.fillPassword(password);
@@ -36,14 +36,14 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		await n8n.mfaLogin.submitMfaRecoveryCode(recoveryCode);
 
 		await expect(n8n.page).toHaveURL(/\/workflow/);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should be able to disable MFA in account with MFA code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
 		const secret = await n8n.mfaComposer.setupUser(email, password);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 
 		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
 
@@ -52,7 +52,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		await n8n.promptMfaCodeModal.submitMfaCode(disableToken);
 
 		await expect(n8n.personalSettings.getEnableMfaButton()).toBeVisible();
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should prompt for MFA code when email changes', async ({ n8n }) => {
@@ -71,7 +71,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 			n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
 		).toBeVisible();
 
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should prompt for MFA recovery code when email changes', async ({ n8n }) => {
@@ -88,7 +88,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		const successToast = n8n.page.getByRole('alert');
 		await expect(successToast).toBeVisible();
 
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should not prompt for MFA code or recovery code when first name or last name changes', async ({
@@ -107,7 +107,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 			n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
 		).toBeVisible();
 
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should be able to disable MFA in account with recovery code', async ({ n8n }) => {
@@ -117,7 +117,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 			email,
 			password,
 		);
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 
 		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
 
@@ -125,6 +125,6 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 		await n8n.promptMfaCodeModal.submitMfaCode(recoveryCode);
 
 		await expect(n8n.personalSettings.getEnableMfaButton()).toBeVisible();
-		await n8n.sideBar.clickSignout();
+		await n8n.sideBar.signOutFromWorkflows();
 	});
 });
