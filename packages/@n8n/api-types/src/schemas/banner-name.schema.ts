@@ -6,6 +6,8 @@ export const bannerNameSchema = z.enum([
 	'TRIAL',
 	'NON_PRODUCTION_LICENSE',
 	'EMAIL_CONFIRMATION',
+	'DATA_STORE_STORAGE_LIMIT_WARNING',
+	'DATA_STORE_STORAGE_LIMIT_ERROR',
 ]);
 
 export type BannerName = z.infer<typeof bannerNameSchema>;

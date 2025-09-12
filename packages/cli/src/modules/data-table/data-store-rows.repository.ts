@@ -9,6 +9,7 @@ import {
 	UpdateQueryBuilder,
 	In,
 	ObjectLiteral,
+	DeleteQueryBuilder,
 } from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
@@ -335,21 +336,65 @@ export class DataStoreRowsRepository {
 		return await this.getManyByIds(dataStoreId, ids, columns);
 	}
 
-	async deleteRows(dataStoreId: string, ids: number[]) {
-		if (ids.length === 0) {
+	async deleteRows(
+		dataTableId: string,
+		columns: DataTableColumn[],
+		filter: DataTableFilter | undefined,
+		returnData: boolean = false,
+	) {
+		const dbType = this.dataSource.options.type;
+		const useReturning = dbType === 'postgres';
+		const table = toTableName(dataTableId);
+
+		if (!returnData) {
+			// Just delete and return true
+			await this.dataSource.manager.transaction(async (em) => {
+				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+				if (filter) {
+					this.applyFilters(query, filter, undefined, columns);
+				}
+				await query.execute();
+			});
 			return true;
 		}
 
-		const table = toTableName(dataStoreId);
+		let affectedRows: DataStoreRowReturn[] = [];
 
-		await this.dataSource
-			.createQueryBuilder()
-			.delete()
-			.from(table, 'dataTable')
-			.where({ id: In(ids) })
-			.execute();
+		await this.dataSource.manager.transaction(async (em) => {
+			if (!useReturning) {
+				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
-		return true;
+				if (filter) {
+					this.applyFilters(selectQuery, filter, 'dataTable', columns);
+				}
+
+				const rawRows = await selectQuery.getRawMany<DataStoreRowReturn>();
+				affectedRows = normalizeRows(rawRows, columns);
+			}
+
+			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+
+			if (useReturning) {
+				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+				const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+					this.dataSource.driver.escape(x),
+				);
+				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+				query.returning(selectColumns.join(','));
+			}
+
+			if (filter) {
+				this.applyFilters(query, filter, undefined, columns);
+			}
+
+			const result = await query.execute();
+
+			if (useReturning) {
+				affectedRows = normalizeRows(extractReturningData(result.raw), columns);
+			}
+		});
+
+		return affectedRows;
 	}
 
 	async createTableWithColumns(
@@ -450,7 +495,7 @@ export class DataStoreRowsRepository {
 	}
 
 	private applyFilters<T extends ObjectLiteral>(
-		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
+		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
 		filter: DataTableFilter,
 		tableReference?: string,
 		columns?: DataTableColumn[],
@@ -463,11 +508,17 @@ export class DataStoreRowsRepository {
 			getConditionAndParams(filter, i, dbType, tableReference, columns),
 		);
 
-		for (const [condition, params] of conditionsAndParams) {
-			if (filterType === 'or') {
-				query.orWhere(condition, params);
-			} else {
-				query.andWhere(condition, params);
+		if (conditionsAndParams.length === 1) {
+			// Always use AND for a single filter
+			const [condition, params] = conditionsAndParams[0];
+			query.andWhere(condition, params);
+		} else {
+			for (const [condition, params] of conditionsAndParams) {
+				if (filterType === 'or') {
+					query.orWhere(condition, params);
+				} else {
+					query.andWhere(condition, params);
+				}
 			}
 		}
 	}

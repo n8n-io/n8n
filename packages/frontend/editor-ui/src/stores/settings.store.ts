@@ -143,7 +143,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
-	const isDataStoreFeatureEnabled = computed(() => isModuleActive('data-table'));
+	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -186,6 +186,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
@@ -386,6 +387,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
-		isDataStoreFeatureEnabled,
+		isDataTableFeatureEnabled,
 	};
 });

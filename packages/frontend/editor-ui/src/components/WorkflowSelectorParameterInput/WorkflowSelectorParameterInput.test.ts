@@ -9,7 +9,7 @@ import WorkflowSelectorParameterInput, {
 	type Props,
 } from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -56,7 +56,6 @@ const workflowsStore = mockedStore(useWorkflowsStore);
 
 describe('WorkflowSelectorParameterInput', () => {
 	beforeEach(() => {
-		createAppModals();
 		// Mock store methods to prevent unhandled errors
 		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 		workflowsStore.totalWorkflowCount = 0;
@@ -71,7 +70,6 @@ describe('WorkflowSelectorParameterInput', () => {
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
