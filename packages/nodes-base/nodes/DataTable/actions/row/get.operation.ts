@@ -33,6 +33,7 @@ export const description: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		displayOptions: {
+			...displayOptions,
 			show: {
 				...displayOptions.show,
 				returnAll: [false],
