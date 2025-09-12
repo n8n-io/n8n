@@ -48,6 +48,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickBackToCanvasButton();
 	}
 
+	async addFixedCollectionItem() {
+		await this.clickByTestId('fixed-collection-add');
+	}
+
 	async execute() {
 		await this.clickByTestId('node-execute-button');
 	}
