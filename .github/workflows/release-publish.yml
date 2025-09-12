@@ -141,6 +141,15 @@ jobs:
           version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
 
+  generate-and-attach-sbom:
+    name: Generate and Attach SBOM to Release
+    needs: [publish-to-npm, create-github-release]
+    uses: ./.github/workflows/sbom-generation-callable.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_tag_ref: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+    secrets: inherit
+
   trigger-release-note:
     name: Trigger a release note
     needs: [publish-to-npm, create-github-release]
