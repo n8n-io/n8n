@@ -15,7 +15,9 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import { i18nInstance } from '@n8n/i18n';
+import { i18nInstance, loadLanguage } from '@n8n/i18n';
+import englishBaseText from '@n8n/i18n/locales/en.json';
+
 import { TelemetryPlugin } from './plugins/telemetry';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
@@ -33,6 +35,9 @@ const pinia = createPinia();
 const app = createApp(App);
 
 app.use(SentryPlugin);
+
+// Load the default language (english)
+loadLanguage('en', englishBaseText);
 
 // Register module routes
 // We do this here so landing straight on a module page works

@@ -24,7 +24,6 @@ import { useUsersStore } from '@/stores/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { loadLanguage, setLanguage } from '@n8n/i18n';
-import englishBaseText from '@n8n/i18n/locales/en.json';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -62,8 +61,6 @@ const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 const builderSidebarWidth = computed(() => builderStore.chatWidth);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
-
-loadLanguage('en', englishBaseText);
 
 onMounted(async () => {
 	setAppZIndexes();
