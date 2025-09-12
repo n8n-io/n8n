@@ -1,8 +1,9 @@
 /* eslint-disable id-denylist */
 import { I18nClass, loadLanguage, i18nInstance } from './index';
 
-// Store original locale for cleanup
+// Store original state for cleanup
 let originalLocale: string;
+let originalHtmlLang: string;
 const testLocales = new Set<string>();
 
 describe(I18nClass, () => {
@@ -17,12 +18,13 @@ describe(I18nClass, () => {
 			},
 		});
 		originalLocale = i18nInstance.global.locale.value;
+		originalHtmlLang = document.querySelector('html')?.getAttribute('lang') ?? 'en';
 	});
 
 	afterAll(() => {
-		// Restore original locale
+		// Restore original locale and html lang
 		i18nInstance.global.locale.value = originalLocale as 'en';
-		document.querySelector('html')?.setAttribute('lang', originalLocale);
+		document.querySelector('html')?.setAttribute('lang', originalHtmlLang);
 	});
 
 	describe('displayTimer', () => {

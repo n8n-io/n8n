@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve } from 'path';
+import { posix as pathPosix, resolve, sep as pathSep } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -24,6 +24,8 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Ensure bare imports resolve to sources (not dist)
+	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
@@ -137,9 +139,25 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-	nodePolyfills({
-		include: ['fs', 'path', 'url', 'util', 'timers'],
-	}),
+nodePolyfills({
+    include: ['fs', 'path', 'url', 'util', 'timers'],
+}),
+	{
+		name: 'i18n-locales-hmr',
+		configureServer(server) {
+			const localesDir = resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src', 'locales');
+			server.watcher.add(localesDir);
+
+			const notify = (file: string) => {
+				if (!file.endsWith('.json') || !file.includes(`${pathSep}locales${pathSep}`)) return;
+				const match = file.match(new RegExp(`${pathSep}locales${pathSep}([^${pathSep}]+)\\.json$`));
+				const locale = match?.[1];
+				server.ws.send({ type: 'custom', event: 'n8n:locale-update', data: { locales: locale ? [locale] : [], file } });
+			};
+
+			server.watcher.on('all', (_event, file) => notify(file));
+		},
+	},
 ];
 
 const { RELEASE: release } = process.env;

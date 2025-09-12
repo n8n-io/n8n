@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { createI18n } from 'vue-i18n';
+import { ref } from 'vue';
 
 import type { BaseTextKey, INodeTranslationHeaders } from './types';
 import {
@@ -19,6 +20,9 @@ export const i18nInstance = createI18n({
 	messages: { en: {} },
 	warnHtmlMessage: false,
 });
+
+// Reactive version to signal i18n message updates to Vue computations
+export const i18nVersion = ref(0);
 
 type BaseTextOptions = {
 	adjustToNumber?: number;
@@ -56,8 +60,12 @@ export class I18nClass {
 	 * Render a string of base text, i.e. a string with a fixed path to the localized value. Optionally allows for [interpolation](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) when the localized value contains a string between curly braces.
 	 */
 	baseText(key: BaseTextKey, options?: BaseTextOptions): string {
-		// Create a unique cache key
-		const cacheKey = `${key}-${JSON.stringify(options)}`;
+		// Track reactive version so computed properties re-evaluate when messages change
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		i18nVersion.value;
+
+		// Create a unique cache key, scoped by version
+		const cacheKey = `${i18nVersion.value}|${key}-${JSON.stringify(options)}`;
 
 		// Check if the result is already cached
 		if (this.baseTextCache.has(cacheKey)) {
@@ -76,6 +84,14 @@ export class I18nClass {
 		this.baseTextCache.set(cacheKey, result);
 
 		return result;
+	}
+
+	/**
+	 * Clear cached baseText results. Useful when locale messages are updated at runtime (e.g. HMR) or locale changes.
+	 */
+	clearCache() {
+		this.baseTextCache.clear();
+		i18nVersion.value++;
 	}
 
 	/**
@@ -380,6 +396,9 @@ export function setLanguage(locale: string) {
 	i18nInstance.global.locale.value = locale as 'en';
 	document.querySelector('html')!.setAttribute('lang', locale);
 
+	// Invalidate cached baseText results on locale change
+	i18n.clearCache();
+
 	return locale;
 }
 
@@ -415,6 +434,22 @@ export function addNodeTranslation(
 	};
 
 	i18nInstance.global.mergeLocaleMessage(language, newMessages);
+}
+
+/**
+ * Dev/runtime helper to replace messages for a locale without import side-effects.
+ * Used by editor UI HMR to apply updated translation JSON.
+ */
+export function updateLocaleMessages(locale: string, messages: Record<string, unknown>) {
+	const { numberFormats, ...rest } = messages as Record<string, unknown> & {
+		numberFormats?: Record<string, unknown>;
+	};
+
+	i18nInstance.global.setLocaleMessage(locale, rest);
+	if (numberFormats) i18nInstance.global.setNumberFormat(locale, numberFormats);
+
+	// Ensure subsequent reads recompute
+	i18n.clearCache();
 }
 
 /**
