@@ -1,9 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as analyze from './analyze.operation';
+import * as edit from './edit.operation';
 import * as generate from './generate.operation';
 
-export { analyze, generate };
+export { analyze, generate, edit };
 
 export const description: INodeProperties[] = [
 	{
@@ -15,7 +16,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Analyze Image',
 				value: 'analyze',
-				action: 'Analyze image',
+				action: 'Analyze an image',
 				description: 'Take in images and answer questions about them',
 			},
 			{
@@ -23,6 +24,12 @@ export const description: INodeProperties[] = [
 				value: 'generate',
 				action: 'Generate an image',
 				description: 'Creates an image from a text prompt',
+			},
+			{
+				name: 'Edit Image',
+				value: 'edit',
+				action: 'Edit an image',
+				description: 'Upload one or more images and apply edits based on a prompt',
 			},
 		],
 		default: 'generate',
@@ -33,5 +40,6 @@ export const description: INodeProperties[] = [
 		},
 	},
 	...analyze.description,
+	...edit.description,
 	...generate.description,
 ];
