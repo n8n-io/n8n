@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, nextTick, useTemplateRef } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
-import { LOOSE_DATE_REGEX } from '@/features/dataStore/constants';
+import { parseLooseDateInput } from '@/features/dataStore/utils/typeUtils';
 
 const props = defineProps<{
 	params: ICellEditorParams;
@@ -14,47 +14,10 @@ const initialValue = ref<Date | null>(null);
 
 const inputWidth = ref(props.params.column.getActualWidth() - 4); // -4 for the border
 
-// Accepts the following loose formats and constructs a local Date:
-// - YYYY-MM-DD -> 00:00:00
-// - YYYY-MM-DD HH:mm -> seconds default to 00
-// - YYYY-MM-DDTHH:mm -> seconds default to 00
-// - YYYY-MM-DD HH:mm:ss (also accepted, though typically handled by the picker)
-function parseLooseLocalDate(text: string): Date | null {
-	const trimmed = text.trim();
-	const m = LOOSE_DATE_REGEX.exec(trimmed);
-	if (!m) return null;
-	const y = Number(m[1]);
-	const mo = Number(m[2]);
-	const d = Number(m[3]);
-	const hh = m[4] !== undefined ? Number(m[4]) : 0;
-	const mm = m[5] !== undefined ? Number(m[5]) : 0;
-	const ss = m[6] !== undefined ? Number(m[6]) : 0;
-
-	if (mo < 1 || mo > 12) return null;
-	if (d < 1 || d > 31) return null;
-	if (hh < 0 || hh > 23) return null;
-	if (mm < 0 || mm > 59) return null;
-	if (ss < 0 || ss > 59) return null;
-
-	const dt = new Date(y, mo - 1, d, hh, mm, ss, 0);
-	if (
-		dt.getFullYear() !== y ||
-		dt.getMonth() !== mo - 1 ||
-		dt.getDate() !== d ||
-		dt.getHours() !== hh ||
-		dt.getMinutes() !== mm ||
-		dt.getSeconds() !== ss
-	) {
-		return null;
-	}
-
-	return dt;
-}
-
 function commitIfParsedFromInput(target?: EventTarget | null) {
 	const input = target instanceof HTMLInputElement ? target : null;
 	const value = input?.value ?? '';
-	const parsed = parseLooseLocalDate(value);
+	const parsed = parseLooseDateInput(value);
 	if (parsed) {
 		dateValue.value = parsed;
 		props.params.stopEditing();
@@ -113,34 +76,17 @@ onMounted(async () => {
 
 defineExpose({
 	getValue: () => {
-		// Prefer what's typed in the input (in case Element Plus didn't commit it)
+		// Prefer what's typed in the input
+		// Element plus will not update the v-model if the input is invalid (loose)
 		const input = getInnerInput();
 		const typed = input?.value ?? '';
-		const parsed = parseLooseLocalDate(typed);
+		const parsed = parseLooseDateInput(typed);
 		if (parsed) return parsed;
 
 		// Fallback to the v-model value
 		return dateValue.value;
 	},
 	isPopup: () => true,
-	// This is triggered when cell editing is ending
-	// We want to permit loose date formats, so parse and accept them here
-	// If parsing fails, cancel the edit
-	isCancelAfterEnd: () => {
-		const input = getInnerInput();
-		if (!input) return true;
-		const value = input.value ?? '';
-		const parsed = parseLooseLocalDate(value);
-		if (parsed) {
-			dateValue.value = parsed;
-			return false;
-		}
-		if (value.trim() === '') {
-			dateValue.value = null;
-			return false;
-		}
-		return true;
-	},
 });
 </script>
 
