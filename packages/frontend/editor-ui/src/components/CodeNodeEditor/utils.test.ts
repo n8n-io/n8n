@@ -1,5 +1,5 @@
 import * as esprima from 'esprima-next';
-import { walk } from './utils';
+import { valueToInsert, walk } from './utils';
 
 describe('CodeNodeEditor utils', () => {
 	describe('walk', () => {
@@ -39,6 +39,90 @@ const y = f({ a: 'c' })
 					new esprima.Literal(2, '2'),
 				]),
 			]);
+		});
+	});
+
+	describe('valueToInsert', () => {
+		describe('JavaScript', () => {
+			it('should convert input item correctly, runOnceForAllItems', () => {
+				expect(
+					valueToInsert('{{ $json.foo.bar[0].baz }}', 'javaScript', 'runOnceForAllItems'),
+				).toBe('{{ $input.first().json.foo.bar[0].baz }}');
+			});
+
+			it('should convert input item correctly, runOnceForEachItem', () => {
+				expect(
+					valueToInsert('{{ $json.foo.bar[0].baz }}', 'javaScript', 'runOnceForEachItem'),
+				).toBe('{{ $json.foo.bar[0].baz }}');
+			});
+
+			it('should convert previous node correctly, runOnceForAllItems', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'javaScript',
+						'runOnceForAllItems',
+					),
+				).toBe("{{ $('Some Previous Node').first().json.foo.bar[0].baz }}");
+			});
+
+			it('should convert previous node correctly, runOnceForEachItem', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'javaScript',
+						'runOnceForEachItem',
+					),
+				).toBe("{{ $('Some Previous Node').item.json.foo.bar[0].baz }}");
+			});
+		});
+
+		describe('Python (Pyodide)', () => {
+			it('should convert input item correctly, runOnceForAllItems', () => {
+				expect(valueToInsert('{{ $json.foo.bar[0].baz }}', 'python', 'runOnceForAllItems')).toBe(
+					'{{ _input.first().json.foo.bar[0].baz }}',
+				);
+			});
+
+			it('should convert input item correctly, runOnceForEachItem', () => {
+				expect(valueToInsert('{{ $json.foo.bar[0].baz }}', 'python', 'runOnceForEachItem')).toBe(
+					'{{ _input.item.json.foo.bar[0].baz }}',
+				);
+			});
+
+			it('should convert previous node correctly, runOnceForAllItems', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'python',
+						'runOnceForAllItems',
+					),
+				).toBe("{{ _('Some Previous Node').first().json.foo.bar[0].baz }}");
+			});
+
+			it('should convert previous node correctly, runOnceForEachItem', () => {
+				expect(
+					valueToInsert(
+						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
+						'python',
+						'runOnceForEachItem',
+					),
+				).toBe("{{ _('Some Previous Node').item.json.foo.bar[0].baz }}");
+			});
+		});
+
+		describe('Python (Native)', () => {
+			it('should convert input item correctly, runOnceForAllItems', () => {
+				expect(
+					valueToInsert('{{ $json.foo.bar[0].baz }}', 'pythonNative', 'runOnceForAllItems'),
+				).toBe('{{ _items[0]["json"]["foo"]["bar"][0]["baz"] }}');
+			});
+
+			it('should convert input item correctly, runOnceForEachItem', () => {
+				expect(
+					valueToInsert('{{ $json.foo.bar[0].baz }}', 'pythonNative', 'runOnceForEachItem'),
+				).toBe('{{ _item["json"]["foo"]["bar"][0]["baz"] }}');
+			});
 		});
 	});
 });
