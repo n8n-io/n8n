@@ -43,6 +43,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -50,6 +51,7 @@ import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistantSessionModal.vue';
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
@@ -166,6 +168,10 @@ import NodeRecommendationModal from '@/experiments/templateRecoV2/components/Nod
 
 		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
 			<ChangePasswordModal />
+		</ModalRoot>
+
+		<ModalRoot :name="CONFIRM_PASSWORD_MODAL_KEY">
+			<ConfirmPasswordModal />
 		</ModalRoot>
 
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">

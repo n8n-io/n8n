@@ -59,6 +59,7 @@ export class MeController {
 			lastName: currentLastName,
 		} = req.user;
 
+		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
 		const isFirstNameChanged = firstName !== currentFirstName;
@@ -72,7 +73,7 @@ export class MeController {
 				`Request to update user failed because ${getCurrentAuthenticationMethod()} user may not change their profile information`,
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
 			throw new BadRequestError(
@@ -86,7 +87,7 @@ export class MeController {
 				'Request to update user failed because SAML user may not change their email',
 				{
 					userId,
-					payload,
+					payload: payloadWithoutPassword,
 				},
 			);
 			throw new BadRequestError('SAML user may not change their email');
@@ -103,10 +104,33 @@ export class MeController {
 			}
 		}
 
-		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
+		if (!mfaEnabled && isEmailBeingChanged) {
+			// Shell users (users with null password) don't need to provide currentPassword
+			if (req.user.password !== null) {
+				if (!currentPassword || typeof currentPassword !== 'string') {
+					throw new BadRequestError('Current password is required to change email');
+				}
+
+				const isCurrentPwCorrect = await this.passwordUtility.compare(
+					currentPassword,
+					req.user.password,
+				);
+				if (!isCurrentPwCorrect) {
+					throw new BadRequestError(
+						'Unable to update profile. Please check your credentials and try again.',
+					);
+				}
+			}
+		}
+
+		await this.externalHooks.run('user.profile.beforeUpdate', [
+			userId,
+			currentEmail,
+			payloadWithoutPassword,
+		]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
-		await this.userService.update(userId, payload);
+		await this.userService.update(userId, payloadWithoutPassword);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
 			relations: ['role'],
