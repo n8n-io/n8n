@@ -23,10 +23,7 @@ export class DataStoreSizeValidator {
 		return sizeInBytes === undefined;
 	}
 
-	private async getCachedSize(
-		fetchSizeFn: () => Promise<number>,
-		now = new Date(),
-	): Promise<number> {
+	async getCachedSize(fetchSizeFn: () => Promise<number>, now = new Date()): Promise<number> {
 		// If there's a pending check, wait for it to complete
 
 		if (this.pendingCheck) {
