@@ -9,12 +9,27 @@ interface XataCredentials {
 	databaseConnectionString: string;
 }
 
+function isXataCredentials(data: unknown): data is XataCredentials {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'databaseConnectionString' in data &&
+		typeof (data as any).databaseConnectionString === 'string'
+	);
+}
+
 export async function xataConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data as unknown as XataCredentials;
-	const connectionString = credentials.databaseConnectionString;
+	if (!isXataCredentials(credential.data)) {
+		return {
+			status: 'Error',
+			message: 'Invalid credential data: databaseConnectionString is required',
+		};
+	}
+
+	const connectionString = credential.data.databaseConnectionString;
 
 	if (!connectionString) {
 		return {

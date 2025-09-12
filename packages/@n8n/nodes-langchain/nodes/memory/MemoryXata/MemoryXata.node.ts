@@ -5,10 +5,12 @@ import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
+	INode,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
@@ -23,16 +25,37 @@ import {
 	expressionSessionKeyProperty,
 } from '../descriptions';
 
+/**
+ * Type guard to validate if an object is a pg.Pool instance
+ * @param obj - The object to validate
+ * @returns true if the object is a pg.Pool, false otherwise
+ */
+function isPgPool(obj: unknown): obj is pg.Pool {
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'connect' in obj &&
+		'end' in obj &&
+		'query' in obj &&
+		typeof (obj as any).connect === 'function' &&
+		typeof (obj as any).end === 'function' &&
+		typeof (obj as any).query === 'function'
+	);
+}
+
 interface XataCredentials {
 	databaseConnectionString: string;
 }
 
-function parseConnectionString(connectionString: string): PostgresNodeCredentials {
+function parseConnectionString(connectionString: string, node: INode): PostgresNodeCredentials {
 	try {
 		const url = new URL(connectionString);
 
 		if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
-			throw new Error('Connection string must use postgres:// or postgresql:// protocol');
+			throw new NodeOperationError(
+				node,
+				'Connection string must use postgres:// or postgresql:// protocol',
+			);
 		}
 
 		const host = url.hostname;
@@ -42,7 +65,10 @@ function parseConnectionString(connectionString: string): PostgresNodeCredential
 		const password = url.password;
 
 		if (!host || !database || !user || !password) {
-			throw new Error('Connection string must include host, database, user, and password');
+			throw new NodeOperationError(
+				node,
+				'Connection string must include host, database, user, and password',
+			);
 		}
 
 		return {
@@ -57,7 +83,8 @@ function parseConnectionString(connectionString: string): PostgresNodeCredential
 			sshTunnel: false,
 		};
 	} catch (error) {
-		throw new Error(
+		throw new NodeOperationError(
+			node,
 			`Failed to parse connection string: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
@@ -173,11 +200,23 @@ export class MemoryXata implements INodeType {
 		}
 
 		// Parse the connection string into individual components
-		const postgresCredentials = parseConnectionString(credentials.databaseConnectionString);
+		const postgresCredentials = parseConnectionString(
+			credentials.databaseConnectionString,
+			this.getNode(),
+		);
 
 		// Configure PostgreSQL connection
 		const pgConf = await configurePostgres.call(this, postgresCredentials);
-		const pool = pgConf.db.$pool as unknown as pg.Pool;
+		const poolCandidate = pgConf.db.$pool;
+
+		if (!isPgPool(poolCandidate)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Invalid PostgreSQL pool configuration. Expected a valid pg.Pool instance.',
+			);
+		}
+
+		const pool = poolCandidate;
 
 		// Create PostgresChatMessageHistory
 		const pgChatHistory = new PostgresChatMessageHistory({
