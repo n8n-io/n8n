@@ -26,10 +26,11 @@ const emit = defineEmits<{
 }>();
 
 function valueChanged(parameterData: IUpdateInformation) {
-	const name = parameterData.name.split('.').pop() ?? parameterData.name;
-
+	// The name from ParameterInputExpanded for simple types is just the parameter name
+	// But from FixedCollectionParameter it includes the full path like "customHeaders.headerValues"
+	// We need to pass the full structure for nested parameters
 	emit('update', {
-		name,
+		name: parameterData.name,
 		value: parameterData.value,
 	});
 }
@@ -50,6 +51,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				v-else
 				:parameter="parameter"
 				:value="credentialDataValues[parameter.name]"
+				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: 'medium' }"

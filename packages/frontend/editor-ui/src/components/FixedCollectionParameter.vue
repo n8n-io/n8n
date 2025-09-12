@@ -113,16 +113,19 @@ onBeforeMount(() => {
 
 const deleteOption = (optionName: string, index?: number) => {
 	const currentOptionsOfSameType = mutableValues.value[optionName];
+
 	if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
 		// it's not the only option of this type, so just remove it.
+		const path = getPropertyPath(optionName, index);
 		emit('valueChanged', {
-			name: getPropertyPath(optionName, index),
+			name: path,
 			value: undefined,
 		});
 	} else {
 		// it's the only option, so remove the whole type
+		const path = getPropertyPath(optionName);
 		emit('valueChanged', {
-			name: getPropertyPath(optionName),
+			name: path,
 			value: undefined,
 		});
 	}

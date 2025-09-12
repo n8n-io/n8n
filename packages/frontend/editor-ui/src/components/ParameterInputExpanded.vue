@@ -10,12 +10,20 @@ import type {
 	INodeProperties,
 	IParameterLabel,
 	NodeParameterValueType,
+	INodeParameters,
 } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, defineAsyncComponent } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { storeToRefs } from 'pinia';
+
+const LazyFixedCollectionParameter = defineAsyncComponent(
+	async () => await import('./FixedCollectionParameter.vue'),
+);
+const LazyCollectionParameter = defineAsyncComponent(
+	async () => await import('./CollectionParameter.vue'),
+);
 
 type Props = {
 	parameter: INodeProperties;
@@ -24,10 +32,12 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
+	nodeValues?: INodeParameters;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
+	nodeValues: () => ({}),
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -63,6 +73,12 @@ const showRequiredErrors = computed(() => {
 
 			return typeof props.value !== 'number';
 		}
+
+		// For fixedCollection and collection types, they're never required
+		// The inner fields might be required, but that's handled by the component itself
+		if (props.parameter.type === 'fixedCollection' || props.parameter.type === 'collection') {
+			return false;
+		}
 	}
 
 	return false;
@@ -81,6 +97,10 @@ const isValueExpression = computed(() => {
 		props.parameter,
 		props.value as string | INodeParameterResourceLocator,
 	);
+});
+
+const fixedCollectionValue = computed(() => {
+	return (props.value as Record<string, INodeParameters[]>) || {};
 });
 
 function onFocus() {
@@ -134,7 +154,24 @@ function onDocumentationUrlClick(): void {
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
+		<LazyCollectionParameter
+			v-if="parameter.type === 'collection'"
+			:parameter="parameter"
+			:values="fixedCollectionValue"
+			:node-values="nodeValues"
+			:path="parameter.name"
+			@value-changed="valueChanged"
+		/>
+		<LazyFixedCollectionParameter
+			v-else-if="parameter.type === 'fixedCollection'"
+			:parameter="parameter"
+			:values="fixedCollectionValue"
+			:node-values="nodeValues"
+			:path="parameter.name"
+			@value-changed="valueChanged"
+		/>
 		<ParameterInputWrapper
+			v-else
 			ref="param"
 			input-size="large"
 			:parameter="parameter"
@@ -175,5 +212,15 @@ function onDocumentationUrlClick(): void {
 }
 .hint {
 	margin-top: var(--spacing-4xs);
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.icon-button) {
+	position: absolute;
+	opacity: 0;
+	top: -3px;
+	left: calc(-0.5 * var(--spacing-xs));
+	transition: opacity 100ms ease-in;
 }
 </style>

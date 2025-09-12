@@ -40,6 +40,37 @@ export class OpenAiApi implements ICredentialType {
 			description: 'Override the default base URL for the API',
 		},
 		{
+			displayName: 'Custom Headers',
+			name: 'customHeaders',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+				sortable: true,
+			},
+			default: {},
+			placeholder: 'Add header',
+			options: [
+				{
+					name: 'headerValues',
+					displayName: 'Header',
+					values: [
+						{
+							displayName: 'Header Name',
+							name: 'headerName',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Header Value',
+							name: 'headerValue',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		},
+		{
 			displayName: 'Add Custom Header',
 			name: 'header',
 			type: 'boolean',

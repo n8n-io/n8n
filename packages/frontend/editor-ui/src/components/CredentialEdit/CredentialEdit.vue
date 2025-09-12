@@ -53,6 +53,9 @@ import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeG
 import { useI18n } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 type Props = {
 	modalName: string;
@@ -561,17 +564,41 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 }
 
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
-
-	hasUnsavedChanges.value = true;
-
+	// For nested paths (e.g., "customHeaders.headerValues"), we need to use lodash set/unset
+	// to properly update the nested structure
 	const { oauthTokenData, ...credData } = credentialData.value;
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	// Create a copy to work with
+	const updatedData = { ...credData };
+
+	// If value is undefined, we need to handle deletion
+	if (value === undefined) {
+		// Check if we're deleting an array element
+		const arrayMatch = name.match(/^(.+)\[(\d+)\]$/);
+		if (arrayMatch) {
+			// We're deleting an array element
+			const arrayPath = arrayMatch[1];
+			const index = parseInt(arrayMatch[2], 10);
+
+			// Get the array and remove the element
+			const array = get(updatedData, arrayPath) as unknown[];
+			if (Array.isArray(array)) {
+				// Remove the element from the array
+				array.splice(index, 1);
+				// Set the updated array back
+				set(updatedData, arrayPath, array);
+			}
+		} else {
+			// Regular property deletion
+			unset(updatedData, name);
+		}
+	} else {
+		// Use lodash set to handle both simple and nested paths
+		set(updatedData, name, value);
+	}
+
+	hasUnsavedChanges.value = true;
+	credentialData.value = updatedData;
 }
 
 function closeDialog() {
