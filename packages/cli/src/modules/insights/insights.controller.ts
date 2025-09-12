@@ -40,11 +40,12 @@ export class InsightsController {
 	async getInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: InsightsDateFilterDto = { dateRange: 'week' },
+		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
 		return await this.insightsService.getInsightsSummary({
 			periodLengthInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
+			projectId: query.projectId,
 		});
 	}
 

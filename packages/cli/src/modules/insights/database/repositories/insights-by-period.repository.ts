@@ -282,7 +282,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 	async getPreviousAndCurrentPeriodTypeAggregates({
 		periodLengthInDays,
-	}: { periodLengthInDays: number }): Promise<
+		projectId,
+	}: { periodLengthInDays: number; projectId?: string }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
@@ -296,7 +297,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
 		`;
 
-		const rawRows = await this.createQueryBuilder('insights')
+		const queryBuilder = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
 			.select(
 				sql`
@@ -309,16 +310,30 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				'period',
 			)
 			.addSelect('insights.type', 'type')
-			.addSelect('SUM(value)', 'total_value')
-			// Use a cross join with the CTE
-			.innerJoin('date_ranges', 'date_ranges', '1=1')
-			// Filter to only include data from the last 14 days
-			.where('insights.periodStart >= date_ranges.previous_start')
+			.addSelect('SUM(value)', 'total_value');
+
+		if (projectId) {
+			queryBuilder
+				.addSelect('metadata.projectId')
+				.innerJoin('insights.metadata', 'metadata')
+				// Use a cross join with the CTE
+				.innerJoin('date_ranges', 'date_ranges', '1=1')
+				.where('insights.periodStart >= date_ranges.previous_start')
+				.andWhere('metadata.projectId = :projectId', { projectId });
+		} else {
+			queryBuilder
+				// Use a cross join with the CTE
+				.innerJoin('date_ranges', 'date_ranges', '1=1')
+				.where('insights.periodStart >= date_ranges.previous_start');
+		}
+
+		queryBuilder
 			.andWhere('insights.periodStart <= date_ranges.current_end')
 			// Group by both period and type
 			.groupBy('period')
-			.addGroupBy('insights.type')
-			.getRawMany();
+			.addGroupBy('insights.type');
+
+		const rawRows = await queryBuilder.getRawMany();
 
 		return summaryParser.parse(rawRows);
 	}
