@@ -50,7 +50,7 @@ export async function verifyIntegrity(
 				'view',
 				`${packageName}@${version}`,
 				'dist.integrity',
-				`--registry=${registryUrl}`,
+				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 				'--json',
 			]);
 
@@ -88,7 +88,7 @@ export async function isVersionExists(
 				'view',
 				`${packageName}@${version}`,
 				'version',
-				`--registry=${registryUrl}`,
+				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 				'--json',
 			]);
 
