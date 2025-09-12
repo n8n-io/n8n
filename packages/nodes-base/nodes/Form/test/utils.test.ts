@@ -113,6 +113,105 @@ describe('FormTrigger, sanitizeHtml', () => {
 		});
 	});
 
+	it('should allow tfoot elements and preserve table footer structure', () => {
+		const tfootTestCases = [
+			{
+				html: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+			},
+		];
+
+		tfootTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve table cell attributes (colspan, rowspan, scope, headers)', () => {
+		const cellAttributeTestCases = [
+			{
+				html: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+				expected: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+				expected:
+					'<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+				expected:
+					'<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th id="header1">Name</th><th id="header2">Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+				expected:
+					'<table><tr><th>Name</th><th>Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+			},
+			{
+				html: '<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+				expected:
+					'<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+			},
+		];
+
+		cellAttributeTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should strip malicious attributes from table cells while preserving allowed ones', () => {
+		const maliciousCellTestCases = [
+			{
+				html: '<td onclick="alert(\'XSS\')" colspan="2" style="color: red;">Safe content</td>',
+				expected: '<td colspan="2">Safe content</td>',
+			},
+			{
+				html: '<th onmouseover="steal()" rowspan="3" class="malicious" scope="col">Header</th>',
+				expected: '<th rowspan="3" scope="col">Header</th>',
+			},
+			{
+				html: '<td headers="header1" data-evil="payload" onerror="hack()">Data</td>',
+				expected: '<td headers="header1">Data</td>',
+			},
+			{
+				html: '<th colspan="2" rowspan="2" onclick="javascript:alert(\'XSS\')" scope="colgroup">Multi-span header</th>',
+				expected: '<th colspan="2" rowspan="2" scope="colgroup">Multi-span header</th>',
+			},
+		];
+
+		maliciousCellTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle complex table structures with tfoot and cell attributes', () => {
+		const complexTableTestCases = [
+			{
+				html: '<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+				expected:
+					'<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+			},
+		];
+
+		complexTableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
 	it('should remove malicious attributes from table elements', () => {
 		const maliciousTableCases = [
 			{

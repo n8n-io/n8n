@@ -57,6 +57,7 @@ export function sanitizeHtml(text: string) {
 			'table',
 			'thead',
 			'tbody',
+			'tfoot',
 			'td',
 			'tr',
 			'th',
@@ -76,6 +77,8 @@ export function sanitizeHtml(text: string) {
 				'referrerpolicy',
 			],
 			source: ['src', 'type'],
+			td: ['colspan', 'rowspan', 'scope', 'headers'],
+			th: ['colspan', 'rowspan', 'scope', 'headers'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
