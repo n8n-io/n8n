@@ -112,10 +112,9 @@ watch(
 			).default;
 
 			loadLanguage(newLocale, messages);
-
-			axios.defaults.headers.common['Accept-Language'] = newLocale;
 		}
 
+		axios.defaults.headers.common['Accept-Language'] = newLocale;
 		void locale.use(newLocale);
 	},
 	{ immediate: true },
