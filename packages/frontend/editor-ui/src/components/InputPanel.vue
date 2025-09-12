@@ -105,7 +105,23 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	// Find the first child that has a main input connection to account for nested subnodes
+	const findRootWithMainConnection = (nodeName: string): string | null => {
+		const children = props.workflowObject.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			// Check if this child has main input connections
+			const parentNodes = props.workflowObject.getParentNodes(childName, NodeConnectionTypes.Main);
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	};
+
+	return findRootWithMainConnection(activeNode.value.name);
 });
 
 const hasRootNodeRun = computed(() => {
