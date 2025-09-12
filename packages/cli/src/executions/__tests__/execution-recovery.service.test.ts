@@ -175,7 +175,7 @@ describe('ExecutionRecoveryService', () => {
 				expect(amendedExecution).toBeNull();
 			});
 
-			test('for canceled dataful execution, should return `null`', async () => {
+			test('for canceled executions with data, should return `null`', async () => {
 				/**
 				 * Arrange
 				 */
