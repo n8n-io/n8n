@@ -336,7 +336,7 @@ describe('VectorStoreRedis.node', () => {
 
 			const res = await instance.similaritySearchVectorWithScore([0], 1);
 			expect(res).toBeDefined();
-			expect((instance as any).defaultFilter).toEqual(null);
+			expect((instance as any).defaultFilter).toEqual(undefined);
 		});
 
 		it('throws NodeOperationError when index is missing', async () => {
