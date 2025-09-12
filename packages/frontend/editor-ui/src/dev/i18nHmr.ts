@@ -1,89 +1,62 @@
 import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n';
 import type { LocaleMessages } from '@n8n/i18n/types';
 import { locale as designLocale } from '@n8n/design-system';
+
 if (import.meta.hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
-	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true });
+	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true }) as Record<
+		string,
+		{ default?: LocaleMessages }
+	>;
 	const localePaths = Object.keys(localeModules);
-	const loadLocale = async (lc: string): Promise<LocaleMessages | undefined> => {
-		for (const p of localePaths) {
-			const match = p.match(/\/locales\/([^/]+)\.json$/);
-			if (match?.[1] === lc) {
-				const mod: any = (localeModules as Record<string, any>)[p];
-				return (mod?.default ?? {}) as LocaleMessages;
-			}
-		}
-		return undefined;
-	};
-	const applyMessages = (localeCode: string, msgs: LocaleMessages) => {
-		updateLocaleMessages(localeCode, msgs as unknown as Record<string, unknown>);
-	};
 
-	const pendingLocales = new Set<string>();
-	let pendingFiles: string[] = [];
-	let flushTimer: number | undefined;
-
-	const flushQueued = async () => {
+	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? 'en';
+	const apply = (lc: string, msgs: LocaleMessages) =>
+		updateLocaleMessages(lc, msgs as unknown as Record<string, unknown>);
+	const refresh = () => {
 		const current = (i18nInstance.global.locale.value as string) || 'en';
-		if (pendingFiles.length > 0) {
-			for (const file of pendingFiles.splice(0)) {
-				const lc = file.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? current;
-				try {
-					const res = await fetch(`/@fs${file}?t=${Date.now()}`);
-					const messages = (await res.json()) as LocaleMessages;
-					applyMessages(lc, messages);
-				} catch {
-					const msgs = await loadLocale(lc);
-					if (msgs) applyMessages(lc, msgs);
-				}
-			}
-		} else {
-			const localesToRefresh = new Set<string>(['en', current, ...pendingLocales]);
-			pendingLocales.clear();
-			for (const lc of localesToRefresh) {
-				const msgs = await loadLocale(lc);
-				if (msgs) applyMessages(lc, msgs);
-			}
-		}
-
 		i18n.clearCache();
 		setLanguage(current);
 		void designLocale.use(current);
 	};
+	// Fetch with cache-buster to avoid stale content (one-update-behind);
+	// falls back to the eager map if network fetch is unavailable.
+	const fetchAndApply = async (file: string) => {
+		try {
+			const res = await fetch(`/@fs${file}?t=${Date.now()}`);
+			apply(lcOf(file), (await res.json()) as LocaleMessages);
+		} catch {
+			const msgs = localeModules[file]?.default;
+			if (msgs) apply(lcOf(file), msgs);
+		}
+	};
 
-	import.meta.hot.on('n8n:locale-update', (payload: { locales?: string[]; file?: string }) => {
-		(payload.locales ?? []).forEach((lc) => pendingLocales.add(lc));
-		if (payload.file) pendingFiles.push(payload.file);
-		clearTimeout(flushTimer as any);
-		flushTimer = window.setTimeout(() => void flushQueued(), 30);
-	});
-	import.meta.hot.on('custom:n8n:locale-update' as any, (payload: { locales?: string[] }) => {
-		(payload.locales ?? []).forEach((lc) => pendingLocales.add(lc));
-	});
-
-	import.meta.hot!.accept(localePaths as any, (mods: any[]) => {
-		const current = (i18nInstance.global.locale.value as string) || 'en';
-		mods.forEach((mod, idx) => {
-			const path = localePaths[idx] ?? '';
-			const lc = path.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? 'en';
-			const messages = (mod?.default ?? {}) as LocaleMessages;
-			applyMessages(lc, messages);
-		});
-		i18n.clearCache();
-		setLanguage(current);
-		void designLocale.use(current);
+	// 1) Apply fresh modules provided by Vite HMR
+	import.meta.hot.accept(localePaths, (mods) => {
+		mods.forEach((mod, i) => apply(lcOf(localePaths[i] ?? 'en'), (mod as any)?.default ?? {}));
+		refresh();
 	});
 
+	// 2) Handle explicit locale update events (fetch ensures latest content)
+	import.meta.hot.on(
+		'n8n:locale-update',
+		async (payload: { locales?: string[]; file?: string }) => {
+			if (payload.file) await fetchAndApply(payload.file);
+			refresh();
+		},
+	);
+
+	// 3) Last resort for cases where accept doesn’t trigger
 	import.meta.hot.on(
 		'vite:afterUpdate',
 		async (payload: { updates?: Array<{ path?: string; acceptedPath?: string }> }) => {
-			const updates = (payload as any)?.updates ?? [];
-			const hasLocaleInUpdates = updates.some((u: any) => {
-				const p = (u.path || u.acceptedPath || '') as string;
-				return p.includes('/locales/') && p.endsWith('.json');
-			});
-			if (pendingLocales.size === 0 && !hasLocaleInUpdates && pendingFiles.length === 0) return;
-			await flushQueued();
+			const updates = payload?.updates ?? [];
+			const files = updates
+				.map((u) => (u.path || u.acceptedPath || '') as string)
+				.filter((p) => p.includes('/locales/') && p.endsWith('.json'));
+			if (files.length === 0) return;
+			for (const file of files) await fetchAndApply(file);
+			refresh();
 		},
 	);
 }
