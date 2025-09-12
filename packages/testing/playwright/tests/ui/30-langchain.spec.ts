@@ -530,7 +530,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		});
 	});
 
-	test.only('should keep the same session when switching tabs', async ({ n8n }) => {
+	test('should keep the same session when switching tabs', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_chat_partial_execution.json');
 		await n8n.canvas.clickZoomToFitButton();
 
