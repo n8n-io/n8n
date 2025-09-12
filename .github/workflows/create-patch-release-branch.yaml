@@ -1,0 +1,44 @@
+name: Create Branch For Patch Release
+on:
+  workflow_dispatch:
+    inputs:
+      commit_shas:
+        description: 'Comma-separated commit SHAs'
+        required: true
+      old_version:
+        description: 'Old version to be patched'
+        required: true
+        default: '1.0.0'
+      new_version:
+        description: 'The new patch version'
+        required: true
+        default: '1.0.1'
+      resumeUrl:
+        description: 'n8n workflow resume URL'
+        required: true
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup, cherry-pick and push branch
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git switch "n8n@${{ inputs.old_version }}" --detach
+          BRANCH="patch/${{ inputs.new_version }}"
+          git checkout -b $BRANCH
+          IFS=',' read -ra SHAS <<< "${{ inputs.commit_shas }}"
+          for sha in "${SHAS[@]}"; do
+            git cherry-pick $(echo $sha | xargs)
+          done
+          git push origin $BRANCH
+      - name: Notify when done
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{"status": "completed", "message": "Workflow is finished!"}' ${{ inputs.resumeUrl }}
