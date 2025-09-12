@@ -86,7 +86,7 @@ describe('ProjectHeader', () => {
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
-		settingsStore.isDataStoreFeatureEnabled = true;
+		settingsStore.isDataTableFeatureEnabled = true;
 
 		// Setup default moduleTabs structure
 		uiStore.moduleTabs = {
@@ -123,7 +123,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Overview: should render the correct title and subtitle', async () => {
-		settingsStore.isDataStoreFeatureEnabled = false;
+		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { getByTestId, rerender } = renderComponent();
 		const overviewSubtitle = 'All the workflows, credentials and executions you have access to';
@@ -147,7 +147,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Personal: should render the correct title and subtitle', async () => {
-		settingsStore.isDataStoreFeatureEnabled = false;
+		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const { getByTestId, rerender } = renderComponent();
@@ -468,7 +468,7 @@ describe('ProjectHeader', () => {
 		});
 
 		it('should not render datastore menu item if data store feature is disabled', () => {
-			settingsStore.isDataStoreFeatureEnabled = false;
+			settingsStore.isDataTableFeatureEnabled = false;
 			const { getByTestId } = renderComponent();
 			const actionsContainer = getByTestId('add-resource-actions');
 			expect(actionsContainer).toBeInTheDocument();
