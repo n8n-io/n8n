@@ -440,12 +440,10 @@ const showPersonalizedTemplates = computed(
 );
 
 const showReadyToRunV2Card = computed(() => {
-	return (
-		!loading.value &&
-		readyToRunWorkflowsV2Store.isFeatureEnabled &&
-		readyToRunWorkflowsV2Store.userCanClaimOpenAiCredits &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
+	return readyToRunWorkflowsV2Store.getCardVisibility(
+		projectPermissions.value.workflow.create,
+		readOnlyEnv.value,
+		loading.value,
 	);
 });
 
@@ -992,13 +990,13 @@ const handleDismissReadyToRunCallout = () => {
 	readyToRunWorkflowsStore.trackDismissCallout();
 };
 
-const handleReadyToRunV2Click = async () => {
+const handleReadyToRunV2Click = async (source = 'card') => {
 	const projectId = projectPages.isOverviewSubPage
 		? personalProject.value?.id
 		: (route.params.projectId as string);
 
 	await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
-		'card',
+		source,
 		route.params.folderId as string,
 		projectId,
 	);
