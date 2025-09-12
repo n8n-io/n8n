@@ -22,7 +22,6 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { isProjectRole, isTeamProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
 	name?: string;
@@ -148,15 +147,13 @@ const onUpdateMemberRole = async ({
 
 	try {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name!,
+			name: formData.value.name ?? '',
 			icon: projectIcon.value,
-			description: formData.value.description!,
-			relations: formData.value.relations
-				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
-				.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
+			description: formData.value.description ?? '',
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
 		});
 
 		toast.showMessage({
@@ -273,15 +270,13 @@ const updateProject = async () => {
 		);
 
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name!,
+			name: formData.value.name ?? '',
 			icon: projectIcon.value,
-			description: formData.value.description!,
-			relations: relationsToSave
-				.filter((r: ProjectRelation) => isTeamProjectRole(r.role))
-				.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
+			description: formData.value.description ?? '',
+			relations: relationsToSave.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
 		});
 
 		// After successful save, actually remove pending members from formData
@@ -382,7 +377,7 @@ const relationUsers = computed(() =>
 			if (!user) {
 				return {
 					...relation,
-					role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
+					role: relation.role,
 					firstName: null,
 					lastName: null,
 					email: null,
@@ -391,7 +386,7 @@ const relationUsers = computed(() =>
 			return {
 				...user,
 				...relation,
-				role: isProjectRole(relation.role) ? relation.role : ('project:viewer' as ProjectRole),
+				role: relation.role,
 			};
 		}),
 );
