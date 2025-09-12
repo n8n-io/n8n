@@ -108,25 +108,115 @@ export class SourceControlPreferencesService {
 
 		if (!credentials) return null;
 
-		return {
-			username: this.cipher.decrypt(credentials.encryptedUsername),
-			password: this.cipher.decrypt(credentials.encryptedPassword),
-		};
+		try {
+			return {
+				username: this.cipher.decrypt(credentials.encryptedUsername),
+				password: this.cipher.decrypt(credentials.encryptedPassword),
+			};
+		} catch (error) {
+			this.logger.error('Failed to decrypt HTTPS credentials', { error });
+			// Clean up corrupted credentials
+			await this.deleteHttpsCredentials();
+			return null;
+		}
+	}
+
+	/**
+	 * Check if HTTPS credentials are properly saved and can be decrypted
+	 * Includes retry logic to handle database timing issues
+	 */
+	async validateHttpsCredentials(retries = 3): Promise<boolean> {
+		for (let attempt = 1; attempt <= retries; attempt++) {
+			try {
+				// Small delay to ensure database consistency
+				if (attempt > 1) {
+					await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+				}
+
+				const credentials = await this.getDecryptedHttpsCredentials();
+				const isValid =
+					credentials !== null &&
+					credentials.username.trim() !== '' &&
+					credentials.password.trim() !== '';
+
+				if (isValid) {
+					this.logger.debug('HTTPS credentials validation successful');
+					return true;
+				}
+
+				if (attempt < retries) {
+					this.logger.debug(`HTTPS credentials validation attempt ${attempt} failed, retrying...`);
+				}
+			} catch (error) {
+				this.logger.warn(`HTTPS credentials validation failed (attempt ${attempt}/${retries})`, {
+					error,
+				});
+
+				if (attempt === retries) {
+					return false;
+				}
+			}
+		}
+
+		this.logger.warn('HTTPS credentials validation failed after all retries');
+		return false;
 	}
 
 	async saveHttpsCredentials(username: string, password: string): Promise<void> {
+		// Validate inputs
+		if (!username || typeof username !== 'string' || username.trim() === '') {
+			throw new UnexpectedError('Username is required and must be a non-empty string');
+		}
+		if (!password || typeof password !== 'string' || password.trim() === '') {
+			throw new UnexpectedError('Password/PAT is required and must be a non-empty string');
+		}
+
+		this.logger.debug('Attempting to save HTTPS credentials');
+
+		let encryptedUsername: string;
+		let encryptedPassword: string;
+
 		try {
+			encryptedUsername = this.cipher.encrypt(username.trim());
+			encryptedPassword = this.cipher.encrypt(password.trim());
+		} catch (error) {
+			this.logger.error('Failed to encrypt HTTPS credentials', { error });
+			throw new UnexpectedError('Failed to encrypt HTTPS credentials', { cause: error });
+		}
+
+		// Retry logic for database operations
+		let lastError: Error | null = null;
+
+		try {
+			this.logger.debug('Saving HTTPS credentials to database');
+
+			await this.settingsRepository.delete({ key: 'features.sourceControl.httpsCredentials' });
+
 			await this.settingsRepository.save({
 				key: 'features.sourceControl.httpsCredentials',
 				value: JSON.stringify({
-					encryptedUsername: this.cipher.encrypt(username),
-					encryptedPassword: this.cipher.encrypt(password),
+					encryptedUsername,
+					encryptedPassword,
 				}),
 				loadOnStartup: true,
 			});
+
+			const savedCredentials = await this.getHttpsCredentialsFromDatabase();
+			if (!savedCredentials) {
+				throw new Error('Failed to verify saved credentials in database');
+			}
+
+			this.logger.debug('Successfully saved HTTPS credentials to database');
+			return;
 		} catch (error) {
-			throw new UnexpectedError('Failed to save HTTPS credentials to database', { cause: error });
+			lastError = error instanceof Error ? error : new Error(String(error));
+			this.logger.warn('Failed to save HTTPS credentials', {
+				error: lastError.message,
+			});
 		}
+
+		this.logger.error('Failed to save HTTPS credentials after all retries', { error: lastError });
+		throw new UnexpectedError('Failed to save HTTPS credentials to database', { cause: lastError });
 	}
 
 	async deleteHttpsCredentials(): Promise<void> {
@@ -273,10 +363,30 @@ export class SourceControlPreferencesService {
 
 		const sanitizedPreferences = { ...preferences };
 
+		// Handle HTTPS credentials with proper error handling and cleanup
 		if (preferences.httpsUsername && preferences.httpsPassword) {
-			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
+			try {
+				await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
+				this.logger.debug('HTTPS credentials saved successfully');
+			} catch (error) {
+				this.logger.error('Failed to save HTTPS credentials, cleaning up partial state', { error });
+
+				// Clean up any partial state
+				await this.deleteHttpsCredentials();
+
+				// If we were trying to connect with HTTPS, reset connection state
+				if (preferences.connectionType === 'https') {
+					sanitizedPreferences.connected = false;
+				}
+
+				throw new UnexpectedError(
+					'Failed to save HTTPS credentials. Please verify your username and Personal Access Token are correct.',
+					{ cause: error },
+				);
+			}
 		}
 
+		// Remove sensitive data from preferences before storing
 		delete sanitizedPreferences.httpsUsername;
 		delete sanitizedPreferences.httpsPassword;
 

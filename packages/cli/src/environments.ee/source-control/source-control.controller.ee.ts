@@ -43,10 +43,10 @@ export class SourceControlController {
 	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
 	@GlobalScope('sourceControl:manage')
 	async setPreferences(req: SourceControlRequest.UpdatePreferences) {
-		if (
-			req.body.branchReadOnly === undefined &&
-			this.sourceControlPreferencesService.isSourceControlConnected()
-		) {
+		const isNewConnectionSetup =
+			req.body.repositoryUrl && req.body.repositoryUrl !== '' && req.body.initRepo === true;
+
+		if (isNewConnectionSetup && this.sourceControlPreferencesService.isSourceControlConnected()) {
 			throw new BadRequestError(
 				'Cannot change preferences while connected to a source control provider. Please disconnect first.',
 			);
@@ -65,6 +65,29 @@ export class SourceControlController {
 				await this.sourceControlPreferencesService.setPreferences(sanitizedPreferences);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
+					// Additional validation for HTTPS connections - validate the original credentials from request
+					if (updatedPreferences.connectionType === 'https') {
+						// Check if credentials were provided in this request
+						if (!req.body.httpsUsername || !req.body.httpsPassword) {
+							// Only validate stored credentials if new ones weren't provided
+							const hasValidCredentials =
+								await this.sourceControlPreferencesService.validateHttpsCredentials();
+							if (!hasValidCredentials) {
+								throw new BadRequestError(
+									'HTTPS credentials are missing or invalid. Please provide a valid username and Personal Access Token.',
+								);
+							}
+						} else {
+							// Credentials were just provided, do a quick validation to ensure they're saved
+							const hasValidCredentials =
+								await this.sourceControlPreferencesService.validateHttpsCredentials(5);
+							if (!hasValidCredentials) {
+								// Don't throw here - the credentials were just set, so let's proceed and let the repository initialization fail if needed
+								// This allows the connection to work even if validation has timing issues
+							}
+						}
+					}
+
 					await this.sourceControlService.initializeRepository(
 						{
 							...updatedPreferences,
@@ -152,6 +175,9 @@ export class SourceControlController {
 	@GlobalScope('sourceControl:manage')
 	async disconnect(req: SourceControlRequest.Disconnect) {
 		try {
+			// Immediately set connected to false to prevent race conditions with preferences updates
+			await this.sourceControlPreferencesService.setPreferences({ connected: false });
+
 			return await this.sourceControlService.disconnect(req.body);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
