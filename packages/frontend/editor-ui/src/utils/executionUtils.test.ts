@@ -113,6 +113,69 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
+	it('should not call openPopUpWindow if node has run data and is not a form trigger node', async () => {
+		const nodes: INode[] = [
+			{
+				id: '1',
+				name: 'RegularNode',
+				typeVersion: 1,
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+
+		const runData: IRunData = { RegularNode: [] };
+		const pinData: IPinData = {};
+
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
+			nodes,
+			runData,
+			pinData,
+			destinationNode: undefined,
+			triggerNode: undefined,
+			directParentNodes: [],
+			source: undefined,
+			getTestUrl: getTestUrlMock,
+		});
+
+		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('should call openPopUpWindow for form trigger node even if it has run data', async () => {
+		const nodes: INode[] = [
+			{
+				id: '1',
+				name: 'FormTrigger',
+				typeVersion: 1,
+				type: FORM_TRIGGER_NODE_TYPE,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+
+		const runData: IRunData = { FormTrigger: [] };
+		const pinData: IPinData = {};
+
+		getTestUrlMock.mockReturnValue('http://test-url.com');
+		fetchMock.mockResolvedValue(successResponse);
+
+		await displayForm({
+			nodes,
+			runData,
+			pinData,
+			destinationNode: undefined,
+			triggerNode: undefined,
+			directParentNodes: [],
+			source: undefined,
+			getTestUrl: getTestUrlMock,
+		});
+
+		expect(windowOpenSpy).toHaveBeenCalled();
+	});
+
 	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
 		const nodes: INode[] = [
 			{

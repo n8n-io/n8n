@@ -147,9 +147,10 @@ export async function displayForm({
 	for (const node of nodes) {
 		if (triggerNode !== undefined && triggerNode !== node.name) continue;
 
-		const hasNodeRun = runData?.hasOwnProperty(node.name);
+		const hasNodeRunAndIsNotFormTrigger =
+			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
 
-		if (hasNodeRun || pinData[node.name]) continue;
+		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
 
 		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
 
