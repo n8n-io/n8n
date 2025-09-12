@@ -13,7 +13,7 @@ import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { createUser, createUserShell } from './shared/db/users';
+import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -27,17 +27,24 @@ beforeEach(async () => {
 	});
 });
 
+const ownerPassword = randomValidPassword();
+const memberPassword = randomValidPassword();
+
 describe('Owner shell', () => {
 	let ownerShell: User;
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
+		ownerShell = await createUser({
+			password: ownerPassword,
+			role: GLOBAL_OWNER_ROLE,
+		});
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+		for (const validPayload of getValidPatchMePayloads('owner')) {
+			// Update payload to use the actual owner password for email changes
 			const response = await authOwnerShellAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);
@@ -132,7 +139,6 @@ describe('Owner shell', () => {
 });
 
 describe('Member', () => {
-	const memberPassword = randomValidPassword();
 	let member: User;
 	let authMemberAgent: SuperAgentTest;
 
@@ -146,7 +152,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+		for (const validPayload of getValidPatchMePayloads('member')) {
 			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
 			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
@@ -175,7 +181,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
+		for (const invalidPayload of getInvalidPatchMePayloads('member')) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
@@ -190,6 +196,39 @@ describe('Member', () => {
 
 			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
+	});
+
+	test('PATCH /me should fail when changing email without currentPassword', async () => {
+		const payloadWithoutPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithoutPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Current password is required to change email');
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
+	});
+
+	test('PATCH /me should fail when changing email with wrong currentPassword', async () => {
+		const payloadWithWrongPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+			currentPassword: 'WrongPassword123',
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithWrongPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'Unable to update profile. Please check your credentials and try again.',
+		);
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
 	});
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
@@ -246,7 +285,7 @@ describe('Owner', () => {
 		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
-		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+		for (const validPayload of getValidPatchMePayloads('owner')) {
 			const response = await authOwnerAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);
@@ -313,6 +352,24 @@ const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
 	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
 	personalization_survey_n8n_version: '1.0.0',
 };
+
+function getValidPatchMePayloads(userType: 'owner' | 'member') {
+	return VALID_PATCH_ME_PAYLOADS.map((payload) => {
+		if (userType === 'owner') {
+			return { ...payload, currentPassword: ownerPassword };
+		}
+		return { ...payload, currentPassword: memberPassword };
+	});
+}
+
+function getInvalidPatchMePayloads(userType: 'owner' | 'member') {
+	return INVALID_PATCH_ME_PAYLOADS.map((payload) => {
+		if (userType === 'owner') {
+			return { ...payload, currentPassword: ownerPassword };
+		}
+		return { ...payload, currentPassword: memberPassword };
+	});
+}
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{
