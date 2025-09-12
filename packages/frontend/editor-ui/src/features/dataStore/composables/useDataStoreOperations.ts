@@ -6,7 +6,6 @@ import type {
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
-	DataStoreColumnType,
 } from '@/features/dataStore/datastore.types';
 import { ref, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -21,6 +20,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
 import { isDataStoreValue, isDataStoreColumnType } from '@/features/dataStore/typeGuards';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { areValuesEqual } from '@/features/dataStore/utils/typeUtils';
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -193,19 +193,6 @@ export const useDataStoreOperations = ({
 			contentLoading.value = false;
 		}
 	}
-
-	const areValuesEqual = (
-		oldValue: unknown,
-		newValue: unknown,
-		type: DataStoreColumnType | undefined,
-	) => {
-		if (type && type === 'date') {
-			if (oldValue instanceof Date && newValue instanceof Date) {
-				return oldValue.getTime() === newValue.getTime();
-			}
-		}
-		return oldValue === newValue;
-	};
 
 	const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
 		const { data, api, oldValue, colDef } = params;

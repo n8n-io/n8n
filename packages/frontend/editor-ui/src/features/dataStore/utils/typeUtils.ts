@@ -1,4 +1,5 @@
 import { LOOSE_DATE_REGEX } from '@/features/dataStore/constants';
+import type { DataStoreColumnType } from '@/features/dataStore/datastore.types';
 
 /**
  * Parses a loose date string into a Date object.
@@ -10,7 +11,7 @@ import { LOOSE_DATE_REGEX } from '@/features/dataStore/constants';
  * @param text The loose date string to parse
  * @returns The parsed Date object, or null if parsing failed
  */
-export function parseLooseDateInput(text: string): Date | null {
+export const parseLooseDateInput = (text: string): Date | null => {
 	const trimmed = text.trim();
 	const m = LOOSE_DATE_REGEX.exec(trimmed);
 	if (!m) return null;
@@ -40,4 +41,24 @@ export function parseLooseDateInput(text: string): Date | null {
 	}
 
 	return dt;
-}
+};
+
+/**
+ * Check if two column values are equal, with special handling for date types.
+ * @param oldValue unknown
+ * @param newValue unknown
+ * @param type DataStoreColumnType | undefined
+ * @returns boolean
+ */
+export const areValuesEqual = (
+	oldValue: unknown,
+	newValue: unknown,
+	type: DataStoreColumnType | undefined,
+) => {
+	if (type && type === 'date') {
+		if (oldValue instanceof Date && newValue instanceof Date) {
+			return oldValue.getTime() === newValue.getTime();
+		}
+	}
+	return oldValue === newValue;
+};
