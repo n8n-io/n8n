@@ -12,6 +12,7 @@ export type SourceControlPreferences = {
 	publicKey?: string;
 	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
+	connectionType?: 'ssh' | 'https';
 };
 
 export interface SourceControlStatus {
