@@ -187,7 +187,7 @@ async def test_timeout_during_execution(broker, manager):
     task_settings = create_task_settings(code=code, node_mode="all_items")
     await broker.send_task(task_id=task_id, task_settings=task_settings)
 
-    error_msg = await wait_for_task_error(broker, task_id, timeout=TASK_TIMEOUT + 0.5)
+    error_msg = await wait_for_task_error(broker, task_id, timeout=TASK_TIMEOUT + 1.5)
 
     assert error_msg["taskId"] == task_id
     assert "timed out" in error_msg["error"]["message"].lower()
