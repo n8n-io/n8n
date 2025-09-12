@@ -298,7 +298,7 @@ describe('ExecutionService', () => {
 				count: 1,
 				estimated: false,
 				results: [expect.objectContaining({ status: 'success' })],
-				concurrentExecutionsCount: 0,
+				concurrentExecutionsCount: -1,
 			});
 		});
 
@@ -329,7 +329,7 @@ describe('ExecutionService', () => {
 					expect.objectContaining({ status: 'success' }),
 					expect.objectContaining({ status: 'success' }),
 				],
-				concurrentExecutionsCount: 0,
+				concurrentExecutionsCount: -1,
 			});
 		});
 
@@ -361,7 +361,7 @@ describe('ExecutionService', () => {
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
 					// execution for workflow in second project was filtered out
 				]),
-				concurrentExecutionsCount: 0,
+				concurrentExecutionsCount: -1,
 			});
 		});
 
@@ -392,7 +392,7 @@ describe('ExecutionService', () => {
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
 				]),
-				concurrentExecutionsCount: 0,
+				concurrentExecutionsCount: -1,
 			});
 		});
 
@@ -451,7 +451,7 @@ describe('ExecutionService', () => {
 					results: expect.arrayContaining([
 						expect.objectContaining({ workflowId: firstWorkflow.id }),
 					]),
-					concurrentExecutionsCount: 0,
+					concurrentExecutionsCount: -1,
 				});
 			},
 		);
@@ -581,7 +581,7 @@ describe('ExecutionService', () => {
 					results: expect.arrayContaining(
 						executions.map((e) => expect.objectContaining({ id: e.id })),
 					),
-					concurrentExecutionsCount: 0,
+					concurrentExecutionsCount: -1,
 				});
 			});
 
@@ -614,7 +614,7 @@ describe('ExecutionService', () => {
 					results: expect.arrayContaining(
 						executions.map((e) => expect.objectContaining({ id: e.id })),
 					),
-					concurrentExecutionsCount: 0,
+					concurrentExecutionsCount: -1,
 				});
 			});
 		});

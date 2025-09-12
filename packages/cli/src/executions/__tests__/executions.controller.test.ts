@@ -32,7 +32,12 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = { count: 0, estimated: false, results: [], concurrentExecutionsCount: 0 };
+		const NO_EXECUTIONS = {
+			count: 0,
+			estimated: false,
+			results: [],
+			concurrentExecutionsCount: -1,
+		};
 
 		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
 			{

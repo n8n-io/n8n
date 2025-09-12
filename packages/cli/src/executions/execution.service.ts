@@ -372,16 +372,6 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		let concurrentExecutionsCount = 0;
-		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
-		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
-
-		// In 'queue' mode concurrency control is applied per worker and returning a global count
-		// of concurrent executions would not be meaningful/helpful.
-		if (isConcurrencyEnabled && isInRegularMode) {
-			concurrentExecutionsCount = await this.executionRepository.getConcurrentExecutionsCount();
-		}
-
 		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
@@ -395,9 +385,31 @@ export class ExecutionService {
 
 		const { range: _, ...countQuery } = query;
 
-		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
+		const [count, concurrentExecutionsCount] = await Promise.all([
+			this.executionRepository.fetchCount({ ...countQuery, kind: 'count' }),
+			this.getConcurrentExecutionsCount(),
+		]);
 
 		return { results, count, estimated: false, concurrentExecutionsCount };
+	}
+
+	/**
+	 * @returns
+	 *  - the number of concurrent executions
+	 *  - `-1` if the count is not applicable (e.g. in 'queue' mode or if concurrency control is disabled)
+	 *
+	 * In 'queue' mode, concurrency control is applied per worker, so returning a global count of concurrent executions
+	 * would not be meaningful or helpful.
+	 */
+	private async getConcurrentExecutionsCount() {
+		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
+		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
+
+		if (!isConcurrencyEnabled || !isInRegularMode) {
+			return -1;
+		}
+
+		return await this.executionRepository.getConcurrentExecutionsCount();
 	}
 
 	/**
