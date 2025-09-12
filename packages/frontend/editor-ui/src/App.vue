@@ -23,8 +23,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import LoadingView from '@/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
-import { loadLanguage, setLanguage } from '@n8n/i18n';
-import type { LocaleMessages } from '@n8n/i18n/types';
+import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
@@ -103,13 +102,7 @@ watch(route, (r) => {
 watch(
 	defaultLocale,
 	async (newLocale) => {
-		if (newLocale === 'en') {
-			setLanguage('en');
-		} else {
-			const mod = await import(`@n8n/i18n/locales/${newLocale}.json`);
-			const messages: LocaleMessages = mod.default;
-			loadLanguage(newLocale, messages);
-		}
+		setLanguage(newLocale);
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 		void locale.use(newLocale);
@@ -117,8 +110,7 @@ watch(
 	{ immediate: true },
 );
 
-// Dev HMR for i18n (side-effect import)
-import '@/dev/i18nHmr';
+// Dev HMR for i18n is imported in main.ts before app mount
 </script>
 
 <template>

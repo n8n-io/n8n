@@ -13,6 +13,14 @@ if (import.meta.hot) {
 	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? 'en';
 	const apply = (lc: string, msgs: LocaleMessages) =>
 		updateLocaleMessages(lc, msgs as unknown as Record<string, unknown>);
+
+	// Seed all locales on initial load in dev so switching locales
+	// does not require component-level dynamic imports (avoids hard reload chains)
+	for (const p of localePaths) {
+		const lc = lcOf(p);
+		const msgs = (localeModules[p] as { default?: LocaleMessages })?.default;
+		if (msgs && lc) apply(lc, msgs);
+	}
 	const refresh = () => {
 		const current = (i18nInstance.global.locale.value as string) || 'en';
 		i18n.clearCache();
