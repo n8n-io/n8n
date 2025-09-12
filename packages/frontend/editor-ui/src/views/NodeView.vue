@@ -1892,7 +1892,7 @@ watch(
 			name: CanvasNodeRenderType.AIPrompt,
 			type: CanvasNodeRenderType.AIPrompt,
 			typeVersion: 1,
-			position: [-690, -15],
+			position: [-300, -100],
 			parameters: {},
 			draggable: false,
 		};
