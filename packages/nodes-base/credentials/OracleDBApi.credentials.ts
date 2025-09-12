@@ -37,6 +37,9 @@ export class OracleDBApi implements ICredentialType {
 			name: 'useThickMode',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				hideOnCloud: true,
+			},
 			description: 'Define type of connection with database',
 		},
 		{
