@@ -1,5 +1,6 @@
-import { markRaw } from 'vue';
 import { defineFrontendExtension } from '@n8n/extension-sdk/frontend';
+import { markRaw } from 'vue';
+
 import InsightsDashboard from './InsightsDashboard.vue';
 
 export default defineFrontendExtension({
