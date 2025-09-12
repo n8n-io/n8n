@@ -396,19 +396,23 @@ export class ExecutionService {
 		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
 
 		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
-		const { range: _, ...countQuery } = query;
+
+		const completedQuery: ExecutionSummaries.RangeQuery = {
+			...query,
+			status: completedStatuses,
+			order: { startedAt: 'DESC' },
+		};
+		const { range: _, ...countQuery } = completedQuery;
+
+		const currentQuery: ExecutionSummaries.RangeQuery = {
+			...query,
+			status: currentStatuses,
+			order: { top: 'running' }, // ensure limit cannot exclude running
+		};
 
 		const [current, completed, completedCount, concurrentExecutionsCount] = await Promise.all([
-			this.executionRepository.findManyByRangeQuery({
-				...query,
-				status: currentStatuses,
-				order: { top: 'running' }, // ensure limit cannot exclude running
-			}),
-			this.executionRepository.findManyByRangeQuery({
-				...query,
-				status: completedStatuses,
-				order: { startedAt: 'DESC' },
-			}),
+			this.executionRepository.findManyByRangeQuery(currentQuery),
+			this.executionRepository.findManyByRangeQuery(completedQuery),
 			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
 			this.getConcurrentExecutionsCount(),
 		]);
