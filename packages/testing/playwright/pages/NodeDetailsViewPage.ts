@@ -26,8 +26,11 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
-	async fillParameterInput(labelName: string, value: string) {
-		await this.getParameterByLabel(labelName).getByTestId('parameter-input-field').fill(value);
+	async fillParameterInput(labelName: string, value: string, index = 0) {
+		await this.getParameterByLabel(labelName)
+			.nth(index)
+			.getByTestId('parameter-input-field')
+			.fill(value);
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
@@ -182,37 +185,40 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.type(text);
 	}
 
-	getParameterInput(parameterName: string) {
-		return this.page.getByTestId(`parameter-input-${parameterName}`);
+	getParameterInput(parameterName: string, index = 0) {
+		return this.page.getByTestId(`parameter-input-${parameterName}`).nth(index);
 	}
 
-	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('input');
+	getParameterInputField(parameterName: string, index = 0) {
+		return this.getParameterInput(parameterName, index).locator('input');
 	}
 
-	async selectOptionInParameterDropdown(parameterName: string, optionText: string) {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.click();
-
-		await this.page.getByRole('option', { name: optionText }).click();
+	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
+		await this.clickParameterDropdown(parameterName, index);
+		await this.selectFromVisibleDropdown(optionText);
 	}
 
-	async clickParameterDropdown(parameterName: string): Promise<void> {
-		await this.clickByTestId(`parameter-input-${parameterName}`);
+	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
+		await this.clickByTestId(`parameter-input-${parameterName}`, index);
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
 		await this.page.getByRole('option', { name: optionText }).click();
 	}
 
-	async fillParameterInputByName(parameterName: string, value: string): Promise<void> {
-		const input = this.getParameterInputField(parameterName);
+	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
+		const input = this.getParameterInputField(parameterName, index);
 		await input.click();
 		await input.fill(value);
 	}
 
 	async clickParameterOptions(): Promise<void> {
 		await this.page.locator('.param-options').click();
+	}
+
+	async addParameterOptionByName(optionName: string): Promise<void> {
+		await this.clickParameterOptions();
+		await this.selectFromVisibleDropdown(optionName);
 	}
 
 	getVisiblePopper() {
