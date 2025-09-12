@@ -244,10 +244,6 @@ const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
-		// Hide description when ready-to-run workflows V2 feature is enabled
-		if (readyToRunWorkflowsV2Store.isFeatureEnabled) {
-			return null;
-		}
 		return i18n.baseText(
 			settingsStore.isDataTableFeatureEnabled
 				? 'projects.header.overview.subtitleWithDataTables'
