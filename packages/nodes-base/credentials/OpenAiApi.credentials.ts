@@ -2,7 +2,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IDisplayOptions,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -53,7 +52,7 @@ export class OpenAiApi implements ICredentialType {
 				show: {
 					header: [true],
 				},
-			} as IDisplayOptions,
+			},
 			default: '',
 		},
 		{
@@ -67,7 +66,7 @@ export class OpenAiApi implements ICredentialType {
 				show: {
 					header: [true],
 				},
-			} as IDisplayOptions,
+			},
 			default: '',
 		},
 	];
@@ -87,8 +86,12 @@ export class OpenAiApi implements ICredentialType {
 			Authorization: 'Bearer ' + credentials.apiKey,
 			'OpenAI-Organization': credentials.organizationId,
 		};
-		if (credentials.header) {
-			requestOptions.headers[credentials.headerName as string] = credentials.headerValue;
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName
+		) {
+			requestOptions.headers[credentials.headerName] = credentials.headerValue;
 		}
 		return requestOptions;
 	}

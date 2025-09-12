@@ -358,9 +358,14 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
-		if (credentials.header) {
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
 			configuration.defaultHeaders = {
-				[credentials.headerName as string]: credentials.headerValue as string,
+				[credentials.headerName]: credentials.headerValue,
 			};
 		}
 
