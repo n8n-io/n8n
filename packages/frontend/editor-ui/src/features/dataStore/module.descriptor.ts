@@ -70,6 +70,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataStore.dataStores'),
 				value: DATA_STORE_VIEW,
+				tag: 'Beta',
 				to: {
 					name: DATA_STORE_VIEW,
 				},
@@ -79,6 +80,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataStore.dataStores'),
 				value: PROJECT_DATA_STORES,
+				tag: 'Beta',
 				dynamicRoute: {
 					name: PROJECT_DATA_STORES,
 					includeProjectId: true,
