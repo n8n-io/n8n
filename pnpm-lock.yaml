@@ -2213,8 +2213,8 @@ importers:
         specifier: ^0.11.1
         version: 0.11.1
       reka-ui:
-        specifier: ^2.2.1
-        version: 2.2.1(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
+        specifier: ^2.5.0
+        version: 2.5.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
       sanitize-html:
         specifier: 2.12.1
         version: 2.12.1
@@ -14529,8 +14529,8 @@ packages:
   reinterval@1.1.0:
     resolution: {integrity: sha512-QIRet3SYrGp0HUHO88jVskiG6seqUGC5iAG7AwI/BV4ypGcuqk9Du6YQBUOUqm9c8pw1eyLoIaONifRua1lsEQ==}
 
-  reka-ui@2.2.1:
-    resolution: {integrity: sha512-oLHiyBn6gTIQGnTnv8G5LQuFp9j8HuUNl0qdnW3XPhFb/07hrxzFpjo2kt/jxOZive+n/XWDbOjSj2h9Hih3qA==}
+  reka-ui@2.5.0:
+    resolution: {integrity: sha512-81aMAmJeVCy2k0E6x7n1kypDY6aM1ldLis5+zcdV1/JtoAlSDck5OBsyLRJU9CfgbrQp1ImnRnBSmC4fZ2fkZQ==}
     peerDependencies:
       vue: '>= 3.2.0'
 
@@ -31157,7 +31157,7 @@ snapshots:
 
   reinterval@1.1.0: {}
 
-  reka-ui@2.2.1(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2)):
+  reka-ui@2.5.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2)):
     dependencies:
       '@floating-ui/dom': 1.7.0
       '@floating-ui/vue': 1.1.6(vue@3.5.13(typescript@5.9.2))
