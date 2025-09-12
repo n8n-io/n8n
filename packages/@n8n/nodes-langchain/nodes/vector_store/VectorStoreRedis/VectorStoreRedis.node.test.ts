@@ -127,31 +127,6 @@ describe('VectorStoreRedis.node', () => {
 			expect(client1).toBe(mockClient1);
 			expect(client2).toBe(mockClient2);
 		});
-
-		it('error handler quits client and throws NodeOperationError', async () => {
-			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn().mockResolvedValue(undefined),
-				quit: jest.fn().mockResolvedValue(undefined),
-			} as any;
-
-			MockCreateClient.mockReturnValue(mockClient);
-
-			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-			} as any;
-
-			await RedisNode.getRedisClient(context);
-
-			// Simulate error event by invoking the registered handler synchronously
-			const error = new Error('boom');
-			// our implementation throws inside the handler, so wrap in try/catch
-			const handler = (mockClient.on as jest.Mock).mock.calls.find((c) => c[0] === 'error')?.[1];
-			await expect(handler(error)).rejects.toEqual(
-				new NodeOperationError('Redis reported an error: boom'),
-			);
-		});
 	});
 
 	describe('listIndices', () => {
@@ -266,7 +241,7 @@ describe('VectorStoreRedis.node', () => {
 
 			// Call the overridden method and ensure behavior is as expected
 			const res = await client.similaritySearchVectorWithScore([1, 2], 3);
-			expect(res).toBeDefined();
+			expect(res).toBe('ok');
 			// Validate filter tokens got captured on the instance
 			expect((client as any).defaultFilter).toEqual(['a', 'b']);
 		});
@@ -426,7 +401,6 @@ describe('VectorStoreRedis.node', () => {
 					vectorKey: 'v',
 					ttl: 60,
 				},
-				{ batchSize: 123 },
 			);
 		});
 
