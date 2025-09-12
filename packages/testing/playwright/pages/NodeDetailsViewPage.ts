@@ -52,8 +52,16 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickByTestId('node-execute-button');
 	}
 
+	getOutputPanel() {
+		return this.page.getByTestId('output-panel');
+	}
+
 	getContainer() {
 		return this.page.getByTestId('ndv');
+	}
+
+	getInputPanel() {
+		return this.page.getByTestId('ndv-input-panel');
 	}
 
 	getParameterExpressionPreviewValue() {
@@ -79,6 +87,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getRunDataPaneHeader() {
 		return this.page.getByTestId('run-data-pane-header');
+	}
+
+	getOutputTable() {
+		return this.getOutputPanel().getByTestId('ndv-data-container').locator('table');
+	}
+
+	getOutputDataContainer() {
+		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
 	async setPinnedData(data: object | string) {
@@ -125,7 +141,16 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
-	getInlineExpressionEditorInput() {
+	/**
+	 * Get the inline expression editor input
+	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
+	 * @returns The inline expression editor input
+	 */
+	getInlineExpressionEditorInput(parameterName?: string) {
+		if (parameterName) {
+			const parameterInput = this.getParameterInput(parameterName);
+			return parameterInput.getByTestId('inline-expression-editor-input');
+		}
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
 
@@ -149,15 +174,15 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.el-popper:visible');
 	}
 
-	async clearExpressionEditor() {
-		const editor = this.getInlineExpressionEditorInput();
+	async clearExpressionEditor(parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
-	async typeInExpressionEditor(text: string) {
-		const editor = this.getInlineExpressionEditorInput();
+	async typeInExpressionEditor(text: string, parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await editor.type(text);
 	}
@@ -373,6 +398,14 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByRole('option', { name: nodeName }).click();
 	}
 
+	getInputTableHeader(index: number = 0) {
+		return this.getInputPanel().locator('table th').nth(index);
+	}
+
+	getInputTbodyCell(row: number, col: number) {
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
+	}
+
 	getAssignmentName(paramName: string, index = 0) {
 		return this.getAssignmentCollectionContainer(paramName)
 			.getByTestId('assignment')
@@ -457,6 +490,14 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.type(content);
 	}
 
+	getInputTable() {
+		return this.getInputPanel().locator('table');
+	}
+
+	getInputTableCellSpan(row: number, col: number, dataName: string) {
+		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
+	}
+
 	getAddFieldToSortByButton() {
 		return this.getNodeParameters().getByText('Add Field To Sort By');
 	}
@@ -491,6 +532,46 @@ export class NodeDetailsViewPage extends BasePage {
 		const input = this.getParameterInput(parameterName).locator('input');
 		await input.clear();
 		await input.fill(value);
+	}
+
+	async clickGetBackToCanvas(): Promise<void> {
+		await this.clickBackToCanvasButton();
+	}
+
+	getRunDataInfoCallout() {
+		return this.page.getByTestId('run-data-callout');
+	}
+
+	getOutputPanelTable() {
+		return this.getOutputTable();
+	}
+
+	async checkParameterCheckboxInputByName(name: string): Promise<void> {
+		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		await checkbox.click();
+	}
+
+	// Credentials modal helpers
+	async clickCreateNewCredential(eq: number = 0): Promise<void> {
+		await this.page.getByTestId('node-credentials-select').nth(eq).click();
+		await this.page.getByTestId('node-credentials-select-item-new').click();
+	}
+
+	// Run selector and linking helpers
+	getInputRunSelector() {
+		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+	}
+
+	getOutputRunSelector() {
+		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+	}
+
+	getInputRunSelectorInput() {
+		return this.getInputRunSelector().locator('input');
+	}
+
+	async toggleInputRunLinking(): Promise<void> {
+		await this.getInputPanel().getByTestId('link-run').click();
 	}
 
 	getNodeRunErrorMessage() {
@@ -724,5 +805,21 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getInputSelect() {
 		return this.page.getByTestId('ndv-input-select').locator('input');
+	}
+
+	getInputTableRows() {
+		return this.getInputTable().locator('tr');
+	}
+
+	getOutputRunSelectorInput() {
+		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
+	}
+
+	getAiOutputModeToggle() {
+		return this.page.getByTestId('ai-output-mode-select');
+	}
+
+	getCredentialLabel(credentialType: string) {
+		return this.page.getByText(credentialType);
 	}
 }

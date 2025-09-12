@@ -1,5 +1,4 @@
 import type { ListDataStoreContentQueryDto, DataTableFilter } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -10,6 +9,8 @@ import {
 	UpdateQueryBuilder,
 	In,
 	ObjectLiteral,
+	EntityManager,
+	DeleteQueryBuilder,
 } from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
@@ -18,6 +19,8 @@ import {
 	UnexpectedError,
 	DataStoreRowsReturn,
 	DATA_TABLE_SYSTEM_COLUMNS,
+	DataTableInsertRowsReturnType,
+	DataTableInsertRowsResult,
 } from 'n8n-workflow';
 
 import { DataStoreUserTableName } from './data-store.types';
@@ -31,9 +34,9 @@ import {
 	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
-	splitRowsByExistence,
 	toDslColumns,
 	toSqliteGlobFromPercent,
+	toTableName,
 } from './utils/sql-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,38 +150,81 @@ function getConditionAndParams(
 
 @Service()
 export class DataStoreRowsRepository {
-	constructor(
-		private dataSource: DataSource,
-		private readonly globalConfig: GlobalConfig,
-	) {}
+	constructor(private dataSource: DataSource) {}
 
-	toTableName(dataStoreId: string): DataStoreUserTableName {
-		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_table_user_${dataStoreId}`;
+	async insertRowsBulk(
+		table: DataStoreUserTableName,
+		rows: DataStoreRows,
+		columns: DataTableColumn[],
+		em: EntityManager,
+	) {
+		// DB systems have different maximum parameters per query
+		// with old sqlite versions having the lowest in 999 parameters
+		// In practice 20000 works here, but performance didn't meaningfully change
+		// so this should be a safe limit
+		const batchSize = 800;
+		const batches = Math.max(1, Math.ceil((columns.length * rows.length) / batchSize));
+		const rowsPerBatch = Math.ceil(rows.length / batches);
+
+		const columnNames = columns.map((x) => x.name);
+		const dbType = this.dataSource.options.type;
+
+		let insertedRows = 0;
+		for (let i = 0; i < batches; ++i) {
+			const start = i * rowsPerBatch;
+			const endExclusive = Math.min(rows.length, (i + 1) * rowsPerBatch);
+
+			if (endExclusive <= start) break;
+
+			const completeRows = new Array<DataStoreColumnJsType[]>(endExclusive - start);
+			for (let j = start; j < endExclusive; ++j) {
+				const insertArray: DataStoreColumnJsType[] = [];
+
+				for (let h = 0; h < columnNames.length; ++h) {
+					const column = columns[h];
+					// Fill missing columns with null values to support partial data insertion
+					const value = rows[j][column.name] ?? null;
+					insertArray[h] = normalizeValue(value, column.type, dbType);
+				}
+				completeRows[j - start] = insertArray;
+			}
+
+			const query = em.createQueryBuilder().insert().into(table, columnNames).values(completeRows);
+			await query.execute();
+			insertedRows += completeRows.length;
+		}
+		return { success: true, insertedRows } as const;
 	}
 
-	async insertRows<T extends boolean | undefined>(
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
-	async insertRows(
+		returnType: T,
+		em?: EntityManager,
+	): Promise<DataTableInsertRowsResult<T>>;
+	async insertRows<T extends DataTableInsertRowsReturnType>(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
-		returnData?: boolean,
-	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		returnType: T,
+		em?: EntityManager,
+	): Promise<DataTableInsertRowsResult> {
+		em = em ?? this.dataSource.manager;
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
-		const table = this.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+
+		if (returnType === 'count') {
+			return await this.insertRowsBulk(table, rows, columns, em);
+		}
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
@@ -194,18 +240,19 @@ export class DataStoreRowsRepository {
 				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
-			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
+			const query = em.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
-				query.returning(returnData ? selectColumns.join(',') : 'id');
+				query.returning(returnType === 'all' ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = returnData
-					? normalizeRows(extractReturningData(result.raw), columns)
-					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
+				const returned =
+					returnType === 'all'
+						? normalizeRows(extractReturningData(result.raw), columns)
+						: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -216,12 +263,12 @@ export class DataStoreRowsRepository {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
-			if (!returnData) {
+			if (returnType === 'id') {
 				inserted.push(...ids.map((id) => ({ id })));
 				continue;
 			}
 
-			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns);
+			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns, em);
 
 			inserted.push(...insertedRows);
 		}
@@ -229,22 +276,33 @@ export class DataStoreRowsRepository {
 		return inserted;
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		data: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		returnData?: T,
+		em?: EntityManager,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
-		setData: Record<string, DataStoreColumnJsType | null>,
+		data: Record<string, DataStoreColumnJsType | null>,
 		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		returnData: boolean = false,
+		em?: EntityManager,
 	) {
+		em = em ?? this.dataSource.manager;
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres';
 
-		const table = this.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+		const setData = { ...data };
 
 		for (const column of columns) {
 			if (column.name in setData) {
@@ -256,17 +314,14 @@ export class DataStoreRowsRepository {
 		if (!useReturning && returnData) {
 			// Only Postgres supports RETURNING statement on updates (with our typeorm),
 			// on other engines we must query the list of updates rows later by ID
-			const selectQuery = this.dataSource
-				.createQueryBuilder()
-				.select('id')
-				.from(table, 'dataTable');
+			const selectQuery = em.createQueryBuilder().select('id').from(table, 'dataTable');
 			this.applyFilters(selectQuery, filter, 'dataTable', columns);
 			affectedRows = await selectQuery.getRawMany<{ id: number }>();
 		}
 
 		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
-		const query = this.dataSource.createQueryBuilder().update(table);
+		const query = em.createQueryBuilder().update(table);
 		// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
 		this.applyFilters(query, filter, undefined, columns);
 		query.set(setData);
@@ -286,84 +341,68 @@ export class DataStoreRowsRepository {
 		}
 
 		const ids = affectedRows.map((row) => row.id);
-		return await this.getManyByIds(dataStoreId, ids, columns);
+		return await this.getManyByIds(dataStoreId, ids, columns, em);
 	}
 
-	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async upsertRows<T extends boolean | undefined>(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
+	async deleteRows(
+		dataTableId: string,
 		columns: DataTableColumn[],
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
-	async upsertRows(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
-		columns: DataTableColumn[],
-		returnData?: boolean,
+		filter: DataTableFilter | undefined,
+		returnData: boolean = false,
 	) {
-		returnData = returnData ?? false;
-		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
-			dataStoreId,
-			matchFields,
-			rows,
-		);
+		const dbType = this.dataSource.options.type;
+		const useReturning = dbType === 'postgres';
+		const table = toTableName(dataTableId);
 
-		const output: DataStoreRowReturn[] = [];
-
-		if (rowsToInsert.length > 0) {
-			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
-			if (returnData) {
-				output.push.apply(output, result);
-			}
-		}
-
-		if (rowsToUpdate.length > 0) {
-			for (const row of rowsToUpdate) {
-				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-				if (updateKeys.length === 0) {
-					return true;
+		if (!returnData) {
+			// Just delete and return true
+			await this.dataSource.manager.transaction(async (em) => {
+				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+				if (filter) {
+					this.applyFilters(query, filter, undefined, columns);
 				}
-
-				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
-				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
-
-				// Convert whereData object to DataTableFilter format
-				const filter: DataTableFilter = {
-					type: 'and',
-					filters: Object.entries(whereData).map(([columnName, value]) => ({
-						columnName,
-						condition: 'eq' as const,
-						value,
-					})),
-				};
-				const result = await this.updateRow(dataStoreId, setData, filter, columns, returnData);
-				if (returnData) {
-					output.push.apply(output, result);
-				}
-			}
-		}
-
-		return returnData ? output : true;
-	}
-
-	async deleteRows(dataStoreId: string, ids: number[]) {
-		if (ids.length === 0) {
+				await query.execute();
+			});
 			return true;
 		}
 
-		const table = this.toTableName(dataStoreId);
+		let affectedRows: DataStoreRowReturn[] = [];
 
-		await this.dataSource
-			.createQueryBuilder()
-			.delete()
-			.from(table, 'dataTable')
-			.where({ id: In(ids) })
-			.execute();
+		await this.dataSource.manager.transaction(async (em) => {
+			if (!useReturning) {
+				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
-		return true;
+				if (filter) {
+					this.applyFilters(selectQuery, filter, 'dataTable', columns);
+				}
+
+				const rawRows = await selectQuery.getRawMany<DataStoreRowReturn>();
+				affectedRows = normalizeRows(rawRows, columns);
+			}
+
+			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+
+			if (useReturning) {
+				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+				const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+					this.dataSource.driver.escape(x),
+				);
+				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+				query.returning(selectColumns.join(','));
+			}
+
+			if (filter) {
+				this.applyFilters(query, filter, undefined, columns);
+			}
+
+			const result = await query.execute();
+
+			if (useReturning) {
+				affectedRows = normalizeRows(extractReturningData(result.raw), columns);
+			}
+		});
+
+		return affectedRows;
 	}
 
 	async createTableWithColumns(
@@ -372,7 +411,7 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner).withColumns(
+		const createTable = new CreateTable(toTableName(dataStoreId), '', queryRunner).withColumns(
 			...dslColumns,
 		).withTimestamps;
 
@@ -380,7 +419,7 @@ export class DataStoreRowsRepository {
 	}
 
 	async dropTable(dataStoreId: string, queryRunner: QueryRunner) {
-		await queryRunner.dropTable(this.toTableName(dataStoreId), true);
+		await queryRunner.dropTable(toTableName(dataStoreId), true);
 	}
 
 	async addColumn(
@@ -389,7 +428,7 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(addColumnQuery(this.toTableName(dataStoreId), column, dbType));
+		await queryRunner.query(addColumnQuery(toTableName(dataStoreId), column, dbType));
 	}
 
 	async dropColumnFromTable(
@@ -398,15 +437,17 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(deleteColumnQuery(this.toTableName(dataStoreId), columnName, dbType));
+		await queryRunner.query(deleteColumnQuery(toTableName(dataStoreId), columnName, dbType));
 	}
 
 	async getManyAndCount(
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
 		columns?: DataTableColumn[],
+		em?: EntityManager,
 	) {
-		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, columns);
+		em = em ?? this.dataSource.manager;
+		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, em, columns);
 		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
@@ -416,8 +457,13 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
-		const table = this.toTableName(dataStoreId);
+	async getManyByIds(
+		dataStoreId: string,
+		ids: number[],
+		columns: DataTableColumn[],
+		em: EntityManager,
+	) {
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -428,7 +474,7 @@ export class DataStoreRowsRepository {
 			return [];
 		}
 
-		const updatedRows = await this.dataSource
+		const updatedRows = await em
 			.createQueryBuilder()
 			.select(selectColumns)
 			.from(table, 'dataTable')
@@ -438,21 +484,16 @@ export class DataStoreRowsRepository {
 		return normalizeRows(updatedRows, columns);
 	}
 
-	async getRowIds(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
-		const [_, query] = this.getManyQuery(dataStoreId, dto);
-		const result = await query.select('dataStore.id').getRawMany<number>();
-		return result;
-	}
-
 	private getManyQuery(
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
+		em: EntityManager,
 		columns?: DataTableColumn[],
 	): [QueryBuilder, QueryBuilder] {
-		const query = this.dataSource.createQueryBuilder();
+		const query = em.createQueryBuilder();
 
 		const tableReference = 'dataTable';
-		query.from(this.toTableName(dataStoreId), tableReference);
+		query.from(toTableName(dataStoreId), tableReference);
 		if (dto.filter) {
 			this.applyFilters(query, dto.filter, tableReference, columns);
 		}
@@ -464,7 +505,7 @@ export class DataStoreRowsRepository {
 	}
 
 	private applyFilters<T extends ObjectLiteral>(
-		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
+		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
 		filter: DataTableFilter,
 		tableReference?: string,
 		columns?: DataTableColumn[],
@@ -477,11 +518,17 @@ export class DataStoreRowsRepository {
 			getConditionAndParams(filter, i, dbType, tableReference, columns),
 		);
 
-		for (const [condition, params] of conditionsAndParams) {
-			if (filterType === 'or') {
-				query.orWhere(condition, params);
-			} else {
-				query.andWhere(condition, params);
+		if (conditionsAndParams.length === 1) {
+			// Always use AND for a single filter
+			const [condition, params] = conditionsAndParams[0];
+			query.andWhere(condition, params);
+		} else {
+			for (const [condition, params] of conditionsAndParams) {
+				if (filterType === 'or') {
+					query.orWhere(condition, params);
+				} else {
+					query.andWhere(condition, params);
+				}
 			}
 		}
 	}
@@ -504,29 +551,5 @@ export class DataStoreRowsRepository {
 	private applyPagination(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		query.skip(dto.skip);
 		query.take(dto.take);
-	}
-
-	private async fetchAndSplitRowsByExistence(
-		dataStoreId: string,
-		matchFields: string[],
-		rows: DataStoreRows,
-	): Promise<{ rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows }> {
-		const queryBuilder = this.dataSource
-			.createQueryBuilder()
-			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'datatable');
-
-		rows.forEach((row, index) => {
-			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));
-			if (index === 0) {
-				queryBuilder.where(matchData);
-			} else {
-				queryBuilder.orWhere(matchData);
-			}
-		});
-
-		const existing: Array<Record<string, DataStoreColumnJsType>> = await queryBuilder.getRawMany();
-
-		return splitRowsByExistence(existing, matchFields, rows);
 	}
 }

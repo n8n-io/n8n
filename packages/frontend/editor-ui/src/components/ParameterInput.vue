@@ -247,9 +247,13 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary filter until native Python runner is GA
-	if (props.parameter.name === 'language' && !settingsStore.isNativePythonRunnerEnabled) {
-		return safeOptions.filter((o) => o.value !== 'pythonNative');
+	// temporary until native Python runner is GA
+	if (props.parameter.name === 'language') {
+		if (settingsStore.isNativePythonRunnerEnabled) {
+			return safeOptions.filter((o) => o.value !== 'python');
+		} else {
+			return safeOptions.filter((o) => o.value !== 'pythonNative');
+		}
 	}
 
 	return safeOptions;
@@ -1021,6 +1025,8 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
+
 function onClickOutsideMapper() {
 	if (!isFocused.value) {
 		isMapperShown.value = false;
@@ -1161,7 +1167,8 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.cancel();
+	valueChangedDebounced.flush();
+	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1300,7 +1307,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1320,7 +1327,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:path="path"
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1585,7 +1592,6 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 						:rows="editorRows"
 					/>
 				</div>
-
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1602,7 +1608,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1648,7 +1654,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"

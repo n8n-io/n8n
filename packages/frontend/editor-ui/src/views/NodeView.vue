@@ -491,7 +491,7 @@ async function fetchAndSetParentFolder(folderId?: string) {
 }
 
 async function fetchAndSetProject(projectId: string) {
-	if (!projectsStore.currentProject) {
+	if (projectsStore.currentProject?.id !== projectId) {
 		const project = await projectsStore.fetchProject(projectId);
 		projectsStore.setCurrentProject(project);
 	}
@@ -614,9 +614,15 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	isBlankRedirect.value = true;
 	const templateId = workflow.meta.templateId;
 	const parentFolderId = route.query.parentFolderId as string | undefined;
+
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
+	await fetchAndSetParentFolder(parentFolderId);
+
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId, parentFolderId },
+		query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
 	});
 
 	await importTemplate({
@@ -704,8 +710,8 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-function onTidyUp(event: CanvasLayoutEvent) {
-	tidyUp(event);
+function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean }) {
+	tidyUp(event, options);
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
@@ -1108,9 +1114,11 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
+	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
+		trackEvents,
 	});
 
 	fitView();
@@ -1121,6 +1129,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 			canvasEventBus.emit('tidyUp', {
 				source: 'import-workflow-data',
 				nodeIdsFilter: nodesIdsToTidyUp,
+				trackEvents,
 			});
 		}, 0);
 	}
