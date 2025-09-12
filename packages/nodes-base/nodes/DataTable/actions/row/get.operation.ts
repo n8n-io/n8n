@@ -20,14 +20,27 @@ const displayOptions: IDisplayOptions = {
 export const description: INodeProperties[] = [
 	...getSelectFields(displayOptions),
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions,
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		displayOptions: {
+			show: {
+				...displayOptions.show,
+				returnAll: [false],
+			},
+		},
 		typeOptions: {
 			minValue: 1,
 		},
-		displayOptions,
-		default: null,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 ];
