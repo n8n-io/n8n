@@ -2,3 +2,4 @@ self-hosted-runner:
   labels:
     - blacksmith-2vcpu-ubuntu-2204
     - blacksmith-4vcpu-ubuntu-2204
+    - blacksmith-8vcpu-ubuntu-2204
