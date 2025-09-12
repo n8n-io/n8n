@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
 import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
@@ -40,7 +41,7 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			minValue: 1,
 		},
-		default: 50,
+		default: ROWS_LIMIT_DEFAULT,
 		description: 'Max number of results to return',
 	},
 ];
