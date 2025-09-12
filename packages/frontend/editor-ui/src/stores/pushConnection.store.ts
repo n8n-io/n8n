@@ -20,7 +20,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const runDataWorkerEnabled = useLocalStorage<boolean>(LOCAL_STORAGE_RUN_DATA_WORKER, false);
+	const isRunDataWorkerEnabled = useLocalStorage<boolean>(LOCAL_STORAGE_RUN_DATA_WORKER, false);
 
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
@@ -68,7 +68,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		// The `nodeExecuteAfterData` message is sent as binary data
 		// to be handled by a web worker in the future.
 		if (data instanceof ArrayBuffer) {
-			if (runDataWorkerEnabled.value) {
+			if (isRunDataWorkerEnabled.value) {
 				runDataWorker.onNodeExecuteAfterData(data);
 				return;
 			} else {
