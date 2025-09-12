@@ -181,7 +181,7 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				const workflow = await createWorkflow();
 				const execution = await createExecution(
-					{ status: 'canceled', data: stringify({ runData: { foo: 'bar' } }) },
+					{ status: 'canceled', data: stringify({ runData: {} }) },
 					workflow,
 				);
 				const messages = setupMessages(execution.id, 'Some workflow');
