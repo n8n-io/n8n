@@ -69,7 +69,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		// to be handled by a web worker in the future.
 		if (data instanceof ArrayBuffer) {
 			if (isRunDataWorkerEnabled.value) {
-				runDataWorker.onNodeExecuteAfterData(data);
+				await runDataWorker.onNodeExecuteAfterData(data);
 				return;
 			} else {
 				data = new TextDecoder('utf-8').decode(new Uint8Array(data));
