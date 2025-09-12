@@ -246,6 +246,50 @@ describe('VectorStoreRedis.node', () => {
 			expect((client as any).defaultFilter).toEqual(['a', 'b']);
 		});
 
+		it('trims and removes empty metadata filter tokens', async () => {
+			const mockClient = {
+				on: jest.fn(),
+				connect: jest.fn().mockResolvedValue(undefined),
+				disconnect: jest.fn(),
+				quit: jest.fn(),
+				sendCommand: jest
+					.fn()
+					.mockImplementation(([cmd]) =>
+						cmd === 'FT.INFO' ? Promise.resolve(undefined) : Promise.resolve([]),
+					),
+			} as any;
+
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+				.fn()
+				.mockResolvedValue('ok');
+
+			const context: any = {
+				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'idx2',
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.metadataFilter': 'tag1, tag2 , ,tag3',
+					};
+					return map[name];
+				},
+				getNode: () => ({ name: 'VectorStoreRedis' }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const node = new RedisNode.VectorStoreRedis();
+			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			// Ensure trimming/removal works
+			expect((client as any).defaultFilter).toEqual(['tag1', 'tag2', 'tag3']);
+		});
+
 		it('omits optional keys when empty/whitespace and handles empty filter as null', async () => {
 			const mockClient = {
 				on: jest.fn(),
