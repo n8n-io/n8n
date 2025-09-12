@@ -13,7 +13,7 @@ import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { createUser } from './shared/db/users';
+import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -35,16 +35,13 @@ describe('Owner shell', () => {
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await createUser({
-			password: ownerPassword,
-			role: GLOBAL_OWNER_ROLE,
-		});
+		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of getValidPatchMePayloads('owner')) {
-			// Update payload to use the actual owner password for email changes
+		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+			// Shell users don't need currentPassword
 			const response = await authOwnerShellAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);
@@ -282,7 +279,10 @@ describe('Member', () => {
 
 describe('Owner', () => {
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const owner = await createUser({
+			role: GLOBAL_OWNER_ROLE,
+			password: ownerPassword,
+		});
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of getValidPatchMePayloads('owner')) {
