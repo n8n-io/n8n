@@ -69,6 +69,7 @@ describe('GlobalConfig', () => {
 				password: '',
 				port: 3306,
 				user: 'root',
+				poolSize: 10,
 			},
 			postgresdb: {
 				database: 'n8n',
@@ -259,6 +260,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			heartbeatInterval: 30,
 			insecureMode: false,
+			isNativePythonRunnerEnabled: false,
 		},
 		sentry: {
 			backendDsn: '',
