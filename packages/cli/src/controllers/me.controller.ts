@@ -105,18 +105,21 @@ export class MeController {
 		}
 
 		if (!mfaEnabled && isEmailBeingChanged) {
-			if (!currentPassword || typeof currentPassword !== 'string') {
-				throw new BadRequestError('Current password is required to change email');
-			}
+			// Shell users (users with null password) don't need to provide currentPassword
+			if (req.user.password !== null) {
+				if (!currentPassword || typeof currentPassword !== 'string') {
+					throw new BadRequestError('Current password is required to change email');
+				}
 
-			const isCurrentPwCorrect = await this.passwordUtility.compare(
-				currentPassword,
-				req.user.password,
-			);
-			if (!isCurrentPwCorrect) {
-				throw new BadRequestError(
-					'Unable to update profile. Please check your credentials and try again.',
+				const isCurrentPwCorrect = await this.passwordUtility.compare(
+					currentPassword,
+					req.user.password,
 				);
+				if (!isCurrentPwCorrect) {
+					throw new BadRequestError(
+						'Unable to update profile. Please check your credentials and try again.',
+					);
+				}
 			}
 		}
 
