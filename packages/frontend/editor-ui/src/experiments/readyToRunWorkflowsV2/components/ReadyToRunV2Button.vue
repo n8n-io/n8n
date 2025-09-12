@@ -9,7 +9,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
-import { VIEWS } from '@/constants';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -25,22 +24,7 @@ const projectPermissions = computed(() => {
 	);
 });
 
-const isWorkflowListView = (routeName: string) => {
-	const WORKFLOWS_VIEWS: string[] = [
-		VIEWS.PROJECTS_WORKFLOWS,
-		VIEWS.WORKFLOWS,
-		VIEWS.SHARED_WORKFLOWS,
-		VIEWS.PROJECTS_FOLDERS,
-	];
-	return WORKFLOWS_VIEWS.includes(routeName);
-};
-
 const showButton = computed(() => {
-	// Only show on workflow list views
-	if (!isWorkflowListView(route.name?.toString() ?? '')) {
-		return false;
-	}
-
 	return readyToRunWorkflowsV2Store.getButtonVisibility(
 		foldersStore.totalWorkflowCount > 0, // Has workflows
 		projectPermissions.value.workflow.create,
