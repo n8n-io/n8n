@@ -13,7 +13,6 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
@@ -166,13 +165,18 @@ export class Push extends TypedEmitter<PushEvents> {
 		return this.backend.hasPushRef(pushRef);
 	}
 
-	send(pushMsg: PushMessage, pushRef: string) {
+	/**
+	 * Send a push message to a specific push ref.
+	 *
+	 * @param asBinary - Whether to send the message as a binary frames or text frames
+	 */
+	send(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
 		if (this.shouldRelayViaPubSub(pushRef)) {
-			this.relayViaPubSub(pushMsg, pushRef);
+			this.relayViaPubSub(pushMsg, pushRef, asBinary);
 			return;
 		}
 
-		this.backend.sendToOne(pushMsg, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
 	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
@@ -208,9 +212,13 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	@OnPubSubEvent('relay-execution-lifecycle-event', { instanceType: 'main' })
-	handleRelayExecutionLifecycleEvent({ pushRef, ...pushMsg }: PushMessage & { pushRef: string }) {
+	handleRelayExecutionLifecycleEvent({
+		pushRef,
+		asBinary,
+		...pushMsg
+	}: PushMessage & { asBinary: boolean; pushRef: string }) {
 		if (!this.hasPushRef(pushRef)) return;
-		this.send(pushMsg, pushRef);
+		this.send(pushMsg, pushRef, asBinary);
 	}
 
 	/**
@@ -219,38 +227,46 @@ export class Push extends TypedEmitter<PushEvents> {
 	 *
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
-	private relayViaPubSub(pushMsg: PushMessage, pushRef: string) {
+	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
 		const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
 		if (eventSizeBytes <= MAX_PAYLOAD_SIZE_BYTES) {
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
-				payload: { ...pushMsg, pushRef },
+				payload: { ...pushMsg, pushRef, asBinary },
 			});
 			return;
 		}
 
 		// too large for pubsub channel, trim it
 
-		const pushMsgCopy = deepCopy(pushMsg);
-
+		const { type } = pushMsg;
 		const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
 		const eventMb = toMb(eventSizeBytes);
 		const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
-		const { type } = pushMsgCopy;
+
+		if (type === 'nodeExecuteAfterData') {
+			this.logger.warn(
+				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+			);
+			// In case of nodeExecuteAfterData, we omit the message entirely. We
+			// already include the amount of items in the nodeExecuteAfter message,
+			// based on which the FE will construct placeholder data. The actual
+			// data is then fetched at the end of the execution.
+			return;
+		}
 
 		this.logger.warn(`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Trimming...`);
 
-		if (type === 'nodeExecuteAfter') {
-			pushMsgCopy.data.itemCount = pushMsgCopy.data.data.data?.main[0]?.length ?? 1;
-			pushMsgCopy.data.data.data = TRIMMED_TASK_DATA_CONNECTIONS;
-		} else if (type === 'executionFinished') {
+		const pushMsgCopy = deepCopy(pushMsg);
+
+		if (pushMsgCopy.type === 'executionFinished') {
 			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
 		}
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
-			payload: { ...pushMsgCopy, pushRef },
+			payload: { ...pushMsgCopy, pushRef, asBinary },
 		});
 	}
 }
