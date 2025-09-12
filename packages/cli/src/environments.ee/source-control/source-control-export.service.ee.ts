@@ -83,9 +83,64 @@ export class SourceControlExportService {
 
 	async deleteRepositoryFolder() {
 		try {
-			await fsRm(this.gitFolder, { recursive: true });
+			await fsRm(this.gitFolder, { recursive: true, force: true });
 		} catch (error) {
-			this.logger.error(`Failed to delete work folder: ${(error as Error).message}`);
+			const errorMessage = (error as Error).message;
+
+			// Handle "directory not empty" errors with additional cleanup attempts
+			if (errorMessage.includes('ENOTEMPTY') || errorMessage.includes('directory not empty')) {
+				this.logger.debug('Directory not empty, attempting thorough cleanup');
+
+				try {
+					// Try to remove git-specific files that might be causing issues
+					const { readdirSync, statSync } = await import('fs');
+					const { join } = await import('path');
+
+					const clearDirectory = async (dirPath: string): Promise<void> => {
+						try {
+							if (!readdirSync) return;
+
+							const entries = readdirSync(dirPath, { withFileTypes: true });
+
+							for (const entry of entries) {
+								const fullPath = join(dirPath, entry.name);
+
+								if (entry.isDirectory()) {
+									await clearDirectory(fullPath);
+									await fsRm(fullPath, { recursive: true, force: true });
+								} else {
+									// Remove file attributes that might prevent deletion
+									try {
+										const stats = statSync(fullPath);
+										if (!stats.isFile()) continue;
+
+										await fsRm(fullPath, { force: true });
+									} catch (fileError) {
+										this.logger.debug(
+											`Could not remove file ${fullPath}: ${(fileError as Error).message}`,
+										);
+									}
+								}
+							}
+						} catch (dirError) {
+							this.logger.debug(
+								`Error clearing directory ${dirPath}: ${(dirError as Error).message}`,
+							);
+						}
+					};
+
+					await clearDirectory(this.gitFolder);
+					await fsRm(this.gitFolder, { recursive: true, force: true });
+
+					this.logger.debug('Successfully cleaned up directory after retry');
+				} catch (retryError) {
+					this.logger.warn(
+						`Failed to delete work folder after retry: ${(retryError as Error).message}`,
+					);
+				}
+			} else {
+				this.logger.error(`Failed to delete work folder: ${errorMessage}`);
+			}
 		}
 	}
 

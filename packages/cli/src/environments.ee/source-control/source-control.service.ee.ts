@@ -337,19 +337,34 @@ export class SourceControlService {
 		}
 
 		// The tags file is always re-generated and exported to make sure the workflow-tag mappings are up to date
-		filesToBePushed.add(getTagsPath(this.gitFolder));
-		await this.sourceControlExportService.exportTagsToWorkFolder(context);
+		try {
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
+			// Only add to staging if export was successful
+			filesToBePushed.add(getTagsPath(this.gitFolder));
+		} catch (tagsExportError) {
+			this.logger.warn('Failed to export tags, skipping tags.json from push', { tagsExportError });
+		}
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {
-			filesToBePushed.add(folderChanges.file);
-			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
+			try {
+				await this.sourceControlExportService.exportFoldersToWorkFolder(context);
+				filesToBePushed.add(folderChanges.file);
+			} catch (foldersExportError) {
+				this.logger.warn('Failed to export folders, skipping from push', { foldersExportError });
+			}
 		}
 
 		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
 		if (variablesChanges) {
-			filesToBePushed.add(variablesChanges.file);
-			await this.sourceControlExportService.exportVariablesToWorkFolder();
+			try {
+				await this.sourceControlExportService.exportVariablesToWorkFolder();
+				filesToBePushed.add(variablesChanges.file);
+			} catch (variablesExportError) {
+				this.logger.warn('Failed to export variables, skipping from push', {
+					variablesExportError,
+				});
+			}
 		}
 
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
