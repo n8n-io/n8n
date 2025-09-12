@@ -9,7 +9,7 @@ const emit = defineEmits<{ openNdv: []; toggleExpand: [] }>();
 <template>
 	<div :class="$style.actions">
 		<N8nIconButton
-			icon="maximize-2"
+			icon="expand"
 			type="secondary"
 			text
 			size="mini"

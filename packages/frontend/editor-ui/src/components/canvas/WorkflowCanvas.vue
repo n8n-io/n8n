@@ -25,12 +25,14 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
 		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
+		suppressInteraction: false,
 	},
 );
 
@@ -84,6 +86,7 @@ defineExpose({
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:executing="executing"
+				:suppress-interaction="suppressInteraction"
 				v-bind="$attrs"
 			/>
 		</div>

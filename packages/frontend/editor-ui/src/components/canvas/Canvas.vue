@@ -123,6 +123,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -134,6 +135,7 @@ const props = withDefaults(
 		executing: false,
 		keyBindings: true,
 		loading: false,
+		suppressInteraction: false,
 	},
 );
 
@@ -483,6 +485,7 @@ function onFocusNode(id: string) {
 	const node = vueFlow.nodeLookup.value.get(id);
 
 	if (node) {
+		addSelectedNodes([node]);
 		experimentalNdvStore.focusNode(node, {
 			canvasViewport: viewport.value,
 			canvasDimensions: dimensions.value,
@@ -658,11 +661,6 @@ async function onZoomOut() {
 
 async function onResetZoom() {
 	await onZoomTo(defaultZoom);
-}
-
-function setReadonly(value: boolean) {
-	setInteractive(!value);
-	elementsSelectable.value = true;
 }
 
 function onPaneMove({ event }: { event: unknown }) {
@@ -875,9 +873,16 @@ onNodesInitialized(() => {
 	initialized.value = true;
 });
 
-watch(() => props.readOnly, setReadonly, {
-	immediate: true,
-});
+watch(
+	[() => props.readOnly, () => props.suppressInteraction],
+	([readOnly, suppressInteraction]) => {
+		setInteractive(!readOnly && !suppressInteraction);
+		elementsSelectable.value = !suppressInteraction;
+	},
+	{
+		immediate: true,
+	},
+);
 
 watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),

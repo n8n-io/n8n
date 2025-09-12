@@ -2069,6 +2069,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
+			:suppress-interaction="canvasStore.suppressInteraction"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

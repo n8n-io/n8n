@@ -146,6 +146,7 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableSettingsHint?: boolean;
@@ -172,6 +173,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	disableSettingsHint: false,
 	compact: false,
+	showActionsOnHover: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
@@ -181,6 +183,7 @@ defineSlots<{
 	content: {};
 	'callout-message': {};
 	header: {};
+	'header-end': (props: InstanceType<typeof RunDataItemCount>['$props']) => unknown;
 	'input-select': {};
 	'before-data': {};
 	'run-info': {};
@@ -1376,7 +1379,11 @@ defineExpose({ enterEditMode });
 		:class="[
 			'run-data',
 			$style.container,
-			{ [$style['ndv-v2']]: isNDVV2, [$style.compact]: compact },
+			{
+				[$style['ndv-v2']]: isNDVV2,
+				[$style.compact]: compact,
+				[$style.showActionsOnHover]: showActionsOnHover,
+			},
 		]"
 		@mouseover="activatePane"
 	>
@@ -1509,7 +1516,7 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
+			<slot name="header-end" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-show="!binaryDataDisplayVisible">
@@ -2131,6 +2138,9 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+	}
+
+	.showActionsOnHover & {
 		visibility: hidden;
 
 		:global(.el-input__prefix) {
@@ -2138,7 +2148,7 @@ defineExpose({ enterEditMode });
 		}
 	}
 
-	.compact:hover & {
+	.showActionsOnHover:hover & {
 		visibility: visible;
 	}
 }

@@ -26,7 +26,7 @@ const emit = defineEmits<{
 	<div class="schema-header-wrapper">
 		<div class="schema-header" data-test-id="run-data-schema-header">
 			<div class="toggle" @click.capture.stop="emit('click:toggle')">
-				<N8nIcon icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
+				<N8nIcon size="medium" icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 
 			<NodeIcon
@@ -75,11 +75,13 @@ const emit = defineEmits<{
 	cursor: pointer;
 }
 .toggle {
-	width: 30px;
+	padding-left: var(--spacing-5xs);
+	padding-right: var(--spacing-3xs);
 	height: 30px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	color: var(--color-text-light);
 }
 .collapse-icon {
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);

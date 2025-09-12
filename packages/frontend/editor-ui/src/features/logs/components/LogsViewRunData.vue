@@ -10,6 +10,7 @@ import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
+import RunDataItemCount from '@/components/RunDataItemCount.vue';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
@@ -84,6 +85,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:pane-type="paneType"
 		:disable-run-index-selection="true"
 		:compact="true"
+		:show-actions-on-hover="true"
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
@@ -100,6 +102,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">
 				{{ title }}
 			</N8nText>
+		</template>
+
+		<template #header-end="itemCountProps">
+			<RunDataItemCount v-bind="itemCountProps" />
 		</template>
 
 		<template #no-output-data>
