@@ -3,6 +3,7 @@ import type {
 	DataStoreValue,
 	DataStoreColumnType,
 } from '@/features/dataStore/datastore.types';
+import { AG_GRID_CELL_TYPES, DATA_STORE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
 
 export const isDataStoreValue = (value: unknown): value is DataStoreValue => {
 	return (
@@ -15,12 +16,9 @@ export const isDataStoreValue = (value: unknown): value is DataStoreValue => {
 };
 
 export const isAGGridCellType = (value: unknown): value is AGGridCellType => {
-	return (
-		typeof value === 'string' &&
-		['text', 'number', 'boolean', 'date', 'dateString', 'object'].includes(value)
-	);
+	return typeof value === 'string' && (AG_GRID_CELL_TYPES as readonly string[]).includes(value);
 };
 
 export const isDataStoreColumnType = (type: unknown): type is DataStoreColumnType => {
-	return type === 'string' || type === 'number' || type === 'boolean' || type === 'date';
+	return typeof type === 'string' && (DATA_STORE_COLUMN_TYPES as readonly string[]).includes(type);
 };

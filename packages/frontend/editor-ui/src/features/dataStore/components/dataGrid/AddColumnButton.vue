@@ -5,6 +5,7 @@ import type {
 	DataStoreColumnCreatePayload,
 	DataStoreColumnType,
 } from '@/features/dataStore/datastore.types';
+import { DATA_STORE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
@@ -34,7 +35,7 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 const columnName = ref('');
 const columnType = ref<DataStoreColumnType>('string');
 
-const columnTypes: DataStoreColumnType[] = ['string', 'number', 'boolean', 'date'];
+const columnTypes: DataStoreColumnType[] = [...DATA_STORE_COLUMN_TYPES];
 
 const error = ref<FormError | null>(null);
 
