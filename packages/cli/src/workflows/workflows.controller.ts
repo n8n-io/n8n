@@ -140,8 +140,6 @@ export class WorkflowsController {
 
 		let project: Project | null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
 			const { projectId, parentFolderId } = req.body;
 			project =
 				projectId === undefined
@@ -163,6 +161,8 @@ export class WorkflowsController {
 			if (project === null) {
 				throw new UnexpectedError('No personal project found');
 			}
+
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			if (parentFolderId) {
 				try {

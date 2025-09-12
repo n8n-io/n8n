@@ -409,10 +409,6 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
-
-			savedCredential.data = newCredential.data;
-
 			const project =
 				projectId === undefined
 					? await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -436,6 +432,10 @@ export class CredentialsService {
 			if (project === null) {
 				throw new UnexpectedError('No personal project found');
 			}
+
+			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
+
+			savedCredential.data = newCredential.data;
 
 			const newSharedCredential = this.sharedCredentialsRepository.create({
 				role: 'credential:owner',
