@@ -92,15 +92,15 @@
 		},
 		{
 			"parameters": {
-				"content": "### Calendar agent\nThis agent can perform read actions on your Google Calendar with the **Get availability** and **Get events** tools.\n\n#### Set up\n- Configure credentials in the **Get availability, Get events** and **Model** nodes\n- Select your calendar in both the calendar tools.\n- Send a message to the agent , asking what events you have in your calendar today.\n\n#### Next steps\nTry adding a tool to create or modify events in your calendar.\n\n",
-				"height": 432,
-				"width": 304,
+				"content": "## Start here!\n@[youtube](-S5k4sXrPws)",
+				"height": 320,
+				"width": 464,
 				"color": 5
 			},
 			"type": "n8n-nodes-base.stickyNote",
-			"position": [-768, -96],
+			"position": [-928, -32],
 			"typeVersion": 1,
-			"id": "e0db0cb3-6f04-4a59-9180-27f9f8fef302",
+			"id": "d3552acd-20f1-40e0-af3c-e2aabdbf3f27",
 			"name": "Sticky Note"
 		}
 	],
