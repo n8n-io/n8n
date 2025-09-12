@@ -1,6 +1,7 @@
-import type { ExternalSecretsProvider } from '@/Interface';
-import type { IRestApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { ExternalSecretsProvider } from '@n8n/api-types';
+
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
 
 export const getExternalSecrets = async (
 	context: IRestApiContext,
