@@ -22,6 +22,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { isProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
 	name?: string;
@@ -374,10 +375,13 @@ const relationUsers = computed(() =>
 		.filter((relation: ProjectRelation) => !pendingRemovals.value.has(relation.id))
 		.map((relation: ProjectRelation) => {
 			const user = usersStore.usersById[relation.id];
+			// Ensure type safety for UI display while preserving original role in formData
+			const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+
 			if (!user) {
 				return {
 					...relation,
-					role: relation.role,
+					role: safeRole,
 					firstName: null,
 					lastName: null,
 					email: null,
@@ -386,7 +390,7 @@ const relationUsers = computed(() =>
 			return {
 				...user,
 				...relation,
-				role: relation.role,
+				role: safeRole,
 			};
 		}),
 );
