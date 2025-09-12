@@ -9,9 +9,10 @@ import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
-import { toTableName } from './utils/sql-utils';
+import { toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -242,28 +243,29 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return [`${alias}.id`, `${alias}.name`, `${alias}.type`, `${alias}.icon`];
 	}
 
-	async findDataTablesSize(): Promise<number> {
+	async findDataTablesSize(): Promise<DataTablesSizeData> {
 		const dbType = this.globalConfig.database.type;
 		const schemaName = this.globalConfig.database.postgresdb.schema;
+		const tablePattern = toTableName('%');
 
 		let sql = '';
 
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-        	SELECT SUM(pgsize) AS total_bytes
+        	SELECT name AS table_name, pgsize AS table_bytes
 					FROM dbstat
-					WHERE name LIKE '${toTableName('%')}'
+					WHERE name LIKE '${tablePattern}'
 				`;
 				break;
 
 			case 'postgresdb':
 				sql = `
-        	SELECT SUM(pg_relation_size(c.oid)) AS total_bytes
+        	SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
 					FROM pg_class c
 					JOIN pg_namespace n ON n.oid = c.relnamespace
 					WHERE n.nspname = '${schemaName}'
-					AND c.relname LIKE '${toTableName('%')}'
+					AND c.relname LIKE '${tablePattern}'
 					AND c.relkind IN ('r', 'm', 'p')
     		`;
 				break;
@@ -272,19 +274,35 @@ export class DataStoreRepository extends Repository<DataTable> {
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
 				sql = `
-        	SELECT SUM((DATA_LENGTH + INDEX_LENGTH)) AS total_bytes
+        	SELECT table_name, (DATA_LENGTH + INDEX_LENGTH) AS table_bytes
 					FROM information_schema.tables
 					WHERE table_schema = '${databaseName}'
-					AND table_name LIKE '${toTableName('%')}'
+					AND table_name LIKE '${tablePattern}'
 				`;
 				break;
 			}
 
 			default:
-				return 0;
+				return { totalBytes: 0, tables: [] };
 		}
 
-		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
-		return result[0]?.total_bytes ?? 0;
+		const result = (await this.query(sql)) as Array<{
+			table_name: string;
+			table_bytes: number | null;
+		}>;
+
+		const tables = result
+			.filter((row) => row.table_bytes !== null)
+			.map((row) => {
+				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+				return {
+					dataStoreId,
+					sizeBytes: row.table_bytes ?? 0,
+				};
+			});
+
+		const totalBytes = tables.reduce((sum, table) => sum + table.sizeBytes, 0);
+
+		return { totalBytes, tables };
 	}
 }
