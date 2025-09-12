@@ -16,6 +16,7 @@ export type PubSubEventName =
 	| 'get-worker-status'
 	| 'reload-external-secrets-providers'
 	| 'reload-license'
+	| 'reload-oidc-config'
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event';

@@ -211,4 +211,54 @@ describe('PubSubRegistry', () => {
 		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 	});
+
+	it('should clean up event handlers when reinitializing', () => {
+		const TestService = createTestServiceClass();
+		const testService = Container.get(TestService);
+		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
+
+		const pubSubRegistry = new PubSubRegistry(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
+
+		// First initialization
+		pubSubRegistry.init();
+
+		// Emit event to verify handler is registered
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
+
+		// Reinitialize - should clean up previous handlers
+		onMainInstanceSpy.mockClear();
+		pubSubRegistry.init();
+
+		// Emit event again - should only be called once (not twice due to duplicate handlers)
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle multiple reinitializations without memory leaks', () => {
+		const TestService = createTestServiceClass();
+		const testService = Container.get(TestService);
+		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
+
+		const pubSubRegistry = new PubSubRegistry(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
+
+		// Multiple initializations
+		for (let i = 0; i < 5; i++) {
+			pubSubRegistry.init();
+		}
+
+		// Event should only trigger once per emission, not 5 times
+		pubsubEventBus.emit('clear-test-webhooks');
+		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
+	});
 });
