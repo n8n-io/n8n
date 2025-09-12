@@ -18,7 +18,7 @@ import type {
 } from 'ag-grid-community';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
-import { isDataStoreValue, isDataStoreColumnType } from '@/features/dataStore/typeGuards';
+import { isDataStoreValue, isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { areValuesEqual } from '@/features/dataStore/utils/typeUtils';
 
@@ -198,7 +198,9 @@ export const useDataStoreOperations = ({
 		const { data, api, oldValue, colDef } = params;
 		const value = params.data[colDef.field!];
 
-		const cellType = isDataStoreColumnType(colDef.cellDataType) ? colDef.cellDataType : undefined;
+		const cellType = isAGGridCellType(colDef.cellDataType)
+			? dataStoreTypes.mapToDataStoreColumnType(colDef.cellDataType)
+			: undefined;
 
 		if (value === undefined || areValuesEqual(oldValue, value, cellType)) {
 			return;
