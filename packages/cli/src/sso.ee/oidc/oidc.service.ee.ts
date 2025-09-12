@@ -330,9 +330,7 @@ export class OidcService {
 	async loadConfigurationFromDatabase(
 		decryptSecret = false,
 	): Promise<OidcRuntimeConfig | undefined> {
-		const configFromDB = await this.settingsRepository.findOneBy({
-			key: OIDC_PREFERENCES_DB_KEY,
-		});
+		const configFromDB = await this.settingsRepository.findByKey(OIDC_PREFERENCES_DB_KEY);
 
 		if (configFromDB) {
 			try {
@@ -394,17 +392,14 @@ export class OidcService {
 			this.logger.error('Failed to discover OIDC metadata', { error });
 			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
-		await this.settingsRepository.update(
-			{
-				key: OIDC_PREFERENCES_DB_KEY,
-			},
-			{
-				value: JSON.stringify({
-					...newConfig,
-					clientSecret: this.cipher.encrypt(newConfig.clientSecret),
-				}),
-			},
-		);
+		await this.settingsRepository.save({
+			key: OIDC_PREFERENCES_DB_KEY,
+			value: JSON.stringify({
+				...newConfig,
+				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+			}),
+			loadOnStartup: true,
+		});
 
 		// TODO: Discuss this in product
 		// if (this.oidcConfig.loginEnabled && !newConfig.loginEnabled) {
