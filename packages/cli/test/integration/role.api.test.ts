@@ -23,7 +23,11 @@ function checkForRole(role: Role, roles: Role[]) {
 	role.scopes.sort();
 	returnedRole!.scopes.sort();
 	returnedRole!.licensed = role.licensed;
-	expect(returnedRole).toEqual(role);
+	expect(returnedRole).toEqual({
+		...role,
+		createdAt: expect.any(String),
+		updatedAt: expect.any(String),
+	});
 }
 
 beforeAll(async () => {
