@@ -85,8 +85,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 
 		await n8n.promptMfaCodeModal.submitMfaCode(recoveryCode);
 
-		const successToast = n8n.page.getByRole('alert');
-		await expect(successToast).toBeVisible();
+		expect(await n8n.notifications.getNotificationCount()).toBeGreaterThan(0);
 
 		await n8n.sideBar.signOutFromWorkflows();
 	});

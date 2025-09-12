@@ -68,8 +68,8 @@ export class MfaSetupModal extends BasePage {
 	 * @returns Array of text content from potential recovery code elements
 	 */
 	async getRecoveryCodeElements(): Promise<string[]> {
-		return await this.page
-			.locator('[class*="recovery"], [class*="code"], .recovery-code, [data-test-id*="recovery"]')
-			.allTextContents();
+		const container = this.page.locator('[class*="recoveryCodesContainer"]');
+		await container.waitFor();
+		return await container.locator('div').allTextContents();
 	}
 }
