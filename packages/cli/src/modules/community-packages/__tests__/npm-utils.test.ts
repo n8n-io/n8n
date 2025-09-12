@@ -2,9 +2,24 @@ import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
 const mockAsyncExec = jest.fn();
-jest.mock('node:util', () => ({
-	promisify: jest.fn(() => mockAsyncExec),
+
+jest.mock('node:child_process', () => ({
+	...jest.requireActual('node:child_process'),
+	execFile: jest.fn(),
 }));
+
+jest.mock('node:util', () => {
+	const actual = jest.requireActual('node:util');
+	return {
+		...actual,
+		promisify: jest.fn((fn) => {
+			if (fn === require('node:child_process').execFile) {
+				return mockAsyncExec;
+			}
+			return actual.promisify(fn);
+		}),
+	};
+});
 
 import { verifyIntegrity, isVersionExists } from '../npm-utils';
 
@@ -16,10 +31,12 @@ describe('verifyIntegrity', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
+		jest.clearAllMocks();
 	});
 
 	it('should verify integrity successfully', async () => {
@@ -226,10 +243,12 @@ describe('isVersionExists', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
+		jest.clearAllMocks();
 	});
 
 	it('should return true when package version exists', async () => {
