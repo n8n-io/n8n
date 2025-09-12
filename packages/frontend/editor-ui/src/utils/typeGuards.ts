@@ -4,6 +4,7 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
 	IExecutionResponse,
 	ICredentialsResponse,
@@ -143,4 +144,16 @@ export function isBaseTextKey(key: string): key is BaseTextKey {
 		// If an error is thrown, the key is not valid
 		return false;
 	}
+}
+
+// Type guard to check if a string is a valid ProjectRole
+export function isProjectRole(role: string): role is ProjectRole {
+	return ['project:admin', 'project:editor', 'project:viewer', 'project:personalOwner'].includes(
+		role,
+	);
+}
+
+// Type guard to check if a role is a valid TeamProjectRole (ProjectRole excluding personalOwner)
+export function isTeamProjectRole(role: string): role is TeamProjectRole {
+	return isProjectRole(role) && role !== 'project:personalOwner';
 }
