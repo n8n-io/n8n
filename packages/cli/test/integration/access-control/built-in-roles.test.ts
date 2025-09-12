@@ -303,25 +303,16 @@ describe('Built-in Role Matrix Testing', () => {
 			};
 
 			// Project viewer doesn't have workflow:create permissions in this team project
-			const createResponse = await member3Agent
-				.post('/workflows')
-				.send(workflowPayload)
-				.expect(400);
-			expect([400, 403]).toContain(createResponse.status);
+			await member3Agent.post('/workflows').send(workflowPayload).expect(400);
 
 			// Test workflow update access (should be forbidden)
-			const updateResponse = await member3Agent
+			await member3Agent
 				.patch(`/workflows/${workflow.id}`)
 				.send({ name: 'Updated Viewer Workflow', versionId: workflow.versionId })
 				.expect(403);
-			expect([400, 403]).toContain(updateResponse.status);
 
 			// Test workflow delete access (should be forbidden)
-			const archiveResponse = await member3Agent
-				.post(`/workflows/${workflow.id}/archive`)
-				.send()
-				.expect(403);
-			expect([400, 403]).toContain(archiveResponse.status);
+			await member3Agent.post(`/workflows/${workflow.id}/archive`).send().expect(403);
 		});
 
 		test('project viewer should have read-only credential access (no create/update/delete permissions)', async () => {
@@ -344,22 +335,19 @@ describe('Built-in Role Matrix Testing', () => {
 			expect(getResponse.body.data.name).toBe(credentialPayload.name);
 
 			// Test credential create access (should be forbidden)
-			const createResponse = await member3Agent
+			await member3Agent
 				.post('/credentials')
 				.send({ ...randomCredentialPayload(), projectId: teamProjectA.id })
 				.expect(400);
-			expect([400, 403]).toContain(createResponse.status);
 
 			// Test credential update access (should be forbidden)
-			const updateResponse = await member3Agent
+			await member3Agent
 				.patch(`/credentials/${credentialId}`)
 				.send({ ...credentialPayload, name: 'Updated Viewer Credential' })
 				.expect(403);
-			expect([400, 403]).toContain(updateResponse.status);
 
 			// Test credential delete access (should be forbidden)
-			const deleteResponse = await member3Agent.delete(`/credentials/${credentialId}`).expect(403);
-			expect([400, 403]).toContain(deleteResponse.status);
+			await member3Agent.delete(`/credentials/${credentialId}`).expect(403);
 		});
 	});
 
