@@ -27,8 +27,13 @@ const documentTitle = useDocumentTitle();
 const toast = useToast();
 const overview = useProjectPages();
 
-const { executionsCount, executionsCountEstimated, filters, allExecutions } =
-	storeToRefs(executionsStore);
+const {
+	executionsCount,
+	executionsCountEstimated,
+	concurrentExecutionsCount,
+	filters,
+	allExecutions,
+} = storeToRefs(executionsStore);
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -91,6 +96,7 @@ async function onExecutionStop() {
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"
+		:concurrent-total="concurrentExecutionsCount"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
 	>

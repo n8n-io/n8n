@@ -291,4 +291,18 @@ describe('ExecutionRepository', () => {
 			);
 		});
 	});
+
+	describe('getConcurrentExecutionsCount', () => {
+		test('should count running executions with mode webhook or trigger', async () => {
+			const mockCount = 5;
+			entityManager.count.mockResolvedValueOnce(mockCount);
+
+			const result = await executionRepository.getConcurrentExecutionsCount();
+
+			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+				where: { status: 'running', mode: In(['webhook', 'trigger']) },
+			});
+			expect(result).toBe(mockCount);
+		});
+	});
 });
