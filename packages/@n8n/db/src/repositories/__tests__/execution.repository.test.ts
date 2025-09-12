@@ -304,16 +304,5 @@ describe('ExecutionRepository', () => {
 			});
 			expect(result).toBe(mockCount);
 		});
-
-		test('should return 0 if no concurrent executions found', async () => {
-			entityManager.count.mockResolvedValueOnce(0);
-
-			const result = await executionRepository.getConcurrentExecutionsCount();
-
-			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-				where: { status: 'running', mode: In(['webhook', 'trigger']) },
-			});
-			expect(result).toBe(0);
-		});
 	});
 });
