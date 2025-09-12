@@ -14,9 +14,9 @@ async function setupPerformanceTest(n8n: n8nPage, size: number) {
 test.describe('Large Data Size Performance - Cloud Resources', () => {
 	test('Code Node with 30000 items @cloud:starter', async ({ n8n }, testInfo) => {
 		const itemCount = 30000;
-		await setupPerformanceTest(n8n, itemCount); // Setup test with specific data size
-		const workflowExecuteBudget = 10000; // Time limit for workflow execution
-		const openNodeBudget = 600; // Time limit for opening the node
+		await setupPerformanceTest(n8n, itemCount);
+		const workflowExecuteBudget = 10_000;
+		const openNodeBudget = 600;
 		const loopSize = 30;
 		const stats = [];
 
@@ -24,7 +24,8 @@ test.describe('Large Data Size Performance - Cloud Resources', () => {
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
 				{
-					timeout: workflowExecuteBudget + 5000, // Add buffer, we still assert at the end and expect less than the budget
+					// Add buffer, we still assert at the end and expect less than the budget
+					timeout: workflowExecuteBudget + 5000,
 				},
 			);
 		});
