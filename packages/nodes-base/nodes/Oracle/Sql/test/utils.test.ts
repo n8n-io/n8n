@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
 

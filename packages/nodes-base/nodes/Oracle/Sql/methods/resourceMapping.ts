@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 
 import type { OracleDBNodeCredentials } from '../helpers/interfaces';

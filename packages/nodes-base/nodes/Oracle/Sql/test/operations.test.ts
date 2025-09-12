@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import get from 'lodash/get';
 import {
 	type IDataObject,
