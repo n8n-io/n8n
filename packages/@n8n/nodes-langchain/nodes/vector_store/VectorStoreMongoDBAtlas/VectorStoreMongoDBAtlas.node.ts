@@ -1,6 +1,6 @@
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { MongoDBAtlasVectorSearch, type MongoDBAtlasVectorSearchLibArgs } from '@langchain/mongodb';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -309,7 +309,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'delete', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { mongoCollectionSearch: getCollections } },
 	retrieveFields,
@@ -386,6 +386,35 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 				indexName: mongoVectorIndexName, // Default index name
 				textKey: metadataFieldName, // Field containing raw text
 				embeddingKey: embeddingFieldName, // Field containing embeddings
+			});
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+				itemIndex,
+				description: 'Please check your MongoDB Atlas connection details',
+			});
+		}
+	},
+	async deleteEmbeddedDocuments(context, embeddings, ids, itemIndex) {
+		try {
+			const client = await getMongoClient(context, context.getNode().typeVersion);
+			const db = await getDatabase(context, client);
+			const collectionName = getCollectionName(context, itemIndex);
+			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
+			const embeddingFieldName = getEmbeddingFieldName(context, itemIndex);
+			const metadataFieldName = getMetadataFieldName(context, itemIndex);
+
+			const collection = db.collection(collectionName);
+
+			const vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
+				collection,
+				indexName: mongoVectorIndexName, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
+			});
+
+			const removeExtraQuotations = (id: string) => id.split('"').filter(Boolean).join('');
+			await vectorStore.delete({
+				ids: ids.map((id) => new ObjectId(removeExtraQuotations(id))),
 			});
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
