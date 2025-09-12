@@ -59,6 +59,7 @@ export default defineConfig({
 		viewport: MACBOOK_WINDOW_SIZE,
 		actionTimeout: 20000, // TODO: We might need to make this dynamic for container tests if we have low resource containers etc
 		navigationTimeout: 10000,
+		permissions: ['clipboard-read', 'clipboard-write'],
 	},
 
 	reporter: IS_CI
