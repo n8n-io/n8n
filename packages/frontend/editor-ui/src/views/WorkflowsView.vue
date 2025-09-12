@@ -444,6 +444,15 @@ const shouldUseSimplifiedLayout = computed(() => {
 	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
 });
 
+const hasActiveCallouts = computed(() => {
+	return (
+		showPrebuiltAgentsCallout.value ||
+		showAIStarterCollectionCallout.value ||
+		showPersonalizedTemplates.value ||
+		showReadyToRunWorkflowsCallout.value
+	);
+});
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -1745,7 +1754,10 @@ const onNameSubmit = async (name: string) => {
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent">
+			<ProjectHeader
+				:has-active-callouts="hasActiveCallouts"
+				@create-folder="createFolderInCurrent"
+			>
 				<InsightsSummary
 					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"

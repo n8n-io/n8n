@@ -10,6 +10,10 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 
+const props = defineProps<{
+	hasActiveCallouts?: boolean;
+}>();
+
 const route = useRoute();
 const i18n = useI18n();
 const projectPages = useProjectPages();
@@ -25,10 +29,12 @@ const projectPermissions = computed(() => {
 });
 
 const showButton = computed(() => {
-	return readyToRunWorkflowsV2Store.getButtonVisibility(
-		foldersStore.totalWorkflowCount > 0, // Has workflows
-		projectPermissions.value.workflow.create,
-		sourceControlStore.preferences.branchReadOnly,
+	return (
+		readyToRunWorkflowsV2Store.getButtonVisibility(
+			foldersStore.totalWorkflowCount > 0, // Has workflows
+			projectPermissions.value.workflow.create,
+			sourceControlStore.preferences.branchReadOnly,
+		) && !props.hasActiveCallouts // Hide when callouts are shown
 	);
 });
 

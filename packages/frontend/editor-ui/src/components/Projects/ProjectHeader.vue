@@ -21,7 +21,6 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
 import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
-import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
 const route = useRoute();
@@ -31,9 +30,12 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
 const projectPages = useProjectPages();
+
+const props = defineProps<{
+	hasActiveCallouts?: boolean;
+}>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -345,7 +347,7 @@ const onSelect = (action: string) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing-xs); align-items: center">
-						<ReadyToRunV2Button />
+						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
