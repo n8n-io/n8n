@@ -13,6 +13,7 @@ import type {
 	ExecutionSummary,
 	IUser,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
 import type { Folder } from './folder';
@@ -22,7 +23,6 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
-import { z } from 'zod';
 
 export type UsageCount = {
 	usageCount: number;

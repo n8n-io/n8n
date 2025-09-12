@@ -1,4 +1,3 @@
-import { mockLogger } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -33,7 +32,7 @@ describe('sso-helpers', () => {
 				value: 'oidc',
 			};
 
-			settingsRepository.findByKey.mockResolvedValue(mockSetting);
+			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
 
 			await reloadAuthenticationMethod();
 
@@ -52,7 +51,7 @@ describe('sso-helpers', () => {
 					value: method,
 				};
 
-				settingsRepository.findByKey.mockResolvedValue(mockSetting);
+				settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
 
 				await reloadAuthenticationMethod();
 
@@ -66,8 +65,7 @@ describe('sso-helpers', () => {
 				value: 'invalid-method',
 			};
 
-			settingsRepository.findByKey.mockResolvedValue(mockSetting);
-			const logger = mockLogger();
+			settingsRepository.findByKey = jest.fn().mockResolvedValue(mockSetting);
 
 			await reloadAuthenticationMethod();
 
@@ -75,7 +73,7 @@ describe('sso-helpers', () => {
 		});
 
 		it('should handle missing authentication method setting', async () => {
-			settingsRepository.findByKey.mockResolvedValue(null);
+			settingsRepository.findByKey = jest.fn().mockResolvedValue(null);
 
 			await reloadAuthenticationMethod();
 
@@ -87,7 +85,7 @@ describe('sso-helpers', () => {
 
 		it('should handle database errors gracefully', async () => {
 			const error = new Error('Database connection failed');
-			settingsRepository.findByKey.mockRejectedValue(error);
+			settingsRepository.findByKey = jest.fn().mockRejectedValue(error);
 
 			await expect(reloadAuthenticationMethod()).rejects.toThrow('Database connection failed');
 
