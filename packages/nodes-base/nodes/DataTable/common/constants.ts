@@ -10,7 +10,7 @@ export type FilterType = typeof ANY_CONDITION | typeof ALL_CONDITIONS;
 export type FieldEntry =
 	| {
 			keyName: string;
-			condition: 'isEmpty' | 'isNotEmpty';
+			condition: 'isEmpty' | 'isNotEmpty' | 'isTrue' | 'isFalse';
 	  }
 	| {
 			keyName: string;
