@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import type { AllEntities, Entity } from 'n8n-workflow';
 
 type OracleDBMap = {

@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as deleteTable from './deleteTable.operation';

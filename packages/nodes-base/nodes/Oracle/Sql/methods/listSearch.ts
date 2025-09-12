@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import { NodeOperationError } from 'n8n-workflow';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import * as oracleDBTypes from 'oracledb';
