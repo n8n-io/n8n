@@ -47,25 +47,57 @@ describe('Loose Date Parsing', () => {
 		expect(d?.getSeconds()).toBe(5);
 	});
 
+	it('accepts T separator without seconds and defaults seconds to 00', () => {
+		const d = parseLooseDateInput('2023-01-02T3:4');
+		expect(d).not.toBeNull();
+		expect(d?.getFullYear()).toBe(2023);
+		expect(d?.getMonth()).toBe(0);
+		expect(d?.getDate()).toBe(2);
+		expect(d?.getHours()).toBe(3);
+		expect(d?.getMinutes()).toBe(4);
+		expect(d?.getSeconds()).toBe(0);
+	});
+
 	it('validates real calendar dates (e.g., leap day)', () => {
 		expect(parseLooseDateInput('2024-02-29')).not.toBeNull();
 		expect(parseLooseDateInput('2023-02-29')).toBeNull();
 	});
 
-	it('returns null for invalid ranges', () => {
-		expect(parseLooseDateInput('2023-13-01')).toBeNull();
-		expect(parseLooseDateInput('2023-00-10')).toBeNull();
-		expect(parseLooseDateInput('2023-01-32')).toBeNull();
-		expect(parseLooseDateInput('2023-01-00')).toBeNull();
-		expect(parseLooseDateInput('2023-01-01 24:00:00')).toBeNull();
-		expect(parseLooseDateInput('2023-01-01 23:60:00')).toBeNull();
-		expect(parseLooseDateInput('2023-01-01 23:59:60')).toBeNull();
+	it('accepts single-digit date-only input', () => {
+		const d = parseLooseDateInput('2023-7-9');
+		expect(d).not.toBeNull();
+		expect(d?.getFullYear()).toBe(2023);
+		expect(d?.getMonth()).toBe(6);
+		expect(d?.getDate()).toBe(9);
+		expect(d?.getHours()).toBe(0);
+		expect(d?.getMinutes()).toBe(0);
+		expect(d?.getSeconds()).toBe(0);
 	});
 
-	it('returns null for non-matching strings', () => {
-		expect(parseLooseDateInput('not a date')).toBeNull();
-		expect(parseLooseDateInput('2023/07/09')).toBeNull();
-		expect(parseLooseDateInput('07-09-2023')).toBeNull();
+	it('returns null for invalid inputs', () => {
+		const invalidInputs = [
+			// Invalid ranges
+			'2023-13-01',
+			'2023-00-10',
+			'2023-01-32',
+			'2023-01-00',
+			'2023-01-01 24:00:00',
+			'2023-01-01 23:60:00',
+			'2023-01-01 23:59:60',
+			// Invalid calendar dates
+			'2023-02-30',
+			'2023-04-31',
+			// Invalid separators/spacing
+			'2023-01-02  3:4:5',
+			// Non-matching strings
+			'not a date',
+			'2023/07/09',
+			'07-09-2023',
+		];
+
+		invalidInputs.forEach((input) => {
+			expect(parseLooseDateInput(input)).toBeNull();
+		});
 	});
 });
 
