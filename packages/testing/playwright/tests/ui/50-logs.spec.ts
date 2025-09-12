@@ -29,6 +29,7 @@ test.describe('Logs', () => {
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(0);
 
 		await n8n.canvas.clickExecuteWorkflowButton();
+
 		await expect(
 			n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: 'Running' }),
 		).toBeVisible();

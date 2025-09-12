@@ -1917,8 +1917,8 @@
 	"runData.aiContentBlock.tokens": "{count} Tokens",
 	"runData.aiContentBlock.tokens.prompt": "Prompt:",
 	"runData.aiContentBlock.tokens.completion": "Completion:",
-	"runData.trimmedData.title": "Data not viewable yet",
-	"runData.trimmedData.message": "It will be available here once the execution has finished.",
+	"runData.trimmedData.title": "No data yet",
+	"runData.trimmedData.message": "Data will be available here once the execution has finished.",
 	"runData.trimmedData.loading": "Loading data",
 	"runData.panel.actions.collapse": "Collapse panel",
 	"runData.panel.actions.open": "Open panel",
@@ -2932,7 +2932,6 @@
 	"settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText": "Yes, disable it",
 	"settings.ldap.confirmMessage.beforeSaveForm.headline": "Are you sure you want to disable LDAP login?",
 	"settings.ldap.confirmMessage.beforeSaveForm.message": "If you do so, all LDAP users will be converted to email users.",
-
 	"settings.ldap.disabled.title": "Available on the Enterprise plan",
 	"settings.ldap.disabled.description": "LDAP is available as a paid feature. Learn more about it.",
 	"settings.ldap.disabled.buttonText": "See plans",
