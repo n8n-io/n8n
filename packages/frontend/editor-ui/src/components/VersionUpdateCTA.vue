@@ -55,6 +55,8 @@ const onUpdateClick = async () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css';
+
 .container {
 	display: flex;
 	flex-direction: column;
