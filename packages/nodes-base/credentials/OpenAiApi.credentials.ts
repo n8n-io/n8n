@@ -89,7 +89,8 @@ export class OpenAiApi implements ICredentialType {
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
-			credentials.headerName
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
 		) {
 			requestOptions.headers[credentials.headerName] = credentials.headerValue;
 		}
