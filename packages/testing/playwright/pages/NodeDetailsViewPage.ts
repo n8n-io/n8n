@@ -440,6 +440,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
 	}
 
+	getCollectionAddOptionSelect() {
+		return this.getNodeParameters().getByTestId('collection-add-option-select');
+	}
+
 	getParameterSwitch(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.el-switch');
 	}
@@ -812,5 +816,12 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getCredentialLabel(credentialType: string) {
 		return this.page.getByText(credentialType);
+	}
+	getWebhookTestEvent() {
+		return this.page.getByText('Listening for test event');
+	}
+
+	getAddOptionDropdown() {
+		return this.page.getByRole('combobox', { name: 'Add option' });
 	}
 }
