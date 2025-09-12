@@ -109,7 +109,7 @@ export class WorkflowExecute {
 	 * Executes the given workflow.
 	 *
 	 * @param {Workflow} workflow The workflow to execute
-	 * @param {INode[]} [startNode] Node to start execution from
+	 * @param {INode} [startNode] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
@@ -1564,6 +1564,7 @@ export class WorkflowExecute {
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
+
 		const { startedAt, hooks } = this.setupExecution();
 		this.checkForWorkflowIssues(workflow);
 		this.handleWaitingState(workflow);
@@ -1687,8 +1688,10 @@ export class WorkflowExecute {
 						runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
 					}
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
+
+					// Original loop detection: check for immediate consecutive execution
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new ApplicationError(
+						throw new OperationalError(
 							'Stopped execution because it seems to be in an endless loop',
 						);
 					}
