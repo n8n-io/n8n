@@ -425,7 +425,9 @@ export class DataStoreService {
 	}
 
 	async getDataTablesSize() {
-		const sizeBytes = await this.dataStoreRepository.findDataTablesSize();
+		const sizeBytes = await this.dataStoreSizeValidator.getCachedSize(
+			async () => await this.dataStoreRepository.findDataTablesSize(),
+		);
 		return {
 			sizeBytes,
 			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
