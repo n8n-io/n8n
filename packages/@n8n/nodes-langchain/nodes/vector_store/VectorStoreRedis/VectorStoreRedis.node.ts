@@ -178,7 +178,7 @@ export async function getRedisClient(context: IFunctionsContext) {
 		username: credentials.user as string,
 		password: credentials.password as string,
 		database: credentials.database as number,
-		clientInfoTag: 'n8n-langchainjs',
+		clientInfoTag: 'n8n',
 	};
 
 	if (!redisConfig.client || redisConfig.connectionString !== JSON.stringify(config)) {
@@ -189,13 +189,13 @@ export async function getRedisClient(context: IFunctionsContext) {
 		redisConfig.connectionString = JSON.stringify(config);
 		redisConfig.client = createClient(config);
 
-		redisConfig.client.on('error', async (error: Error) => {
-			await redisConfig.client.quit();
-			throw new NodeOperationError('Redis reported an error: ' + error.message);
+		redisConfig.client.on('error', (error: Error) => {
+			context.logger.error(`[Redis client] ${error.message}`, { error });
 		});
 
 		await redisConfig.client.connect();
 	}
+
 	return redisConfig.client;
 }
 
@@ -336,32 +336,24 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			const metadataField = getMetadataKey(context, itemIndex);
 			const contentField = getContentKey(context, itemIndex);
 			const embeddingField = getEmbeddingKey(context, itemIndex);
-			const embeddingBatchSize = context.getNodeParameter('embeddingBatchSize', 0, 200) as number;
 			const ttl = getTtl(context, itemIndex);
 
 			if (overwrite) {
 				await client.sendCommand(['FT.DROPINDEX', indexField]);
-
-				const keys = await client.sendCommand(['KEYS', `${keyPrefixField}*`]);
+				const keyPrefixActual = keyPrefixField || 'doc';
+				const keys = await client.sendCommand(['KEYS', `${keyPrefixActual}*`]);
 				await client.sendCommand(['DEL', ...keys]);
 			}
 
-			await ExtendedRedisVectorSearch.fromDocuments(
-				documents,
-				embeddings,
-				{
-					redisClient: client,
-					indexName: indexField,
-					...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
-					...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
-					...(contentField?.trim() ? { contentKey: contentField } : {}),
-					...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
-					...(ttl ? { ttl } : {}),
-				},
-				{
-					batchSize: embeddingBatchSize,
-				},
-			);
+			await ExtendedRedisVectorSearch.fromDocuments(documents, embeddings, {
+				redisClient: client,
+				indexName: indexField,
+				...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
+				...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
+				...(contentField?.trim() ? { contentKey: contentField } : {}),
+				...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
+				...(ttl ? { ttl } : {}),
+			});
 		} catch (error) {
 			context.logger.info(`Error while populating the store: ${error.message}`);
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
