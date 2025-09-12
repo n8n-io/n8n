@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
+import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -279,20 +280,22 @@ watch(connectionType, () => {
 			}}</n8n-heading>
 
 			<form @submit="onSubmitConnectionForm">
-				<div v-if="!isConnected" :class="$style.group">
-					<label for="connectionType">{{
-						locale.baseText('settings.sourceControl.connectionType')
-					}}</label>
-					<n8n-form-input
-						id="connectionType"
-						v-model="connectionType"
-						label=""
-						type="select"
-						name="connectionType"
-						:options="connectionTypeOptions"
-						data-test-id="source-control-connection-type-select"
-					/>
-				</div>
+				<EnvFeatureFlag name="HTTPS_SYNC">
+					<div v-if="!isConnected" :class="$style.group">
+						<label for="connectionType">{{
+							locale.baseText('settings.sourceControl.connectionType')
+						}}</label>
+						<n8n-form-input
+							id="connectionType"
+							v-model="connectionType"
+							label=""
+							type="select"
+							name="connectionType"
+							:options="connectionTypeOptions"
+							data-test-id="source-control-connection-type-select"
+						/>
+					</div>
+				</EnvFeatureFlag>
 
 				<!-- Repository URL -->
 				<div :class="$style.group">
