@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as database from './database/Database.resource';

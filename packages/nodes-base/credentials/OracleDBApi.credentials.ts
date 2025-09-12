@@ -1,5 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
-
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OracleDBApi implements ICredentialType {
