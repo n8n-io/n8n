@@ -1,20 +1,18 @@
 <script setup lang="ts">
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useI18n } from '@n8n/i18n';
-import MessagesList from '@n8n/chat/components/MessagesList.vue';
-import MessageOptionTooltip from './MessageOptionTooltip.vue';
-import MessageOptionAction from './MessageOptionAction.vue';
-import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
-import ChatInput from '@n8n/chat/components/Input.vue';
-import { computed, ref } from 'vue';
-import { useClipboard } from '@/composables/useClipboard';
-import { useToast } from '@/composables/useToast';
+import Chat from '@n8n/chat/components/Chat.vue';
+import { ChatPlugin } from '@n8n/chat/plugins';
+import type { ChatOptions } from '@n8n/chat/types';
+import { computed, createApp, onMounted, onUnmounted, useTemplateRef, watch, ref } from 'vue';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRouter } from 'vue-router';
+
 interface Props {
-	pastChatMessages: string[];
-	messages: ChatMessage[];
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
@@ -29,23 +27,22 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	displayExecution: [id: string];
-	sendMessage: [message: string];
 	refreshSession: [];
 	close: [];
 	clickHeader: [];
 }>();
 
-const clipboard = useClipboard();
-
 const locale = useI18n();
-const toast = useToast();
+const router = useRouter();
+const workflowsStore = useWorkflowsStore();
+const workflowHelpers = useWorkflowHelpers();
+const nodeTypesStore = useNodeTypesStore();
+const { runWorkflow } = useRunWorkflow({ router });
+const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
 
-// -1 is a special value meaning we are not navigating history,
-// 0 is the oldest message, pastChatMessages.length - 1 is the most recent message
-const previousMessageIndex = ref(-1);
-
-// Buffer to hold current input when navigating history
-const currentInputBuffer = ref('');
+let chatApp: any = null;
+const webhookRegistered = ref(false);
+const isRegistering = ref(false);
 
 const sessionIdText = computed(() =>
 	locale.baseText('chat.window.session.id', {
@@ -53,114 +50,196 @@ const sessionIdText = computed(() =>
 	}),
 );
 
-const inputPlaceholder = computed(() => {
-	if (props.messages.length > 0) {
-		return locale.baseText('chat.window.chat.placeholder');
-	}
-	return locale.baseText('chat.window.chat.placeholderPristine');
+// Find ChatTrigger node in the workflow
+const chatTriggerNode = computed(() => {
+	return workflowsStore.allNodes.find(
+		(node) => node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
+	);
 });
-/** Checks if message is a text message */
-function isTextMessage(message: ChatMessage): message is ChatMessageText {
-	return message.type === 'text' || !message.type;
-}
 
-/** Reposts the message */
-function repostMessage(message: ChatMessageText) {
-	void sendMessage(message.text);
-}
-
-/** Sets the message in input for reuse */
-function reuseMessage(message: ChatMessageText) {
-	chatEventBus.emit('setInputValue', message.text);
-}
-
-function sendMessage(message: string) {
-	previousMessageIndex.value = -1;
-	currentInputBuffer.value = '';
-	emit('sendMessage', message);
-}
-
-function onRefreshSession() {
-	emit('refreshSession');
-}
-
-function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
-	const pastMessages = props.pastChatMessages;
-
-	// Exit if no messages
-	if (pastMessages.length === 0) return;
-
-	// Reset navigation if input is empty (message was just sent)
-	if (currentInputValue.length === 0 && previousMessageIndex.value !== -1) {
-		previousMessageIndex.value = -1;
-		currentInputBuffer.value = '';
+// Generate test webhook URL using the same method as regular webhook nodes
+const webhookUrl = computed(() => {
+	if (!chatTriggerNode.value) {
+		return '';
 	}
 
-	// Save current input if we're starting navigation
-	if (previousMessageIndex.value === -1 && currentInputValue.length > 0) {
-		currentInputBuffer.value = currentInputValue;
+	// Get the node type description to access webhook definitions
+	const nodeTypeDescription = nodeTypesStore.getNodeType(
+		chatTriggerNode.value.type,
+		chatTriggerNode.value.typeVersion,
+	);
+
+	if (!nodeTypeDescription?.webhooks) {
+		console.error('No webhooks found for ChatTrigger node type');
+		return '';
 	}
 
-	if (key === 'ArrowUp') {
-		// Temporarily blur to avoid cursor position issues
-		chatEventBus.emit('blurInput');
+	// Find the webhook description for the 'default' (POST) webhook
+	const webhookDescription = nodeTypeDescription.webhooks.find(
+		(webhook: any) => webhook.name === 'default',
+	);
 
-		if (previousMessageIndex.value === -1) {
-			// Start with most recent message (last in array)
-			previousMessageIndex.value = pastMessages.length - 1;
-		} else if (previousMessageIndex.value > 0) {
-			// Move backwards through history (older messages)
-			previousMessageIndex.value--;
+	if (!webhookDescription) {
+		console.error('No default webhook found for ChatTrigger node');
+		return '';
+	}
+
+	// Use the same webhook URL generation as regular webhook nodes
+	const url = workflowHelpers.getWebhookUrl(
+		webhookDescription,
+		chatTriggerNode.value,
+		'test', // Use test URL for manual execution
+	);
+
+	console.log('Chat webhook URL:', url);
+	return url;
+});
+
+// Chat SDK configuration for manual execution
+const chatOptions = computed<ChatOptions>(() => {
+	const options = {
+		webhookUrl: webhookUrl.value,
+		webhookConfig: {
+			method: 'POST' as const,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		},
+		mode: 'fullscreen' as const,
+		showWindowCloseButton: false,
+		showWelcomeScreen: false,
+		loadPreviousSession: false,
+		// TODO: Enable streaming only if ChatTrigger node has responseMode: 'streaming'
+		// Need to check chatTriggerNode.parameters.options.responseMode === 'streaming'
+		enableStreaming: false,
+		// Use the correct field names that ChatTrigger expects
+		chatInputKey: 'chatInput',
+		chatSessionKey: 'sessionId',
+		defaultLanguage: 'en' as const,
+		initialMessages: [],
+		// Pass the actual session ID value
+		metadata: {
+			sessionId: props.sessionId,
+		},
+		i18n: {
+			en: {
+				title: locale.baseText('chat.window.title') || 'Chat',
+				subtitle: 'Test your workflow',
+				footer: '',
+				getStarted: 'Send a message',
+				inputPlaceholder: locale.baseText('chat.window.chat.placeholder') || 'Type your message...',
+				closeButtonTooltip: 'Close',
+			},
+		},
+	};
+	console.log('Chat options:', options);
+	return options;
+});
+
+// Register ChatTrigger webhook for test execution
+async function registerChatWebhook(): Promise<void> {
+	if (isRegistering.value || webhookRegistered.value || !chatTriggerNode.value) {
+		return;
+	}
+
+	isRegistering.value = true;
+	console.log('Registering ChatTrigger webhook...');
+
+	try {
+		// Use the useRunWorkflow composable to properly register the webhook
+		// This handles all execution data initialization correctly
+		await runWorkflow({
+			triggerNode: chatTriggerNode.value.name,
+			source: 'RunData.ManualChatTrigger',
+		});
+
+		webhookRegistered.value = true;
+		console.log('ChatTrigger webhook registered successfully via useRunWorkflow');
+	} catch (error) {
+		console.error('Failed to register ChatTrigger webhook:', error);
+		throw error;
+	} finally {
+		isRegistering.value = false;
+	}
+}
+
+function initializeChat() {
+	if (!chatContainer.value) return;
+
+	try {
+		// Create Vue app instance with chat SDK
+		chatApp = createApp(Chat);
+		chatApp.use(ChatPlugin, chatOptions.value);
+		chatApp.mount(chatContainer.value);
+
+		console.log('Chat initialized successfully');
+	} catch (error) {
+		console.error('Failed to initialize chat SDK:', error);
+	}
+}
+
+function destroyChat() {
+	if (chatApp && chatContainer.value) {
+		chatApp.unmount();
+		chatApp = null;
+		chatContainer.value.innerHTML = '';
+		console.log('Chat destroyed');
+	}
+	// Reset webhook registration state when chat is destroyed
+	webhookRegistered.value = false;
+	isRegistering.value = false;
+}
+
+// Watch for isOpen changes to handle panel close/reopen
+watch(
+	() => props.isOpen,
+	async (newIsOpen, oldIsOpen) => {
+		console.log('isOpen changed:', { newIsOpen, oldIsOpen });
+		if (newIsOpen && !oldIsOpen) {
+			// Panel reopened - register webhook and reinitialize chat
+			await setupChatWithWebhook();
+		} else if (!newIsOpen && oldIsOpen) {
+			// Panel closed - cleanup
+			destroyChat();
 		}
+	},
+);
 
-		// Get message at current index
-		const selectedMessage = pastMessages[previousMessageIndex.value];
-		chatEventBus.emit('setInputValue', selectedMessage);
+// Setup chat with webhook registration
+async function setupChatWithWebhook() {
+	if (!props.isOpen || !chatTriggerNode.value) {
+		console.log('Skipping chat setup - not open or no ChatTrigger node');
+		return;
+	}
 
-		// Refocus and move cursor to end
-		chatEventBus.emit('focusInput');
-	} else if (key === 'ArrowDown') {
-		// Only navigate if we're in history mode
-		if (previousMessageIndex.value === -1) return;
+	try {
+		// Register webhook first
+		await registerChatWebhook();
 
-		// Temporarily blur to avoid cursor position issues
-		chatEventBus.emit('blurInput');
-
-		if (previousMessageIndex.value < pastMessages.length - 1) {
-			// Move forward through history (newer messages)
-			previousMessageIndex.value++;
-			const selectedMessage = pastMessages[previousMessageIndex.value];
-			chatEventBus.emit('setInputValue', selectedMessage);
-		} else {
-			// Reached the end - restore original input or clear
-			previousMessageIndex.value = -1;
-			chatEventBus.emit('setInputValue', currentInputBuffer.value);
-			currentInputBuffer.value = '';
-		}
-
-		// Refocus and move cursor to end
-		chatEventBus.emit('focusInput');
+		// Small delay to ensure webhook is registered
+		setTimeout(() => {
+			initializeChat();
+		}, 200);
+	} catch (error) {
+		console.error('Failed to setup chat with webhook:', error);
+		// Initialize chat anyway - maybe webhook was already registered
+		setTimeout(() => {
+			initializeChat();
+		}, 100);
 	}
 }
 
-function onEscapeKey() {
-	// Only handle escape if we're in history navigation mode
-	if (previousMessageIndex.value === -1) return;
+onMounted(() => {
+	console.log('ChatMessagesPanel mounted, isOpen:', props.isOpen);
+	if (props.isOpen) {
+		// Setup chat with webhook registration
+		void setupChatWithWebhook();
+	}
+});
 
-	// Exit history mode and restore original input
-	previousMessageIndex.value = -1;
-	chatEventBus.emit('setInputValue', currentInputBuffer.value);
-	currentInputBuffer.value = '';
-}
-
-async function copySessionId() {
-	await clipboard.copy(props.sessionId);
-	toast.showMessage({
-		title: locale.baseText('generic.copiedToClipboard'),
-		message: '',
-		type: 'success',
-	});
-}
+onUnmounted(() => {
+	destroyChat();
+});
 </script>
 
 <template>
@@ -177,7 +256,7 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported && !isReadOnly">
+				<N8nTooltip v-if="!isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
@@ -188,12 +267,11 @@ async function copySessionId() {
 						type="secondary"
 						size="mini"
 						:class="$style.newHeaderButton"
-						@click.stop="copySessionId"
 						>{{ sessionIdText }}</N8nButton
 					>
 				</N8nTooltip>
 				<N8nTooltip
-					v-if="messages.length > 0 && !isReadOnly"
+					v-if="!isReadOnly"
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
@@ -205,79 +283,16 @@ async function copySessionId() {
 						icon-size="medium"
 						icon="undo-2"
 						:title="locale.baseText('chat.window.session.reset')"
-						@click.stop="onRefreshSession"
+						@click.stop="emit('refreshSession')"
 					/>
 				</N8nTooltip>
 			</template>
 		</LogsPanelHeader>
-		<main v-if="isOpen" :class="$style.chatBody" data-test-id="canvas-chat-body">
-			<MessagesList
-				:messages="messages"
-				:class="$style.messages"
-				:empty-text="locale.baseText('chat.window.chat.emptyChatMessage.v2')"
-			>
-				<template #beforeMessage="{ message }">
-					<MessageOptionTooltip
-						v-if="!isReadOnly && message.sender === 'bot' && !message.id.includes('preload')"
-						placement="right"
-						data-test-id="execution-id-tooltip"
-					>
-						{{ locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
-						<a href="#" @click="emit('displayExecution', message.id)">{{ message.id }}</a>
-					</MessageOptionTooltip>
 
-					<MessageOptionAction
-						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
-						data-test-id="repost-message-button"
-						icon="redo-2"
-						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-						placement="left"
-						@click.once="repostMessage(message)"
-					/>
-
-					<MessageOptionAction
-						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
-						data-test-id="reuse-message-button"
-						icon="files"
-						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-						placement="left"
-						@click="reuseMessage(message)"
-					/>
-				</template>
-			</MessagesList>
+		<!-- Chat SDK Container -->
+		<main v-if="isOpen" :class="$style.chatSdkContainer" data-test-id="canvas-chat-body">
+			<div ref="chatContainer" :class="$style.chatContainer" />
 		</main>
-
-		<div v-if="isOpen" :class="$style.messagesInput">
-			<ChatInput
-				data-test-id="lm-chat-inputs"
-				:placeholder="inputPlaceholder"
-				@arrow-key-down="onArrowKeyDown"
-				@escape-key-down="onEscapeKey"
-			>
-				<template v-if="pastChatMessages.length > 0" #leftPanel>
-					<div :class="$style.messagesHistory">
-						<N8nButton
-							title="Navigate to previous message"
-							icon="chevron-up"
-							type="tertiary"
-							text
-							size="mini"
-							:disabled="previousMessageIndex === 0"
-							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
-						/>
-						<N8nButton
-							title="Navigate to next message"
-							icon="chevron-down"
-							type="tertiary"
-							text
-							size="mini"
-							:disabled="previousMessageIndex === -1"
-							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
-						/>
-					</div>
-				</template>
-			</ChatInput>
-		</div>
 	</div>
 </template>
 
@@ -356,24 +371,153 @@ async function copySessionId() {
 	color: var(--color--text--tint-1);
 }
 
-.chatBody {
+.chatSdkContainer {
 	display: flex;
 	height: 100%;
-	overflow: auto;
+	overflow: hidden;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
 }
 
-.messages {
-	border-radius: var(--border-radius-base);
+.chatContainer {
 	height: 100%;
 	width: 100%;
-	overflow: auto;
-	padding-top: var(--spacing-l);
+	background: var(--color-background-base);
+	border-radius: 0;
 
-	&:not(:last-child) {
-		margin-right: 1em;
+	// Comprehensive n8n styling for chat SDK
+	:global(.chat-layout) {
+		height: 100%;
+		width: 100%;
+		font-family: var(--font-family);
+		font-size: var(--font-size-s);
+		background: var(--color-background-base);
+		color: var(--color-text-base);
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+
+		// Hide the default chat header (we use our own)
+		.chat-header {
+			display: none;
+		}
+
+		// Style the main chat container
+		.chat-body {
+			background: var(--color-background-base);
+			padding: var(--spacing-s);
+		}
+
+		// Style messages list container
+		.chat-messages-list {
+			background: var(--color-background-base);
+		}
+
+		// Style individual messages
+		.message {
+			margin-bottom: var(--spacing-xs);
+			padding: var(--spacing-xs) var(--spacing-s);
+			border-radius: var(--border-radius-base);
+			font-family: var(--font-family);
+			font-size: var(--font-size-s);
+			line-height: var(--font-line-height-regular);
+			max-width: 80%;
+			word-wrap: break-word;
+
+			&.user {
+				background: var(--color-primary);
+				color: var(--color-primary-contrast-text, white);
+				align-self: flex-end;
+				margin-left: auto;
+			}
+
+			&.bot {
+				background: var(--color-background-light);
+				color: var(--color-text-base);
+				border: var(--border-base);
+				align-self: flex-start;
+			}
+		}
+
+		// Style the input area
+		.chat-footer {
+			padding: var(--spacing-s);
+			background: var(--color-background-base);
+			border-top: var(--border-base);
+		}
+
+		// Style the input field itself
+		.chat-input textarea {
+			width: 100%;
+			border: var(--border-base);
+			border-radius: var(--border-radius-base);
+			padding: var(--spacing-xs) var(--spacing-s);
+			font-family: var(--font-family);
+			font-size: var(--font-size-s);
+			line-height: var(--font-line-height-regular);
+			background: var(--color-background-xlight);
+			color: var(--color-text-base);
+			outline: none;
+			resize: none;
+
+			&:focus {
+				border-color: var(--color-primary);
+				box-shadow: 0 0 0 2px var(--color-primary-tint-2);
+			}
+
+			&::placeholder {
+				color: var(--color-text-light);
+			}
+		}
+
+		// Style send button
+		.chat-input-send-button {
+			background: var(--color-primary);
+			color: var(--color-primary-contrast-text, white);
+			border: none;
+			border-radius: var(--border-radius-base);
+			padding: var(--spacing-xs) var(--spacing-s);
+			font-family: var(--font-family);
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-bold);
+			cursor: pointer;
+			transition: background-color 0.2s ease;
+
+			&:hover {
+				background: var(--color-primary-shade-1);
+			}
+
+			&:disabled {
+				background: var(--color-foreground-base);
+				color: var(--color-text-light);
+				cursor: not-allowed;
+			}
+		}
+
+		// Style file attachment button
+		.chat-input-file-button {
+			color: var(--color-text-light);
+			&:hover {
+				color: var(--color-text-base);
+			}
+		}
+
+		// Style any scrollbars
+		*::-webkit-scrollbar {
+			width: 8px;
+		}
+
+		*::-webkit-scrollbar-track {
+			background: var(--color-background-base);
+		}
+
+		*::-webkit-scrollbar-thumb {
+			background: var(--color-foreground-base);
+			border-radius: var(--border-radius-base);
+		}
+
+		*::-webkit-scrollbar-thumb:hover {
+			background: var(--color-foreground-dark);
+		}
 	}
 }
 

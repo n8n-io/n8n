@@ -171,7 +171,31 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.clearTimeout(key);
 
-			await this.deactivateWebhooks(workflow);
+			// Check if this is a ChatTrigger webhook - if so, don't deactivate immediately
+			// ChatTrigger needs persistent webhooks for the chat session
+			const isChatTrigger = Object.values(workflow.nodes).some(
+				(node: any) =>
+					node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
+			);
+
+			if (!isChatTrigger) {
+				await this.deactivateWebhooks(workflow);
+			} else {
+				// For ChatTrigger, set a longer timeout before deactivating
+				const chatWebhookKey = `${workflowEntity.id}:chat-session`;
+				this.clearTimeout(chatWebhookKey); // Clear any existing timeout
+
+				// Set a longer timeout for ChatTrigger webhooks (10 minutes)
+				const timeout = setTimeout(
+					async () => {
+						await this.deactivateWebhooks(workflow);
+						delete this.timeouts[chatWebhookKey];
+					},
+					10 * 60 * 1000,
+				); // 10 minutes
+
+				this.timeouts[chatWebhookKey] = timeout;
+			}
 		});
 	}
 
@@ -309,10 +333,14 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeout = setTimeout(
-			async () => await this.cancelWebhook(workflow.id),
-			TEST_WEBHOOK_TIMEOUT,
+		// Use longer timeout for ChatTrigger webhooks
+		const isChatTrigger = Object.values(workflow.nodes).some(
+			(node: any) =>
+				node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
 		);
+		const timeoutDuration = isChatTrigger ? 10 * 60 * 1000 : TEST_WEBHOOK_TIMEOUT; // 10 minutes for ChatTrigger, normal for others
+
+		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
