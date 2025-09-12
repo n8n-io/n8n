@@ -93,7 +93,11 @@ export async function isVersionExists(
 			]);
 
 			const versionInfo = jsonParse(stdout);
-			return versionInfo === version;
+			if (versionInfo === version) {
+				return true;
+			}
+
+			throw new UnexpectedError('Failed to check package version existence');
 		} catch (cliError) {
 			const message = cliError instanceof Error ? cliError.message : String(cliError);
 
