@@ -256,13 +256,13 @@ class ExtendedRedisVectorSearch extends RedisVectorStore {
 }
 
 export const getIndexName = getParameter.bind(null, REDIS_INDEX_NAME);
-export const getKeyPrefix = getParameter.bind(null, 'options.' + REDIS_KEY_PREFIX);
-export const getOverwrite = getParameter.bind(null, 'options.' + REDIS_OVERWRITE_DOCUMENTS);
-export const getContentKey = getParameter.bind(null, 'options.' + REDIS_CONTENT_KEY);
-export const getMetadataFilter = getParameter.bind(null, 'options.' + REDIS_METADATA_FILTER);
-export const getMetadataKey = getParameter.bind(null, 'options.' + REDIS_METADATA_KEY);
-export const getEmbeddingKey = getParameter.bind(null, 'options.' + REDIS_EMBEDDING_KEY);
-export const getTtl = getParameter.bind(null, 'options.' + REDIS_TTL);
+export const getKeyPrefix = getParameter.bind(null, `options.${REDIS_KEY_PREFIX}`);
+export const getOverwrite = getParameter.bind(null, `options.${REDIS_OVERWRITE_DOCUMENTS}`);
+export const getContentKey = getParameter.bind(null, `options.${REDIS_CONTENT_KEY}`);
+export const getMetadataFilter = getParameter.bind(null, `options.${REDIS_METADATA_FILTER}`);
+export const getMetadataKey = getParameter.bind(null, `options.${REDIS_METADATA_KEY}`);
+export const getEmbeddingKey = getParameter.bind(null, `options.${REDIS_EMBEDDING_KEY}`);
+export const getTtl = getParameter.bind(null, `options.${REDIS_TTL}`);
 
 export class VectorStoreRedis extends createVectorStoreNode({
 	meta: {
@@ -288,12 +288,12 @@ export class VectorStoreRedis extends createVectorStoreNode({
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
 			const client = await getRedisClient(context);
-			const indexField = getIndexName(context, itemIndex);
-			const keyPrefixField = getKeyPrefix(context, itemIndex);
-			const metadataField = getMetadataKey(context, itemIndex);
-			const contentField = getContentKey(context, itemIndex);
-			const embeddingField = getEmbeddingKey(context, itemIndex);
-			const filter = getMetadataFilter(context, itemIndex);
+			const indexField = getIndexName(context, itemIndex).trim();
+			const keyPrefixField = getKeyPrefix(context, itemIndex).trim();
+			const metadataField = getMetadataKey(context, itemIndex).trim();
+			const contentField = getContentKey(context, itemIndex).trim();
+			const embeddingField = getEmbeddingKey(context, itemIndex).trim();
+			const filter = getMetadataFilter(context, itemIndex).trim();
 
 			// Check if index exists by trying to get info about it
 			try {
@@ -310,12 +310,17 @@ export class VectorStoreRedis extends createVectorStoreNode({
 				{
 					redisClient: client,
 					indexName: indexField,
-					...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
-					...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
-					...(contentField?.trim() ? { contentKey: contentField } : {}),
-					...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
+					...(keyPrefixField ? { keyPrefix: keyPrefixField } : {}),
+					...(metadataField ? { metadataKey: metadataField } : {}),
+					...(contentField ? { contentKey: contentField } : {}),
+					...(embeddingField ? { vectorKey: embeddingField } : {}),
 				},
-				filter ? filter.split(',') : null,
+				filter
+					? filter
+							.split(',')
+							.map((s) => s.trim())
+							.filter((s) => s)
+					: null,
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
@@ -330,12 +335,12 @@ export class VectorStoreRedis extends createVectorStoreNode({
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
 			const client = await getRedisClient(context);
-			const indexField = getIndexName(context, itemIndex);
+			const indexField = getIndexName(context, itemIndex).trim();
 			const overwrite = getOverwrite(context, itemIndex);
-			const keyPrefixField = getKeyPrefix(context, itemIndex);
-			const metadataField = getMetadataKey(context, itemIndex);
-			const contentField = getContentKey(context, itemIndex);
-			const embeddingField = getEmbeddingKey(context, itemIndex);
+			const keyPrefixField = getKeyPrefix(context, itemIndex).trim();
+			const metadataField = getMetadataKey(context, itemIndex).trim();
+			const contentField = getContentKey(context, itemIndex).trim();
+			const embeddingField = getEmbeddingKey(context, itemIndex).trim();
 			const ttl = getTtl(context, itemIndex);
 
 			if (overwrite) {
@@ -348,10 +353,10 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			await ExtendedRedisVectorSearch.fromDocuments(documents, embeddings, {
 				redisClient: client,
 				indexName: indexField,
-				...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
-				...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
-				...(contentField?.trim() ? { contentKey: contentField } : {}),
-				...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
+				...(keyPrefixField ? { keyPrefix: keyPrefixField } : {}),
+				...(metadataField ? { metadataKey: metadataField } : {}),
+				...(contentField ? { contentKey: contentField } : {}),
+				...(embeddingField ? { vectorKey: embeddingField } : {}),
 				...(ttl ? { ttl } : {}),
 			});
 		} catch (error) {
