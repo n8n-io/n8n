@@ -153,6 +153,26 @@ describe('SettingsSourceControl', () => {
 	describe('Protocol Selection', () => {
 		beforeEach(() => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_HTTPS_SYNC: true };
+		});
+
+		it('should ssh connection settings if frontend feature flag is disabled', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_HTTPS_SYNC: false };
+			await nextTick();
+			const { container, getByTestId } = renderComponent({
+				pinia,
+			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			// SSH-specific fields should be visible
+			expect(getByTestId('source-control-ssh-key-type-select')).toBeInTheDocument();
+			expect(getByTestId('source-control-refresh-ssh-key-button')).toBeInTheDocument();
+			expect(container.querySelector('input[name="repoUrl"]')).toBeInTheDocument();
+
+			// HTTPS-specific fields should not be visible
+			expect(container.querySelector('input[name="httpsUsername"]')).not.toBeInTheDocument();
+			expect(container.querySelector('input[name="httpsPassword"]')).not.toBeInTheDocument();
 		});
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
