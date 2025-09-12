@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { UnexpectedError } from 'n8n-workflow';
-import { exec } from 'node:child_process';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const asyncExec = promisify(exec);
+const asyncExecFile = promisify(execFile);
 
 const REQUEST_TIMEOUT = 30000;
 
@@ -26,10 +26,6 @@ function sanitizeRegistryUrl(registryUrl: string): string {
 	return registryUrl.replace(/\/+$/, '');
 }
 
-function sanitizeShellArg(arg: string): string {
-	return arg.replace(/[;&|`$(){}[\]\\'"]/g, '\\$&');
-}
-
 export async function verifyIntegrity(
 	packageName: string,
 	version: string,
@@ -50,14 +46,15 @@ export async function verifyIntegrity(
 		return;
 	} catch (error) {
 		try {
-			const sanitizedPackageName = sanitizeShellArg(packageName);
-			const sanitizedVersion = sanitizeShellArg(version);
+			const { stdout } = await asyncExecFile('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 
-			const { stdout } = await asyncExec(
-				`npm view ${sanitizedPackageName}@${sanitizedVersion} dist.integrity --registry=${registryUrl} --json`,
-			);
-
-			const integrity = JSON.parse(stdout);
+			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
 				throw new UnexpectedError(
 					'Checksum verification failed. Package integrity does not match.',
@@ -87,14 +84,15 @@ export async function isVersionExists(
 		return true;
 	} catch (error) {
 		try {
-			const sanitizedPackageName = sanitizeShellArg(packageName);
-			const sanitizedVersion = sanitizeShellArg(version);
+			const { stdout } = await asyncExecFile('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'version',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 
-			const { stdout } = await asyncExec(
-				`npm view ${sanitizedPackageName}@${sanitizedVersion} version --registry=${registryUrl} --json`,
-			);
-
-			const versionInfo = JSON.parse(stdout);
+			const versionInfo = jsonParse(stdout);
 			return versionInfo === version;
 		} catch (cliError) {
 			const message = cliError instanceof Error ? cliError.message : String(cliError);

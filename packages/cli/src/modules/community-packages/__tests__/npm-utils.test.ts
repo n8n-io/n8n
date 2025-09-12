@@ -116,9 +116,13 @@ describe('verifyIntegrity', () => {
 			).resolves.not.toThrow();
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				`npm view test-package@1.0.0 dist.integrity --registry=${registryUrl} --json`,
-			);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 		});
 
 		it('should fallback to npm CLI and throw error when integrity does not match', async () => {
@@ -140,12 +144,12 @@ describe('verifyIntegrity', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should sanitize shell arguments in npm CLI command', async () => {
-			const maliciousPackageName = 'test-package; rm -rf /';
-			const maliciousVersion = '1.0.0 && echo "hacked"';
+		it('should handle special characters in package name and version safely', async () => {
+			const specialPackageName = 'test-package; rm -rf /';
+			const specialVersion = '1.0.0 && echo "hacked"';
 
 			nock(registryUrl)
-				.get(`/${encodeURIComponent(maliciousPackageName)}/${maliciousVersion}`)
+				.get(`/${encodeURIComponent(specialPackageName)}/${specialVersion}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockResolvedValue({
@@ -153,12 +157,16 @@ describe('verifyIntegrity', () => {
 				stderr: '',
 			});
 
-			await verifyIntegrity(maliciousPackageName, maliciousVersion, registryUrl, integrity);
+			await verifyIntegrity(specialPackageName, specialVersion, registryUrl, integrity);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				`npm view test-package\\; rm -rf /@1.0.0 \\&\\& echo \\\"hacked\\\" dist.integrity --registry=${registryUrl} --json`,
-			);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
+				'view',
+				`${specialPackageName}@${specialVersion}`,
+				'dist.integrity',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 		});
 
 		it('should handle DNS errors in CLI fallback', async () => {
@@ -326,9 +334,13 @@ describe('isVersionExists', () => {
 			const result = await isVersionExists(packageName, version, registryUrl);
 			expect(result).toBe(true);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				`npm view test-package@1.0.0 version --registry=${registryUrl} --json`,
-			);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'version',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 		});
 
 		it('should fallback to npm CLI and return false when version does not match', async () => {
@@ -348,25 +360,29 @@ describe('isVersionExists', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should sanitize shell arguments in npm CLI command for isVersionExists', async () => {
-			const maliciousPackageName = 'test-package; rm -rf /';
-			const maliciousVersion = '1.0.0 && echo "hacked"';
+		it('should handle special characters in package name and version safely for isVersionExists', async () => {
+			const specialPackageName = 'test-package; rm -rf /';
+			const specialVersion = '1.0.0 && echo "hacked"';
 
 			nock(registryUrl)
-				.get(`/${encodeURIComponent(maliciousPackageName)}/${maliciousVersion}`)
+				.get(`/${encodeURIComponent(specialPackageName)}/${specialVersion}`)
 				.replyWithError('Network failure');
 
 			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(maliciousVersion),
+				stdout: JSON.stringify(specialVersion),
 				stderr: '',
 			});
 
-			const result = await isVersionExists(maliciousPackageName, maliciousVersion, registryUrl);
+			const result = await isVersionExists(specialPackageName, specialVersion, registryUrl);
 			expect(result).toBe(true);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				`npm view test-package\\; rm -rf /@1.0.0 \\&\\& echo \\\"hacked\\\" version --registry=${registryUrl} --json`,
-			);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
+				'view',
+				`${specialPackageName}@${specialVersion}`,
+				'version',
+				`--registry=${registryUrl}`,
+				'--json',
+			]);
 		});
 
 		it('should handle 404 errors in CLI fallback', async () => {
