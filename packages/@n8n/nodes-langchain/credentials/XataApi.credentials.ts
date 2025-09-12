@@ -1,55 +1,20 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class XataApi implements ICredentialType {
 	name = 'xataApi';
 
-	displayName = 'Xata Api';
+	displayName = 'Xata PostgreSQL Direct Connection';
 
 	documentationUrl = 'xata';
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Database Endpoint',
-			name: 'databaseEndpoint',
+			displayName: 'Database Connection String',
+			name: 'databaseConnectionString',
 			required: true,
 			type: 'string',
 			default: '',
-			placeholder: 'https://{workspace}.{region}.xata.sh/db/{database}',
-		},
-		{
-			displayName: 'Branch',
-			name: 'branch',
-			required: true,
-			type: 'string',
-			default: 'main',
-		},
-		{
-			displayName: 'API Key',
-			name: 'apiKey',
-			type: 'string',
-			typeOptions: { password: true },
-			required: true,
-			default: '',
+			placeholder: 'postgres://{username}:{password}@{host}:{port}/{database}',
 		},
 	];
-
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
-			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: '={{$credentials.databaseEndpoint}}:{{$credentials.branch}}',
-		},
-	};
 }
