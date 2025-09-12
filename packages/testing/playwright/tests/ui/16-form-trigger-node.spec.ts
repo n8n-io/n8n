@@ -73,6 +73,11 @@ test.describe('Form Trigger', () => {
 			.getByTestId('parameter-input-field')
 			.fill('Option 2');
 
+		// Add optional submitted message
+		await n8n.ndv.clickParameterOptions();
+		await n8n.ndv.selectFromVisibleDropdown('Form Response');
+		await n8n.ndv.fillParameterInput('Text to Show', 'Your test form was successfully submitted');
+
 		await n8n.ndv.clickBackToCanvasButton();
 		await expect(n8n.canvas.nodeByName('On form submission')).toBeVisible();
 		await expect(n8n.canvas.nodeIssuesBadge('On form submission')).toBeHidden();
