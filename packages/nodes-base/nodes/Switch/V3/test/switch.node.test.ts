@@ -31,6 +31,9 @@ describe('Execute Switch Node', () => {
 
 			expect(numberOutputsParamWithNoExpression).toBeDefined();
 			expect(numberOutputsParamWithNoExpression?.noDataExpression).toBe(true);
+			expect(numberOutputsParamWithNoExpression?.displayOptions?.show?.['@version']).toEqual([
+				{ _cnd: { gte: 3.3 } },
+			]);
 		});
 
 		it('should have numberOutputs parameter without noDataExpression for older versions', () => {
@@ -41,6 +44,9 @@ describe('Execute Switch Node', () => {
 
 			expect(numberOutputsParamWithoutNoExpression).toBeDefined();
 			expect(numberOutputsParamWithoutNoExpression?.noDataExpression).toBeUndefined();
+			expect(numberOutputsParamWithoutNoExpression?.displayOptions?.show?.['@version']).toEqual([
+				{ _cnd: { lt: 3.3 } },
+			]);
 		});
 
 		it('should include version 3.3 in supported versions', () => {
