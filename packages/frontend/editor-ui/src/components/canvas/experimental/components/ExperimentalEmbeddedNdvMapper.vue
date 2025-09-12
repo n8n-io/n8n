@@ -106,8 +106,9 @@ defineExpose({
 	box-shadow: none !important;
 	margin-top: -2px;
 
-	/* Override break-all set for el-popper */
+	/* Override styles set for el-popper */
 	word-break: normal;
+	text-align: unset;
 }
 
 .inputPanel {
