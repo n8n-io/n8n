@@ -162,9 +162,11 @@ describe('ProjectSettings', () => {
 		};
 
 		// Set current project data for component access
-		(projectsStore as any).currentProject = mockProject;
-		(projectsStore as any).currentProjectId = mockProject.id;
-		(projectsStore as any).availableProjects = projects;
+		Object.assign(projectsStore, {
+			currentProject: mockProject,
+			currentProjectId: mockProject.id,
+			availableProjects: projects,
+		});
 
 		// Explicitly stub all store actions to prevent network calls
 		projectsStore.getProject = vi.fn().mockResolvedValue(undefined);
