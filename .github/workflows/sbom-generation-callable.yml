@@ -1,4 +1,4 @@
-name: 'SBOM Generation'
+name: 'Release: Attach SBOM'
 
 on:
   workflow_call:
