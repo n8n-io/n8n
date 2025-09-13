@@ -1,34 +1,35 @@
 <script setup lang="ts">
 import '@/polyfills';
 
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
-import LoadingView from '@/views/LoadingView.vue';
+import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
-import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
-import { loadLanguage } from '@n8n/i18n';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import {
 	APP_MODALS_ELEMENT_ID,
 	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
-import { useStyles } from './composables/useStyles';
+import LoadingView from '@/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
+import { setLanguage } from '@n8n/i18n';
+// Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { useNDVStore } from '@/stores/ndv.store';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useStyles } from './composables/useStyles';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -100,13 +101,16 @@ watch(route, (r) => {
 
 watch(
 	defaultLocale,
-	(newLocale) => {
-		void loadLanguage(newLocale);
-		void locale.use(newLocale);
+	async (newLocale) => {
+		setLanguage(newLocale);
+
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
+		void locale.use(newLocale);
 	},
 	{ immediate: true },
 );
+
+// Dev HMR for i18n is imported in main.ts before app mount
 </script>
 
 <template>

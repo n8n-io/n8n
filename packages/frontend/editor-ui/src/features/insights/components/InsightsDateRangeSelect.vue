@@ -3,7 +3,8 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange } from '@n8n/api-types';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { ref } from 'vue';
-import { TIME_RANGE_LABELS, UNLICENSED_TIME_RANGE } from '../insights.constants';
+import { UNLICENSED_TIME_RANGE } from '../insights.constants';
+import { getTimeRangeLabels } from '../insights.utils';
 
 const model = defineModel<InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANGE>({
 	required: true,
@@ -11,11 +12,13 @@ const model = defineModel<InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANG
 
 const insightsStore = useInsightsStore();
 
+const timeRangeLabels = getTimeRangeLabels();
+
 const timeOptions = ref(
 	insightsStore.dateRanges.map((option) => {
 		return {
 			key: option.key,
-			label: TIME_RANGE_LABELS[option.key],
+			label: timeRangeLabels[option.key],
 			value: option.licensed ? option.key : UNLICENSED_TIME_RANGE,
 			licensed: option.licensed,
 		};

@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve } from 'path';
+import { posix as pathPosix, resolve, sep as pathSep } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -12,6 +12,7 @@ import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
+import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -24,6 +25,8 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Ensure bare imports resolve to sources (not dist)
+	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
@@ -140,6 +143,27 @@ const plugins: UserConfig['plugins'] = [
 	nodePolyfills({
 		include: ['fs', 'path', 'url', 'util', 'timers'],
 	}),
+	{
+		name: 'i18n-locales-hmr',
+		configureServer(server) {
+			const localesDir = resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src', 'locales');
+			server.watcher.add(localesDir);
+
+			// Only emit for add/unlink; change events are handled in handleHotUpdate
+			server.watcher.on('all', (event, file) => {
+				if ((event === 'add' || event === 'unlink') && isLocaleFile(file)) {
+					sendLocaleUpdate(server, file);
+				}
+			});
+		},
+		handleHotUpdate(ctx) {
+			const { file, server } = ctx;
+			if (!isLocaleFile(file)) return;
+			sendLocaleUpdate(server, file);
+			// Swallow default HMR for this file to prevent full page reloads
+			return [];
+		},
+	},
 ];
 
 const { RELEASE: release } = process.env;

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /// <reference types="vite-plugin-comlink/client" />
 
 import type { VNode, ComponentPublicInstance } from 'vue';

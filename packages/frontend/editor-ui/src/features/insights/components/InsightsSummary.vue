@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
-	TIME_RANGE_LABELS,
 } from '@/features/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import { getTimeRangeLabels } from '../insights.utils';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -24,6 +24,8 @@ const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
 const telemetry = useTelemetry();
+
+const timeRangeLabels = getTimeRangeLabels();
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -94,7 +96,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 							</N8nTooltip>
 						</strong>
 						<small :class="$style.days">
-							{{ TIME_RANGE_LABELS[timeRange] }}
+							{{ timeRangeLabels[timeRange] }}
 						</small>
 						<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 							<em>--</em>
