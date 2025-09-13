@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 import type {
 	FieldType,
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -241,4 +242,8 @@ export function resolveRawData(
 		}
 	}
 	return returnData;
+}
+
+export function isBinaryData(obj: unknown): obj is IBinaryData {
+	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
 }

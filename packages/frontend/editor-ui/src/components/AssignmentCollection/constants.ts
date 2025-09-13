@@ -6,4 +6,5 @@ export const ASSIGNMENT_TYPES: Array<{ type: string; icon: IconName }> = [
 	{ type: 'boolean', icon: 'square-check' },
 	{ type: 'array', icon: 'list' },
 	{ type: 'object', icon: 'box' },
+	{ type: 'binary', icon: 'file' },
 ];
