@@ -345,7 +345,11 @@ export function useCanvasMapping({
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
 
-			acc[node.id] = tasks.at(-1)?.executionStatus ?? 'new';
+			let lastExecutionStatus = tasks.at(-1)?.executionStatus;
+			if (tasks.length > 1 && lastExecutionStatus === 'canceled') {
+				lastExecutionStatus = tasks.at(-2)?.executionStatus;
+			}
+			acc[node.id] = lastExecutionStatus ?? 'new';
 			return acc;
 		}, {}),
 	);
@@ -382,7 +386,9 @@ export function useCanvasMapping({
 							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
 								outputIndex
 							] ?? { ...outputData };
-							acc[nodeId][connectionType][outputIndex].iterations += 1;
+							if (runIteration.executionStatus !== 'canceled') {
+								acc[nodeId][connectionType][outputIndex].iterations += 1;
+							}
 							acc[nodeId][connectionType][outputIndex].total +=
 								connectionTypeOutputIndexData.length;
 						}
@@ -593,6 +599,14 @@ export function useCanvasMapping({
 		}, {});
 	});
 
+	function filterOutCanceled(tasks: ITaskData[] | null): ITaskData[] | null {
+		if (!tasks) {
+			return null;
+		}
+
+		return tasks.filter((task) => task.executionStatus !== 'canceled');
+	}
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
@@ -635,7 +649,7 @@ export function useCanvasMapping({
 					},
 					runData: {
 						outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
-						iterations: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
+						iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
 						visible: !!nodeExecutionRunDataById.value[node.id],
 					},
 					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
@@ -677,6 +691,12 @@ export function useCanvasMapping({
 		const runDataTotal =
 			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
 
+		const sourceTasks = nodeExecutionRunDataById.value[connection.source] ?? [];
+		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
+		if (lastSourceTask?.executionStatus === 'canceled' && sourceTasks.length > 1) {
+			lastSourceTask = sourceTasks[sourceTasks.length - 2];
+		}
+
 		let status: CanvasConnectionData['status'];
 		if (nodeExecutionRunningById.value[connection.source]) {
 			status = 'running';
@@ -687,7 +707,7 @@ export function useCanvasMapping({
 			status = 'pinned';
 		} else if (nodeHasIssuesById.value[connection.source]) {
 			status = 'error';
-		} else if (runDataTotal > 0) {
+		} else if (runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled') {
 			status = 'success';
 		}
 

@@ -33,6 +33,8 @@ export const AI_MEMORY_POSTGRES_NODE_NAME = 'Postgres Chat Memory';
 export const AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME = 'Auto-fixing Output Parser';
 export const WEBHOOK_NODE_NAME = 'Webhook';
 export const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Workflow';
+export const NO_OPERATION_NODE_NAME = 'No Operation, do nothing';
+export const HACKER_NEWS_NODE_NAME = 'Hacker News';
 
 export const NEW_GOOGLE_ACCOUNT_NAME = 'Gmail account';
 export const NEW_TRELLO_ACCOUNT_NAME = 'Trello account';

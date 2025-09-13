@@ -1,9 +1,9 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodePropertyOptions,
-	ResourceMapperField,
-	ResourceMapperFields,
+import {
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type ResourceMapperField,
+	type ResourceMapperFields,
 } from 'n8n-workflow';
 
 import { getDataTableAggregateProxy, getDataTableProxyLoadOptions } from './utils';
@@ -80,12 +80,19 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	}
 	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
-	// Base conditions available for all column types
-	const baseConditions: INodePropertyOptions[] = [
-		{ name: 'Equals', value: 'eq' },
-		{ name: 'Not Equals', value: 'neq' },
+	const nullConditions: INodePropertyOptions[] = [
 		{ name: 'Is Empty', value: 'isEmpty' },
 		{ name: 'Is Not Empty', value: 'isNotEmpty' },
+	];
+
+	const equalsConditions: INodePropertyOptions[] = [
+		{ name: 'Equals', value: 'eq' },
+		{ name: 'Not Equals', value: 'neq' },
+	];
+
+	const booleanConditions: INodePropertyOptions[] = [
+		{ name: 'Is True', value: 'isTrue' },
+		{ name: 'Is False', value: 'isFalse' },
 	];
 
 	const comparableConditions: INodePropertyOptions[] = [
@@ -100,7 +107,13 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		{ name: 'Contains (Case-Insensitive)', value: 'ilike' },
 	];
 
-	const allConditions = [...baseConditions, ...comparableConditions, ...stringConditions];
+	const allConditions = [
+		...nullConditions,
+		...equalsConditions,
+		...booleanConditions,
+		...comparableConditions,
+		...stringConditions,
+	];
 
 	// If no column is selected yet, return all conditions
 	if (!keyName) {
@@ -113,19 +126,27 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		(await proxy.getColumns()).find((col) => col.name === keyName);
 
 	if (!column) {
-		return baseConditions;
+		return [...equalsConditions, ...nullConditions];
 	}
 
-	const conditions = baseConditions;
+	const conditions: INodePropertyOptions[] = [];
+
+	if (column.type === 'boolean') {
+		conditions.push.apply(conditions, booleanConditions);
+	}
 
 	// String columns get LIKE operators
 	if (column.type === 'string') {
+		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, stringConditions);
 	}
 
 	if (['number', 'date', 'string'].includes(column.type)) {
+		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, comparableConditions);
 	}
+
+	conditions.push.apply(conditions, nullConditions);
 
 	return conditions;
 }
