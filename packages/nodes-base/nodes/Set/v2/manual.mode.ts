@@ -16,6 +16,7 @@ import {
 	validateEntry,
 	composeReturnItem,
 	resolveRawData,
+	isBinaryData,
 } from './helpers/utils';
 import { updateDisplayOptions } from '../../../utils/utilities';
 
@@ -233,8 +234,18 @@ export async function execute(
 			'assignments',
 			i,
 		) as AssignmentCollectionValue;
+		const jsonValues: AssignmentCollectionValue['assignments'] = [];
+		const binaryValues: AssignmentCollectionValue['assignments'] = [];
+
+		for (const assignment of assignmentCollection?.assignments ?? []) {
+			if (assignment.type === 'binary') {
+				binaryValues.push(assignment);
+			} else {
+				jsonValues.push(assignment);
+			}
+		}
 		const newData = Object.fromEntries(
-			(assignmentCollection?.assignments ?? []).map((assignment) => {
+			jsonValues.map((assignment) => {
 				const { name, value } = validateEntry(
 					assignment.name,
 					assignment.type as FieldType,
@@ -248,7 +259,27 @@ export async function execute(
 				return [name, value];
 			}),
 		);
-		return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
+		const returnItem = composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
+		if (binaryValues.length) {
+			if (!returnItem.binary) {
+				returnItem.binary = {};
+			}
+
+			for (const assignment of binaryValues) {
+				const name = assignment.name;
+				const value = assignment.value as string;
+				const binaryData = this.helpers.assertBinaryData(i, value);
+				if (!isBinaryData(binaryData)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Could not find binary data specified in field ${name}`,
+						{ itemIndex: i },
+					);
+				}
+				returnItem.binary[name] = binaryData;
+			}
+		}
+		return returnItem;
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message, pairedItem: { item: i } } };

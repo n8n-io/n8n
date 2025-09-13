@@ -50,6 +50,8 @@ const assignmentTypeToNodeProperty = (
 			};
 		case 'array':
 		case 'object':
+		case 'binary':
+			return { type: 'string' };
 		case 'any':
 			return { type: 'string' };
 		default:

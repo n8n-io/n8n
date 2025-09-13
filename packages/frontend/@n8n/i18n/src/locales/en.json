@@ -3181,6 +3181,7 @@
 	"type.boolean": "Boolean",
 	"type.array": "Array",
 	"type.object": "Object",
+	"type.binary": "Binary",
 	"filter.operator.equals": "is equal to",
 	"filter.operator.notEquals": "is not equal to",
 	"filter.operator.contains": "contains",
