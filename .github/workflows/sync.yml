@@ -22,20 +22,16 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-      - name: Sync with latest RELEASE (not master)  
+      - name: Sync with latest RELEASE (not master)
         run: |
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/n8n-io/n8n/releases/latest | jq -r '.tag_name')
           echo "Syncing with release: $LATEST_RELEASE"
           
           git remote add upstream https://github.com/n8n-io/n8n.git || true
-          git fetch upstream --tags
+          git fetch upstream --tags --force
           
-          echo "About to merge $LATEST_RELEASE"
           git merge "$LATEST_RELEASE" --allow-unrelated-histories -X ours
-          echo "Merge completed, about to push"
-          
           git push origin master
-          echo "Push completed"
           
       - name: Create our Release
         run: |
