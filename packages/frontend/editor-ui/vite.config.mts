@@ -139,9 +139,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	// For sanitize-html
-nodePolyfills({
-    include: ['fs', 'path', 'url', 'util', 'timers'],
-}),
+	nodePolyfills({
+		include: ['fs', 'path', 'url', 'util', 'timers'],
+	}),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -152,7 +152,11 @@ nodePolyfills({
 				if (!file.endsWith('.json') || !file.includes(`${pathSep}locales${pathSep}`)) return;
 				const match = file.match(new RegExp(`${pathSep}locales${pathSep}([^${pathSep}]+)\\.json$`));
 				const locale = match?.[1];
-				server.ws.send({ type: 'custom', event: 'n8n:locale-update', data: { locales: locale ? [locale] : [], file } });
+				server.ws.send({
+					type: 'custom',
+					event: 'n8n:locale-update',
+					data: { locales: locale ? [locale] : [], file },
+				});
 			};
 
 			server.watcher.on('all', (_event, file) => notify(file));
