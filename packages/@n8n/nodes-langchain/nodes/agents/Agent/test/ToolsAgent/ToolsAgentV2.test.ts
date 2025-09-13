@@ -347,8 +347,8 @@ describe('toolsAgentExecute', () => {
 
 		// Verify getTools was called with different parsers
 		expect(getToolsSpy).toHaveBeenCalledTimes(2);
-		expect(getToolsSpy).toHaveBeenNthCalledWith(1, mockContext, true, false);
-		expect(getToolsSpy).toHaveBeenNthCalledWith(2, mockContext, true, false);
+		expect(getToolsSpy).toHaveBeenNthCalledWith(1, mockContext, true, false, undefined, 0);
+		expect(getToolsSpy).toHaveBeenNthCalledWith(2, mockContext, true, false, undefined, 1);
 	});
 
 	it('should maintain correct parser-item mapping in batch processing', async () => {

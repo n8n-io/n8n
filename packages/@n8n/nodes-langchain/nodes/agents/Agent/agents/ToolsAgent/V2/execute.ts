@@ -219,7 +219,7 @@ export async function toolsAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
-			const tools = await getTools(this, outputParser);
+			const tools = await getTools(this, outputParser, itemIndex);
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
 				systemMessage?: string;
 				maxIterations?: number;
