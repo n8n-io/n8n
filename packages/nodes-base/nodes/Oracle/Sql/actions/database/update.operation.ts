@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 
-	optionsCollection,
+	...optionsCollection,
 ];
 
 const displayOptions = {

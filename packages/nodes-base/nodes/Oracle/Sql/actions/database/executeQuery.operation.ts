@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 		},
 		hint: 'Consider using bind parameters to prevent SQL injection attacks. Add them in the options below',
 	},
-	optionsCollection,
+	...optionsCollection,
 ];
 
 const displayOptions = {

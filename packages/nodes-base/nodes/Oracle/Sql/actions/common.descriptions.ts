@@ -1,309 +1,337 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const optionsCollection: INodeProperties = {
-	displayName: 'Options',
-	name: 'options',
-	type: 'collection',
-	placeholder: 'Add option',
-	default: {},
-	options: [
-		{
-			displayName: 'Auto Commit',
-			name: 'autoCommit',
-			type: 'boolean',
-			default: true,
-			description:
-				'Whether this property is true, then the transaction in the current connection is automatically committed at the end of statement execution',
-		},
-		{
-			displayName: 'Bind Variable Placeholder Values',
-			name: 'params',
-			placeholder: 'Add Parameter',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValueButtonText: 'Add another Parameter',
-				multipleValues: true,
-			},
-			displayOptions: {
-				show: {
-					'/operation': ['execute'],
-				},
-			},
-			default: {},
-			description: 'Enter the values for the bind parameters used in the statement',
-			options: [
-				{
-					displayName: 'Values',
-					name: 'values',
-					values: [
-						{
-							displayName: 'Bind Name or Number',
-							name: 'name',
-							type: 'string',
-							default: '',
-							description: 'A bind variable placeholder is a colon-prefixed identifier or numeral',
-							placeholder:
-								'e.g. :dept_id`` and ``:dept_name`` are the two bind variables placeholders in this SQL statement',
-							required: true,
-						},
-						{
-							displayName: 'Bind Direction',
-							name: 'bindDirection',
-							type: 'options',
-							default: 'in',
-							required: true,
-							description:
-								'Specify whether data values bound to SQL or PL/SQL bind parameters are passed into, or out from, the database',
-							options: [
-								{ name: 'IN', value: 'in' },
-								{ name: 'OUT', value: 'out' },
-								{ name: 'IN-OUT', value: 'inout' },
-							],
-						},
-						{
-							displayName: 'Data Type',
-							name: 'datatype',
-							type: 'options',
-							required: true,
-							default: 'string',
-							options: [
-								{ name: 'BLOB', value: 'blob' },
-								{ name: 'Boolean', value: 'boolean' },
-								{ name: 'Date', value: 'date' },
-								{ name: 'JSON', value: 'json' },
-								{ name: 'Number', value: 'number' },
-								{ name: 'SparseVector', value: 'sparse' },
-								{ name: 'String', value: 'string' },
-								{ name: 'Vector', value: 'vector' },
-							],
-						},
-						{
-							displayName: 'Value (String)',
-							name: 'valueString',
-							type: 'string',
-							default: '',
-							displayOptions: {
-								show: {
-									datatype: ['string'],
-								},
-							},
-						},
-						{
-							displayName: 'Value (Number)',
-							name: 'valueNumber',
-							type: 'number',
-							default: 0,
-							displayOptions: {
-								show: {
-									datatype: ['number'],
-								},
-							},
-						},
-						{
-							displayName: 'Value (Date)',
-							name: 'valueDate',
-							type: 'dateTime',
-							default: 0,
-							displayOptions: {
-								show: {
-									datatype: ['date'],
-								},
-							},
-						},
-						{
-							displayName: 'Value (Boolean)',
-							name: 'valueBoolean',
-							type: 'boolean',
-							default: false,
-							displayOptions: {
-								show: {
-									datatype: ['boolean'],
-								},
-							},
-						},
-						{
-							displayName: 'Value (JSON)',
-							name: 'valueJson',
-							type: 'json',
-							default: '{}',
-							displayOptions: {
-								show: {
-									datatype: ['json'],
-								},
-							},
-						},
-						{
-							displayName: 'Value (VECTOR)',
-							name: 'valueVector',
-							type: 'json',
-							default: '[]',
-							displayOptions: {
-								show: {
-									datatype: ['vector'],
-								},
-							},
-							placeholder: '[1.2, 3.4, 5.6]',
-							description: 'A JSON array of dimension values',
-						},
-						{
-							displayName: 'Value (BLOB)',
-							name: 'valueBlob',
-							type: 'json',
-							default: '[]',
-							displayOptions: {
-								show: {
-									datatype: ['blob'],
-								},
-							},
-							placeholder: '{ "type": "Buffer", "data": [98,10] }',
-							description: 'A Binary data',
-						},
-						{
-							displayName: 'Value (Sparse Vector)',
-							name: 'valueSparse',
-							type: 'collection',
-							default: {},
-							displayOptions: {
-								show: {
-									datatype: ['sparse'],
-								},
-							},
-							options: [
-								{
-									displayName: 'Dimensions',
-									name: 'dimensions',
-									type: 'number',
-									default: 0,
-									description: 'Total number of dimensions',
-								},
-								{
-									displayName: 'Indices',
-									name: 'indices',
-									type: 'json',
-									default: '[]',
-									placeholder: '[0, 2, 5]',
-									description: 'A JSON array of indices, e.g., [0, 2, 5]',
-								},
-								{
-									displayName: 'Values',
-									name: 'values',
-									type: 'json',
-									default: '[]',
-									placeholder: '[1.2, 3.4, 5.6]',
-									description: 'A JSON array of values matching indices',
-								},
-							],
-						},
-						{
-							displayName: 'Parse for IN Statement',
-							name: 'parseInStatement',
-							type: 'options',
-							required: true,
-							default: false,
-							hint: 'If "Yes" the "Value" field should be a string of comma-separated values. i.e: 1,2,3 or str1,str2,str3',
-							options: [
-								{ name: 'No', value: false },
-								{ name: 'Yes', value: true },
-							],
-						},
-					],
-				},
-			],
-		},
-		{
-			displayName: 'Fetch Array Size',
-			name: 'fetchArraySize',
-			type: 'number',
-			default: 100,
-			typeOptions: {
-				minValue: 0,
-			},
-			displayOptions: {
-				show: {
-					'/operation': ['execute', 'select'],
-				},
-			},
-			description:
-				'This property is a number that sets the size of an internal buffer used for fetching query rows from Oracle Database. Changing it may affect query performance but does not affect how many rows are returned to the application.',
-		},
+const stmtBatchOptions = [
+	{
+		name: 'Single Statement',
+		value: 'single',
+		description: 'A single Statement for all incoming items',
+	},
+	{
+		name: 'Independently',
+		value: 'independently',
+		description: 'Execute one Statement per incoming item of the run',
+	},
+	{
+		name: 'Transaction',
+		value: 'transaction',
+		description:
+			'Execute all Statements in a transaction, if a failure occurs, all changes are rolled back',
+	},
+];
 
-		{
-			displayName: 'Number of Rows to Prefetch',
-			name: 'prefetchRows',
-			type: 'number',
-			default: 2,
-			displayOptions: {
-				show: {
-					'/operation': ['execute', 'select'],
+export const optionsCollection: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Auto Commit',
+				name: 'autoCommit',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether this property is true, then the transaction in the current connection is automatically committed at the end of statement execution',
+			},
+			{
+				displayName: 'Bind Variable Placeholder Values',
+				name: 'params',
+				placeholder: 'Add Parameter',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValueButtonText: 'Add another Parameter',
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						'/operation': ['execute'],
+					},
+				},
+				default: {},
+				description: 'Enter the values for the bind parameters used in the statement',
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Bind Name or Number',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description:
+									'A bind variable placeholder is a colon-prefixed identifier or numeral',
+								placeholder:
+									'e.g. :dept_id`` and ``:dept_name`` are the two bind variables placeholders in this SQL statement',
+								required: true,
+							},
+							{
+								displayName: 'Bind Direction',
+								name: 'bindDirection',
+								type: 'options',
+								default: 'in',
+								required: true,
+								description:
+									'Specify whether data values bound to SQL or PL/SQL bind parameters are passed into, or out from, the database',
+								options: [
+									{ name: 'IN', value: 'in' },
+									{ name: 'OUT', value: 'out' },
+									{ name: 'IN-OUT', value: 'inout' },
+								],
+							},
+							{
+								displayName: 'Data Type',
+								name: 'datatype',
+								type: 'options',
+								required: true,
+								default: 'string',
+								options: [
+									{ name: 'BLOB', value: 'blob' },
+									{ name: 'Boolean', value: 'boolean' },
+									{ name: 'Date', value: 'date' },
+									{ name: 'JSON', value: 'json' },
+									{ name: 'Number', value: 'number' },
+									{ name: 'SparseVector', value: 'sparse' },
+									{ name: 'String', value: 'string' },
+									{ name: 'Vector', value: 'vector' },
+								],
+							},
+							{
+								displayName: 'Value (String)',
+								name: 'valueString',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										datatype: ['string'],
+									},
+								},
+							},
+							{
+								displayName: 'Value (Number)',
+								name: 'valueNumber',
+								type: 'number',
+								default: 0,
+								displayOptions: {
+									show: {
+										datatype: ['number'],
+									},
+								},
+							},
+							{
+								displayName: 'Value (Date)',
+								name: 'valueDate',
+								type: 'dateTime',
+								default: 0,
+								displayOptions: {
+									show: {
+										datatype: ['date'],
+									},
+								},
+							},
+							{
+								displayName: 'Value (Boolean)',
+								name: 'valueBoolean',
+								type: 'boolean',
+								default: false,
+								displayOptions: {
+									show: {
+										datatype: ['boolean'],
+									},
+								},
+							},
+							{
+								displayName: 'Value (JSON)',
+								name: 'valueJson',
+								type: 'json',
+								default: '{}',
+								displayOptions: {
+									show: {
+										datatype: ['json'],
+									},
+								},
+							},
+							{
+								displayName: 'Value (VECTOR)',
+								name: 'valueVector',
+								type: 'json',
+								default: '[]',
+								displayOptions: {
+									show: {
+										datatype: ['vector'],
+									},
+								},
+								placeholder: '[1.2, 3.4, 5.6]',
+								description: 'A JSON array of dimension values',
+							},
+							{
+								displayName: 'Value (BLOB)',
+								name: 'valueBlob',
+								type: 'json',
+								default: '[]',
+								displayOptions: {
+									show: {
+										datatype: ['blob'],
+									},
+								},
+								placeholder: '{ "type": "Buffer", "data": [98,10] }',
+								description: 'A Binary data',
+							},
+							{
+								displayName: 'Value (Sparse Vector)',
+								name: 'valueSparse',
+								type: 'collection',
+								default: {},
+								displayOptions: {
+									show: {
+										datatype: ['sparse'],
+									},
+								},
+								options: [
+									{
+										displayName: 'Dimensions',
+										name: 'dimensions',
+										type: 'number',
+										default: 0,
+										description: 'Total number of dimensions',
+									},
+									{
+										displayName: 'Indices',
+										name: 'indices',
+										type: 'json',
+										default: '[]',
+										placeholder: '[0, 2, 5]',
+										description: 'A JSON array of indices, e.g., [0, 2, 5]',
+									},
+									{
+										displayName: 'Values',
+										name: 'values',
+										type: 'json',
+										default: '[]',
+										placeholder: '[1.2, 3.4, 5.6]',
+										description: 'A JSON array of values matching indices',
+									},
+								],
+							},
+							{
+								displayName: 'Parse for IN Statement',
+								name: 'parseInStatement',
+								type: 'options',
+								required: true,
+								default: false,
+								hint: 'If "Yes" the "Value" field should be a string of comma-separated values. i.e: 1,2,3 or str1,str2,str3',
+								options: [
+									{ name: 'No', value: false },
+									{ name: 'Yes', value: true },
+								],
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Fetch Array Size',
+				name: 'fetchArraySize',
+				type: 'number',
+				default: 100,
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					show: {
+						'/operation': ['execute', 'select'],
+					},
+				},
+				description:
+					'This property is a number that sets the size of an internal buffer used for fetching query rows from Oracle Database. Changing it may affect query performance but does not affect how many rows are returned to the application.',
+			},
+
+			{
+				displayName: 'Number of Rows to Prefetch',
+				name: 'prefetchRows',
+				type: 'number',
+				default: 2,
+				displayOptions: {
+					show: {
+						'/operation': ['execute', 'select'],
+					},
+				},
+				typeOptions: {
+					minValue: 0,
+				},
+				description:
+					'This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Output Columns',
+				name: 'outputColumns',
+				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getColumnsMultiOptions',
+					loadOptionsDependsOn: ['table.value'],
+				},
+				default: [],
+				displayOptions: {
+					show: { '/operation': ['insert', 'select', 'update'] },
 				},
 			},
-			typeOptions: {
-				minValue: 0,
+			{
+				displayName: 'Output Numbers As String',
+				name: 'largeNumbersOutputAsString',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the numbers should be retrieved as string',
+				displayOptions: {
+					show: {
+						'/operation': ['execute', 'select'],
+					},
+				},
+				hint: 'Applies to NUMBER, FLOAT, LONG type columns only',
 			},
-			description:
-				'This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query',
+			{
+				displayName: 'Statement Batching',
+				name: 'stmtBatching',
+				type: 'options',
+				noDataExpression: true,
+				options: stmtBatchOptions,
+				default: 'single',
+				displayOptions: {
+					show: { '/operation': ['update', 'insert', 'upsert'] },
+				},
+				description: 'The way queries should be sent to the database',
+			},
+			{
+				displayName: 'Statement Batching',
+				name: 'stmtBatching',
+				type: 'options',
+				noDataExpression: true,
+				options: stmtBatchOptions,
+				default: 'independently',
+				displayOptions: {
+					show: { '/operation': ['deleteTable'] },
+				},
+				description: 'The way queries should be sent to the database',
+			},
+		],
+	},
+	{
+		displayName: 'Important: Single Statement mode works only for the first item',
+		name: 'stmtBatchingNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				'/options.stmtBatching': ['single'],
+			},
 		},
-		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-			displayName: 'Output Columns',
-			name: 'outputColumns',
-			type: 'multiOptions',
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-			description:
-				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
-			typeOptions: {
-				loadOptionsMethod: 'getColumnsMultiOptions',
-				loadOptionsDependsOn: ['table.value'],
-			},
-			default: [],
-			displayOptions: {
-				show: { '/operation': ['insert', 'select', 'update'] },
-			},
-		},
-		{
-			displayName: 'Output Numbers As String',
-			name: 'largeNumbersOutputAsString',
-			type: 'boolean',
-			default: false,
-			description: 'Whether the numbers should be retrieved as string',
-			displayOptions: {
-				show: {
-					'/operation': ['execute', 'select'],
-				},
-			},
-			hint: 'Applies to NUMBER, FLOAT, LONG type columns only',
-		},
-		{
-			displayName: 'Statement Batching',
-			name: 'stmtBatching',
-			type: 'options',
-			noDataExpression: true,
-			options: [
-				{
-					name: 'Single Statement',
-					value: 'single',
-					description: 'A single Statement for all incoming items',
-				},
-				{
-					name: 'Independently',
-					value: 'independently',
-					description: 'Execute one Statement per incoming item of the run',
-				},
-				{
-					name: 'Transaction',
-					value: 'transaction',
-					description:
-						'Execute all Statements in a transaction, if a failure occurs, all changes are rolled back',
-				},
-			],
-			default: 'single',
-			displayOptions: {
-				show: { '/operation': ['update', 'insert', 'upsert', 'deleteTable'] },
-			},
-			description: 'The way queries should be sent to the database',
-		},
-	],
-};
+	},
+];
 
 export const schemaRLC: INodeProperties = {
 	displayName: 'Schema',
