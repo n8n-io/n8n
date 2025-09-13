@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	optionsCollection,
+	...optionsCollection,
 ];
 
 const displayOptions = {
@@ -94,7 +94,58 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	const stmtBatching = nodeOptions.stmtBatching ?? 'independently';
-	if (stmtBatching === 'single') {
+	if (stmtBatching !== 'single') {
+		for (let i = 0; i < items.length; i++) {
+			const schema = this.getNodeParameter('schema', i, undefined, {
+				extractValue: true,
+			}) as string;
+
+			const table = this.getNodeParameter('table', i, undefined, {
+				extractValue: true,
+			}) as string;
+
+			const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
+
+			let query = '';
+			let values: any = [];
+
+			const quotedTableName = quoteSqlIdentifier(schema) + '.' + quoteSqlIdentifier(table);
+			if (deleteCommand === 'drop') {
+				query = `DECLARE
+        					e_table_missing EXCEPTION;
+        					PRAGMA EXCEPTION_INIT(e_table_missing, -942);
+    					BEGIN
+        				EXECUTE IMMEDIATE ('DROP TABLE ${quotedTableName} PURGE');
+    					EXCEPTION
+        				WHEN e_table_missing THEN NULL;
+    					END;`;
+			} else if (deleteCommand === 'truncate') {
+				query = `TRUNCATE TABLE ${quotedTableName}`;
+			} else if (deleteCommand === 'delete') {
+				const whereClauses =
+					((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+				const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+				const tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table, i);
+				const columnMetaDataObject = getColumnMap(tableSchema);
+
+				[query, values] = addWhereClauses(
+					`DELETE FROM ${quotedTableName}`,
+					whereClauses,
+					combineConditions,
+					columnMetaDataObject,
+				);
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Invalid delete command, only drop, delete and truncate are supported ',
+					{ itemIndex: i },
+				);
+			}
+
+			const queryWithValues = { query, values };
+			queries.push(queryWithValues);
+		}
+	} else {
 		const deleteCommand = this.getNodeParameter('deleteCommand', 0) as string;
 
 		if (deleteCommand !== 'delete') {
@@ -146,57 +197,6 @@ export async function execute(
 
 		nodeOptions.bindDefs = bindDefs;
 		queries.push({ query, executeManyValues });
-	} else {
-		for (let i = 0; i < items.length; i++) {
-			const schema = this.getNodeParameter('schema', i, undefined, {
-				extractValue: true,
-			}) as string;
-
-			const table = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
-
-			const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
-
-			let query = '';
-			let values: any = [];
-
-			const quotedTableName = quoteSqlIdentifier(schema) + '.' + quoteSqlIdentifier(table);
-			if (deleteCommand === 'drop') {
-				query = `DECLARE
-        					e_table_missing EXCEPTION;
-        					PRAGMA EXCEPTION_INIT(e_table_missing, -942);
-    					BEGIN
-        				EXECUTE IMMEDIATE ('DROP TABLE ${quotedTableName} PURGE');
-    					EXCEPTION
-        				WHEN e_table_missing THEN NULL;
-    					END;`;
-			} else if (deleteCommand === 'truncate') {
-				query = `TRUNCATE TABLE ${quotedTableName}`;
-			} else if (deleteCommand === 'delete') {
-				const whereClauses =
-					((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
-				const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
-				const tableSchema = await getColumnMetaData(this.getNode(), pool, schema, table, i);
-				const columnMetaDataObject = getColumnMap(tableSchema);
-
-				[query, values] = addWhereClauses(
-					`DELETE FROM ${quotedTableName}`,
-					whereClauses,
-					combineConditions,
-					columnMetaDataObject,
-				);
-			} else {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Invalid delete command, only drop, delete and truncate are supported ',
-					{ itemIndex: i },
-				);
-			}
-
-			const queryWithValues = { query, values };
-			queries.push(queryWithValues);
-		}
 	}
 
 	return await runQueries(queries, items, nodeOptions);

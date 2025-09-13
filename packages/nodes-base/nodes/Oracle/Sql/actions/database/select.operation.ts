@@ -63,7 +63,7 @@ const properties: INodeProperties[] = [
 	whereFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
-	optionsCollection,
+	...optionsCollection,
 ];
 
 const displayOptions = {
