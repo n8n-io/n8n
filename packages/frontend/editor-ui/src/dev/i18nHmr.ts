@@ -2,7 +2,9 @@ import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n
 import type { LocaleMessages } from '@n8n/i18n/types';
 import { locale as designLocale } from '@n8n/design-system';
 
-if (import.meta.hot) {
+const hot = import.meta.hot;
+
+if (hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
 	const localeModules = import.meta.glob('@n8n/i18n/locales/*.json', { eager: true }) as Record<
 		string,
@@ -40,22 +42,19 @@ if (import.meta.hot) {
 	};
 
 	// 1) Apply fresh modules provided by Vite HMR
-	import.meta.hot.accept(localePaths, (mods) => {
+	hot.accept(localePaths, (mods) => {
 		mods.forEach((mod, i) => apply(lcOf(localePaths[i] ?? 'en'), (mod as any)?.default ?? {}));
 		refresh();
 	});
 
 	// 2) Handle explicit locale update events (fetch ensures latest content)
-	import.meta.hot.on(
-		'n8n:locale-update',
-		async (payload: { locales?: string[]; file?: string }) => {
-			if (payload.file) await fetchAndApply(payload.file);
-			refresh();
-		},
-	);
+	hot.on('n8n:locale-update', async (payload: { locales?: string[]; file?: string }) => {
+		if (payload.file) await fetchAndApply(payload.file);
+		refresh();
+	});
 
 	// 3) Last resort for cases where accept doesn’t trigger
-	import.meta.hot.on(
+	hot.on(
 		'vite:afterUpdate',
 		async (payload: { updates?: Array<{ path?: string; acceptedPath?: string }> }) => {
 			const updates = payload?.updates ?? [];

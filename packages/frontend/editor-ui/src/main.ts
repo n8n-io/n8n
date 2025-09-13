@@ -15,7 +15,7 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import { i18nInstance, loadLanguage, setLanguage } from '@n8n/i18n';
+import { i18nInstance, setLanguage } from '@n8n/i18n';
 
 import { TelemetryPlugin } from './plugins/telemetry';
 import { GlobalComponentsPlugin } from './plugins/components';
