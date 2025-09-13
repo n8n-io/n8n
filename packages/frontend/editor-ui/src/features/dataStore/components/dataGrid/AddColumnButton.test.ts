@@ -294,7 +294,31 @@ describe('AddColumnButton', () => {
 			expect(getByText('string')).toBeInTheDocument();
 			expect(getByText('number')).toBeInTheDocument();
 			expect(getByText('boolean')).toBeInTheDocument();
-			expect(getByText('date')).toBeInTheDocument();
+			expect(getByText('datetime')).toBeInTheDocument();
+		});
+	});
+
+	it('should set value to "date" when selecting "datetime" option', async () => {
+		const { getByTestId, getByRole, getByText, getByPlaceholderText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
+
+		await fireEvent.click(addButton);
+
+		const nameInput = getByPlaceholderText('Enter column name');
+		await fireEvent.update(nameInput, 'dateColumn');
+
+		const selectElement = getByRole('combobox');
+		await fireEvent.click(selectElement);
+
+		const dateOption = getByText('datetime');
+		await fireEvent.click(dateOption);
+
+		const submitButton = getByTestId('data-store-add-column-submit-button');
+		await fireEvent.click(submitButton);
+
+		expect(addColumnHandler).toHaveBeenCalledWith({
+			name: 'dateColumn',
+			type: 'date',
 		});
 	});
 
