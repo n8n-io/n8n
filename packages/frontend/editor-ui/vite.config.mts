@@ -12,6 +12,7 @@ import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
+import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -148,27 +149,17 @@ const plugins: UserConfig['plugins'] = [
 			const localesDir = resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src', 'locales');
 			server.watcher.add(localesDir);
 
-			const notify = (file: string) => {
-				if (!file.endsWith('.json') || !file.includes(`${pathSep}locales${pathSep}`)) return;
-				const match = file.match(new RegExp(`${pathSep}locales${pathSep}([^${pathSep}]+)\\.json$`));
-				const locale = match?.[1];
-				server.ws.send({
-					type: 'custom',
-					event: 'n8n:locale-update',
-					data: { locales: locale ? [locale] : [], file },
-				});
-			};
-
-			server.watcher.on('all', (_event, file) => notify(file));
+			// Only emit for add/unlink; change events are handled in handleHotUpdate
+			server.watcher.on('all', (event, file) => {
+				if ((event === 'add' || event === 'unlink') && isLocaleFile(file)) {
+					sendLocaleUpdate(server, file);
+				}
+			});
 		},
 		handleHotUpdate(ctx) {
 			const { file, server } = ctx;
-			// Only intercept locale JSON changes
-			if (!file.endsWith('.json') || !file.includes(`${pathSep}locales${pathSep}`)) return;
-			const match = file.match(new RegExp(`${pathSep}locales${pathSep}([^${pathSep}]+)\\.json$`));
-			const locale = match?.[1];
-			// Send custom event consumers listen to
-			server.ws.send({ type: 'custom', event: 'n8n:locale-update', data: { locales: locale ? [locale] : [], file } });
+			if (!isLocaleFile(file)) return;
+			sendLocaleUpdate(server, file);
 			// Swallow default HMR for this file to prevent full page reloads
 			return [];
 		},
