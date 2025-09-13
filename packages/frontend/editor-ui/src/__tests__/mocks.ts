@@ -298,13 +298,11 @@ export function createTestExpressionLocalResolveContext(
 	const workflow = data.workflow ?? createTestWorkflowObject();
 
 	return {
-		localResolve: true,
 		workflow,
 		nodeName: 'n0',
-		inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		inputNode: { nodeName: 'n1', runIndex: 0, outputIndex: 0, itemIndex: 0 },
 		envVars: {},
 		additionalKeys: {},
-		connections: workflow.connectionsBySourceNode,
 		execution: null,
 		...data,
 	};

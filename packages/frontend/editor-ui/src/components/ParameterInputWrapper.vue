@@ -4,7 +4,6 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import {
 	isResourceLocatorValue,
-	type IDataObject,
 	type INodeProperties,
 	type INodePropertyMode,
 	type IParameterLabel,
@@ -12,8 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -24,7 +21,6 @@ type Props = {
 	parameter: INodeProperties;
 	path: string;
 	modelValue: NodeParameterValueType;
-	additionalExpressionData?: IDataObject;
 	rows?: number;
 	isReadOnly?: boolean;
 	isAssignment?: boolean;
@@ -45,7 +41,6 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	additionalExpressionData: () => ({}),
 	rows: 5,
 	label: () => ({ size: 'small' }),
 	eventBus: () => createEventBus(),
@@ -60,8 +55,6 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = useNDVStore();
-const externalSecretsStore = useExternalSecretsStore();
-const environmentsStore = useEnvironmentsStore();
 
 const isExpression = computed(() => {
 	return isValueExpression(props.parameter, props.modelValue);
@@ -104,20 +97,8 @@ const expression = computed(() => {
 	return isResourceLocatorValue(props.modelValue) ? props.modelValue.value : props.modelValue;
 });
 
-const resolvedAdditionalExpressionData = computed(() => {
-	return {
-		$vars: environmentsStore.variablesAsObject,
-		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && props.isForCredential
-			? { $secrets: externalSecretsStore.secretsAsObject }
-			: {}),
-		...props.additionalExpressionData,
-	};
-});
-
 const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	expression,
-	additionalData: resolvedAdditionalExpressionData,
-	isForCredential: props.isForCredential,
 	stringifyObject: props.parameter.type !== 'multiOptions',
 });
 
@@ -172,10 +153,8 @@ defineExpose({
 			:hide-issues="hideIssues"
 			:documentation-url="documentationUrl"
 			:error-highlight="errorHighlight"
-			:is-for-credential="isForCredential"
 			:event-source="eventSource"
 			:expression-evaluated="resolvedExpression"
-			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
 			:rows="rows"
 			:data-test-id="`parameter-input-${parsedParameterName}`"

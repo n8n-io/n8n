@@ -912,7 +912,7 @@ function removeWorkflowSavedEventBindings() {
 }
 
 async function onSaveFromWithinNDV() {
-	if (ndvStore.activeNodeName) {
+	if (ndvStore.isNDVOpen) {
 		toast.showMessage({
 			title: i18n.baseText('generic.workflowSaved'),
 			type: 'success',

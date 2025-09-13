@@ -1,6 +1,5 @@
 import {
 	computed,
-	inject,
 	onBeforeUnmount,
 	onMounted,
 	ref,
@@ -14,14 +13,11 @@ import {
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
-import type { IDataObject } from 'n8n-workflow';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { ExpressionExtensions } from 'n8n-workflow';
 
-import { EXPRESSION_EDITOR_PARSER_TIMEOUT, ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
+import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
-import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
-import { type ResolveParameterOptions, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
@@ -38,18 +34,16 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '@/plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 export const useExpressionEditor = ({
 	editorRef,
 	editorValue,
-	targetNodeParameterContext,
 	extensions = [],
-	additionalData = {},
 	skipSegments = [],
 	autocompleteTelemetry,
 	isReadOnly = false,
@@ -58,17 +52,13 @@ export const useExpressionEditor = ({
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
-	additionalData?: MaybeRefOrGetter<IDataObject>;
 	skipSegments?: MaybeRefOrGetter<string[]>;
 	autocompleteTelemetry?: MaybeRefOrGetter<{ enabled: true; parameterPath: string }>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
@@ -82,10 +72,7 @@ export const useExpressionEditor = ({
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
 	const hasChanges = ref(false);
-	const expressionLocalResolveContext = inject(
-		ExpressionLocalResolveContextSymbol,
-		computed(() => undefined),
-	);
+	const expressionResolveCtx = useExpressionResolveCtx();
 
 	const emitChanges = debounce(onChange, 300);
 
@@ -123,7 +110,7 @@ export const useExpressionEditor = ({
 			const { from, to, text, token } = segment;
 
 			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, targetItem.value);
+				const { resolved, error, fullError } = resolve(text);
 				acc.push({
 					kind: 'resolvable',
 					from,
@@ -214,19 +201,13 @@ export const useExpressionEditor = ({
 		}
 	}
 
-	watch(toRef(editorRef), () => {
-		const parent = toValue(editorRef);
-
+	watch([toRef(editorRef), expressionResolveCtx], ([parent, ctx]) => {
 		if (!parent) return;
 
 		const state = EditorState.create({
 			doc: toValue(editorValue),
 			extensions: [
-				TARGET_NODE_PARAMETER_FACET.of(
-					expressionLocalResolveContext.value
-						? { nodeName: expressionLocalResolveContext.value.nodeName, parameterPath: '' }
-						: toValue(targetNodeParameterContext),
-				),
+				TARGET_NODE_PARAMETER_FACET.of(ctx),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
@@ -328,7 +309,8 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, target: TargetItem | null) {
+	function resolve(resolvable: string) {
+		const ctxValue = expressionResolveCtx.value;
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -336,37 +318,11 @@ export const useExpressionEditor = ({
 		};
 
 		try {
-			if (expressionLocalResolveContext.value) {
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, {
-					...expressionLocalResolveContext.value,
-					additionalKeys: toValue(additionalData),
-				});
-			} else if (!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined) {
-				// e.g. credential modal
-				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
-			} else {
-				let opts: ResolveParameterOptions = {
-					additionalKeys: toValue(additionalData),
-					contextNodeName: toValue(targetNodeParameterContext)?.nodeName,
-				};
-				if (
-					toValue(targetNodeParameterContext) === undefined &&
-					ndvStore.isInputParentOfActiveNode
-				) {
-					opts = {
-						targetItem: target ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-					};
-				}
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
-			}
+			result.resolved = workflowHelpers.resolveExpression('=' + resolvable, ctxValue);
 		} catch (error) {
-			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
-					ndvStore.activeNode?.name ?? ''
-				];
+			const hasRunData = !!(
+				ctxValue.nodeName && ctxValue.execution?.data?.resultData?.runData[ctxValue.nodeName]
+			);
 			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
@@ -382,8 +338,6 @@ export const useExpressionEditor = ({
 
 		return result;
 	}
-
-	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');
@@ -469,11 +423,12 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => expressionResolveCtx?.value?.execution,
+			() => expressionResolveCtx?.value?.execution?.data?.resultData.runData,
+		],
 		debouncedUpdateSegments,
 	);
-
-	watch(targetItem, updateSegments);
 
 	watch(resolvableSegments, updateHighlighting);
 

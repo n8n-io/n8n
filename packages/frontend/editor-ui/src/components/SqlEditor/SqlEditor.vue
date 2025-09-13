@@ -35,7 +35,6 @@ import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '@/plugins/codemirror/expressionCloseBrackets';
-import type { TargetNodeParameterContext } from '@/Interface';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -54,7 +53,6 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
-	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -62,7 +60,6 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
-	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -128,7 +125,6 @@ const {
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
-	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},

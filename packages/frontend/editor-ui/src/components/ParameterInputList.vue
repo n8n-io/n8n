@@ -53,6 +53,7 @@ import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -100,6 +101,7 @@ const {
 	isRagStarterCalloutVisible,
 	isPreBuiltAgentsCalloutVisible,
 } = useCalloutHelpers();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -404,7 +406,10 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			expressionResolveCtx.value,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {

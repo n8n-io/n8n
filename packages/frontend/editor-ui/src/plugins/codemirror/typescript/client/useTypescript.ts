@@ -3,7 +3,6 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { forceParse } from '@/utils/forceParse';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
@@ -21,20 +20,18 @@ import { typescriptWorkerFacet } from './facet';
 import { typescriptHoverTooltips } from './hoverTooltip';
 import { linter } from '@codemirror/lint';
 import { typescriptLintSource } from './linter';
-import type { TargetNodeParameterContext } from '@/Interface';
 import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	id: MaybeRefOrGetter<string>,
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
+	expressionResolveCtx: MaybeRefOrGetter<ExpressionLocalResolveContext>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
-	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const { debounce } = useDebounce();
-	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
 	const webWorker = ref<Worker>();
 
@@ -42,19 +39,17 @@ export function useTypescript(
 		webWorker.value = new Worker(new URL('../worker/typescript.worker.ts', import.meta.url), {
 			type: 'module',
 		});
+
+		const ctxValue = toValue(expressionResolveCtx);
 		const { init } = Comlink.wrap<RemoteLanguageServiceWorkerInit>(webWorker.value);
 		worker.value = await init(
 			{
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
-				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
+				allNodeNames: autocompletableNodeNames(ctxValue),
 				variables: useEnvironmentsStore().variables.map((v) => v.key),
-				inputNodeNames: activeNodeName
-					? workflowsStore.workflowObject.getParentNodes(
-							activeNodeName,
-							NodeConnectionTypes.Main,
-							1,
-						)
+				inputNodeNames: ctxValue.nodeName
+					? ctxValue.workflow.getParentNodes(ctxValue.nodeName, NodeConnectionTypes.Main, 1)
 					: [],
 				mode: toValue(mode),
 			},
@@ -69,9 +64,7 @@ export function useTypescript(
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,
-							toValue(targetNodeParameterContext) === undefined
-								? (ndvStore.ndvInputRunIndex ?? 0)
-								: 0,
+							ctxValue.inputNode?.runIndex ?? 0,
 							0,
 						)
 						.filter((data) => Boolean(data && Object.keys(data).length));
@@ -95,7 +88,7 @@ export function useTypescript(
 
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
-			TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
+			TARGET_NODE_PARAMETER_FACET.of(ctxValue),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),

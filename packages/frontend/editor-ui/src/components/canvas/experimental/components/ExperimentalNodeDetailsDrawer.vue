@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { type ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
-import { computed, provide, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 
 const { node, nodeIds, isReadOnly } = defineProps<{
 	node: INodeUi;
 	nodeIds: string[];
-
 	isReadOnly?: boolean;
 }>();
 
@@ -20,7 +17,6 @@ const emit = defineEmits<{
 	contextMenuAction: [ContextMenuAction, nodeIds: string[]];
 }>();
 
-const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
 const contextMenuItems = useContextMenuItems(computed(() => nodeIds));
 const ndvStore = useNDVStore();
 
@@ -38,8 +34,6 @@ watch(
 		}
 	},
 );
-
-provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>

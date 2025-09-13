@@ -9,6 +9,7 @@ import {
 	isCredentialsModalOpen,
 	applyCompletion,
 	isInHttpNodePagination,
+	getExpressionResolveContextWithFallback,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -18,7 +19,6 @@ import {
 	PREVIOUS_NODES_SECTION,
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
-	TARGET_NODE_PARAMETER_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
@@ -56,9 +56,11 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 export function dollarOptions(context: CompletionContext): Completion[] {
 	const SKIP = new Set();
+	const expressionResolveCtx = getExpressionResolveContextWithFallback(context);
+
 	let recommendedCompletions: Completion[] = [];
 
-	if (isInHttpNodePagination()) {
+	if (isInHttpNodePagination(expressionResolveCtx)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',
@@ -93,7 +95,7 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 		];
 	}
 
-	if (isCredentialsModalOpen()) {
+	if (isCredentialsModalOpen(expressionResolveCtx)) {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
 			? [
 					{
@@ -118,15 +120,13 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 			: [];
 	}
 
-	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-
-	if (!hasActiveNode(targetNodeParameterContext)) {
+	if (!hasActiveNode(expressionResolveCtx)) {
 		return [];
 	}
 
-	if (receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	if (receivesNoBinaryData(expressionResolveCtx)) SKIP.add('$binary');
 
-	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
+	const previousNodesCompletions = autocompletableNodeNames(expressionResolveCtx).map(
 		(nodeName) => {
 			const label = `$('${escapeMappingString(nodeName)}')`;
 			return {

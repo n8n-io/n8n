@@ -56,6 +56,7 @@ import {
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -124,6 +125,7 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 }>();
 
+const expressionResolveCtx = useExpressionResolveCtx();
 const workflowHelpers = useWorkflowHelpers();
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
@@ -258,7 +260,7 @@ const urlValue = computed(() => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = workflowHelpers.resolveExpression(expression);
+			const resolved = workflowHelpers.resolveExpression(expression, expressionResolveCtx.value);
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
@@ -383,6 +385,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		expressionResolveCtx.value,
 	);
 
 	if (!resolvedNodeParameters || !addNewResourceMethodName) {
@@ -713,6 +716,7 @@ async function loadResources() {
 		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			expressionResolveCtx.value,
 		) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 

@@ -24,6 +24,7 @@ import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 interface Props {
 	parameter: INodeProperties;
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const { debounce } = useDebounce();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
@@ -91,8 +93,8 @@ const issues = computed(() => {
 });
 
 watch(
-	() => props.node?.parameters,
-	() => {
+	[expressionResolveCtx, () => props.node?.parameters],
+	([ctx]) => {
 		const typeOptions = props.parameter.typeOptions?.filter;
 
 		if (!typeOptions) {
@@ -103,7 +105,7 @@ watch(
 		try {
 			newOptions = {
 				...DEFAULT_FILTER_OPTIONS,
-				...resolveParameter(typeOptions as unknown as NodeParameterValue),
+				...resolveParameter(typeOptions as unknown as NodeParameterValue, ctx),
 			};
 		} catch (error) {}
 

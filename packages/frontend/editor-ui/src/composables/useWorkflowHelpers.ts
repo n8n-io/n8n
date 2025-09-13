@@ -34,11 +34,9 @@ import * as workflowUtils from 'n8n-workflow/common';
 
 import type {
 	ICredentialsResponse,
-	IExecutionResponse,
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowDb,
-	TargetItem,
 	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
@@ -49,9 +47,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import get from 'lodash/get';
 
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -65,65 +61,13 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
-export type ResolveParameterOptions = {
-	targetItem?: TargetItem;
-	inputNodeName?: string;
-	inputRunIndex?: number;
-	inputBranchIndex?: number;
-	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	isForCredential?: boolean;
-	contextNodeName?: string;
-	connections?: IConnections;
-};
-
+// TODO: move to separate file
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+	ctx: ExpressionLocalResolveContext,
 ): T | null {
-	if ('localResolve' in opts && opts.localResolve) {
-		return resolveParameterImpl(
-			parameter,
-			opts.workflow,
-			opts.connections,
-			opts.envVars,
-			opts.workflow.getNode(opts.nodeName),
-			opts.execution,
-			opts.workflow.pinData,
-			{
-				inputNodeName: opts.inputNode?.name,
-				inputRunIndex: opts.inputNode?.runIndex,
-				inputBranchIndex: opts.inputNode?.branchIndex,
-				additionalKeys: opts.additionalKeys,
-			},
-		);
-	}
-
-	const workflowsStore = useWorkflowsStore();
-
-	return resolveParameterImpl(
-		parameter,
-		workflowsStore.workflowObject as Workflow,
-		workflowsStore.connectionsBySourceNode,
-		useEnvironmentsStore().variablesAsObject,
-		useNDVStore().activeNode,
-		workflowsStore.workflowExecutionData,
-		workflowsStore.pinnedWorkflowData,
-		opts,
-	);
-}
-
-// TODO: move to separate file
-function resolveParameterImpl<T = IDataObject>(
-	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
-	connections: IConnections,
-	envVars: Record<string, string | boolean | number>,
-	ndvActiveNode: INodeUi | null,
-	executionData: IExecutionResponse | null,
-	pinData: IPinData | undefined,
-	opts: ResolveParameterOptions = {},
-): T | null {
-	let itemIndex = opts?.targetItem?.itemIndex || 0;
+	const activeNode = ctx.nodeName ? ctx.workflow.getNode(ctx.nodeName) : null;
+	let itemIndex = ctx.inputNode?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -132,18 +76,24 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
-		$vars: envVars,
+		$vars: ctx.envVars,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 
-		...opts.additionalKeys,
+		...ctx.additionalKeys,
 	};
 
-	if (opts.isForCredential) {
+	let contextNode = activeNode;
+
+	if (activeNode) {
+		contextNode = ctx.workflow.getParentMainInputNode(activeNode) ?? null;
+	}
+
+	if (!contextNode) {
 		// node-less expression resolution
-		return workflowObject.expression.getParameterValue(
+		return ctx.workflow.expression.getParameterValue(
 			parameter,
 			null,
 			0,
@@ -161,20 +111,13 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
-	let contextNode = activeNode;
+	const workflowRunData = ctx.execution?.data?.resultData.runData ?? null;
+	let parentNode = ctx.workflow.getParentNodes(contextNode.name, inputName, 1);
 
-	if (activeNode) {
-		contextNode = workflowObject.getParentMainInputNode(activeNode) ?? null;
-	}
-
-	const workflowRunData = executionData?.data?.resultData.runData ?? null;
-	let parentNode = workflowObject.getParentNodes(contextNode!.name, inputName, 1);
-
-	let runIndexParent = opts?.inputRunIndex ?? 0;
-	const nodeConnection = workflowObject.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
-	if (opts.targetItem && opts?.targetItem?.nodeName === contextNode!.name && executionData) {
-		const sourceItems = getSourceItems(executionData, opts.targetItem);
+	let runIndexParent = ctx.inputNode?.runIndex ?? 0;
+	const nodeConnection = ctx.workflow.getNodeConnectionIndexes(contextNode.name, parentNode[0]);
+	if (ctx.inputNode && ctx.inputNode.nodeName === contextNode.name && ctx.execution) {
+		const sourceItems = getSourceItems(ctx.execution, ctx.inputNode);
 		if (!sourceItems.length) {
 			return null;
 		}
@@ -185,12 +128,12 @@ function resolveParameterImpl<T = IDataObject>(
 			nodeConnection.sourceIndex = sourceItems[0].outputIndex;
 		}
 	} else {
-		parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
+		parentNode = ctx.inputNode?.nodeName ? [ctx.inputNode.nodeName] : parentNode;
 		if (nodeConnection) {
-			nodeConnection.sourceIndex = opts.inputBranchIndex ?? nodeConnection.sourceIndex;
+			nodeConnection.sourceIndex = ctx.inputNode?.outputIndex ?? nodeConnection.sourceIndex;
 		}
 
-		if (opts?.inputRunIndex === undefined && workflowRunData !== null && parentNode.length) {
+		if (ctx.inputNode?.runIndex === undefined && workflowRunData !== null && parentNode.length) {
 			const firstParentWithWorkflowRunData = parentNode.find(
 				(parentNodeName) => workflowRunData[parentNodeName],
 			);
@@ -201,13 +144,13 @@ function resolveParameterImpl<T = IDataObject>(
 	}
 
 	let _connectionInputData = connectionInputData(
-		connections,
+		ctx.workflow.connectionsBySourceNode,
 		parentNode,
-		contextNode!.name,
+		contextNode.name,
 		inputName,
 		runIndexParent,
-		pinData,
-		executionData?.data?.resultData.runData ?? null,
+		ctx.workflow.pinData,
+		ctx.execution?.data?.resultData.runData ?? null,
 		nodeConnection,
 	);
 
@@ -215,26 +158,26 @@ function resolveParameterImpl<T = IDataObject>(
 		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
 		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
 		const _executeData = executeDataImpl(
-			connections,
+			ctx.workflow.connectionsBySourceNode,
 			[contextNode.name],
 			contextNode.name,
 			inputName,
 			0,
-			pinData,
-			executionData?.data?.resultData.runData ?? null,
+			ctx.workflow.pinData,
+			ctx.execution?.data?.resultData.runData ?? null,
 		);
 		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
 	}
 
 	let runExecutionData: IRunExecutionData;
-	if (!executionData?.data) {
+	if (!ctx.execution?.data) {
 		runExecutionData = {
 			resultData: {
 				runData: {},
 			},
 		};
 	} else {
-		runExecutionData = executionData.data;
+		runExecutionData = ctx.execution.data;
 	}
 
 	if (_connectionInputData === null) {
@@ -248,46 +191,46 @@ function resolveParameterImpl<T = IDataObject>(
 		// in pagination expressions
 		additionalKeys.$pageCount = 0;
 		additionalKeys.$response = get(
-			executionData,
+			ctx.execution,
 			['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
 			EMPTY_RESPONSE,
 		);
 		additionalKeys.$request = EMPTY_REQUEST;
 	}
 
-	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
+	let runIndexCurrent = ctx.inputNode?.runIndex ?? 0;
 	if (
-		opts?.targetItem === undefined &&
+		ctx.inputNode === undefined &&
 		workflowRunData !== null &&
-		workflowRunData[contextNode!.name]
+		workflowRunData[contextNode.name]
 	) {
-		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
+		runIndexCurrent = workflowRunData[contextNode.name].length - 1;
 	}
 	let _executeData = executeDataImpl(
-		connections,
+		ctx.workflow.connectionsBySourceNode,
 		parentNode,
-		contextNode!.name,
+		contextNode.name,
 		inputName,
 		runIndexCurrent,
-		pinData,
-		executionData?.data?.resultData.runData ?? null,
+		ctx.workflow.pinData,
+		ctx.execution?.data?.resultData.runData ?? null,
 		runIndexParent,
 	);
 
 	if (!_executeData.source) {
 		// fallback to parent's run index for multi-output case
 		_executeData = executeDataImpl(
-			connections,
+			ctx.workflow.connectionsBySourceNode,
 			parentNode,
-			contextNode!.name,
+			contextNode.name,
 			inputName,
 			runIndexParent,
-			pinData,
-			executionData?.data?.resultData.runData ?? null,
+			ctx.workflow.pinData,
+			ctx.execution?.data?.resultData.runData ?? null,
 		);
 	}
 
-	return workflowObject.expression.getParameterValue(
+	return ctx.workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
 		runIndexCurrent,
@@ -299,20 +242,14 @@ function resolveParameterImpl<T = IDataObject>(
 		_executeData,
 		false,
 		{},
-		contextNode!.name,
+		contextNode.name,
 	) as T;
 }
 
 export function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	opts: {
-		connections?: IConnections;
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
+	opts: ExpressionLocalResolveContext,
 ): IDataObject | null {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
@@ -465,7 +402,6 @@ function executeDataImpl(
 		const parentPinData = pinData?.[parentNodeName];
 
 		// populate `executeData` from `pinData`
-
 		if (parentPinData) {
 			executeData.data = { main: [parentPinData] };
 			executeData.source = { main: [{ previousNode: parentNodeName }] };
@@ -738,19 +674,14 @@ export function useWorkflowHelpers() {
 	function getWebhookExpressionValue(
 		webhookData: IWebhookDescription,
 		key: string,
+		ctx: ExpressionLocalResolveContext,
 		stringify = true,
-		nodeName?: string,
 	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(
-				webhookData[key] as string,
-				undefined,
-				{ contextNodeName: nodeName },
-				stringify,
-			) as string;
+			return resolveExpression(webhookData[key] as string, ctx, {}, stringify) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
@@ -758,12 +689,18 @@ export function useWorkflowHelpers() {
 
 	function getWebhookUrl(
 		webhookData: IWebhookDescription,
-		node: INode,
+		ctx: ExpressionLocalResolveContext,
 		showUrlFor: 'test' | 'production',
 	): string {
 		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
 			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
+		}
+
+		const node = ctx.nodeName && ctx.workflow.getNode(ctx.nodeName);
+
+		if (!node) {
+			return '';
 		}
 
 		const baseUrls = {
@@ -780,14 +717,10 @@ export function useWorkflowHelpers() {
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
+		const path = getWebhookExpressionValue(webhookData, 'path', ctx, true) ?? '';
 		const isFullPath =
-			(getWebhookExpressionValue(
-				webhookData,
-				'isFullPath',
-				true,
-				node.name,
-			) as unknown as boolean) || false;
+			(getWebhookExpressionValue(webhookData, 'isFullPath', ctx, true) as unknown as boolean) ||
+			false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -799,6 +732,7 @@ export function useWorkflowHelpers() {
 	 */
 	function getNodeParametersWithResolvedExpressions(
 		nodeParameters: INodeParameters,
+		ctx: ExpressionLocalResolveContext,
 	): INodeParameters {
 		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
 			const newObj: INodeParameters = {};
@@ -811,7 +745,7 @@ export function useWorkflowHelpers() {
 					// Resolve the expression if it is one
 					let resolved;
 					try {
-						resolved = resolveExpression(value, undefined, { isForCredential: false });
+						resolved = resolveExpression(value, ctx, {});
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
@@ -830,15 +764,15 @@ export function useWorkflowHelpers() {
 
 	function resolveExpression(
 		expression: string,
+		ctx: ExpressionLocalResolveContext,
 		siblingParameters: INodeParameters = {},
-		opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 		stringifyObject = true,
 	) {
 		const parameters = {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = resolveParameter(parameters, ctx);
 		if (!returnData) {
 			return null;
 		}
@@ -847,7 +781,7 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+			return ctx.workflow.expression.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}

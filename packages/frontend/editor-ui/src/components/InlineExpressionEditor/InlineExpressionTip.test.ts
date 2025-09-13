@@ -28,6 +28,7 @@ describe('InlineExpressionTip.vue', () => {
 			hasInputData: true,
 			isInputPanelEmpty: true,
 			isOutputPanelEmpty: true,
+			input: { data: { isEmpty: true } },
 			setHighlightDraggables: vi.fn(),
 		};
 	});
@@ -46,6 +47,7 @@ describe('InlineExpressionTip.vue', () => {
 				isInputPanelEmpty: false,
 				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
+				input: { data: { isEmpty: true } },
 				setHighlightDraggables: vi.fn(),
 			};
 			const { container, unmount } = renderComponent(InlineExpressionTip, {
@@ -67,6 +69,7 @@ describe('InlineExpressionTip.vue', () => {
 				isInputPanelEmpty: false,
 				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
+				input: { data: { isEmpty: true } },
 				setHighlightDraggables: vi.fn(),
 			};
 			const { container } = renderComponent(InlineExpressionTip, {
@@ -83,6 +86,7 @@ describe('InlineExpressionTip.vue', () => {
 				isInputPanelEmpty: false,
 				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
+				input: { data: { isEmpty: true } },
 				setHighlightDraggables: vi.fn(),
 			};
 			mockCompletionResult = { options: [{ label: 'foo', section: FIELDS_SECTION }] };
@@ -113,6 +117,7 @@ describe('InlineExpressionTip.vue', () => {
 				isInputPanelEmpty: false,
 				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
+				input: { data: { isEmpty: true } },
 				setHighlightDraggables: vi.fn(),
 			};
 			mockCompletionResult = { options: [{ label: 'foo' }] };

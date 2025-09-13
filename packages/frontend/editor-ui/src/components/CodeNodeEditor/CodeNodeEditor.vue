@@ -19,7 +19,6 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
-import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
 
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
@@ -33,7 +32,6 @@ type Props = {
 	isReadOnly?: boolean;
 	rows?: number;
 	id?: string;
-	targetNodeParameterContext?: TargetNodeParameterContext;
 	disableAskAi?: boolean;
 };
 
@@ -44,7 +42,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	rows: 4,
 	id: () => crypto.randomUUID(),
-	targetNodeParameterContext: undefined,
 	disableAskAi: false,
 });
 const emit = defineEmits<{
@@ -89,7 +86,6 @@ const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 		rows: props.rows,
 	},
 	onChange: onEditorUpdate,
-	targetNodeParameterContext: () => props.targetNodeParameterContext,
 });
 
 onMounted(() => {

@@ -3,7 +3,7 @@ import { i18n } from '@n8n/i18n';
 import { withSectionHeader } from './utils';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { Facet } from '@codemirror/state';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
@@ -440,8 +440,8 @@ export const STRING_SECTIONS: Record<string, CompletionSection> = {
 };
 
 export const TARGET_NODE_PARAMETER_FACET = Facet.define<
-	TargetNodeParameterContext | undefined,
-	TargetNodeParameterContext | undefined
+	ExpressionLocalResolveContext | undefined,
+	ExpressionLocalResolveContext | undefined
 >({
 	combine: (values) => values[0],
 });

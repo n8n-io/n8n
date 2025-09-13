@@ -16,6 +16,7 @@ import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 interface Props {
 	parameter: INodeProperties;
@@ -51,6 +52,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 
 const ndvStore = useNDVStore();
 const { callDebounced } = useDebounce();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const issues = computed(() => {
 	if (!ndvStore.activeNode) return {};
@@ -98,7 +100,7 @@ function dropAssignment(expression: string): void {
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type: props.defaultType ?? typeFromExpression(expression, expressionResolveCtx.value),
 	});
 }
 

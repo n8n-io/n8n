@@ -1,8 +1,12 @@
-import { prefixMatch, longestCommonPrefix, resolveAutocompleteExpression } from './utils';
+import {
+	prefixMatch,
+	longestCommonPrefix,
+	resolveAutocompleteExpression,
+	getExpressionResolveContextWithFallback,
+} from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Resolved } from './types';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { TARGET_NODE_PARAMETER_FACET } from './constants';
 
 /**
  * Resolution-based completions offered at the start of bracket access notation.
@@ -15,7 +19,7 @@ import { TARGET_NODE_PARAMETER_FACET } from './constants';
  * - `$input.first().json.myStr[|`
  */
 export function bracketAccessCompletions(context: CompletionContext): CompletionResult | null {
-	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const expressionResolveCtx = getExpressionResolveContextWithFallback(context);
 	const word = context.matchBefore(/\$[\S\s]*\[.*/);
 
 	if (!word) return null;
@@ -32,10 +36,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	let resolved: Resolved;
 
 	try {
-		resolved = resolveAutocompleteExpression(
-			`={{ ${base} }}`,
-			targetNodeParameterContext?.nodeName,
-		);
+		resolved = resolveAutocompleteExpression(`={{ ${base} }}`, expressionResolveCtx);
 	} catch {
 		return null;
 	}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
 import get from 'lodash/get';
 
@@ -12,7 +12,6 @@ import type {
 import type {
 	CodeExecutionMode,
 	EditorType,
-	IDataObject,
 	ILoadOptions,
 	INodeParameterResourceLocator,
 	INodeParameters,
@@ -56,7 +55,6 @@ import {
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
-	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/constants';
@@ -94,6 +92,8 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -103,7 +103,6 @@ type Props = {
 	modelValue: NodeParameterValueType;
 	eventBus?: EventBus;
 	label?: IParameterLabel;
-	additionalExpressionData?: IDataObject;
 	rows?: number;
 	hint?: string;
 	inputSize?: InputSize;
@@ -131,7 +130,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	isAssignment: false,
 	eventBus: () => createEventBus(),
-	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
 });
 
@@ -161,7 +159,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 
-const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const expressionResolveCtx = useExpressionResolveCtx();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -211,10 +209,11 @@ const dateTimePickerOptions = ref({
 const isFocused = ref(false);
 const isMapperShown = ref(false);
 
-const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-	expressionLocalResolveCtx.value.nodeName,
-);
-const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
+const node = computed(() => {
+	const ctx = expressionResolveCtx.value;
+
+	return ctx.nodeName ? (ctx.workflow.getNode(ctx.nodeName) ?? undefined) : undefined;
+});
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
@@ -398,7 +397,10 @@ const dependentParametersValues = computed<string | null>(() => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			expressionResolveCtx.value,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -631,8 +633,10 @@ const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM
 
 const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
+const isInExperimentalNdv = useIsInExperimentalNdv();
 const isMapperAvailable = computed(
 	() =>
+		isInExperimentalNdv.value &&
 		!props.parameter.isNodeSetting &&
 		(isModelValueExpression.value ||
 			props.forceShowExpression ||
@@ -700,6 +704,7 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			expressionResolveCtx.value,
 		) as INodeParameters;
 		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
 		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
@@ -1274,11 +1279,11 @@ onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
+			v-if="isMapperAvailable && node && expressionResolveCtx.inputNode"
 			ref="mapperRef"
-			:workflow="expressionLocalResolveCtx?.workflow"
+			:workflow="expressionResolveCtx.workflow"
 			:node="node"
-			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
+			:input-node-name="expressionResolveCtx.inputNode.nodeName"
 			:visible="isMapperShown"
 			:virtual-ref="wrapper"
 		/>
@@ -1347,7 +1352,6 @@ onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 				:rows="rows"
 				:is-assignment="isAssignment"
 				:path="path"
-				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:event-bus="eventBus"
 				@update:model-value="expressionUpdated"

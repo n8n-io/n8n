@@ -31,6 +31,7 @@ import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 import { N8nButton, N8nCallout, N8nNotice } from '@n8n/design-system';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 type Props = {
 	parameter: INodeProperties;
@@ -48,6 +49,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -308,6 +310,7 @@ const createRequestParams = (methodName: string) => {
 		currentNodeParameters: resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
+			expressionResolveCtx.value,
 		) as INodeParameters,
 		path: props.path,
 		methodName,

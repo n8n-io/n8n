@@ -14,7 +14,6 @@ import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
-import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
@@ -31,7 +30,6 @@ type Props = {
 	path: string;
 	modelValue: string;
 	rows?: number;
-	additionalExpressionData?: IDataObject;
 	isReadOnly?: boolean;
 	isAssignment?: boolean;
 	eventBus?: EventBus;
@@ -41,7 +39,6 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isAssignment: false,
 	isReadOnly: false,
-	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
@@ -205,7 +202,6 @@ defineExpose({ focus, select });
 						:path="path"
 						:is-read-only="isReadOnly"
 						:rows="rows"
-						:additional-data="additionalExpressionData"
 						:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
 						@focus="onFocus"
 						@blur="onBlur"

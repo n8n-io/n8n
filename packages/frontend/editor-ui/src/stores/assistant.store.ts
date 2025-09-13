@@ -31,6 +31,7 @@ import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { useBuilderStore } from './builder.store';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 300;
@@ -347,12 +348,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
-	async function initCredHelp(credType: ICredentialType) {
+	async function initCredHelp(
+		credType: ICredentialType,
+		expressionResolveCtx: ExpressionLocalResolveContext,
+	) {
 		const hasExistingSession = !!currentSessionId.value;
 		const credentialName = credType.displayName;
 		const question = `How do I set up the credentials for ${credentialName}?`;
 
-		await initSupportChat(question, credType);
+		await initSupportChat(question, expressionResolveCtx, credType);
 
 		trackUserOpenedAssistant({
 			source: 'credential',
@@ -365,6 +369,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
 	function getVisualContext(
+		expressionResolveCtx: ExpressionLocalResolveContext,
 		nodeInfo?: ChatRequest.NodeInfo,
 	): ChatRequest.AssistantContext | undefined {
 		if (chatSessionTask.value === 'error') {
@@ -373,7 +378,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? assistantHelpers.processNodeForAssistant(
+					activeNode,
+					['position', 'parameters.notice'],
+					expressionResolveCtx,
+				)
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -424,14 +433,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		};
 	}
 
-	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
+	async function initSupportChat(
+		userMessage: string,
+		expressionResolveCtx: ExpressionLocalResolveContext,
+		credentialType?: ICredentialType,
+	) {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
-			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
+			chatSessionTask.value === 'support'
+				? getVisualContext(expressionResolveCtx, nodeInfo)
+				: undefined;
 
 		if (nodeInfo.authType && chatSessionTask.value === 'credentials') {
 			userMessage += ` I am using ${nodeInfo.authType.name}.`;
@@ -472,11 +487,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) =>
-				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
+				handleServiceError(
+					e,
+					id,
+					async () => await initSupportChat(userMessage, expressionResolveCtx, credentialType),
+				),
 		);
 	}
 
-	async function initErrorHelper(context: ChatRequest.ErrorContext) {
+	async function initErrorHelper(
+		context: ChatRequest.ErrorContext,
+		expressionResolveCtx: ExpressionLocalResolveContext,
+	) {
 		const id = getRandomId();
 		if (chatSessionError.value) {
 			if (isNodeErrorActive(context)) {
@@ -509,10 +531,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
-				'position',
-				'parameters.notice',
-			]),
+			node: assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				expressionResolveCtx,
+			),
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
@@ -524,7 +547,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
+			(e) =>
+				handleServiceError(e, id, async () => await initErrorHelper(context, expressionResolveCtx)),
 		);
 	}
 
@@ -590,6 +614,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function sendMessage(
 		chatMessage: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
+		expressionResolveCtx: ExpressionLocalResolveContext,
 	) {
 		if (isSessionEnded.value || streaming.value) {
 			return;
@@ -599,7 +624,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const retry = async () => {
 			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
-			await sendMessage(chatMessage);
+			await sendMessage(chatMessage, expressionResolveCtx);
 		};
 
 		try {
@@ -614,9 +639,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
-			const activeNode = workflowsStore.activeNode() as INode;
-			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
-			const userContext = getVisualContext(nodeInfo);
+			const activeNode =
+				expressionResolveCtx.nodeName &&
+				expressionResolveCtx.workflow.getNode(expressionResolveCtx.nodeName);
+			const nodeInfo = activeNode
+				? assistantHelpers.getNodeInfoForAssistant(activeNode)
+				: undefined;
+			const userContext = getVisualContext(expressionResolveCtx, nodeInfo);
 
 			chatWithAssistant(
 				rootStore.restApiContext,

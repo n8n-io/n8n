@@ -8,10 +8,12 @@ import { useUIStore } from '@/stores/ui.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const props = defineProps<{
 	name: string;
@@ -26,14 +28,17 @@ const close = () => {
 
 const startNewSession = async () => {
 	if ('errorHelp' in props.data.context) {
-		await assistantStore.initErrorHelper(props.data.context.errorHelp);
+		await assistantStore.initErrorHelper(props.data.context.errorHelp, expressionResolveCtx.value);
 		assistantStore.trackUserOpenedAssistant({
 			source: 'error',
 			task: 'error',
 			has_existing_session: true,
 		});
 	} else if ('credHelp' in props.data.context) {
-		await assistantStore.initCredHelp(props.data.context.credHelp.credType);
+		await assistantStore.initCredHelp(
+			props.data.context.credHelp.credType,
+			expressionResolveCtx.value,
+		);
 	}
 	close();
 };

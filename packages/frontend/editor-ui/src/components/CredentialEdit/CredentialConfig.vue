@@ -33,6 +33,7 @@ import OauthButton from './OauthButton.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
 import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 type Props = {
 	mode: string;
@@ -75,6 +76,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -214,7 +216,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initCredHelp(props.credentialType);
+	await assistantStore.initCredHelp(props.credentialType, expressionResolveCtx.value);
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {

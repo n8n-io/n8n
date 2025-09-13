@@ -28,7 +28,6 @@ import {
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
-	TARGET_NODE_PARAMETER_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -41,6 +40,7 @@ import {
 	expressionWithFirstItem,
 	getDefaultArgs,
 	getDisplayType,
+	getExpressionResolveContextWithFallback,
 	hasNoParams,
 	hasRequiredArgs,
 	insertDefaultArgs,
@@ -57,13 +57,13 @@ import {
 } from './utils';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 /**
  * Resolution-based completions offered according to datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
-	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const expressionResolveCtx = getExpressionResolveContextWithFallback(context);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -75,7 +75,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	let options: Completion[] = [];
 
-	const isCredential = isCredentialsModalOpen();
+	const isCredential = isCredentialsModalOpen(expressionResolveCtx);
 
 	if (base === 'DateTime') {
 		options = luxonStaticOptions().map(stripExcessParens(context));
@@ -89,8 +89,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = secretProvidersOptions();
 	} else {
 		const resolved = attempt(
-			(): Resolved =>
-				resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext?.nodeName),
+			(): Resolved => resolveAutocompleteExpression(`={{ ${base} }}`, expressionResolveCtx),
 			(error) => {
 				if (!isPairedItemIntermediateNodesError(error)) {
 					return null;
@@ -100,7 +99,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 				return attempt(() =>
 					resolveAutocompleteExpression(
 						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-						targetNodeParameterContext?.nodeName,
+						expressionResolveCtx,
 					),
 				);
 			},
@@ -109,7 +108,10 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		if (resolved === null) return null;
 
 		options = attempt(
-			() => datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context)),
+			() =>
+				datatypeOptions({ resolved, base, tail }, expressionResolveCtx).map(
+					stripExcessParens(context),
+				),
 			() => [],
 		);
 	}
@@ -123,7 +125,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = explicitDataTypeOptions(word.text, expressionResolveCtx);
 		from = word.to;
 	}
 
@@ -143,26 +145,29 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 function explicitDataTypeOptions(
 	expression: string,
-	targetNodeParameterContext?: TargetNodeParameterContext,
+	ctx: ExpressionLocalResolveContext,
 ): Completion[] {
 	return attempt(
 		() => {
-			const resolved = resolveAutocompleteExpression(
-				`={{ ${expression} }}`,
-				targetNodeParameterContext?.nodeName,
+			const resolved = resolveAutocompleteExpression(`={{ ${expression} }}`, ctx);
+			return datatypeOptions(
+				{
+					resolved,
+					base: expression,
+					tail: '',
+					transformLabel: (label) => '.' + label,
+				},
+				ctx,
 			);
-			return datatypeOptions({
-				resolved,
-				base: expression,
-				tail: '',
-				transformLabel: (label) => '.' + label,
-			});
 		},
 		() => [],
 	);
 }
 
-function datatypeOptions(input: AutocompleteInput): Completion[] {
+function datatypeOptions(
+	input: AutocompleteInput,
+	ctx: ExpressionLocalResolveContext,
+): Completion[] {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -198,7 +203,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	}
 
 	if (typeof resolved === 'object') {
-		return objectOptions(input as AutocompleteInput<IDataObject>);
+		return objectOptions(input as AutocompleteInput<IDataObject>, ctx);
 	}
 
 	return [];
@@ -337,7 +342,10 @@ const createCompletionOption = ({
 	return option;
 };
 
-const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const customObjectOptions = (
+	input: AutocompleteInput<IDataObject>,
+	ctx: ExpressionLocalResolveContext,
+): Completion[] => {
 	const { base, resolved } = input;
 
 	if (!resolved) return [];
@@ -349,11 +357,11 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return inputOptions(base);
+		return inputOptions(base, ctx);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return nodeRefOptions(base);
+		return nodeRefOptions(base, ctx);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -365,11 +373,14 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	return [];
 };
 
-const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const objectOptions = (
+	input: AutocompleteInput<IDataObject>,
+	ctx: ExpressionLocalResolveContext,
+): Completion[] => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
-	if (isSplitInBatchesAbsent()) SKIP.add('context');
+	if (isSplitInBatchesAbsent(ctx)) SKIP.add('context');
 
 	let rawKeys = Object.keys(resolved);
 
@@ -378,7 +389,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = customObjectOptions(input);
+	const customOptions = customObjectOptions(input, ctx);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -866,7 +877,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = (base: string) => {
+export const nodeRefOptions = (base: string, ctx: ExpressionLocalResolveContext) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -957,14 +968,14 @@ export const nodeRefOptions = (base: string) => {
 
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base, ctx)))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		sections: {},
 		recommended: ['item'],
 	});
 };
 
-export const inputOptions = (base: string) => {
+export const inputOptions = (base: string, ctx: ExpressionLocalResolveContext) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1029,7 +1040,7 @@ export const inputOptions = (base: string) => {
 
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base, ctx)))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		recommended: ['item'],
 		sections: {},

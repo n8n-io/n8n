@@ -1,12 +1,5 @@
-import {
-	CREDENTIAL_EDIT_MODAL_KEY,
-	HTTP_REQUEST_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { HTTP_REQUEST_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useUIStore } from '@/stores/ui.store';
 import {
 	insertCompletionText,
 	type Completion,
@@ -17,9 +10,11 @@ import {
 import type { EditorView } from '@codemirror/view';
 import { EditorSelection, type TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
-import type { DocMetadata } from 'n8n-workflow';
+import type { DocMetadata, Workflow } from 'n8n-workflow';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import type { TargetNodeParameterContext } from '@/Interface';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { TARGET_NODE_PARAMETER_FACET } from './constants';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -145,19 +140,19 @@ export const isAllowedInDotNotation = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export function receivesNoBinaryData(contextNodeName?: string) {
+export function receivesNoBinaryData(context: ExpressionLocalResolveContext) {
 	try {
-		return resolveAutocompleteExpression('={{ $binary }}', contextNodeName)?.data === undefined;
+		return resolveAutocompleteExpression('={{ $binary }}', context)?.data === undefined;
 	} catch {
 		return true;
 	}
 }
 
-export function hasNoParams(toResolve: string, contextNodeName?: string) {
+export function hasNoParams(toResolve: string, context: ExpressionLocalResolveContext) {
 	let params;
 
 	try {
-		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, context);
 	} catch {
 		return true;
 	}
@@ -169,75 +164,51 @@ export function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
-	const ndvStore = useNDVStore();
-	const inputData =
-		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
-			? {
-					targetItem: ndvStore.expressionTargetItem ?? undefined,
-					inputNodeName: ndvStore.ndvInputNodeName,
-					inputRunIndex: ndvStore.ndvInputRunIndex,
-					inputBranchIndex: ndvStore.ndvInputBranchIndex,
-				}
-			: {};
-	return resolveParameter(expression, {
-		...inputData,
-		contextNodeName,
-	});
+export function resolveAutocompleteExpression(
+	expression: string,
+	context: ExpressionLocalResolveContext,
+) {
+	return resolveParameter(expression, context);
 }
 
 // ----------------------------------
 //        state-based utils
 // ----------------------------------
 
-export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
+// TODO: make the condition reliable, possibly by refactoring the context to be a union type
+export const isCredentialsModalOpen = (ctx: ExpressionLocalResolveContext) => !ctx.nodeName;
 
-export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodeParameterContext) => {
-	let nodeType: string | undefined;
-	let path: string;
-	if (targetNodeParameterContext) {
-		nodeType = targetNodeParameterContext.nodeName;
-		path = targetNodeParameterContext.parameterPath;
-	} else {
-		const ndvStore = useNDVStore();
-		nodeType = ndvStore.activeNode?.type;
-		path = ndvStore.focusedInputPath;
-	}
-
-	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
+export const isInHttpNodePagination = (ctx: ExpressionLocalResolveContext): boolean => {
+	return !!(
+		ctx.nodeName &&
+		ctx.parameterPath?.startsWith('parameters.options.pagination') &&
+		ctx.workflow.getNode(ctx.nodeName)?.type === HTTP_REQUEST_NODE_TYPE
+	);
 };
 
-export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
-	(targetNodeParameterContext !== undefined &&
-		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
-	useNDVStore().activeNode?.name !== undefined;
+export const hasActiveNode = (ctx: ExpressionLocalResolveContext) => !!ctx.nodeName;
 
-export const isSplitInBatchesAbsent = () =>
-	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+export const isSplitInBatchesAbsent = (ctx: ExpressionLocalResolveContext) =>
+	Object.values(ctx.workflow.nodes).some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
-export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
-	const activeNode =
-		targetNodeParameterContext === undefined
-			? useNDVStore().activeNode
-			: useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName);
+export function autocompletableNodeNames(ctx: ExpressionLocalResolveContext) {
+	const activeNode = ctx.nodeName && ctx.workflow.getNode(ctx.nodeName);
 
 	if (!activeNode) return [];
 
 	const activeNodeName = activeNode.name;
 
-	const workflowObject = useWorkflowsStore().workflowObject;
-	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+	const nonMainChildren = ctx.workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
-		return nonMainChildren.map(getPreviousNodes).flat();
+		return nonMainChildren.map((child) => getPreviousNodes(child, ctx.workflow)).flat();
 	}
 
-	return getPreviousNodes(activeNodeName);
+	return getPreviousNodes(activeNodeName, ctx.workflow);
 }
 
-export function getPreviousNodes(nodeName: string) {
-	const workflowObject = useWorkflowsStore().workflowObject;
+export function getPreviousNodes(nodeName: string, workflowObject: Workflow) {
 	return workflowObject
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
@@ -430,4 +401,16 @@ export function attempt<T, TDefault>(
 		}
 		return null;
 	}
+}
+
+export function getExpressionResolveContextWithFallback(context: CompletionContext) {
+	const facet = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+
+	if (process.env.NODE_ENV === 'development' && !facet) {
+		throw Error(
+			'Expression resolve context is missing. Make sure to include TARGET_NODE_PARAMETER_FACET.of(...) when creating the editor.',
+		);
+	}
+
+	return facet ?? useExpressionResolveCtx().value;
 }

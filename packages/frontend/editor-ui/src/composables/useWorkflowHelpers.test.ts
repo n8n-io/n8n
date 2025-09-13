@@ -54,8 +54,10 @@ describe('useWorkflowHelpers', () => {
 				infoMessage: '',
 			};
 			const workflowHelpers = useWorkflowHelpers();
-			const resolvedParameters =
-				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeParameters,
+				createTestExpressionLocalResolveContext(),
+			);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
 		});
 
@@ -78,8 +80,10 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers();
-			const resolvedParameters =
-				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeParameters,
+				createTestExpressionLocalResolveContext(),
+			);
 			expect(resolvedParameters).toHaveProperty('assignments');
 			const assignments = resolvedParameters.assignments as AssignmentCollectionValue;
 			expect(assignments).toHaveProperty('assignments');
@@ -121,6 +125,7 @@ describe('useWorkflowHelpers', () => {
 			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
+				createTestExpressionLocalResolveContext(),
 			) as typeof nodeParameters;
 			expect(resolvedParameters).toHaveProperty('rules');
 			expect(resolvedParameters.rules).toHaveProperty('values');
@@ -150,6 +155,7 @@ describe('useWorkflowHelpers', () => {
 			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
+				createTestExpressionLocalResolveContext(),
 			) as typeof nodeParameters;
 			expect(resolvedParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
 			expect(resolvedParameters.sheetName.value).toHaveProperty('resolvedExpressionValue');
@@ -189,6 +195,7 @@ describe('useWorkflowHelpers', () => {
 			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
+				createTestExpressionLocalResolveContext(),
 			) as typeof nodeParameters;
 			expect(resolvedParameters.filtersUI.values[0].lookupValue).toHaveProperty(
 				'resolvedExpressionValue',
@@ -1083,7 +1090,6 @@ describe(resolveParameter, () => {
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
 				{
-					localResolve: true,
 					envVars: {
 						foo: 'hello!',
 					},
@@ -1095,6 +1101,7 @@ describe(resolveParameter, () => {
 					}),
 					execution: null,
 					nodeName: 'n0',
+					inputNode: null,
 				},
 			);
 
@@ -1134,7 +1141,7 @@ describe(resolveParameter, () => {
 						},
 					}),
 					nodeName: 'n1',
-					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
+					inputNode: { nodeName: 'n0', outputIndex: 0, runIndex: 0, itemIndex: 0 },
 				}),
 			);
 

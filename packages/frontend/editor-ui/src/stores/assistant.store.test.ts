@@ -20,6 +20,7 @@ import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { createTestExpressionLocalResolveContext } from '@/__tests__/mocks';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -377,7 +378,7 @@ describe('AI Assistant store', () => {
 			},
 		};
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper(context, createTestExpressionLocalResolveContext());
 		expect(apiSpy).toHaveBeenCalled();
 	});
 
@@ -407,7 +408,7 @@ describe('AI Assistant store', () => {
 			});
 		});
 
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper(context, createTestExpressionLocalResolveContext());
 		expect(apiSpy).toHaveBeenCalled();
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
@@ -483,13 +484,13 @@ describe('AI Assistant store', () => {
 			onDone();
 		});
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('hello', createTestExpressionLocalResolveContext());
 
 		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(assistantStore.chatMessages[0].type).toBe('text');
 		expect(assistantStore.chatMessages[1].type).toBe('text');
 
-		await assistantStore.sendMessage({ text: 'test' });
+		await assistantStore.sendMessage({ text: 'test' }, createTestExpressionLocalResolveContext());
 
 		expect(assistantStore.chatMessages.length).toBe(4);
 		expect(assistantStore.chatMessages[0].type).toBe('text');

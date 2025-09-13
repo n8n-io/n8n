@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import type { Ref } from 'vue';
+import { type Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -31,6 +31,7 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
@@ -40,6 +41,7 @@ export function useNodeSettingsParameters() {
 	const workflowHelpers = useWorkflowHelpers();
 	const canvasOperations = useCanvasOperations();
 	const externalHooks = useExternalHooks();
+	const expressionResolveCtx = useExpressionResolveCtx();
 
 	function updateNodeParameter(
 		nodeValues: Ref<INodeParameters>,
@@ -236,6 +238,7 @@ export function useNodeSettingsParameters() {
 					try {
 						nodeParams[key] = workflowHelpers.resolveExpression(
 							value,
+							expressionResolveCtx.value,
 							nodeParams,
 						) as NodeParameterValue;
 					} catch {

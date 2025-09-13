@@ -53,7 +53,7 @@ import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import { languageFacet } from '../plugins/codemirror/format';
 import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
-import type { TargetNodeParameterContext } from '@/Interface';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 
 export type CodeEditorLanguageParamsMap = {
@@ -70,7 +70,6 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	language,
 	languageParams,
 	placeholder,
-	targetNodeParameterContext = undefined,
 	extensions = [],
 	isReadOnly = false,
 	theme = {},
@@ -81,7 +80,6 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{
@@ -93,6 +91,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	id?: MaybeRefOrGetter<string>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
+	const expressionResolveCtx = useExpressionResolveCtx();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
@@ -111,12 +110,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
-	const { createWorker: createTsWorker } = useTypescript(
-		editor,
-		mode,
-		id,
-		targetNodeParameterContext,
-	);
+	const { createWorker: createTsWorker } = useTypescript(editor, mode, id, expressionResolveCtx);
 
 	function getInitialLanguageExtensions(lang: CodeNodeLanguageOption): Extension[] {
 		switch (lang) {

@@ -3,6 +3,9 @@ import '@/polyfills';
 
 import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, provide } from 'vue';
+import { useRoute } from 'vue-router';
+import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -12,6 +15,7 @@ import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import {
 	APP_MODALS_ELEMENT_ID,
 	CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID,
+	ExpressionLocalResolveContextSymbol,
 	HIRING_BANNER,
 	VIEWS,
 } from '@/constants';
@@ -21,15 +25,13 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import LoadingView from '@/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -39,6 +41,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const { setAppZIndexes } = useStyles();
 
@@ -109,6 +112,10 @@ watch(
 	},
 	{ immediate: true },
 );
+
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+
+// Dev HMR for i18n is imported in main.ts before app mount
 </script>
 
 <template>

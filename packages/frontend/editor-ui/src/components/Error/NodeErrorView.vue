@@ -27,6 +27,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { N8nIconButton } from '@n8n/design-system';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -49,6 +50,7 @@ const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const workflowId = computed(() => workflowsStore.workflowId);
 const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
@@ -440,7 +442,7 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorHelp);
+	await assistantStore.initErrorHelper(errorHelp, expressionResolveCtx.value);
 	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',

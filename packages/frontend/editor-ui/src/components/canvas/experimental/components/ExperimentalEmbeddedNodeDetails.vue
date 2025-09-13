@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol, IsInExperimentalNdvSymbol } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -61,7 +61,9 @@ const subTitle = computed(() =>
 
 const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
 
-const expressionResolveCtx = useExpressionResolveCtx(node);
+const expressionResolveCtx = useExpressionResolveCtx({
+	nodeName: computed(() => node.value?.name),
+});
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -74,6 +76,7 @@ function handleOpenNdv() {
 }
 
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+provide(IsInExperimentalNdvSymbol, true);
 
 watchOnce(isVisible, (visible) => {
 	isOnceVisible.value = isOnceVisible.value || visible;
@@ -100,7 +103,7 @@ watchOnce(isVisible, (visible) => {
 			:class="$style.settingsView"
 			:is-read-only="isReadOnly"
 			:sub-title="subTitle"
-			:input-node-name="expressionResolveCtx?.inputNode?.name"
+			:input-node-name="expressionResolveCtx?.inputNode?.nodeName"
 			is-embedded-in-canvas
 			@dblclick-header="handleOpenNdv"
 		>

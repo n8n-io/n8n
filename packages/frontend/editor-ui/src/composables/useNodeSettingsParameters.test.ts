@@ -12,6 +12,12 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
+import { computed } from 'vue';
+import { createTestExpressionLocalResolveContext } from '@/__tests__/mocks';
+
+vi.mock('@/components/canvas/experimental/composables/useExpressionResolveCtx', () => ({
+	useExpressionResolveCtx: vi.fn(() => computed(() => createTestExpressionLocalResolveContext())),
+}));
 
 describe('useNodeSettingsParameters', () => {
 	beforeEach(() => {

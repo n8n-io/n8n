@@ -74,7 +74,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		'table',
 	);
 	const focusedMappableInput = ref('');
-	const focusedInputPath = ref('');
 	const mappingTelemetry = ref<Record<string, string | number | boolean>>({});
 	const hoveringItem = ref<null | TargetItem>(null);
 	const expressionOutputItemIndex = ref(0);
@@ -380,14 +379,9 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		}
 	};
 
-	const setFocusedInputPath = (path: string) => {
-		focusedInputPath.value = path;
-	};
-
 	return {
 		activeNode,
 		ndvInputData,
-		ndvInputNodeName,
 		ndvInputDataWithPinnedData,
 		hasInputData,
 		inputPanelDisplayMode,
@@ -399,8 +393,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		outputPanelEditMode,
 		draggableStickyPos,
 		ndvNodeInputNumber,
-		ndvInputRunIndex,
-		ndvInputBranchIndex,
 		isInputParentOfActiveNode,
 		getHoveringItem,
 		expressionTargetItem,
@@ -411,7 +403,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		isMappingOnboarded,
 		pushRef,
 		activeNodeName,
-		focusedInputPath,
 		input,
 		output,
 		hoveringItem,
@@ -448,6 +439,5 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		setAutocompleteOnboarded,
 		setHighlightDraggables,
 		updateNodeParameterIssues,
-		setFocusedInputPath,
 	};
 });

@@ -22,21 +22,18 @@ import {
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
-import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
-	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
-	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -80,7 +77,6 @@ const {
 	editorRef: cssEditor,
 	editorValue,
 	extensions,
-	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},

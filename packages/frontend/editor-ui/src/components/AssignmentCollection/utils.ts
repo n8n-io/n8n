@@ -2,6 +2,7 @@ import isObject from 'lodash/isObject';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
@@ -12,9 +13,9 @@ export function inferAssignmentType(value: unknown): string {
 	return 'string';
 }
 
-export function typeFromExpression(expression: string): string {
+export function typeFromExpression(expression: string, ctx: ExpressionLocalResolveContext): string {
 	try {
-		const resolved = resolveParameter(`=${expression}`);
+		const resolved = resolveParameter(`=${expression}`, ctx);
 		return inferAssignmentType(resolved);
 	} catch (error) {
 		return 'string';

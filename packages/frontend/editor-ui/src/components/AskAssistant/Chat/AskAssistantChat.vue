@@ -6,6 +6,7 @@ import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/Ask
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useI18n } from '@n8n/i18n';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const emit = defineEmits<{
 	close: [];
@@ -16,6 +17,7 @@ const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const builderStore = useBuilderStore();
 const i18n = useI18n();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -27,9 +29,9 @@ const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
 	if (!assistantStore.currentSessionId) {
-		await assistantStore.initSupportChat(content);
+		await assistantStore.initSupportChat(content, expressionResolveCtx.value);
 	} else {
-		await assistantStore.sendMessage({ text: content, quickReplyType });
+		await assistantStore.sendMessage({ text: content, quickReplyType }, expressionResolveCtx.value);
 	}
 	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(

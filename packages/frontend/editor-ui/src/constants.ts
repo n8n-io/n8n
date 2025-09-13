@@ -994,9 +994,10 @@ export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
 export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('PopOutWindow');
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
-	ComputedRef<ExpressionLocalResolveContext | undefined>
+	ComputedRef<ExpressionLocalResolveContext>
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
+export const IsInExperimentalNdvSymbol: InjectionKey<boolean> = Symbol('IsInExperimentalNdv');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

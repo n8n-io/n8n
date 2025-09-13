@@ -23,6 +23,7 @@ import {
 	resolveCondition,
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 interface Props {
 	path: string;
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { debounce } = useDebounce();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -70,7 +72,11 @@ const isEmpty = computed(() => {
 });
 
 const conditionResult = computed(() =>
-	resolveCondition({ condition: condition.value, options: props.options }),
+	resolveCondition({
+		condition: condition.value,
+		options: props.options,
+		ctx: expressionResolveCtx.value,
+	}),
 );
 
 const suggestedType = computed(() => {

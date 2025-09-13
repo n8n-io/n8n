@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
+import {
+	FIELDS_SECTION,
+	TARGET_NODE_PARAMETER_FACET,
+} from '@/plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -8,6 +11,8 @@ import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
 import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
 
@@ -25,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
@@ -53,16 +59,18 @@ const tip = computed<TipId>(() => {
 	return 'default';
 });
 
-function getCompletionsWithDot(): readonly Completion[] {
-	if (!props.editorState || !props.selection || !props.unresolvedExpression) {
+function getCompletionsWithDot(
+	range: SelectionRange,
+	unresolved: string,
+	ctx: ExpressionLocalResolveContext,
+): readonly Completion[] {
+	if (!props.editorState || !range || !unresolved) {
 		return [];
 	}
 
-	const cursorAfterDot = props.selection.from + 1;
+	const cursorAfterDot = range.from + 1;
 	const docWithDot =
-		props.editorState.sliceDoc(0, props.selection.from) +
-		'.' +
-		props.editorState.sliceDoc(props.selection.to);
+		props.editorState.sliceDoc(0, range.from) + '.' + props.editorState.sliceDoc(range.to);
 	const selectionWithDot = EditorSelection.create([EditorSelection.cursor(cursorAfterDot)]);
 
 	if (cursorAfterDot >= docWithDot.length) {
@@ -72,6 +80,7 @@ function getCompletionsWithDot(): readonly Completion[] {
 	const stateWithDot = EditorState.create({
 		doc: docWithDot,
 		selection: selectionWithDot,
+		extensions: [TARGET_NODE_PARAMETER_FACET.of(ctx)],
 	});
 
 	const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
@@ -92,9 +101,9 @@ watch(
 );
 
 watchDebounced(
-	[() => props.selection, () => props.unresolvedExpression],
-	() => {
-		const completions = getCompletionsWithDot();
+	[() => props.selection, () => props.unresolvedExpression, expressionResolveCtx],
+	([range, unresolved, ctx]) => {
+		const completions = getCompletionsWithDot(range, unresolved, ctx);
 		canAddDotToExpression.value = completions.length > 0;
 		resolvedExpressionHasFields.value = completions.some(
 			({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,

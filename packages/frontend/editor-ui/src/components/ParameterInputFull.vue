@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
+import { computed, type ComputedRef, provide, ref, useTemplateRef, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -28,7 +28,7 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { inject } from 'vue';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
 type Props = {
@@ -74,16 +74,12 @@ const wrapperHovered = ref(false);
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
-const activeNode = computed(() => {
-	const ctx = expressionLocalResolveCtx?.value;
-
-	if (ctx) {
-		return ctx.workflow.getNode(ctx.nodeName);
-	}
-
-	return ndvStore.activeNode;
-});
+const expressionResolveCtx = useExpressionResolveCtx({ parameterPath: props.path });
+const activeNode = computed(() =>
+	expressionResolveCtx.value.nodeName
+		? expressionResolveCtx.value.workflow.getNode(expressionResolveCtx.value.nodeName)
+		: null,
+);
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {
@@ -133,7 +129,6 @@ function onFocus() {
 	if (!props.parameter.noDataExpression) {
 		ndvStore.setMappableNDVInputFocus(props.parameter.displayName);
 	}
-	ndvStore.setFocusedInputPath(props.path ?? '');
 }
 
 function onBlur() {
@@ -144,7 +139,6 @@ function onBlur() {
 	) {
 		ndvStore.setMappableNDVInputFocus('');
 	}
-	ndvStore.setFocusedInputPath('');
 	emit('blur');
 }
 
@@ -314,6 +308,8 @@ function removeOverride(clearField = false) {
 		parameterInputWrapper.value?.selectInput();
 	}, 0);
 }
+
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>

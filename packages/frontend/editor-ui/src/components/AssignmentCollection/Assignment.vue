@@ -5,7 +5,6 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useResolvedExpression } from '@/composables/useResolvedExpression';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -33,7 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = useNDVStore();
-const environmentsStore = useEnvironmentsStore();
 
 const assignmentTypeToNodeProperty = (
 	type: string,
@@ -78,13 +76,8 @@ const valueParameter = computed<INodeProperties>(() => {
 
 const value = computed(() => assignment.value.value);
 
-const resolvedAdditionalExpressionData = computed(() => {
-	return { $vars: environmentsStore.variablesAsObject };
-});
-
 const { resolvedExpressionString, isExpression } = useResolvedExpression({
 	expression: value,
-	additionalData: resolvedAdditionalExpressionData,
 });
 
 const hint = computed(() => resolvedExpressionString.value);

@@ -23,6 +23,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const props = withDefaults(
 	defineProps<{
@@ -43,6 +44,7 @@ const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers();
@@ -127,6 +129,7 @@ const webhookHttpMethod = computed(() => {
 	const httpMethod = workflowHelpers.getWebhookExpressionValue(
 		nodeType.value.webhooks[0],
 		'httpMethod',
+		expressionResolveCtx.value,
 		false,
 	);
 
@@ -142,7 +145,11 @@ const webhookTestUrl = computed(() => {
 		return undefined;
 	}
 
-	return workflowHelpers.getWebhookUrl(nodeType.value.webhooks[0], node.value, 'test');
+	return workflowHelpers.getWebhookUrl(
+		nodeType.value.webhooks[0],
+		expressionResolveCtx.value,
+		'test',
+	);
 });
 
 const isWebhookBasedNode = computed(() => {

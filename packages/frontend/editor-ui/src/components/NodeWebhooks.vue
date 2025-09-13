@@ -14,6 +14,7 @@ import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const props = defineProps<{
 	node: INodeUi;
@@ -25,6 +26,7 @@ const workflowHelpers = useWorkflowHelpers();
 const toast = useToast();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const expressionResolveCtx = useExpressionResolveCtx();
 
 const isMinimized = ref(
 	props.nodeTypeDescription &&
@@ -50,7 +52,11 @@ const urlOptions = computed(() => [
 const visibleWebhookUrls = computed(() => {
 	return webhooksNode.value.filter((webhook) => {
 		if (typeof webhook.ndvHideUrl === 'string') {
-			return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+			return !workflowHelpers.getWebhookExpressionValue(
+				webhook,
+				'ndvHideUrl',
+				expressionResolveCtx.value,
+			);
 		}
 
 		return !webhook.ndvHideUrl;
@@ -140,7 +146,7 @@ function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 	if (props.node) {
 		return workflowHelpers.getWebhookUrl(
 			webhookData,
-			props.node,
+			expressionResolveCtx.value,
 			isProductionOnly.value ? 'production' : showUrlFor.value,
 		);
 	}
@@ -149,21 +155,35 @@ function getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 
 function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
 	try {
-		const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+		const method = workflowHelpers.getWebhookExpressionValue(
+			webhook,
+			'httpMethod',
+			expressionResolveCtx.value,
+			false,
+		);
 		if (Array.isArray(method) && method.length !== 1) {
 			return false;
 		}
 	} catch (error) {}
 
 	if (typeof webhook.ndvHideMethod === 'string') {
-		return !workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
+		return !workflowHelpers.getWebhookExpressionValue(
+			webhook,
+			'ndvHideMethod',
+			expressionResolveCtx.value,
+		);
 	}
 
 	return !webhook.ndvHideMethod;
 }
 
 function getWebhookHttpMethod(webhook: IWebhookDescription): string {
-	const method = workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+	const method = workflowHelpers.getWebhookExpressionValue(
+		webhook,
+		'httpMethod',
+		expressionResolveCtx.value,
+		false,
+	);
 	if (Array.isArray(method)) {
 		return method[0];
 	}

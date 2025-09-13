@@ -14,6 +14,7 @@ import {
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
 import { DateTime } from 'luxon';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
@@ -81,14 +82,17 @@ export const resolveCondition = ({
 	condition,
 	options,
 	index = 0,
+	ctx,
 }: {
 	condition: FilterConditionValue;
 	options: FilterOptionsValue;
 	index?: number;
+	ctx: ExpressionLocalResolveContext;
 }): ConditionResult => {
 	try {
 		const resolved = resolveParameter(
 			condition as unknown as NodeParameterValue,
+			ctx,
 		) as FilterConditionValue;
 
 		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {

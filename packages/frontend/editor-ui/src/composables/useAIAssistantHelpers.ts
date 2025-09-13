@@ -18,6 +18,7 @@ import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG];
 const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];
@@ -94,9 +95,14 @@ export const useAIAssistantHelpers = () => {
 	 * - Extracts expressions from the parameters and resolves them
 	 * @param node original node object
 	 * @param propsToRemove properties to remove from the node object
+	 * @param expressionResolveCtx
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		expressionResolveCtx: ExpressionLocalResolveContext,
+	): INode {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
@@ -104,6 +110,7 @@ export const useAIAssistantHelpers = () => {
 		});
 		const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
 			nodeForLLM.parameters,
+			expressionResolveCtx,
 		);
 		nodeForLLM.parameters = resolvedParameters;
 		return nodeForLLM;

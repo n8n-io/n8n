@@ -1,14 +1,14 @@
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import * as ndvStore from '@/stores/ndv.store';
+import {
+	createTestExpressionLocalResolveContext,
+	createTestNode,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
-import type { MockInstance } from 'vitest';
 import { autocompletableNodeNames, expressionWithFirstItem, stripExcessParens } from './utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -105,13 +105,12 @@ describe('completion utils', () => {
 				nodes,
 				connections,
 			});
+			const ctx = createTestExpressionLocalResolveContext({
+				workflow: workflowObject,
+				nodeName: 'Node 3',
+			});
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
-
-			expect(autocompletableNodeNames()).toEqual(['Node 2', 'Node 1']);
+			expect(autocompletableNodeNames(ctx)).toEqual(['Node 2', 'Node 1']);
 		});
 
 		it('should work for AI tool nodes', () => {
@@ -136,14 +135,12 @@ describe('completion utils', () => {
 				nodes,
 				connections,
 			});
+			const ctx = createTestExpressionLocalResolveContext({
+				workflow: workflowObject,
+				nodeName: 'Tool',
+			});
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
-
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
-
-			expect(autocompletableNodeNames()).toEqual(['Normal Node']);
+			expect(autocompletableNodeNames(ctx)).toEqual(['Normal Node']);
 		});
 	});
 

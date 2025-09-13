@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
-import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, watch, toRef, useTemplateRef, provide } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -23,10 +23,9 @@ import {
 	HTML_NODE_TYPE,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
-import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
+import type { INodeUi, ResizeData } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/composables/useExecutionData';
@@ -39,6 +38,8 @@ import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/compo
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/types';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { ExpressionLocalResolveContextSymbol, IsInExperimentalNdvSymbol } from '@/constants';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -64,7 +65,6 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
-const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
@@ -118,6 +118,10 @@ const node = computed<INodeUi | undefined>(() => {
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
 		? workflowsStore.allNodes.find((n) => n.id === selected.id)
 		: undefined;
+});
+const expressionResolveCtx = useExpressionResolveCtx({
+	nodeName: computed(() => node.value?.name),
+	parameterPath: computed(() => resolvedParameter.value?.parameterPath),
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
@@ -194,20 +198,6 @@ const shouldCaptureForPosthog = computed(
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
 
-const resolvedAdditionalExpressionData = computed(() => {
-	return {
-		$vars: environmentsStore.variablesAsObject,
-	};
-});
-
-const targetNodeParameterContext = computed<TargetNodeParameterContext | undefined>(() => {
-	if (!resolvedParameter.value) return undefined;
-	return {
-		nodeName: resolvedParameter.value.node.name,
-		parameterPath: resolvedParameter.value.parameterPath,
-	};
-});
-
 const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
@@ -226,7 +216,6 @@ const emptySubtitle = computed(() =>
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
-	additionalData: resolvedAdditionalExpressionData,
 	stringifyObject:
 		resolvedParameter.value && resolvedParameter.value.parameter.type !== 'multiOptions',
 });
@@ -419,6 +408,9 @@ function onOpenNdv() {
 		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
+
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+provide(IsInExperimentalNdvSymbol, true);
 </script>
 
 <template>
@@ -516,7 +508,6 @@ function onOpenNdv() {
 								:is-read-only="isReadOnly"
 								:path="resolvedParameter.parameterPath"
 								data-test-id="expression-modal-input"
-								:target-node-parameter-context="targetNodeParameterContext"
 								@change="onInputChange($event.value)"
 							/>
 							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
@@ -530,7 +521,6 @@ function onOpenNdv() {
 									:default-value="resolvedParameter.parameter.default"
 									:language="editorLanguage"
 									:is-read-only="isReadOnly"
-									:target-node-parameter-context="targetNodeParameterContext"
 									fill-parent
 									:disable-ask-ai="true"
 									@update:model-value="onInputChange" />
@@ -543,7 +533,6 @@ function onOpenNdv() {
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="onInputChange" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
@@ -552,7 +541,6 @@ function onOpenNdv() {
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="onInputChange" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
@@ -562,7 +550,6 @@ function onOpenNdv() {
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
 									@update:model-value="onInputChange" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"

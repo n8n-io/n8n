@@ -827,11 +827,6 @@ export interface TargetItem {
 	outputIndex: number;
 }
 
-export type TargetNodeParameterContext = {
-	nodeName: string;
-	parameterPath: string;
-};
-
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
 }

@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import type { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -7,6 +7,12 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import {
+	createTestExpressionLocalResolveContext,
+	createTestNode,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 
@@ -25,6 +31,7 @@ beforeEach(() => {
 			type: 'test',
 			typeVersion: 1,
 		},
+		input: { data: { isEmpty: true } },
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
 		ndvInputDataWithPinnedData: [],
@@ -65,6 +72,18 @@ vi.mock('@/stores/settings.store', () => {
 
 const renderComponent = createComponentRenderer(ParameterInputFull, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[ExpressionLocalResolveContextSymbol]: computed(() =>
+				createTestExpressionLocalResolveContext({
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'test-node' })],
+					}),
+					nodeName: 'test-node',
+				}),
+			),
+		},
+	},
 	props: {
 		path: 'myParam',
 		value: '',
