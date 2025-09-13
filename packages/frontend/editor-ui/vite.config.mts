@@ -161,6 +161,17 @@ const plugins: UserConfig['plugins'] = [
 
 			server.watcher.on('all', (_event, file) => notify(file));
 		},
+		handleHotUpdate(ctx) {
+			const { file, server } = ctx;
+			// Only intercept locale JSON changes
+			if (!file.endsWith('.json') || !file.includes(`${pathSep}locales${pathSep}`)) return;
+			const match = file.match(new RegExp(`${pathSep}locales${pathSep}([^${pathSep}]+)\\.json$`));
+			const locale = match?.[1];
+			// Send custom event consumers listen to
+			server.ws.send({ type: 'custom', event: 'n8n:locale-update', data: { locales: locale ? [locale] : [], file } });
+			// Swallow default HMR for this file to prevent full page reloads
+			return [];
+		},
 	},
 ];
 
