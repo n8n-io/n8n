@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { createI18n } from 'vue-i18n';
 import { ref } from 'vue';
+import { createI18n } from 'vue-i18n';
 
 import type { BaseTextKey, INodeTranslationHeaders } from './types';
 import {
