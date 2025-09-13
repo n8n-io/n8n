@@ -40,7 +40,7 @@ jobs:
           gh release create "$LATEST_RELEASE" \
             --repo "$GITHUB_REPOSITORY" \
             --title "n8n-advanced Release $LATEST_RELEASE" \
-            --notes "Basiert auf n8n $LATEST_RELEASE mit custom enhancements" \
+            --notes "RELEASE OF $LATEST_RELEASE with custom enhancements" \
             --latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
