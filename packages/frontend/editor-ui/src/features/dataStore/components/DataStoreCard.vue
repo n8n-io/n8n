@@ -2,8 +2,9 @@
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 type Props = {
 	dataStore: DataStoreResource;
@@ -12,12 +13,15 @@ type Props = {
 };
 
 const i18n = useI18n();
+const dataStoreStore = useDataStoreStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: false,
 	showOwnershipBadge: false,
 });
+
+const isLoadingSize = ref<boolean>(false);
 
 const dataStoreRoute = computed(() => {
 	return {
@@ -27,6 +31,29 @@ const dataStoreRoute = computed(() => {
 			id: props.dataStore.id,
 		},
 	};
+});
+
+const getDataStoreSize = computed(() => {
+	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
+	return size;
+});
+
+const fetchSize = async () => {
+	if (isLoadingSize.value) return;
+
+	try {
+		isLoadingSize.value = true;
+		await dataStoreStore.fetchDataStoreSize();
+		console.log('Store dataStoreSizes after fetch:', dataStoreStore.dataStoreSizes);
+	} catch (error) {
+		console.log('Failed to fetch data store size:', error);
+	} finally {
+		isLoadingSize.value = false;
+	}
+};
+
+onMounted(() => {
+	void fetchSize();
 });
 </script>
 <template>
@@ -54,6 +81,23 @@ const dataStoreRoute = computed(() => {
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
+						<N8nText
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--size']]"
+							data-test-id="data-store-card-size"
+						>
+							<template v-if="isLoadingSize">
+								{{ i18n.baseText('dataStore.card.size', { interpolate: { size: '...' } }) }}
+							</template>
+							<template v-else>
+								{{
+									i18n.baseText('dataStore.card.size', {
+										interpolate: { size: getDataStoreSize },
+									})
+								}}
+							</template>
+						</N8nText>
 						<N8nText
 							size="small"
 							color="text-light"
@@ -143,7 +187,8 @@ const dataStoreRoute = computed(() => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--column-count {
+	.info-cell--column-count,
+	.info-cell--size {
 		display: none;
 	}
 }

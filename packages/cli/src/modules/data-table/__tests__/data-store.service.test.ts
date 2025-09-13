@@ -2673,7 +2673,7 @@ describe('dataStore', () => {
 
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
+				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
 
 			// ACT & ASSERT
 			await expect(
@@ -2699,7 +2699,7 @@ describe('dataStore', () => {
 			// Now mock the size check to be over limit
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
+				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
 
 			// ACT & ASSERT
 			await expect(
@@ -2728,7 +2728,7 @@ describe('dataStore', () => {
 
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
+				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
 
 			// ACT & ASSERT
 			await expect(

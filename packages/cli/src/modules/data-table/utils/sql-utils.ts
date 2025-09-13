@@ -293,3 +293,7 @@ export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	const { tablePrefix } = Container.get(GlobalConfig).database;
 	return `${tablePrefix}data_table_user_${dataStoreId}`;
 }
+
+export function toTableId(tableName: DataStoreUserTableName) {
+	return tableName.replace(/.*data_table_user_/, '');
+}
