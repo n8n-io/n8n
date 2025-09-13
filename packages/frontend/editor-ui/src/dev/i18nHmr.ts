@@ -3,6 +3,7 @@ import type { LocaleMessages } from '@n8n/i18n/types';
 import { locale as designLocale } from '@n8n/design-system';
 
 const hot = import.meta.hot;
+const DEFAULT_LOCALE = 'en';
 
 if (hot) {
 	// Eagerly import locale JSONs so this module becomes their HMR owner
@@ -12,9 +13,8 @@ if (hot) {
 	>;
 	const localePaths = Object.keys(localeModules);
 
-	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? 'en';
-	const apply = (lc: string, msgs: LocaleMessages) =>
-		updateLocaleMessages(lc, msgs as unknown as Record<string, unknown>);
+	const lcOf = (p: string) => p.match(/\/locales\/([^/]+)\.json$/)?.[1] ?? DEFAULT_LOCALE;
+	const apply = (lc: string, msgs: LocaleMessages) => updateLocaleMessages(lc, msgs);
 
 	// Seed all locales on initial load in dev so switching locales
 	// does not require component-level dynamic imports (avoids hard reload chains)
@@ -24,7 +24,7 @@ if (hot) {
 		if (msgs && lc) apply(lc, msgs);
 	}
 	const refresh = () => {
-		const current = (i18nInstance.global.locale.value as string) || 'en';
+		const current = (i18nInstance.global.locale.value as string) || DEFAULT_LOCALE;
 		i18n.clearCache();
 		setLanguage(current);
 		void designLocale.use(current);
@@ -43,7 +43,7 @@ if (hot) {
 
 	// 1) Apply fresh modules provided by Vite HMR
 	hot.accept(localePaths, (mods) => {
-		mods.forEach((mod, i) => apply(lcOf(localePaths[i] ?? 'en'), (mod as any)?.default ?? {}));
+		mods.forEach((mod, i) => apply(lcOf(localePaths[i] ?? DEFAULT_LOCALE), mod?.default ?? {}));
 		refresh();
 	});
 
@@ -59,7 +59,7 @@ if (hot) {
 		async (payload: { updates?: Array<{ path?: string; acceptedPath?: string }> }) => {
 			const updates = payload?.updates ?? [];
 			const files = updates
-				.map((u) => (u.path || u.acceptedPath || '') as string)
+				.map((u) => (u.path ?? u.acceptedPath ?? '') as string)
 				.filter((p) => p.includes('/locales/') && p.endsWith('.json'));
 			if (files.length === 0) return;
 			for (const file of files) await fetchAndApply(file);
