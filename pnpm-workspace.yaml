@@ -21,7 +21,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
-  axios: 1.8.3
+  axios: 1.12.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
