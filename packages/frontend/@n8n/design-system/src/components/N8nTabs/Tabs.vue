@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
+import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
 
 interface TabsProps {
@@ -121,8 +122,18 @@ const scrollRight = () => scroll(50);
 							{ [$style.activeTab]: modelValue === option.value, [$style.noText]: !option.label },
 						]"
 					>
-						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon
+							v-if="option.icon && option.iconPosition !== 'right'"
+							:icon="option.icon"
+							size="medium"
+						/>
 						<span v-if="option.label">{{ option.label }}</span>
+						<N8nIcon
+							v-if="option.icon && option.iconPosition === 'right'"
+							:icon="option.icon"
+							size="medium"
+						/>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
 						v-else
@@ -151,6 +162,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
+						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>
 			</div>
