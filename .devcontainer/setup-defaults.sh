@@ -21,10 +21,29 @@ if [ ! -f "/home/node/.n8n/workflows-initialized" ]; then
     touch /home/node/.n8n/workflows-initialized
 fi
 
-echo "=== IMPORTING STATIC WORKFLOWS always ==="
+
+
+echo "=== IMPORTING STATIC WORKFLOWS with Folder ==="
 if [ -d "/usr/src/app/workflows-static" ]; then
     n8n import:workflow --input="/usr/src/app/workflows-static/" --separate
+    
+    sleep 10
+    
+    FOLDER_ID=$(curl -s -X POST http://localhost:5678/api/v1/workflows/folders \
+      -H "Content-Type: application/json" \
+      -d '{"name": "workflows-static"}' | jq -r '.id')
+    
+    if [ "$FOLDER_ID" != "null" ]; then
+        for workflow in $(curl -s http://localhost:5678/api/v1/workflows | jq -r '.data[].id'); do
+            curl -s -X PATCH http://localhost:5678/api/v1/workflows/$workflow \
+              -H "Content-Type: application/json" \
+              -d "{\"folderId\": \"$FOLDER_ID\"}"
+        done
+    fi
 fi
+
+
+
 
 
 echo "=== IMPORTING CREDENTIALS ==="
