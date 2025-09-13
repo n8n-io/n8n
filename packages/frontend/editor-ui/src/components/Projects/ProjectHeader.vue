@@ -21,6 +21,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
 import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -31,6 +32,10 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
 const projectPages = useProjectPages();
+
+const props = defineProps<{
+	hasActiveCallouts?: boolean;
+}>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -341,18 +346,21 @@ const onSelect = (action: string) => {
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<ProjectCreateResource
-						data-test-id="add-resource-buttons"
-						:actions="menu"
-						:disabled="sourceControlStore.preferences.branchReadOnly"
-						@action="onSelect"
-					>
-						<N8nButton
-							data-test-id="add-resource-workflow"
-							v-bind="createWorkflowButton"
-							@click="onSelect(ACTION_TYPES.WORKFLOW)"
-						/>
-					</ProjectCreateResource>
+					<div style="display: flex; gap: var(--spacing-xs); align-items: center">
+						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
+						<ProjectCreateResource
+							data-test-id="add-resource-buttons"
+							:actions="menu"
+							:disabled="sourceControlStore.preferences.branchReadOnly"
+							@action="onSelect"
+						>
+							<N8nButton
+								data-test-id="add-resource-workflow"
+								v-bind="createWorkflowButton"
+								@click="onSelect(ACTION_TYPES.WORKFLOW)"
+							/>
+						</ProjectCreateResource>
+					</div>
 				</N8nTooltip>
 			</div>
 		</div>
