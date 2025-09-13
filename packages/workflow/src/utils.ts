@@ -254,7 +254,7 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 	}
 }
 
-export const isTraversableObject = (value: any): value is JsonObject => {
+export const isTraversableObject = (value: unknown): value is JsonObject => {
 	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 };
 
