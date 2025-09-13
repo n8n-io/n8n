@@ -253,7 +253,7 @@ describe('Test MySql V2, operations', () => {
 		);
 		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
 	});
-	it('executeQuery, should parse numbers', async () => {
+	it('executeQuery, should convert safe integer strings to numbers', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query: 'SELECT * FROM users LIMIT $1, $2',
@@ -293,6 +293,182 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 
 		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
+	});
+
+	it('executeQuery, should preserve large numbers as strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO test_table (value) VALUES ($1)',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '123456789012345678901234567890',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		// Large number should stay as quoted string to preserve precision
+		expect(connectionQuerySpy).toBeCalledWith(
+			"INSERT INTO test_table (value) VALUES ('123456789012345678901234567890')",
+		);
+	});
+
+	it('executeQuery, should preserve decimals as strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO test_table (value) VALUES ($1)',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '12.34',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		// Decimal should stay as quoted string
+		expect(connectionQuerySpy).toBeCalledWith("INSERT INTO test_table (value) VALUES ('12.34')");
+	});
+
+	it('executeQuery, should preserve leading zeros as strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO test_table (value) VALUES ($1)',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '00123',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		// Leading zeros should be preserved as string
+		expect(connectionQuerySpy).toBeCalledWith("INSERT INTO test_table (value) VALUES ('00123')");
+	});
+
+	it('executeQuery, should handle mixed safe integers and large numbers', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO test_table (id, value) VALUES ($1, $2)',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '123, 123456789012345678901234567890',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		// Safe integer converted, large number preserved as string
+		expect(connectionQuerySpy).toBeCalledWith(
+			"INSERT INTO test_table (id, value) VALUES (123, '123456789012345678901234567890')",
+		);
 	});
 
 	it('select, should call runQueries with', async () => {
