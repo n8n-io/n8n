@@ -1,0 +1,333 @@
+{
+  "name": "Loop through Binary Files",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 6,
+              "triggerAtMinute": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        208
+      ],
+      "id": "ae8257a0-d2f6-4d91-b18f-a9b999d32c69",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1kx1u-FKWCkl2QPmTLsB_TDIV3wIL0XBG7UBmjtFDaHc",
+          "mode": "list",
+          "cachedResultName": "SolaranlageEG64",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kx1u-FKWCkl2QPmTLsB_TDIV3wIL0XBG7UBmjtFDaHc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1022255717,
+          "mode": "list",
+          "cachedResultName": "Monthly",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kx1u-FKWCkl2QPmTLsB_TDIV3wIL0XBG7UBmjtFDaHc/edit#gid=1022255717"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1008,
+        96
+      ],
+      "id": "936afa57-f7e6-4094-a2b5-5ae40f44cf93",
+      "name": "Get row(s) in sheet",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "P5BgeOuwV9tczIKB",
+          "name": "JBP Capital"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      data: items.map(item => item.json)\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        96
+      ],
+      "id": "aaa35a02-f2eb-4ddd-ac83-d6404067928f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email}}",
+        "subject": "=Monatlicher Portfolio Bericht für {{ $json.Name }}",
+        "message": "=<p><strong>Berichte im Anhang ...</strong></p>\n\n<p><strong>Gesamtportfolio:</strong> {{ $('Code in JavaScript').item.json.data[0].Gesamtportfolio }}</p>\n\n<p><strong>Gesamt Hartmut:</strong> {{ $('Code in JavaScript').item.json.data[0]['Portfolio (Gesamt pro Person)'] }}, <strong>Anteil Gesamt:</strong> {{ $('Code in JavaScript').item.json.data[0]['Portfolio (Anteil pro Person)'] }}</p>\n\n<p><strong>Gesamt Heike:</strong> {{ $('Code in JavaScript').item.json.data[1]['Portfolio (Gesamt pro Person)'] }}, <strong>Anteil Gesamt:</strong> {{ $('Code in JavaScript').item.json.data[1]['Portfolio (Anteil pro Person)'] }}</p>\n\n<p><strong>Gesamt Jim:</strong> {{ $('Code in JavaScript').item.json.data[2]['Portfolio (Gesamt pro Person)'] }}, <strong>Anteil Gesamt:</strong> {{ $('Code in JavaScript').item.json.data[2]['Portfolio (Anteil pro Person)'] }}</p>\n\n",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "pdf"
+              },
+              {
+                "property": "excel"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        240
+      ],
+      "id": "5c7d1ef1-a75c-4f10-affa-3e1bf1e7c487",
+      "name": "Send a message",
+      "webhookId": "ac9c962b-5cf9-4cbd-a19d-065420f6fdba",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "hDFqfBedaCUHdTY6",
+          "name": "Jim Private"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nitems.push({json: {Name: \"Jim#1\", Email: \"jijardy@gmail.com\"}});\nitems.push({json: {Name: \"Jim#2\", Email: \"jim.presting@gmail.com\"}});\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        96
+      ],
+      "id": "0e40bca4-2585-4211-bb30-a2a88bb1b943",
+      "name": "Send Mail to"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        400,
+        96
+      ],
+      "id": "5f88f2b7-4085-41a4-977c-c10a9b847181",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "=1kx1u-FKWCkl2QPmTLsB_TDIV3wIL0XBG7UBmjtFDaHc",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "excel",
+          "googleFileConversion": {
+            "conversion": {
+              "sheetsToFormat": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -592,
+        96
+      ],
+      "id": "40ed3367-154d-4edd-82de-5b8690645fd6",
+      "name": "Excel",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "h4aOHfGxh5qM57SN",
+          "name": "JBP Capital"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "=1kx1u-FKWCkl2QPmTLsB_TDIV3wIL0XBG7UBmjtFDaHc",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "pdf",
+          "googleFileConversion": {
+            "conversion": {
+              "sheetsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        96
+      ],
+      "id": "59aff04f-2c50-4314-b58e-ea364de14677",
+      "name": "PDF",
+      "retryOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "h4aOHfGxh5qM57SN",
+          "name": "JBP Capital"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const excelBinary = $(\"Excel\").first().binary.excel;\nconst pdfBinary = $(\"PDF\").first().binary.pdf;\n\nconst recipients = $(\"Send Mail to\").all().map(item => item.json);\n\nreturn recipients.map(recipient => ({\n  json: {\n    Email: recipient.Email,\n    Name: recipient.Name,\n    Thread: recipient.Thread,\n    ID: recipient.MessageID\n  },\n  binary: {\n    excel: excelBinary,\n    pdf: pdfBinary\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        96
+      ],
+      "id": "d8b3db9b-47bc-43bd-8e5a-c75c50190118",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mail to": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Excel": {
+      "main": [
+        [
+          {
+            "node": "PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF": {
+      "main": [
+        [
+          {
+            "node": "Send Mail to",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "52f288f2-7c24-49ca-88b0-7bb1c7f296f7",
+  "meta": {
+    "instanceId": "1372902111ba576f90cc07cb8f38c6b580b47720702f7920ecb2da3c2167a57c"
+  },
+  "id": "zjVS64IgxehAMaRb",
+  "tags": [
+    {
+      "createdAt": "2025-08-07T13:22:15.770Z",
+      "updatedAt": "2025-08-07T13:22:15.770Z",
+      "id": "RmbotUK4yFfVtjpq",
+      "name": "3. Finished"
+    }
+  ]
+}

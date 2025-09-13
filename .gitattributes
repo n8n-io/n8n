@@ -8,3 +8,4 @@ updates/** merge=ours
 docker-compose.yml merge=ours
 requirements.txt merge=ours
 README.md merge=ours
+TODO.md merge=ours
