@@ -16,6 +16,8 @@ import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
+	getPollStartDate,
+	filterAndManageProcessedItems,
 } from './GenericFunctions';
 
 export class SalesforceTrigger implements INodeType {
@@ -196,11 +198,15 @@ export class SalesforceTrigger implements INodeType {
 			triggerResource = this.getNodeParameter('customObject') as string;
 		}
 
-		const now = DateTime.now().toISO();
-		const startDate = (workflowData.lastTimeChecked as string) || now;
-		const endDate = now;
+		const endDate = DateTime.now().toISO();
+
+		if (!workflowData.processedIds) {
+			workflowData.processedIds = [];
+		}
+		const processedIds = workflowData.processedIds as string[];
+
 		try {
-			const pollStartDate = startDate;
+			const pollStartDate = getPollStartDate(workflowData.lastTimeChecked as string);
 			const pollEndDate = endDate;
 
 			const options = {
@@ -262,6 +268,20 @@ export class SalesforceTrigger implements INodeType {
 				workflowData.lastTimeChecked = endDate;
 				return null;
 			}
+
+			const { newItems, updatedProcessedIds } = filterAndManageProcessedItems(
+				responseData,
+				processedIds,
+			);
+
+			workflowData.processedIds = updatedProcessedIds;
+			workflowData.lastTimeChecked = endDate;
+
+			if (newItems.length > 0) {
+				return [this.helpers.returnJsonArray(newItems as IDataObject[])];
+			}
+
+			return null;
 		} catch (error) {
 			if (this.getMode() === 'manual' || !workflowData.lastTimeChecked) {
 				throw error;
@@ -278,12 +298,5 @@ export class SalesforceTrigger implements INodeType {
 			);
 			throw error;
 		}
-		workflowData.lastTimeChecked = endDate;
-
-		if (Array.isArray(responseData) && responseData.length) {
-			return [this.helpers.returnJsonArray(responseData as IDataObject[])];
-		}
-
-		return null;
 	}
 }
