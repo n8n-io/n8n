@@ -12,6 +12,11 @@ services:
     # No port exposing - just n8n internal access
 
   n8n-advanced:
+    
+    # 1. latest pull
+    image: ghcr.io/stardawnai/n8n-advanced:${LATEST_VERSION:-latest}
+
+    #2 First build 
     build: 
       context: ..                           
       dockerfile: .devcontainer/Dockerfile  
