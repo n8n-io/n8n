@@ -425,6 +425,7 @@ export interface IExecuteData {
 	metadata?: ITaskMetadata;
 	node: INode;
 	source: ITaskDataConnectionsSource | null;
+	runIndex?: number;
 }
 
 export type IContextObject = {
@@ -1698,12 +1699,12 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null;
+type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | Request | null;
 
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	execute?(this: IExecuteFunctions, response?: Response): Promise<NodeOutput>;
 	/**
 	 * A function called when a node receives a chat message. Allows it to react
 	 * to the message before it gets executed.
@@ -1759,13 +1760,43 @@ export interface INodeType {
 	};
 }
 
+type ExecutionNodeAction<T> = {
+	actionType: 'ExecutionNodeAction';
+	nodeName: string;
+	input: IDataObject;
+	type: NodeConnectionType;
+	id: string;
+	metadata: T;
+};
+type Action<T = unknown> = ExecutionNodeAction<T>;
+// TODO: this should use `unknown`, but jest-mock-extended will turn this into
+// `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
+// lot of type errors in our tests.
+// The correct fix is to make a PR to jest-mock-extended and make it handle
+// `unknown` special, turning it into `unknown` instead of `Partial<unknown`.
+export type Request<T = object> = {
+	actions: Array<Action<T>>;
+	metadata: T;
+};
+export type SubNodeExecutionResult<T = unknown> = {
+	action: ExecutionNodeAction<T>;
+	data: ITaskData;
+};
+export type Response<T = unknown> = {
+	actionResponses: Array<SubNodeExecutionResult<T>>;
+	metadata: T;
+};
+
 /**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
 	abstract description: INodeTypeDescription;
-	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
+	execute?(
+		context: IExecuteFunctions,
+		response?: Response,
+	): Promise<INodeExecutionData[][] | Request>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 }
@@ -2353,6 +2384,15 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	subNodeExecutionData?: {
+		actions: Array<{
+			nodeName: string;
+			runIndex: number;
+			action: Request['actions'][number];
+			response?: object;
+		}>;
+		metadata: object;
+	};
 }
 
 /** The data that gets returned when a node execution starts */

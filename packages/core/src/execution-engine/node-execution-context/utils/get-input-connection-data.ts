@@ -31,6 +31,7 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import { isRequest } from '../../requests-response';
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
@@ -50,6 +51,7 @@ export function makeHandleToolInvocation(
 	// of the same tool when the tool is used in a loop or in a parallel execution.
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
+	// eslint-disable-next-line complexity
 	return async (toolArgs: IDataObject) => {
 		let maxTries = 1;
 		if (node.retryOnFail === true) {
@@ -95,18 +97,22 @@ export function makeHandleToolInvocation(
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
 				// Process and map the results
-				const mappedResults = result?.[0]?.flatMap((item) => item.json);
+				const mappedResults = isRequest(result)
+					? undefined
+					: result?.[0]?.flatMap((item) => item.json);
 				let response: string | typeof mappedResults = mappedResults;
 
-				// Warn if any (unusable) binary data was returned
-				if (result?.some((x) => x.some((y) => y.binary))) {
-					if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
-						response =
-							'Error: The Tool attempted to return binary data, which is not supported in Agents';
-					} else {
-						context.logger.warn(
-							`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
-						);
+				if (!isRequest(result)) {
+					// Warn if any (unusable) binary data was returned
+					if (result?.some((x) => x.some((y) => y.binary))) {
+						if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
+							response =
+								'Error: The Tool attempted to return binary data, which is not supported in Agents';
+						} else {
+							context.logger.warn(
+								`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+							);
+						}
 					}
 				}
 
