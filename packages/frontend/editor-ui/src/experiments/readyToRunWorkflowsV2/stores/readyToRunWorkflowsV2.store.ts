@@ -32,10 +32,11 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 
 		const isFeatureEnabled = computed(() => {
+			const variant = posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name);
 			return (
-				posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name) ===
-					READY_TO_RUN_V2_EXPERIMENT.variant &&
-				(cloudPlanStore.userIsTrialing || true)
+				(variant === READY_TO_RUN_V2_EXPERIMENT.variant1 ||
+					variant === READY_TO_RUN_V2_EXPERIMENT.variant2) &&
+				cloudPlanStore.userIsTrialing
 			);
 		});
 
@@ -57,7 +58,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		const userCanClaimOpenAiCredits = computed(() => {
 			return (
-				(settingsStore.isAiCreditsEnabled || true) &&
+				settingsStore.isAiCreditsEnabled &&
 				!userHasOpenAiCredentialAlready.value &&
 				!userHasClaimedAiCreditsAlready.value
 			);
@@ -67,26 +68,22 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			calloutDismissedRef.value = true;
 		};
 
-		const trackCreateWorkflows = (source: 'card' | 'callout') => {
-			telemetry.track('User created ready to run workflows', {
-				source,
-			});
+		const getCurrentVariant = () => {
+			return posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name);
 		};
 
-		const trackDismissCallout = () => {
-			telemetry.track('User dismissed ready to run workflows callout');
-		};
-
-		const trackOpenWorkflow = (template: string) => {
-			telemetry.track('User opened ready to run workflow', {
-				template,
-			});
-		};
-
-		const trackExecuteWorkflow = (template: string, status: string) => {
+		const trackExecuteAiWorkflow = (status: string) => {
+			const variant = getCurrentVariant();
 			telemetry.track('User executed ready to run workflow', {
-				template,
 				status,
+				variant,
+			});
+		};
+
+		const trackExecuteAiWorkflowSuccess = () => {
+			const variant = getCurrentVariant();
+			telemetry.track('User executed AI workflow successfully', {
+				variant,
 			});
 		};
 
@@ -113,9 +110,11 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			}
 		};
 
-		const openAiWorkflow = async (source: string, parentFolderId?: string) => {
-			telemetry.track('User clicked ready to run AI workflow', {
+		const openAiWorkflow = async (source: 'tile' | 'button', parentFolderId?: string) => {
+			const variant = getCurrentVariant();
+			telemetry.track('User opened ready to run AI workflow', {
 				source,
+				variant,
 			});
 
 			await router.push({
@@ -126,7 +125,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		};
 
 		const claimCreditsAndOpenWorkflow = async (
-			source: string,
+			source: 'tile' | 'button',
 			parentFolderId?: string,
 			projectId?: string,
 		) => {
@@ -185,10 +184,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			getCardVisibility,
 			getButtonVisibility,
 			getSimplifiedLayoutVisibility,
-			trackCreateWorkflows,
-			trackDismissCallout,
-			trackOpenWorkflow,
-			trackExecuteWorkflow,
+			trackExecuteAiWorkflow,
+			trackExecuteAiWorkflowSuccess,
 		};
 	},
 );

@@ -811,9 +811,10 @@ export const TEMPLATE_RECO_V2 = {
 };
 
 export const READY_TO_RUN_V2_EXPERIMENT = {
-	name: 'ready_to_run_v2',
+	name: '042_ready-to-run-worfklow_v2',
 	control: 'control',
-	variant: 'variant',
+	variant1: 'variant-1-singlebox',
+	variant2: 'variant-2-twoboxes',
 };
 
 export const EXPERIMENTS_TO_TRACK = [
