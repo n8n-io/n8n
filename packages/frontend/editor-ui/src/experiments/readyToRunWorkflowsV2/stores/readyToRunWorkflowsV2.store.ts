@@ -13,7 +13,8 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
-import { READY_TO_RUN_WORKFLOW } from '../workflows/ai-workflow';
+import { READY_TO_RUN_WORKFLOW_V1 } from '../workflows/ai-workflow';
+import { READY_TO_RUN_WORKFLOW_V2 } from '../workflows/ai-workflow-v2';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
@@ -110,22 +111,28 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			}
 		};
 
-		const openAiWorkflow = async (source: 'tile' | 'button', parentFolderId?: string) => {
+		const openAiWorkflow = async (source: 'card' | 'button', parentFolderId?: string) => {
 			const variant = getCurrentVariant();
 			telemetry.track('User opened ready to run AI workflow', {
 				source,
 				variant,
 			});
 
+			// Select workflow based on variant
+			const workflow =
+				variant === READY_TO_RUN_V2_EXPERIMENT.variant2
+					? READY_TO_RUN_WORKFLOW_V2
+					: READY_TO_RUN_WORKFLOW_V1;
+
 			await router.push({
 				name: VIEWS.TEMPLATE_IMPORT,
-				params: { id: READY_TO_RUN_WORKFLOW.meta?.templateId },
+				params: { id: workflow.meta?.templateId },
 				query: { fromJson: 'true', parentFolderId },
 			});
 		};
 
 		const claimCreditsAndOpenWorkflow = async (
-			source: 'tile' | 'button',
+			source: 'card' | 'button',
 			parentFolderId?: string,
 			projectId?: string,
 		) => {

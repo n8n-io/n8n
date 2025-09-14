@@ -9,6 +9,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
+import type { IUser } from 'n8n-workflow';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -18,7 +19,7 @@ const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
-const currentUser = computed(() => usersStore.currentUser ?? ({} as any));
+const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const personalProject = computed(() => projectsStore.personalProject);
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
