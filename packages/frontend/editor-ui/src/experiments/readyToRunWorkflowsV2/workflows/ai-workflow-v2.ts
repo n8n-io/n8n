@@ -103,12 +103,7 @@ export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
 			id: 'b16482e8-0d48-4426-aa93-c3fee11dd3cd',
 			name: 'OpenAI Model',
 			notesInFlow: true,
-			credentials: {
-				openAiApi: {
-					id: 'C3TL0tsPxUcmIWvC',
-					name: 'n8n free OpenAI API credits',
-				},
-			},
+			credentials: {},
 			notes: 'Double-click to open',
 		},
 		{
@@ -166,12 +161,7 @@ export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
 			name: 'Send summary by email',
 			webhookId: '093b04f1-5e78-4926-9863-1b100d6f2ead',
 			notesInFlow: true,
-			credentials: {
-				gmailOAuth2: {
-					id: '5Y6FkODAuANEnzpB',
-					name: 'Gmail account',
-				},
-			},
+			credentials: {},
 			notes: 'Double-click to open',
 		},
 	],

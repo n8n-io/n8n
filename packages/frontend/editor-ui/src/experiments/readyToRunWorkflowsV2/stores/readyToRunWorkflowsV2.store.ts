@@ -75,7 +75,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		const trackExecuteAiWorkflow = (status: string) => {
 			const variant = getCurrentVariant();
-			telemetry.track('User executed ready to run workflow', {
+			telemetry.track('User executed ready to run AI workflow', {
 				status,
 				variant,
 			});
@@ -83,7 +83,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		const trackExecuteAiWorkflowSuccess = () => {
 			const variant = getCurrentVariant();
-			telemetry.track('User executed AI workflow successfully', {
+			telemetry.track('User executed ready to run AI workflow successfully', {
 				variant,
 			});
 		};
