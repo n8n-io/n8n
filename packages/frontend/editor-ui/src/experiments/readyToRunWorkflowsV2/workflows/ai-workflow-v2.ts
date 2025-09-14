@@ -78,13 +78,13 @@ export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
 		{
 			parameters: {
 				content: '## ⚡ Start here:',
-				height: 240,
+				height: 224,
 				width: 224,
 				color: 7,
 			},
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [-624, 464],
+			position: [-624, 480],
 			id: 'fac5929f-e065-4474-96b1-7bcc06834238',
 			name: 'Sticky Note',
 		},
@@ -105,6 +105,19 @@ export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
 			notesInFlow: true,
 			credentials: {},
 			notes: 'Double-click to open',
+		},
+		{
+			parameters: {
+				content: '@[youtube](cMyOkQ4N-5M)',
+				height: 512,
+				width: 902,
+				color: 7,
+			},
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [-352, -96],
+			id: 'ec65e69e-77fa-4912-a4af-49e0a248e2c8',
+			name: 'Sticky Note3',
 		},
 		{
 			parameters: {
@@ -136,14 +149,14 @@ export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'### 📰 Daily AI Summary\n\n\nThis workflow gets the latest news and asks AI to summarize it for you.\n\n⭐ Bonus: Send the summary via email by connecting your Gmail account\n\n\n\n@[youtube](cMyOkQ4N-5M)',
-				height: 432,
-				width: 384,
+					'### 📰 Daily AI Summary\n\n\nThis workflow gets the latest news and asks AI to summarize it for you.\n\n⭐ Bonus: Send the summary via email by connecting your Gmail account\n\n▶ Watch the video to get started ',
+				height: 272,
+				width: 224,
 				color: 5,
 			},
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [-1152, 464],
+			position: [-624, 32],
 			id: '74d80857-5e63-47a8-8e86-8ecd10fd5f9e',
 			name: 'Sticky Note2',
 		},
