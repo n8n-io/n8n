@@ -17,7 +17,6 @@ import { READY_TO_RUN_WORKFLOW_V1 } from '../workflows/ai-workflow';
 import { READY_TO_RUN_WORKFLOW_V2 } from '../workflows/ai-workflow-v2';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
-const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID';
 
 export const useReadyToRunWorkflowsV2Store = defineStore(
@@ -42,9 +41,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			);
 		});
 
-		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
-		const shouldShowCallout = computed(() => !calloutDismissedRef.value);
-
 		const claimedCredentialIdRef = useLocalStorage(LOCAL_STORAGE_CREDENTIAL_KEY, '');
 
 		const claimingCredits = ref(false);
@@ -67,10 +63,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				!userHasClaimedAiCreditsAlready.value
 			);
 		});
-
-		const dismissCallout = () => {
-			calloutDismissedRef.value = true;
-		};
 
 		const getCurrentVariant = () => {
 			return posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name);
@@ -188,10 +180,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		return {
 			isFeatureEnabled,
-			shouldShowCallout,
 			claimingCredits,
 			userCanClaimOpenAiCredits,
-			dismissCallout,
 			claimFreeAiCredits,
 			openAiWorkflow,
 			claimCreditsAndOpenWorkflow,

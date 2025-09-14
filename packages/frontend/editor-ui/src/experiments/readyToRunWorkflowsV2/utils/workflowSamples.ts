@@ -45,10 +45,6 @@ const injectOpenAiCredentialIntoWorkflow = (
 	return clonedWorkflow;
 };
 
-export const getReadyToRunAIWorkflow = (): WorkflowDataWithTemplateId => {
-	return injectOpenAiCredentialIntoWorkflow(getWorkflowJson(READY_TO_RUN_WORKFLOW_V1));
-};
-
 export const getReadyToRunAIWorkflows = (): WorkflowDataWithTemplateId[] => {
 	return [
 		injectOpenAiCredentialIntoWorkflow(getWorkflowJson(READY_TO_RUN_WORKFLOW_V1)),
