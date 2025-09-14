@@ -145,7 +145,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			return (
 				!loading &&
 				isFeatureEnabled.value &&
-				(userCanClaimOpenAiCredits.value || true) &&
+				userCanClaimOpenAiCredits.value &&
 				!readOnlyEnv &&
 				canCreate
 			);
@@ -158,7 +158,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		) => {
 			return (
 				isFeatureEnabled.value &&
-				(userCanClaimOpenAiCredits.value || true) &&
+				userCanClaimOpenAiCredits.value &&
 				!readOnlyEnv &&
 				canCreate &&
 				hasWorkflows
