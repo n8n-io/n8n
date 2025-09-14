@@ -2,7 +2,7 @@
 import { Mem0Memory } from '@langchain/community/memory/mem0';
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
-import { SystemMessage } from '@langchain/core/messages';
+import { SystemMessage, type BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -34,19 +34,31 @@ class Mem0AugmentedMemory {
 
 	async loadMemoryVariables(values: InputValues): Promise<MemoryVariables> {
 		const baseVars = await this.base.loadMemoryVariables(values);
+		let extraMessages: BaseMessage[] = [];
 		try {
 			const mem0Vars: any = await this.mem0.loadMemoryVariables(values);
-			console.log(mem0Vars);
-			const summary: string = typeof mem0Vars?.history === 'string' ? mem0Vars.history : '';
-			if (summary && summary.trim()) {
-				const extra = new SystemMessage(`Relevant memories: ${summary}`);
-				const existing = Array.isArray((baseVars as any).chat_history)
-					? ((baseVars as any).chat_history as any[])
-					: [];
-				return { ...baseVars, chat_history: [...existing, extra] };
+			const mem0History = (mem0Vars && (mem0Vars.chat_history ?? mem0Vars.history)) as
+				| string
+				| BaseMessage[]
+				| undefined;
+
+			if (typeof mem0History === 'string') {
+				const content = mem0History.trim();
+				if (content) extraMessages = [new SystemMessage(content)];
+			} else if (Array.isArray(mem0History)) {
+				// Convert each returned message into a SystemMessage to avoid confusing the model
+				extraMessages = mem0History
+					.map((m) => new SystemMessage(String((m as any)?.content ?? '').trim()))
+					.filter((m) => m.content.length > 0);
 			}
 		} catch {}
-		return baseVars;
+
+		if (extraMessages.length === 0) return baseVars;
+
+		const existing = Array.isArray((baseVars as any).chat_history)
+			? ((baseVars as any).chat_history as BaseMessage[])
+			: [];
+		return { ...baseVars, chat_history: [...extraMessages, ...existing] };
 	}
 
 	async saveContext(inputValues: InputValues, outputValues: InputValues): Promise<void> {
