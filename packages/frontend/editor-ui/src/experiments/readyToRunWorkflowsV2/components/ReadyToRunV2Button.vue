@@ -8,6 +8,7 @@ import { useProjectPages } from '@/composables/useProjectPages';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useToast } from '@/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 
 const props = defineProps<{
@@ -16,6 +17,7 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
+const toast = useToast();
 const projectPages = useProjectPages();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -43,11 +45,15 @@ const handleClick = async () => {
 		? projectsStore.personalProject?.id
 		: (route.params.projectId as string);
 
-	await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
-		'button',
-		route.params.folderId as string,
-		projectId,
-	);
+	try {
+		await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
+			'button',
+			route.params.folderId as string,
+			projectId,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
 };
 </script>
 

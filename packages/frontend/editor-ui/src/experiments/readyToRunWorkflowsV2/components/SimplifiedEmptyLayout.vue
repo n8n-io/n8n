@@ -8,11 +8,13 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/composables/useProjectPages';
+import { useToast } from '@/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
 import type { IUser } from 'n8n-workflow';
 
 const route = useRoute();
 const i18n = useI18n();
+const toast = useToast();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -52,11 +54,15 @@ const handleReadyToRunV2Click = async () => {
 		? personalProject.value?.id
 		: (route.params.projectId as string);
 
-	await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
-		'card',
-		route.params.folderId as string,
-		projectId,
-	);
+	try {
+		await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
+			'card',
+			route.params.folderId as string,
+			projectId,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
 };
 
 const addWorkflow = () => {
