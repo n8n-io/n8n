@@ -18,6 +18,7 @@ import { READY_TO_RUN_WORKFLOW_V2 } from '../workflows/ai-workflow-v2';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_READY_TO_RUN_WORKFLOWS_DISMISSED';
+const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID';
 
 export const useReadyToRunWorkflowsV2Store = defineStore(
 	STORES.EXPERIMENT_READY_TO_RUN_WORKFLOWS_V2,
@@ -43,6 +44,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
 		const shouldShowCallout = computed(() => !calloutDismissedRef.value);
+
+		const claimedCredentialIdRef = useLocalStorage(LOCAL_STORAGE_CREDENTIAL_KEY, '');
 
 		const claimingCredits = ref(false);
 
@@ -92,13 +95,17 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			claimingCredits.value = true;
 
 			try {
-				await credentialsStore.claimFreeAiCredits(projectId);
+				const credential = await credentialsStore.claimFreeAiCredits(projectId);
 
 				if (usersStore?.currentUser?.settings) {
 					usersStore.currentUser.settings.userClaimedAiCredits = true;
 				}
 
+				// Store the credential ID in localStorage for later use
+				claimedCredentialIdRef.value = credential.id;
+
 				telemetry.track('User claimed OpenAI credits');
+				return credential;
 			} catch (e) {
 				toast.showError(
 					e,
