@@ -203,6 +203,8 @@ export class MemoryMem0 implements INodeType {
 		let sessionId: string;
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
+		} else if (nodeVersion >= 1.1) {
+			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		} else {
 			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
 		}
@@ -224,7 +226,6 @@ export class MemoryMem0 implements INodeType {
 				runId,
 				agentId,
 				appId,
-				sessionId,
 				async_mode: asyncModeAddition,
 			},
 		} as any);
