@@ -82,7 +82,6 @@ export async function executionFinished(
 			templateId === 'ready-to-run-ai-workflow-v1' ||
 			templateId === 'ready-to-run-ai-workflow-v2'
 		) {
-			// Ready to Run Workflows V2 tracking
 			if (data.status === 'success') {
 				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
 			} else {

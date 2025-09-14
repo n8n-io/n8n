@@ -60,7 +60,6 @@ const handleReadyToRunV2Click = async () => {
 };
 
 const addWorkflow = () => {
-	// Emit event for parent to handle
 	emit('click:add');
 };
 
@@ -71,7 +70,6 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.simplifiedLayout">
-		<!-- Main content -->
 		<div :class="$style.content">
 			<div :class="$style.welcome">
 				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">
@@ -88,7 +86,6 @@ const emit = defineEmits<{
 				</N8nText>
 			</div>
 
-			<!-- Action cards -->
 			<div
 				v-if="!readOnlyEnv && projectPermissions.workflow.create"
 				:class="$style.actionsContainer"

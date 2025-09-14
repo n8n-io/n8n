@@ -18,26 +18,21 @@ const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {
 const injectOpenAiCredentialIntoWorkflow = (
 	workflow: WorkflowDataWithTemplateId,
 ): WorkflowDataWithTemplateId => {
-	// Check if credential ID is stored in localStorage
 	const credentialId = localStorage.getItem('N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID');
 
 	if (!credentialId) {
 		return workflow;
 	}
 
-	// Deep clone the workflow to avoid mutating the original
 	const clonedWorkflow = deepCopy(workflow);
 
-	// Find and update the OpenAI Model node
 	if (clonedWorkflow.nodes) {
 		const openAiNode = clonedWorkflow.nodes.find((node) => node.name === 'OpenAI Model');
 		if (openAiNode) {
-			// Ensure credentials object exists
 			openAiNode.credentials ??= {};
-			// Inject the OpenAI credential with both id and name (name can be empty string as fallback)
 			openAiNode.credentials[OPEN_AI_API_CREDENTIAL_TYPE] = {
 				id: credentialId,
-				name: '', // Will be resolved by the credential store when the workflow is loaded
+				name: '',
 			};
 		}
 	}

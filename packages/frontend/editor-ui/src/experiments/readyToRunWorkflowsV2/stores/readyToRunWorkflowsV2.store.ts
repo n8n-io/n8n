@@ -93,7 +93,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 					usersStore.currentUser.settings.userClaimedAiCredits = true;
 				}
 
-				// Store the credential ID in localStorage for later use
 				claimedCredentialIdRef.value = credential.id;
 
 				telemetry.track('User claimed OpenAI credits');
@@ -117,7 +116,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				variant,
 			});
 
-			// Select workflow based on variant
 			const workflow =
 				variant === READY_TO_RUN_V2_EXPERIMENT.variant2
 					? READY_TO_RUN_WORKFLOW_V2
@@ -135,13 +133,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			parentFolderId?: string,
 			projectId?: string,
 		) => {
-			try {
-				await claimFreeAiCredits(projectId);
-				await openAiWorkflow(source, parentFolderId);
-			} catch (error) {
-				// Error is already handled in claimFreeAiCredits, but we don't want to proceed with opening the workflow
-				// if credit claiming failed
-			}
+			await claimFreeAiCredits(projectId);
+			await openAiWorkflow(source, parentFolderId);
 		};
 
 		const getCardVisibility = (
@@ -168,7 +161,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 				(userCanClaimOpenAiCredits.value || true) &&
 				!readOnlyEnv &&
 				canCreate &&
-				hasWorkflows // Button shows when HAS workflows
+				hasWorkflows
 			);
 		};
 
