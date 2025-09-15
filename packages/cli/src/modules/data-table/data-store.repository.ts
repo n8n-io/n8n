@@ -274,7 +274,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
 				sql = `
-        	SELECT table_name, (DATA_LENGTH + INDEX_LENGTH) AS table_bytes
+        	SELECT table_name AS table_name, (DATA_LENGTH + INDEX_LENGTH) AS table_bytes
 					FROM information_schema.tables
 					WHERE table_schema = '${databaseName}'
 					AND table_name LIKE '${tablePattern}'
@@ -295,7 +295,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		let totalBytes = 0;
 
 		result
-			.filter((row) => row.table_bytes !== null)
+			.filter((row) => row.table_bytes !== null && row.table_name)
 			.forEach((row) => {
 				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
 				const sizeBytes =
