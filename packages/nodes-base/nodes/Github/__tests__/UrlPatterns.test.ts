@@ -1,4 +1,5 @@
 import { Github } from '../Github.node';
+import { GithubTrigger } from '../GithubTrigger.node';
 
 interface ValidationRule {
 	type: string;
@@ -10,6 +11,7 @@ interface ValidationRule {
 
 describe('GitHub Node URL Pattern Tests', () => {
 	let githubNode: Github;
+	let githubTriggerNode: GithubTrigger;
 
 	const getOwnerUrlMode = () => {
 		const ownerParam = githubNode.description.properties.find((prop) => prop.name === 'owner');
@@ -43,8 +45,46 @@ describe('GitHub Node URL Pattern Tests', () => {
 		return new RegExp(validation?.properties?.regex ?? '');
 	};
 
+	// Helper functions for GithubTrigger node
+	const getTriggerOwnerUrlMode = () => {
+		const ownerParam = githubTriggerNode.description.properties.find(
+			(prop) => prop.name === 'owner',
+		);
+		return ownerParam?.modes?.find((mode) => mode.name === 'url');
+	};
+
+	const getTriggerRepositoryUrlMode = () => {
+		const repoParam = githubTriggerNode.description.properties.find(
+			(prop) => prop.name === 'repository',
+		);
+		return repoParam?.modes?.find((mode) => mode.name === 'url');
+	};
+
+	const getTriggerOwnerExtractRegex = () => {
+		const mode = getTriggerOwnerUrlMode();
+		return new RegExp(mode?.extractValue?.regex ?? '');
+	};
+
+	const getTriggerOwnerValidationRegex = () => {
+		const mode = getTriggerOwnerUrlMode();
+		const validation = mode?.validation?.[0] as ValidationRule;
+		return new RegExp(validation?.properties?.regex ?? '');
+	};
+
+	const getTriggerRepositoryExtractRegex = () => {
+		const mode = getTriggerRepositoryUrlMode();
+		return new RegExp(mode?.extractValue?.regex ?? '');
+	};
+
+	const getTriggerRepositoryValidationRegex = () => {
+		const mode = getTriggerRepositoryUrlMode();
+		const validation = mode?.validation?.[0] as ValidationRule;
+		return new RegExp(validation?.properties?.regex ?? '');
+	};
+
 	beforeEach(() => {
 		githubNode = new Github();
+		githubTriggerNode = new GithubTrigger();
 	});
 
 	describe('GitHub Node Resource Locator Patterns', () => {
@@ -128,27 +168,27 @@ describe('GitHub Node URL Pattern Tests', () => {
 	describe('GitHub Trigger Node Resource Locator Patterns', () => {
 		describe('Owner URL Pattern', () => {
 			it('should extract owner from github.com URL', () => {
-				const regex = getOwnerExtractRegex();
+				const regex = getTriggerOwnerExtractRegex();
 				const url = 'https://github.com/n8n-io';
 				const match = url.match(regex);
 				expect(match?.[1]).toBe('n8n-io');
 			});
 
 			it('should extract owner from custom GitHub URL', () => {
-				const regex = getOwnerExtractRegex();
+				const regex = getTriggerOwnerExtractRegex();
 				const url = 'https://github.company.com/my-org';
 				const match = url.match(regex);
 				expect(match?.[1]).toBe('my-org');
 			});
 
 			it('should validate github.com URL', () => {
-				const validationRegex = getOwnerValidationRegex();
+				const validationRegex = getTriggerOwnerValidationRegex();
 				const url = 'https://github.com/n8n-io';
 				expect(validationRegex.test(url)).toBe(true);
 			});
 
 			it('should validate custom GitHub URL', () => {
-				const validationRegex = getOwnerValidationRegex();
+				const validationRegex = getTriggerOwnerValidationRegex();
 				const url = 'https://github.company.com/my-org';
 				expect(validationRegex.test(url)).toBe(true);
 			});
@@ -156,27 +196,27 @@ describe('GitHub Node URL Pattern Tests', () => {
 
 		describe('Repository URL Pattern', () => {
 			it('should extract repository from github.com URL', () => {
-				const regex = getRepositoryExtractRegex();
+				const regex = getTriggerRepositoryExtractRegex();
 				const url = 'https://github.com/n8n-io/n8n';
 				const match = url.match(regex);
 				expect(match?.[1]).toBe('n8n');
 			});
 
 			it('should extract repository from custom GitHub URL', () => {
-				const regex = getRepositoryExtractRegex();
+				const regex = getTriggerRepositoryExtractRegex();
 				const url = 'https://github.company.com/my-org/my-repo';
 				const match = url.match(regex);
 				expect(match?.[1]).toBe('my-repo');
 			});
 
 			it('should validate github.com repository URL', () => {
-				const validationRegex = getRepositoryValidationRegex();
+				const validationRegex = getTriggerRepositoryValidationRegex();
 				const url = 'https://github.com/n8n-io/n8n';
 				expect(validationRegex.test(url)).toBe(true);
 			});
 
 			it('should validate custom GitHub repository URL', () => {
-				const validationRegex = getRepositoryValidationRegex();
+				const validationRegex = getTriggerRepositoryValidationRegex();
 				const url = 'https://github.company.com/my-org/my-repo';
 				expect(validationRegex.test(url)).toBe(true);
 			});
