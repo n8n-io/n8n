@@ -19,6 +19,10 @@ import { weaviateCollectionRLC } from '../shared/descriptions';
 
 type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	hybridQuery?: string;
+	autoCutLimit?: number;
+	alpha?: number;
+	queryProperties?: string;
+	maxVectorDistance?: number;
 };
 class ExtendedWeaviateVectorStore extends WeaviateStore {
 	private static defaultFilter: WeaviateCompositeFilter;
@@ -39,19 +43,32 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
 		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
 		const args = ExtendedWeaviateVectorStore.args;
+		console.log('similaritySearchVectorWithScore WITH ARGS', args);
 		if (args.hybridQuery) {
-			const content = await super.hybridSearch(args.hybridQuery, {
-				limit: k,
+			const options = {
+				limit: !args.autoCutLimit ? k : undefined,
+				autoLimit: args.autoCutLimit ?? undefined,
+				alpha: args.alpha ?? undefined,
 				vector: query,
 				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				queryProperties: args.queryProperties
+					? args.queryProperties.split(',').map((prop) => prop.trim())
+					: undefined,
+				maxVectorDistance: args.maxVectorDistance ?? undefined,
+			};
+			console.log('DOING HYBRID WITH OPTIONS', options);
+			const content = await super.hybridSearch(args.hybridQuery, options);
+			const result: Array<[Document, number]> = content.map((doc) => {
+				const { score, ...metadata } = doc.metadata;
+				return [
+					new Document({
+						pageContent: doc.pageContent,
+						metadata, // score removed
+					}),
+					score as number,
+				];
 			});
-			const result: Array<[Document, number]> = content.map((doc) => [
-				new Document({
-					pageContent: doc.pageContent,
-					metadata: doc.metadata,
-				}),
-				doc.metadata.score as number,
-			]);
+
 			return result;
 		}
 		if (filter) {
@@ -177,12 +194,47 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Select the metadata to retrieve along the content',
 			},
 			{
-				displayName: 'Hybrid Query',
+				displayName: 'Hybrid / Query',
 				name: 'hybridQuery',
 				type: 'string',
 				default: '',
 				validateType: 'string',
 				description: 'Provide a query to combine vector search with a keyword search',
+			},
+			{
+				displayName: 'Hybrid / Auto Cut Limit',
+				name: 'autoCutLimit',
+				type: 'number',
+				default: undefined,
+				validateType: 'number',
+				description:
+					'Limit result groups by detecting sudden jumps in metrics like vector distance or score',
+			},
+			{
+				displayName: 'Hybrid / Alpha',
+				name: 'alpha',
+				type: 'number',
+				default: 0.75,
+				validateType: 'number',
+				description:
+					'Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword.',
+			},
+			{
+				displayName: 'Hybrid / Query Properties',
+				name: 'queryProperties',
+				type: 'string',
+				default: '',
+				validateType: 'string',
+				description:
+					'Comma-separated list of properties to include in the query with optionally weighted values, e.g., "question^2,answer"',
+			},
+			{
+				displayName: 'Hybrid / Max Vector Distance',
+				name: 'maxVectorDistance',
+				type: 'number',
+				default: undefined,
+				validateType: 'number',
+				description: 'Set the maximum allowable distance for the vector search component',
 			},
 			...shared_options,
 		],
@@ -217,6 +269,10 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		}) as string;
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			queryProperties: string;
+			maxVectorDistance: number;
+			alpha: undefined;
+			autoCutLimit: undefined;
 			hybridQuery: undefined;
 			tenant?: string;
 			textKey?: string;
@@ -245,7 +301,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			credentials as WeaviateCredential,
 			timeout as TimeoutParams,
 			proxies as ProxiesParams,
-			options.skip_init_checks as boolean,
+			options.skip_init_checks,
 		);
 
 		const metadataKeys = options.metadataKeys ? options.metadataKeys.split(',') : [];
@@ -256,6 +312,10 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 			hybridQuery: options.hybridQuery ?? undefined,
+			autoCutLimit: options.autoCutLimit ?? undefined,
+			alpha: options.alpha ?? undefined,
+			queryProperties: options.queryProperties,
+			maxVectorDistance: options.maxVectorDistance,
 		};
 
 		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
@@ -291,6 +351,11 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			tenant: options.tenant ?? undefined,
 			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
+			hybridQuery: undefined,
+			autoCutLimit: undefined,
+			alpha: undefined,
+			queryProperties: undefined,
+			maxVectorDistance: undefined,
 		};
 
 		if (options.clearStore) {
