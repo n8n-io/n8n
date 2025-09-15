@@ -33,6 +33,7 @@ describe('FocusPanel', () => {
 		type: 'string',
 		default: '',
 		description: '',
+		validateType: 'string',
 	};
 	const parameter1: INodeProperties = {
 		displayName: 'P1',
@@ -40,6 +41,7 @@ describe('FocusPanel', () => {
 		type: 'string',
 		default: '',
 		description: '',
+		validateType: 'string',
 	};
 
 	let experimentalNdvStore: ReturnType<typeof mockedStore<typeof useExperimentalNdvStore>>;
