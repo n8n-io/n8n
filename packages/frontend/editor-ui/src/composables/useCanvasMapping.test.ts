@@ -1,11 +1,9 @@
+import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
 import type { Ref } from 'vue';
 import { ref } from 'vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import type { Workflow, INode, NodeApiError } from 'n8n-workflow';
-import { setActivePinia } from 'pinia';
 
-import { useCanvasMapping } from '@/composables/useCanvasMapping';
-import type { INodeUi } from '@/Interface';
 import {
 	createTestNode,
 	createTestWorkflowObject,
@@ -13,16 +11,23 @@ import {
 	mockNodes,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { STORES } from '@n8n/stores';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createCanvasConnectionHandleString, createCanvasConnectionId } from '@/utils/canvasUtils';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import { MarkerType } from '@vue-flow/core';
-import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { mock } from 'vitest-mock-extended';
+import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import {
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/constants';
+import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CanvasConnectionMode, CanvasNodeRenderType, type CanvasNodeDefaultRender } from '@/types';
+import { createCanvasConnectionHandleString, createCanvasConnectionId } from '@/utils/canvasUtils';
+import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { createTestingPinia } from '@pinia/testing';
+import { MarkerType } from '@vue-flow/core';
+import { mock } from 'vitest-mock-extended';
 
 beforeEach(() => {
 	const pinia = createTestingPinia({
@@ -35,6 +40,14 @@ beforeEach(() => {
 					[MANUAL_TRIGGER_NODE_TYPE]: {
 						1: mockNodeTypeDescription({
 							name: MANUAL_TRIGGER_NODE_TYPE,
+							group: ['trigger'],
+						}),
+					},
+					[FORM_TRIGGER_NODE_TYPE]: {
+						1: mockNodeTypeDescription({
+							name: FORM_TRIGGER_NODE_TYPE,
+							group: ['trigger'],
+							eventTriggerDescription: 'Waiting for you to submit the form',
 						}),
 					},
 					[SET_NODE_TYPE]: {
@@ -1687,6 +1700,124 @@ describe('useCanvasMapping', () => {
 
 			expect(nodeExecutionWaitingForNextById.value[node1.id]).toBe(false);
 			expect(nodeExecutionWaitingForNextById.value[node2.id]).toBe(false);
+		});
+	});
+
+	describe('trigger tooltip behavior with pinned data', () => {
+		it('should show tooltip for trigger node with no pinned data when workflow is running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = true;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBe(
+				'Waiting for you to create an event in n8n-nodes-base.manualTrigger',
+			);
+		});
+
+		describe('when the node has a custom eventTriggerDescription', () => {
+			it('should show tooltip for trigger node with no pinned data when workflow is running', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const triggerNode = mockNode({
+					name: 'Form Trigger',
+					type: FORM_TRIGGER_NODE_TYPE,
+					disabled: false,
+				});
+				const nodesList = [triggerNode];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes: nodesList,
+					connections,
+				});
+
+				workflowsStore.isWorkflowRunning = true;
+				workflowsStore.getWorkflowRunData = {};
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+				const { nodes: mappedNodes } = useCanvasMapping({
+					nodes: ref(nodesList),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+				expect(renderOptions.options.tooltip).toBe('Waiting for you to submit the form');
+			});
+		});
+
+		it('should not show tooltip for trigger node with pinned data when workflow is running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = true;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]); // Node has pinned data
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBeUndefined();
+		});
+
+		it('should not show tooltip when workflow is not running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = false;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBeUndefined();
 		});
 	});
 
