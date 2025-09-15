@@ -128,4 +128,69 @@ describe('Data Store Size Tests', () => {
 			mockFindDataTablesSize.mockRestore();
 		});
 	});
+
+	describe('findDataTablesSize', () => {
+		it('should return size information for data tables', async () => {
+			// ARRANGE
+			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore1',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			const dataStore2 = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore2',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			const data = new Array(5000).fill(0).map((_, i) => ({ data: `test${i}` }));
+
+			await dataStoreService.insertRows(dataStore1.id, project1.id, data);
+
+			await dataStoreService.insertRows(dataStore2.id, project1.id, [{ data: 'test' }]);
+
+			// ACT
+			const result = await dataStoreRepository.findDataTablesSize();
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.totalBytes).toBeGreaterThan(0);
+			expect(result.tables).toBeDefined();
+			expect(Object.keys(result.tables)).toHaveLength(2);
+
+			expect(result.tables[dataStore1.id]).toBeGreaterThanOrEqual('test1'.length * 5000);
+			expect(result.tables[dataStore2.id]).toBeGreaterThanOrEqual('test'.length);
+
+			// Total should be sum of individual tables
+			const expectedTotal = result.tables[dataStore1.id] + result.tables[dataStore2.id];
+			expect(result.totalBytes).toBe(expectedTotal);
+		});
+
+		it('should return empty result when no data tables exist', async () => {
+			// ACT
+			const result = await dataStoreRepository.findDataTablesSize();
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.totalBytes).toBe(0);
+			expect(result.tables).toBeDefined();
+			expect(Object.keys(result.tables)).toHaveLength(0);
+		});
+
+		it('should handle data tables with no rows', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'emptyDataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			// ACT
+			const result = await dataStoreRepository.findDataTablesSize();
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.totalBytes).toBeGreaterThanOrEqual(0);
+			expect(result.tables).toBeDefined();
+			expect(result.tables[dataStore.id]).toBeGreaterThanOrEqual(0);
+		});
+	});
 });
