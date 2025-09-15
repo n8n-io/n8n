@@ -1,7 +1,7 @@
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
 export const READY_TO_RUN_WORKFLOW_V2: WorkflowDataCreate = {
-	name: 'AI Agent worfklow',
+	name: 'AI Agent workflow',
 	meta: { templateId: 'ready-to-run-ai-workflow-v2' },
 	nodes: [
 		{
