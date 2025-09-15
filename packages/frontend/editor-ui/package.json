@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "clean": "rimraf dist .turbo",
+    "clean": "rimraf dist .turbo .build",
     "fetch-popularity": "node scripts/fetch-node-popularity.mjs && date +%G-W%V > .build/cache-marker",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "typecheck": "vue-tsc --noEmit",
