@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import AskAssistantChat from './AskAssistantChat.vue';
 import type { ChatUI } from '../../types/assistant';

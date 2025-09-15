@@ -264,7 +264,12 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				id: 'version-upgrade-cta',
 				component: VersionUpdateCTA,
 				available: versionsStore.hasVersionUpdates,
-				props: {},
+				props: {
+					disabled: !usersStore.canUserUpdateVersion,
+					tooltipText: !usersStore.canUserUpdateVersion
+						? i18n.baseText('whatsNew.updateNudgeTooltip')
+						: undefined,
+				},
 			},
 		],
 	},

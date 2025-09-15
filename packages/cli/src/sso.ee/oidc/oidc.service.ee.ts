@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { Cipher } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
 
@@ -26,9 +26,11 @@ import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
+	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
+import { OnPubSubEvent } from '@n8n/decorators';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
@@ -59,6 +61,7 @@ export class OidcService {
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -283,16 +286,57 @@ export class OidcService {
 		});
 	}
 
-	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
-		const currentConfig = await this.settingsRepository.findOneBy({
-			key: OIDC_PREFERENCES_DB_KEY,
-		});
+	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
+		}
+	}
 
-		if (currentConfig) {
+	private isReloading = false;
+
+	@OnPubSubEvent('reload-oidc-config')
+	async reload(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('OIDC configuration reload already in progress');
+			return;
+		}
+		this.isReloading = true;
+		try {
+			this.logger.debug('OIDC configuration changed, starting to load it from the database');
+			const configFromDB = await this.loadConfigurationFromDatabase(true);
+			if (configFromDB) {
+				this.oidcConfig = configFromDB;
+				this.cachedOidcConfiguration = undefined;
+			} else {
+				this.logger.warn('OIDC configuration not found in database, ignoring reload message');
+			}
+			await reloadAuthenticationMethod();
+
+			const isOidcLoginEnabled = isOidcCurrentAuthenticationMethod();
+
+			this.logger.debug(`OIDC login is now ${isOidcLoginEnabled ? 'enabled' : 'disabled'}.`);
+
+			Container.get(GlobalConfig).sso.oidc.loginEnabled = isOidcLoginEnabled;
+		} catch (error) {
+			this.logger.error('OIDC configuration changed, failed to reload OIDC configuration', {
+				error,
+			});
+		} finally {
+			this.isReloading = false;
+		}
+	}
+
+	async loadConfigurationFromDatabase(
+		decryptSecret = false,
+	): Promise<OidcRuntimeConfig | undefined> {
+		const configFromDB = await this.settingsRepository.findByKey(OIDC_PREFERENCES_DB_KEY);
+
+		if (configFromDB) {
 			try {
-				const oidcConfig = jsonParse<OidcConfigDto>(currentConfig.value);
+				const oidcConfig = jsonParse<OidcConfigDto>(configFromDB.value);
 
-				if (oidcConfig.discoveryEndpoint === '') return DEFAULT_OIDC_RUNTIME_CONFIG;
+				if (oidcConfig.discoveryEndpoint === '') return undefined;
 
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
@@ -311,12 +355,16 @@ export class OidcService {
 				);
 			}
 		}
+		return undefined;
+	}
 
-		await this.settingsRepository.save({
-			key: OIDC_PREFERENCES_DB_KEY,
-			value: JSON.stringify(DEFAULT_OIDC_CONFIG),
-			loadOnStartup: true,
-		});
+	async loadConfig(decryptSecret = false): Promise<OidcRuntimeConfig> {
+		const currentConfig = await this.loadConfigurationFromDatabase(decryptSecret);
+
+		if (currentConfig) {
+			return currentConfig;
+		}
+
 		return DEFAULT_OIDC_RUNTIME_CONFIG;
 	}
 
@@ -344,17 +392,14 @@ export class OidcService {
 			this.logger.error('Failed to discover OIDC metadata', { error });
 			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
-		await this.settingsRepository.update(
-			{
-				key: OIDC_PREFERENCES_DB_KEY,
-			},
-			{
-				value: JSON.stringify({
-					...newConfig,
-					clientSecret: this.cipher.encrypt(newConfig.clientSecret),
-				}),
-			},
-		);
+		await this.settingsRepository.save({
+			key: OIDC_PREFERENCES_DB_KEY,
+			value: JSON.stringify({
+				...newConfig,
+				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+			}),
+			loadOnStartup: true,
+		});
 
 		// TODO: Discuss this in product
 		// if (this.oidcConfig.loginEnabled && !newConfig.loginEnabled) {
@@ -371,6 +416,8 @@ export class OidcService {
 		);
 
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+
+		await this.broadcastReloadOIDCConfigurationCommand();
 	}
 
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {

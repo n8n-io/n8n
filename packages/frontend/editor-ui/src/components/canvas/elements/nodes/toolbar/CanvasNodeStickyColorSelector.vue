@@ -71,8 +71,9 @@ onBeforeUnmount(() => {
 				:class="$style.option"
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
+				@click.stop
 			>
-				<N8nIcon icon="palette" />
+				<N8nIcon size="small" icon="palette" />
 			</div>
 		</template>
 		<div :class="$style.content">
