@@ -6,6 +6,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/constants';
 import { useVersionsStore } from '@/stores/versions.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 import WhatsNewModal from './WhatsNewModal.vue';
@@ -40,6 +41,7 @@ const renderComponent = createComponentRenderer(WhatsNewModal, {
 
 let uiStore: MockedStore<typeof useUIStore>;
 let versionsStore: MockedStore<typeof useVersionsStore>;
+let usersStore: MockedStore<typeof useUsersStore>;
 
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -67,7 +69,9 @@ describe('WhatsNewModal', () => {
 		};
 
 		versionsStore = mockedStore(useVersionsStore);
+		usersStore = mockedStore(useUsersStore);
 		versionsStore.hasVersionUpdates = false;
+		usersStore.canUserUpdateVersion = true;
 		versionsStore.currentVersion = currentVersion;
 		versionsStore.latestVersion = currentVersion;
 		versionsStore.nextVersions = [];
@@ -129,7 +133,7 @@ describe('WhatsNewModal', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should render with update button disabled', async () => {
+	it('should not render update button when no version updates available', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				data: {
@@ -143,7 +147,7 @@ describe('WhatsNewModal', () => {
 
 		expect(screen.getByText("What's New in n8n 1.100.0")).toBeInTheDocument();
 		expect(getByTestId('whats-new-item-1')).toMatchSnapshot();
-		expect(getByTestId('whats-new-modal-update-button')).toBeDisabled();
+		expect(queryByTestId('whats-new-modal-update-button')).not.toBeInTheDocument();
 		expect(queryByTestId('whats-new-modal-next-versions-link')).not.toBeInTheDocument();
 	});
 
@@ -218,5 +222,60 @@ describe('WhatsNewModal', () => {
 		await userEvent.click(getByTestId('whats-new-modal-next-versions-link'));
 
 		expect(uiStore.openModal).toHaveBeenCalledWith(VERSIONS_MODAL_KEY);
+	});
+
+	describe('Update button permission tests', () => {
+		it('should not render update button when hasVersionUpdates is false', async () => {
+			versionsStore.hasVersionUpdates = false;
+			usersStore.canUserUpdateVersion = true;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					data: {
+						articleId: 1,
+					},
+				},
+			});
+
+			await waitFor(() => expect(queryByTestId('whatsNew-modal')).toBeInTheDocument());
+			expect(queryByTestId('whats-new-modal-update-button')).not.toBeInTheDocument();
+		});
+
+		it('should render update button disabled when canUserUpdateVersion is false', async () => {
+			versionsStore.hasVersionUpdates = true;
+			usersStore.canUserUpdateVersion = false;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data: {
+						articleId: 1,
+					},
+				},
+			});
+
+			await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+
+			const updateButton = getByTestId('whats-new-modal-update-button');
+			expect(updateButton).toBeInTheDocument();
+			expect(updateButton).toBeDisabled();
+		});
+
+		it('should render update button enabled when canUserUpdateVersion is true and hasVersionUpdates is true', async () => {
+			versionsStore.hasVersionUpdates = true;
+			usersStore.canUserUpdateVersion = true;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data: {
+						articleId: 1,
+					},
+				},
+			});
+
+			await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+			const updateButton = getByTestId('whats-new-modal-update-button');
+			expect(updateButton).toBeInTheDocument();
+			expect(updateButton).toBeEnabled();
+		});
 	});
 });

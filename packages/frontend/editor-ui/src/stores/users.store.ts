@@ -79,6 +79,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
 	);
 
+	const canUserUpdateVersion = computed(() => {
+		return isInstanceOwner.value;
+	});
+
 	const setEasyAIWorkflowOnboardingDone = () => {
 		if (currentUser.value?.settings) {
 			currentUser.value.settings.easyAIWorkflowOnboarded = true;
@@ -446,6 +450,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		canUserUpdateVersion,
 		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,
