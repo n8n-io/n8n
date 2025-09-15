@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 export class DataTableConfig {
 	/** Specifies the maximum allowed size (in bytes) for data tables. */
 	@Env('N8N_DATA_TABLES_MAX_SIZE_BYTES')
-	maxSize: number = 100 * 1024 * 1024;
+	maxSize: number = 50 * 1024 * 1024;
 
 	/**
 	 * The percentage threshold at which a warning is triggered for data tables.
