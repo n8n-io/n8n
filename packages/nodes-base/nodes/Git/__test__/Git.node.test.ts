@@ -16,11 +16,6 @@ jest.mock('simple-git');
 const mockSimpleGit = simpleGit as jest.MockedFunction<typeof simpleGit>;
 mockSimpleGit.mockReturnValue(mockGit as unknown as SimpleGit);
 
-jest.mock('fs/promises', () => ({
-	access: jest.fn(),
-	mkdir: jest.fn(),
-}));
-
 describe('Git Node', () => {
 	let gitNode: Git;
 	let executeFunctions: jest.Mocked<IExecuteFunctions>;
