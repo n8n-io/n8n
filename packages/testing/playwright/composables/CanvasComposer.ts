@@ -1,3 +1,6 @@
+import type { Response } from '@playwright/test';
+import { expect } from '@playwright/test';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 export class CanvasComposer {
@@ -36,5 +39,85 @@ export class CanvasComposer {
 	async selectAllAndCopy(): Promise<void> {
 		await this.n8n.canvas.selectAll();
 		await this.copySelectedNodesWithToast();
+	}
+
+	/**
+	 * Switch between editor and workflow history and back
+	 */
+	async switchBetweenEditorAndHistory(): Promise<void> {
+		await this.n8n.page.getByTestId('workflow-history-button').click();
+		await this.n8n.page.waitForResponse(
+			(response: Response) =>
+				response.url().includes('/rest/workflow-history/workflow/') && response.status() === 200,
+		);
+
+		await this.n8n.page.getByTestId('workflow-history-close-button').click();
+		await this.n8n.page.waitForResponse(
+			(response: Response) =>
+				response.url().includes('/rest/workflows/') && response.status() === 200,
+		);
+
+		await this.n8n.page.waitForLoadState();
+
+		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
+		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
+	}
+
+	/**
+	 * Switch between editor and workflow list and back
+	 */
+	async switchBetweenEditorAndWorkflowList(): Promise<void> {
+		await this.n8n.page.getByTestId('menu-item').first().click();
+		await Promise.all([
+			this.n8n.page.waitForResponse(
+				(response: Response) => response.url().includes('/rest/users') && response.status() === 200,
+			),
+			this.n8n.page.waitForResponse(
+				(response: Response) =>
+					response.url().includes('/rest/workflows') && response.status() === 200,
+			),
+			this.n8n.page.waitForResponse(
+				(response: Response) =>
+					response.url().includes('/rest/active-workflows') && response.status() === 200,
+			),
+			this.n8n.page.waitForResponse(
+				(response: Response) =>
+					response.url().includes('/rest/projects') && response.status() === 200,
+			),
+		]);
+
+		await this.n8n.page.getByTestId('resources-list-item-workflow').first().click();
+
+		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
+		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
+	}
+
+	/**
+	 * Zoom in and validate that zoom functionality works
+	 */
+	async zoomInAndCheckNodes(): Promise<void> {
+		const initialNodeSize = await this.n8n.page.evaluate(() => {
+			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
+			return firstNode ? firstNode.getBoundingClientRect().width : 0;
+		});
+
+		for (let i = 0; i < 4; i++) {
+			await this.n8n.canvas.clickZoomInButton();
+		}
+
+		const finalNodeSize = await this.n8n.page.evaluate(() => {
+			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
+			return firstNode ? firstNode.getBoundingClientRect().width : 0;
+		});
+
+		// Validate zoom increased node sizes by at least 50%
+		const zoomWorking = finalNodeSize > initialNodeSize * 1.5;
+
+		if (!zoomWorking) {
+			throw new Error(
+				"Zoom functionality not working: nodes didn't scale properly. " +
+					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
+			);
+		}
 	}
 }

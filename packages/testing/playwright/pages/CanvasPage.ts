@@ -655,6 +655,61 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
 
+	async clickZoomInButton(): Promise<void> {
+		await this.clickByTestId('zoom-in-button');
+	}
+
+	async clickZoomOutButton(): Promise<void> {
+		await this.clickByTestId('zoom-out-button');
+	}
+
+	/**
+	 * Get the current zoom level of the canvas
+	 * @returns The current zoom/scale factor as a number
+	 */
+	async getCanvasZoomLevel(): Promise<number> {
+		return await this.page.evaluate(() => {
+			const canvasViewport = document.querySelector('.vue-flow__viewport');
+			if (canvasViewport) {
+				const transform = window.getComputedStyle(canvasViewport).transform;
+				if (transform && transform !== 'none') {
+					const matrix = transform.match(/matrix\(([^)]+)\)/);
+					if (matrix) {
+						const values = matrix[1].split(', ');
+						return parseFloat(values[0]); // First value is scaleX
+					}
+				}
+			}
+
+			// Fallback: return default zoom level
+			return 1.0;
+		});
+	}
+
+	/**
+	 * Check if canvas is in a ready/interactive state
+	 * @returns true if canvas is ready for interaction
+	 */
+	async isCanvasReady(): Promise<boolean> {
+		return await this.page.evaluate(() => {
+			// Check for loading states
+			const loadingElements = document.querySelectorAll(
+				'[data-test-id*="loading"], .loading, .spinner',
+			);
+			if (loadingElements.length > 0) return false;
+
+			const canvas = document.querySelector('[data-test-id="canvas"]');
+			if (!canvas) return false;
+
+			const isDisabled =
+				canvas.hasAttribute('disabled') ||
+				canvas.classList.contains('disabled') ||
+				canvas.getAttribute('aria-disabled') === 'true';
+
+			return !isDisabled;
+		});
+	}
+
 	waitingForTriggerEvent() {
 		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
 	}
