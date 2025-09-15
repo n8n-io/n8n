@@ -151,17 +151,14 @@ export function reRankSearchResults(
 		.map(({ score, item }) => {
 			// For each additional factor, we check if it exists for the item and type,
 			// and if so, we add the score to the item's score.
-			const additionalScore = Object.entries(additionalFactors).reduce(
-				(acc, [type, factorScores]) => {
-					const factorScore = factorScores[item.key];
-					if (factorScore) {
-						return acc + factorScore;
-					}
+			const additionalScore = Object.entries(additionalFactors).reduce((acc, [_, factorScores]) => {
+				const factorScore = factorScores[item.key];
+				if (factorScore) {
+					return acc + factorScore;
+				}
 
-					return acc;
-				},
-				0,
-			);
+				return acc;
+			}, 0);
 
 			return {
 				score: score + additionalScore,
