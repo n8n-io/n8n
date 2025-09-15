@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow } from 'n8n-workflow';
+import { LoggerProxy, UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -447,6 +447,15 @@ export async function getBase(
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`
 		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.
 		additionalData[moduleName] = moduleContext;
+	}
+
+	// Ensure latest external secrets are fetched at the start of a job.
+	// This complements the periodic refresh and guarantees fresh values on workers.
+	try {
+		await additionalData.externalSecretsProxy.update();
+	} catch {
+		// Do not block the job; log at debug level for visibility without noise.
+		LoggerProxy.debug('External secrets refresh on job start failed');
 	}
 
 	return additionalData;
