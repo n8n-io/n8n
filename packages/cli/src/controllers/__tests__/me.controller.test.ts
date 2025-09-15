@@ -257,7 +257,11 @@ describe('MeController', () => {
 							currentPassword: 'wrong-password',
 						}),
 					),
-				).rejects.toThrowError(new BadRequestError('Provided current password is incorrect.'));
+				).rejects.toThrowError(
+					new BadRequestError(
+						'Unable to update profile. Please check your credentials and try again.',
+					),
+				);
 			});
 
 			it('should update the user email if currentPassword is correct', async () => {
