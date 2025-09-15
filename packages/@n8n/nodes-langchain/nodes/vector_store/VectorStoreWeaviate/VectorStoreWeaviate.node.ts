@@ -1,6 +1,8 @@
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-import type { WeaviateLibArgs } from '@langchain/weaviate';
+
+import { Document } from 'langchain/document';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -15,14 +17,19 @@ import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVec
 import { weaviateCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
+type WeaviateLibArgs = OriginalWeaviateLibArgs & {
+	hybridQuery?: string;
+};
 class ExtendedWeaviateVectorStore extends WeaviateStore {
 	private static defaultFilter: WeaviateCompositeFilter;
+	static args: WeaviateLibArgs;
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: WeaviateLibArgs,
 		defaultFilter?: WeaviateCompositeFilter,
 	): Promise<WeaviateStore> {
+		ExtendedWeaviateVectorStore.args = args;
 		if (defaultFilter) {
 			ExtendedWeaviateVectorStore.defaultFilter = defaultFilter;
 		}
@@ -31,9 +38,28 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
 		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
+		const args = ExtendedWeaviateVectorStore.args;
+		if (args.hybridQuery) {
+			const content = await super.hybridSearch(args.hybridQuery, {
+				limit: k,
+				vector: query,
+				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+			});
+			const result: Array<[Document, number]> = content.map((doc) => [
+				new Document({
+					pageContent: doc.pageContent,
+					metadata: doc.metadata,
+				}),
+				doc.metadata.score as number,
+			]);
+			return result;
+		}
 		if (filter) {
-			const composedFilter = parseCompositeFilter(filter as WeaviateCompositeFilter);
-			return await super.similaritySearchVectorWithScore(query, k, composedFilter);
+			return await super.similaritySearchVectorWithScore(
+				query,
+				k,
+				parseCompositeFilter(filter as WeaviateCompositeFilter),
+			);
 		} else {
 			return await super.similaritySearchVectorWithScore(query, k, undefined);
 		}
@@ -150,6 +176,14 @@ const retrieveFields: INodeProperties[] = [
 				validateType: 'string',
 				description: 'Select the metadata to retrieve along the content',
 			},
+			{
+				displayName: 'Hybrid Query',
+				name: 'hybridQuery',
+				type: 'string',
+				default: '',
+				validateType: 'string',
+				description: 'Provide a query to combine vector search with a keyword search',
+			},
 			...shared_options,
 		],
 	},
@@ -183,6 +217,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		}) as string;
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			hybridQuery: undefined;
 			tenant?: string;
 			textKey?: string;
 			timeout_init: number;
@@ -217,9 +252,10 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const config: WeaviateLibArgs = {
 			client,
 			indexName: collection,
-			tenant: options.tenant ? options.tenant : undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			tenant: options.tenant ?? undefined,
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
+			hybridQuery: options.hybridQuery ?? undefined,
 		};
 
 		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
@@ -252,8 +288,8 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const config: WeaviateLibArgs = {
 			client,
 			indexName: collectionName,
-			tenant: options.tenant ? options.tenant : undefined,
-			textKey: options.textKey ? options.textKey : 'text',
+			tenant: options.tenant ?? undefined,
+			textKey: options.textKey ?? 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 
