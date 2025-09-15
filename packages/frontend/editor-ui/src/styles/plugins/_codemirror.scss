@@ -35,10 +35,15 @@
 		border-bottom-right-radius: 0;
 
 		&:has(+ .cm-completionInfo-left) {
+			/* Info box should not cast shadow on the list */
+			position: relative;
+			z-index: 1;
+
 			border-top-left-radius: 0;
 			border-bottom-left-radius: 0;
 			border-top-right-radius: var(--border-radius-base);
 			border-bottom-right-radius: var(--border-radius-base);
+			background-color: var(--color-background-xlight);
 		}
 
 		&:has(+ .cm-completionInfo) {
@@ -335,6 +340,8 @@
 		border-bottom-left-radius: var(--border-radius-base);
 		border-left: var(--border-base);
 		border-right: none;
+		background-color: var(--color-infobox-background);
+		z-index: 0;
 	}
 
 	&.cm-completionInfo-right {
