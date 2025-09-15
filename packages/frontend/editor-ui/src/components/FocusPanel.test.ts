@@ -1,7 +1,7 @@
 import { createCanvasGraphNode } from '@/__tests__/data';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE } from '@/constants';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -51,7 +51,6 @@ describe('FocusPanel', () => {
 		const pinia = setActivePinia(createTestingPinia({ stubActions: false }));
 
 		localStorage.clear();
-		createAppModals();
 
 		nodeTypesStore = useNodeTypesStore(pinia);
 		nodeTypesStore.setNodeTypes([
@@ -67,10 +66,6 @@ describe('FocusPanel', () => {
 		]);
 		focusPanelStore = useFocusPanelStore(pinia);
 		focusPanelStore.toggleFocusPanel();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
 	});
 
 	describe('when experimental NDV is enabled', () => {

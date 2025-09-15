@@ -4,8 +4,8 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
-import { FocusPanel } from './components/FocusPanel';
 import { CredentialModal } from './components/CredentialModal';
+import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { StickyComponent } from './components/StickyComponent';
 
