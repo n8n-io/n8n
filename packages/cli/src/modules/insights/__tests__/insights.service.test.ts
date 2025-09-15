@@ -280,38 +280,37 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are are grouped by workflow correctly', async () => {
 		// ARRANGE
-		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: workflow === workflow1 ? 1 : 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
+				periodStart: DateTime.utc().minus({ day: 2 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
 				value: 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			// last 14 days
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'runtime_ms',
 				value: 123,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 
 			// Barely in range insight (should be included)
@@ -320,7 +319,7 @@ describe('getInsightsByWorkflow', () => {
 				type: 'success',
 				value: 1,
 				periodUnit: 'hour',
-				periodStart: now.minus({ days: 13, hours: 23 }),
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
 			});
 
 			// Out of date range insight (should not be included)
@@ -329,7 +328,7 @@ describe('getInsightsByWorkflow', () => {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 14 }),
+				periodStart: DateTime.utc().minus({ days: 14 }),
 			});
 		}
 
@@ -374,25 +373,24 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are grouped by workflow correctly with sorting', async () => {
 		// ARRANGE
-		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: workflow === workflow1 ? 1 : 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
 				value: 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'runtime_ms',
 				value: workflow === workflow1 ? 2 : 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 		}
 
@@ -410,13 +408,12 @@ describe('getInsightsByWorkflow', () => {
 
 	test('compacted data are grouped by workflow correctly with pagination', async () => {
 		// ARRANGE
-		const now = DateTime.utc();
 		for (const workflow of [workflow1, workflow2, workflow3]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: workflow === workflow1 ? 1 : workflow === workflow2 ? 2 : 3,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 		}
 
@@ -481,38 +478,37 @@ describe('getInsightsByTime', () => {
 
 	test('compacted data are are grouped by time correctly', async () => {
 		// ARRANGE
-		const now: DateTime = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: workflow === workflow1 ? 1 : 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			// Check that hourly data is grouped together with the previous daily data
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
 				value: 2,
 				periodUnit: 'hour',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
+				periodStart: DateTime.utc().minus({ day: 2 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'runtime_ms',
 				value: workflow === workflow1 ? 10 : 20,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 
 			// Barely in range insight (should be included)
@@ -521,7 +517,7 @@ describe('getInsightsByTime', () => {
 				type: workflow === workflow1 ? 'success' : 'failure',
 				value: 1,
 				periodUnit: 'hour',
-				periodStart: now.minus({ days: 13, hours: 23 }),
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
 			});
 
 			// Out of date range insight (should not be included)
@@ -530,7 +526,7 @@ describe('getInsightsByTime', () => {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 14 }),
+				periodStart: DateTime.utc().minus({ days: 14 }),
 			});
 		}
 
@@ -541,10 +537,10 @@ describe('getInsightsByTime', () => {
 		expect(byTime).toHaveLength(4);
 
 		// expect date to be sorted by oldest first
-		expect(byTime[0].date).toEqual(now.minus({ days: 14 }).startOf('day').toISO());
-		expect(byTime[1].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
-		expect(byTime[2].date).toEqual(now.minus({ days: 2 }).startOf('day').toISO());
-		expect(byTime[3].date).toEqual(now.startOf('day').toISO());
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 14 }).startOf('day').toISO());
+		expect(byTime[1].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[2].date).toEqual(DateTime.utc().minus({ days: 2 }).startOf('day').toISO());
+		expect(byTime[3].date).toEqual(DateTime.utc().startOf('day').toISO());
 
 		expect(byTime[0].values).toEqual({
 			total: 2,
@@ -585,25 +581,24 @@ describe('getInsightsByTime', () => {
 
 	test('compacted data with limited insight types are grouped by time correctly', async () => {
 		// ARRANGE
-		const now: DateTime = DateTime.utc();
 		for (const workflow of [workflow1, workflow2]) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: workflow === workflow1 ? 1 : 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
 				value: 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'time_saved_min',
 				value: workflow === workflow1 ? 10 : 20,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
 		}
 
@@ -618,13 +613,13 @@ describe('getInsightsByTime', () => {
 		expect(byTime).toHaveLength(2);
 
 		// expect results to contain only failure and time saved insights
-		expect(byTime[0].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
 		expect(byTime[0].values).toEqual({
 			timeSaved: 30,
 			failed: 0,
 		});
 
-		expect(byTime[1].date).toEqual(now.startOf('day').toISO());
+		expect(byTime[1].date).toEqual(DateTime.utc().startOf('day').toISO());
 		expect(byTime[1].values).toEqual({
 			timeSaved: 0,
 			failed: 4,

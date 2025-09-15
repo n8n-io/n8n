@@ -175,6 +175,31 @@ describe('ExecutionRecoveryService', () => {
 				expect(amendedExecution).toBeNull();
 			});
 
+			test('for canceled executions with data, should return `null`', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow();
+				const execution = await createExecution(
+					{ status: 'canceled', data: stringify({ runData: {} }) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, 'Some workflow');
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(amendedExecution).toBeNull();
+			});
+
 			test('should return `null` if no execution found', async () => {
 				/**
 				 * Arrange

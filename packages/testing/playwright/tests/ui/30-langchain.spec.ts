@@ -29,8 +29,7 @@ async function addOpenAILanguageModelWithCredentials(
 		options,
 	);
 
-	await n8n.ndv.clickCreateNewCredential();
-	await n8n.credentialsModal.setValues({
+	await n8n.credentialsComposer.createFromNdv({
 		apiKey: 'abcd',
 	});
 	await n8n.ndv.clickBackToCanvasButton();
@@ -351,8 +350,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 				{ closeNDV: false },
 			);
 
-			await n8n.ndv.clickCreateNewCredential();
-			await n8n.credentialsModal.setValues({
+			await n8n.credentialsComposer.createFromNdv({
 				password: 'testtesttest',
 			});
 

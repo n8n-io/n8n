@@ -5,13 +5,17 @@ test.describe('OAuth Credentials', () => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		await page.goto(`projects/${projectId}/credentials`);
 		await n8n.credentials.emptyListCreateCredentialButton.click();
-		await n8n.credentials.openNewCredentialDialogFromCredentialList('Google OAuth2 API');
-		await n8n.credentials.fillCredentialField('clientId', 'test-key');
-		await n8n.credentials.fillCredentialField('clientSecret', 'test-secret');
-		await n8n.credentials.saveCredential();
+		await n8n.credentials.createCredentialFromCredentialPicker(
+			'Google OAuth2 API',
+			{
+				clientId: 'test-key',
+				clientSecret: 'test-secret',
+			},
+			{ closeDialog: false },
+		);
 
 		const popupPromise = page.waitForEvent('popup');
-		await n8n.credentials.getOauthConnectButton().click();
+		await n8n.credentials.credentialModal.oauthConnectButton.click();
 
 		const popup = await popupPromise;
 		const popupUrl = popup.url();
@@ -25,7 +29,8 @@ test.describe('OAuth Credentials', () => {
 			channel.postMessage('success');
 		});
 
-		await expect(n8n.credentials.getSaveButton()).toContainText('Saved');
-		await expect(n8n.credentials.getOauthConnectSuccessBanner()).toContainText('Account connected');
+		await expect(n8n.credentials.credentialModal.oauthConnectSuccessBanner).toContainText(
+			'Account connected',
+		);
 	});
 });

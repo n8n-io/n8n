@@ -83,7 +83,6 @@ export interface FrontendSettings {
 	};
 	dataTables: {
 		maxSize: number;
-		warningThreshold: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
