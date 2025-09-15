@@ -5,6 +5,7 @@ import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -26,9 +27,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
-	async fillParameterInput(labelName: string, value: string, index = 0) {
-		await this.getParameterByLabel(labelName)
-			.nth(index)
+	async fillParameterInput(labelName: string, value: string, index?: number) {
+		await locatorByIndex(this.getParameterByLabel(labelName), index)
 			.getByTestId('parameter-input-field')
 			.fill(value);
 	}
@@ -185,11 +185,11 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.type(text);
 	}
 
-	getParameterInput(parameterName: string, index = 0) {
-		return this.page.getByTestId(`parameter-input-${parameterName}`).nth(index);
+	getParameterInput(parameterName: string, index?: number) {
+		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
-	getParameterInputField(parameterName: string, index = 0) {
+	getParameterInputField(parameterName: string, index?: number) {
 		return this.getParameterInput(parameterName, index).locator('input');
 	}
 
@@ -199,7 +199,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
-		await this.clickByTestId(`parameter-input-${parameterName}`, index);
+		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
