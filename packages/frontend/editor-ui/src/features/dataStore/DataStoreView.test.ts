@@ -62,10 +62,10 @@ vi.mock('@/composables/useDocumentTitle', () => ({
 
 const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
+	debounce: vi.fn(),
 };
 vi.mock('@/composables/useDebounce', () => ({
 	useDebounce: vi.fn(() => mockDebounce),
-	debounce: vi.fn(),
 }));
 
 const router = createRouter({
