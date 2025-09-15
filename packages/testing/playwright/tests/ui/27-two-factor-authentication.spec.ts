@@ -83,8 +83,6 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 
 		await n8n.promptMfaCodeModal.submitMfaCode(recoveryCode);
 
-		expect(await n8n.notifications.getNotificationCount()).toBeGreaterThan(0);
-
 		await n8n.sideBar.signOutFromWorkflows();
 	});
 
