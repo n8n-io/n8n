@@ -41,7 +41,6 @@ describe('Owner shell', () => {
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
-			// Shell users don't need currentPassword
 			const response = await authOwnerShellAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);

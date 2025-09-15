@@ -22,10 +22,8 @@ import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/stores/sso.store';
-import {
-	confirmPasswordEventBus,
-	ConfirmPasswordModalEvents,
-} from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
+import type { ConfirmPasswordModalEvents } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
+import { confirmPasswordEventBus } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 
 type UserBasicDetailsForm = {
 	firstName: string;
