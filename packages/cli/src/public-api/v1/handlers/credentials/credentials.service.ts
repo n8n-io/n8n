@@ -296,12 +296,12 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 					else: {
 						allOf: [],
 					},
-				} as IDependency;
+				} satisfies IDependency;
 				resolvedConditions.push(conditionKey);
 			}
 
-			(propertyRequiredDependencies[conditionKey] as IDependency).then?.allOf.push({ required: [property.name] });
-			(propertyRequiredDependencies[conditionKey] as IDependency).else?.allOf.push({
+			propertyRequiredDependencies[conditionKey].then?.allOf.push({ required: [property.name] });
+			propertyRequiredDependencies[conditionKey].else?.allOf.push({
 				not: { required: [property.name] },
 			});
 
