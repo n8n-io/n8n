@@ -2,7 +2,7 @@
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
@@ -20,8 +20,6 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 	showOwnershipBadge: false,
 });
-
-const isLoadingSize = ref<boolean>(false);
 
 const dataStoreRoute = computed(() => {
 	return {
@@ -69,16 +67,11 @@ const getDataStoreSize = computed(() => {
 							:class="[$style['info-cell'], $style['info-cell--size']]"
 							data-test-id="data-store-card-size"
 						>
-							<template v-if="isLoadingSize">
-								{{ i18n.baseText('dataStore.card.size', { interpolate: { size: '...' } }) }}
-							</template>
-							<template v-else>
-								{{
-									i18n.baseText('dataStore.card.size', {
-										interpolate: { size: getDataStoreSize },
-									})
-								}}
-							</template>
+							{{
+								i18n.baseText('dataStore.card.size', {
+									interpolate: { size: getDataStoreSize },
+								})
+							}}
 						</N8nText>
 						<N8nText
 							size="small"
