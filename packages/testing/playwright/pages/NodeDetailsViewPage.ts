@@ -513,6 +513,31 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.getInlineExpressionEditorItemPrevButton().click();
 	}
 
+	async openExpressionEditorModal(parameterName: string) {
+		await this.activateParameterExpressionEditor(parameterName);
+		const parameter = this.getParameterInput(parameterName);
+		await parameter.click();
+		const expander = parameter.getByTestId('expander');
+		await expander.click();
+
+		await this.page.getByTestId('expression-modal-input').waitFor({ state: 'visible' });
+	}
+
+	getExpressionEditorModalInput() {
+		return this.page.getByTestId('expression-modal-input').getByRole('textbox');
+	}
+
+	async fillExpressionEditorModalInput(text: string) {
+		const input = this.getExpressionEditorModalInput();
+		await input.clear();
+		await input.click();
+		await input.fill(text);
+	}
+
+	getExpressionEditorModalOutput() {
+		return this.page.getByTestId('expression-modal-output');
+	}
+
 	async typeIntoParameterInput(parameterName: string, content: string): Promise<void> {
 		const input = this.getParameterInput(parameterName);
 		await input.type(content);
