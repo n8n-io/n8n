@@ -106,8 +106,8 @@ catalogs:
       specifier: 10.0.0
       version: 10.0.0
     vite:
-      specifier: ^6.3.5
-      version: 6.3.5
+      specifier: ^7.0.0
+      version: 7.0.0
     vitest:
       specifier: ^3.1.3
       version: 3.1.3
@@ -883,7 +883,7 @@ importers:
         version: link:../typescript-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -895,7 +895,7 @@ importers:
         version: 4.19.3
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -1458,7 +1458,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -1470,7 +1470,7 @@ importers:
         version: link:../typescript-config
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2031,7 +2031,7 @@ importers:
         version: link:../../@n8n/typescript-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2040,7 +2040,7 @@ importers:
         version: 6.0.1
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -2095,7 +2095,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
@@ -2104,10 +2104,10 @@ importers:
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vite-plugin-dts:
         specifier: ^4.5.3
-        version: 4.5.3(@types/node@20.19.14)(rollup@4.50.2)(typescript@5.9.2)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+        version: 4.5.3(@types/node@20.19.14)(rollup@4.50.2)(typescript@5.9.2)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2137,7 +2137,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2152,7 +2152,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2270,7 +2270,7 @@ importers:
         version: 2.11.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
@@ -2294,7 +2294,7 @@ importers:
         version: 0.27.3(@babel/parser@7.27.5)(rollup@4.50.2)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2334,7 +2334,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2349,7 +2349,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2413,7 +2413,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2444,7 +2444,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2462,7 +2462,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2787,10 +2787,10 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-legacy':
         specifier: ^6.0.2
-        version: 6.0.2(terser@5.16.1)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+        version: 6.0.2(terser@5.16.1)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
@@ -2811,13 +2811,13 @@ importers:
         version: 0.27.3(@babel/parser@7.27.5)(rollup@4.50.2)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
-        version: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+        version: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vite-plugin-node-polyfills:
         specifier: ^0.24.0
-        version: 0.24.0(rollup@4.50.2)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+        version: 0.24.0(rollup@4.50.2)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       vite-plugin-static-copy:
         specifier: 2.2.0
-        version: 2.2.0(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
+        version: 2.2.0(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       vite-svg-loader:
         specifier: 5.1.0
         version: 5.1.0(vue@3.5.13(typescript@5.9.2))
@@ -19140,7 +19140,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.12.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -21276,7 +21276,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.12.0)
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -23084,7 +23084,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.9.2':
     optional: true
 
-  '@vitejs/plugin-legacy@6.0.2(terser@5.16.1)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))':
+  '@vitejs/plugin-legacy@6.0.2(terser@5.16.1)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/preset-env': 7.26.9(@babel/core@7.26.10)
@@ -23095,13 +23095,13 @@ snapshots:
       regenerator-runtime: 0.14.1
       systemjs: 6.15.1
       terser: 5.16.1
-      vite: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-vue@5.2.4(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))':
+  '@vitejs/plugin-vue@5.2.4(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      vite: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
       vue: 3.5.13(typescript@5.9.2)
 
   '@vitest/coverage-v8@3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.14)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))':
@@ -23876,7 +23876,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.12.0(debug@4.4.1)):
+  axios-retry@4.5.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -24245,7 +24245,7 @@ snapshots:
   bundlemon@3.1.0(typescript@5.9.2):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.12.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
       bytes: 3.1.2
@@ -33461,7 +33461,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-dts@4.5.3(@types/node@20.19.14)(rollup@4.50.2)(typescript@5.9.2)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
+  vite-plugin-dts@4.5.3(@types/node@20.19.14)(rollup@4.50.2)(typescript@5.9.2)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
     dependencies:
       '@microsoft/api-extractor': 7.52.1(@types/node@20.19.14)
       '@rollup/pluginutils': 5.1.4(rollup@4.50.2)
@@ -33474,27 +33474,27 @@ snapshots:
       magic-string: 0.30.17
       typescript: 5.9.2
     optionalDependencies:
-      vite: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite-plugin-node-polyfills@0.24.0(rollup@4.50.2)(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
+  vite-plugin-node-polyfills@0.24.0(rollup@4.50.2)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
     dependencies:
       '@rollup/plugin-inject': 5.0.5(rollup@4.50.2)
       node-stdlib-browser: 1.3.1
-      vite: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
     transitivePeerDependencies:
       - rollup
 
-  vite-plugin-static-copy@2.2.0(vite@6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
+  vite-plugin-static-copy@2.2.0(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)):
     dependencies:
       chokidar: 4.0.3
       fast-glob: 3.3.3
       fs-extra: 11.3.0
       picocolors: 1.1.1
-      vite: 6.3.5(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+      vite: 7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
   vite-svg-loader@5.1.0(vue@3.5.13(typescript@5.9.2)):
     dependencies:
