@@ -122,17 +122,8 @@ const scrollRight = () => scroll(50);
 							{ [$style.activeTab]: modelValue === option.value, [$style.noText]: !option.label },
 						]"
 					>
-						<N8nIcon
-							v-if="option.icon && option.iconPosition !== 'right'"
-							:icon="option.icon"
-							size="medium"
-						/>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<N8nIcon
-							v-if="option.icon && option.iconPosition === 'right'"
-							:icon="option.icon"
-							size="medium"
-						/>
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
