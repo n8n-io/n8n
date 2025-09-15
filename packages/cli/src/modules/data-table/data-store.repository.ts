@@ -243,6 +243,9 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return [`${alias}.id`, `${alias}.name`, `${alias}.type`, `${alias}.icon`];
 	}
 
+	private parseSize = (bytes: number | string | null): number =>
+		bytes === null ? 0 : typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
+
 	async findDataTablesSize(): Promise<DataTablesSizeData> {
 		const dbType = this.globalConfig.database.type;
 		const schemaName = this.globalConfig.database.postgresdb.schema;
@@ -291,22 +294,17 @@ export class DataStoreRepository extends Repository<DataTable> {
 			table_bytes: number | string | null;
 		}>;
 
-		const tables: Record<string, number> = {};
-		let totalBytes = 0;
-
-		result
+		return result
 			.filter((row) => row.table_bytes !== null && row.table_name)
-			.forEach((row) => {
-				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
-				const sizeBytes =
-					typeof row.table_bytes === 'string'
-						? parseInt(row.table_bytes, 10)
-						: (row.table_bytes ?? 0);
-				tables[dataStoreId] = tables[dataStoreId] ?? 0;
-				tables[dataStoreId] += sizeBytes;
-				totalBytes += sizeBytes;
-			});
-
-		return { totalBytes, tables };
+			.reduce(
+				(acc, row) => {
+					const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+					const sizeBytes = this.parseSize(row.table_bytes);
+					acc.tables[dataStoreId] = (acc.tables[dataStoreId] ?? 0) + sizeBytes;
+					acc.totalBytes += sizeBytes;
+					return acc;
+				},
+				{ tables: {} as Record<string, number>, totalBytes: 0 },
+			);
 	}
 }
