@@ -3,7 +3,11 @@ import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } f
 import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
+import englishBaseText from './locales/en.json';
 import type { BaseTextKey, INodeTranslationHeaders } from './types';
+export type LocaleMessages = typeof englishBaseText & {
+	numberFormats: { [key: string]: Intl.NumberFormatOptions };
+};
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -17,7 +21,7 @@ export const i18nInstance = createI18n({
 	legacy: false,
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: { en: {} },
+	messages: { en: englishBaseText },
 	warnHtmlMessage: false,
 });
 
@@ -402,7 +406,7 @@ export function setLanguage(locale: string) {
 	return locale;
 }
 
-export function loadLanguage(locale: string, messages: Record<string, unknown>) {
+export function loadLanguage(locale: string, messages: LocaleMessages) {
 	if (loadedLanguages.includes(locale)) {
 		return setLanguage(locale);
 	}
@@ -440,10 +444,8 @@ export function addNodeTranslation(
  * Dev/runtime helper to replace messages for a locale without import side-effects.
  * Used by editor UI HMR to apply updated translation JSON.
  */
-export function updateLocaleMessages(locale: string, messages: Record<string, unknown>) {
-	const { numberFormats, ...rest } = messages as Record<string, unknown> & {
-		numberFormats?: Record<string, unknown>;
-	};
+export function updateLocaleMessages(locale: string, messages: LocaleMessages) {
+	const { numberFormats, ...rest } = messages;
 
 	i18nInstance.global.setLocaleMessage(locale, rest);
 	if (numberFormats) i18nInstance.global.setNumberFormat(locale, numberFormats);
