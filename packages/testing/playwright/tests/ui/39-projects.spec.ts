@@ -156,10 +156,8 @@ test.describe('Projects', () => {
 			).toBeVisible();
 
 			// Verify the form shows the updated values
-			await expect(n8n.page.getByTestId('project-settings-name-input')).toHaveValue(newName);
-			await expect(n8n.page.getByTestId('project-settings-description-input')).toHaveValue(
-				newDescription,
-			);
+			await n8n.projectSettings.expectProjectNameValue(newName);
+			await n8n.projectSettings.expectProjectDescriptionValue(newDescription);
 		});
 
 		test('should display members table with correct structure @auth:owner', async ({ n8n }) => {
@@ -294,8 +292,13 @@ test.describe('Projects', () => {
 				.scrollIntoViewIfNeeded();
 
 			// Verify danger section is visible with warning
-			await expect(n8n.page.getByText('Danger Zone')).toBeVisible();
-			await expect(n8n.page.getByText('This will delete the project')).toBeVisible();
+			// Copy was updated in UI to use sentence case and expanded description
+			await expect(n8n.page.getByText('Danger zone')).toBeVisible();
+			await expect(
+				n8n.page.getByText(
+					'When deleting a project, you can also choose to move all workflows and credentials to another project.',
+				),
+			).toBeVisible();
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
 		});
 
@@ -315,18 +318,18 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectDescription(projectDescription);
 			await n8n.projectSettings.clickSaveButton();
 
-			// Wait for save confirmation
-			await expect(n8n.page.getByText('Project saved successfully')).toBeVisible();
+			// Wait for save confirmation (partial match to include project name)
+			await expect(
+				n8n.page.getByText('Project saved successfully', { exact: false }),
+			).toBeVisible();
 
 			// Reload the page
 			await n8n.page.reload();
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Verify data persisted
-			await expect(n8n.page.getByTestId('project-settings-name-input')).toHaveValue(projectName);
-			await expect(n8n.page.getByTestId('project-settings-description-input')).toHaveValue(
-				projectDescription,
-			);
+			await n8n.projectSettings.expectProjectNameValue(projectName);
+			await n8n.projectSettings.expectProjectDescriptionValue(projectDescription);
 
 			// Verify table still shows the owner
 			await n8n.projectSettings.expectTableHasMemberCount(1);

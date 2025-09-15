@@ -34,7 +34,7 @@ export class ProjectSettingsPage extends BasePage {
 
 	// Members table methods
 	async searchMembers(searchTerm: string) {
-		await this.page.getByTestId('project-members-search').fill(searchTerm);
+		await this.page.getByTestId('project-members-search').locator('input').fill(searchTerm);
 	}
 
 	async clearMemberSearch() {
@@ -137,8 +137,25 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.page.getByTestId('project-members-search');
+		const searchInput = this.page.getByTestId('project-members-search').locator('input');
 		await expect(searchInput).toHaveValue(expectedValue);
+	}
+
+	// Robust value assertions on inner form controls
+	getNameInput() {
+		return this.page.getByTestId('project-settings-name-input').locator('input');
+	}
+
+	getDescriptionTextarea() {
+		return this.page.getByTestId('project-settings-description-input').locator('textarea');
+	}
+
+	async expectProjectNameValue(value: string) {
+		await expect(this.getNameInput()).toHaveValue(value);
+	}
+
+	async expectProjectDescriptionValue(value: string) {
+		await expect(this.getDescriptionTextarea()).toHaveValue(value);
 	}
 
 	async expectTableIsVisible() {
