@@ -13,6 +13,18 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
+/* -----------------------------------------------------------
+   Shared Types
+----------------------------------------------------------- */
+export interface AgentTokenUsageRecord {
+	modelType: string;
+	modelName: string;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	isEstimate: boolean;
+}
 /* -----------------------------------------------------------
    Output Parser Helper
 ----------------------------------------------------------- */

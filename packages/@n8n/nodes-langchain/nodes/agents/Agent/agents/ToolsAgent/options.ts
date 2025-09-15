@@ -28,6 +28,14 @@ export const commonOptions: INodeProperties[] = [
 		description: 'Whether or not the output should include intermediate steps the agent took',
 	},
 	{
+		displayName: 'Collect Token Usage',
+		name: 'collectTokenUsage',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to add a tokenUsage array to the output with per-model token counts, split into actual vs estimated totals across the node execution',
+	},
+	{
 		displayName: 'Automatically Passthrough Binary Images',
 		name: 'passthroughBinaryImages',
 		type: 'boolean',
