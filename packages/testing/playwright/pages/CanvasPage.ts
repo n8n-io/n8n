@@ -44,6 +44,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
 	}
 
+	nodeIssuesBadge(nodeName: string) {
+		return this.nodeByName(nodeName).getByTestId('node-issues');
+	}
+
 	nodeToolbar(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-toolbar');
 	}
@@ -203,6 +207,11 @@ export class CanvasPage extends BasePage {
 	async clickExecutionsTab(): Promise<void> {
 		await this.page.getByRole('radio', { name: 'Executions' }).click();
 	}
+
+	async clickEditorTab(): Promise<void> {
+		await this.page.getByRole('radio', { name: 'Editor' }).click();
+	}
+
 	async setWorkflowName(name: string): Promise<void> {
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', name);

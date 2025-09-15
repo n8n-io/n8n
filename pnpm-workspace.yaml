@@ -41,6 +41,7 @@ catalog:
   rimraf: 6.0.1
   tsup: ^8.5.0
   tsx: ^4.19.3
+  simple-git: 3.28.0
   uuid: 10.0.0
   vite: ^6.3.5
   vite-plugin-dts: ^4.5.4
