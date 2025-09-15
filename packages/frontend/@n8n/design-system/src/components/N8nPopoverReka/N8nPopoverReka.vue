@@ -48,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	enableScrolling: true,
 	scrollType: 'hover',
 	sideOffset: 5,
+	sideFlip: true,
 });
 
 const emit = defineEmits<Emits>();
