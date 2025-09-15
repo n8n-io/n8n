@@ -3438,6 +3438,7 @@
 	"insights.upgradeModal.title": "Upgrade to Enterprise",
 	"whatsNew.versionsBehind": "{count} version behind | {count} versions behind",
 	"whatsNew.update": "Update",
+	"whatsNew.updateNudgeTooltip": "Only owners can perform updates",
 	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
 	"whatsNew.updateAvailable.changelogLink": "in the full changelog",
 	"workflowDiff.changes": "Changes",
