@@ -232,7 +232,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const fetchDataStoreSize = async () => {
 		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
-		console.log('Fetched data store size info:', result);
 		dataStoreSize.value = formatSize(result.sizeBytes);
 		dataStoreSizeLimitState.value = result.sizeState;
 		dataStoreTableSizes.value = result.tables;

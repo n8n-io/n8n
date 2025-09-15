@@ -44,9 +44,8 @@ const fetchSize = async () => {
 	try {
 		isLoadingSize.value = true;
 		await dataStoreStore.fetchDataStoreSize();
-		console.log('Store dataStoreSizes after fetch:', dataStoreStore.dataStoreSizes);
-	} catch (error) {
-		console.log('Failed to fetch data store size:', error);
+	} catch {
+		// do nothing
 	} finally {
 		isLoadingSize.value = false;
 	}
