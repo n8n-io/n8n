@@ -297,7 +297,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
 		`;
 
-		const queryBuilder = this.createQueryBuilder('insights')
+		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
 			.select(
 				sql`
@@ -313,7 +313,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addSelect('SUM(value)', 'total_value');
 
 		if (projectId) {
-			queryBuilder
+			rawRowsQuery
 				.addSelect('metadata.projectId')
 				.innerJoin('insights.metadata', 'metadata')
 				// Use a cross join with the CTE
@@ -321,19 +321,19 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				.where('insights.periodStart >= date_ranges.previous_start')
 				.andWhere('metadata.projectId = :projectId', { projectId });
 		} else {
-			queryBuilder
+			rawRowsQuery
 				// Use a cross join with the CTE
 				.innerJoin('date_ranges', 'date_ranges', '1=1')
 				.where('insights.periodStart >= date_ranges.previous_start');
 		}
 
-		queryBuilder
+		rawRowsQuery
 			.andWhere('insights.periodStart <= date_ranges.current_end')
 			// Group by both period and type
 			.groupBy('period')
 			.addGroupBy('insights.type');
 
-		const rawRows = await queryBuilder.getRawMany();
+		const rawRows = await rawRowsQuery.getRawMany();
 
 		return summaryParser.parse(rawRows);
 	}
@@ -348,12 +348,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
+		projectId,
 	}: {
 		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		projectId?: string;
 	}) {
+		console.log('getInsightsByWorkflow - ProjectId:', projectId);
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
@@ -383,7 +386,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
 			.innerJoin('date_range', 'date_range', '1=1')
-			.where('insights.periodStart >= date_range.start_date')
+			.where('insights.periodStart >= date_range.start_date');
+
+		if (projectId) {
+			rawRowsQuery.where('metadata.projectId = :projectId', { projectId });
+		}
+
+		rawRowsQuery
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
@@ -400,18 +409,37 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		maxAgeInDays,
 		periodUnit,
 		insightTypes,
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes: TypeUnit[] }) {
+		projectId,
+	}: {
+		maxAgeInDays: number;
+		periodUnit: PeriodUnit;
+		insightTypes: TypeUnit[];
+		projectId?: string;
+	}) {
 		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
 
 		const typesAggregation = insightTypes.map((type) => {
-			return `SUM(CASE WHEN type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
+			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
-		const rawRowsQuery = this.createQueryBuilder()
+		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_range')
-			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
-			.innerJoin('date_range', 'date_range', '1=1')
-			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation]);
+
+		if (projectId) {
+			rawRowsQuery
+				.addSelect('metadata.projectId')
+				.innerJoin('insights.metadata', 'metadata')
+				.innerJoin('date_range', 'date_range', '1=1')
+				.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+				.andWhere('metadata.projectId = :projectId', { projectId });
+		} else {
+			rawRowsQuery
+				.innerJoin('date_range', 'date_range', '1=1')
+				.where(`${this.escapeField('periodStart')} >= date_range.start_date`);
+		}
+
+		rawRowsQuery
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 

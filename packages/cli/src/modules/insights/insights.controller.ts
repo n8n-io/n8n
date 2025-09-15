@@ -65,6 +65,7 @@ export class InsightsController {
 			skip: payload.skip,
 			take: payload.take,
 			sortBy: payload.sortBy,
+			projectId: payload.projectId,
 		});
 	}
 
@@ -83,6 +84,7 @@ export class InsightsController {
 		return (await this.insightsService.getInsightsByTime({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
+			projectId: payload.projectId,
 		})) as InsightsByTime[];
 	}
 
@@ -105,6 +107,7 @@ export class InsightsController {
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			insightTypes: ['time_saved_min'],
+			projectId: payload.projectId,
 		})) as RestrictedInsightsByTime[];
 	}
 }
