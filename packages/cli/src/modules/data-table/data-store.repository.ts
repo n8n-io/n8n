@@ -288,7 +288,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 		const result = (await this.query(sql)) as Array<{
 			table_name: string;
-			table_bytes: number | null;
+			table_bytes: number | string | null;
 		}>;
 
 		const tables: Record<string, number> = {};
@@ -298,8 +298,12 @@ export class DataStoreRepository extends Repository<DataTable> {
 			.filter((row) => row.table_bytes !== null)
 			.forEach((row) => {
 				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
-				const sizeBytes = row.table_bytes ?? 0;
-				tables[dataStoreId] = sizeBytes;
+				const sizeBytes =
+					typeof row.table_bytes === 'string'
+						? parseInt(row.table_bytes, 10)
+						: (row.table_bytes ?? 0);
+				tables[dataStoreId] = tables[dataStoreId] ?? 0;
+				tables[dataStoreId] += sizeBytes;
 				totalBytes += sizeBytes;
 			});
 
