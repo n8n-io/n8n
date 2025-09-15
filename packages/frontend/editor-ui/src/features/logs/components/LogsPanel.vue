@@ -50,12 +50,14 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
-const currentSessionId = logsStore.chatSessionId;
-const messages = logsStore.chatSessionMessages;
-
-const { previousChatMessages, sendMessage, refreshSession, displayExecution } = useChatState(
-	props.isReadOnly,
-);
+const {
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+	currentSessionId,
+	messages,
+} = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData();

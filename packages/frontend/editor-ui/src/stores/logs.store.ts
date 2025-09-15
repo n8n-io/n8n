@@ -118,6 +118,10 @@ export const useLogsStore = defineStore('logs', () => {
 		isLogSelectionSyncedWithCanvas.value = value ?? !isLogSelectionSyncedWithCanvas.value;
 	}
 
+	function addChatMessage(message: ChatMessage) {
+		chatSessionMessages.value.push(message);
+	}
+
 	return {
 		state,
 		isOpen: computed(() => state.value !== LOGS_PANEL_STATE.CLOSED),
@@ -126,8 +130,9 @@ export const useLogsStore = defineStore('logs', () => {
 		),
 		height: computed(() => height.value),
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
-		chatSessionId: computed(() => chatSessionId),
-		chatSessionMessages: computed(() => chatSessionMessages),
+		chatSessionId: computed(() => chatSessionId.value),
+		chatSessionMessages: computed(() => chatSessionMessages.value),
+		addChatMessage,
 		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,

@@ -44,8 +44,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const ws = ref<WebSocket | null>(null);
-	const messages = logsStore.chatSessionMessages;
-	const currentSessionId = logsStore.chatSessionId;
+	const messages = computed(() => logsStore.chatSessionMessages);
+	const currentSessionId = computed(() => logsStore.chatSessionId);
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
@@ -68,10 +68,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 
 	const { sendMessage, isLoading, setLoadingState } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
-		messages,
-		sessionId: currentSessionId,
+		sessionId: currentSessionId.value,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
 		onRunChatWorkflow,
+		addChatMessage: logsStore.addChatMessage,
 		ws,
 	});
 
@@ -194,7 +194,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 						sessionId: currentSessionId.value,
 						id: uuid(),
 					};
-					messages.value.push(newMessage);
+					logsStore.addChatMessage(newMessage);
 
 					if (logsStore.isOpen) {
 						chatEventBus.emit('focusInput');
@@ -244,8 +244,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	);
 
 	return {
-		currentSessionId,
-		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
+		currentSessionId: computed(() => logsStore.chatSessionId),
+		messages: computed(() =>
+			isReadOnly ? restoredChatMessages.value : logsStore.chatSessionMessages,
+		),
 		previousChatMessages,
 		sendMessage,
 		refreshSession,

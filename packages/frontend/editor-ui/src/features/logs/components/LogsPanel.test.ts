@@ -682,8 +682,8 @@ describe('LogsPanel', () => {
 			];
 
 			beforeEach(() => {
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
-					messages.value.push(...mockMessages);
+				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ addChatMessage }) => {
+					addChatMessage(mockMessages[0]);
 
 					return {
 						sendMessage: vi.fn(),
@@ -826,8 +826,9 @@ describe('LogsPanel', () => {
 						sender: 'bot',
 					},
 				];
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
-					messages.value.push(...mockMessages);
+				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ addChatMessage }) => {
+					addChatMessage(mockMessages[0]);
+					addChatMessage(mockMessages[1]);
 
 					return {
 						sendMessage: sendMessageSpy,
