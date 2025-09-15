@@ -965,7 +965,6 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.pinnedWorkflowData = {
 				ParentNode: [{ json: { key: 'value' } }],
 			};
-			workflowsStore.shouldReplaceInputDataWithPinData = true;
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
@@ -982,7 +981,6 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = {
 				ParentNode: [
 					{
@@ -1023,7 +1021,6 @@ describe('useWorkflowHelpers', () => {
 			const parentRunIndex = 1;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = {
 				ParentNode: [
 					{ data: {} } as never,
@@ -1066,7 +1063,6 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = null;
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
