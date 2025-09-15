@@ -312,7 +312,7 @@ describe('useWorkflowHelpers', () => {
 						type: WEBHOOK_NODE_TYPE,
 						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -333,7 +333,7 @@ describe('useWorkflowHelpers', () => {
 				},
 				trigger: {
 					parameters: {
-						method: 'GET',
+						httpMethod: 'GET',
 						path: 'test-path',
 					},
 					type: 'n8n-nodes-base.webhook',
@@ -417,7 +417,7 @@ describe('useWorkflowHelpers', () => {
 						type: WEBHOOK_NODE_TYPE,
 						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -535,7 +535,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 						webhookId: 'test-webhook-id',
@@ -560,7 +560,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: '',
 						},
 						webhookId: 'test-webhook-id',
@@ -575,6 +575,116 @@ describe('useWorkflowHelpers', () => {
 				path: 'test-webhook-id',
 			});
 			findWebhookSpy.mockRestore();
+		});
+
+		it('should find conflicting webhook data with multiple methods', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							httpMethod: ['PUT', 'PATCH'],
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'PATCH',
+				webhookPath: 'test-path',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'PATCH',
+					node: 'Webhook 1',
+					webhookPath: 'test-path',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {
+						httpMethod: ['PUT', 'PATCH'],
+						path: 'test-path',
+						multipleMethods: true,
+					},
+					type: 'n8n-nodes-base.webhook',
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return null if no conflicts with multiple methods', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							httpMethod: ['PUT', 'PATCH'],
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
+		});
+
+		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			await workflowHelpers.checkConflictingWebhooks('123');
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-path',
+			});
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'POST',
+				path: 'test-path',
+			});
+		});
+
+		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							path: 'test-path',
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			await workflowHelpers.checkConflictingWebhooks('123');
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-path',
+			});
 		});
 	});
 
