@@ -12,7 +12,7 @@ import type {
 	INodeIssues,
 	ITaskData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
+import { FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -69,29 +69,32 @@ export const mockNodeTypeDescription = ({
 	hidden,
 	description,
 	webhooks,
-}: Partial<INodeTypeDescription> = {}): INodeTypeDescription => ({
-	name,
-	icon,
-	displayName,
-	description: description ?? '',
-	version,
-	defaults: {
+	eventTriggerDescription,
+}: Partial<INodeTypeDescription> = {}) =>
+	mock<INodeTypeDescription>({
 		name,
-	},
-	defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
-	properties: properties as [],
-	maxNodes: Infinity,
-	group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
-	inputs,
-	outputs,
-	codex,
-	credentials,
-	documentationUrl: 'https://docs',
-	iconUrl: 'nodes/test-node/icon.svg',
-	webhooks,
-	parameterPane: undefined,
-	hidden,
-});
+		icon,
+		displayName,
+		description: description ?? '',
+		version,
+		defaults: {
+			name,
+		},
+		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
+		properties: properties as [],
+		maxNodes: Infinity,
+		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
+		inputs,
+		outputs,
+		codex,
+		credentials,
+		documentationUrl: 'https://docs',
+		iconUrl: 'nodes/test-node/icon.svg',
+		webhooks,
+		parameterPane: undefined,
+		hidden,
+		eventTriggerDescription,
+	});
 
 export const mockLoadedNodeType = (name: string) =>
 	mock<LoadedClass<INodeType>>({
@@ -107,6 +110,7 @@ export const mockNodes = [
 	mockNode({ name: 'Code', type: CODE_NODE_TYPE }),
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),

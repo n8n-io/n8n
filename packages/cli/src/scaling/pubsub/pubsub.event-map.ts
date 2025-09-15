@@ -63,6 +63,7 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		asBinary: boolean;
 	};
 
 	'clear-test-webhooks': {

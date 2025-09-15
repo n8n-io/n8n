@@ -486,7 +486,9 @@ test.describe('NDV', () => {
 			await n8n.canvas.addNode('Notion', { action: 'Update a database page', closeNDV: false });
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 
-			await n8n.credentials.createAndSaveNewCredential('apiKey', 'sk_test_123');
+			await n8n.credentialsComposer.createFromNdv({
+				apiKey: 'sk_test_123',
+			});
 			await n8n.ndv.addItemToFixedCollection('propertiesUi');
 			await expect(
 				n8n.ndv.getParameterInputWithIssues('propertiesUi.propertyValues[0].key'),
@@ -631,8 +633,10 @@ test.describe('NDV', () => {
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Discord', { closeNDV: false, action: 'Delete a message' });
 			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await n8n.credentialsComposer.createFromNdv({
+				botToken: 'sk_test_123',
+			});
 
-			await n8n.credentials.createAndSaveNewCredential('botToken', 'sk_test_123');
 			const resourceInput = n8n.ndv.getParameterInputField('resource');
 			const operationInput = n8n.ndv.getParameterInputField('operation');
 

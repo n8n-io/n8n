@@ -83,7 +83,7 @@ export function getSelectFields(
 							default: '',
 							displayOptions: {
 								hide: {
-									condition: ['isEmpty', 'isNotEmpty'],
+									condition: ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'],
 								},
 							},
 						},
