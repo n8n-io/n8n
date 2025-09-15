@@ -1,5 +1,5 @@
 import { Column } from '../dsl/column';
-import type { MigrationContext, ReversibleMigration } from '../migration-types';
+import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 const ROLE_TABLE_NAME = 'role';
 const PROJECT_RELATION_TABLE_NAME = 'project_relation';
@@ -8,8 +8,14 @@ const PROJECT_RELATION_ROLE_IDX_NAME = 'project_relation_role_idx';
 const PROJECT_RELATION_ROLE_PROJECT_IDX_NAME = 'project_relation_role_project_idx';
 const USER_ROLE_IDX_NAME = 'user_role_idx';
 
-export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements ReversibleMigration {
-	async up({ schemaBuilder }: MigrationContext) {
+export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements IrreversibleMigration {
+	async up({ schemaBuilder, queryRunner, tablePrefix }: MigrationContext) {
+		// This loads the table metadata from the database and
+		// feeds the query runners cache with the table metadata
+		// Not doing this, seems to get TypeORM to wrongfully try to
+		// add the columns twice in the same statement.
+		await queryRunner.getTable(`${tablePrefix}${USER_TABLE_NAME}`);
+
 		await schemaBuilder.addColumns(ROLE_TABLE_NAME, [
 			new Column('createdAt').timestampTimezone().notNull.default('NOW()'),
 			new Column('updatedAt').timestampTimezone().notNull.default('NOW()'),
@@ -36,17 +42,5 @@ export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements Reversibl
 		// This index should allow us to efficiently query users by their role slug
 		// This will be used for counting how many users have a specific global role
 		await schemaBuilder.createIndex(USER_TABLE_NAME, ['roleSlug'], false, USER_ROLE_IDX_NAME);
-	}
-	async down({ schemaBuilder }: MigrationContext) {
-		await schemaBuilder.dropIndex(USER_TABLE_NAME, ['roleSlug'], {
-			customIndexName: USER_ROLE_IDX_NAME,
-		});
-		await schemaBuilder.dropIndex(PROJECT_RELATION_TABLE_NAME, ['projectId', 'role'], {
-			customIndexName: PROJECT_RELATION_ROLE_PROJECT_IDX_NAME,
-		});
-		await schemaBuilder.dropIndex(PROJECT_RELATION_TABLE_NAME, ['role'], {
-			customIndexName: PROJECT_RELATION_ROLE_IDX_NAME,
-		});
-		await schemaBuilder.dropColumns(ROLE_TABLE_NAME, ['createdAt', 'updatedAt']);
 	}
 }
