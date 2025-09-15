@@ -87,6 +87,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			await this.reloadProvider(provider, backoff);
 		}
 
+		await this.updateSecrets();
 		this.logger.debug('External secrets managed reloaded all providers');
 	}
 
@@ -287,6 +288,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.saveAndSetSettings(settings);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
+		await this.updateSecrets();
 		this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
