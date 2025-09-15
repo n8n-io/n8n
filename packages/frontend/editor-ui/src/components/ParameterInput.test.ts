@@ -675,13 +675,44 @@ describe('ParameterInput.vue', () => {
 			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
 		});
 
-		it('should render mapper', async () => {
+		it('should render mapper when the current value is empty', async () => {
 			const rendered = renderComponent({
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
 					parameter: { displayName: 'Name', name: 'name', type: 'string' },
 					modelValue: '',
+				},
+			});
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when editor type is specified in the parameter', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: {
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						typeOptions: { editor: 'sqlEditor' },
+					},
+					modelValue: 'SELECT 1;',
+				},
+			});
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when the current value is an expression', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: { displayName: 'Name', name: 'name', type: 'string' },
+					modelValue: '={{$today}}',
 				},
 			});
 
