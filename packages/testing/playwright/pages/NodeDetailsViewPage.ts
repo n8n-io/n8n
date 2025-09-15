@@ -5,6 +5,7 @@ import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -46,8 +47,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
-	async fillParameterInput(labelName: string, value: string) {
-		await this.getParameterByLabel(labelName).getByTestId('parameter-input-field').fill(value);
+	async fillParameterInput(labelName: string, value: string, index?: number) {
+		await locatorByIndex(this.getParameterByLabel(labelName), index)
+			.getByTestId('parameter-input-field')
+			.fill(value);
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
@@ -66,6 +69,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async close() {
 		await this.clickBackToCanvasButton();
+	}
+
+	async addFixedCollectionItem() {
+		await this.clickByTestId('fixed-collection-add');
 	}
 
 	async execute() {
@@ -211,37 +218,40 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.type(text);
 	}
 
-	getParameterInput(parameterName: string) {
-		return this.page.getByTestId(`parameter-input-${parameterName}`);
+	getParameterInput(parameterName: string, index?: number) {
+		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
-	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('input');
+	getParameterInputField(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).locator('input');
 	}
 
-	async selectOptionInParameterDropdown(parameterName: string, optionText: string) {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.click();
-
-		await this.page.getByRole('option', { name: optionText }).click();
+	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
+		await this.clickParameterDropdown(parameterName, index);
+		await this.selectFromVisibleDropdown(optionText);
 	}
 
-	async clickParameterDropdown(parameterName: string): Promise<void> {
-		await this.clickByTestId(`parameter-input-${parameterName}`);
+	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
+		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
 		await this.page.getByRole('option', { name: optionText }).click();
 	}
 
-	async fillParameterInputByName(parameterName: string, value: string): Promise<void> {
-		const input = this.getParameterInputField(parameterName);
+	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
+		const input = this.getParameterInputField(parameterName, index);
 		await input.click();
 		await input.fill(value);
 	}
 
 	async clickParameterOptions(): Promise<void> {
 		await this.page.locator('.param-options').click();
+	}
+
+	async addParameterOptionByName(optionName: string): Promise<void> {
+		await this.clickParameterOptions();
+		await this.selectFromVisibleDropdown(optionName);
 	}
 
 	getVisiblePopper() {
