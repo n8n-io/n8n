@@ -32,6 +32,9 @@ export const useDataStoreColumnFilters = ({
 		// Enable default filters for all columns via defaultColDef
 		gridApi.value.setGridOption('defaultColDef', {
 			filter: true,
+			filterParams: {
+				maxNumConditions: 1,
+			},
 		});
 
 		// Explicitly disable filters for special columns that shouldn't be filterable
@@ -47,7 +50,7 @@ export const useDataStoreColumnFilters = ({
 		setGridData({ colDefs: updated });
 	};
 
-	function mapTextTypeToBackend(type: string): BackendFilterCondition | undefined {
+	function mapTextTypeToBackend(type: string): BackendFilterCondition {
 		switch (type) {
 			case 'contains':
 				return 'ilike';
@@ -63,12 +66,16 @@ export const useDataStoreColumnFilters = ({
 				return 'eq';
 			case 'notBlank':
 				return 'neq';
+			case 'true':
+				return 'eq';
+			case 'false':
+				return 'eq';
 			default:
-				return undefined;
+				throw new Error(`Unknown text type: ${type}`);
 		}
 	}
 
-	function mapNumberDateTypeToBackend(type: string): BackendFilterCondition | undefined {
+	function mapNumberDateTypeToBackend(type: string): BackendFilterCondition {
 		switch (type) {
 			case 'equals':
 				return 'eq';
@@ -83,7 +90,7 @@ export const useDataStoreColumnFilters = ({
 			case 'greaterThanOrEqual':
 				return 'gte';
 			default:
-				return undefined;
+				throw new Error(`Unknown number/date type: ${type}`);
 		}
 	}
 
@@ -96,91 +103,86 @@ export const useDataStoreColumnFilters = ({
 			else if (d.field) colIdToField.set(d.field, d.field);
 		});
 
-		for (const [key, val] of Object.entries(model)) {
+		for (const [key, filter] of Object.entries(model)) {
 			const colField = colIdToField.get(key) ?? key;
 			// Skip special/internal columns
 			if (colField === 'add-column' || colField === 'ag-Grid-SelectionColumn') continue;
 
 			// Set Filter (commonly for boolean)
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const v: any = val;
-			const filterType: string | undefined = v?.filterType || v?.type;
+			const filterType: string | undefined = filter?.filterType || filter?.type;
 
 			if (!filterType) continue;
 
-			if (filterType === 'set') {
-				const values: Array<string | number | boolean | null> | undefined = v.values;
-				if (!values || values.length === 0) continue;
-				// If both true/false selected (or multiple values), skip as it's effectively no filter
-				if (values.length === 1) {
-					const only = values[0];
-					filters.push({ columnName: colField, condition: 'eq', value: only as boolean | null });
-				}
-				continue;
-			}
+			// TODO: do we need this?
+			// if (filterType === 'set') {
+			// 	const values: Array<string | number | boolean | null> | undefined = filter.values;
+			// 	if (!values || values.length === 0) continue;
+			// 	// If both true/false selected (or multiple values), skip as it's effectively no filter
+			// 	if (values.length === 1) {
+			// 		const only = values[0];
+			// 		filters.push({ columnName: colField, condition: 'eq', value: only as boolean | null });
+			// 	}
+			// 	continue;
+			// }
 
-			// Support single condition only (we suppress AND/OR in UI by defaultColDef); if model contains
-			// advanced conditions, prefer the first condition
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const extractSimple = (m: any) => {
-				if (m?.operator && m.condition1) return m.condition1; // pick first
-				return m;
-			};
+			let value: string | number | boolean | Date | null = filter.filter ?? null;
 
-			const simple = extractSimple(v);
-			if (!simple) continue;
-
-			const type: string | undefined = simple.type;
-			let backendCondition: BackendFilterCondition | undefined;
-			let value: string | number | boolean | Date | null = simple.filter ?? null;
-
-			switch (simple.filterType) {
+			switch (filter.filterType) {
 				case 'text':
-					backendCondition = mapTextTypeToBackend(type);
-					if (type === 'blank') value = null;
-					if (type === 'notBlank') value = null;
-					if (typeof simple.filter === 'string') {
-						if (type === 'startsWith') {
-							value = `${simple.filter}%`;
-						} else if (type === 'endsWith') {
-							value = `%${simple.filter}`;
-						} else if (type === 'contains') {
+					if (typeof filter.filter === 'string') {
+						if (filter.type === 'startsWith') {
+							value = `${filter.filter}%`;
+						} else if (filter.type === 'endsWith') {
+							value = `%${filter.filter}`;
+						} else if (filter.type === 'contains') {
 							// backend will auto-wrap to %value% if % not present
-							value = simple.filter;
+							value = filter.filter;
 						}
+					} else if (filter.type === 'true') {
+						value = true;
+					} else if (filter.type === 'false') {
+						value = false;
 					}
+					filters.push({
+						columnName: colField,
+						condition: mapTextTypeToBackend(filter.type),
+						value,
+					});
 					break;
 				case 'number':
-					backendCondition = mapNumberDateTypeToBackend(type);
+					filters.push({
+						columnName: colField,
+						condition: mapNumberDateTypeToBackend(filter.type),
+						value,
+					});
 					break;
 				case 'date':
-					backendCondition = mapNumberDateTypeToBackend(type);
-					const filterStr = typeof simple.filter === 'string' ? simple.filter : undefined;
+					const filterStr = typeof filter.dateFrom === 'string' ? filter.dateFrom : undefined;
 					if (filterStr) {
 						value = new Date(String(filterStr)).toISOString();
 					}
-					const filterToStr = typeof simple.filterTo === 'string' ? simple.filterTo : undefined;
-					if (type === 'inRange' && filterStr && filterToStr) {
-						// Convert to gte/lte pair
+					const filterToStr = typeof filter.dateTo === 'string' ? filter.dateTo : undefined;
+					if (filter.type === 'inRange' && filterStr && filterToStr) {
 						const fromIso = new Date(String(filterStr)).toISOString();
 						const toIso = new Date(String(filterToStr)).toISOString();
 						filters.push({ columnName: colField, condition: 'gte', value: fromIso });
 						filters.push({ columnName: colField, condition: 'lte', value: toIso });
-						continue;
+					} else {
+						filters.push({
+							columnName: colField,
+							condition: mapNumberDateTypeToBackend(filter.type),
+							value,
+						});
 					}
 					break;
 				default:
 					// Unrecognized filter type; skip
 					break;
 			}
-
-			if (!backendCondition) continue;
-
-			filters.push({ columnName: colField, condition: backendCondition, value });
 		}
 
 		if (filters.length === 0) return undefined;
-		return { type: 'and', filters };
+		return { type: model.operator || 'and', filters };
 	}
 
 	const onFilterChanged = () => {

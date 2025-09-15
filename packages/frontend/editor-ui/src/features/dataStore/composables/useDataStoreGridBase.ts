@@ -40,6 +40,7 @@ import {
 	stringCellEditorParams,
 	dateValueFormatter,
 	numberValueFormatter,
+	BOOLEAN_COLUMN_FILTER_OPTIONS,
 } from '@/features/dataStore/utils/columnUtils';
 
 export const useDataStoreGridBase = ({
@@ -158,6 +159,10 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopup = true;
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
+		} else if (col.type === 'boolean') {
+			columnDef.filterParams = {
+				filterOptions: BOOLEAN_COLUMN_FILTER_OPTIONS,
+			};
 		}
 
 		return {

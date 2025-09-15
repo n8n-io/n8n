@@ -132,6 +132,7 @@ const dataStoreOperations = useDataStoreOperations({
 	handleClearSelection: selection.handleClearSelection,
 	selectedRowIds: selection.selectedRowIds,
 	handleCopyFocusedCell: dataStoreGridBase.handleCopyFocusedCell,
+	currentFilterJSON,
 });
 
 async function onDeleteColumnFunction(columnId: string) {

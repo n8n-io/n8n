@@ -116,3 +116,31 @@ export const numberValueFormatter = (
 	if (value === null || value === undefined) return '';
 	return numberWithSpaces(value);
 };
+
+export const BOOLEAN_COLUMN_FILTER_OPTIONS = [
+	'empty',
+	{
+		displayKey: 'true',
+		displayName: 'True',
+		numberOfInputs: 0,
+		predicate: (_: any, cellValue: boolean) => Boolean(cellValue),
+	},
+	{
+		displayKey: 'false',
+		displayName: 'False',
+		numberOfInputs: 0,
+		predicate: (_: any, cellValue: boolean) => !Boolean(cellValue),
+	},
+	{
+		displayKey: 'blank',
+		displayName: 'Empty',
+		numberOfInputs: 0,
+		predicate: (_: any, cellValue: boolean) => cellValue === null || cellValue === undefined,
+	},
+	{
+		displayKey: 'notBlank',
+		displayName: 'Not Empty',
+		numberOfInputs: 0,
+		predicate: (_: any, cellValue: boolean) => cellValue !== null && cellValue !== undefined,
+	},
+];
