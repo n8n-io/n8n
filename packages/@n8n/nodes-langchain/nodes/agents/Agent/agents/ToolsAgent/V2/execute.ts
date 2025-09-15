@@ -9,7 +9,7 @@ import {
 	type AgentRunnableSequence,
 	createToolCallingAgent,
 } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMemory, BufferWindowMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
@@ -265,7 +265,13 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				const chatHistory = await memory?.chatHistory.getMessages();
+				// Get chat history respecting the context window length configured in memory
+				let chatHistory;
+				if (memory) {
+					// Load memory variables to respect context window length
+					const memoryVariables = await memory.loadMemoryVariables({});
+					chatHistory = memoryVariables['chat_history'];
+				}
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,
