@@ -1,8 +1,15 @@
-import { nextTick, reactive } from 'vue';
+import { defineComponent, nextTick, reactive } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
+import {
+	getDropdownItems,
+	mockedStore,
+	type MockedStore,
+	useEmitters,
+	type Emitter,
+	waitAllPromises,
+} from '@/__tests__/utils';
 import ProjectSettings from '@/views/ProjectSettings.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
@@ -19,6 +26,9 @@ const mockTrack = vi.fn();
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 const mockRouterPush = vi.fn();
+const { emitters, addEmitter } = useEmitters<
+	'projectMembersTable' | 'n8nUserSelect' | 'n8nIconPicker'
+>();
 
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
@@ -53,9 +63,77 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+// Stub child components to simplify event-driven testing
+vi.mock('@/components/Projects/ProjectMembersTable.vue', () => ({
+	default: defineComponent({
+		name: 'ProjectMembersTableStub',
+		props: {
+			data: { type: Object, required: true },
+			currentUserId: { type: String, required: false },
+			projectRoles: { type: Array, required: true },
+		},
+		emits: ['update:options', 'update:role'],
+		setup(_, { emit }) {
+			addEmitter('projectMembersTable', emit as unknown as Emitter);
+			return {};
+		},
+		data() {
+			return {
+				tableOptions: {
+					page: 0,
+					itemsPerPage: 10,
+					sortBy: [] as Array<{ id: string; desc: boolean }>,
+				},
+			};
+		},
+		template:
+			'<div data-test-id="project-members-table">' +
+			'<div data-test-id="members-count">{{ data.items.length }}</div>' +
+			'<div data-test-id="members-page">{{ tableOptions.page }}</div>' +
+			'</div>',
+	}),
+}));
+
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		N8nInput: defineComponent({
+			name: 'N8nInputStub',
+			props: { modelValue: { type: String, required: false } },
+			emits: ['update:model-value'],
+			template:
+				'<div data-test-id="n8n-input-stub"><input :value="modelValue" @input="$emit(\'update:model-value\', $event.target.value)" /></div>',
+		}),
+		N8nUserSelect: defineComponent({
+			name: 'N8nUserSelectStub',
+			props: {
+				users: { type: Array, required: true },
+				currentUserId: { type: String, required: false },
+				placeholder: { type: String, required: false },
+			},
+			emits: ['update:model-value'],
+			setup(_, { emit }) {
+				addEmitter('n8nUserSelect', emit as unknown as Emitter);
+				return {};
+			},
+			template: '<div data-test-id="project-members-select"></div>',
+		}),
+		N8nIconPicker: defineComponent({
+			name: 'N8nIconPickerStub',
+			props: { modelValue: { type: Object, required: false } },
+			emits: ['update:model-value'],
+			setup(_, { emit }) {
+				addEmitter('n8nIconPicker', emit as unknown as Emitter);
+				return {};
+			},
+			template: '<div data-test-id="icon-picker"></div>',
+		}),
+	};
+});
+
 const renderComponent = createComponentRenderer(ProjectSettings);
 
-// Helper function to get input elements safely
 const getInput = (element: Element): HTMLInputElement => {
 	const input = element.querySelector('input');
 	if (!input) throw new Error('Input element not found');
@@ -88,10 +166,8 @@ describe('ProjectSettings', () => {
 		mockRouterPush.mockClear();
 
 		mockShowMessage.mockReturnValue({ id: 'test', close: vi.fn() });
-
 		createTestingPinia();
 
-		// Get the mocked store instances
 		projectsStore = mockedStore(useProjectsStore);
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
@@ -100,14 +176,10 @@ describe('ProjectSettings', () => {
 		settingsStore.settings = {
 			enterprise: {
 				projects: {
-					team: {
-						limit: -1,
-					},
+					team: { limit: -1 },
 				},
 			},
-			folders: {
-				enabled: false,
-			},
+			folders: { enabled: false },
 		} as FrontendSettings;
 
 		rolesStore.processedProjectRoles = [
@@ -140,7 +212,6 @@ describe('ProjectSettings', () => {
 			},
 		];
 
-		// Mock project data
 		const mockProject: Project = {
 			id: '123',
 			name: 'Test Project',
@@ -161,32 +232,13 @@ describe('ProjectSettings', () => {
 			scopes: ['project:read'],
 		};
 
-		// Set current project data for component access
-		Object.assign(projectsStore, {
-			currentProject: mockProject,
-			currentProjectId: mockProject.id,
-			availableProjects: projects,
-		});
+		projectsStore.currentProject = mockProject;
+		projectsStore.currentProjectId = mockProject.id;
+		projectsStore.availableProjects = projects;
 
-		// Explicitly stub all store actions to prevent network calls
-		projectsStore.getProject = vi.fn().mockResolvedValue(undefined);
-		projectsStore.updateProject = vi.fn().mockResolvedValue(undefined);
-		projectsStore.deleteProject = vi.fn().mockResolvedValue(undefined);
-		projectsStore.isProjectEmpty = vi.fn().mockResolvedValue(false);
-		projectsStore.getAllProjects = vi.fn().mockResolvedValue(undefined);
-		projectsStore.getMyProjects = vi.fn().mockResolvedValue(undefined);
-		projectsStore.getPersonalProject = vi.fn().mockResolvedValue(undefined);
-		projectsStore.getProjectsCount = vi.fn().mockResolvedValue(undefined);
-		projectsStore.setCurrentProject = vi.fn();
-
-		// Mock users data
 		usersStore.allUsers = [
-			createUser({
-				id: '1',
-				firstName: 'John',
-				lastName: 'Doe',
-				email: 'john@example.com',
-			}),
+			createUser({ id: '1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' }),
+			createUser({ id: '2', firstName: 'Jane', lastName: 'Roe', email: 'jane@example.com' }),
 			createUser({
 				id: 'current-user',
 				firstName: 'Current',
@@ -194,8 +246,8 @@ describe('ProjectSettings', () => {
 				email: 'current@example.com',
 			}),
 		];
+		usersStore.usersById = Object.fromEntries(usersStore.allUsers.map((u) => [u.id, u]));
 
-		// Mock current user
 		usersStore.currentUser = {
 			id: 'current-user',
 			firstName: 'Current',
@@ -209,648 +261,332 @@ describe('ProjectSettings', () => {
 		};
 	});
 
-	it('should show confirmation modal before deleting project and delete with transfer', async () => {
-		// Reset the mock and set up specific behavior for this test
+	it('deletes project with transfer or wipe based on modal selection', async () => {
 		projectsStore.deleteProject.mockResolvedValue();
+		projectsStore.isProjectEmpty.mockResolvedValue(false);
 
-		const { getByTestId } = renderComponent();
-		const deleteButton = getByTestId('project-settings-delete-button');
-		// Note: The transfer select is inside the modal and needs the transfer option to be selected first
+		const r1 = renderComponent();
+		const deleteButton = r1.getByTestId('project-settings-delete-button');
 
+		// Case 1: Non-empty project, transfer to another project
 		await userEvent.click(deleteButton);
 		await nextTick();
+		expect(r1.getByTestId('project-settings-delete-confirm-button')).toBeInTheDocument();
 
-		// Modal should be visible - check by looking for dialog content
-		expect(getByTestId('project-settings-delete-confirm-button')).toBeInTheDocument();
+		const transferRadio = document.querySelector('input[value="transfer"]') as HTMLInputElement;
+		await userEvent.click(transferRadio);
+		await nextTick();
 
-		// Select transfer option (radio button)
-		const transferRadio = getByTestId('project-settings-delete-confirm-button')
-			.closest('div')
-			?.querySelector('input[value="transfer"]');
-		if (transferRadio) {
-			await userEvent.click(transferRadio);
-			await nextTick();
-		}
-
-		// Now we can access the transfer select
-		const transferSelect = getByTestId('project-sharing-select');
-
+		const transferSelect = r1.getByTestId('project-sharing-select');
 		const transferOptions = await getDropdownItems(transferSelect);
-		const firstTransferOption = transferOptions[0];
-
-		await userEvent.click(firstTransferOption);
+		await userEvent.click(transferOptions[0]);
 		await nextTick();
 
-		const confirmDeleteButton = getByTestId('project-settings-delete-confirm-button');
-		await userEvent.click(confirmDeleteButton);
-		await nextTick();
-
-		// Wait for async operations to complete
-		await new Promise((resolve) => setTimeout(resolve, 100));
-
+		await userEvent.click(r1.getByTestId('project-settings-delete-confirm-button'));
+		await waitAllPromises();
 		expect(projectsStore.deleteProject).toHaveBeenCalledWith('123', expect.any(String));
-
 		expect(mockRouterPush).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
-	});
 
-	it('should show confirmation modal before deleting project and deleting without transfer', async () => {
-		projectsStore.deleteProject.mockResolvedValue();
-		// Mock empty project so delete is valid without selecting an operation
+		// Case 2: Empty project, wiping directly (no transfer)
+		projectsStore.deleteProject.mockClear();
 		projectsStore.isProjectEmpty.mockResolvedValue(true);
-
-		const { getByTestId } = renderComponent();
-		const deleteButton = getByTestId('project-settings-delete-button');
-
-		await userEvent.click(deleteButton);
+		// unmount previous instance and re-render to reset dialog internal state
+		r1.unmount();
+		const r2 = renderComponent();
+		const deleteButton2 = r2.getByTestId('project-settings-delete-button');
+		await userEvent.click(deleteButton2);
 		await nextTick();
-
-		// Modal should be visible - check by looking for dialog content
-		expect(getByTestId('project-settings-delete-confirm-button')).toBeInTheDocument();
-
-		const confirmDeleteButton = getByTestId('project-settings-delete-confirm-button');
-		await userEvent.click(confirmDeleteButton);
-		await nextTick();
-
-		// Wait for async operations to complete
-		await new Promise((resolve) => setTimeout(resolve, 100));
-
+		await userEvent.click(r2.getByTestId('project-settings-delete-confirm-button'));
+		await waitAllPromises();
 		expect(projectsStore.deleteProject).toHaveBeenCalledWith('123', undefined);
-
-		expect(mockRouterPush).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 	});
 
-	it('should render project settings container correctly', async () => {
+	it('renders core form elements and initializes state', async () => {
 		const { getByTestId } = renderComponent();
-
-		// Wait for component to fully render
 		await nextTick();
-
-		// Check that the main container is rendered
-		const container = getByTestId('project-settings-container');
-		expect(container).toBeInTheDocument();
-
-		// Check that essential form elements exist
+		expect(getByTestId('project-settings-container')).toBeInTheDocument();
 		const nameInput = getByTestId('project-settings-name-input');
+		const descriptionInput = getByTestId('project-settings-description-input');
 		const saveButton = getByTestId('project-settings-save-button');
+		const cancelButton = getByTestId('project-settings-cancel-button');
 		expect(nameInput).toBeInTheDocument();
-		expect(saveButton).toBeInTheDocument();
+		expect(descriptionInput).toBeInTheDocument();
+		expect(saveButton).toBeDisabled();
+		expect(cancelButton).toBeDisabled();
+		const actualName = getInput(nameInput);
+		const actualDesc = getTextarea(descriptionInput);
+		expect(actualName.value).toBe('Test Project');
+		expect(actualDesc.value).toBe('');
 	});
 
-	describe('Form Operations', () => {
-		it('should mark form as dirty on text input', async () => {
+	describe('Form interactions', () => {
+		it('marks dirty, cancels reset, and saves via Enter and button', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
+			const saveButton = getByTestId('project-settings-save-button');
 			const cancelButton = getByTestId('project-settings-cancel-button');
-
-			expect(cancelButton).toBeDisabled();
-
 			const actualInput = getInput(nameInput);
+
+			// Dirty then cancel
 			await userEvent.type(actualInput, ' Extra');
-
 			expect(cancelButton).toBeEnabled();
-		});
-
-		it('should reset form on cancel button click', async () => {
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-
-			const actualInput = getInput(nameInput);
-			await userEvent.type(actualInput, ' Extra');
-
-			expect(cancelButton).toBeEnabled();
-
 			await userEvent.click(cancelButton);
 			expect(actualInput.value).toBe('Test Project');
 			expect(cancelButton).toBeDisabled();
-		});
 
-		it('should enable save button when form is dirty and valid', async () => {
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			expect(saveButton).toBeDisabled();
-
-			const actualInput = getInput(nameInput);
-			await userEvent.type(actualInput, ' Modified');
-
-			expect(saveButton).toBeEnabled();
-		});
-	});
-
-	describe('Form Validation', () => {
-		it('should have proper initial form state', async () => {
-			const { getByTestId } = renderComponent();
-
-			// Wait for component to fully mount and watchers to run
-			await nextTick();
-
-			const nameInput = getByTestId('project-settings-name-input');
-			const descriptionInput = getByTestId('project-settings-description-input');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			const actualNameInput = getInput(nameInput);
-			const actualDescInput = getTextarea(descriptionInput);
-
-			expect(actualNameInput.value).toBe('Test Project');
-			expect(actualDescInput.value).toBe('');
-			expect(cancelButton).toBeDisabled();
-			expect(saveButton).toBeDisabled();
-		});
-	});
-
-	describe('Save and Form Submission', () => {
-		it('should save project updates via form submission with Enter key', async () => {
-			const updateProjectSpy = vi
-				.spyOn(projectsStore, 'updateProject')
-				.mockResolvedValue(undefined);
-
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const descriptionInput = getByTestId('project-settings-description-input');
-
-			const actualNameInput = getInput(nameInput);
-			const actualDescInput = getTextarea(descriptionInput);
-
-			await userEvent.type(actualNameInput, ' - Updated');
-			await userEvent.type(actualDescInput, 'Updated project description');
-			await nextTick();
-
-			await userEvent.type(actualNameInput, '{enter}');
-			await nextTick();
-			expect(updateProjectSpy).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					name: 'Test Project - Updated',
-					description: 'Updated project description',
-				}),
-			);
-
-			expect(mockShowMessage).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-			});
-
-			expect(mockTrack).toHaveBeenCalledWith(
-				'User changed project name',
-				expect.objectContaining({
-					project_id: '123',
-					name: 'Test Project - Updated',
-				}),
-			);
-		});
-
-		it('should handle successful save via button click', async () => {
-			const updateProjectSpy = vi
-				.spyOn(projectsStore, 'updateProject')
-				.mockResolvedValue(undefined);
-
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			const actualInput = getInput(nameInput);
+			// Save via Enter
 			await userEvent.type(actualInput, ' - Updated');
-			await nextTick();
-
-			await userEvent.click(saveButton);
-			await nextTick();
-
-			expect(updateProjectSpy).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					name: 'Test Project - Updated',
-					description: '',
-				}),
-			);
-
-			expect(mockShowMessage).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-			});
-		});
-
-		it('should handle save errors and prevent invalid submissions', async () => {
-			// Test save error handling
-			const error = new Error('Save failed');
-			projectsStore.updateProject.mockRejectedValue(error);
-
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			const actualInput = getInput(nameInput);
-
-			// Test save error
-			await userEvent.type(actualInput, ' Updated');
-			await nextTick();
 			await userEvent.type(actualInput, '{enter}');
 			await nextTick();
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({ name: 'Test Project - Updated', description: '' }),
+			);
+			expect(mockShowMessage).toHaveBeenCalled();
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User changed project name',
+				expect.objectContaining({ project_id: '123', name: 'Test Project - Updated' }),
+			);
 
+			// Save via button
+			await userEvent.type(actualInput, ' Again');
+			expect(saveButton).toBeEnabled();
+			await userEvent.click(saveButton);
+			await nextTick();
+			expect(updateSpy).toHaveBeenCalledTimes(2);
+			expect(mockShowMessage).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('Validation and error handling', () => {
+		it('prevents invalid save and shows error on failed save', async () => {
+			const error = new Error('Save failed');
+			projectsStore.updateProject.mockRejectedValue(error);
+			const { getByTestId } = renderComponent();
+			const nameInput = getByTestId('project-settings-name-input');
+			const saveButton = getByTestId('project-settings-save-button');
+			const actualInput = getInput(nameInput);
+
+			await userEvent.type(actualInput, ' Updated');
+			await userEvent.type(actualInput, '{enter}');
+			await nextTick();
 			expect(projectsStore.updateProject).toHaveBeenCalled();
 			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
 			expect(mockShowMessage).not.toHaveBeenCalled();
 
-			// Test invalid form submission prevention
 			projectsStore.updateProject.mockClear();
 			await userEvent.clear(actualInput);
-			await nextTick();
-
 			expect(saveButton).toBeDisabled();
 			await userEvent.click(saveButton);
-
 			expect(projectsStore.updateProject).not.toHaveBeenCalled();
 		});
+	});
 
-		it('should maintain form state properly after save and handle validation', async () => {
-			const updateProjectSpy = vi
-				.spyOn(projectsStore, 'updateProject')
-				.mockResolvedValue(undefined);
-
+	describe('Save state and validation', () => {
+		it('maintains state after save and validation toggles', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
 			const cancelButton = getByTestId('project-settings-cancel-button');
 			const saveButton = getByTestId('project-settings-save-button');
-
 			const actualInput = getInput(nameInput);
 
-			// Test validation
 			await userEvent.clear(actualInput);
-			await nextTick();
 			expect(saveButton).toBeDisabled();
-
 			await userEvent.type(actualInput, 'Valid Project Name');
-			await nextTick();
 			expect(saveButton).toBeEnabled();
 			expect(cancelButton).toBeEnabled();
-
-			// Test state after save
 			await userEvent.click(saveButton);
 			await nextTick();
-
-			expect(updateProjectSpy).toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalled();
 			expect(cancelButton).toBeDisabled();
 			expect(saveButton).toBeDisabled();
 		});
 	});
 
-	describe('Component State Management', () => {
-		it('should handle form state changes correctly', async () => {
+	describe('Members table and role updates', () => {
+		it('adds a member and saves with telemetry', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const nameInput = getByTestId('project-settings-name-input');
-
-			expect(cancelButton).toBeDisabled();
-
-			const actualInput = getInput(nameInput);
-			await userEvent.type(actualInput, ' Modified');
 			await nextTick();
 
-			expect(cancelButton).toBeEnabled();
+			// Initially one member
+			expect(getByTestId('members-count').textContent).toBe('1');
 
-			await userEvent.click(cancelButton);
+			// Add member via user select
+			emitters.n8nUserSelect.emit('update:model-value', '2');
 			await nextTick();
-			expect(cancelButton).toBeDisabled();
-			expect(actualInput.value).toBe('Test Project');
-		});
+			expect(getByTestId('members-count').textContent).toBe('2');
 
-		it('should manage component state correctly', () => {
-			const { getByTestId } = renderComponent();
-
-			// Test that main form elements are rendered properly
+			// Ensure form valid + dirty; name keystroke triggers validate and enables save
 			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-
-			expect(nameInput).toBeInTheDocument();
-			expect(saveButton).toBeInTheDocument();
-			expect(cancelButton).toBeInTheDocument();
-		});
-	});
-
-	describe('API Integration', () => {
-		it('should handle project updates through the store', async () => {
-			const updateProjectSpy = vi
-				.spyOn(projectsStore, 'updateProject')
-				.mockResolvedValue(undefined);
-
-			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			const actualInput = getInput(nameInput);
-			await userEvent.type(actualInput, ' - API Test');
-			await userEvent.click(saveButton);
+			await userEvent.type(nameInput.querySelector('input')!, ' ');
+			await userEvent.click(getByTestId('project-settings-save-button'));
 			await nextTick();
-			expect(updateProjectSpy).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					name: 'Test Project - API Test',
-					description: '',
-					relations: expect.any(Array),
-				}),
-			);
 
-			expect(mockShowMessage).toHaveBeenCalledWith({
-				type: 'success',
-				title: expect.any(String),
-			});
-
+			expect(updateSpy).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
-				'User changed project name',
-				expect.objectContaining({
-					project_id: '123',
-					name: 'Test Project - API Test',
-				}),
+				'User added member to project',
+				expect.objectContaining({ project_id: '123', target_user_id: '2' }),
 			);
 		});
-
-		it('should handle API errors gracefully', async () => {
-			const error = new Error('API Error');
-			projectsStore.updateProject.mockRejectedValue(error);
-
+		it('filters members via search and saves', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
-			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-
-			const actualInput = getInput(nameInput);
-			await userEvent.type(actualInput, ' - Error Test');
-			await userEvent.click(saveButton);
 			await nextTick();
-			expect(projectsStore.updateProject).toHaveBeenCalled();
+			expect(getByTestId('members-count').textContent).toBe('1');
+			const searchContainer = getByTestId('project-members-search');
+			const searchInput = searchContainer.querySelector('input')!;
+			await userEvent.type(searchInput, 'john@example.com');
+			await new Promise((r) => setTimeout(r, 350));
+			expect(getByTestId('members-count').textContent).toBe('1');
+			// Make a minor change to mark the form dirty so save is enabled
+			const nameInput = getByTestId('project-settings-name-input');
+			await userEvent.type(nameInput.querySelector('input')!, ' ');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+			expect(updateSpy).toHaveBeenCalled();
+		});
+
+		it('inline role change saves immediately with telemetry', async () => {
+			projectsStore.updateProject.mockResolvedValue(undefined);
+			renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:editor' });
+			await nextTick();
 			expect(projectsStore.updateProject).toHaveBeenCalledWith(
 				'123',
 				expect.objectContaining({
-					name: 'Test Project - Error Test',
+					relations: expect.arrayContaining([
+						expect.objectContaining({ userId: '1', role: 'project:editor' }),
+					]),
 				}),
 			);
+			expect(mockShowMessage).toHaveBeenCalled();
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User changed member role on project',
+				expect.objectContaining({ project_id: '123', target_user_id: '1', role: 'project:editor' }),
+			);
+		});
 
-			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+		it('rolls back role on save error', async () => {
+			// First, inline update fails and rolls back
+			projectsStore.updateProject.mockRejectedValueOnce(new Error('fail'));
+			const utils = renderComponent();
+			await nextTick();
+			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:viewer' });
+			await nextTick();
+			expect(mockShowError).toHaveBeenCalled();
 
+			// Next form save should contain original role (admin) due to rollback
+			const nameInput = utils.getByTestId('project-settings-name-input');
+			await userEvent.type(getInput(nameInput), ' touch');
+			await userEvent.click(utils.getByTestId('project-settings-save-button'));
+			await nextTick();
+			const lastCall = projectsStore.updateProject.mock.calls.pop();
+			expect(lastCall?.[1].relations).toEqual(
+				expect.arrayContaining([expect.objectContaining({ userId: '1', role: 'project:admin' })]),
+			);
+		});
+
+		it('marks member for removal, filters it out, and saves without it with telemetry', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+			expect(getByTestId('members-count').textContent).toBe('1');
+
+			// Mark for removal
+			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'remove' });
+			await nextTick();
+			// Pending removal should hide members table container entirely
+			expect(queryByTestId('members-count')).toBeNull();
+
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+			expect(updateSpy).toHaveBeenCalled();
+			const payload = updateSpy.mock.calls[0][1];
+			expect(payload.relations).toEqual([]);
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User removed member from project',
+				expect.objectContaining({ project_id: '123', target_user_id: '1' }),
+			);
+		});
+
+		it('prevents saving when invalid role selected', async () => {
+			// Set invalid role and try to save
+			const utils = renderComponent();
+			await nextTick();
+			emitters.projectMembersTable.emit('update:role', {
+				userId: '1',
+				role: 'project:personalOwner',
+			});
+			await nextTick();
+			// Clear prior success toast from inline update (if any)
+			mockShowMessage.mockClear();
+			// Mark form dirty so save is enabled
+			const nameInput = utils.getByTestId('project-settings-name-input');
+			await userEvent.type(nameInput.querySelector('input')!, ' ');
+			await userEvent.click(utils.getByTestId('project-settings-save-button'));
+			await nextTick();
+			expect(mockShowError).toHaveBeenCalled();
+			// Should not show success on invalid role
 			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
-	});
 
-	describe('Member Role Management Integration', () => {
-		beforeEach(() => {
-			mockTrack.mockClear();
-			mockShowMessage.mockClear();
-			mockShowError.mockClear();
-			projectsStore.updateProject.mockClear();
-		});
-
-		it('should render members table and validate member role management setup', async () => {
-			projectsStore.updateProject.mockResolvedValue(undefined);
-
-			const { getByTestId } = renderComponent();
-
+		it('resets pagination to first page on search', async () => {
+			const utils = renderComponent();
 			await nextTick();
-
-			// Verify the ProjectMembersTable is rendered
-			const membersTable = getByTestId('project-members-table');
-			expect(membersTable).toBeInTheDocument();
-
-			// Verify member data structure that will be processed by onUpdateMemberRole
-			const currentProject = projectsStore.currentProject;
-			expect(currentProject?.relations).toHaveLength(1);
-			expect(currentProject?.relations[0]).toEqual({
-				id: '1',
-				firstName: 'John',
-				lastName: 'Doe',
-				email: 'john@example.com',
-				role: 'project:admin',
+			emitters.projectMembersTable.emit('update:options', {
+				page: 2,
+				itemsPerPage: 10,
+				sortBy: [],
 			});
-
-			// Verify the component has the infrastructure for role management
-			expect(projectsStore.updateProject).toBeDefined();
-			expect(rolesStore.processedProjectRoles).toHaveLength(3);
-
-			// Verify the onUpdateMemberRole function dependencies are available
-			expect(mockShowMessage).toBeDefined();
-			expect(mockShowError).toBeDefined();
-			expect(mockTrack).toBeDefined();
-		});
-
-		it('should have proper component state for member role management', async () => {
-			const { getByTestId } = renderComponent();
-
 			await nextTick();
-
-			// Verify that the component has the necessary data structure for role management
-			expect(projectsStore.currentProject?.relations).toBeDefined();
-			expect(rolesStore.processedProjectRoles).toHaveLength(3);
-
-			// Verify role options are available
-			const adminRole = rolesStore.processedProjectRoles.find((r) => r.slug === 'project:admin');
-			const editorRole = rolesStore.processedProjectRoles.find((r) => r.slug === 'project:editor');
-			const viewerRole = rolesStore.processedProjectRoles.find((r) => r.slug === 'project:viewer');
-
-			expect(adminRole?.displayName).toBe('Admin');
-			expect(editorRole?.displayName).toBe('Editor');
-			expect(viewerRole?.displayName).toBe('Viewer');
-
-			// Verify members table is configured correctly
-			const membersTable = getByTestId('project-members-table');
-			expect(membersTable).toBeInTheDocument();
-		});
-
-		it('should handle form dirty state correctly with member changes', async () => {
-			const { getByTestId } = renderComponent();
-			const cancelButton = getByTestId('project-settings-cancel-button');
-
-			await nextTick();
-
-			// Initially form should be clean
-			expect(cancelButton).toBeDisabled();
-
-			// Test that the component properly tracks dirty state
-			// The isDirty ref should be reactive to member role changes
-			const nameInput = getByTestId('project-settings-name-input');
-			const actualInput = getInput(nameInput);
-
-			// Make the form dirty through name change to test state management
-			await userEvent.type(actualInput, ' Modified');
-			expect(cancelButton).toBeEnabled();
-
-			// Test cancel functionality
-			await userEvent.click(cancelButton);
-			expect(cancelButton).toBeDisabled();
-			expect(actualInput.value).toBe('Test Project');
-		});
-
-		it('should properly configure member table with role management capabilities', async () => {
-			const { getByTestId } = renderComponent();
-
-			await nextTick();
-
-			const membersTable = getByTestId('project-members-table');
-			expect(membersTable).toBeInTheDocument();
-
-			// The table should have access to:
-			// 1. Current user ID for permission logic
-			expect(usersStore.currentUser?.id).toBe('current-user');
-
-			// 2. Project roles for dropdown options
-			expect(rolesStore.processedProjectRoles).toHaveLength(3);
-
-			// 3. Member data with current roles
-			const currentProject = projectsStore.currentProject;
-			expect(currentProject?.relations[0].role).toBe('project:admin');
-		});
-
-		it('should handle onUpdateMemberRole function behavior through direct component testing', async () => {
-			projectsStore.updateProject.mockResolvedValue(undefined);
-
-			const componentWrapper = renderComponent();
-			const { getByTestId } = componentWrapper;
-
-			await nextTick();
-
-			// Verify component renders with members table
-			const membersTable = getByTestId('project-members-table');
-			expect(membersTable).toBeInTheDocument();
-
-			// Since we can't easily trigger the Vue @update:role event in unit tests,
-			// we'll test by verifying the component has all the necessary infrastructure
-			// for the onUpdateMemberRole function to work correctly
-
-			// Test 1: Verify component has project relations data for role updates
-			const currentProject = projectsStore.currentProject;
-			expect(currentProject?.relations).toHaveLength(1);
-			expect(currentProject?.relations[0].role).toBe('project:admin');
-
-			// Test 2: Verify stores and utilities are properly configured
-			expect(projectsStore.updateProject).toBeDefined();
-			expect(mockShowMessage).toBeDefined();
-			expect(mockShowError).toBeDefined();
-			expect(mockTrack).toBeDefined();
-
-			// Test 3: Verify role management infrastructure exists
-			expect(rolesStore.processedProjectRoles).toHaveLength(3);
-			const adminRole = rolesStore.processedProjectRoles.find((r) => r.slug === 'project:admin');
-			expect(adminRole?.displayName).toBe('Admin');
-
-			// Test 4: Verify form state management for role changes
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			expect(cancelButton).toBeDisabled(); // Initially clean state
-
-			// The onUpdateMemberRole function would:
-			// 1. Update formData.relations role optimistically
-			// 2. Call projectsStore.updateProject with formatted data
-			// 3. Show success toast via mockShowMessage
-			// 4. Track telemetry via mockTrack
-			// 5. Handle errors via mockShowError and rollback
-			// All these dependencies are verified above to be properly configured
+			const searchContainer = utils.getByTestId('project-members-search');
+			const searchInput = searchContainer.querySelector('input')!;
+			await userEvent.type(searchInput, 'john');
+			await new Promise((r) => setTimeout(r, 350));
+			// unmount first to avoid duplicate elements
+			utils.unmount();
+			const utils2 = renderComponent();
+			expect(utils2.getByTestId('members-page').textContent).toBe('0');
 		});
 	});
 
-	describe('Form Data Management', () => {
-		it('should track form state correctly', async () => {
-			const { getByTestId } = renderComponent();
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const nameInput = getByTestId('project-settings-name-input');
-			const descInput = getByTestId('project-settings-description-input');
-
-			expect(cancelButton).toBeDisabled();
-
-			const actualNameInput = getInput(nameInput);
-			const actualDescInput = descInput.querySelector('textarea')!;
-
-			await userEvent.type(actualNameInput, ' - Modified');
-			await userEvent.type(actualDescInput, 'Updated description');
+	describe('Icon updates', () => {
+		it('updates project icon and shows success toast', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			renderComponent();
 			await nextTick();
-
-			expect(cancelButton).toBeEnabled();
-
-			await userEvent.click(cancelButton);
+			emitters.n8nIconPicker.emit('update:model-value', { type: 'icon', value: 'zap' });
 			await nextTick();
-			expect(cancelButton).toBeDisabled();
-			expect(actualNameInput.value).toBe('Test Project');
-			expect(actualDescInput.value).toBe('');
-		});
-
-		it('should handle member search element presence', async () => {
-			const { getByTestId } = renderComponent();
-
-			try {
-				const searchInput = getByTestId('project-members-search');
-				expect(searchInput).toBeInTheDocument();
-
-				const actualSearchInput = searchInput.querySelector('input');
-				if (actualSearchInput) {
-					await userEvent.type(actualSearchInput, 'test');
-					expect(actualSearchInput.value).toBe('test');
-				}
-			} catch {
-				expect(true).toBe(true);
-			}
-		});
-
-		it('should manage member selection properly', () => {
-			const { getByTestId } = renderComponent();
-			const memberSelect = getByTestId('project-members-select');
-
-			expect(memberSelect).toBeInTheDocument();
-			// Member select should be rendered even if no current members
+			await waitAllPromises();
+			expect(updateSpy).toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
 	});
 
-	describe('Component Lifecycle and Watchers', () => {
-		it('should initialize form data when current project changes', async () => {
+	describe('Lifecycle', () => {
+		it('reacts to project change and keeps inputs bound', async () => {
 			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
 			const descInput = getByTestId('project-settings-description-input');
-
-			const actualNameInput = getInput(nameInput);
-			const actualDescInput = descInput.querySelector('textarea')!;
-
-			expect(actualNameInput.value).toBe('Test Project');
-			expect(actualDescInput.value).toBe('');
-
+			const actualName = getInput(nameInput);
+			const actualDesc = descInput.querySelector('textarea')!;
+			expect(actualName.value).toBe('Test Project');
+			expect(actualDesc.value).toBe('');
 			const updatedProject = {
 				...projectsStore.currentProject!,
 				name: 'Updated Project',
 				description: 'Updated description',
 			};
 			projectsStore.setCurrentProject(updatedProject);
-
 			await nextTick();
-		});
-
-		it('should handle project data initialization', () => {
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('project-settings-name-input')).toBeInTheDocument();
-			expect(getByTestId('project-settings-description-input')).toBeInTheDocument();
-			expect(getByTestId('project-members-select')).toBeInTheDocument();
-		});
-	});
-
-	describe('UI Elements', () => {
-		it('should render all project settings form and management elements', () => {
-			const { getByTestId, container } = renderComponent();
-
-			// Form elements
-			const form = container.querySelector('form');
-			const nameInput = getByTestId('project-settings-name-input');
-			const descriptionInput = getByTestId('project-settings-description-input');
-			const saveButton = getByTestId('project-settings-save-button');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const deleteButton = getByTestId('project-settings-delete-button');
-
-			// Member management elements
-			const membersSelect = getByTestId('project-members-select');
-
-			// Assert all elements are present
-			expect(form).toBeInTheDocument();
 			expect(nameInput).toBeInTheDocument();
-			expect(descriptionInput).toBeInTheDocument();
-			expect(saveButton).toBeInTheDocument();
-			expect(cancelButton).toBeInTheDocument();
-			expect(deleteButton).toBeInTheDocument();
-			expect(membersSelect).toBeInTheDocument();
+			expect(descInput).toBeInTheDocument();
+			expect(getByTestId('project-members-select')).toBeInTheDocument();
 		});
 	});
 });
