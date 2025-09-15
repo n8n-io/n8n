@@ -90,15 +90,15 @@
 		},
 		{
 			"parameters": {
-				"content": "### Joke Agent\nA chat-based joke agent that uses the Joke API and an AI model to deliver fun, personalized jokes and keep conversations entertaining.\n\n#### Set up\n- Configure your credentials in the Model node\n- Open the chat and start talking to your agent\n\n#### Next steps\nYou can apply this pattern to any website or API, try connecting the docs of a tool you use regularly but remember to change the system prompt.\n",
-				"height": 400,
-				"width": 304,
+				"content": "## Start here!\n@[youtube](q1TMyj3zrp0)",
+				"height": 320,
+				"width": 464,
 				"color": 5
 			},
 			"type": "n8n-nodes-base.stickyNote",
-			"position": [-1088, -32],
+			"position": [-1200, 0],
 			"typeVersion": 1,
-			"id": "fd4fc7ea-30bf-42d1-8bb6-4026ef12e95c",
+			"id": "b30452e2-c811-4191-8415-7ae444b15849",
 			"name": "Sticky Note"
 		}
 	],

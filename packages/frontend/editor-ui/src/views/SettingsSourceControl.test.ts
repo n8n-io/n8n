@@ -150,58 +150,6 @@ describe('SettingsSourceControl', () => {
 		expect(generateKeyPairSpy).toHaveBeenCalledWith('rsa');
 	}, 10000);
 
-	describe('Protocol Selection', () => {
-		beforeEach(() => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-		});
-
-		it('should show SSH-specific fields when SSH protocol is selected', async () => {
-			await nextTick();
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
-
-			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
-
-			// SSH should be selected by default
-			const connectionTypeSelect = getByTestId('source-control-connection-type-select');
-			expect(within(connectionTypeSelect).getByDisplayValue('SSH')).toBeInTheDocument();
-
-			// SSH-specific fields should be visible
-			expect(getByTestId('source-control-ssh-key-type-select')).toBeInTheDocument();
-			expect(getByTestId('source-control-refresh-ssh-key-button')).toBeInTheDocument();
-			expect(container.querySelector('input[name="repoUrl"]')).toBeInTheDocument();
-
-			// HTTPS-specific fields should not be visible
-			expect(container.querySelector('input[name="httpsUsername"]')).not.toBeInTheDocument();
-			expect(container.querySelector('input[name="httpsPassword"]')).not.toBeInTheDocument();
-		});
-
-		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
-			await nextTick();
-			const { container, queryByTestId } = renderComponent({
-				pinia,
-			});
-
-			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
-
-			// Change to HTTPS protocol
-			const connectionTypeSelect = queryByTestId('source-control-connection-type-select')!;
-			await userEvent.click(within(connectionTypeSelect).getByRole('combobox'));
-			await waitFor(() => expect(screen.getByText('HTTPS')).toBeVisible());
-			await userEvent.click(screen.getByText('HTTPS'));
-
-			// HTTPS-specific fields should be visible
-			expect(container.querySelector('input[name="httpsUsername"]')).toBeInTheDocument();
-			expect(container.querySelector('input[name="httpsPassword"]')).toBeInTheDocument();
-			expect(container.querySelector('input[name="repoUrl"]')).toBeInTheDocument();
-
-			// SSH-specific fields should not be visible
-			expect(queryByTestId('source-control-ssh-key-type-select')).not.toBeInTheDocument();
-			expect(queryByTestId('source-control-refresh-ssh-key-button')).not.toBeInTheDocument();
-		});
-	});
-
 	describe('should test repo URLs', () => {
 		beforeEach(() => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;

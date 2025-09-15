@@ -11,9 +11,19 @@ export type DataStore = {
 	project?: Project;
 };
 
-export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
+// Single sources of truth for supported types
+export const DATA_STORE_COLUMN_TYPES = ['string', 'number', 'boolean', 'date'] as const;
+export type DataStoreColumnType = (typeof DATA_STORE_COLUMN_TYPES)[number];
 
-export type AGGridCellType = 'text' | 'number' | 'boolean' | 'date' | 'dateString' | 'object';
+export const AG_GRID_CELL_TYPES = [
+	'text',
+	'number',
+	'boolean',
+	'date',
+	'dateString',
+	'object',
+] as const;
+export type AGGridCellType = (typeof AG_GRID_CELL_TYPES)[number];
 
 export type DataStoreColumn = {
 	id: string;
