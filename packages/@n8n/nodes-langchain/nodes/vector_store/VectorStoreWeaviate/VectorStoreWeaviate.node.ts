@@ -26,7 +26,7 @@ type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 };
 class ExtendedWeaviateVectorStore extends WeaviateStore {
 	private static defaultFilter: WeaviateCompositeFilter;
-	static args: WeaviateLibArgs;
+	private static args: WeaviateLibArgs;
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
