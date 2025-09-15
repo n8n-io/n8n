@@ -67,5 +67,87 @@ describe('CredentialsService', () => {
 				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
 			).toBe(true);
 		});
+
+		it('should handle multiple properties with different displayOptions.show values for the same dependent field', () => {
+			// This test case replicates the Grist API credentials scenario
+			const properties: INodeProperties[] = [
+				{ name: 'apiKey', type: 'string', required: true, displayName: 'API Key', default: '' },
+				{
+					name: 'planType',
+					type: 'options',
+					required: false,
+					options: [
+						{ value: 'free', name: 'Free' },
+						{ value: 'paid', name: 'Paid' },
+						{ value: 'selfHosted', name: 'Self-Hosted' },
+					],
+					displayName: 'Plan Type',
+					default: 'free',
+				},
+				{
+					name: 'customSubdomain',
+					type: 'string',
+					displayName: 'Custom Subdomain',
+					default: '',
+					required: true,
+					displayOptions: {
+						show: {
+							planType: ['paid'],
+						},
+					},
+				},
+				{
+					name: 'selfHostedUrl',
+					type: 'string',
+					displayName: 'Self-Hosted URL',
+					default: '',
+					required: true,
+					displayOptions: {
+						show: {
+							planType: ['selfHosted'],
+						},
+					},
+				},
+			];
+
+			const schema = toJsonSchema(properties);
+
+			// Cast properties as IDataObject
+			const props = schema.properties as IDataObject;
+
+			expect(props).toBeDefined();
+			expect(props.apiKey).toEqual({ type: 'string' });
+			expect(props.planType).toEqual({
+				type: 'string',
+				enum: ['free', 'paid', 'selfHosted'],
+			});
+			expect(props.customSubdomain).toEqual({ type: 'string' });
+			expect(props.selfHostedUrl).toEqual({ type: 'string' });
+
+			// Only apiKey should be globally required
+			expect(schema.required).toEqual(['apiKey']);
+
+			const allOf = schema.allOf as GenericValue[] | IDataObject[];
+			expect(Array.isArray(allOf)).toBe(true);
+			expect(allOf?.length).toBe(2); // Two separate conditions
+
+			// Find the condition for planType === 'paid'
+			const paidCondition = allOf?.find((cond) => {
+				const condition = cond as any;
+				return condition.if?.properties?.planType?.enum?.[0] === 'paid';
+			}) as IDependency;
+			expect(paidCondition).toBeDefined();
+			expect(paidCondition.then?.allOf).toEqual([{ required: ['customSubdomain'] }]);
+			expect(paidCondition.else?.allOf).toEqual([{ not: { required: ['customSubdomain'] } }]);
+
+			// Find the condition for planType === 'selfHosted'
+			const selfHostedCondition = allOf?.find((cond) => {
+				const condition = cond as any;
+				return condition.if?.properties?.planType?.enum?.[0] === 'selfHosted';
+			}) as IDependency;
+			expect(selfHostedCondition).toBeDefined();
+			expect(selfHostedCondition.then?.allOf).toEqual([{ required: ['selfHostedUrl'] }]);
+			expect(selfHostedCondition.else?.allOf).toEqual([{ not: { required: ['selfHostedUrl'] } }]);
+		});
 	});
 });

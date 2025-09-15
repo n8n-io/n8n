@@ -155,7 +155,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	};
 
 	const optionsValues: { [key: string]: string[] } = {};
-	const resolveProperties: string[] = [];
+	const resolvedConditions: string[] = [];
 
 	// get all possible values of properties type "options"
 	// so we can later resolve the displayOptions dependencies
@@ -215,11 +215,10 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				dependantValue = displayOptionsValues[0];
 			}
 
-			if (propertyRequiredDependencies[dependantName] === undefined) {
-				propertyRequiredDependencies[dependantName] = {};
-			}
+			// Create a unique key for this specific condition (dependant field + value)
+			const conditionKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
 
-			if (!resolveProperties.includes(dependantName)) {
+			if (!resolvedConditions.includes(conditionKey)) {
 				let conditionalValue;
 				if (typeof dependantValue === 'object' && dependantValue._cnd) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -285,7 +284,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						enum: [dependantValue],
 					};
 				}
-				propertyRequiredDependencies[dependantName] = {
+				propertyRequiredDependencies[conditionKey] = {
 					if: {
 						properties: {
 							[dependantName]: conditionalValue,
@@ -297,15 +296,15 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 					else: {
 						allOf: [],
 					},
-				};
+				} as IDependency;
+				resolvedConditions.push(conditionKey);
 			}
 
-			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependantName].else?.allOf.push({
+			(propertyRequiredDependencies[conditionKey] as IDependency).then?.allOf.push({ required: [property.name] });
+			(propertyRequiredDependencies[conditionKey] as IDependency).else?.allOf.push({
 				not: { required: [property.name] },
 			});
 
-			resolveProperties.push(dependantName);
 			// remove global required
 			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
