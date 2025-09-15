@@ -1017,11 +1017,14 @@ export function useWorkflowHelpers() {
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
-	function getMethod(trigger: INode) {
+	function getMethods(trigger: INode) {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
-			return (trigger.parameters.method as string) ?? 'GET';
+			if (trigger.parameters.multipleMethods === true) {
+				return (trigger.parameters.httpMethod as string[]) ?? ['GET', 'POST'];
+			}
+			return [(trigger.parameters.httpMethod as string) ?? 'GET'];
 		}
-		return 'POST';
+		return ['POST'];
 	}
 
 	function getWebhookPath(trigger: INode) {
@@ -1053,17 +1056,17 @@ export function useWorkflowHelpers() {
 		);
 
 		for (const trigger of triggers) {
-			const method = getMethod(trigger);
-
+			const methods = getMethods(trigger);
 			const path = getWebhookPath(trigger);
+			for (const method of methods) {
+				const conflict = await findWebhook(rootStore.restApiContext, {
+					path,
+					method,
+				});
 
-			const conflict = await findWebhook(rootStore.restApiContext, {
-				path,
-				method,
-			});
-
-			if (conflict && conflict.workflowId !== workflowId) {
-				return { trigger, conflict };
+				if (conflict && conflict.workflowId !== workflowId) {
+					return { trigger, conflict };
+				}
 			}
 		}
 
