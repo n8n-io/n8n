@@ -88,6 +88,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
+	getParameterExpressionPreviewOutput() {
+		return this.page.getByTestId('parameter-expression-preview-output');
+	}
+
 	getInlineExpressionEditorPreview() {
 		return this.page.getByTestId('inline-expression-editor-output');
 	}
