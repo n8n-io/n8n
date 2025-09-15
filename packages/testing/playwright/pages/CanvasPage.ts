@@ -223,13 +223,47 @@ export class CanvasPage extends BasePage {
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
-			this.clickByText('Import from File...'),
+			this.clickByTestId('workflow-menu-item-import-from-file'),
 		]);
 		await fileChooser.setFiles(resolveFromRoot('workflows', fixtureKey));
 
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', workflowName);
 		await this.page.getByTestId('inline-edit-input').press('Enter');
+	}
+
+	// Import workflow locators
+	getImportURLInput(): Locator {
+		return this.page.getByTestId('workflow-url-import-input');
+	}
+
+	// Import workflow actions
+	async clickWorkflowMenu(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+	}
+
+	async clickImportFromURL(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import-from-url');
+	}
+
+	async clickImportFromFile(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import-from-file');
+	}
+
+	async fillImportURLInput(url: string): Promise<void> {
+		await this.getImportURLInput().fill(url);
+	}
+
+	async clickConfirmImportURL(): Promise<void> {
+		await this.clickByTestId('confirm-workflow-import-url-button');
+	}
+
+	async clickCancelImportURL(): Promise<void> {
+		await this.clickByTestId('cancel-workflow-import-url-button');
+	}
+
+	async clickOutsideModal(): Promise<void> {
+		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
 	getWorkflowTags() {

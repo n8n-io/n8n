@@ -265,4 +265,36 @@ export class NotificationsPage {
 			// Silent fail
 		}
 	}
+
+	getErrorNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--error)');
+	}
+
+	getSuccessNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--success)');
+	}
+
+	getWarningNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--warning)');
+	}
+
+	getInfoNotifications(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--info)');
+	}
+
+	async hasErrorNotifications(): Promise<boolean> {
+		return (await this.getErrorNotifications().count()) > 0;
+	}
+
+	async hasSuccessNotifications(): Promise<boolean> {
+		return (await this.getSuccessNotifications().count()) > 0;
+	}
+
+	async hasWarningNotifications(): Promise<boolean> {
+		return (await this.getWarningNotifications().count()) > 0;
+	}
+
+	async hasInfoNotifications(): Promise<boolean> {
+		return (await this.getInfoNotifications().count()) > 0;
+	}
 }
