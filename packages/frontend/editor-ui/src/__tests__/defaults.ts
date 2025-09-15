@@ -112,7 +112,6 @@ export const defaultSettings: FrontendSettings = {
 	},
 	dataTables: {
 		maxSize: 0,
-		warningThreshold: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,

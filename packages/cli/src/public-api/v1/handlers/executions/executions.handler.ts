@@ -114,19 +114,23 @@ export = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// get running workflows so we exclude them from the result
+			// get running executions so we exclude them from the result
 			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
 				.map(({ id }) => id);
 
-			const filters = {
-				status,
-				limit,
-				lastId,
-				includeData,
-				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
-				excludedExecutionsIds: runningExecutionsIds,
-			};
+			const filters: Parameters<typeof ExecutionRepository.prototype.getExecutionsForPublicApi>[0] =
+				{
+					status,
+					limit,
+					lastId,
+					includeData,
+					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
+
+					// for backward compatibility `running` executions are always excluded
+					// unless the user explicitly filters by `running` status
+					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
+				};
 
 			const executions =
 				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);

@@ -27,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from './stores/roles.store';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 export const state = {
 	initialized: false,
@@ -134,6 +135,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
+	const dataStoreStore = useDataStoreStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -170,6 +172,15 @@ export async function initializeAuthenticatedFeatures(
 			.catch((error) => {
 				console.error('Failed to initialize cloud plan store:', error);
 			});
+	}
+
+	if (settingsStore.isDataTableFeatureEnabled) {
+		const { sizeState } = await dataStoreStore.fetchDataStoreSize();
+		if (sizeState === 'error') {
+			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+		} else if (sizeState === 'warn') {
+			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+		}
 	}
 
 	if (insightsStore.isSummaryEnabled) {
