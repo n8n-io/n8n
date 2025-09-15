@@ -114,6 +114,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@pinia/testing": "^0.1.6",
+    "@storybook/types": "^8.6.14",
     "@testing-library/vue": "catalog:frontend",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
