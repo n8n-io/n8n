@@ -1,6 +1,6 @@
-import type { SafetySetting } from '@google/generative-ai';
+import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ProjectsClient } from '@google-cloud/resource-manager';
-import { ChatVertexAI } from '@langchain/google-vertexai';
+import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import {
 	NodeConnectionTypes,
@@ -148,16 +148,17 @@ export class LmChatGoogleVertex implements INodeType {
 			temperature: number;
 			topK: number;
 			topP: number;
+			thinkingBudget?: number;
 		};
 
 		const safetySettings = this.getNodeParameter(
 			'options.safetySettings.values',
 			itemIndex,
 			null,
-		) as SafetySetting[];
+		) as GoogleAISafetySetting[];
 
 		try {
-			const model = new ChatVertexAI({
+			const modelConfig: ChatVertexAIInput = {
 				authOptions: {
 					projectId,
 					credentials: {
@@ -186,7 +187,14 @@ export class LmChatGoogleVertex implements INodeType {
 
 					throw error;
 				}),
-			});
+			};
+
+			// Add thinkingBudget if specified
+			if (options.thinkingBudget !== undefined) {
+				modelConfig.thinkingBudget = options.thinkingBudget;
+			}
+
+			const model = new ChatVertexAI(modelConfig);
 
 			return {
 				response: model,

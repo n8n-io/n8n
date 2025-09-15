@@ -1,4 +1,4 @@
-import type { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
+import type { HarmBlockThreshold, HarmCategory } from '@google/genai';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { harmCategories, harmThresholds } from './safety-options';
@@ -44,6 +44,18 @@ export const additionalOptions: INodeProperties = {
 			description:
 				'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 			type: 'number',
+		},
+		{
+			displayName: 'Thinking Budget',
+			name: 'thinkingBudget',
+			default: undefined,
+			description:
+				'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode.',
+			type: 'number',
+			typeOptions: {
+				minValue: -1,
+				numberPrecision: 0,
+			},
 		},
 
 		// Safety Settings
