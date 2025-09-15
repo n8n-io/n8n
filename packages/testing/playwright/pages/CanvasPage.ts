@@ -207,6 +207,11 @@ export class CanvasPage extends BasePage {
 	async clickExecutionsTab(): Promise<void> {
 		await this.page.getByRole('radio', { name: 'Executions' }).click();
 	}
+
+	async clickEditorTab(): Promise<void> {
+		await this.page.getByRole('radio', { name: 'Editor' }).click();
+	}
+
 	async setWorkflowName(name: string): Promise<void> {
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', name);
