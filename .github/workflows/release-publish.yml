@@ -8,8 +8,35 @@ on:
       - 'release/*'
 
 jobs:
+  build-amd64:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+
+      - name: Cache to GH
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-release:build
+  build-arm64:
+    runs-on: blacksmith-4vcpu-ubuntu-2204-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Setup and Build ARM64
+        uses: ./.github/actions/setup-nodejs-blacksmith
+
   publish-to-npm:
     name: Publish to NPM
+    needs: build-amd64
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 15
@@ -39,12 +66,10 @@ jobs:
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
-      - name: Build
-        run: pnpm build
-
-      - name: Cache build artifacts
-        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      - name: Restore build artifacts
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
+          fail-on-cache-miss: true
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
 
@@ -71,7 +96,7 @@ jobs:
 
   publish-to-docker-hub:
     name: Publish to DockerHub
-    needs: [publish-to-npm]
+    needs: [publish-to-npm, build-arm64]
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
