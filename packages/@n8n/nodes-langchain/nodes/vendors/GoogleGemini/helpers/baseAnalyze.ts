@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { Content, GenerateContentResponse } from './interfaces';
+import type { Content, GenerateContentRequest, GenerateContentResponse } from './interfaces';
 import { downloadFile, uploadFile } from './utils';
 import { apiRequest } from '../transport';
 
@@ -14,7 +14,7 @@ export async function baseAnalyze(
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const text = this.getNodeParameter('text', i, '') as string;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {});
+	const options = this.getNodeParameter('options', i, {}) as { maxOutputTokens?: number };
 
 	const generationConfig = {
 		maxOutputTokens: options.maxOutputTokens,
@@ -73,7 +73,7 @@ export async function baseAnalyze(
 
 	contents[0].parts.push({ text });
 
-	const body = {
+	const body: GenerateContentRequest = {
 		contents,
 		generationConfig,
 	};
