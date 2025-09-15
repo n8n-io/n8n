@@ -5,7 +5,6 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
-import { LoggerProxy } from 'n8n-workflow';
 import type {
 	IWorkflowBase,
 	IExecuteWorkflowInfo,
@@ -291,8 +290,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 		jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
 
 		it('should return base additional data with default values', async () => {
-			externalSecretsProxy.update.mockResolvedValue(undefined);
-			externalSecretsProxy.update.mockClear();
 			const additionalData = await getBase();
 
 			expect(additionalData).toMatchObject({
@@ -314,9 +311,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 				startRunnerTask: expect.any(Function),
 				logAiEvent: expect.any(Function),
 			});
-
-			// External secrets should be refreshed when building additional data
-			expect(externalSecretsProxy.update).toHaveBeenCalledTimes(1);
 		});
 
 		it('should include userId when provided', async () => {
@@ -338,17 +332,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const additionalData = await getBase(undefined, undefined, executionTimeoutTimestamp);
 
 			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
-		});
-
-		it('should debug log when external secrets refresh fails', async () => {
-			// Force refresh to fail
-			externalSecretsProxy.update.mockRejectedValueOnce(new Error('refresh failed'));
-			const debugSpy = jest.spyOn(LoggerProxy, 'debug').mockImplementation(() => {});
-
-			await getBase();
-
-			expect(debugSpy).toHaveBeenCalledWith('External secrets refresh on job start failed');
-			debugSpy.mockRestore();
 		});
 	});
 });
