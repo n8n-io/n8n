@@ -233,6 +233,30 @@ describe('PublicApiKeyService', () => {
 				);
 			});
 		});
+
+		it('should return false if user is disabled', async () => {
+			//Arrange
+
+			const path = '/test';
+			const method = 'GET';
+			const apiVersion = 'v1';
+
+			const owner = await createOwnerWithApiKey();
+
+			await userRepository.update({ id: owner.id }, { disabled: true });
+
+			const [{ apiKey }] = owner.apiKeys;
+
+			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
+
+			//Act
+
+			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
+
+			//Assert
+
+			expect(response).toBe(false);
+		});
 	});
 
 	describe('redactApiKey', () => {

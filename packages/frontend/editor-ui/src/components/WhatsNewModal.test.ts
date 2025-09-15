@@ -2,12 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, screen } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import {
-	cleanupAppModals,
-	createAppModals,
-	mockedStore,
-	type MockedStore,
-} from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/constants';
 import { useVersionsStore } from '@/stores/versions.store';
@@ -63,7 +58,6 @@ const currentVersion: Version = {
 
 describe('WhatsNewModal', () => {
 	beforeEach(() => {
-		createAppModals();
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalsById = {
@@ -132,7 +126,6 @@ describe('WhatsNewModal', () => {
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

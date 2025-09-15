@@ -286,15 +286,15 @@
 		},
 		{
 			"parameters": {
-				"content": "### Task management agent\nA chat-based task management assistant that helps users create, view, update, and delete tasks in a Google Sheets spreadsheet.\n\n#### Set up\n- Configure credentials in the **Model** and **Google sheets** nodes\n- Create a Google sheet with the columns: **Task, Description, Deadline and Status**. [Example sheet](https://docs.google.com/spreadsheets/d/1mrfeRU7qMBc9fXF7oteX4i2s50XU2qKJZNQWgmxGG5o/edit?usp=sharing)\n- Select your document and sheet in each of the Google Sheet tools\n- Open the chat and start talking to your agent\n\n#### Next steps\nTry adding different columns or have the agent interact with multiple sheets in the document.\n",
-				"height": 480,
-				"width": 304,
+				"content": "## Start here!\n@[youtube](cmR6m_p0-ro)",
+				"height": 320,
+				"width": 464,
 				"color": 5
 			},
 			"type": "n8n-nodes-base.stickyNote",
-			"position": [-1056, -64],
+			"position": [-1200, -32],
 			"typeVersion": 1,
-			"id": "3f1162c3-7ff9-461b-a4e5-ad2fe8b92821",
+			"id": "56870cd2-d303-41cf-8f8a-2bba13c3d3ea",
 			"name": "Sticky Note"
 		}
 	],

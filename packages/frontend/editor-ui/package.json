@@ -37,7 +37,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/codemirror-lang": "workspace:*",
-    "@n8n/codemirror-lang-sql": "^1.0.2",
+    "@n8n/codemirror-lang-sql": "workspace:*",
     "@n8n/composables": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/design-system": "workspace:*",

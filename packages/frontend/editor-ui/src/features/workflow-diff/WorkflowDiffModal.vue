@@ -3,7 +3,7 @@ import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
@@ -14,7 +14,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
-import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -30,7 +37,7 @@ const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-const { selectedDetailId, onNodeClick } = useProvideViewportSync();
+const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
 const telemetry = useTelemetry();
 const $style = useCssModule();
@@ -267,16 +274,28 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
-	function replacer(key: string, value: unknown) {
+	// Custom replacer to exclude certain properties and format others
+	function replacer(key: string, value: unknown, nodeType?: string) {
 		if (key === 'position') {
 			return undefined; // exclude this property
 		}
+
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
+		}
+
 		return value;
 	}
 
+	const withNodeType = (type?: string) => (key: string, value: unknown) =>
+		replacer(key, value, type);
+
 	return {
-		oldString: JSON.stringify(sourceNode, replacer, 2) ?? '',
-		newString: JSON.stringify(targetNode, replacer, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
+		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
 	};
 });
 
@@ -415,6 +434,12 @@ const modifiers = [
 				</div>
 
 				<div :class="$style.headerRight">
+					<N8nCheckbox
+						v-model="syncIsEnabled"
+						label-size="small"
+						label="Sync views"
+						class="mb-0 mr-s"
+					/>
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -422,10 +447,9 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary">
+						<N8nButton type="secondary" style="--button-border-radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -555,16 +579,17 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
-						class="mr-2xs"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
-					></N8nIconButton>
+					/>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0 4px 4px 0"
 						@click="nextNodeChange"
-					></N8nIconButton>
+					/>
 				</div>
 			</div>
 		</template>

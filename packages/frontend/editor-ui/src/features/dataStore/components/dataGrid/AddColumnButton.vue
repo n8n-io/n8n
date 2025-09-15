@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import type {
+	AddColumnResponse,
 	DataStoreColumnCreatePayload,
 	DataStoreColumnType,
 } from '@/features/dataStore/datastore.types';
+import { DATA_STORE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
 import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
 
+type FormError = {
+	message?: string;
+	description?: string;
+};
+
 const props = defineProps<{
 	// the params key is needed so that we can pass this directly to ag-grid as column
 	params: {
-		onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<boolean>;
+		onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<AddColumnResponse>;
 	};
 	popoverId?: string;
 	useTextTrigger?: boolean;
@@ -28,9 +35,9 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 const columnName = ref('');
 const columnType = ref<DataStoreColumnType>('string');
 
-const columnTypes: DataStoreColumnType[] = ['string', 'number', 'boolean', 'date'];
+const columnTypes: DataStoreColumnType[] = [...DATA_STORE_COLUMN_TYPES];
 
-const error = ref<string | null>(null);
+const error = ref<FormError | null>(null);
 
 // Handling popover state manually to prevent it closing when interacting with dropdown
 const popoverOpen = ref(false);
@@ -38,16 +45,40 @@ const isSelectOpen = ref(false);
 
 const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
+const columnTypeOptions = computed(() => {
+	// Renaming 'date' to 'datetime' but only in UI label
+	// we still want to use 'date' as value so nothing breaks
+	return columnTypes.map((type) => ({
+		label: type === 'date' ? 'datetime' : type,
+		value: type,
+	}));
+});
+
 const onAddButtonClicked = async () => {
 	validateName();
 	if (!columnName.value || !columnType.value || error.value) {
 		return;
 	}
-	const success = await props.params.onAddColumn({
+	const response = await props.params.onAddColumn({
 		name: columnName.value,
 		type: columnType.value,
 	});
-	if (!success) {
+
+	if (!response.success) {
+		let errorMessage = i18n.baseText('dataStore.addColumn.error');
+		let errorDescription = response.errorMessage;
+		// Provide custom error message for conflict (column already exists)
+		if (response.httpStatus === 409) {
+			errorMessage = i18n.baseText('dataStore.addColumn.alreadyExistsError', {
+				interpolate: { name: columnName.value },
+			});
+			errorDescription = i18n.baseText('dataStore.addColumn.alreadyExistsDescription');
+		}
+		error.value = {
+			message: errorMessage,
+			description: errorDescription,
+		};
+
 		return;
 	}
 	columnName.value = '';
@@ -74,7 +105,10 @@ const validateName = () => {
 		error.value = null;
 	}
 	if (columnName.value && !COLUMN_NAME_REGEX.test(columnName.value)) {
-		error.value = i18n.baseText('dataStore.addColumn.invalidName.error');
+		error.value = {
+			message: i18n.baseText('dataStore.addColumn.invalidName.error'),
+			description: i18n.baseText('dataStore.addColumn.invalidName.description'),
+		};
 	}
 };
 
@@ -107,7 +141,10 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 					</template>
 				</template>
 				<template #content>
-					<div class="add-ds-column-header-popover-content">
+					<div
+						class="add-ds-column-header-popover-content"
+						data-test-id="add-column-popover-content"
+					>
 						<div class="popover-body">
 							<N8nInputLabel
 								:label="i18n.baseText('dataStore.addColumn.nameInput.label')"
@@ -123,10 +160,14 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									@input="onInput"
 								/>
 								<div v-if="error" class="error-message">
-									<n8n-text size="small" color="danger" tag="span">
-										{{ error }}
+									<n8n-text v-if="error.message" size="small" color="danger" tag="span">
+										{{ error.message }}
 									</n8n-text>
-									<Tooltip :content="i18n.baseText('dataStore.addColumn.invalidName.description')">
+									<Tooltip
+										:content="error.description"
+										placement="top"
+										:disabled="!error.description"
+									>
 										<N8nIcon
 											icon="circle-help"
 											size="small"
@@ -147,10 +188,15 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									:append-to="`#${popoverId}`"
 									@visible-change="isSelectOpen = $event"
 								>
-									<N8nOption v-for="type in columnTypes" :key="type" :value="type">
+									<N8nOption
+										v-for="option in columnTypeOptions"
+										:key="option.value"
+										:label="option.label"
+										:value="option.value"
+									>
 										<div class="add-column-option-content">
-											<N8nIcon :icon="getIconForType(type)" />
-											<N8nText>{{ type }}</N8nText>
+											<N8nIcon :icon="getIconForType(option.value)" />
+											<N8nText>{{ option.label }}</N8nText>
 										</div>
 									</N8nOption>
 								</N8nSelect>

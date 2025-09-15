@@ -78,7 +78,8 @@ describe('n8n Form Trigger', () => {
 
 		//add optional submitted message
 		cy.get('.param-options').click();
-		getVisibleSelect().find('span').contains('Form Response').click();
+		// wait for selector debounce
+		getVisibleSelect().find('span').contains('Form Response').click().wait(300);
 		cy.contains('span', 'Text to Show')
 			.should('exist')
 			.parent()

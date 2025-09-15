@@ -6,9 +6,8 @@ import { n8nCompletionSources } from '@/plugins/codemirror/completions/addComple
 import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { ifNotIn } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
-import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { Prec, type Line } from '@codemirror/state';
 import {
 	EditorView,
@@ -79,9 +78,9 @@ const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
 	function sqlWithN8nLanguageSupport() {
 		return new LanguageSupport(dialect.language, [
-			dialect.language.data.of({ closeBrackets: expressionCloseBracketsConfig }),
-			dialect.language.data.of({
-				autocomplete: ifNotIn(['Resolvable'], keywordCompletionSource(dialect, true)),
+			dialect.sqlLanguage.data.of({ closeBrackets: expressionCloseBracketsConfig }),
+			dialect.sqlLanguage.data.of({
+				autocomplete: keywordCompletionSource(dialect, true),
 			}),
 			n8nCompletionSources().map((source) => dialect.language.data.of(source)),
 		]);
@@ -114,6 +113,7 @@ const extensions = computed(() => {
 			mappingDropCursor(),
 		]);
 	}
+
 	return baseExtensions;
 });
 const {

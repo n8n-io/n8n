@@ -6,12 +6,13 @@ import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
-import NodeError from './custom/node-error.svg';
+import NodeExecutionError from './custom/node-execution-error.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
 import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/node-trash.svg';
+import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
@@ -436,7 +437,8 @@ export const updatedIconSet = {
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
-	'node-error': NodeError,
+	'node-execution-error': NodeExecutionError,
+	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
