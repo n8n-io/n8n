@@ -50,6 +50,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -681,6 +682,7 @@ function handleSelectAction(params: INodeParameters) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<NodeStorageLimitCallout />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -822,7 +824,7 @@ function handleSelectAction(params: INodeParameters) {
 		gap: var(--spacing-4xs);
 		margin-top: var(--spacing-xl);
 
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-light);
 	}

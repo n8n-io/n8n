@@ -1892,7 +1892,7 @@ watch(
 			name: CanvasNodeRenderType.AIPrompt,
 			type: CanvasNodeRenderType.AIPrompt,
 			typeVersion: 1,
-			position: [-690, -15],
+			position: [-300, -100],
 			parameters: {},
 			draggable: false,
 		};
@@ -2069,6 +2069,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
+			:suppress-interaction="canvasStore.suppressInteraction"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

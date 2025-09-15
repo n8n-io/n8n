@@ -2006,6 +2006,10 @@ export function useCanvasOperations() {
 				await importWorkflowTags(workflowData);
 			}
 
+			if (workflowData.name) {
+				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+			}
+
 			return workflowData;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));

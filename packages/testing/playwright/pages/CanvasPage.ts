@@ -4,12 +4,16 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { CredentialModal } from './components/CredentialModal';
+import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
+	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
@@ -38,6 +42,10 @@ export class CanvasPage extends BasePage {
 
 	nodeByName(nodeName: string): Locator {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
+	}
+
+	nodeIssuesBadge(nodeName: string) {
+		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
 	nodeToolbar(nodeName: string): Locator {
@@ -645,5 +653,9 @@ export class CanvasPage extends BasePage {
 
 	async openExecutions() {
 		await this.page.getByTestId('radio-button-executions').click();
+	}
+
+	waitingForTriggerEvent() {
+		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
 	}
 }

@@ -25,7 +25,7 @@ from typing import Any, Set
 
 from multiprocessing.context import SpawnProcess
 
-MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
+MULTIPROCESSING_CONTEXT = multiprocessing.get_context("fork")
 MAX_PRINT_ARGS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
@@ -95,6 +95,9 @@ class TaskExecutor:
                 returned = queue.get_nowait()
             except Empty:
                 raise TaskResultMissingError()
+            finally:
+                queue.close()
+                queue.join_thread()
 
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
