@@ -4,10 +4,7 @@ import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
-import type { BaseTextKey, INodeTranslationHeaders } from './types';
-export type LocaleMessages = typeof englishBaseText & {
-	numberFormats: { [key: string]: Intl.NumberFormatOptions };
-};
+import type { BaseTextKey, LocaleMessages, INodeTranslationHeaders } from './types';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,

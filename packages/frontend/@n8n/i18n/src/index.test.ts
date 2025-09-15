@@ -1,5 +1,6 @@
 /* eslint-disable id-denylist */
-import { I18nClass, loadLanguage, i18nInstance, type LocaleMessages } from './index';
+import { I18nClass, loadLanguage, i18nInstance } from './index';
+import type { LocaleMessages } from './types';
 
 // Store original state for cleanup
 let originalLocale: string;
