@@ -5,12 +5,14 @@ import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
 import { CredentialModal } from './components/CredentialModal';
+import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 
 	saveWorkflowButton(): Locator {

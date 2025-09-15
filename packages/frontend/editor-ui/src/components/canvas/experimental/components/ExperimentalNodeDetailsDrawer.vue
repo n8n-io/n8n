@@ -8,7 +8,12 @@ import { computed, provide, ref, watch } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 
-const { node, nodeIds } = defineProps<{ node: INodeUi; nodeIds: string[] }>();
+const { node, nodeIds, isReadOnly } = defineProps<{
+	node: INodeUi;
+	nodeIds: string[];
+
+	isReadOnly?: boolean;
+}>();
 
 const emit = defineEmits<{
 	openNdv: [];
@@ -54,19 +59,12 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 				</li>
 			</ul>
 		</N8nText>
-		<ExperimentalCanvasNodeSettings v-else-if="node" :key="nodeSettingsViewKey" :node-id="node.id">
-			<template #actions>
-				<N8nIconButton
-					icon="maximize-2"
-					type="secondary"
-					text
-					size="mini"
-					icon-size="large"
-					aria-label="Expand"
-					@click="emit('openNdv')"
-				/>
-			</template>
-		</ExperimentalCanvasNodeSettings>
+		<ExperimentalCanvasNodeSettings
+			v-else-if="node"
+			:key="nodeSettingsViewKey"
+			:node-id="node.id"
+			:is-read-only="isReadOnly"
+		/>
 	</div>
 </template>
 

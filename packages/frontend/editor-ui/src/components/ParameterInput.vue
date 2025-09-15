@@ -81,7 +81,13 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { onClickOutside, useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
+import {
+	hasFocusOnInput,
+	isBlurrableEl,
+	isEmpty,
+	isFocusableEl,
+	isSelectableEl,
+} from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
@@ -625,6 +631,14 @@ const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM
 
 const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
+const isMapperAvailable = computed(
+	() =>
+		!props.parameter.isNodeSetting &&
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime')),
+);
+
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
@@ -811,10 +825,7 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
-
-		if (isModelValueExpression.value || props.forceShowExpression || props.modelValue === '') {
-			isMapperShown.value = true;
-		}
+		isMapperShown.value = isMapperAvailable.value;
 	}
 
 	emit('focus');
@@ -1260,7 +1271,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="node && expressionLocalResolveCtx?.inputNode"
+			v-if="isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
 			ref="mapperRef"
 			:workflow="expressionLocalResolveCtx?.workflow"
 			:node="node"

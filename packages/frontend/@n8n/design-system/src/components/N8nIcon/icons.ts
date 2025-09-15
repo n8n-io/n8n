@@ -86,6 +86,7 @@ import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
 import IconLucideEqual from '~icons/lucide/equal';
+import IconLucideExpand from '~icons/lucide/expand';
 import IconLucideExternalLink from '~icons/lucide/external-link';
 import IconLucideEye from '~icons/lucide/eye';
 import IconLucideEyeOff from '~icons/lucide/eye-off';
@@ -501,6 +502,7 @@ export const updatedIconSet = {
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
 	equal: IconLucideEqual,
+	expand: IconLucideExpand,
 	'external-link': IconLucideExternalLink,
 	eye: IconLucideEye,
 	'eye-off': IconLucideEyeOff,
