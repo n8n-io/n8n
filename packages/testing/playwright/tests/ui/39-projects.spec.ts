@@ -114,9 +114,9 @@ test.describe('Projects', () => {
 			await n8n.page.goto(`/home/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
-			// Verify basic project settings form elements are visible
-			await expect(n8n.page.getByTestId('project-settings-name-input')).toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-description-input')).toBeVisible();
+			// Verify basic project settings form elements are visible (inner controls)
+			await expect(n8n.projectSettings.getNameInput()).toBeVisible();
+			await expect(n8n.projectSettings.getDescriptionTextarea()).toBeVisible();
 			await n8n.projectSettings.expectMembersSelectIsVisible();
 
 			// Verify members table is visible when there are members

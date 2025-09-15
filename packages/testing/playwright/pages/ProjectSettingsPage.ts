@@ -4,14 +4,11 @@ import { BasePage } from './BasePage';
 
 export class ProjectSettingsPage extends BasePage {
 	async fillProjectName(name: string) {
-		await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
+		await this.page.locator('#projectName input').fill(name);
 	}
 
 	async fillProjectDescription(description: string) {
-		await this.page
-			.getByTestId('project-settings-description-input')
-			.locator('textarea')
-			.fill(description);
+		await this.page.locator('#projectDescription textarea').fill(description);
 	}
 
 	async clickSaveButton() {
@@ -143,11 +140,11 @@ export class ProjectSettingsPage extends BasePage {
 
 	// Robust value assertions on inner form controls
 	getNameInput() {
-		return this.page.getByTestId('project-settings-name-input').locator('input');
+		return this.page.locator('#projectName input');
 	}
 
 	getDescriptionTextarea() {
-		return this.page.getByTestId('project-settings-description-input').locator('textarea');
+		return this.page.locator('#projectDescription textarea');
 	}
 
 	async expectProjectNameValue(value: string) {
