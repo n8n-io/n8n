@@ -160,11 +160,7 @@ describe('Data Store Size Tests', () => {
 			expect(result.tables[dataStore1.id]).toBeGreaterThan(0);
 			expect(result.tables[dataStore2.id]).toBeGreaterThan(0);
 
-			// Skip size comparison for MySQL/MariaDB due to unreliable statistics in test environments
-			const dbType = Container.get(GlobalConfig).database.type;
-			if (!['mysqldb', 'mariadb'].includes(dbType)) {
-				expect(result.tables[dataStore1.id]).toBeGreaterThan(result.tables[dataStore2.id]);
-			}
+			expect(result.tables[dataStore1.id]).toBeGreaterThan(result.tables[dataStore2.id]);
 
 			// Total should be sum of individual tables
 			const expectedTotal = result.tables[dataStore1.id] + result.tables[dataStore2.id];

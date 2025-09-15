@@ -248,7 +248,6 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 	async findDataTablesSize(): Promise<DataTablesSizeData> {
 		const dbType = this.globalConfig.database.type;
-		const schemaName = this.globalConfig.database.postgresdb.schema;
 		const tablePattern = toTableName('%');
 
 		let sql = '';
@@ -256,32 +255,48 @@ export class DataStoreRepository extends Repository<DataTable> {
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-        	SELECT name AS table_name, pgsize AS table_bytes
-					FROM dbstat
-					WHERE name LIKE '${tablePattern}'
-				`;
+        SELECT name AS table_name, SUM(pgsize) AS table_bytes
+         FROM dbstat
+        WHERE name LIKE '${tablePattern}'
+        GROUP BY name
+      `;
 				break;
 
-			case 'postgresdb':
+			case 'postgresdb': {
+				const schemaName = this.globalConfig.database.postgresdb?.schema;
 				sql = `
-        	SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
-					FROM pg_class c
-					JOIN pg_namespace n ON n.oid = c.relnamespace
-					WHERE n.nspname = '${schemaName}'
-					AND c.relname LIKE '${tablePattern}'
-					AND c.relkind IN ('r', 'm', 'p')
-    		`;
+        SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = '${schemaName}'
+           AND c.relname LIKE '${tablePattern}'
+           AND c.relkind IN ('r', 'm', 'p')
+      `;
 				break;
+			}
 
 			case 'mysqldb':
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
+				const isMariaDb = dbType === 'mariadb';
+				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
+				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
 				sql = `
-        	SELECT table_name AS table_name, (DATA_LENGTH + INDEX_LENGTH) AS table_bytes
-					FROM information_schema.tables
-					WHERE table_schema = '${databaseName}'
-					AND table_name LIKE '${tablePattern}'
-				`;
+        SELECT t.TABLE_NAME AS table_name,
+            COALESCE(
+                (
+                  SELECT SUM(ists.ALLOCATED_SIZE)
+                    FROM information_schema.${innodbTables} ist
+                    JOIN information_schema.${innodbTablespaces} ists
+                      ON ists.SPACE = ist.SPACE
+                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
+                ),
+                (t.DATA_LENGTH + t.INDEX_LENGTH)
+            ) AS table_bytes
+        FROM information_schema.TABLES t
+        WHERE t.TABLE_SCHEMA = '${databaseName}'
+          AND t.TABLE_NAME LIKE '${tablePattern}'
+    `;
 				break;
 			}
 
