@@ -473,6 +473,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
 	}
 
+	getCollectionAddOptionSelect() {
+		return this.getNodeParameters().getByTestId('collection-add-option-select');
+	}
+
 	getParameterSwitch(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.el-switch');
 	}
@@ -845,5 +849,32 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getCredentialLabel(credentialType: string) {
 		return this.page.getByText(credentialType);
+	}
+	getWebhookTestEvent() {
+		return this.page.getByText('Listening for test event');
+	}
+
+	getAddOptionDropdown() {
+		return this.page.getByRole('combobox', { name: 'Add option' });
+	}
+
+	/**
+	 * Adds an optional parameter from a collection dropdown
+	 * @param optionDisplayName - The display name of the option to add (e.g., 'Response Code')
+	 * @param parameterName - The parameter name to set after adding (e.g., 'responseCode')
+	 * @param parameterValue - The value to set for the parameter
+	 */
+	async setOptionalParameter(
+		optionDisplayName: string,
+		parameterName: string,
+		parameterValue: string | boolean,
+	): Promise<void> {
+		await this.getAddOptionDropdown().click();
+
+		// Step 2: Select the option by display name
+		await this.page.getByRole('option', { name: optionDisplayName }).click();
+
+		// Step 3: Set the parameter value
+		await this.setupHelper.setParameter(parameterName, parameterValue);
 	}
 }
