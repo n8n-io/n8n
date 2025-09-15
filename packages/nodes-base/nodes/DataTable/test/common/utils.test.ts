@@ -203,75 +203,150 @@ describe('dataObjectToApiInput', () => {
 	});
 });
 
-describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
-	it('should translate isEmpty to eq with null value', () => {
-		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
+describe('buildGetManyFilter', () => {
+	describe('isEmpty/isNotEmpty translation', () => {
+		it('should translate isEmpty to eq with null value', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' },
+			];
 
-		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
 
-		expect(result).toEqual({
-			type: 'and',
-			filters: [
-				{
-					columnName: 'name',
-					condition: 'eq',
-					value: null,
-				},
-			],
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: null,
+					},
+				],
+			});
+		});
+
+		it('should translate isNotEmpty to neq with null value', () => {
+			const fieldEntries = [
+				{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+
+			expect(result).toEqual({
+				type: 'or',
+				filters: [
+					{
+						columnName: 'email',
+						condition: 'neq',
+						value: null,
+					},
+				],
+			});
+		});
+
+		it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
+				{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
+				{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: 'John',
+					},
+					{
+						columnName: 'email',
+						condition: 'eq',
+						value: null,
+					},
+					{
+						columnName: 'phone',
+						condition: 'neq',
+						value: null,
+					},
+				],
+			});
 		});
 	});
 
-	it('should translate isNotEmpty to neq with null value', () => {
-		const fieldEntries = [
-			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
-		];
+	describe('isTrue/isFalse translation', () => {
+		it('should translate isTrue to eq with true value', () => {
+			const fieldEntries = [
+				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
+			];
 
-		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
 
-		expect(result).toEqual({
-			type: 'or',
-			filters: [
-				{
-					columnName: 'email',
-					condition: 'neq',
-					value: null,
-				},
-			],
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'isActive',
+						condition: 'eq',
+						value: true,
+					},
+				],
+			});
+		});
+
+		it('should translate isFalse to eq with false value', () => {
+			const fieldEntries = [
+				{ keyName: 'email', condition: 'isFalse' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
+
+			expect(result).toEqual({
+				type: 'or',
+				filters: [
+					{
+						columnName: 'email',
+						condition: 'eq',
+						value: false,
+					},
+				],
+			});
+		});
+
+		it('should handle mixed conditions including isTrue/isFalse', () => {
+			const fieldEntries = [
+				{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
+				{ keyName: 'isActive', condition: 'isTrue' as const, keyValue: 'ignored' },
+				{ keyName: 'isDeleted', condition: 'isFalse' as const, keyValue: 'ignored' },
+			];
+
+			const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
+
+			expect(result).toEqual({
+				type: 'and',
+				filters: [
+					{
+						columnName: 'name',
+						condition: 'eq',
+						value: 'John',
+					},
+					{
+						columnName: 'isActive',
+						condition: 'eq',
+						value: true,
+					},
+					{
+						columnName: 'isDeleted',
+						condition: 'eq',
+						value: false,
+					},
+				],
+			});
 		});
 	});
 
-	it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
-		const fieldEntries = [
-			{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
-			{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
-			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
-		];
-
-		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
-
-		expect(result).toEqual({
-			type: 'and',
-			filters: [
-				{
-					columnName: 'name',
-					condition: 'eq',
-					value: 'John',
-				},
-				{
-					columnName: 'email',
-					condition: 'eq',
-					value: null,
-				},
-				{
-					columnName: 'phone',
-					condition: 'neq',
-					value: null,
-				},
-			],
-		});
-	});
-
-	it('should preserve existing conditions unchanged', () => {
+	it('should handle other conditions', () => {
 		const fieldEntries = [
 			{ keyName: 'age', condition: 'gt' as const, keyValue: 18 },
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },

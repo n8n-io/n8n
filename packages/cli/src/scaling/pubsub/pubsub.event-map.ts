@@ -12,6 +12,12 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region SSO
+
+	'reload-oidc-config': never;
+
+	// #endregion
+
 	// #region Community packages
 
 	'community-package-install': {
@@ -63,6 +69,7 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		asBinary: boolean;
 	};
 
 	'clear-test-webhooks': {

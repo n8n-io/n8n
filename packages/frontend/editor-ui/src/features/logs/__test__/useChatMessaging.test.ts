@@ -19,33 +19,33 @@ vi.mock('../logs.utils', () => {
 describe('useChatMessaging', () => {
 	let chatMessaging: ReturnType<typeof useChatMessaging>;
 	let chatTrigger: Ref<INodeUi | null>;
-	let messages: Ref<ChatMessage[]>;
-	let sessionId: Ref<string>;
+	let sessionId: string;
 	let executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	let onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
 	let ws: Ref<WebSocket | null>;
 	let executionData: IRunExecutionData['resultData'] | undefined = undefined;
+	let onNewMessage: (message: ChatMessage) => void;
 
 	beforeEach(() => {
 		executionData = undefined;
 		createTestingPinia();
 		chatTrigger = ref(null);
-		messages = ref([]);
-		sessionId = ref('session-id');
+		sessionId = 'session-id';
 		executionResultData = computed(() => executionData);
 		onRunChatWorkflow = vi.fn().mockResolvedValue({
 			executionId: 'execution-id',
 		} as IExecutionPushResponse);
+		onNewMessage = vi.fn();
 		ws = ref(null);
 
 		chatMessaging = useChatMessaging({
 			chatTrigger,
-			messages,
 			sessionId,
 			executionResultData,
 			onRunChatWorkflow,
+			onNewMessage,
 			ws,
 		});
 	});
@@ -60,7 +60,13 @@ describe('useChatMessaging', () => {
 		const messageText = 'Hello, world!';
 		await chatMessaging.sendMessage(messageText);
 
-		expect(messages.value).toHaveLength(1);
+		expect(onNewMessage).toHaveBeenCalledTimes(1);
+		expect(onNewMessage).toHaveBeenCalledWith({
+			id: expect.any(String),
+			sender: 'user',
+			sessionId: 'session-id',
+			text: messageText,
+		});
 	});
 
 	it('should send message via WebSocket if open', async () => {
@@ -74,7 +80,7 @@ describe('useChatMessaging', () => {
 
 		expect(ws.value.send).toHaveBeenCalledWith(
 			JSON.stringify({
-				sessionId: sessionId.value,
+				sessionId,
 				action: 'sendMessage',
 				chatInput: messageText,
 			}),
@@ -99,7 +105,14 @@ describe('useChatMessaging', () => {
 		} as unknown as IRunExecutionData['resultData'];
 
 		await chatMessaging.sendMessage(messageText);
-		expect(messages.value).toHaveLength(2);
+		expect(onNewMessage).toHaveBeenCalledTimes(2);
+		expect(onNewMessage).toHaveBeenCalledWith({
+			id: expect.any(String),
+			sender: 'user',
+			sessionId: 'session-id',
+			text: messageText,
+		});
+		expect(onNewMessage).toHaveBeenCalledWith('Last node response');
 	});
 
 	it('should startWorkflowWithMessage and not add final message if responseMode is responseNode and version is 1.3', async () => {
@@ -120,6 +133,12 @@ describe('useChatMessaging', () => {
 		} as unknown as IRunExecutionData['resultData'];
 
 		await chatMessaging.sendMessage(messageText);
-		expect(messages.value).toHaveLength(1);
+		expect(onNewMessage).toHaveBeenCalledTimes(1);
+		expect(onNewMessage).toHaveBeenCalledWith({
+			id: expect.any(String),
+			sender: 'user',
+			sessionId: 'session-id',
+			text: messageText,
+		});
 	});
 });

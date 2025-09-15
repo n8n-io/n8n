@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import type { IExecuteFunctions, IWorkflowDataProxyData, INode } from 'n8n-workflow';
 
 import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
@@ -81,12 +81,14 @@ describe('ExecuteWorkflow', () => {
 		expect(result).toEqual([[{ json: { key: 'value' }, index: 0, pairedItem: { item: 0 } }]]);
 	});
 
-	test('should handle errors and continue on fail', async () => {
+	test('should handle errors and continue on fail, no items, < 1.3 version', async () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
 			.mockReturnValueOnce(true) // waitForSubWorkflow
 			.mockReturnValueOnce([]); // workflowInputs.schema
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 
 		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
 		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
@@ -94,6 +96,77 @@ describe('ExecuteWorkflow', () => {
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
 		expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
+	});
+
+	test('should handle errors and continue on fail, multiple items, < 1.3 version', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database') // source
+			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce(true) // waitForSubWorkflow
+			.mockReturnValue([]); // workflowInputs.schema
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
+		executeFunctions.getInputData.mockReturnValueOnce([
+			{ json: { key: '1' } },
+			{ json: { key: '2' } },
+			{ json: { key: '3' } },
+		]);
+
+		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+		const result = await executeWorkflow.execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[{ json: { error: 'Test error' }, pairedItem: { item: 0 }, metadata: undefined }],
+			[{ json: { error: 'Test error' }, pairedItem: { item: 1 }, metadata: undefined }],
+			[{ json: { error: 'Test error' }, pairedItem: { item: 2 }, metadata: undefined }],
+		]);
+	});
+
+	test('should handle errors and continue on fail, no items, >= 1.3 version', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database') // source
+			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce(true) // waitForSubWorkflow
+			.mockReturnValueOnce([]); // workflowInputs.schema
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
+
+		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+		const result = await executeWorkflow.execute.call(executeFunctions);
+
+		expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
+	});
+
+	test('should handle errors and continue on fail, multiple items, >= 1.3 version', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database') // source
+			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce(true) // waitForSubWorkflow
+			.mockReturnValueOnce([]); // workflowInputs.schema
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
+		executeFunctions.getInputData.mockReturnValueOnce([
+			{ json: { key: '1' } },
+			{ json: { key: '2' } },
+			{ json: { key: '3' } },
+		]);
+
+		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+		const result = await executeWorkflow.execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{ json: { error: 'Test error' }, pairedItem: { item: 0 }, metadata: undefined },
+				{ json: { error: 'Test error' }, pairedItem: { item: 1 }, metadata: undefined },
+				{ json: { error: 'Test error' }, pairedItem: { item: 2 }, metadata: undefined },
+			],
+		]);
 	});
 
 	test('should throw error if not continuing on fail', async () => {
