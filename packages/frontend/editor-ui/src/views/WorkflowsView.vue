@@ -467,7 +467,13 @@ watch(
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
 		saveFiltersOnQueryString();
-		await fetchWorkflows();
+		await Promise.all([
+			fetchWorkflows(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
 	},
 );
 
@@ -479,7 +485,10 @@ sourceControlStore.$onAction(({ name, after }) => {
 const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 };
 
@@ -490,11 +499,17 @@ const onFolderDeleted = async (payload: {
 }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
-	// If the deleted folder is the current folder, navigate to the parent folder
+
+	const nextFolderId =
+		currentFolderId.value === payload.folderId
+			? (folderInfo?.parentFolder ?? null)
+			: currentFolderId.value;
 	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
 		route.params.projectId as string | undefined,
+		nextFolderId ?? undefined,
 	);
 
+	// If the deleted folder is the current folder, navigate to the parent folder
 	if (currentFolderId.value === payload.folderId) {
 		void router.push({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -564,7 +579,10 @@ const initialize = async () => {
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
