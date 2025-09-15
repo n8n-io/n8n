@@ -96,6 +96,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -113,6 +114,7 @@ describe('ExecutionsController', () => {
 
 					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 				},
 			);
 		});
@@ -135,6 +137,7 @@ describe('ExecutionsController', () => {
 
 				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
 				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
 			});
 		});
 	});

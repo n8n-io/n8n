@@ -374,12 +374,9 @@ export class ExecutionService {
 
 		const { range: _, ...countQuery } = query;
 
-		const [executionCount, concurrentExecutionsCount] = await Promise.all([
-			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
-			this.getConcurrentExecutionsCount(),
-		]);
+		const executionCount = await this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' });
 
-		return { results, ...executionCount, concurrentExecutionsCount };
+		return { results, ...executionCount };
 	}
 
 	/**
@@ -410,18 +407,16 @@ export class ExecutionService {
 			order: { top: 'running' }, // ensure limit cannot exclude running
 		};
 
-		const [current, completed, completedCount, concurrentExecutionsCount] = await Promise.all([
+		const [current, completed, completedCount] = await Promise.all([
 			this.executionRepository.findManyByRangeQuery(currentQuery),
 			this.executionRepository.findManyByRangeQuery(completedQuery),
 			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
-			this.getConcurrentExecutionsCount(),
 		]);
 
 		return {
 			results: current.concat(completed),
 			count: completedCount.count, // exclude current from count for pagination
 			estimated: completedCount.estimated,
-			concurrentExecutionsCount,
 		};
 	}
 
@@ -433,15 +428,23 @@ export class ExecutionService {
 	 * In 'queue' mode, concurrency control is applied per worker, so returning a global count of concurrent executions
 	 * would not be meaningful or helpful.
 	 */
-	private async getConcurrentExecutionsCount() {
-		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
-		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
-
-		if (!isConcurrencyEnabled || !isInRegularMode) {
+	async getConcurrentExecutionsCount() {
+		if (!this.isConcurrentExecutionsCountSupported()) {
 			return -1;
 		}
 
 		return await this.executionRepository.getConcurrentExecutionsCount();
+	}
+
+	private isConcurrentExecutionsCountSupported(): boolean {
+		const isConcurrencyEnabled = this.globalConfig.executions.concurrency.productionLimit !== -1;
+		const isInRegularMode = config.getEnv('executions.mode') === 'regular';
+
+		if (!isConcurrencyEnabled || !isInRegularMode) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
