@@ -37,8 +37,6 @@ describe('Git Node', () => {
 		executeFunctions = mock<IExecuteFunctions>({
 			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
-			continueOnFail: jest.fn().mockReturnValue(false),
 			helpers: {
 				returnJsonArray: jest
 					.fn()
