@@ -2,7 +2,7 @@
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
@@ -36,23 +36,6 @@ const dataStoreRoute = computed(() => {
 const getDataStoreSize = computed(() => {
 	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
 	return size;
-});
-
-const fetchSize = async () => {
-	if (isLoadingSize.value) return;
-
-	try {
-		isLoadingSize.value = true;
-		await dataStoreStore.fetchDataStoreSize();
-	} catch {
-		// do nothing
-	} finally {
-		isLoadingSize.value = false;
-	}
-};
-
-onMounted(() => {
-	void fetchSize();
 });
 </script>
 <template>
