@@ -13,15 +13,19 @@ export class DataStoreSizeValidator {
 
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
-	private shouldRefresh(sizeInBytes: number | undefined, now: Date): sizeInBytes is undefined {
+	private shouldRefresh(
+		cachedData: DataTablesSizeData | undefined,
+		now: Date,
+	): cachedData is undefined {
 		if (
 			!this.lastCheck ||
+			!cachedData ||
 			now.getTime() - this.lastCheck.getTime() >= this.globalConfig.dataTable.sizeCheckCacheDuration
 		) {
-			sizeInBytes = undefined;
+			return true;
 		}
 
-		return sizeInBytes === undefined;
+		return false;
 	}
 
 	async getCachedSizeData(
@@ -33,7 +37,7 @@ export class DataStoreSizeValidator {
 			this.cachedSizeData = await this.pendingCheck;
 		} else {
 			// Check if we need to refresh the size data
-			if (this.shouldRefresh(this.cachedSizeData?.totalBytes, now)) {
+			if (this.shouldRefresh(this.cachedSizeData, now)) {
 				this.pendingCheck = fetchSizeDataFn();
 				try {
 					this.cachedSizeData = await this.pendingCheck;
