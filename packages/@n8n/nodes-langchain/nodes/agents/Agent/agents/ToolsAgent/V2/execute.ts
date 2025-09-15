@@ -9,7 +9,7 @@ import {
 	type AgentRunnableSequence,
 	createToolCallingAgent,
 } from 'langchain/agents';
-import type { BaseChatMemory, BufferWindowMemory } from 'langchain/memory';
+import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
