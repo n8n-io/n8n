@@ -356,7 +356,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		sortBy?: string;
 		projectId?: string;
 	}) {
-		console.log('getInsightsByWorkflow - ProjectId:', projectId);
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
