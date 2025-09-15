@@ -50,7 +50,7 @@ test.describe('Log Streaming Settings @db:reset', () => {
 			await n8n.settingsLogStreaming.selectDestinationType(0);
 			await expect(n8n.settingsLogStreaming.getSelectDestinationButton()).toBeEnabled();
 			await n8n.settingsLogStreaming.closeModalByClickingOverlay();
-			await expect(n8n.settingsLogStreaming.getDestinationModal()).toBeHidden();
+			await expect(n8n.settingsLogStreaming.getDestinationModal()).not.toBeAttached();
 		});
 
 		test('should create a destination and delete it', async ({ n8n }) => {
@@ -72,7 +72,7 @@ test.describe('Log Streaming Settings @db:reset', () => {
 
 			await n8n.settingsLogStreaming.clickDestinationCardDropdown(0);
 			await n8n.settingsLogStreaming.clickDropdownMenuItem(0);
-			await expect(n8n.settingsLogStreaming.getDestinationSaveButton()).toBeHidden();
+			await expect(n8n.settingsLogStreaming.getDestinationSaveButton()).not.toBeAttached();
 			await n8n.settingsLogStreaming.closeModalByClickingOverlay();
 
 			await n8n.settingsLogStreaming.clickDestinationCardDropdown(0);
