@@ -45,7 +45,7 @@ describe('useChatMessaging', () => {
 			sessionId,
 			executionResultData,
 			onRunChatWorkflow,
-			addChatMessage,
+			onNewMessage: addChatMessage,
 			ws,
 		});
 	});

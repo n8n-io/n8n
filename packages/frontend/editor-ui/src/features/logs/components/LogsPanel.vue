@@ -51,12 +51,12 @@ const {
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const {
+	currentSessionId,
+	messages,
 	previousChatMessages,
 	sendMessage,
 	refreshSession,
 	displayExecution,
-	currentSessionId,
-	messages,
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =

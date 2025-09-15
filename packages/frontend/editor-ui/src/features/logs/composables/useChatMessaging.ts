@@ -34,7 +34,7 @@ export interface ChatMessagingDependencies {
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
 	ws: Ref<WebSocket | null>;
-	addChatMessage: (message: ChatMessage) => void;
+	onNewMessage: (message: ChatMessage) => void;
 }
 
 export function useChatMessaging({
@@ -43,7 +43,7 @@ export function useChatMessaging({
 	executionResultData,
 	onRunChatWorkflow,
 	ws,
-	addChatMessage,
+	onNewMessage,
 }: ChatMessagingDependencies) {
 	const locale = useI18n();
 	const { showError } = useToast();
@@ -166,7 +166,7 @@ export function useChatMessaging({
 			: undefined;
 
 		if (chatMessage !== undefined) {
-			addChatMessage(chatMessage);
+			onNewMessage(chatMessage);
 		}
 	}
 
@@ -204,7 +204,7 @@ export function useChatMessaging({
 			id: uuid(),
 			files,
 		};
-		addChatMessage(newMessage);
+		onNewMessage(newMessage);
 
 		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
 			ws.value.send(

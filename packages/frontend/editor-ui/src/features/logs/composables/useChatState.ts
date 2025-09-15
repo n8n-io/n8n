@@ -71,7 +71,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		sessionId: currentSessionId.value,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
 		onRunChatWorkflow,
-		addChatMessage: logsStore.addChatMessage,
+		onNewMessage: logsStore.addChatMessage,
 		ws,
 	});
 
