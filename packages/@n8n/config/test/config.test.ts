@@ -29,6 +29,7 @@ describe('GlobalConfig', () => {
 		listen_address: '::',
 		protocol: 'http',
 		auth: {
+			roleCacheTtl: 300,
 			cookie: {
 				samesite: 'lax',
 				secure: true,

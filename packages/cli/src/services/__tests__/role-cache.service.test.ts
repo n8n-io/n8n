@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 import { RoleCacheService } from '@/services/role-cache.service';
+import { GlobalConfig } from '@n8n/config';
 
 // Mock static function
 jest.mock('@n8n/permissions', () => ({
@@ -20,7 +21,7 @@ describe('RoleCacheService', () => {
 	const roleRepository = mockInstance(RoleRepository);
 	const staticRolesMock = staticRolesWithScope as jest.MockedFunction<typeof staticRolesWithScope>;
 
-	const roleCacheService = new RoleCacheService(cacheService, logger);
+	const roleCacheService = new RoleCacheService(cacheService, logger, Container.get(GlobalConfig));
 
 	const mockRoleScopeMap = {
 		project: {

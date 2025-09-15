@@ -21,4 +21,8 @@ class CookieConfig {
 export class AuthConfig {
 	@Nested
 	cookie: CookieConfig;
+
+	/** Role cache TTL in seconds */
+	@Env('N8N_ROLE_CACHE_TTL', z.number().min(1).default(300))
+	roleCacheTtl: number = 300;
 }

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { RoleRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -28,11 +29,11 @@ interface RoleScopeMap {
 @Service()
 export class RoleCacheService {
 	private static readonly CACHE_KEY = 'roles:scope-map';
-	private static readonly CACHE_TTL = 5 * Time.minutes.toMilliseconds; // 5 minutes TTL
 
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
+		private readonly globalConfig?: GlobalConfig,
 	) {}
 
 	/**
@@ -109,7 +110,7 @@ export class RoleCacheService {
 		await this.cacheService.set(
 			RoleCacheService.CACHE_KEY,
 			roleScopeMap,
-			RoleCacheService.CACHE_TTL,
+			(this.globalConfig?.auth.roleCacheTtl ?? 300) * Time.seconds.toMilliseconds,
 		);
 	}
 }
