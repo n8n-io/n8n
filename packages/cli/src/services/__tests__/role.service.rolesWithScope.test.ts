@@ -56,16 +56,6 @@ describe('RoleService.rolesWithScope', () => {
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', []);
 			expect(result).toEqual([]);
 		});
-
-		it('should deduplicate results', async () => {
-			const mockRolesWithDuplicates = ['project:admin', 'project:editor', 'project:admin'];
-			roleCacheService.getRolesWithAllScopes.mockResolvedValue(mockRolesWithDuplicates);
-
-			const result = await roleService.rolesWithScope('project', ['project:read']);
-
-			expect(result).toEqual(['project:admin', 'project:editor']);
-			expect(result).toHaveLength(2);
-		});
 	});
 
 	describe('cache service integration', () => {
@@ -158,23 +148,6 @@ describe('RoleService.rolesWithScope', () => {
 			const result = await roleService.rolesWithScope('global', ['*' as const]);
 
 			expect(result).toEqual([]);
-		});
-
-		it('should maintain order of deduplicated results', async () => {
-			const mockRolesWithDuplicates = [
-				'project:viewer',
-				'project:admin',
-				'project:editor',
-				'project:viewer',
-				'project:admin',
-			];
-			const expectedDeduplicatedOrder = ['project:viewer', 'project:admin', 'project:editor'];
-
-			roleCacheService.getRolesWithAllScopes.mockResolvedValue(mockRolesWithDuplicates);
-
-			const result = await roleService.rolesWithScope('project', ['project:read']);
-
-			expect(result).toEqual(expectedDeduplicatedOrder);
 		});
 
 		it('should handle single role result', async () => {

@@ -29,8 +29,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<CredentialsEntity> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			const credentialRoles = await this.roleService.rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				...where,
 				shared: {
@@ -53,8 +55,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			const credentialRoles = await this.roleService.rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				...where,
 				role: In(credentialRoles),
@@ -85,8 +89,10 @@ export class CredentialsFinderService {
 		let where: FindOptionsWhere<SharedCredentials> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			const credentialRoles = await this.roleService.rolesWithScope('credential', scopes);
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
 			where = {
 				role: In(credentialRoles),
 				project: {

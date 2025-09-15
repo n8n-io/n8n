@@ -62,8 +62,9 @@ export async function createCustomRoleWithScopeSlugs(
 	const scopes = await scopeRepository.findByList(scopeSlugs);
 
 	if (scopes.length !== scopeSlugs.length) {
+		const missingScopes = scopeSlugs.filter((slug) => !scopes.some((scope) => scope.slug === slug));
 		throw new Error(
-			`Could not find all scopes. Expected ${scopeSlugs.length}, found ${scopes.length}`,
+			`Could not find all scopes. Expected ${scopeSlugs.length}, found ${scopes.length}, missing: ${missingScopes.join(', ')}`,
 		);
 	}
 

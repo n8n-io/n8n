@@ -23,25 +23,26 @@ describe('RoleCacheService', () => {
 	const roleCacheService = new RoleCacheService(cacheService, logger);
 
 	const mockRoleScopeMap = {
-		'project:admin': {
-			roleType: 'project' as const,
-			scopes: ['project:read', 'project:update', 'project:delete', 'credential:read'],
+		project: {
+			'project:admin': {
+				scopes: ['project:read', 'project:update', 'project:delete', 'credential:read'],
+			},
+			'project:editor': {
+				scopes: ['project:read', 'project:update'],
+			},
+			'project:viewer': {
+				scopes: ['project:read'],
+			},
 		},
-		'project:editor': {
-			roleType: 'project' as const,
-			scopes: ['project:read', 'project:update'],
+		credential: {
+			'credential:owner': {
+				scopes: ['credential:read', 'credential:update'],
+			},
 		},
-		'project:viewer': {
-			roleType: 'project' as const,
-			scopes: ['project:read'],
-		},
-		'credential:owner': {
-			roleType: 'credential' as const,
-			scopes: ['credential:read', 'credential:update'],
-		},
-		'workflow:owner': {
-			roleType: 'workflow' as const,
-			scopes: ['workflow:read', 'workflow:update', 'credential:read'],
+		workflow: {
+			'workflow:owner': {
+				scopes: ['workflow:read', 'workflow:update', 'credential:read'],
+			},
 		},
 	};
 
@@ -181,13 +182,15 @@ describe('RoleCacheService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'roles:scope-map',
 				{
-					'project:admin': {
-						roleType: 'project' as const,
-						scopes: ['project:read', 'project:update'],
+					project: {
+						'project:admin': {
+							scopes: ['project:read', 'project:update'],
+						},
 					},
-					'credential:owner': {
-						roleType: 'credential' as const,
-						scopes: ['credential:read', 'credential:update'],
+					credential: {
+						'credential:owner': {
+							scopes: ['credential:read', 'credential:update'],
+						},
 					},
 				},
 				300000, // 5 minutes TTL
@@ -239,9 +242,10 @@ describe('RoleCacheService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'roles:scope-map',
 				{
-					'workflow:custom': {
-						roleType: 'workflow' as const,
-						scopes: ['workflow:read'],
+					workflow: {
+						'workflow:custom': {
+							scopes: ['workflow:read'],
+						},
 					},
 				},
 				300000, // 5 minutes TTL

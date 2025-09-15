@@ -6,11 +6,23 @@ import { staticRolesWithScope, type Scope } from '@n8n/permissions';
 
 import { CacheService } from './cache/cache.service';
 
+type RoleInfo = {
+	scopes: string[]; // array of scope slugs
+};
+
 interface RoleScopeMap {
-	[roleSlug: string]: {
-		roleType: 'global' | 'project' | 'credential' | 'workflow';
-		scopes: Scope[];
-	}; // roleSlug -> array of scope slugs
+	global?: {
+		[roleSlug: string]: RoleInfo;
+	};
+	project?: {
+		[roleSlug: string]: RoleInfo;
+	};
+	credential?: {
+		[roleSlug: string]: RoleInfo;
+	};
+	workflow?: {
+		[roleSlug: string]: RoleInfo;
+	};
 }
 
 @Service()
@@ -33,8 +45,8 @@ export class RoleCacheService {
 
 			const roleScopeMap: RoleScopeMap = {};
 			for (const role of roles) {
-				roleScopeMap[role.slug] = {
-					roleType: role.roleType,
+				roleScopeMap[role.roleType] ??= {};
+				roleScopeMap[role.roleType]![role.slug] = {
 					scopes: role.scopes.map((s) => s.slug),
 				};
 			}
@@ -62,6 +74,7 @@ export class RoleCacheService {
 		});
 
 		if (roleScopeMap === undefined) {
+			// TODO: actively report this case to sentry or similar system
 			this.logger.error('Role scope map is undefined, falling back to static roles');
 			// Fallback to static roles if dynamic data is not available
 			return staticRolesWithScope(namespace, requiredScopes);
@@ -70,10 +83,7 @@ export class RoleCacheService {
 		// Filter roles by namespace and scopes
 		const matchingRoles: string[] = [];
 
-		for (const [roleSlug, roleInfo] of Object.entries(roleScopeMap)) {
-			// Check namespace
-			if (roleInfo.roleType !== namespace) continue;
-
+		for (const [roleSlug, roleInfo] of Object.entries(roleScopeMap[namespace] ?? {})) {
 			// Check if role has ALL required scopes
 			const hasAllScopes = requiredScopes.every((scope) => roleInfo.scopes.includes(scope));
 			if (hasAllScopes) {

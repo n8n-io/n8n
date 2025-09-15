@@ -259,10 +259,7 @@ export class RoleService {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		const dbRoles = await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
-
-		// Combine and deduplicate
-		return [...new Set([...dbRoles])];
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {
