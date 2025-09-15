@@ -30,8 +30,10 @@ export class WorkflowFinderService {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			const workflowRoles = await this.roleService.rolesWithScope('workflow', scopes);
+			const [projectRoles, workflowRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('workflow', scopes),
+			]);
 
 			where = {
 				role: In(workflowRoles),
@@ -81,8 +83,10 @@ export class WorkflowFinderService {
 		}
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			const workflowRoles = await this.roleService.rolesWithScope('workflow', scopes);
+			const [projectRoles, workflowRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('workflow', scopes),
+			]);
 
 			where = {
 				...where,

@@ -1,5 +1,5 @@
 import type { GlobalRole, Scope } from '../../types.ee';
-import { staticRolesWithScope } from '../roles-with-scope.ee';
+import { staticRolesWithScope } from '../static-roles-with-scope.ee';
 
 describe('rolesWithScope', () => {
 	describe('global roles', () => {
