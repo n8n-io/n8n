@@ -11,8 +11,11 @@ import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
+
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -28,7 +31,6 @@ import {
 	isOidcCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')
 export class MeController {
 	constructor(
@@ -143,21 +145,29 @@ export class MeController {
 				throw new InvalidMfaCodeError();
 			}
 		} else {
-			if (currentUser.password !== null) {
-				// this check is here to validate that the user is authenticated with email and has a password set
-				if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
-					throw new BadRequestError('Current password is required to change email');
-				}
+			// TODO: verify if there is a case where a so called "shell user" that has a null password should be able to change their email.
+			// Because right now there is a unit test inside "me.api.test.ts" that tests exactly that case.
+			if (currentUser.password === null) {
+				// This code is expected to not be reached, as users with external identity
+				// providers should be handled in the code above.
+				this.logger.debug('Request to change user email failed because user has no password set', {
+					userId: currentUser.id,
+					payload: payloadWithoutPassword,
+				});
+				throw new ForbiddenError('Cannot verify email change');
+			}
+			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
+				throw new BadRequestError('Current password is required to change email');
+			}
 
-				const isProvidedPasswordCorrect = await this.passwordUtility.compare(
-					providedCurrentPassword,
-					currentUser.password,
+			const isProvidedPasswordCorrect = await this.passwordUtility.compare(
+				providedCurrentPassword,
+				currentUser.password,
+			);
+			if (!isProvidedPasswordCorrect) {
+				throw new BadRequestError(
+					'Unable to update profile. Please check your credentials and try again.',
 				);
-				if (!isProvidedPasswordCorrect) {
-					throw new BadRequestError(
-						'Unable to update profile. Please check your credentials and try again.',
-					);
-				}
 			}
 		}
 	}
