@@ -61,7 +61,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 
-import { nodePopularity } from '@/components/Node/NodeCreator/node-popularity';
+import nodePopularity from 'virtual:node-popularity-data';
 
 export interface ViewStack {
 	uuid?: string;
@@ -93,7 +93,7 @@ export interface ViewStack {
 const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
 	return {
 		...acc,
-		[node.name]: node.popularity_score * 50, // Scale the popularity score
+		[node.id]: node.popularity * 100, // Scale the popularity score
 	};
 }, {});
 

@@ -1,0 +1,14 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"fetch-popularity": {
+			"cache": true,
+			"outputs": [".build/node-popularity.json"],
+			"inputs": ["scripts/fetch-node-popularity.mjs", ".build/cache-marker"]
+		},
+		"build": {
+			"dependsOn": ["^build", "fetch-popularity"],
+			"outputs": ["dist/**"]
+		}
+	}
+}
