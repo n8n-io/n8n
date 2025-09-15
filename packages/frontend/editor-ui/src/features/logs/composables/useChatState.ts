@@ -234,8 +234,8 @@ export function useChatState(isReadOnly: boolean): ChatState {
 
 	watch(
 		() => workflowsStore.workflowId,
-		() => {
-			if (workflowsStore.workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		(_newWorkflowId, prevWorkflowId) => {
+			if (prevWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				return;
 			}
 
