@@ -22,6 +22,7 @@ import {
 } from '../utils/evaluationTriggerUtils';
 
 export const DEFAULT_STARTING_ROW = 2;
+export const DATA_TABLE_ID_FIELD = 'dataTableId';
 
 const MAX_ROWS = 1000;
 
@@ -31,7 +32,7 @@ export class EvaluationTrigger implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluationTrigger',
 		group: ['trigger'],
-		version: 4.6,
+		version: [4.6, 4.7],
 		description: 'Run a test dataset through your workflow to check performance',
 		eventTriggerDescription: '',
 		defaults: {
@@ -42,25 +43,84 @@ export class EvaluationTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				options: [
+					{
+						name: 'Google Sheets',
+						value: 'googleSheets',
+						description: 'Load the test dataset from a Google Sheets document',
+					},
+					{
+						name: 'Data Table',
+						value: 'dataTable',
+						description: 'Load the test dataset from a local Data Table',
+					},
+				],
+				default: 'googleSheets',
+				description: 'Where to get the test dataset from',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 4.7 } }] } },
+			},
+			{
 				displayName:
 					'Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. Tips for wiring this node up <a href="https://docs.n8n.io/advanced-ai/evaluations/tips-and-common-issues/#combining-multiple-triggers">here</a>.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
+				displayOptions: { hide: { source: ['dataTable'] } },
 			},
 			{
 				displayName: 'Credentials',
 				name: 'credentials',
 				type: 'credentials',
 				default: '',
+				displayOptions: { hide: { source: ['dataTable'] } },
 			},
-			authentication,
+			{
+				...authentication,
+				displayOptions: {
+					hide: {
+						source: ['dataTable'],
+					},
+				},
+			},
 			{
 				...document,
 				displayName: 'Document Containing Dataset',
 				hint: 'Example dataset format <a href="https://docs.google.com/spreadsheets/d/1vD_IdeFUg7sHsK9okL6Doy1rGOkWTnPJV3Dro4FBUsY/edit?gid=0#gid=0">here</a>',
+				displayOptions: { hide: { source: ['dataTable'] } },
 			},
-			{ ...sheet, displayName: 'Sheet Containing Dataset' },
+			{
+				...sheet,
+				displayName: 'Sheet Containing Dataset',
+				displayOptions: { hide: { source: ['dataTable'] } },
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Data table',
+				name: DATA_TABLE_ID_FIELD,
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'dataTableSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
+				displayOptions: { show: { source: ['dataTable'] } },
+			},
 			{
 				displayName: 'Limit Rows',
 				name: 'limitRows',
@@ -106,7 +166,11 @@ export class EvaluationTrigger implements INodeType {
 		],
 	};
 
-	methods = { loadOptions, listSearch, credentialTest };
+	methods = {
+		loadOptions,
+		listSearch,
+		credentialTest,
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
@@ -114,65 +178,118 @@ export class EvaluationTrigger implements INodeType {
 		const maxRows = this.getNodeParameter('limitRows', 0, false)
 			? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 			: MAX_ROWS;
+		const source = this.getNodeParameter('source', 0) as string;
 
 		const previousRunRowNumber = inputData?.[0]?.json?.row_number;
 		const previousRunRowsLeft = inputData?.[0]?.json?._rowsLeft;
 
-		const firstDataRow =
-			typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
-				? previousRunRowNumber + 1
-				: DEFAULT_STARTING_ROW;
-		const rangeOptions = {
-			rangeDefinition: 'specifyRange',
-			headerRow: 1,
-			firstDataRow,
-		};
+		if (source === 'googleSheets') {
+			const firstDataRow =
+				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
+					? previousRunRowNumber + 1
+					: DEFAULT_STARTING_ROW;
 
-		const googleSheetInstance = getGoogleSheet.call(this);
+			const rangeOptions = {
+				rangeDefinition: 'specifyRange',
+				headerRow: 1,
+				firstDataRow,
+			};
 
-		const googleSheet = await getSheet.call(this, googleSheetInstance);
+			const googleSheetInstance = getGoogleSheet.call(this);
 
-		const allRows = await getResults.call(this, [], googleSheetInstance, googleSheet, rangeOptions);
+			const googleSheet = await getSheet.call(this, googleSheetInstance);
 
-		const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
+			const allRows = await getResults.call(
+				this,
+				[],
+				googleSheetInstance,
+				googleSheet,
+				rangeOptions,
+			);
 
-		if (hasFilter.length > 0) {
-			const currentRow = allRows[0];
-			const currentRowNumber = currentRow.json?.row_number as number;
+			const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
 
-			if (currentRow === undefined) {
+			if (hasFilter.length > 0) {
+				const currentRow = allRows[0];
+				const currentRowNumber = currentRow.json?.row_number as number;
+
+				if (currentRow === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No row found');
+				}
+
+				const rowsLeft = await getNumberOfRowsLeftFiltered.call(
+					this,
+					googleSheetInstance,
+					googleSheet.title,
+					currentRowNumber + 1,
+					maxRows,
+				);
+
+				currentRow.json._rowsLeft = rowsLeft;
+
+				return [[currentRow]];
+			} else {
+				const currentRow = allRows.find(
+					(row) => (row?.json?.row_number as number) === firstDataRow,
+				);
+
+				const rowsLeft = await getRowsLeft.call(
+					this,
+					googleSheetInstance,
+					googleSheet.title,
+					`${googleSheet.title}!${firstDataRow}:${maxRows}`,
+				);
+
+				if (currentRow === undefined) {
+					throw new NodeOperationError(this.getNode(), 'No row found');
+				}
+
+				currentRow.json._rowsLeft = rowsLeft;
+
+				return [[currentRow]];
+			}
+		} else if (source === 'dataTable') {
+			if (this.helpers.getDataStoreProxy === undefined) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Attempted to use Data table node but the module is disabled',
+				);
+			}
+
+			const currentIndex =
+				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
+					? previousRunRowNumber + 1
+					: 0;
+
+			const dataTableId = this.getNodeParameter(DATA_TABLE_ID_FIELD, 0, undefined, {
+				extractValue: true,
+			}) as string;
+			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+
+			const { data, count } = await dataTableProxy.getManyRowsAndCount({
+				skip: currentIndex,
+				take: 1,
+			});
+
+			if (data.length === 0) {
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
-			const rowsLeft = await getNumberOfRowsLeftFiltered.call(
-				this,
-				googleSheetInstance,
-				googleSheet.title,
-				currentRowNumber + 1,
-				maxRows,
-			);
+			const effectiveTotal = Math.min(count, maxRows);
+			const rowsLeft = Math.max(0, effectiveTotal - (currentIndex + 1));
 
-			currentRow.json._rowsLeft = rowsLeft;
-
-			return [[currentRow]];
-		} else {
-			const currentRow = allRows.find((row) => (row?.json?.row_number as number) === firstDataRow);
-
-			const rowsLeft = await getRowsLeft.call(
-				this,
-				googleSheetInstance,
-				googleSheet.title,
-				`${googleSheet.title}!${firstDataRow}:${maxRows}`,
-			);
-
-			if (currentRow === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No row found');
-			}
-
-			currentRow.json._rowsLeft = rowsLeft;
+			const currentRow = {
+				json: {
+					...data[0],
+					row_number: currentIndex,
+					_rowsLeft: rowsLeft,
+				},
+			} satisfies INodeExecutionData;
 
 			return [[currentRow]];
 		}
+
+		throw new NodeOperationError(this.getNode(), 'Unknown source type');
 	}
 
 	customOperations = {
@@ -181,17 +298,48 @@ export class EvaluationTrigger implements INodeType {
 				this: IExecuteFunctions,
 			): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
 				try {
+					const source = this.getNodeParameter('source', 0) as string;
 					const maxRows = this.getNodeParameter('limitRows', 0, false)
 						? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 						: MAX_ROWS;
 
-					const googleSheetInstance = getGoogleSheet.call(this);
-					const googleSheet = await getSheet.call(this, googleSheetInstance);
+					if (source === 'googleSheets') {
+						const googleSheetInstance = getGoogleSheet.call(this);
+						const googleSheet = await getSheet.call(this, googleSheetInstance);
 
-					const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
-					const result = results.slice(0, maxRows - 1);
+						const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
+						const result = results.slice(0, maxRows - 1);
 
-					return [result];
+						return [result];
+					} else if (source === 'dataTable') {
+						if (this.helpers.getDataStoreProxy === undefined) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Attempted to use Data table node but the module is disabled',
+							);
+						}
+
+						const dataTableId = this.getNodeParameter(DATA_TABLE_ID_FIELD, 0, undefined, {
+							extractValue: true,
+						}) as string;
+						const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+
+						const { data } = await dataTableProxy.getManyRowsAndCount({
+							skip: 0,
+							take: maxRows,
+						});
+
+						const result = data.map(
+							(row) =>
+								({
+									json: row,
+								}) satisfies INodeExecutionData,
+						);
+
+						return [result];
+					}
+
+					throw new NodeOperationError(this.getNode(), 'Unknown source type');
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error);
 				}

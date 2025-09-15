@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { tableSearch } from '../../../../DataTable/common/methods';
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import { apiRequest } from '../transport';
@@ -90,4 +91,12 @@ export async function sheetsSearch(
 	}
 
 	return { results: returnData };
+}
+
+export async function dataTableSearch(
+	this: ILoadOptionsFunctions,
+	filterString?: string,
+	prevPaginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await tableSearch.call(this, filterString, prevPaginationToken);
 }
