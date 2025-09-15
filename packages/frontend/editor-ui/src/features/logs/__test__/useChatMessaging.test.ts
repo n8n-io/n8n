@@ -26,7 +26,7 @@ describe('useChatMessaging', () => {
 	) => Promise<IExecutionPushResponse | undefined>;
 	let ws: Ref<WebSocket | null>;
 	let executionData: IRunExecutionData['resultData'] | undefined = undefined;
-	let addChatMessage: (message: ChatMessage) => void;
+	let onNewMessage: (message: ChatMessage) => void;
 
 	beforeEach(() => {
 		executionData = undefined;
@@ -37,7 +37,7 @@ describe('useChatMessaging', () => {
 		onRunChatWorkflow = vi.fn().mockResolvedValue({
 			executionId: 'execution-id',
 		} as IExecutionPushResponse);
-		addChatMessage = vi.fn();
+		onNewMessage = vi.fn();
 		ws = ref(null);
 
 		chatMessaging = useChatMessaging({
@@ -45,7 +45,7 @@ describe('useChatMessaging', () => {
 			sessionId,
 			executionResultData,
 			onRunChatWorkflow,
-			onNewMessage: addChatMessage,
+			onNewMessage,
 			ws,
 		});
 	});
@@ -60,8 +60,8 @@ describe('useChatMessaging', () => {
 		const messageText = 'Hello, world!';
 		await chatMessaging.sendMessage(messageText);
 
-		expect(addChatMessage).toHaveBeenCalledTimes(1);
-		expect(addChatMessage).toHaveBeenCalledWith({
+		expect(onNewMessage).toHaveBeenCalledTimes(1);
+		expect(onNewMessage).toHaveBeenCalledWith({
 			id: expect.any(String),
 			sender: 'user',
 			sessionId: 'session-id',
@@ -105,14 +105,14 @@ describe('useChatMessaging', () => {
 		} as unknown as IRunExecutionData['resultData'];
 
 		await chatMessaging.sendMessage(messageText);
-		expect(addChatMessage).toHaveBeenCalledTimes(2);
-		expect(addChatMessage).toHaveBeenCalledWith({
+		expect(onNewMessage).toHaveBeenCalledTimes(2);
+		expect(onNewMessage).toHaveBeenCalledWith({
 			id: expect.any(String),
 			sender: 'user',
 			sessionId: 'session-id',
 			text: messageText,
 		});
-		expect(addChatMessage).toHaveBeenCalledWith('Last node response');
+		expect(onNewMessage).toHaveBeenCalledWith('Last node response');
 	});
 
 	it('should startWorkflowWithMessage and not add final message if responseMode is responseNode and version is 1.3', async () => {
@@ -133,8 +133,8 @@ describe('useChatMessaging', () => {
 		} as unknown as IRunExecutionData['resultData'];
 
 		await chatMessaging.sendMessage(messageText);
-		expect(addChatMessage).toHaveBeenCalledTimes(1);
-		expect(addChatMessage).toHaveBeenCalledWith({
+		expect(onNewMessage).toHaveBeenCalledTimes(1);
+		expect(onNewMessage).toHaveBeenCalledWith({
 			id: expect.any(String),
 			sender: 'user',
 			sessionId: 'session-id',
