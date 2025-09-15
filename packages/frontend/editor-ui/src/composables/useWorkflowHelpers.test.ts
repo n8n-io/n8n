@@ -8,6 +8,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
+	createTestExpressionLocalResolveContext,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
@@ -1010,10 +1011,7 @@ describe(resolveParameter, () => {
 					f0: '={{ $json }}',
 					f1: '={{ $("n0").item.json }}',
 				},
-				{
-					localResolve: true,
-					envVars: {},
-					additionalKeys: {},
+				createTestExpressionLocalResolveContext({
 					workflow: createTestWorkflowObject(workflowData),
 					execution: createTestWorkflowExecutionResponse({
 						workflowData,
@@ -1031,7 +1029,7 @@ describe(resolveParameter, () => {
 					}),
 					nodeName: 'n1',
 					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
-				},
+				}),
 			);
 
 			expect(result).toEqual({

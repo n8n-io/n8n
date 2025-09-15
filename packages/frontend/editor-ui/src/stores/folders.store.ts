@@ -97,10 +97,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return result;
 	}
 
-	async function fetchTotalWorkflowsAndFoldersCount(projectId?: string): Promise<number> {
+	async function fetchTotalWorkflowsAndFoldersCount(
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<number> {
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			{ projectId },
+			{ projectId, parentFolderId },
 			{ skip: 0, take: 1 },
 			true,
 		);
