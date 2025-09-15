@@ -65,6 +65,7 @@ const mockDebounce = {
 };
 vi.mock('@/composables/useDebounce', () => ({
 	useDebounce: vi.fn(() => mockDebounce),
+	debounce: vi.fn(),
 }));
 
 const router = createRouter({
