@@ -6,6 +6,8 @@ import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
 import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
 import type { WeaviateCredential } from '../../../VectorStoreWeaviate/Weaviate.utils';
 import { createWeaviateClient } from '../../../VectorStoreWeaviate/Weaviate.utils';
+import type { AstraDBCredential } from '../../../VectorStoreAstraDB/AstraDB.utils';
+import { createAstraDBClient } from '../../../VectorStoreAstraDB/AstraDB.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -98,6 +100,22 @@ export async function weaviateCollectionsSearch(this: ILoadOptionsFunctions) {
 	const client = await createWeaviateClient(credentials as WeaviateCredential);
 
 	const collections = await client.collections.listAll();
+
+	const results = collections.map((collection: { name: string }) => ({
+		name: collection.name,
+		value: collection.name,
+	}));
+
+	return { results };
+}
+
+export async function astraDBCollectionsSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('astraDBApi');
+
+	const client = await createAstraDBClient(credentials as AstraDBCredential);
+
+	const db = client.db(credentials.endpoint);
+	const collections = await db.listCollections();
 
 	const results = collections.map((collection: { name: string }) => ({
 		name: collection.name,

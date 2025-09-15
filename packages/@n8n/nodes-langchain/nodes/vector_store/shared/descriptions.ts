@@ -114,3 +114,26 @@ export const weaviateCollectionRLC: INodeProperties = {
 		},
 	],
 };
+
+export const astraDBCollectionRLC: INodeProperties = {
+	displayName: 'Astra DB Collection',
+	name: 'astraDBCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'astraDBCollectionsSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

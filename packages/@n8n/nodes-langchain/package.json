@@ -43,6 +43,7 @@
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/VercelAiGatewayApi.credentials.js",
       "dist/credentials/WeaviateApi.credentials.js",
+      "dist/credentials/AstraDBApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
@@ -142,6 +143,7 @@
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
       "dist/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.js",
+      "dist/nodes/vector_store/VectorStoreAstraDB/VectorStoreAstraDB.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
@@ -234,6 +236,7 @@
     "tmp-promise": "3.0.3",
     "undici": "^6.21.0",
     "weaviate-client": "3.6.2",
+    "@datastax/astra-db-ts": "^2.0.2",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
   }
