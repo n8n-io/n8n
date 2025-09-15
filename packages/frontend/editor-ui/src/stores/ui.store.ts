@@ -230,8 +230,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	// EXP: readyToRunWorkflowsV2 - trying to not overwhelm users on first login
-	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', true);
+	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
