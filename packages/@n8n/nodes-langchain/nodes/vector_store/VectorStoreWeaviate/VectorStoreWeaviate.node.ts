@@ -43,7 +43,6 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
 		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
 		const args = ExtendedWeaviateVectorStore.args;
-		console.log('similaritySearchVectorWithScore WITH ARGS', args);
 		if (args.hybridQuery) {
 			const options = {
 				limit: !args.autoCutLimit ? k : undefined,
