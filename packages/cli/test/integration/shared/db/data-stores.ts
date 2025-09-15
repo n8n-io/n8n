@@ -36,7 +36,7 @@ export const createDataStore = async (
 		const columns = await dataStoreColumnRepository.getColumns(dataStore.id);
 
 		const dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
-		await dataStoreRowsRepository.insertRows(dataStore.id, options.data, columns);
+		await dataStoreRowsRepository.insertRows(dataStore.id, options.data, columns, 'count');
 	}
 
 	return dataStore;

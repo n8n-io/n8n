@@ -74,6 +74,16 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/features/dataStore/composables/useDataStorePagination', () => ({
+	useDataStorePagination: () => ({
+		totalItems: 0,
+		setTotalItems: vi.fn(),
+		ensureItemOnPage: vi.fn(),
+		currentPage: 1,
+		setCurrentPage: vi.fn(),
+	}),
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({

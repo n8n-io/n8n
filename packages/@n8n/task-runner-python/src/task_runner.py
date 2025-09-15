@@ -1,16 +1,17 @@
 import asyncio
-from dataclasses import dataclass
 import logging
 import time
-from typing import Dict, Optional, Any, Set
+from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
 import random
 
 
+from src.config.task_runner_config import TaskRunnerConfig
 from src.errors import (
-    WebsocketConnectionError,
+    NoIdleTimeoutHandlerError,
     TaskMissingError,
+    WebsocketConnectionError,
 )
 from src.message_types.broker import TaskSettings
 from src.nanoid import nanoid
@@ -64,28 +65,14 @@ class TaskOffer:
         return time.time() > self.valid_until
 
 
-@dataclass
-class TaskRunnerOpts:
-    grant_token: str
-    task_broker_uri: str
-    max_concurrency: int
-    max_payload_size: int
-    task_timeout: int
-    stdlib_allow: Set[str]
-    external_allow: Set[str]
-    builtins_deny: Set[str]
-
-
 class TaskRunner:
     def __init__(
         self,
-        opts: TaskRunnerOpts,
+        config: TaskRunnerConfig,
     ):
         self.runner_id = nanoid()
         self.name = RUNNER_NAME
-
-        self.grant_token = opts.grant_token
-        self.opts = opts
+        self.config = config
 
         self.websocket_connection: Optional[Any] = None
         self.can_send_offers = False
@@ -96,41 +83,112 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
-        self.analyzer = TaskAnalyzer(opts.stdlib_allow, opts.external_allow)
+        self.analyzer = TaskAnalyzer(config.stdlib_allow, config.external_allow)
         self.logger = logging.getLogger(__name__)
 
-        self.task_broker_uri = opts.task_broker_uri
-        websocket_host = urlparse(opts.task_broker_uri).netloc
+        self.idle_coroutine: Optional[asyncio.Task] = None
+        self.on_idle_timeout: Optional[Callable[[], Awaitable[None]]] = None
+        self.last_activity_time = time.time()
+        self.is_shutting_down = False
+
+        self.task_broker_uri = config.task_broker_uri
+        websocket_host = urlparse(config.task_broker_uri).netloc
         self.websocket_url = (
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
         )
 
+    @property
+    def running_tasks_count(self) -> int:
+        return len(self.running_tasks)
+
     async def start(self) -> None:
-        headers = {"Authorization": f"Bearer {self.grant_token}"}
+        if self.config.is_auto_shutdown_enabled and not self.on_idle_timeout:
+            raise NoIdleTimeoutHandlerError(self.config.auto_shutdown_timeout)
 
-        try:
-            self.websocket_connection = await websockets.connect(
-                self.websocket_url,
-                additional_headers=headers,
-                max_size=self.opts.max_payload_size,
-            )
+        headers = {"Authorization": f"Bearer {self.config.grant_token}"}
 
-            self.logger.info("Connected to broker")
+        while not self.is_shutting_down:
+            try:
+                self.websocket_connection = await websockets.connect(
+                    self.websocket_url,
+                    additional_headers=headers,
+                    max_size=self.config.max_payload_size,
+                )
+                self.logger.info("Connected to broker")
+                await self._listen_for_messages()
 
-            await self._listen_for_messages()
+            except Exception:
+                raise WebsocketConnectionError(self.task_broker_uri)
 
-        except Exception:
-            raise WebsocketConnectionError(self.task_broker_uri)
+            if not self.is_shutting_down:
+                self.websocket_connection = None
+                self.can_send_offers = False
+                await self._cancel_coroutine(self.offers_coroutine)
+                await self._cancel_coroutine(self.idle_coroutine)
+                await asyncio.sleep(5)
+
+    async def _cancel_coroutine(self, coroutine: Optional[asyncio.Task]) -> None:
+        if coroutine and not coroutine.done():
+            coroutine.cancel()
+            try:
+                await coroutine
+            except asyncio.CancelledError:
+                pass
+
+    # ========== Shutdown ==========
 
     async def stop(self) -> None:
-        if self.offers_coroutine:
-            self.offers_coroutine.cancel()
+        self.is_shutting_down = True
+        self.can_send_offers = False
+
+        await self._cancel_coroutine(self.offers_coroutine)
+        await self._cancel_coroutine(self.idle_coroutine)
+
+        await self._wait_for_tasks()
+        await self._terminate_tasks()
 
         if self.websocket_connection:
             await self.websocket_connection.close()
             self.logger.info("Disconnected from broker")
 
         self.logger.info("Runner stopped")
+
+    async def _wait_for_tasks(self):
+        if not self.running_tasks:
+            return
+
+        timeout = self.config.graceful_shutdown_timeout
+        self.logger.debug(
+            f"Waiting for {self.running_tasks_count} tasks to complete (timeout: {timeout}s)..."
+        )
+
+        start_time = time.time()
+        while self.running_tasks and (time.time() - start_time) < timeout:
+            await asyncio.sleep(0.5)
+
+        if self.running_tasks:
+            self.logger.warning(
+                f"Timed out waiting for {self.running_tasks_count} tasks to complete"
+            )
+
+    async def _terminate_tasks(self):
+        if not self.running_tasks:
+            return
+
+        self.logger.warning(f"Terminating {self.running_tasks_count} tasks...")
+
+        tasks_to_terminate = [
+            asyncio.to_thread(self.executor.stop_process, task_state.process)
+            for task_state in self.running_tasks.values()
+            if task_state.process
+        ]
+
+        if tasks_to_terminate:
+            await asyncio.gather(*tasks_to_terminate, return_exceptions=True)
+
+        self.running_tasks.clear()
+
+        self.logger.warning("Terminated tasks")
 
     # ========== Messages ==========
 
@@ -170,6 +228,7 @@ class TaskRunner:
         self.can_send_offers = True
         self.offers_coroutine = asyncio.create_task(self._send_offers_loop())
         self.logger.info("Registered with broker")
+        self._reset_idle_timer()
 
     async def _handle_task_offer_accept(self, message: BrokerTaskOfferAccept) -> None:
         offer = self.open_offers.get(message.offer_id)
@@ -182,7 +241,7 @@ class TaskRunner:
             await self._send_message(response)
             return
 
-        if len(self.running_tasks) >= self.opts.max_concurrency:
+        if self.running_tasks_count >= self.config.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason=TASK_REJECTED_REASON_AT_CAPACITY,
@@ -198,6 +257,7 @@ class TaskRunner:
         response = RunnerTaskAccepted(task_id=message.task_id)
         await self._send_message(response)
         self.logger.info(f"Accepted task {message.task_id}")
+        self._reset_idle_timer()
 
     async def _handle_task_settings(self, message: BrokerTaskSettings) -> None:
         task_state = self.running_tasks.get(message.task_id)
@@ -234,9 +294,9 @@ class TaskRunner:
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
-                stdlib_allow=self.opts.stdlib_allow,
-                external_allow=self.opts.external_allow,
-                builtins_deny=self.opts.builtins_deny,
+                stdlib_allow=self.config.stdlib_allow,
+                external_allow=self.config.external_allow,
+                builtins_deny=self.config.builtins_deny,
                 can_log=task_settings.can_log,
             )
 
@@ -245,7 +305,7 @@ class TaskRunner:
             result, print_args = self.executor.execute_process(
                 process=process,
                 queue=queue,
-                task_timeout=self.opts.task_timeout,
+                task_timeout=self.config.task_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 
@@ -266,11 +326,17 @@ class TaskRunner:
             )
 
         except Exception as e:
-            response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            self.logger.error(f"Task {task_id} failed", exc_info=True)
+            error = {
+                "message": getattr(e, "message", str(e)),
+                "description": getattr(e, "description", ""),
+            }
+            response = RunnerTaskError(task_id=task_id, error=error)
             await self._send_message(response)
 
         finally:
             self.running_tasks.pop(task_id, None)
+            self._reset_idle_timer()
 
     async def _handle_task_cancel(self, message: BrokerTaskCancel) -> None:
         task_id = message.task_id
@@ -344,8 +410,8 @@ class TaskRunner:
         for offer_id in expired_offer_ids:
             self.open_offers.pop(offer_id, None)
 
-        offers_to_send = self.opts.max_concurrency - (
-            len(self.open_offers) + len(self.running_tasks)
+        offers_to_send = self.config.max_concurrency - (
+            len(self.open_offers) + self.running_tasks_count
         )
 
         for _ in range(offers_to_send):
@@ -364,3 +430,31 @@ class TaskRunner:
             )
 
             await self._send_message(message)
+
+    # ========== Inactivity ==========
+
+    def _reset_idle_timer(self):
+        """Reset idle timer when key event occurs, namely runner registration, task acceptance, and task completion or failure."""
+
+        if not self.config.is_auto_shutdown_enabled:
+            return
+
+        self.last_activity_time = time.time()
+
+        if self.idle_coroutine and not self.idle_coroutine.done():
+            self.idle_coroutine.cancel()
+
+        self.idle_coroutine = asyncio.create_task(self._idle_timer_coroutine())
+
+    async def _idle_timer_coroutine(self):
+        try:
+            await asyncio.sleep(self.config.auto_shutdown_timeout)
+
+            if self.running_tasks_count > 0:
+                return
+
+            assert self.on_idle_timeout is not None  # validated at start()
+
+            await self.on_idle_timeout()
+        except asyncio.CancelledError:
+            pass

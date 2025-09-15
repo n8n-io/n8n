@@ -34,7 +34,7 @@ describe('useDataStoreOperations', () => {
 			deleteGridColumn: vi.fn(),
 			addGridColumn: vi.fn(),
 			setGridData: vi.fn(),
-			insertGridColumn: vi.fn(),
+			insertGridColumnAtIndex: vi.fn(),
 			moveGridColumn: vi.fn(),
 			dataStoreId: 'test',
 			projectId: 'test',
@@ -66,7 +66,7 @@ describe('useDataStoreOperations', () => {
 			});
 			const { onAddColumn } = useDataStoreOperations(params);
 			const result = await onAddColumn({ name: 'test', type: 'string' });
-			expect(result).toBe(false);
+			expect(result.success).toBe(false);
 		});
 
 		it('should add column when column is added', async () => {
@@ -78,7 +78,7 @@ describe('useDataStoreOperations', () => {
 			const rowData = ref([{ id: 1 }]);
 			const { onAddColumn } = useDataStoreOperations({ ...params, rowData });
 			const result = await onAddColumn({ name: returnedColumn.name, type: returnedColumn.type });
-			expect(result).toBe(true);
+			expect(result.success).toBe(true);
 			expect(params.setGridData).toHaveBeenCalledWith({ rowData: [{ id: 1, test: null }] });
 			expect(params.addGridColumn).toHaveBeenCalledWith(returnedColumn);
 		});

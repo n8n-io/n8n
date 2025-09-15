@@ -131,6 +131,9 @@ export class FrontendService {
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			isNativePythonRunnerEnabled:
+				this.globalConfig.taskRunners.enabled &&
+				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -179,6 +182,9 @@ export class FrontendService {
 					loginUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/login`,
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
+			},
+			dataTables: {
+				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
 				enabled: isApiEnabled(),

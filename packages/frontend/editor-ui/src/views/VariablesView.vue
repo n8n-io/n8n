@@ -347,7 +347,7 @@ onMounted(() => {
 				</td>
 				<td>
 					<template v-if="data.value">
-						{{ data.value }}
+						<span v-n8n-truncate:20="data.value" />
 					</template>
 					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
 				</td>

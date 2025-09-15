@@ -37,7 +37,8 @@ export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		.find('.parameter-input')
 		.find('input')
 		.clear()
-		.type(webhookPath);
+		.type(webhookPath)
+		.wait(300);
 
 	if (authentication) {
 		cy.getByTestId('parameter-input-authentication').click();
@@ -46,7 +47,8 @@ export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	if (responseCode) {
 		cy.get('.param-options').click();
-		getVisibleSelect().contains('Response Code').click();
+		// wait for selector debounce
+		getVisibleSelect().contains('Response Code').click().wait(300);
 		cy.get('.parameter-item-wrapper > .parameter-input-list-wrapper').children().click();
 		getVisibleSelect().contains('201').click();
 	}

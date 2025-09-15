@@ -27,8 +27,8 @@ const enum ItemAction {
 	Delete = 'delete',
 }
 
-const onItemClick = (action: string) => {
-	if (action === (ItemAction.Delete as string)) {
+const onItemClick = (action: ItemAction) => {
+	if (action === ItemAction.Delete) {
 		props.params.onDelete(props.params.column.getColId());
 	}
 };

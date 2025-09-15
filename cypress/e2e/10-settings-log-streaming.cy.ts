@@ -58,7 +58,7 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()
 			.find('span[data-test-id=inline-edit-preview]')
-			.click();
+			.click({ force: true });
 		cy.getByTestId('inline-edit-input').type('Destination 0');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);
@@ -85,7 +85,7 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()
 			.find('span[data-test-id=inline-edit-preview]')
-			.click();
+			.click({ force: true });
 		cy.getByTestId('inline-edit-input').type('Destination 1');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.have.attr', 'disabled');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();

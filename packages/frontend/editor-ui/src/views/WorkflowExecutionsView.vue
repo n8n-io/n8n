@@ -283,9 +283,9 @@ async function onExecutionRetry(payload: { id: string; loadWorkflow: boolean }) 
 
 async function retryExecution(payload: { id: string; loadWorkflow: boolean }) {
 	try {
-		const retryStatus = await executionsStore.retryExecution(payload.id, payload.loadWorkflow);
+		const retriedExecution = await executionsStore.retryExecution(payload.id, payload.loadWorkflow);
 
-		const retryMessage = executionRetryMessage(retryStatus);
+		const retryMessage = executionRetryMessage(retriedExecution.status);
 
 		if (retryMessage) {
 			toast.showMessage(retryMessage);

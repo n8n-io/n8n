@@ -71,5 +71,5 @@ export default defineConfig({
 				currentsReporter(currentsConfig),
 				['./reporters/metrics-reporter.ts'],
 			]
-		: [['html'], ['./reporters/metrics-reporter.ts']],
+		: [['html'], ['./reporters/metrics-reporter.ts'], ['list']],
 });

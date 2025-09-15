@@ -91,7 +91,7 @@ jobs:
 
     steps:
       - name: Create a Release on GitHub
-        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1
+        uses: ncipollo/release-action@1c89adf39833729d8f85a31ccbc451b078733c80 # v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
@@ -140,6 +140,15 @@ jobs:
           projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
           version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
+
+  generate-and-attach-sbom:
+    name: Generate and Attach SBOM to Release
+    needs: [publish-to-npm, create-github-release]
+    uses: ./.github/workflows/sbom-generation-callable.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_tag_ref: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+    secrets: inherit
 
   trigger-release-note:
     name: Trigger a release note

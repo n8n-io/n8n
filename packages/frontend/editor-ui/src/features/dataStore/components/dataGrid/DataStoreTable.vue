@@ -37,6 +37,7 @@ import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataSt
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 import { useDataStoreOperations } from '@/features/dataStore/composables/useDataStoreOperations';
 import { useDataStoreColumnFilters } from '@/features/dataStore/composables/useDataStoreColumnFilters';
+import { useI18n } from '@n8n/i18n';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -73,26 +74,9 @@ const emit = defineEmits<{
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
-const {
-	gridApi,
-	onGridReady,
-	setGridData,
-	focusFirstEditableCell,
-	onCellEditingStarted,
-	onCellEditingStopped,
-	loadColumns,
-	colDefs,
-	deleteColumn: deleteGridColumn,
-	insertColumn: insertGridColumn,
-	addColumn: addGridColumn,
-	moveColumn: moveGridColumn,
-	handleCopyFocusedCell,
-	onCellClicked,
-	resetLastFocusedCell,
-	currentSortBy,
-	currentSortOrder,
-	onSortChanged,
-} = useDataStoreGridBase({
+const i18n = useI18n();
+
+const dataStoreGridBase = useDataStoreGridBase({
 	gridContainerRef,
 	onDeleteColumn: onDeleteColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
@@ -103,9 +87,9 @@ const hasRecords = computed(() => rowData.value.length > 0);
 
 // Column filters
 const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
-	gridApi,
-	colDefs,
-	setGridData,
+	gridApi: dataStoreGridBase.gridApi,
+	colDefs: dataStoreGridBase.colDefs,
+	setGridData: dataStoreGridBase.setGridData,
 });
 
 // Pagination
@@ -121,71 +105,65 @@ const {
 } = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
 
 // Data store content
-const { rowSelection, onSelectionChanged, handleClearSelection, selectedRowIds, selectedCount } =
-	useDataStoreSelection({
-		gridApi,
-	});
+const selection = useDataStoreSelection({
+	gridApi: dataStoreGridBase.gridApi,
+});
 
-const {
-	onDeleteColumn,
-	onAddColumn,
-	onColumnMoved,
-	onAddRowClick,
-	contentLoading,
-	onCellValueChanged,
-	fetchDataStoreRows,
-	handleDeleteSelected,
-	onCellKeyDown,
-} = useDataStoreOperations({
-	colDefs,
+const dataStoreOperations = useDataStoreOperations({
+	colDefs: dataStoreGridBase.colDefs,
 	rowData,
-	deleteGridColumn,
-	setGridData,
-	insertGridColumn,
+	deleteGridColumn: dataStoreGridBase.deleteColumn,
+	setGridData: dataStoreGridBase.setGridData,
+	insertGridColumnAtIndex: dataStoreGridBase.insertColumnAtIndex,
 	dataStoreId: props.dataStore.id,
 	projectId: props.dataStore.projectId,
-	addGridColumn,
-	moveGridColumn,
-	gridApi,
+	addGridColumn: dataStoreGridBase.addColumn,
+	moveGridColumn: dataStoreGridBase.moveColumn,
+	gridApi: dataStoreGridBase.gridApi,
 	totalItems,
 	setTotalItems,
 	ensureItemOnPage,
-	focusFirstEditableCell,
+	focusFirstEditableCell: dataStoreGridBase.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
 	currentPage,
 	pageSize,
-	currentSortBy,
-	currentSortOrder,
-	currentFilterJSON,
-	handleClearSelection,
-	selectedRowIds,
-	handleCopyFocusedCell,
+	currentSortBy: dataStoreGridBase.currentSortBy,
+	currentSortOrder: dataStoreGridBase.currentSortOrder,
+	handleClearSelection: selection.handleClearSelection,
+	selectedRowIds: selection.selectedRowIds,
+	handleCopyFocusedCell: dataStoreGridBase.handleCopyFocusedCell,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
-	await onDeleteColumn(columnId);
+	await dataStoreOperations.onDeleteColumn(columnId);
 }
 
 async function onAddColumnFunction(column: DataStoreColumnCreatePayload) {
-	return await onAddColumn(column);
+	return await dataStoreOperations.onAddColumn(column);
 }
 
 async function onAddRowClickFunction() {
-	await onAddRowClick();
+	await dataStoreOperations.onAddRowClick();
 }
 
 async function fetchDataStoreRowsFunction() {
-	await fetchDataStoreRows();
+	await dataStoreOperations.fetchDataStoreRows();
 }
 
 const initialize = async (params: GridReadyEvent) => {
-	onGridReady(params);
-	loadColumns(props.dataStore.columns);
+	dataStoreGridBase.onGridReady(params);
+	dataStoreGridBase.loadColumns(props.dataStore.columns);
+	await dataStoreOperations.fetchDataStoreRows();
 	initializeFilters();
-	await fetchDataStoreRows();
 };
 
-watch([currentSortBy, currentSortOrder], async () => {
+const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
+
+watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
+	await setCurrentPage(1);
+});
+
+watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
 	await setCurrentPage(1);
 });
 
@@ -194,14 +172,15 @@ watch(currentFilterJSON, async () => {
 });
 
 defineExpose({
-	addRow: onAddRowClick,
-	addColumn: onAddColumn,
+	addRow: dataStoreOperations.onAddRowClick,
+	addColumn: dataStoreOperations.onAddColumn,
 });
 </script>
 
 <template>
 	<div ref="gridContainerRef" :class="$style.wrapper">
 		<div
+			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
 			data-test-id="data-store-grid"
 		>
@@ -213,22 +192,23 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
-				:loading="contentLoading"
-				:row-selection="rowSelection"
+				:loading="dataStoreOperations.contentLoading.value"
+				:row-selection="selection.rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
-				@cell-value-changed="onCellValueChanged"
-				@column-moved="onColumnMoved"
-				@cell-clicked="onCellClicked"
-				@cell-editing-started="onCellEditingStarted"
-				@cell-editing-stopped="onCellEditingStopped"
-				@column-header-clicked="resetLastFocusedCell"
-				@selection-changed="onSelectionChanged"
-				@sort-changed="onSortChanged"
-				@cell-key-down="onCellKeyDown"
+				@cell-value-changed="dataStoreOperations.onCellValueChanged"
+				@column-moved="dataStoreOperations.onColumnMoved"
+				@cell-clicked="dataStoreGridBase.onCellClicked"
+				@cell-editing-started="dataStoreGridBase.onCellEditingStarted"
+				@cell-editing-stopped="dataStoreGridBase.onCellEditingStopped"
+				@column-header-clicked="dataStoreGridBase.resetLastFocusedCell"
+				@selection-changed="selection.onSelectionChanged"
+				@sort-changed="dataStoreGridBase.onSortChanged"
+				@cell-key-down="dataStoreOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
 		</div>
@@ -246,9 +226,9 @@ defineExpose({
 			/>
 		</div>
 		<SelectedItemsInfo
-			:selected-count="selectedCount"
-			@delete-selected="handleDeleteSelected"
-			@clear-selection="handleClearSelection"
+			:selected-count="selection.selectedCount.value"
+			@delete-selected="dataStoreOperations.handleDeleteSelected"
+			@clear-selection="selection.handleClearSelection"
 		/>
 	</div>
 </template>
@@ -319,7 +299,11 @@ defineExpose({
 
 	:global(.id-column) {
 		color: var(--color-text-light);
-		justify-content: center;
+	}
+
+	:global(.system-column),
+	:global(.system-cell) {
+		color: var(--color-text-light);
 	}
 
 	:global(.ag-header-cell[col-id='id']) {
@@ -329,6 +313,12 @@ defineExpose({
 	:global(.add-row-cell) {
 		border: none !important;
 		background-color: transparent !important;
+		padding: 0;
+
+		button {
+			position: relative;
+			left: calc(var(--spacing-4xs) * -1);
+		}
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
@@ -354,7 +344,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing-xs);
+			padding-top: var(--spacing-2xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid-cell-editing-border);
@@ -397,6 +387,10 @@ defineExpose({
 	:global(.ag-row[row-id='__n8n_add_row__']) {
 		border-bottom: none;
 	}
+
+	:global(.ag-row-last) {
+		border-bottom: none;
+	}
 }
 
 .grid-container {
@@ -424,6 +418,14 @@ defineExpose({
 
 		:global(.el-input__suffix) {
 			width: var(--spacing-m);
+		}
+	}
+
+	// A hacky solution for element ui bug where clicking svg inside .more button does not work
+	:global(.el-pager .more) {
+		background: transparent !important;
+		svg {
+			z-index: -1;
 		}
 	}
 }

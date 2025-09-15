@@ -10,6 +10,9 @@
         "classType": {
             "type": "string"
         },
+        "endTime": {
+            "type": "string"
+        },
         "flrID": {
             "type": "string"
         },
@@ -33,6 +36,9 @@
         "peakTime": {
             "type": "string"
         },
+        "sentNotifications": {
+            "type": "null"
+        },
         "sourceLocation": {
             "type": "string"
         },
@@ -43,5 +49,5 @@
             "type": "integer"
         }
     },
-    "version": 5
+    "version": 6
 }
