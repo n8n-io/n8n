@@ -56,7 +56,6 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 			};
-			console.log('DOING HYBRID WITH OPTIONS', options);
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			const result: Array<[Document, number]> = content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
@@ -194,24 +193,23 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Select the metadata to retrieve along the content',
 			},
 			{
-				displayName: 'Hybrid / Query',
+				displayName: 'Hybrid: Query Text',
 				name: 'hybridQuery',
 				type: 'string',
 				default: '',
 				validateType: 'string',
-				description: 'Provide a query to combine vector search with a keyword search',
+				description: 'Provide a query text to combine vector search with a keyword/text search',
 			},
 			{
-				displayName: 'Hybrid / Auto Cut Limit',
+				displayName: 'Hybrid: Auto Cut Limit',
 				name: 'autoCutLimit',
 				type: 'number',
 				default: undefined,
 				validateType: 'number',
-				description:
-					'Limit result groups by detecting sudden jumps in metrics like vector distance or score',
+				description: 'Limit result groups by detecting sudden jumps in score',
 			},
 			{
-				displayName: 'Hybrid / Alpha',
+				displayName: 'Hybrid: Alpha',
 				name: 'alpha',
 				type: 'number',
 				default: 0.75,
@@ -220,7 +218,7 @@ const retrieveFields: INodeProperties[] = [
 					'Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword.',
 			},
 			{
-				displayName: 'Hybrid / Query Properties',
+				displayName: 'Hybrid: Query Properties',
 				name: 'queryProperties',
 				type: 'string',
 				default: '',
@@ -229,7 +227,7 @@ const retrieveFields: INodeProperties[] = [
 					'Comma-separated list of properties to include in the query with optionally weighted values, e.g., "question^2,answer"',
 			},
 			{
-				displayName: 'Hybrid / Max Vector Distance',
+				displayName: 'Hybrid: Max Vector Distance',
 				name: 'maxVectorDistance',
 				type: 'number',
 				default: undefined,
