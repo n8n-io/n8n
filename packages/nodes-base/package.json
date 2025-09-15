@@ -942,7 +942,7 @@
     "sanitize-html": "2.12.1",
     "semver": "7.5.4",
     "showdown": "2.1.0",
-    "simple-git": "3.17.0",
+    "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",
     "ssh2-sftp-client": "12.0.1",
     "tmp-promise": "3.0.3",
