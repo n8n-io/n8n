@@ -6,7 +6,7 @@ const ndv = new NDV();
 describe('Node IO Filter', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.createFixtureWorkflow('Node_IO_filter.json', 'Node IO filter');
+		cy.createFixtureWorkflow('Node_IO_filter.json');
 		workflowPage.actions.saveWorkflowOnButtonClick();
 		workflowPage.actions.executeWorkflow();
 	});

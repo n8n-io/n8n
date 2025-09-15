@@ -3,10 +3,10 @@ import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import * as externalSecretsApi from '@/api/externalSecrets.ee';
-import { connectProvider } from '@/api/externalSecrets.ee';
+import * as externalSecretsApi from '@n8n/rest-api-client';
+import { connectProvider } from '@n8n/rest-api-client';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { ExternalSecretsProvider } from '@/Interface';
+import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
