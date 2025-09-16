@@ -177,11 +177,19 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				try {
+					const useCustomSchema = this.getNodeParameter('useCustomSchema', 0, false) as boolean;
+					const schema = this.getNodeParameter('schema', 0, 'public') as string;
+					const headers: IDataObject = {};
+					if (useCustomSchema) headers['Content-Profile'] = schema;
+
 					const createdRows: IDataObject[] = await supabaseApiRequest.call(
 						this,
 						'POST',
 						endpoint,
 						records,
+						{},
+						undefined,
+						headers,
 					);
 					createdRows.forEach((row, i) => {
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -237,7 +245,12 @@ export class Supabase implements INodeType {
 					let rows;
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
+						const schema = this.getNodeParameter('schema', i, 'public') as string;
+						const headers: IDataObject = {};
+						if (useCustomSchema) headers['Content-Profile'] = schema;
+
+						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs, undefined, headers);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -276,7 +289,12 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
+						const schema = this.getNodeParameter('schema', i, 'public') as string;
+						const headers: IDataObject = {};
+						if (useCustomSchema) headers['Accept-Profile'] = schema;
+
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, headers);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -335,7 +353,20 @@ export class Supabase implements INodeType {
 					try {
 						let responseLength = 0;
 						do {
-							const newRows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+							const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
+							const schema = this.getNodeParameter('schema', i, 'public') as string;
+							const headers: IDataObject = {};
+							if (useCustomSchema) headers['Accept-Profile'] = schema;
+
+							const newRows = await supabaseApiRequest.call(
+								this,
+								'GET',
+								endpoint,
+								{},
+								qs,
+								undefined,
+								headers,
+							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
@@ -414,7 +445,20 @@ export class Supabase implements INodeType {
 					let updatedRow;
 
 					try {
-						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
+						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
+						const schema = this.getNodeParameter('schema', i, 'public') as string;
+						const headers: IDataObject = {};
+						if (useCustomSchema) headers['Content-Profile'] = schema;
+
+						updatedRow = await supabaseApiRequest.call(
+							this,
+							'PATCH',
+							endpoint,
+							record,
+							qs,
+							undefined,
+							headers,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
 							{ itemData: { item: i } },
