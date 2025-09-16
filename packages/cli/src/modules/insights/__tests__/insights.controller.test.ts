@@ -24,8 +24,8 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
-
 	let controller: InsightsController;
+
 	beforeAll(async () => {
 		controller = Container.get(InsightsController);
 	});
@@ -158,7 +158,138 @@ describe('InsightsController', () => {
 		});
 	});
 
-	describe('getInsightsByWorkflow', () => {});
+	describe('getInsightsByWorkflow', () => {
+		const mockRows = [
+			{
+				workflowId: 'workflow-1',
+				workflowName: 'Workflow A',
+				projectId: 'project-1',
+				projectName: 'Project Alpha',
+				total: 30664,
+				succeeded: 30077,
+				failed: 587,
+				failureRate: 0.019142968953822073,
+				runTime: 1587932583,
+				averageRunTime: 51784.91335116097,
+				timeSaved: 0,
+			},
+			{
+				workflowId: 'workflow-2',
+				workflowName: 'Workflow B',
+				projectId: 'project-1',
+				projectName: 'Project Alpha',
+				total: 27332,
+				succeeded: 27332,
+				failed: 0,
+				failureRate: 0,
+				runTime: 1880,
+				averageRunTime: 0.06878384311429826,
+				timeSaved: 0,
+			},
+			{
+				workflowId: 'workflow-3',
+				workflowName: 'Workflow C',
+				projectId: 'project-1',
+				projectName: 'Project Alpha',
+				total: 15167,
+				succeeded: 14956,
+				failed: 211,
+				failureRate: 0.013911782158633876,
+				runTime: 899930618,
+				averageRunTime: 59334.78064218369,
+				timeSaved: 0,
+			},
+		];
+
+		it('should return empty insights by workflow if no data', async () => {
+			// ARRANGE
+			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({ count: 0, rows: [] });
+
+			// ACT
+			const response = await controller.getInsightsByWorkflow(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+					dateRange: 'week',
+				},
+			);
+
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+				maxAgeInDays: 7,
+				skip: 0,
+				take: 5,
+				sortBy: 'total:desc',
+			});
+
+			expect(response).toEqual({ count: 0, data: [] });
+		});
+
+		it('should return insights by workflow', async () => {
+			// ARRANGE
+			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: mockRows.length,
+				rows: mockRows,
+			});
+
+			// ACT
+			const response = await controller.getInsightsByWorkflow(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+					dateRange: 'week',
+				},
+			);
+
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+				maxAgeInDays: 7,
+				skip: 0,
+				take: 5,
+				sortBy: 'total:desc',
+			});
+
+			expect(response).toEqual({ count: 3, data: mockRows });
+		});
+
+		it('should use the query filters when provided', async () => {
+			// ARRANGE
+			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: mockRows.length,
+				rows: mockRows,
+			});
+
+			// ACT
+			const response = await controller.getInsightsByWorkflow(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{
+					skip: 5,
+					take: 10,
+					sortBy: 'failureRate:asc',
+					dateRange: 'month',
+					projectId: 'test-project',
+				},
+			);
+
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+				maxAgeInDays: 30,
+				skip: 5,
+				take: 10,
+				sortBy: 'failureRate:asc',
+				projectId: 'test-project',
+			});
+
+			expect(response).toEqual({ count: 3, data: mockRows });
+		});
+	});
 
 	describe('getInsightsByTime', () => {
 		it('should return insights by time with empty data', async () => {
