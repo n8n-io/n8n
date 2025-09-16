@@ -67,6 +67,7 @@ import '@/controllers/mcp.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
 @Service()
 export class Server extends AbstractServer {
@@ -252,6 +253,9 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerAdditionalControllers();
+
+		// Reinitialize the PubSubRegistry
+		Container.get(PubSubRegistry).init();
 
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
