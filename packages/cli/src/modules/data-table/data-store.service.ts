@@ -10,8 +10,14 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+} from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import type {
 	DataStoreColumnJsType,
@@ -24,7 +30,7 @@ import type {
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
-import { ProjectService } from '@/services/project.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -46,7 +52,7 @@ export class DataStoreService {
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
-		private readonly projectService: ProjectService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -492,8 +498,18 @@ export class DataStoreService {
 	}
 
 	async getDataTablesSize(user: User) {
-		const accessibleProjects = await this.projectService.getAccessibleProjects(user);
-		const projectIds = accessibleProjects.map((p) => p.id);
+		const canAccessDataTables = await userHasScopes(user, ['dataStore:list'], false, {});
+
+		let projectIds: string[] = [];
+
+		if (canAccessDataTables) {
+			projectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
+				PROJECT_OWNER_ROLE_SLUG,
+				PROJECT_ADMIN_ROLE_SLUG,
+				PROJECT_EDITOR_ROLE_SLUG,
+				PROJECT_VIEWER_ROLE_SLUG,
+			]);
+		}
 
 		const sizeData = await this.dataStoreSizeValidator.getCachedSizeData(user.id, async () => {
 			const data = await this.dataStoreRepository.findDataTablesSize(projectIds);
@@ -507,6 +523,8 @@ export class DataStoreService {
 
 			return data;
 		});
+
+		// TODO: decouple size fetching from permission checking
 
 		return {
 			sizeBytes: sizeData.totalBytes,
