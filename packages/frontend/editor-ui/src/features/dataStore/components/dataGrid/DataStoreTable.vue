@@ -395,5 +395,13 @@ defineExpose({
 			width: var(--spacing-m);
 		}
 	}
+
+	// A hacky solution for element ui bug where clicking svg inside .more button does not work
+	:global(.el-pager .more) {
+		background: transparent !important;
+		svg {
+			z-index: -1;
+		}
+	}
 }
 </style>

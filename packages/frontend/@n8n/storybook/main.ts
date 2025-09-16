@@ -3,12 +3,10 @@ import type { StorybookConfig } from '@storybook/vue3-vite';
 export const sharedConfig: StorybookConfig = {
 	stories: ['../src/**/*.stories.ts'],
 	addons: [
-		'@chromatic-com/storybook',
-		'@storybook/addon-a11y',
-		'@storybook/addon-essentials',
-		'@storybook/addon-interactions',
-		'@storybook/addon-links',
+		'storybook-dark-mode',
 		'@storybook/addon-themes',
+		'@storybook/addon-links',
+		'@chromatic-com/storybook',
 	],
 	staticDirs: ['../public'],
 	framework: {
@@ -18,7 +16,6 @@ export const sharedConfig: StorybookConfig = {
 	core: {
 		disableTelemetry: true,
 	},
-	docs: {
-		autodocs: true,
-	},
 };
+
+export const sharedTags: string[] = ['autodocs'];

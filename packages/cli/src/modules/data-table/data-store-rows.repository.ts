@@ -1,4 +1,4 @@
-import type { ListDataStoreContentQueryDto, DataTableFilter } from '@n8n/api-types';
+import { ListDataStoreContentQueryDto, DataTableFilter } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -549,7 +549,7 @@ export class DataStoreRowsRepository {
 	}
 
 	private applyPagination(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
-		query.skip(dto.skip);
-		query.take(dto.take);
+		query.skip(dto.skip ?? 0);
+		if (dto.take) query.take(dto.take);
 	}
 }

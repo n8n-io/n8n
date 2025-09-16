@@ -18,7 +18,7 @@ import type {
 	NodeConnectionType,
 	ISourceData,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { createDeferredPromise, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -342,6 +342,20 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				node: nodeName,
 				runIndex: currentNodeRunIndex,
 			});
+		}
+	}
+
+	logNodeOutput(...args: unknown[]): void {
+		if (this.mode === 'manual') {
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
+			return;
+		}
+
+		if (process.env.CODE_ENABLE_STDOUT === 'true') {
+			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
 		}
 	}
 }

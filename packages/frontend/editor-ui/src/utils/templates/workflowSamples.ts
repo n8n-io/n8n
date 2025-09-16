@@ -1,6 +1,7 @@
 import { ApplicationError, type INodeTypeNameVersion } from 'n8n-workflow';
 import type { WorkflowDataWithTemplateId } from '@/Interface';
 import { isWorkflowDataWithTemplateId } from '@/utils/templates/typeGuards';
+import { getReadyToRunAIWorkflows } from '@/experiments/readyToRunWorkflowsV2/utils/workflowSamples';
 
 /* eslint-disable import-x/extensions */
 import easyAiStarterJson from '@/utils/templates/samples/easy_ai_starter.json';
@@ -192,6 +193,7 @@ export const getSampleWorkflowByTemplateId = (
 	const workflows = [
 		getEasyAiWorkflowJson(),
 		getRagStarterWorkflowJson(),
+		...getReadyToRunAIWorkflows(),
 		...getPrebuiltAgents().map((agent) => agent.template),
 		...getTutorialTemplates().map((tutorial) => tutorial.template),
 	];

@@ -109,26 +109,31 @@ test.describe('Canvas Actions', () => {
 	test.describe('Node hover actions', () => {
 		test('should execute node', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.deselectAll();
 			await n8n.canvas.executeNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 
 			await expect(
 				n8n.notifications.getNotificationByTitle('Node executed successfully'),
 			).toHaveCount(1);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
+			await expect(n8n.canvas.selectedNodes()).toHaveCount(0);
 		});
 
 		test('should disable and enable node', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+			await n8n.canvas.deselectAll();
 
 			const disableButton = n8n.canvas.nodeDisableButton(CODE_NODE_DISPLAY_NAME);
 			await disableButton.click();
 
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(1);
+			await expect(n8n.canvas.selectedNodes()).toHaveCount(0);
 
 			await disableButton.click();
 
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
+			await expect(n8n.canvas.selectedNodes()).toHaveCount(0);
 		});
 
 		test('should delete node', async ({ n8n }) => {
