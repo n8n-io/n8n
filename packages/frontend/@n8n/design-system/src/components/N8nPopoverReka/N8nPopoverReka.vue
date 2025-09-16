@@ -21,6 +21,10 @@ interface Props
 	 */
 	enableScrolling?: boolean;
 	/**
+	 * Whether to enable slide-in animation
+	 */
+	enableSlideIn?: boolean;
+	/**
 	 * Scrollbar visibility behavior
 	 */
 	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
@@ -46,9 +50,10 @@ const props = withDefaults(defineProps<Props>(), {
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
+	enableSlideIn: true,
 	scrollType: 'hover',
 	sideOffset: 5,
-	sideFlip: true,
+	sideFlip: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -66,7 +71,7 @@ const emit = defineEmits<Emits>();
 				:side-flip="sideFlip"
 				:align="align"
 				:side-offset="sideOffset"
-				:class="[$style.popoverContent, contentClass]"
+				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width }"
 			>
 				<N8nScrollArea
@@ -94,10 +99,13 @@ const emit = defineEmits<Emits>();
 	box-shadow:
 		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
 		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-	animation-duration: 400ms;
-	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
 	z-index: 9999;
+
+	&.enableSlideIn {
+		animation-duration: 400ms;
+		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	}
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

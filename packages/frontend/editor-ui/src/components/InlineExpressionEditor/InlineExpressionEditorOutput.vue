@@ -53,6 +53,7 @@ defineExpose({
 		:reference="virtualRef"
 		:width="`${virtualRefSize.width.value}px`"
 		:content-class="$style.popover"
+		:enable-slide-in="false"
 	>
 		<template #content>
 			<div ref="content" :class="[$style.dropdown, 'ignore-key-press-canvas']">
