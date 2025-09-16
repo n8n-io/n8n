@@ -7,9 +7,9 @@ import {
 	type PopoverRootProps,
 	PopoverTrigger,
 } from 'reka-ui';
+import type { CSSProperties } from 'vue';
 
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
-import { CSSProperties } from 'vue';
 
 interface Props
 	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
@@ -37,7 +37,7 @@ interface Props
 	/**
 	 * z-index of popover content
 	 */
-	zIndex?: CSSProperties['zIndex'];
+	zIndex?: number | CSSProperties['zIndex'];
 	/**
 	 * Popover max height
 	 */
@@ -80,6 +80,7 @@ function handleOpenAutoFocus(e: Event) {
 		</PopoverTrigger>
 		<PopoverPortal>
 			<PopoverContent
+				role="dialog"
 				:side="side"
 				:side-flip="sideFlip"
 				:align="align"
