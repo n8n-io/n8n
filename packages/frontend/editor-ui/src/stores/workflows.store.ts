@@ -28,6 +28,7 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
+	WorkflowListItem,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -553,17 +554,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
-	): Promise<WorkflowListResource[]> {
+	): Promise<WorkflowListItem[]> {
 		const options = {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		};
-		const response = await workflowsApi.getWorkflowsAndFolders(
+		const { data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			{ isArchived: false, availableInMCP: true },
 			Object.keys(options).length ? options : undefined,
+			false,
 		);
-		return response.data;
+		return data.filter((item): item is WorkflowListItem => item.resource === 'workflow');
 	}
 
 	async function fetchWorkflowsPage(
