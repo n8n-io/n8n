@@ -26,6 +26,7 @@ import {
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
+import ElDatePickerFilter from '@/features/dataStore/components/dataGrid/ElDatePickerFilter.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
@@ -157,6 +158,7 @@ export const useDataStoreGridBase = ({
 			});
 			columnDef.valueFormatter = dateValueFormatter;
 			columnDef.cellEditorPopup = true;
+			columnDef.dateComponent = ElDatePickerFilter;
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
 		} else if (col.type === 'boolean') {

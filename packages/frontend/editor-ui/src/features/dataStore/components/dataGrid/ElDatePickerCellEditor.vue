@@ -70,7 +70,7 @@ onMounted(async () => {
 		// Focus to open the calendar popover
 		// Element Plus exposes a focus() method on the picker instance
 		// Using any to avoid tying to internal types
-		(pickerRef.value as unknown as { focus?: () => void })?.focus?.();
+		(pickerRef.value as { focus?: () => void })?.focus?.();
 	} catch {}
 });
 

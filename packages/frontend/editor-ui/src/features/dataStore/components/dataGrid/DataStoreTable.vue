@@ -392,6 +392,10 @@ defineExpose({
 	:global(.ag-row-last) {
 		border-bottom: none;
 	}
+
+	:global(.ag-filter-body-wrapper) {
+		min-width: 200px;
+	}
 }
 
 .grid-container {
