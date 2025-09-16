@@ -310,27 +310,20 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				'period',
 			)
 			.addSelect('insights.type', 'type')
-			.addSelect('SUM(value)', 'total_value');
-
-		if (projectId) {
-			rawRowsQuery
-				.innerJoin('insights.metadata', 'metadata')
-				// Use a cross join with the CTE
-				.innerJoin('date_ranges', 'date_ranges', '1=1')
-				.where('insights.periodStart >= date_ranges.previous_start')
-				.andWhere('metadata.projectId = :projectId', { projectId });
-		} else {
-			rawRowsQuery
-				// Use a cross join with the CTE
-				.innerJoin('date_ranges', 'date_ranges', '1=1')
-				.where('insights.periodStart >= date_ranges.previous_start');
-		}
-
-		rawRowsQuery
+			.addSelect('SUM(value)', 'total_value')
+			// Use a cross join with the CTE
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where('insights.periodStart >= date_ranges.previous_start')
 			.andWhere('insights.periodStart <= date_ranges.current_end')
 			// Group by both period and type
 			.groupBy('period')
 			.addGroupBy('insights.type');
+
+		if (projectId) {
+			rawRowsQuery
+				.innerJoin('insights.metadata', 'metadata')
+				.andWhere('metadata.projectId = :projectId', { projectId });
+		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
@@ -384,18 +377,16 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
 			.innerJoin('date_range', 'date_range', '1=1')
-			.where('insights.periodStart >= date_range.start_date');
-
-		if (projectId) {
-			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
-		}
-
-		rawRowsQuery
+			.where('insights.periodStart >= date_range.start_date')
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
 			.addGroupBy('metadata.projectName')
 			.orderBy(this.escapeField(sortField), sortOrder);
+
+		if (projectId) {
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
 
 		const count = (await rawRowsQuery.getRawMany()).length;
 		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
@@ -422,23 +413,17 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_range')
-			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation]);
+			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+			.groupBy(this.getPeriodStartExpr(periodUnit))
+			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		if (projectId) {
 			rawRowsQuery
 				.innerJoin('insights.metadata', 'metadata')
-				.innerJoin('date_range', 'date_range', '1=1')
-				.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
 				.andWhere('metadata.projectId = :projectId', { projectId });
-		} else {
-			rawRowsQuery
-				.innerJoin('date_range', 'date_range', '1=1')
-				.where(`${this.escapeField('periodStart')} >= date_range.start_date`);
 		}
-
-		rawRowsQuery
-			.groupBy(this.getPeriodStartExpr(periodUnit))
-			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
