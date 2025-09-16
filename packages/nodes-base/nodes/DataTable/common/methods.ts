@@ -139,6 +139,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	if (column.type === 'string') {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, stringConditions);
+		conditions.push.apply(conditions, comparableConditions);
 	}
 
 	if (['number', 'date'].includes(column.type)) {
