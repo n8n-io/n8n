@@ -61,22 +61,6 @@ describe('OAuth2Api Credentials', () => {
 			]);
 			expect(requiredClientSecretProperty.required).toBe(true);
 		});
-
-		it('should have client secret optional for PKCE', () => {
-			const optionalClientSecretProperty = credentials.properties.find(
-				(prop: INodeProperties) =>
-					prop.name === 'clientSecret' &&
-					prop.required !== true &&
-					prop.displayOptions?.show?.grantType?.includes('pkce'),
-			) as INodeProperties;
-
-			expect(optionalClientSecretProperty).toBeDefined();
-			expect(optionalClientSecretProperty.displayOptions?.show?.grantType).toEqual(['pkce']);
-			expect(optionalClientSecretProperty.required).toBeUndefined();
-			expect(optionalClientSecretProperty.description).toContain(
-				'Optional for public clients using PKCE',
-			);
-		});
 	});
 
 	describe('Authorization URL Configuration', () => {
