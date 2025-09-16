@@ -54,6 +54,19 @@ async function savePopularityData(data) {
 	console.log(`Saved popularity data to ${OUTPUT_FILE} with ${data.length} nodes`);
 }
 
+async function fallbackToExistingData() {
+	const existingData = await getExistingData();
+
+	if (existingData) {
+		console.log('Using existing cached data - no changes made');
+		// Don't regenerate the file, keep the existing one
+	} else {
+		console.error('No data available - neither from API nor cache');
+		console.error('Creating empty placeholder file to avoid build failure');
+		await savePopularityData([]);
+	}
+}
+
 async function main() {
 	try {
 		// Try to fetch fresh data
@@ -65,30 +78,12 @@ async function main() {
 		} else {
 			// Fetching failed, check if we have existing data
 			console.log('API unavailable, checking for existing cached data');
-			const existingData = await getExistingData();
-
-			if (existingData) {
-				console.log('Using existing cached data - no changes made');
-				// Don't regenerate the file, keep the existing one
-			} else {
-				console.error('No data available - neither from API nor cache');
-				console.error('Creating empty placeholder file to avoid build failure');
-
-				// Create an empty array as fallback
-				await savePopularityData([]);
-			}
+			await fallbackToExistingData();
 		}
 	} catch (error) {
 		console.error('Error in fetch-node-popularity script:', error);
 
-		// Try to use existing data as last resort
-		const existingData = await getExistingData();
-		if (existingData) {
-			console.log('Using existing cached data due to error');
-		} else {
-			console.error('Creating empty placeholder file to avoid build failure');
-			await savePopularityData([]);
-		}
+		await fallbackToExistingData();
 	}
 }
 
