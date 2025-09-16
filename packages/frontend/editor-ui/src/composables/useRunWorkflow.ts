@@ -42,6 +42,7 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
@@ -61,6 +62,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const runDataStore = useRunDataStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
@@ -92,24 +94,24 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		workflowsStore.subWorkflowExecutionError = null;
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowsStore.setActiveExecutionId(null);
+		runDataStore.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowsStore.setActiveExecutionId(undefined);
+			runDataStore.setActiveExecutionId(undefined);
 			throw error;
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowsStore.setActiveExecutionId(response.executionId);
+			runDataStore.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowsStore.setActiveExecutionId(undefined);
+			runDataStore.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -127,7 +129,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowsStore.activeExecutionId) {
+		if (runDataStore.activeExecutionId) {
 			return;
 		}
 
@@ -475,7 +477,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowsStore.activeExecutionId;
+		const executionId = runDataStore.activeExecutionId;
 		if (!executionId) {
 			return;
 		}

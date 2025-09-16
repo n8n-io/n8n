@@ -185,7 +185,16 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		const itemCount = data.data?.main?.[0]?.length ?? 0;
+		const itemCount: Record<string, number[]> = {};
+		for (const connectionType of Object.keys(data.data ?? {})) {
+			const connectionData = data.data?.[connectionType];
+			if (Array.isArray(connectionData)) {
+				itemCount[connectionType] = connectionData.map((d) => (d ? d.length : 0));
+			} else {
+				itemCount[connectionType] = [0];
+			}
+		}
+
 		const { data: _, ...taskData } = data;
 
 		pushInstance.send(

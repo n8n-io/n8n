@@ -32,7 +32,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '../constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
@@ -180,9 +180,10 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 	if (!node) return '';
 	try {
 		const resume = node?.parameters?.resume;
+		const runDataStore = useRunDataStore();
 
 		if (node?.type === GITHUB_NODE_TYPE && node.parameters?.operation === 'dispatchAndWait') {
-			const resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
+			const resumeUrl = `${useRootStore().webhookWaitingUrl}/${runDataStore.activeExecutionId}`;
 			const message = i18n.baseText('ndv.output.githubNodeWaitingForWebhook');
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
@@ -198,12 +199,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 			let resumeUrl = '';
 
 			if (resume === 'form') {
-				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				resumeUrl = `${useRootStore().formWaitingUrl}/${runDataStore.activeExecutionId}${suffix}`;
 				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
-				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
+				resumeUrl = `${useRootStore().webhookWaitingUrl}/${runDataStore.activeExecutionId}${suffix}`;
 				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
@@ -214,7 +215,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 		if (node?.type === FORM_NODE_TYPE) {
 			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
-			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
+			const resumeUrl = `${useRootStore().formWaitingUrl}/${runDataStore.activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
 

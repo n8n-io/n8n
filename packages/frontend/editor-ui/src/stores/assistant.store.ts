@@ -13,6 +13,7 @@ import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
@@ -57,6 +58,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const runDataStore = useRunDataStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
@@ -253,7 +255,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		return (
 			chatSessionTask.value === 'error' &&
-			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
+			runDataStore.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
@@ -490,8 +492,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
 
-		if (workflowsStore.activeExecutionId) {
-			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
+		if (runDataStore.activeExecutionId) {
+			currentSessionActiveExecutionId.value = runDataStore.activeExecutionId;
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(

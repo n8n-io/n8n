@@ -15,6 +15,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import {
 	SampleTemplates,
 	isPrebuiltAgentTemplateId,
@@ -46,6 +47,7 @@ export async function executionFinished(
 	options: { router: ReturnType<typeof useRouter> },
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const runDataStore = useRunDataStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
@@ -54,7 +56,7 @@ export async function executionFinished(
 	workflowsStore.lastAddedExecutingNode = null;
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof runDataStore.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -233,10 +235,10 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 	if (execution.status === 'crashed') {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
-		const workflowsStore = useWorkflowsStore();
+		const runDataStore = useRunDataStore();
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: runDataStore.activeExecutionId ?? '' },
 		});
 	}
 
@@ -360,12 +362,13 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  */
 export function handleExecutionFinishedSuccessfully(workflowId: string) {
 	const workflowsStore = useWorkflowsStore();
+	const runDataStore = useRunDataStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 	const i18n = useI18n();
 
 	workflowHelpers.setDocumentTitle(workflowsStore.getWorkflowById(workflowId)?.name, 'IDLE');
-	workflowsStore.setActiveExecutionId(undefined);
+	runDataStore.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 		type: 'success',
@@ -425,6 +428,7 @@ export function setRunExecutionData(
 	runExecutionData: IRunExecutionData,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const runDataStore = useRunDataStore();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
@@ -438,7 +442,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	} as IExecutionResponse);
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
-	workflowsStore.setActiveExecutionId(undefined);
+	runDataStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -455,7 +459,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	workflowsStore.setActiveExecutionId(undefined);
+	runDataStore.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,

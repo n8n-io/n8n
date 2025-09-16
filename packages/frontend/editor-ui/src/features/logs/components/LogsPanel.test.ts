@@ -6,6 +6,7 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { computed, h, nextTick, ref } from 'vue';
 import {
 	aiAgentNode,
@@ -57,6 +58,7 @@ describe('LogsPanel', () => {
 
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let runDataStore: ReturnType<typeof mockedStore<typeof useRunDataStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
@@ -95,6 +97,8 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);
+
+		runDataStore = mockedStore(useRunDataStore);
 
 		logsStore = mockedStore(useLogsStore);
 		logsStore.toggleOpen(false);
@@ -652,7 +656,7 @@ describe('LogsPanel', () => {
 
 				await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
 
-				workflowsStore.setActiveExecutionId(undefined);
+				runDataStore.setActiveExecutionId(undefined);
 				workflowsStore.setWorkflowExecutionData({ ...aiChatExecutionResponse, status: 'success' });
 
 				await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());

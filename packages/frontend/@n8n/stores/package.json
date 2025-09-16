@@ -36,6 +36,7 @@
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",

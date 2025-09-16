@@ -1,11 +1,8 @@
-/**
- * Canvas V2 Only
- * @TODO Remove this notice when Canvas V2 is the only one in use
- */
-
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
+import type { RunDataItemCountByNodeName } from '@n8n/stores/useRunDataStore';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -75,6 +72,7 @@ export function useCanvasMapping({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const runDataStore = useRunDataStore();
 	const nodeHelpers = useNodeHelpers();
 	const { dirtinessByName } = useNodeDirtiness();
 
@@ -362,39 +360,50 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const runDataItemCountByNodeId = computed(() =>
+		nodes.value.reduce<RunDataItemCountByNodeName>((acc, node) => {
+			acc[node.id] =
+				runDataStore.runDataItemCountByExecutionId[
+					runDataStore.activeExecutionId ?? workflowsStore.workflowExecutionData?.id ?? ''
+				]?.[node.name] ?? [];
+			return acc;
+		}, {}),
+	);
+
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		nodeExecutionRunDataById,
-		(value) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+		runDataItemCountByNodeId,
+		(currentRunDataItemCountByNodeId) => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(currentRunDataItemCountByNodeId).reduce<
 				Record<string, ExecutionOutputMap>
 			>((acc, nodeId) => {
 				acc[nodeId] = {};
 
 				const outputData = { iterations: 0, total: 0 };
-				for (const runIteration of nodeExecutionRunDataById.value[nodeId] ?? []) {
-					const data = runIteration.data ?? {};
-
+				for (const runIteration of currentRunDataItemCountByNodeId[nodeId] ?? []) {
+					const data = runIteration.itemCount ?? {};
 					for (const connectionType of Object.keys(data)) {
 						const connectionTypeData = data[connectionType] ?? {};
 						acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
-
 						for (const outputIndex of Object.keys(connectionTypeData)) {
 							const parsedOutputIndex = parseInt(outputIndex, 10);
-							const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? [];
-
+							const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? 0;
 							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
 								outputIndex
 							] ?? { ...outputData };
-							if (runIteration.executionStatus !== 'canceled') {
+							if (
+								'executionStatus' in runIteration &&
+								runIteration.executionStatus !== 'canceled'
+							) {
 								acc[nodeId][connectionType][outputIndex].iterations += 1;
 							}
-							acc[nodeId][connectionType][outputIndex].total +=
-								connectionTypeOutputIndexData.length;
+							acc[nodeId][connectionType][outputIndex].total += connectionTypeOutputIndexData;
 						}
 					}
 				}
+
+				console.log(acc[nodeId], currentRunDataItemCountByNodeId[nodeId]);
 
 				return acc;
 			}, {});

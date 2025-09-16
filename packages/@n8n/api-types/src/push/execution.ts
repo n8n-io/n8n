@@ -62,7 +62,7 @@ export type NodeExecuteAfter = {
 		executionId: string;
 		nodeName: string;
 		data: Omit<ITaskData, 'data'>;
-		itemCount: number;
+		itemCount: Record<string, number[]>;
 	};
 };
 
@@ -81,7 +81,7 @@ export type NodeExecuteAfterData = {
 		 * Later we fetch the entire execution data and fill in any placeholders.
 		 */
 		data: ITaskData;
-		itemCount: number;
+		itemCount: Record<string, number[]>;
 	};
 };
 

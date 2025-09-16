@@ -17,6 +17,7 @@ import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
@@ -85,6 +86,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 let ndvStore: MockedStore<typeof useNDVStore>;
+let runDataStore: MockedStore<typeof useRunDataStore>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
@@ -109,6 +111,7 @@ describe('NodeExecuteButton', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		ndvStore = mockedStore(useNDVStore);
+		runDataStore = mockedStore(useRunDataStore);
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();
@@ -276,7 +279,7 @@ describe('NodeExecuteButton', () => {
 	it('stops execution when clicking button while workflow is running', async () => {
 		workflowsStore.isWorkflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
-		workflowsStore.setActiveExecutionId('test-execution-id');
+		runDataStore.setActiveExecutionId('test-execution-id');
 		workflowsStore.isNodeExecuting.mockReturnValue(true);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),

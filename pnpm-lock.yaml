@@ -2427,6 +2427,9 @@ importers:
         specifier: workspace:*
         version: link:../../../workflow
     devDependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config

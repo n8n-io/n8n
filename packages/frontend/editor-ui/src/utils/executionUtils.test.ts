@@ -32,8 +32,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: () => ({
+vi.mock('@n8n/stores/useRunDataStore', () => ({
+	useRunDataStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));

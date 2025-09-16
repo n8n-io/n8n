@@ -99,6 +99,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
@@ -136,6 +137,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const runDataStore = useRunDataStore();
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
@@ -243,9 +245,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const isWorkflowRunning = computed(() => {
-		if (activeExecutionId.value === null) {
+		if (runDataStore.activeExecutionId === null) {
 			return true;
-		} else if (activeExecutionId.value && workflowExecutionData.value) {
+		} else if (runDataStore.activeExecutionId && workflowExecutionData.value) {
 			if (
 				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
 				!workflowExecutionData.value.finished
@@ -320,23 +322,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowTriggerNodes.value.some((node) => node.name === name),
 		);
 	});
-
-	/**
-	 * Sets the active execution id
-	 *
-	 * @param {string} id used to indicate the id of the active execution
-	 * @param {null} id used to indicate that an execution has started but its id has not been retrieved yet
-	 * @param {undefined} id used to indicate there is no active execution
-	 */
-	const activeExecutionId = ref<string | null | undefined>();
-	const previousExecutionId = ref<string | null | undefined>();
-	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
-	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
-
-	function setActiveExecutionId(id: string | null | undefined) {
-		if (id) previousExecutionId.value = activeExecutionId.value;
-		activeExecutionId.value = id;
-	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -697,7 +682,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		setActiveExecutionId(undefined);
+		runDataStore.setActiveExecutionId(undefined);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -1561,15 +1546,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		const { nodeName, data, executionId } = pushData;
+
 		const isNodeWaiting = data.executionStatus === 'waiting';
 		const node = getNodeByName(nodeName);
 		if (!node) return;
 
-		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
-			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
-		}
+		workflowExecutionData.value.data.resultData.runData[nodeName] ??= [];
 
-		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
+		const tasksData = workflowExecutionData.value.data.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
 			workflowExecutionResultDataLastUpdate.value = Date.now();
@@ -1846,7 +1830,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	//
 
 	function markExecutionAsStopped() {
-		setActiveExecutionId(undefined);
+		runDataStore.setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
@@ -1905,9 +1889,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionPairedItemMappings,
 		workflowExecutionResultDataLastUpdate,
 		workflowExecutionStartedData,
-		activeExecutionId: readonlyActiveExecutionId,
-		previousExecutionId: readonlyPreviousExecutionId,
-		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,

@@ -17,6 +17,7 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { IExecutionResponse, IStartRunData } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRunDataStore } from '@n8n/stores/useRunDataStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
@@ -29,17 +30,27 @@ import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { SLACK_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 
+vi.mock('@n8n/stores/useRunDataStore', () => {
+	const storeState: Partial<ReturnType<typeof useRunDataStore>> & {} = {
+		activeExecutionId: undefined,
+		setActiveExecutionId: vi.fn((id: string | null | undefined) => {
+			storeState.activeExecutionId = id;
+		}),
+	};
+
+	return {
+		useRunDataStore: vi.fn().mockReturnValue(storeState),
+	};
+});
+
 vi.mock('@/stores/workflows.store', () => {
-	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
-		activeExecutionId: string | null | undefined;
-	} = {
+	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
-		activeExecutionId: undefined,
 		previousExecutionId: undefined,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
@@ -57,9 +68,6 @@ vi.mock('@/stores/workflows.store', () => {
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
-		setActiveExecutionId: vi.fn((id: string | null | undefined) => {
-			storeState.activeExecutionId = id;
-		}),
 	};
 
 	return {
@@ -158,7 +166,7 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	afterEach(() => {
-		vi.mocked(workflowsStore).setActiveExecutionId(undefined);
+		vi.mocked(runDataStore).setActiveExecutionId(undefined);
 		vi.clearAllMocks();
 	});
 
@@ -184,8 +192,8 @@ describe('useRunWorkflow({ router })', () => {
 			const response = await runWorkflowApi({} as IStartRunData);
 
 			expect(response).toEqual(mockResponse);
-			expect(workflowsStore.setActiveExecutionId).toHaveBeenNthCalledWith(1, null);
-			expect(workflowsStore.setActiveExecutionId).toHaveBeenNthCalledWith(2, '123');
+			expect(runDataStore.setActiveExecutionId).toHaveBeenNthCalledWith(1, null);
+			expect(runDataStore.setActiveExecutionId).toHaveBeenNthCalledWith(2, '123');
 			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
 		});
 
@@ -211,7 +219,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow('Failed to run workflow');
-			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+			expect(runDataStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
 		});
 
 		it('should set waitingForWebhook if response indicates waiting', async () => {
@@ -402,7 +410,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			vi.mocked(workflowsStore).setActiveExecutionId('123');
+			vi.mocked(runDataStore).setActiveExecutionId('123');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -1038,7 +1046,7 @@ describe('useRunWorkflow({ router })', () => {
 			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
 			workflowsStore.activeWorkflows = ['test-wf-id'];
-			workflowsStore.setActiveExecutionId('test-exec-id');
+			runDataStore.setActiveExecutionId('test-exec-id');
 			workflowsStore.executionWaitingForWebhook = false;
 
 			getExecutionSpy.mockResolvedValue(executionData);
