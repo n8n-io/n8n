@@ -1,3 +1,4 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -14,8 +15,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
-import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
@@ -316,7 +317,7 @@ describe('SamlService', () => {
 			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(InvalidSamlSetting);
 
 			// ACT && ASSERT
-			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrowError(
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
 				InvalidSamlMetadataError,
 			);
 		});
@@ -328,7 +329,7 @@ describe('SamlService', () => {
 				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
 
 			// ACT && ASSERT
-			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrowError(
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
 				InvalidSamlMetadataError,
 			);
 		});
@@ -338,7 +339,7 @@ describe('SamlService', () => {
 			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(SamlSettingWithInvalidUrl);
 
 			// ACT && ASSERT
-			await samlService.loadFromDbAndApplySamlPreferences(true);
+			await samlService.loadFromDbAndApplySamlPreferences(true, false);
 		});
 
 		test('does not throw an error when the metadata url is valid', async () => {
@@ -351,7 +352,7 @@ describe('SamlService', () => {
 				);
 
 			// ACT && ASSERT
-			await samlService.loadFromDbAndApplySamlPreferences(true);
+			await samlService.loadFromDbAndApplySamlPreferences(true, false);
 		});
 	});
 
@@ -471,6 +472,7 @@ describe('SamlService', () => {
 			await samlService.loadPreferencesWithoutValidation({
 				metadata: SamlMetadataWithoutRedirectBinding,
 			});
+			await samlService.loadSamlify();
 			expect(() => samlService.getIdentityProviderInstance(true)).toThrowError(
 				InvalidSamlMetadataError,
 			);
@@ -485,7 +487,9 @@ describe('SamlService', () => {
 			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			jest.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(mockSamlConfig);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 			// Mock SAML login as disabled to avoid metadata validation
 			jest.spyOn(samlHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 		});
@@ -534,7 +538,7 @@ describe('SamlService', () => {
 			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
 			jest
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig);
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 
 			await samlService.reload();
 
@@ -549,7 +553,7 @@ describe('SamlService', () => {
 		test('should prevent concurrent reloads with isReloading flag', async () => {
 			jest
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig);
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 
 			// Start first reload without awaiting
 			const firstReload = samlService.reload();
@@ -577,7 +581,7 @@ describe('SamlService', () => {
 			// Test by calling reload again - should not be blocked
 			jest
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig);
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 
 			await samlService.reload();
 			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(2);
@@ -586,7 +590,7 @@ describe('SamlService', () => {
 		test('should update GlobalConfig with login status', async () => {
 			jest
 				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig);
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 			// Mock SAML as disabled
 			jest.spyOn(samlHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 
@@ -602,7 +606,9 @@ describe('SamlService', () => {
 			// Mock required methods to avoid complex initialization
 			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
 			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			jest.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(mockSamlConfig);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
 			jest
 				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
 				.mockResolvedValue(undefined);
