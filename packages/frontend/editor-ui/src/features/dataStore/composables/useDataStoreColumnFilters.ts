@@ -1,41 +1,13 @@
 import { computed, ref, type Ref } from 'vue';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import type { DataStoreRow } from '@/features/dataStore/datastore.types';
-
-type BackendFilterCondition = 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
-
-type BackendFilterRecord = {
-	columnName: string;
-	condition: BackendFilterCondition;
-	value: string | number | boolean | Date | null;
-};
-
-type BackendFilter = {
-	type: 'and';
-	filters: BackendFilterRecord[];
-};
-
-type FilterModel = {
-	[colId: string]: {
-		filterType: 'text' | 'number' | 'date';
-		filter?: string;
-		type:
-			| 'contains'
-			| 'equals'
-			| 'notEqual'
-			| 'startsWith'
-			| 'endsWith'
-			| 'isEmpty'
-			| 'notEmpty'
-			| 'null'
-			| 'notNull'
-			| 'true'
-			| 'false'
-			| 'inRange';
-		dateFrom?: string;
-		dateTo?: string;
-	};
-};
+import type { BackendFilter, FilterModel } from '../types/dataStoreFilters.types';
+import { GRID_FILTER_CONFIG, SPECIAL_COLUMNS } from '../utils/filterMappings';
+import {
+	processTextFilter,
+	processNumberFilter,
+	processDateFilter,
+} from '../utils/filterProcessors';
 
 export type UseDataStoreColumnFiltersParams = {
 	gridApi: Ref<GridApi>;
@@ -52,18 +24,13 @@ export const useDataStoreColumnFilters = ({
 
 	const initializeFilters = () => {
 		// Enable default filters for all columns via defaultColDef
-		gridApi.value.setGridOption('defaultColDef', {
-			filter: true,
-			filterParams: {
-				maxNumConditions: 1,
-			},
-		});
+		gridApi.value.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
 
 		// Explicitly disable filters for special columns that shouldn't be filterable
 		const updated = colDefs.value.map((def) => {
 			const colId = def.colId ?? def.field;
 			if (!colId) return def;
-			if (colId === 'add-column' || colId === 'ag-Grid-SelectionColumn') {
+			if (SPECIAL_COLUMNS.includes(colId as (typeof SPECIAL_COLUMNS)[number])) {
 				return { ...def, filter: false } as ColDef;
 			}
 			return def;
@@ -72,60 +39,8 @@ export const useDataStoreColumnFilters = ({
 		setGridData({ colDefs: updated });
 	};
 
-	function mapTextTypeToBackend(type: string): BackendFilterCondition {
-		switch (type) {
-			case 'contains':
-				return 'ilike';
-			case 'equals':
-				return 'eq';
-			case 'notEqual':
-				return 'neq';
-			case 'startsWith':
-				return 'ilike';
-			case 'endsWith':
-				return 'ilike';
-			case 'isEmpty':
-				return 'eq';
-			case 'notEmpty':
-				return 'neq';
-			case 'null':
-				return 'eq';
-			case 'notNull':
-				return 'neq';
-			case 'true':
-				return 'eq';
-			case 'false':
-				return 'eq';
-			default:
-				throw new Error(`Unknown text type: ${type}`);
-		}
-	}
-
-	function mapNumberDateTypeToBackend(type: string): BackendFilterCondition {
-		switch (type) {
-			case 'equals':
-				return 'eq';
-			case 'notEqual':
-				return 'neq';
-			case 'lessThan':
-				return 'lt';
-			case 'lessThanOrEqual':
-				return 'lte';
-			case 'greaterThan':
-				return 'gt';
-			case 'greaterThanOrEqual':
-				return 'gte';
-			case 'null':
-				return 'eq'; // Check for null
-			case 'notNull':
-				return 'neq'; // Check for not null
-			default:
-				throw new Error(`Unknown number/date type: ${type}`);
-		}
-	}
-
 	function convertAgModelToBackend(model: FilterModel, defs: ColDef[]): BackendFilter | undefined {
-		const filters: BackendFilterRecord[] = [];
+		const allFilters: import('../types/dataStoreFilters.types').BackendFilterRecord[] = [];
 
 		const colIdToField = new Map<string, string>();
 		defs.forEach((d) => {
@@ -136,71 +51,20 @@ export const useDataStoreColumnFilters = ({
 		for (const [key, filter] of Object.entries(model)) {
 			const colField = colIdToField.get(key) ?? key;
 			// Skip special/internal columns
-			if (colField === 'add-column' || colField === 'ag-Grid-SelectionColumn') continue;
+			if (SPECIAL_COLUMNS.includes(colField as (typeof SPECIAL_COLUMNS)[number])) continue;
 
-			// Set Filter (commonly for boolean)
 			const filterType: string | undefined = filter?.filterType || filter?.type;
-
 			if (!filterType) continue;
-
-			let value: string | number | boolean | Date | null = filter.filter ?? null;
 
 			switch (filter.filterType) {
 				case 'text':
-					if (typeof filter.filter === 'string') {
-						if (filter.type === 'startsWith') {
-							value = `${filter.filter}%`;
-						} else if (filter.type === 'endsWith') {
-							value = `%${filter.filter}`;
-						} else if (filter.type === 'contains') {
-							// backend will auto-wrap to %value% if % not present
-							value = filter.filter;
-						}
-					} else if (filter.type === 'isEmpty' || filter.type === 'notEmpty') {
-						value = '';
-					} else if (filter.type === 'null' || filter.type === 'notNull') {
-						value = null;
-					} else if (filter.type === 'true') {
-						value = true;
-					} else if (filter.type === 'false') {
-						value = false;
-					}
-					filters.push({
-						columnName: colField,
-						condition: mapTextTypeToBackend(filter.type),
-						value,
-					});
+					allFilters.push(processTextFilter(filter, colField));
 					break;
 				case 'number':
-					if (filter.type === 'null' || filter.type === 'notNull') {
-						value = null;
-					}
-					filters.push({
-						columnName: colField,
-						condition: mapNumberDateTypeToBackend(filter.type),
-						value,
-					});
+					allFilters.push(processNumberFilter(filter, colField));
 					break;
 				case 'date':
-					if (filter.type === 'null' || filter.type === 'notNull') {
-						value = null;
-					} else {
-						if (filter.dateFrom) {
-							value = new Date(String(filter.dateFrom)).toISOString();
-						}
-						if (filter.type === 'inRange' && filter.dateFrom && filter.dateTo) {
-							const fromIso = new Date(String(filter.dateFrom)).toISOString();
-							const toIso = new Date(String(filter.dateTo)).toISOString();
-							filters.push({ columnName: colField, condition: 'gte', value: fromIso });
-							filters.push({ columnName: colField, condition: 'lte', value: toIso });
-							break; // Skip the normal filter push below
-						}
-					}
-					filters.push({
-						columnName: colField,
-						condition: mapNumberDateTypeToBackend(filter.type),
-						value,
-					});
+					allFilters.push(...processDateFilter(filter, colField));
 					break;
 				default:
 					// Unrecognized filter type; skip
@@ -208,8 +72,8 @@ export const useDataStoreColumnFilters = ({
 			}
 		}
 
-		if (filters.length === 0) return undefined;
-		return { type: 'and', filters };
+		if (allFilters.length === 0) return undefined;
+		return { type: 'and', filters: allFilters };
 	}
 
 	const onFilterChanged = () => {
