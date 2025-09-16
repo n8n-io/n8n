@@ -459,7 +459,7 @@ export class DataStoreService {
 		return {
 			sizeBytes: sizeData.totalBytes,
 			sizeState: this.dataStoreSizeValidator.sizeToState(sizeData.totalBytes),
-			tables: sizeData.tables,
+			dataTables: sizeData.dataTables,
 		};
 	}
 }

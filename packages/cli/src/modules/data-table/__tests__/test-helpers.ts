@@ -7,7 +7,7 @@ export function mockDataStoreSizeValidator() {
 	jest.spyOn(sizeValidator, 'validateSize').mockResolvedValue();
 	jest.spyOn(sizeValidator, 'getCachedSizeData').mockResolvedValue({
 		totalBytes: 50 * 1024 * 1024, // 50MB - under the default limit
-		tables: {},
+		dataTables: {},
 	});
 	return sizeValidator;
 }

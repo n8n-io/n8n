@@ -4,7 +4,7 @@ export type DataStoreUserTableName = `${string}data_table_user_${string}`;
 
 export type DataTablesSizeData = {
 	totalBytes: number;
-	tables: Record<string, number>;
+	dataTables: Record<string, number>;
 };
 
 export const columnTypeToFieldType: Record<string, keyof FieldTypeMap> = {

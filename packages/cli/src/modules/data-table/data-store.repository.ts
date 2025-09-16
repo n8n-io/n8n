@@ -301,7 +301,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			}
 
 			default:
-				return { totalBytes: 0, tables: {} };
+				return { totalBytes: 0, dataTables: {} };
 		}
 
 		const result = (await this.query(sql)) as Array<{
@@ -315,11 +315,11 @@ export class DataStoreRepository extends Repository<DataTable> {
 				(acc, row) => {
 					const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
 					const sizeBytes = this.parseSize(row.table_bytes);
-					acc.tables[dataStoreId] = (acc.tables[dataStoreId] ?? 0) + sizeBytes;
+					acc.dataTables[dataStoreId] = (acc.dataTables[dataStoreId] ?? 0) + sizeBytes;
 					acc.totalBytes += sizeBytes;
 					return acc;
 				},
-				{ tables: {} as Record<string, number>, totalBytes: 0 },
+				{ dataTables: {} as Record<string, number>, totalBytes: 0 },
 			);
 	}
 }

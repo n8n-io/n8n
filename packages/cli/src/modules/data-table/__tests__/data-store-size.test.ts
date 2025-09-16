@@ -56,7 +56,7 @@ describe('Data Store Size Tests', () => {
 
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
+				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
@@ -82,7 +82,7 @@ describe('Data Store Size Tests', () => {
 			// Now mock the size check to be over limit
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
+				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
@@ -111,7 +111,7 @@ describe('Data Store Size Tests', () => {
 
 			const mockFindDataTablesSize = jest
 				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue({ totalBytes: maxSize + 1, tables: {} });
+				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
 			// ACT & ASSERT
 			await expect(
@@ -154,16 +154,16 @@ describe('Data Store Size Tests', () => {
 			// ASSERT
 			expect(result).toBeDefined();
 			expect(result.totalBytes).toBeGreaterThan(0);
-			expect(result.tables).toBeDefined();
-			expect(Object.keys(result.tables)).toHaveLength(2);
+			expect(result.dataTables).toBeDefined();
+			expect(Object.keys(result.dataTables)).toHaveLength(2);
 
-			expect(result.tables[dataStore1.id]).toBeGreaterThan(0);
-			expect(result.tables[dataStore2.id]).toBeGreaterThan(0);
+			expect(result.dataTables[dataStore1.id]).toBeGreaterThan(0);
+			expect(result.dataTables[dataStore2.id]).toBeGreaterThan(0);
 
-			expect(result.tables[dataStore1.id]).toBeGreaterThan(result.tables[dataStore2.id]);
+			expect(result.dataTables[dataStore1.id]).toBeGreaterThan(result.dataTables[dataStore2.id]);
 
 			// Total should be sum of individual tables
-			const expectedTotal = result.tables[dataStore1.id] + result.tables[dataStore2.id];
+			const expectedTotal = result.dataTables[dataStore1.id] + result.dataTables[dataStore2.id];
 			expect(result.totalBytes).toBe(expectedTotal);
 		});
 
@@ -174,8 +174,8 @@ describe('Data Store Size Tests', () => {
 			// ASSERT
 			expect(result).toBeDefined();
 			expect(result.totalBytes).toBe(0);
-			expect(result.tables).toBeDefined();
-			expect(Object.keys(result.tables)).toHaveLength(0);
+			expect(result.dataTables).toBeDefined();
+			expect(Object.keys(result.dataTables)).toHaveLength(0);
 		});
 
 		it('should handle data tables with no rows', async () => {
@@ -191,8 +191,8 @@ describe('Data Store Size Tests', () => {
 			// ASSERT
 			expect(result).toBeDefined();
 			expect(result.totalBytes).toBeGreaterThanOrEqual(0);
-			expect(result.tables).toBeDefined();
-			expect(result.tables[dataStore.id]).toBeGreaterThanOrEqual(0);
+			expect(result.dataTables).toBeDefined();
+			expect(result.dataTables[dataStore.id]).toBeGreaterThanOrEqual(0);
 		});
 	});
 });
