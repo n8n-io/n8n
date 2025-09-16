@@ -4,9 +4,7 @@ const WORKFLOW_FILE = 'Subworkflow-debugging-execute-workflow.json';
 
 test.describe('Subworkflow debugging', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-		await n8n.canvas.importWorkflow(WORKFLOW_FILE, 'Subworkflow debugging test');
+		await n8n.start.fromImportedWorkflow(WORKFLOW_FILE);
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(11);
 		await n8n.canvas.clickZoomToFitButton();
