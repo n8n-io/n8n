@@ -4,7 +4,6 @@ import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
-import { CredentialsEditModal } from './CredentialsEditModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
@@ -14,6 +13,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
 import { VariablesPage } from './VariablesPage';
@@ -24,6 +24,7 @@ import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
+import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
@@ -47,6 +48,7 @@ export class n8nPage {
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
+	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
@@ -60,12 +62,12 @@ export class n8nPage {
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
-	readonly credentialsModal: CredentialsEditModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
+	readonly credentialsComposer: CredentialsComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
@@ -87,6 +89,7 @@ export class n8nPage {
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
+		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
@@ -100,12 +103,12 @@ export class n8nPage {
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
-		this.credentialsModal = new CredentialsEditModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
+		this.credentialsComposer = new CredentialsComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers

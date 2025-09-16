@@ -101,6 +101,18 @@ export function buildGetManyFilter(
 					condition: 'neq' as const,
 					value: null,
 				};
+			case 'isTrue':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: true,
+				};
+			case 'isFalse':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: false,
+				};
 			default:
 				return {
 					columnName: x.keyName,

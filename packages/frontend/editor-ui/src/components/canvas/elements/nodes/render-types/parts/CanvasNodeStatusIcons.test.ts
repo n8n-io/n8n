@@ -75,13 +75,34 @@ describe('CanvasNodeStatusIcons', () => {
 				provide: {
 					...createCanvasProvide(),
 					...createCanvasNodeProvide({
-						data: { runData: { outputMap: {}, iterations: 15, visible: true } },
+						data: {
+							execution: { status: 'success', running: false },
+							runData: { outputMap: {}, iterations: 15, visible: true },
+						},
 					}),
 				},
 			},
 		});
 
 		expect(getByTestId('canvas-node-status-success')).toHaveTextContent('15');
+	});
+
+	it('should not render success icon for a node that was canceled', () => {
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							execution: { status: 'canceled', running: false },
+							runData: { outputMap: {}, iterations: 15, visible: true },
+						},
+					}),
+				},
+			},
+		});
+
+		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
 	});
 
 	it('should render correctly for a dirty node that has run successfully', () => {

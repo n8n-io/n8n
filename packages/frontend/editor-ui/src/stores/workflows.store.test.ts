@@ -14,7 +14,6 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
-	ExecutionSummary,
 	IConnection,
 	INodeExecutionData,
 	INode,
@@ -314,26 +313,6 @@ describe('useWorkflowsStore', () => {
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
-		});
-	});
-
-	describe('shouldReplaceInputDataWithPinData', () => {
-		it('should return true when no active workflow execution', () => {
-			workflowsStore.activeWorkflowExecution = null;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return true when active workflow execution mode is manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'manual' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return false when active workflow execution mode is not manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'automatic' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(false);
 		});
 	});
 
@@ -679,7 +658,17 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('updateNodeExecutionData', () => {
-		const { successEvent, errorEvent, executionResponse } = generateMockExecutionEvents();
+		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
+		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
+		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
+
+		beforeEach(() => {
+			const events = generateMockExecutionEvents();
+			successEvent = events.successEvent;
+			errorEvent = events.errorEvent;
+			executionResponse = events.executionResponse;
+		});
+
 		it('should throw error if not initialized', () => {
 			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
 		});
@@ -1420,6 +1409,7 @@ function generateMockExecutionEvents() {
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',
 		nodeName: 'When clicking ‘Execute workflow’',
+		itemCount: 1,
 		data: {
 			hints: [],
 			startTime: 1727867966633,
@@ -1427,18 +1417,6 @@ function generateMockExecutionEvents() {
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
-			data: {
-				main: [
-					[
-						{
-							json: {},
-							pairedItem: {
-								item: 0,
-							},
-						},
-					],
-				],
-			},
 		},
 	};
 

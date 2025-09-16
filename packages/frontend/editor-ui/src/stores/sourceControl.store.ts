@@ -30,7 +30,6 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		connected: false,
 		publicKey: '',
 		keyGeneratorType: 'ed25519',
-		connectionType: 'ssh',
 	});
 
 	const state = reactive<{

@@ -5,6 +5,7 @@ import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -18,6 +19,26 @@ export class NodeDetailsViewPage extends BasePage {
 		this.editFields = new EditFieldsNode(page);
 	}
 
+	getNodeCredentialsSelect() {
+		return this.page.getByTestId('node-credentials-select');
+	}
+
+	credentialDropdownCreateNewCredential() {
+		return this.page.getByText('Create new credential');
+	}
+
+	getCredentialOptionByText(text: string) {
+		return this.page.getByText(text);
+	}
+
+	getCredentialDropdownOptions() {
+		return this.page.getByRole('option');
+	}
+
+	getCredentialSelect() {
+		return this.page.getByRole('combobox', { name: 'Select Credential' });
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}
@@ -26,8 +47,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
-	async fillParameterInput(labelName: string, value: string) {
-		await this.getParameterByLabel(labelName).getByTestId('parameter-input-field').fill(value);
+	async fillParameterInput(labelName: string, value: string, index?: number) {
+		await locatorByIndex(this.getParameterByLabel(labelName), index)
+			.getByTestId('parameter-input-field')
+			.fill(value);
 	}
 
 	async selectWorkflowResource(createItemText: string, searchText: string = '') {
@@ -48,6 +71,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickBackToCanvasButton();
 	}
 
+	async addFixedCollectionItem() {
+		await this.clickByTestId('fixed-collection-add');
+	}
+
 	async execute() {
 		await this.clickByTestId('node-execute-button');
 	}
@@ -66,6 +93,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterExpressionPreviewValue() {
 		return this.page.getByTestId('parameter-expression-preview-value');
+	}
+
+	getParameterExpressionPreviewOutput() {
+		return this.page.getByTestId('parameter-expression-preview-output');
 	}
 
 	getInlineExpressionEditorPreview() {
@@ -141,7 +172,16 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
-	getInlineExpressionEditorInput() {
+	/**
+	 * Get the inline expression editor input
+	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
+	 * @returns The inline expression editor input
+	 */
+	getInlineExpressionEditorInput(parameterName?: string) {
+		if (parameterName) {
+			const parameterInput = this.getParameterInput(parameterName);
+			return parameterInput.getByTestId('inline-expression-editor-input');
+		}
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
 
@@ -165,50 +205,53 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.locator('.el-popper:visible');
 	}
 
-	async clearExpressionEditor() {
-		const editor = this.getInlineExpressionEditorInput();
+	async clearExpressionEditor(parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
-	async typeInExpressionEditor(text: string) {
-		const editor = this.getInlineExpressionEditorInput();
+	async typeInExpressionEditor(text: string, parameterName?: string) {
+		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
 		await editor.type(text);
 	}
 
-	getParameterInput(parameterName: string) {
-		return this.page.getByTestId(`parameter-input-${parameterName}`);
+	getParameterInput(parameterName: string, index?: number) {
+		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
-	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('input');
+	getParameterInputField(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).locator('input');
 	}
 
-	async selectOptionInParameterDropdown(parameterName: string, optionText: string) {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.click();
-
-		await this.page.getByRole('option', { name: optionText }).click();
+	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
+		await this.clickParameterDropdown(parameterName, index);
+		await this.selectFromVisibleDropdown(optionText);
 	}
 
-	async clickParameterDropdown(parameterName: string): Promise<void> {
-		await this.clickByTestId(`parameter-input-${parameterName}`);
+	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
+		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
 		await this.page.getByRole('option', { name: optionText }).click();
 	}
 
-	async fillParameterInputByName(parameterName: string, value: string): Promise<void> {
-		const input = this.getParameterInputField(parameterName);
+	async fillParameterInputByName(parameterName: string, value: string, index = 0): Promise<void> {
+		const input = this.getParameterInputField(parameterName, index);
 		await input.click();
 		await input.fill(value);
 	}
 
 	async clickParameterOptions(): Promise<void> {
 		await this.page.locator('.param-options').click();
+	}
+
+	async addParameterOptionByName(optionName: string): Promise<void> {
+		await this.clickParameterOptions();
+		await this.selectFromVisibleDropdown(optionName);
 	}
 
 	getVisiblePopper() {
@@ -440,6 +483,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
 	}
 
+	getCollectionAddOptionSelect() {
+		return this.getNodeParameters().getByTestId('collection-add-option-select');
+	}
+
 	getParameterSwitch(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.el-switch');
 	}
@@ -474,6 +521,31 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async expressionSelectPrevItem() {
 		await this.getInlineExpressionEditorItemPrevButton().click();
+	}
+
+	async openExpressionEditorModal(parameterName: string) {
+		await this.activateParameterExpressionEditor(parameterName);
+		const parameter = this.getParameterInput(parameterName);
+		await parameter.click();
+		const expander = parameter.getByTestId('expander');
+		await expander.click();
+
+		await this.page.getByTestId('expression-modal-input').waitFor({ state: 'visible' });
+	}
+
+	getExpressionEditorModalInput() {
+		return this.page.getByTestId('expression-modal-input').getByRole('textbox');
+	}
+
+	async fillExpressionEditorModalInput(text: string) {
+		const input = this.getExpressionEditorModalInput();
+		await input.clear();
+		await input.click();
+		await input.fill(text);
+	}
+
+	getExpressionEditorModalOutput() {
+		return this.page.getByTestId('expression-modal-output');
 	}
 
 	async typeIntoParameterInput(parameterName: string, content: string): Promise<void> {
@@ -545,7 +617,7 @@ export class NodeDetailsViewPage extends BasePage {
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
 		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').click();
+		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
 	}
 
 	// Run selector and linking helpers
@@ -812,5 +884,73 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getCredentialLabel(credentialType: string) {
 		return this.page.getByText(credentialType);
+	}
+
+	getFilterComponent(paramName: string) {
+		return this.page.getByTestId(`filter-${paramName}`);
+	}
+
+	getFilterConditions(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition');
+	}
+
+	getFilterCondition(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
+	}
+
+	getFilterConditionLeft(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionRight(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
+	}
+
+	getFilterConditionOperator(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-operator-select').nth(index);
+	}
+
+	getFilterConditionRemove(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-remove-condition').nth(index);
+	}
+
+	getFilterConditionAdd(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-add-condition');
+	}
+
+	async addFilterCondition(paramName: string) {
+		await this.getFilterConditionAdd(paramName).click();
+	}
+
+	async removeFilterCondition(paramName: string, index: number) {
+		await this.getFilterConditionRemove(paramName, index).click();
+	}
+
+	getWebhookTestEvent() {
+		return this.page.getByText('Listening for test event');
+	}
+
+	getAddOptionDropdown() {
+		return this.page.getByRole('combobox', { name: 'Add option' });
+	}
+
+	/**
+	 * Adds an optional parameter from a collection dropdown
+	 * @param optionDisplayName - The display name of the option to add (e.g., 'Response Code')
+	 * @param parameterName - The parameter name to set after adding (e.g., 'responseCode')
+	 * @param parameterValue - The value to set for the parameter
+	 */
+	async setOptionalParameter(
+		optionDisplayName: string,
+		parameterName: string,
+		parameterValue: string | boolean,
+	): Promise<void> {
+		await this.getAddOptionDropdown().click();
+
+		// Step 2: Select the option by display name
+		await this.page.getByRole('option', { name: optionDisplayName }).click();
+
+		// Step 3: Set the parameter value
+		await this.setupHelper.setParameter(parameterName, parameterValue);
 	}
 }

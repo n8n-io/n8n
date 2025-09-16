@@ -75,8 +75,9 @@ test.describe('Projects', () => {
 
 		await subn8n.canvas.deleteNodeByName('Replace me with your logic');
 		await subn8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block' });
-
-		await subn8n.credentials.createAndSaveNewCredential('apiKey', NOTION_API_KEY);
+		await subn8n.credentialsComposer.createFromNdv({
+			apiKey: NOTION_API_KEY,
+		});
 
 		await subn8n.ndv.clickBackToCanvasButton();
 		await subn8n.canvas.saveWorkflow();
