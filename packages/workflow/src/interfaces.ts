@@ -924,13 +924,13 @@ export type DataStoreProxyProvider = {
 	getDataStoreAggregateProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectAggregateService>;
 	getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId: string,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectService>;
 };
 
@@ -1053,6 +1053,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
+		| 'startJob'
 		| 'helpers'
 	> & {
 		getNextRunIndex(): number;

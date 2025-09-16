@@ -105,7 +105,23 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	// Find the first child that has a main input connection to account for nested subnodes
+	const findRootWithMainConnection = (nodeName: string): string | null => {
+		const children = props.workflowObject.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			// Check if this child has main input connections
+			const parentNodes = props.workflowObject.getParentNodes(childName, NodeConnectionTypes.Main);
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	};
+
+	return findRootWithMainConnection(activeNode.value.name);
 });
 
 const hasRootNodeRun = computed(() => {
@@ -461,21 +477,23 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<N8nText v-if="nodeNotRunMessageVariant === 'simple'" color="text-base" size="small">
-					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
-						<template #link>
-							<NodeExecuteButton
-								:class="$style.executeButton"
-								size="medium"
-								:node-name="nodeNameToExecute"
-								:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
-								text
-								telemetry-source="inputs"
-								hide-icon
-							/>
-						</template>
-					</I18nT>
-				</N8nText>
+				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
+					<template #description>
+						<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+							<template #link>
+								<NodeExecuteButton
+									:class="$style.executeButton"
+									size="large"
+									:node-name="nodeNameToExecute"
+									:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+									text
+									telemetry-source="inputs"
+									hide-icon
+								/>
+							</template>
+						</I18nT>
+					</template>
+				</NDVEmptyState>
 
 				<template v-else-if="isNDVV2">
 					<NDVEmptyState

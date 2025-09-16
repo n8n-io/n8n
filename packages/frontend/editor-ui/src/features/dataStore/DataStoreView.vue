@@ -7,7 +7,6 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
@@ -59,23 +58,6 @@ const currentProject = computed(() => {
 		return projectsStore.personalProject;
 	}
 	return projectsStore.currentProject;
-});
-
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return currentProject.value?.name ?? '';
-});
-
-const emptyCalloutDescription = computed(() => {
-	return projectPages.isOverviewSubPage ? i18n.baseText('dataStore.empty.description') : '';
-});
-
-const emptyCalloutButtonText = computed(() => {
-	return i18n.baseText('dataStore.empty.button.label', {
-		interpolate: { projectName: projectName.value },
-	});
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -160,8 +142,8 @@ watch(
 			<n8n-action-box
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
-				:description="emptyCalloutDescription"
-				:button-text="emptyCalloutButtonText"
+				:description="i18n.baseText('dataStore.empty.description')"
+				:button-text="i18n.baseText('dataStore.add.button.label')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>

@@ -26,9 +26,9 @@ export class TestEntryComposer {
 	}
 
 	/**
-	 * Start UI test from a workflow in a new project
+	 * Start UI test from a workflow in a new project on a new canvas
 	 */
-	async fromNewProject() {
+	async fromNewProjectBlankCanvas() {
 		// Enable features to allow us to create a new project
 		await this.n8n.api.enableFeature('projectRole:admin');
 		await this.n8n.api.enableFeature('projectRole:editor');
@@ -40,6 +40,20 @@ export class TestEntryComposer {
 		const projectId = response.id;
 		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
 		await this.n8n.canvas.canvasPane().isVisible();
+		return projectId;
+	}
+
+	async fromNewProject() {
+		// Enable features to allow us to create a new project
+		await this.n8n.api.enableFeature('projectRole:admin');
+		await this.n8n.api.enableFeature('projectRole:editor');
+		await this.n8n.api.setMaxTeamProjectsQuota(-1);
+
+		// Create a project using the API
+		const response = await this.n8n.api.projectApi.createProject();
+
+		const projectId = response.id;
+		await this.n8n.navigate.toProject(projectId);
 		return projectId;
 	}
 

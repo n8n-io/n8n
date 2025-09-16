@@ -19,7 +19,7 @@ RUNNER_NAME = "Python Task Runner"
 DEFAULT_MAX_CONCURRENCY = 5  # tasks
 DEFAULT_MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB
 DEFAULT_TASK_TIMEOUT = 60  # seconds
-DEFAULT_AUTO_SHUTDOWN_TIMEOUT = 15  # seconds
+DEFAULT_AUTO_SHUTDOWN_TIMEOUT = 0  # seconds
 DEFAULT_SHUTDOWN_TIMEOUT = 10  # seconds
 OFFER_INTERVAL = 0.25  # 250ms
 OFFER_VALIDITY = 5000  # ms
@@ -144,4 +144,3 @@ ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
-ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"

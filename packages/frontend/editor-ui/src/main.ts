@@ -15,7 +15,8 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import { i18nInstance } from '@n8n/i18n';
+import { i18nInstance, setLanguage } from '@n8n/i18n';
+
 import { TelemetryPlugin } from './plugins/telemetry';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
@@ -33,6 +34,17 @@ const pinia = createPinia();
 const app = createApp(App);
 
 app.use(SentryPlugin);
+
+// Initialize i18n
+if (import.meta.env.DEV) {
+	// Import HMR owner early so messages are seeded before app mount
+	await import('@/dev/i18nHmr');
+	setLanguage('en');
+} else {
+	// Production: load English messages explicitly via isolated module
+	const { loadDefaultEn } = await import('@/i18n/loadDefaultEn');
+	await loadDefaultEn();
+}
 
 // Register module routes
 // We do this here so landing straight on a module page works
