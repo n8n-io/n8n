@@ -556,7 +556,7 @@ jobs:
 
   security-scan:
     name: Security Scan
-    needs: [determine-build-context, build-and-push-docker]
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
