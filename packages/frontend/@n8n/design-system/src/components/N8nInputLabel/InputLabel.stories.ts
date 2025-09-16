@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';

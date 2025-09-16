@@ -7,6 +7,7 @@ import type {
 	ValueFormatterParams,
 } from 'ag-grid-community';
 import type { Ref } from 'vue';
+import { DateTime } from 'luxon';
 import type { DataStoreColumn, DataStoreRow } from '@/features/dataStore/datastore.types';
 import {
 	ADD_ROW_ROW_ID,
@@ -98,7 +99,8 @@ export const dateValueFormatter = (
 ): string => {
 	const value = params.value;
 	if (value === null || value === undefined) return '';
-	return value.toISOString();
+	// Format using user's local timezone (includes offset)
+	return DateTime.fromJSDate(value).toISO() ?? '';
 };
 
 const numberWithSpaces = (num: number) => {
