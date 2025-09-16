@@ -930,9 +930,8 @@ export function applyPaginationRequestData(
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
-	return new ClientOAuth2({
+	const options: ClientOAuth2Options = {
 		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
 		scopes: (credentials.scope as string).split(' '),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
@@ -942,7 +941,14 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 				fallbackValue: {},
 			}),
 		}),
-	});
+	};
+
+	// Only include clientSecret if it's provided (supports PKCE flows without client secret)
+	if (credentials.clientSecret && credentials.clientSecret.trim() !== '') {
+		options.clientSecret = credentials.clientSecret;
+	}
+
+	return new ClientOAuth2(options);
 }
 
 /** @deprecated make these requests using httpRequestWithAuthentication */

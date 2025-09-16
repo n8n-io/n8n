@@ -63,8 +63,28 @@ export class OAuth2Api implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			displayOptions: {
+				show: {
+					grantType: ['authorizationCode', 'clientCredentials'],
+				},
+			},
 			default: '',
 			required: true,
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					grantType: ['pkce'],
+				},
+			},
+			default: '',
+			description: 'Optional for public clients using PKCE. Some providers may still require it.',
 		},
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes
 		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
