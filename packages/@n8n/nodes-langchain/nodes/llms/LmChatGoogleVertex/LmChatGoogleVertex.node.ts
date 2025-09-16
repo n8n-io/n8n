@@ -16,7 +16,7 @@ import {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
-import { additionalOptions } from '../gemini-common/additional-options';
+import { getAdditionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -90,7 +90,7 @@ export class LmChatGoogleVertex implements INodeType {
 					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
 				default: 'gemini-1.5-flash',
 			},
-			additionalOptions,
+			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
 
