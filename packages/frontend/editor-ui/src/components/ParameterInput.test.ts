@@ -15,7 +15,7 @@ import {
 	createMockEnterpriseSettings,
 	createTestNode,
 	createTestWorkflowObject,
-	createTestNodeProperty,
+	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
@@ -681,12 +681,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: createTestNodeProperty(),
+					parameter: createTestNodeProperties(),
 					modelValue: '',
 				},
 			});
 
-			await fireEvent(rendered.container.querySelector('.parameter-input')!, new Event('focusin'));
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -696,12 +696,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: createTestNodeProperty({ typeOptions: { editor: 'sqlEditor' } }),
+					parameter: createTestNodeProperties({ typeOptions: { editor: 'sqlEditor' } }),
 					modelValue: 'SELECT 1;',
 				},
 			});
 
-			await fireEvent(rendered.container.querySelector('.parameter-input')!, new Event('focusin'));
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -711,12 +711,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: createTestNodeProperty(),
+					parameter: createTestNodeProperties(),
 					modelValue: '={{$today}}',
 				},
 			});
 
-			await fireEvent(rendered.container.querySelector('.parameter-input')!, new Event('focusin'));
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -726,12 +726,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: createTestNodeProperty({ isNodeSetting: true }),
+					parameter: createTestNodeProperties({ isNodeSetting: true }),
 					modelValue: '',
 				},
 			});
 
-			await fireEvent(rendered.container.querySelector('.parameter-input')!, new Event('focusin'));
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
 		});
@@ -741,12 +741,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: createTestNodeProperty({ type: 'dateTime' }),
+					parameter: createTestNodeProperties({ type: 'dateTime' }),
 					modelValue: '',
 				},
 			});
 
-			await fireEvent(rendered.container.querySelector('.parameter-input')!, new Event('focusin'));
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
 		});

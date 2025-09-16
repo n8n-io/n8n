@@ -60,7 +60,6 @@ defineExpose({
 				ref="content"
 				:tabindex="-1"
 				:class="[$style.inputPanel, 'ignore-key-press-canvas']"
-				:style="{}"
 				:workflow-object="workflow"
 				:run-index="0"
 				compact

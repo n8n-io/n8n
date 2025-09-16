@@ -218,7 +218,7 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 	};
 }
 
-export function createTestNodeProperty(data: Partial<INodeProperties> = {}) {
+export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
 	return {
 		displayName: 'Name',
 		name: 'name',
