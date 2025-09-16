@@ -24,17 +24,12 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 
-		try {
-			const { ensureDir } = await import('fs-extra');
-			await ensureDir(outputDir);
+		const { ensureDir } = await import('fs-extra');
+		await ensureDir(outputDir);
 
-			// TODO: Export entities
+		// TODO: Export entities
 
-			this.logger.info('✅ Task completed successfully! \n');
-		} catch (error) {
-			this.logger.error('❌ Error exporting entities:', error);
-			throw error;
-		}
+		this.logger.info('✅ Task completed successfully! \n');
 	}
 
 	async catch(error: Error) {
