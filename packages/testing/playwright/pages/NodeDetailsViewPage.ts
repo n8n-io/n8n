@@ -166,6 +166,14 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-collection-drop-area');
 	}
 
+	getAssignmentCollectionDropArea() {
+		return this.page.getByTestId('assignment-collection-drop-area');
+	}
+
+	async clickAssignmentCollectionDropArea() {
+		await this.getAssignmentCollectionDropArea().click();
+	}
+
 	getAssignmentValue(paramName: string) {
 		return this.page
 			.getByTestId(`assignment-collection-${paramName}`)
@@ -721,6 +729,18 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getNodeRunTooltipIndicator() {
 		return this.page.getByTestId('node-run-info');
+	}
+
+	getStaleNodeIndicator() {
+		return this.page.getByTestId('node-run-info-stale');
+	}
+
+	getExecuteStepButton() {
+		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+	}
+
+	async clickExecuteStep() {
+		await this.getExecuteStepButton().click();
 	}
 
 	async openSettings() {

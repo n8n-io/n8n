@@ -1,4 +1,5 @@
 import type { Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
@@ -721,30 +722,22 @@ export class CanvasPage extends BasePage {
 	}
 
 	/**
-	 * Check if canvas is in a ready/interactive state
-	 * @returns true if canvas is ready for interaction
+	 * Wait for canvas to be ready for interaction
 	 */
-	async isCanvasReady(): Promise<boolean> {
-		return await this.page.evaluate(() => {
-			// Check for loading states
-			const loadingElements = document.querySelectorAll(
-				'[data-test-id*="loading"], .loading, .spinner',
-			);
-			if (loadingElements.length > 0) return false;
-
-			const canvas = document.querySelector('[data-test-id="canvas"]');
-			if (!canvas) return false;
-
-			const isDisabled =
-				canvas.hasAttribute('disabled') ||
-				canvas.classList.contains('disabled') ||
-				canvas.getAttribute('aria-disabled') === 'true';
-
-			return !isDisabled;
-		});
+	async waitForCanvasReady(): Promise<void> {
+		await this.page.waitForLoadState();
+		await expect(this.getCanvasNodes().first()).toBeVisible();
 	}
 
 	waitingForTriggerEvent() {
 		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
+	}
+
+	getNodeSuccessStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-success');
+	}
+
+	getNodeWarningStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
 	}
 }

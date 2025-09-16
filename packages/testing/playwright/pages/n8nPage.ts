@@ -24,6 +24,7 @@ import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
+import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
@@ -66,6 +67,7 @@ export class n8nPage {
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly credentialsComposer: CredentialsComposer;
+	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
@@ -106,6 +108,7 @@ export class n8nPage {
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.credentialsComposer = new CredentialsComposer(this);
+		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers
