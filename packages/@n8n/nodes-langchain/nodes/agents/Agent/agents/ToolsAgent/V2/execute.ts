@@ -265,7 +265,13 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				const chatHistory = await memory?.chatHistory.getMessages();
+				// Get chat history respecting the context window length configured in memory
+				let chatHistory;
+				if (memory) {
+					// Load memory variables to respect context window length
+					const memoryVariables = await memory.loadMemoryVariables({});
+					chatHistory = memoryVariables['chat_history'];
+				}
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,
