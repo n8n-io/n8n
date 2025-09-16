@@ -47,9 +47,8 @@ const onDropdownVisibleChange = (visible: boolean) => {
 };
 
 const checkFilterStatus = () => {
-	const gridApi = props.params.api;
 	const columnId = props.params.column.getColId();
-	const filterModel = gridApi.getFilterModel();
+	const filterModel = props.params.api.getFilterModel();
 	hasActiveFilter.value = filterModel && Boolean(filterModel[columnId]);
 };
 
@@ -57,17 +56,10 @@ const checkSortStatus = () => {
 	currentSort.value = props.params.column.getSort() ?? null;
 };
 
-const isDropdownVisible = computed(() => {
+const areButtonsVisible = computed(() => {
 	return (
 		props.params.allowMenuActions &&
 		(isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value)
-	);
-});
-
-const isFilterVisible = computed(() => {
-	return (
-		props.params.column.getColDef().filter &&
-		(isHovered.value || isFilterOpen.value || isDropdownOpen.value || hasActiveFilter.value)
 	);
 });
 
@@ -164,7 +156,7 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
-			v-show="isFilterVisible"
+			v-show="areButtonsVisible"
 			icon="filter"
 			type="tertiary"
 			text
@@ -173,7 +165,7 @@ onUnmounted(() => {
 		/>
 
 		<N8nActionDropdown
-			v-show="isDropdownVisible"
+			v-show="areButtonsVisible"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"

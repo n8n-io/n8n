@@ -117,7 +117,6 @@ export const numberValueFormatter = (
 	return numberWithSpaces(value);
 };
 
-// Common filter operators
 const NULL_FILTER_OPTION = {
 	displayKey: 'null',
 	displayName: 'Is Null',

@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from 'vue';
-import type { ColDef, GridApi, FilterModel } from 'ag-grid-community';
+import type { ColDef, GridApi } from 'ag-grid-community';
 import type { DataStoreRow } from '@/features/dataStore/datastore.types';
 
 type BackendFilterCondition = 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
@@ -11,8 +11,30 @@ type BackendFilterRecord = {
 };
 
 type BackendFilter = {
-	type: 'and' | 'or';
+	type: 'and';
 	filters: BackendFilterRecord[];
+};
+
+type FilterModel = {
+	[colId: string]: {
+		filterType: 'text' | 'number' | 'date';
+		filter?: string;
+		type:
+			| 'contains'
+			| 'equals'
+			| 'notEqual'
+			| 'startsWith'
+			| 'endsWith'
+			| 'isEmpty'
+			| 'notEmpty'
+			| 'null'
+			| 'notNull'
+			| 'true'
+			| 'false'
+			| 'inRange';
+		dateFrom?: string;
+		dateTo?: string;
+	};
 };
 
 export type UseDataStoreColumnFiltersParams = {
@@ -121,18 +143,6 @@ export const useDataStoreColumnFilters = ({
 
 			if (!filterType) continue;
 
-			// TODO: do we need this?
-			// if (filterType === 'set') {
-			// 	const values: Array<string | number | boolean | null> | undefined = filter.values;
-			// 	if (!values || values.length === 0) continue;
-			// 	// If both true/false selected (or multiple values), skip as it's effectively no filter
-			// 	if (values.length === 1) {
-			// 		const only = values[0];
-			// 		filters.push({ columnName: colField, condition: 'eq', value: only as boolean | null });
-			// 	}
-			// 	continue;
-			// }
-
 			let value: string | number | boolean | Date | null = filter.filter ?? null;
 
 			switch (filter.filterType) {
@@ -175,14 +185,12 @@ export const useDataStoreColumnFilters = ({
 					if (filter.type === 'null' || filter.type === 'notNull') {
 						value = null;
 					} else {
-						const filterStr = typeof filter.dateFrom === 'string' ? filter.dateFrom : undefined;
-						if (filterStr) {
-							value = new Date(String(filterStr)).toISOString();
+						if (filter.dateFrom) {
+							value = new Date(String(filter.dateFrom)).toISOString();
 						}
-						const filterToStr = typeof filter.dateTo === 'string' ? filter.dateTo : undefined;
-						if (filter.type === 'inRange' && filterStr && filterToStr) {
-							const fromIso = new Date(String(filterStr)).toISOString();
-							const toIso = new Date(String(filterToStr)).toISOString();
+						if (filter.type === 'inRange' && filter.dateFrom && filter.dateTo) {
+							const fromIso = new Date(String(filter.dateFrom)).toISOString();
+							const toIso = new Date(String(filter.dateTo)).toISOString();
 							filters.push({ columnName: colField, condition: 'gte', value: fromIso });
 							filters.push({ columnName: colField, condition: 'lte', value: toIso });
 							break; // Skip the normal filter push below
@@ -201,7 +209,7 @@ export const useDataStoreColumnFilters = ({
 		}
 
 		if (filters.length === 0) return undefined;
-		return { type: model.operator || 'and', filters };
+		return { type: 'and', filters };
 	}
 
 	const onFilterChanged = () => {

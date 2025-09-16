@@ -87,26 +87,23 @@ const dataStoreGridBase = useDataStoreGridBase({
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-// Column filters
 const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
 	gridApi: dataStoreGridBase.gridApi,
 	colDefs: dataStoreGridBase.colDefs,
 	setGridData: dataStoreGridBase.setGridData,
 });
 
-// Pagination
 const {
 	currentPage,
 	pageSize,
-	pageSizeOptions,
 	totalItems,
+	pageSizeOptions,
+	ensureItemOnPage,
 	setTotalItems,
 	setCurrentPage,
 	setPageSize,
-	ensureItemOnPage,
 } = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
 
-// Data store content
 const selection = useDataStoreSelection({
 	gridApi: dataStoreGridBase.gridApi,
 });
@@ -183,7 +180,6 @@ defineExpose({
 <template>
 	<div ref="gridContainerRef" :class="$style.wrapper">
 		<div
-			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
 			data-test-id="data-store-grid"
 		>
