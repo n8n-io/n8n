@@ -135,7 +135,7 @@ test.describe('Security Notifications', () => {
 			await expect(notification).toContainText('More info');
 
 			// Verify warning styling
-			await expect(notification.locator('.el-notification--warning')).toBeVisible();
+			await expect(n8n.notifications.getWarningNotifications()).toBeVisible();
 
 			// Close the notification
 			await n8n.notifications.closeNotificationByText('Critical update available');
