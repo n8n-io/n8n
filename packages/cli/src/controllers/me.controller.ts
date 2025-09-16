@@ -145,17 +145,14 @@ export class MeController {
 				throw new InvalidMfaCodeError();
 			}
 		} else {
-			// TODO: verify if there is a case where a so called "shell user" that has a null password should be able to change their email.
-			// Because right now there is a unit test inside "me.api.test.ts" that tests exactly that case.
 			if (currentUser.password === null) {
-				// This code is expected to not be reached, as users with external identity
-				// providers should be handled in the code above.
-				this.logger.debug('Request to change user email failed because user has no password set', {
+				this.logger.debug('User with no password changed their email', {
 					userId: currentUser.id,
 					payload: payloadWithoutPassword,
 				});
-				throw new ForbiddenError('Cannot verify email change');
+				return;
 			}
+
 			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
 				throw new BadRequestError('Current password is required to change email');
 			}
