@@ -22,6 +22,10 @@ interface Props
 	 */
 	enableSlideIn?: boolean;
 	/**
+	 * Whether to suppress auto-focus behavior when the content includes focusable element
+	 */
+	suppressAutoFocus?: boolean;
+	/**
 	 * Scrollbar visibility behavior
 	 */
 	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
@@ -51,9 +55,16 @@ const props = withDefaults(defineProps<Props>(), {
 	scrollType: 'hover',
 	sideOffset: 5,
 	sideFlip: undefined,
+	suppressAutoFocus: false,
 });
 
 const emit = defineEmits<Emits>();
+
+function handleOpenAutoFocus(e: Event) {
+	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -70,6 +81,7 @@ const emit = defineEmits<Emits>();
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width }"
 				:reference="reference"
+				@open-auto-focus="handleOpenAutoFocus"
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"

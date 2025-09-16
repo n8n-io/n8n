@@ -54,6 +54,7 @@ defineExpose({
 		:content-class="$style.popover"
 		:enable-slide-in="false"
 		:enable-scrolling="false"
+		:suppress-auto-focus="true"
 	>
 		<template #content>
 			<div ref="content" :class="[$style.dropdown, 'ignore-key-press-canvas']">
