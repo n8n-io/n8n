@@ -17,7 +17,7 @@ const changelogStream = conventionalChangelog({
 	releaseCount: 1,
 	tagPrefix: 'n8n@',
 	transform: (commit, callback) => {
-		const hasNoChangelogInHeader = commit.header && commit.header.includes('(no-changelog)');
+		const hasNoChangelogInHeader = commit.header.includes('(no-changelog)');
 		const isBenchmarkScope = commit.scope === 'benchmark';
 
 		// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
@@ -25,7 +25,7 @@ const changelogStream = conventionalChangelog({
 	},
 }).on('error', (err) => {
 	console.error(err.stack);
-	throw err;
+	process.exit(1);
 });
 
 // Write the new changelog to a new temporary file, so that the contents can be used in the PR description
