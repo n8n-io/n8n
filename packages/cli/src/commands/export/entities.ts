@@ -32,7 +32,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info('✅ Task completed successfully! \n');
 	}
 
-	async catch(error: Error) {
+	catch(error: Error) {
 		this.logger.error('❌ Error exporting entities. See log messages for details. \n');
 		this.logger.error('Error details:');
 		this.logger.error('\n====================================\n');
