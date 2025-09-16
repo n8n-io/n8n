@@ -55,7 +55,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			const options = {
 				limit: !args.autoCutLimit ? k : undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
-				alpha: args.alpha ?? 0.75,
+				alpha: args.alpha ?? undefined,
 				vector: query,
 				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
