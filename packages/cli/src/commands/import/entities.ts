@@ -21,6 +21,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 	async run() {
 		const inputDir = this.flags.inputDir;
 
+		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity import...');
 		this.logger.info(`📁 Input directory: ${inputDir}`);
 
