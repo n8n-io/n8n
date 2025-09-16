@@ -22,14 +22,16 @@ export async function supabaseApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	itemIndex?: number,
 ) {
 	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
 	}>('supabaseApi');
 
-	if (this.getNodeParameter('useCustomSchema', false)) {
-		const schema = this.getNodeParameter('schema', 'public');
+	const index = itemIndex ?? 0;
+	if (this.getNodeParameter('useCustomSchema', index, false)) {
+		const schema = this.getNodeParameter('schema', index, 'public');
 		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
 			headers['Content-Profile'] = schema;
 		} else if (['GET', 'HEAD'].includes(method)) {

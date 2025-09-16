@@ -177,11 +177,6 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				try {
-					const useCustomSchema = this.getNodeParameter('useCustomSchema', 0, false) as boolean;
-					const schema = this.getNodeParameter('schema', 0, 'public') as string;
-					const headers: IDataObject = {};
-					if (useCustomSchema) headers['Content-Profile'] = schema;
-
 					const createdRows: IDataObject[] = await supabaseApiRequest.call(
 						this,
 						'POST',
@@ -189,7 +184,8 @@ export class Supabase implements INodeType {
 						records,
 						{},
 						undefined,
-						headers,
+						{},
+						0,
 					);
 					createdRows.forEach((row, i) => {
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -214,6 +210,7 @@ export class Supabase implements INodeType {
 			if (operation === 'delete') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
@@ -245,12 +242,9 @@ export class Supabase implements INodeType {
 					let rows;
 
 					try {
-						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
-						const schema = this.getNodeParameter('schema', i, 'public') as string;
-						const headers: IDataObject = {};
-						if (useCustomSchema) headers['Content-Profile'] = schema;
-
-						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs, undefined, headers);
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
+						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs, undefined, {}, i);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -275,6 +269,7 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
 					Object.assign(qs, data);
@@ -289,12 +284,9 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
-						const schema = this.getNodeParameter('schema', i, 'public') as string;
-						const headers: IDataObject = {};
-						if (useCustomSchema) headers['Accept-Profile'] = schema;
-
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, headers);
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, {}, i);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -353,11 +345,7 @@ export class Supabase implements INodeType {
 					try {
 						let responseLength = 0;
 						do {
-							const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
-							const schema = this.getNodeParameter('schema', i, 'public') as string;
-							const headers: IDataObject = {};
-							if (useCustomSchema) headers['Accept-Profile'] = schema;
-
+							// reset qs per pagination iteration to isolate headers/qs
 							const newRows = await supabaseApiRequest.call(
 								this,
 								'GET',
@@ -365,7 +353,8 @@ export class Supabase implements INodeType {
 								{},
 								qs,
 								undefined,
-								headers,
+								{},
+								i,
 							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
@@ -395,6 +384,7 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -445,11 +435,8 @@ export class Supabase implements INodeType {
 					let updatedRow;
 
 					try {
-						const useCustomSchema = this.getNodeParameter('useCustomSchema', i, false) as boolean;
-						const schema = this.getNodeParameter('schema', i, 'public') as string;
-						const headers: IDataObject = {};
-						if (useCustomSchema) headers['Content-Profile'] = schema;
-
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
 						updatedRow = await supabaseApiRequest.call(
 							this,
 							'PATCH',
@@ -457,7 +444,8 @@ export class Supabase implements INodeType {
 							record,
 							qs,
 							undefined,
-							headers,
+							{},
+							i,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
