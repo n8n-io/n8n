@@ -709,7 +709,7 @@ export class CanvasPage extends BasePage {
 				if (transform && transform !== 'none') {
 					const matrix = transform.match(/matrix\(([^)]+)\)/);
 					if (matrix) {
-						const values = matrix[1].split(', ');
+						const values = matrix[1].split(',').map((v) => v.trim());
 						return parseFloat(values[0]); // First value is scaleX
 					}
 				}

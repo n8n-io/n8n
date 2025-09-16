@@ -65,9 +65,14 @@ export class CanvasComposer {
 	 * Zoom in and validate that zoom functionality works
 	 */
 	async zoomInAndCheckNodes(): Promise<void> {
+		await this.n8n.canvas.getCanvasNodes().first().waitFor();
+
 		const initialNodeSize = await this.n8n.page.evaluate(() => {
 			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			return firstNode ? firstNode.getBoundingClientRect().width : 0;
+			if (!firstNode) {
+				throw new Error('Canvas node not found during initial measurement');
+			}
+			return firstNode.getBoundingClientRect().width;
 		});
 
 		for (let i = 0; i < 4; i++) {
@@ -76,7 +81,10 @@ export class CanvasComposer {
 
 		const finalNodeSize = await this.n8n.page.evaluate(() => {
 			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			return firstNode ? firstNode.getBoundingClientRect().width : 0;
+			if (!firstNode) {
+				throw new Error('Canvas node not found during final measurement');
+			}
+			return firstNode.getBoundingClientRect().width;
 		});
 
 		// Validate zoom increased node sizes by at least 50%
