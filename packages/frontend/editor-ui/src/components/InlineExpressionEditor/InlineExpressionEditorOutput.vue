@@ -4,12 +4,11 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
-import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
+import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useElementSize } from '@vueuse/core';
 import { N8nPopoverReka, N8nText } from '@n8n/design-system';
 
 interface InlineExpressionEditorOutputProps {
@@ -22,7 +21,7 @@ interface InlineExpressionEditorOutputProps {
 	virtualRef?: HTMLElement;
 }
 
-const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -33,7 +32,6 @@ const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
 const contentRef = useTemplateRef('content');
-const virtualRefSize = useElementSize(computed(() => props.virtualRef));
 
 onBeforeUnmount(() => {
 	ndvStore.expressionOutputItemIndex = 0;
@@ -48,12 +46,14 @@ defineExpose({
 	<N8nPopoverReka
 		:open="visible"
 		side="bottom"
+		:side-flip="false"
 		:side-offset="0"
 		align="start"
 		:reference="virtualRef"
-		:width="`${virtualRefSize.width.value}px`"
+		width="var(--reka-popper-anchor-width)"
 		:content-class="$style.popover"
 		:enable-slide-in="false"
+		:enable-scrolling="false"
 	>
 		<template #content>
 			<div ref="content" :class="[$style.dropdown, 'ignore-key-press-canvas']">
