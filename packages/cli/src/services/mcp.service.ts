@@ -1,14 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { type FindOptionsWhere, In, Like } from '@n8n/typeorm';
+import { User } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 import z from 'zod';
 
 import { UrlService } from './url.service';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createSearchWorkflowsTool } from './mcp/tools/search-workflows.tool';
 
@@ -16,6 +15,7 @@ import { createSearchWorkflowsTool } from './mcp/tools/search-workflows.tool';
 export class McpService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
 	) {}
@@ -167,12 +167,7 @@ export class McpService {
 			},
 		);
 
-		const workflowRepository = Container.get(WorkflowRepository);
-		const workflowSearchTool = createSearchWorkflowsTool(
-			user,
-			this.workflowFinderService,
-			workflowRepository,
-		);
+		const workflowSearchTool = createSearchWorkflowsTool(user, this.workflowService);
 
 		server.registerTool(
 			workflowSearchTool.name,
