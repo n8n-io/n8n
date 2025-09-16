@@ -2438,18 +2438,20 @@ export interface RelatedExecution {
 	workflowId: string;
 }
 
+type SubNodeExecutionDataAction = {
+	nodeName: string;
+	runIndex: number;
+	action: EngineRequest['actions'][number];
+	response?: object;
+};
+
 export interface ITaskMetadata {
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
 	subNodeExecutionData?: {
-		actions: Array<{
-			nodeName: string;
-			runIndex: number;
-			action: EngineRequest['actions'][number];
-			response?: object;
-		}>;
+		actions: SubNodeExecutionDataAction[];
 		metadata: object;
 	};
 }
