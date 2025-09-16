@@ -923,7 +923,7 @@
     "mongodb": "6.11.0",
     "mqtt": "5.7.2",
     "mssql": "10.0.2",
-    "mysql2": "3.11.0",
+    "mysql2": "catalog:",
     "n8n-workflow": "workspace:*",
     "node-html-markdown": "1.2.0",
     "node-ssh": "13.2.0",
