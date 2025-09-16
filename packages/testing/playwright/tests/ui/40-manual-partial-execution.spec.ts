@@ -24,10 +24,10 @@ test.describe('Manual partial execution', () => {
 		test('should execute from the first dirty node up to the current node', async ({ n8n }) => {
 			const nodeNames = ['A', 'B', 'C'];
 
-			await n8n.partialExecutionComposer.setupPartialExecutionWorkflow(
-				'Test_workflow_partial_execution_v2.json',
-				true,
-			);
+			await n8n.navigate.toWorkflow('new');
+			await n8n.partialExecutionComposer.enablePartialExecutionV2();
+			await n8n.start.fromImportedWorkflow('Test_workflow_partial_execution_v2.json');
+			await n8n.canvas.clickZoomToFitButton();
 
 			await n8n.partialExecutionComposer.executeFullWorkflowAndVerifySuccess(nodeNames);
 

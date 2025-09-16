@@ -1,4 +1,3 @@
-import type { Response } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -46,19 +45,8 @@ export class CanvasComposer {
 	 */
 	async switchBetweenEditorAndHistory(): Promise<void> {
 		await this.n8n.page.getByTestId('workflow-history-button').click();
-		await this.n8n.page.waitForResponse(
-			(response: Response) =>
-				response.url().includes('/rest/workflow-history/workflow/') && response.status() === 200,
-		);
-
 		await this.n8n.page.getByTestId('workflow-history-close-button').click();
-		await this.n8n.page.waitForResponse(
-			(response: Response) =>
-				response.url().includes('/rest/workflows/') && response.status() === 200,
-		);
-
 		await this.n8n.page.waitForLoadState();
-
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -68,26 +56,7 @@ export class CanvasComposer {
 	 */
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.page.getByTestId('menu-item').first().click();
-		await Promise.all([
-			this.n8n.page.waitForResponse(
-				(response: Response) => response.url().includes('/rest/users') && response.status() === 200,
-			),
-			this.n8n.page.waitForResponse(
-				(response: Response) =>
-					response.url().includes('/rest/workflows') && response.status() === 200,
-			),
-			this.n8n.page.waitForResponse(
-				(response: Response) =>
-					response.url().includes('/rest/active-workflows') && response.status() === 200,
-			),
-			this.n8n.page.waitForResponse(
-				(response: Response) =>
-					response.url().includes('/rest/projects') && response.status() === 200,
-			),
-		]);
-
 		await this.n8n.page.getByTestId('resources-list-item-workflow').first().click();
-
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}

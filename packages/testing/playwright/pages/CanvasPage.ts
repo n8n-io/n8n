@@ -1,5 +1,4 @@
 import type { Locator } from '@playwright/test';
-import { expect } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
@@ -719,14 +718,6 @@ export class CanvasPage extends BasePage {
 			// Fallback: return default zoom level
 			return 1.0;
 		});
-	}
-
-	/**
-	 * Wait for canvas to be ready for interaction
-	 */
-	async waitForCanvasReady(): Promise<void> {
-		await this.page.waitForLoadState();
-		await expect(this.getCanvasNodes().first()).toBeVisible();
 	}
 
 	waitingForTriggerEvent() {

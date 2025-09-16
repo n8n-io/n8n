@@ -20,28 +20,6 @@ export class PartialExecutionComposer {
 	}
 
 	/**
-	 * Sets up a workflow for partial execution testing
-	 * @param workflowFileName - The JSON workflow file to import
-	 * @param enableV2 - Whether to enable partial execution v2 (default: false)
-	 */
-	async setupPartialExecutionWorkflow(
-		workflowFileName: string,
-		enableV2: boolean = false,
-	): Promise<void> {
-		// Navigate home first to ensure clean state
-		await this.n8n.goHome();
-
-		// Enable v2 if requested
-		if (enableV2) {
-			await this.enablePartialExecutionV2();
-		}
-
-		// Import the workflow
-		await this.n8n.start.fromImportedWorkflow(workflowFileName);
-		await this.n8n.canvas.clickZoomToFitButton();
-	}
-
-	/**
 	 * Executes a full workflow and verifies all nodes show success status
 	 * @param nodeNames - Array of node names to verify
 	 */
