@@ -80,6 +80,16 @@ export class S3 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const extractRegion = (soapResponse: unknown): string => {
+			const response = soapResponse as { LocationConstraint?: unknown };
+			const location = response?.LocationConstraint as
+				| string
+				| { _: string | undefined }
+				| undefined;
+			if (typeof location === 'string') return location || 'us-east-1';
+			if (location && typeof location === 'object') return location._ || 'us-east-1';
+			return 'us-east-1';
+		};
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
@@ -229,7 +239,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._ as string;
+						const region = extractRegion(responseData) as string;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -295,7 +305,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -324,7 +334,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						responseData = await s3ApiRequestSOAPAllItems.call(
 							this,
@@ -420,7 +430,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -558,7 +568,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -597,7 +607,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						region = region.LocationConstraint._;
+						region = extractRegion(region) as string;
 
 						const response = await s3ApiRequestREST.call(
 							this,
@@ -656,7 +666,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -699,7 +709,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -833,7 +843,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = responseData.LocationConstraint._;
+						const region = extractRegion(responseData) as string;
 
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
