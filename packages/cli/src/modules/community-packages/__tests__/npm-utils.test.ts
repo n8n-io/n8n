@@ -362,7 +362,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			]);
 		});
 
-		it('should fallback to npm CLI and return false when version does not match', async () => {
+		it('should fallback to npm CLI and throw error when version does not match', async () => {
 			const differentVersion = '2.0.0';
 
 			nock(registryUrl)
@@ -374,8 +374,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				stderr: '',
 			});
 
-			const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl);
-			expect(result).toBe(false);
+			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
+				new UnexpectedError('Failed to check package version existence'),
+			);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
