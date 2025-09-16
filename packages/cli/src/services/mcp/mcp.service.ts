@@ -4,12 +4,12 @@ import { Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 import z from 'zod';
 
-import { UrlService } from './url.service';
-
+import { CredentialsService } from '@/credentials/credentials.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { createSearchWorkflowsTool } from './mcp/tools/search-workflows.tool';
+
+import { UrlService } from '../url.service';
+import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 @Service()
 export class McpService {

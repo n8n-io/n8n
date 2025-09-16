@@ -4,7 +4,7 @@ import z from 'zod';
 import type { ListQuery } from '@/requests';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { ToolDefinition } from '../types';
+import type { ToolDefinition } from '../mcp.types';
 
 const inputSchema = {
 	limit: z.number().optional().describe('Limit the number of results'),

@@ -75,7 +75,6 @@ export class AuthService {
 	createAuthMiddleware(allowSkipMFA: boolean, apiKeyAuth: boolean = false) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
-			// TODO: Check if there is a better way to handle this
 			if (apiKeyAuth) {
 				await this.checkAPIKey(req, res, next);
 				return;
@@ -134,6 +133,7 @@ export class AuthService {
 
 		try {
 			const user = await this.getUserForApiKey(apiKey);
+			// TODO: Make sure deleted users can't use their API keys
 			req.user = user;
 			next();
 		} catch (error) {
