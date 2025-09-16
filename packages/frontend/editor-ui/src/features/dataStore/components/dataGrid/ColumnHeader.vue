@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IHeaderParams, SortDirection } from 'ag-grid-community';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { N8nActionDropdown } from '@n8n/design-system';
@@ -22,6 +22,7 @@ const isHovered = ref(false);
 const isDropdownOpen = ref(false);
 const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 const isFilterOpen = ref(false);
+const hasActiveFilter = ref(false);
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -45,16 +46,24 @@ const onDropdownVisibleChange = (visible: boolean) => {
 	isDropdownOpen.value = visible;
 };
 
+const checkFilterStatus = () => {
+	const gridApi = props.params.api;
+	const columnId = props.params.column.getColId();
+	const filterModel = gridApi.getFilterModel();
+	hasActiveFilter.value = filterModel && Boolean(filterModel[columnId]);
+};
+
 const isDropdownVisible = computed(() => {
 	return (
-		props.params.allowMenuActions && (isHovered.value || isDropdownOpen.value || isFilterOpen.value)
+		props.params.allowMenuActions &&
+		(isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value)
 	);
 });
 
 const isFilterVisible = computed(() => {
 	return (
 		props.params.column.getColDef().filter &&
-		(isHovered.value || isFilterOpen.value || isDropdownOpen.value)
+		(isHovered.value || isFilterOpen.value || isDropdownOpen.value || hasActiveFilter.value)
 	);
 });
 
@@ -110,6 +119,21 @@ const onShowFilter = (e: MouseEvent) => {
 	isFilterOpen.value = true;
 	props.params.showFilter(e.target as HTMLElement);
 };
+
+const onFilterClosed = () => {
+	isFilterOpen.value = false;
+};
+
+onMounted(() => {
+	props.params.api.addEventListener('filterChanged', checkFilterStatus);
+	// TODO: this event is marked as internal. What can we use instead?
+	props.params.api.addEventListener('filterClosed', onFilterClosed);
+});
+
+onUnmounted(() => {
+	props.params.api.removeEventListener('filterChanged', checkFilterStatus);
+	props.params.api.removeEventListener('filterClosed', onFilterClosed);
+});
 </script>
 
 <template>
@@ -136,6 +160,7 @@ const onShowFilter = (e: MouseEvent) => {
 			icon="filter"
 			type="tertiary"
 			text
+			:class="{ 'filter-highlighted': hasActiveFilter }"
 			@click="onShowFilter"
 		/>
 
@@ -199,6 +224,13 @@ const onShowFilter = (e: MouseEvent) => {
 		line-height: 1;
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-bold);
+	}
+}
+
+.filter-highlighted {
+	color: var(--color-primary);
+	&:hover {
+		color: var(--color-primary);
 	}
 }
 </style>

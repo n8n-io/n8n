@@ -28,6 +28,7 @@ import {
 	TextFilterModule,
 	NumberFilterModule,
 	DateFilterModule,
+	EventApiModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -60,6 +61,7 @@ ModuleRegistry.registerModules([
 	TextFilterModule,
 	NumberFilterModule,
 	DateFilterModule,
+	EventApiModule,
 ]);
 
 type Props = {
