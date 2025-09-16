@@ -89,6 +89,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -142,6 +143,7 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableSettingsHint?: boolean;
@@ -168,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	disableSettingsHint: false,
 	compact: false,
+	showActionsOnHover: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
@@ -177,6 +180,7 @@ defineSlots<{
 	content: {};
 	'callout-message': {};
 	header: {};
+	'header-end': (props: InstanceType<typeof RunDataItemCount>['$props']) => unknown;
 	'input-select': {};
 	'before-data': {};
 	'run-info': {};
@@ -1373,7 +1377,11 @@ defineExpose({ enterEditMode });
 		:class="[
 			'run-data',
 			$style.container,
-			{ [$style['ndv-v2']]: isNDVV2, [$style.compact]: compact },
+			{
+				[$style['ndv-v2']]: isNDVV2,
+				[$style.compact]: compact,
+				[$style.showActionsOnHover]: showActionsOnHover,
+			},
 		]"
 		@mouseover="activatePane"
 	>
@@ -1506,7 +1514,7 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
+			<slot name="header-end" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-show="!binaryDataDisplayVisible">
@@ -1767,9 +1775,8 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.center"
 			>
-				<div v-if="search">
-					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-					<N8nText>
+				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+					<template #description>
 						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 							<template #link>
 								<a href="#" @click="onSearchClear">
@@ -1777,8 +1784,8 @@ defineExpose({ enterEditMode });
 								</a>
 							</template>
 						</I18nT>
-					</N8nText>
-				</div>
+					</template>
+				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
 				</N8nText>
@@ -1841,9 +1848,12 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-				<N8nText>
+			<NDVEmptyState
+				v-else-if="showIoSearchNoMatchContent"
+				:class="$style.center"
+				:title="i18n.baseText('ndv.search.noMatch.title')"
+			>
+				<template #description>
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click="onSearchClear">
@@ -1851,8 +1861,8 @@ defineExpose({ enterEditMode });
 							</a>
 						</template>
 					</I18nT>
-				</N8nText>
-			</div>
+				</template>
+			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<LazyRunDataTable
@@ -2128,6 +2138,9 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+	}
+
+	.showActionsOnHover & {
 		visibility: hidden;
 
 		:global(.el-input__prefix) {
@@ -2135,7 +2148,7 @@ defineExpose({ enterEditMode });
 		}
 	}
 
-	.compact:hover & {
+	.showActionsOnHover:hover & {
 		visibility: visible;
 	}
 }
