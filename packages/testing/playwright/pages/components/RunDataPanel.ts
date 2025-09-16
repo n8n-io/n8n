@@ -122,19 +122,4 @@ export class RunDataPanel {
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {
 		await this.root.getByTestId(`radio-button-${mode}`).click();
 	}
-
-	/**
-	 * Query method: Gets text content from a specific table cell
-	 * @param row Row index in tbody (0-based)
-	 * @param col Column index (0-based)
-	 * @returns Promise<string> The text content of the cell
-	 * @throws Error if no text content is found
-	 */
-	async getCellText(row: number, col: number): Promise<string> {
-		const text = await this.getTbodyCell(row, col).textContent();
-		if (!text) {
-			throw new Error(`No text content found in table cell [${row}, ${col}]`);
-		}
-		return text;
-	}
 }

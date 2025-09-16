@@ -39,12 +39,14 @@ export class PartialExecutionComposer {
 	 */
 	async captureNodeOutputData(nodeName: string): Promise<string> {
 		await this.n8n.canvas.openNode(nodeName);
-		// Wait for output data to be visible
 		await this.n8n.ndv.outputPanel.getTable().waitFor();
 		// Note: Using row 0 for tbody (equivalent to row 1 in Cypress which includes header)
-		const beforeText = await this.n8n.ndv.outputPanel.getCellText(0, 0);
+		const cell = this.n8n.ndv.outputPanel.getTbodyCell(0, 0);
+		await expect(cell).toHaveText(/.+/);
+		const beforeText = await cell.textContent();
 		await this.n8n.ndv.close();
-		return beforeText;
+
+		return beforeText!;
 	}
 
 	/**

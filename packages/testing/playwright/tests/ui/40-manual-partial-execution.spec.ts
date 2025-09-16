@@ -9,8 +9,6 @@ test.describe('Manual partial execution', () => {
 
 		await n8n.ndv.clickExecuteStep();
 
-		await n8n.ndv.clickExecuteStep();
-
 		await n8n.ndv.close();
 
 		await n8n.canvas.openNode('Webhook1');
