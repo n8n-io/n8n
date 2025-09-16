@@ -3,24 +3,17 @@ import { ref, onMounted } from 'vue';
 import { CONFIRM_PASSWORD_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
+import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { confirmPasswordEventBus } from './confirm-password.event-bus';
 
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
-const password = ref('');
 const loading = ref(false);
 
 const i18n = useI18n();
 
-const onInput = (e: FormFieldValueUpdate) => {
-	if (e.name === 'password' && typeof e.value === 'string') {
-		password.value = e.value;
-	}
-};
-
-const onSubmit = async (data: FormValues) => {
+const onSubmit = (data: FormValues) => {
 	const currentPassword = (data as { currentPassword: string }).currentPassword;
 
 	if (!currentPassword) {
@@ -77,7 +70,6 @@ onMounted(() => {
 				:inputs="config"
 				:event-bus="formBus"
 				:column-view="true"
-				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
