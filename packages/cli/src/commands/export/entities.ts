@@ -22,6 +22,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 	async run() {
 		const outputDir = this.flags.outputDir;
 
+		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 

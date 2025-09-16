@@ -20,7 +20,7 @@ describe('ExportEntitiesCommand', () => {
 
 			expect(ensureDir).toHaveBeenCalledWith('./exports');
 			// @ts-expect-error Protected property
-			expect(command.logger.info).toHaveBeenCalledTimes(3);
+			expect(command.logger.info).toHaveBeenCalledTimes(4);
 			// @ts-expect-error Protected property
 			expect(command.logger.error).not.toHaveBeenCalled();
 		});
