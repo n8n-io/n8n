@@ -6,7 +6,7 @@ import {
 	type IRunData,
 	type IRunNodeResponse,
 	type ITaskMetadata,
-	type Request,
+	type EngineRequest,
 	type Workflow,
 	type LoggerProxy,
 	UnexpectedError,
@@ -38,7 +38,7 @@ export function handleRequests({
 }: {
 	workflow: Workflow;
 	currentNode: INode;
-	request: Request;
+	request: EngineRequest;
 	runIndex: number;
 	executionData: IExecuteData;
 	runData: IRunData;
@@ -149,7 +149,7 @@ export function handleRequests({
 }
 
 export function isRequest(
-	responseOrRequest: INodeExecutionData[][] | IRunNodeResponse | Request | null | undefined,
-): responseOrRequest is Request {
+	responseOrRequest: INodeExecutionData[][] | IRunNodeResponse | EngineRequest | null | undefined,
+): responseOrRequest is EngineRequest {
 	return !!responseOrRequest && 'actions' in responseOrRequest;
 }

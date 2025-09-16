@@ -1699,12 +1699,12 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | Request | null;
+type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | EngineRequest | null;
 
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(this: IExecuteFunctions, response?: Response): Promise<NodeOutput>;
+	execute?(this: IExecuteFunctions, response?: EngineResponse): Promise<NodeOutput>;
 	/**
 	 * A function called when a node receives a chat message. Allows it to react
 	 * to the message before it gets executed.
@@ -1774,7 +1774,7 @@ type Action<T = unknown> = ExecutionNodeAction<T>;
 // lot of type errors in our tests.
 // The correct fix is to make a PR to jest-mock-extended and make it handle
 // `unknown` special, turning it into `unknown` instead of `Partial<unknown`.
-export type Request<T = object> = {
+export type EngineRequest<T = object> = {
 	actions: Array<Action<T>>;
 	metadata: T;
 };
@@ -1782,7 +1782,7 @@ export type SubNodeExecutionResult<T = unknown> = {
 	action: ExecutionNodeAction<T>;
 	data: ITaskData;
 };
-export type Response<T = unknown> = {
+export type EngineResponse<T = unknown> = {
 	actionResponses: Array<SubNodeExecutionResult<T>>;
 	metadata: T;
 };
@@ -1795,8 +1795,8 @@ export abstract class Node {
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
-		response?: Response,
-	): Promise<INodeExecutionData[][] | Request>;
+		response?: EngineResponse,
+	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 }
@@ -2388,7 +2388,7 @@ export interface ITaskMetadata {
 		actions: Array<{
 			nodeName: string;
 			runIndex: number;
-			action: Request['actions'][number];
+			action: EngineRequest['actions'][number];
 			response?: object;
 		}>;
 		metadata: object;

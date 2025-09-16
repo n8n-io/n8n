@@ -44,8 +44,8 @@ import type {
 	ITaskStartedData,
 	AiAgentRequest,
 	IWorkflowExecutionDataProcess,
-	Request,
-	Response,
+	EngineRequest,
+	EngineResponse,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -60,11 +60,6 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
@@ -83,6 +78,11 @@ import {
 import { handleRequests, isRequest } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1236,8 +1236,8 @@ export class WorkflowExecute {
 		inputData: ITaskDataConnections,
 		executionData: IExecuteData,
 		abortSignal?: AbortSignal,
-		subNodeExecutionResults?: Response,
-	): Promise<IRunNodeResponse | Request> {
+		subNodeExecutionResults?: EngineResponse,
+	): Promise<IRunNodeResponse | EngineRequest> {
 		const closeFunctions: CloseFunction[] = [];
 		const context = new ExecuteContext(
 			workflow,
@@ -1254,7 +1254,7 @@ export class WorkflowExecute {
 			subNodeExecutionResults,
 		);
 
-		let data: INodeExecutionData[][] | Request | null;
+		let data: INodeExecutionData[][] | EngineRequest | null;
 
 		if (customOperation) {
 			data = await customOperation.call(context);
@@ -1413,8 +1413,8 @@ export class WorkflowExecute {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		abortSignal?: AbortSignal,
-		subNodeExecutionResults?: Response,
-	): Promise<IRunNodeResponse | Request> {
+		subNodeExecutionResults?: EngineResponse,
+	): Promise<IRunNodeResponse | EngineRequest> {
 		const { node } = executionData;
 		let inputData = executionData.data;
 
@@ -1588,7 +1588,7 @@ export class WorkflowExecute {
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
-		let subNodeExecutionResults: Response = { actionResponses: [], metadata: {} };
+		let subNodeExecutionResults: EngineResponse = { actionResponses: [], metadata: {} };
 		let executionError: ExecutionBaseError | undefined;
 		let executionNode: INode;
 		let runIndex: number;
