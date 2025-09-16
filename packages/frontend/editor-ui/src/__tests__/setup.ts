@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
 import 'core-js/proposals/set-methods-v2';
 import englishBaseText from '@n8n/i18n/locales/en.json';
-import { loadLanguage } from '@n8n/i18n';
+import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
 // Avoid tests failing because of difference between local and GitHub actions timezone
@@ -147,4 +147,4 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 	value: vi.fn(),
 });
 
-loadLanguage('en', englishBaseText);
+loadLanguage('en', englishBaseText as LocaleMessages);
