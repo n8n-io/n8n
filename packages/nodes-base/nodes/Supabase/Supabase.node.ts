@@ -173,7 +173,7 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						const createdRows: IDataObject[] = await supabaseApiRequest.call(
+						const created = await supabaseApiRequest.call(
 							this,
 							'POST',
 							endpoint,
@@ -183,8 +183,11 @@ export class Supabase implements INodeType {
 							{},
 							i,
 						);
+						const rowsArray = Array.isArray(created)
+							? (created as IDataObject[])
+							: [created as IDataObject];
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(createdRows as IDataObject[]),
+							this.helpers.returnJsonArray(rowsArray),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
