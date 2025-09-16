@@ -446,6 +446,7 @@ export const updatedIconSet = {
 	'node-power': NodePower,
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
+	mcp: Mcp,
 
 	// lucide
 	'align-right': IconLucideAlignRight,

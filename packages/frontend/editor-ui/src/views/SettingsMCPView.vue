@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
-import type { UserAction, WorkflowResource } from '@/Interface';
+import type { UserAction, WorkflowListResource } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -24,9 +24,9 @@ const rootStore = useRootStore();
 const isMCPEnabled = ref(true);
 const workflowsLoading = ref(false);
 
-const availableWorkflows = ref<WorkflowResource[]>([]);
+const availableWorkflows = ref<WorkflowListResource[]>([]);
 
-const tableHeaders = ref<Array<TableHeader<WorkflowResource>>>([
+const tableHeaders = ref<Array<TableHeader<WorkflowListResource>>>([
 	{
 		title: 'Name',
 		key: 'name',
@@ -74,7 +74,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowResource>>>([
 	},
 ]);
 
-const tableActions = ref<Array<UserAction<WorkflowResource>>>([
+const tableActions = ref<Array<UserAction<WorkflowListResource>>>([
 	{
 		label: i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess'),
 		value: 'removeFromMCP',
@@ -103,7 +103,7 @@ const connectionCode = computed(() => {
 	return `\`\`\`json${connectionString.value}\`\`\``;
 });
 
-const getProjectIcon = (workflow: WorkflowResource): IconOrEmoji => {
+const getProjectIcon = (workflow: WorkflowListResource): IconOrEmoji => {
 	if (workflow.homeProject?.type === 'personal') {
 		return { type: 'icon', value: 'user' };
 	} else if (workflow.homeProject?.name) {
@@ -115,7 +115,7 @@ const getProjectIcon = (workflow: WorkflowResource): IconOrEmoji => {
 	}
 };
 
-const getProjectName = (workflow: WorkflowResource): string => {
+const getProjectName = (workflow: WorkflowListResource): string => {
 	if (workflow.homeProject?.type === 'personal') {
 		return i18n.baseText('projects.menu.personal');
 	}
@@ -145,7 +145,7 @@ const onUpdateMCPEnabled = async (value: boolean) => {
 	}
 };
 
-const onWorkflowAction = async (action: string, workflow: WorkflowResource) => {
+const onWorkflowAction = async (_action: string, _workflow: WorkflowListResource) => {
 	toast.showMessage({
 		title: '🚧 Coming soon',
 	});
@@ -158,7 +158,7 @@ const onAddWorkflow = () => {
 };
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.mcp.heading'));
+	documentTitle.set(i18n.baseText('settings.mcp'));
 	await fetchAvailableWorkflows();
 });
 </script>

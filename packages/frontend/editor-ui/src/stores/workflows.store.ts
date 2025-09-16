@@ -28,7 +28,6 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
-	WorkflowResource,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -554,52 +553,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
-	): Promise<WorkflowResource[]> {
+	): Promise<WorkflowListResource[]> {
 		const options = {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		};
-		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
+		const response = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			{ isArchived: false },
+			{ isArchived: false, availableInMCP: true },
 			Object.keys(options).length ? options : undefined,
 		);
-
-		let allWorkflows = data;
-
-		// TODO: We don't need this anymore, we can now filter based on availableInMCP
-		// If there are more workflows than the current page size, fetch remaining pages
-		if (count > DEFAULT_WORKFLOW_PAGE_SIZE) {
-			const totalPages = Math.ceil(count / DEFAULT_WORKFLOW_PAGE_SIZE);
-			const remainingPages = [];
-
-			// Create promises for all remaining pages
-			for (let currentPage = page + 1; currentPage <= totalPages; currentPage++) {
-				const pageOptions = {
-					skip: (currentPage - 1) * DEFAULT_WORKFLOW_PAGE_SIZE,
-					take: DEFAULT_WORKFLOW_PAGE_SIZE,
-				};
-				remainingPages.push(
-					workflowsApi
-						.getWorkflowsAndFolders(
-							rootStore.restApiContext,
-							{ isArchived: false },
-							Object.keys(pageOptions).length ? pageOptions : undefined,
-						)
-						.then((response) => response.data),
-				);
-			}
-
-			// Wait for all remaining pages to complete
-			const remainingData = await Promise.all(remainingPages);
-
-			// Combine all data
-			allWorkflows = [...data, ...remainingData.flat()];
-		}
-
-		return allWorkflows.filter((item: WorkflowResource) => {
-			return item.settings?.availableInMCP === true;
-		});
+		return response.data;
 	}
 
 	async function fetchWorkflowsPage(
