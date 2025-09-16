@@ -321,10 +321,15 @@ describe('InsightsController', () => {
 			);
 
 			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+				insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
+				maxAgeInDays: 7,
+				periodUnit: 'day',
+			});
 			expect(response).toEqual([]);
 		});
 
-		it('should return insights by time with all data', async () => {
+		it('should return insights by time', async () => {
 			// ARRANGE
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
@@ -415,18 +420,19 @@ describe('InsightsController', () => {
 	});
 
 	describe('getTimeSavedInsightsByTime', () => {
+		const mockData = [
+			{
+				periodStart: '2023-10-01T00:00:00.000Z',
+				timeSaved: 0,
+			},
+			{
+				periodStart: '2023-10-02T00:00:00.000Z',
+				timeSaved: 2,
+			},
+		];
+
 		it('should return insights by time with limited data', async () => {
 			// ARRANGE
-			const mockData = [
-				{
-					periodStart: '2023-10-01T00:00:00.000Z',
-					timeSaved: 0,
-				},
-				{
-					periodStart: '2023-10-02T00:00:00.000Z',
-					timeSaved: 2,
-				},
-			];
 			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
 			// ACT
@@ -437,6 +443,47 @@ describe('InsightsController', () => {
 			);
 
 			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+				insightTypes: ['time_saved_min'],
+				maxAgeInDays: 7,
+				periodUnit: 'day',
+			});
+
+			expect(response).toEqual([
+				{
+					date: '2023-10-01T00:00:00.000Z',
+					values: {
+						timeSaved: 0,
+					},
+				},
+				{
+					date: '2023-10-02T00:00:00.000Z',
+					values: {
+						timeSaved: 2,
+					},
+				},
+			]);
+		});
+
+		it('should use the projectId query filters when provided', async () => {
+			// ARRANGE
+			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
+
+			// ACT
+			const response = await controller.getTimeSavedInsightsByTime(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				{ dateRange: 'month', projectId: 'test-project' },
+			);
+
+			// ASSERT
+			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith({
+				insightTypes: ['time_saved_min'],
+				maxAgeInDays: 30,
+				periodUnit: 'day',
+				projectId: 'test-project',
+			});
+
 			expect(response).toEqual([
 				{
 					date: '2023-10-01T00:00:00.000Z',
