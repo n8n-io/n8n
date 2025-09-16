@@ -149,9 +149,6 @@ export const defaultSettings: FrontendSettings = {
 		credits: 0,
 	},
 	easyAIWorkflowOnboarded: false,
-	partialExecution: {
-		version: 1,
-	},
 	folders: {
 		enabled: false,
 	},
