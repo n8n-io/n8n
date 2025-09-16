@@ -236,7 +236,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
-		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);
+		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail, INSTANCE_OWNER.password);
 		successToast().should('contain', 'Personal details updated');
 		personalSettingsPage.actions.loginWithNewData(
 			updatedPersonalData.newEmail,
