@@ -885,6 +885,47 @@ export class NodeDetailsViewPage extends BasePage {
 	getCredentialLabel(credentialType: string) {
 		return this.page.getByText(credentialType);
 	}
+
+	getFilterComponent(paramName: string) {
+		return this.page.getByTestId(`filter-${paramName}`);
+	}
+
+	getFilterConditions(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition');
+	}
+
+	getFilterCondition(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
+	}
+
+	getFilterConditionLeft(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionRight(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
+	}
+
+	getFilterConditionOperator(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-operator-select').nth(index);
+	}
+
+	getFilterConditionRemove(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-remove-condition').nth(index);
+	}
+
+	getFilterConditionAdd(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-add-condition');
+	}
+
+	async addFilterCondition(paramName: string) {
+		await this.getFilterConditionAdd(paramName).click();
+	}
+
+	async removeFilterCondition(paramName: string, index: number) {
+		await this.getFilterConditionRemove(paramName, index).click();
+	}
+
 	getWebhookTestEvent() {
 		return this.page.getByText('Listening for test event');
 	}
