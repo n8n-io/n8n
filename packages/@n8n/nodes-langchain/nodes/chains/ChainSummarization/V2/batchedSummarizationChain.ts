@@ -179,9 +179,11 @@ Given the new context, refine the original summary. If the context isn't useful,
 		});
 	}
 
-	withConfig(_config: any): BatchedSummarizationChain {
-		// For compatibility with LangChain's withConfig method
-		// In a full implementation, this would apply the config
+	withConfig(config: any): BatchedSummarizationChain {
+		// Apply config to the underlying model to preserve tracing/telemetry
+		if (config && this.model.withConfig) {
+			this.model = this.model.withConfig(config);
+		}
 		return this;
 	}
 }

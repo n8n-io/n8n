@@ -20,6 +20,13 @@ jest.mock('langchain/chains', () => ({
 	}),
 }));
 
+jest.mock('../V2/batchedSummarizationChain', () => ({
+	BatchedSummarizationChain: jest.fn().mockImplementation(() => ({
+		invoke: jest.fn().mockResolvedValue({ output_text: 'Mock batched summary' }),
+		withConfig: jest.fn().mockReturnThis(),
+	})),
+}));
+
 const createMockExecuteFunctions = (
 	parameters: any,
 	typeVersion: number = 2.1,
@@ -87,10 +94,22 @@ describe('processItem with batching', () => {
 				},
 			};
 
+			// Get the mocked functions
+			const { loadSummarizationChain } = require('langchain/chains');
+			const { BatchedSummarizationChain } = require('../V2/batchedSummarizationChain');
+
+			// Clear previous calls
+			BatchedSummarizationChain.mockClear();
+			loadSummarizationChain.mockClear();
+
 			const result = await processItem(mockExecuteFunctions, 0, item, 'nodeInputJson', 'simple');
 
 			expect(result).toBeDefined();
 			expect(result).toHaveProperty('output_text');
+			// Verify that BatchedSummarizationChain was used
+			expect(BatchedSummarizationChain).toHaveBeenCalled();
+			// Verify standard chain was NOT used
+			expect(loadSummarizationChain).not.toHaveBeenCalled();
 		});
 
 		it('should use standard chain when batchSize = 1', async () => {
@@ -106,9 +125,21 @@ describe('processItem with batching', () => {
 				json: { text: 'Test content' },
 			};
 
+			// Get the mocked functions
+			const { loadSummarizationChain } = require('langchain/chains');
+			const { BatchedSummarizationChain } = require('../V2/batchedSummarizationChain');
+
+			// Clear previous calls
+			BatchedSummarizationChain.mockClear();
+			loadSummarizationChain.mockClear();
+
 			const result = await processItem(mockExecuteFunctions, 0, item, 'nodeInputJson', 'simple');
 
 			expect(result).toBeDefined();
+			// Verify standard chain was used
+			expect(loadSummarizationChain).toHaveBeenCalled();
+			// Verify BatchedSummarizationChain was NOT used
+			expect(BatchedSummarizationChain).not.toHaveBeenCalled();
 		});
 
 		it('should handle different summarization methods with batching', async () => {
@@ -195,9 +226,21 @@ describe('processItem with batching', () => {
 				json: { text: 'Test content' },
 			};
 
+			// Get the mocked functions
+			const { loadSummarizationChain } = require('langchain/chains');
+			const { BatchedSummarizationChain } = require('../V2/batchedSummarizationChain');
+
+			// Clear previous calls
+			BatchedSummarizationChain.mockClear();
+			loadSummarizationChain.mockClear();
+
 			const result = await processItem(mockExecuteFunctions, 0, item, 'nodeInputJson', 'simple');
 
 			expect(result).toBeDefined();
+			// Verify standard chain was used for older versions
+			expect(loadSummarizationChain).toHaveBeenCalled();
+			// Verify BatchedSummarizationChain was NOT used
+			expect(BatchedSummarizationChain).not.toHaveBeenCalled();
 		});
 	});
 
@@ -241,6 +284,14 @@ describe('processItem with batching', () => {
 			mockLoader.processItem = jest
 				.fn()
 				.mockResolvedValue([{ pageContent: 'Processed content', metadata: {} }]);
+
+			// Get the mocked functions
+			const { loadSummarizationChain } = require('langchain/chains');
+			const { BatchedSummarizationChain } = require('../V2/batchedSummarizationChain');
+
+			// Clear previous calls and ensure proper mock behavior
+			BatchedSummarizationChain.mockClear();
+			loadSummarizationChain.mockClear();
 
 			mockExecuteFunctions.getInputConnectionData.mockImplementation(async (connectionType) => {
 				if (connectionType === NodeConnectionTypes.AiLanguageModel) {
