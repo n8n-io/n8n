@@ -8,6 +8,7 @@ import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, useTemplateRef } from 'vue';
 import { N8nPopoverReka } from '@n8n/design-system';
+import { useStyles } from '@/composables/useStyles';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -23,6 +24,7 @@ const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
 const canvasStore = useCanvasStore();
 const contentElRef = computed(() => contentRef.value?.$el ?? null);
+const { APP_Z_INDEXES } = useStyles();
 
 watch(
 	isVisible,
@@ -51,6 +53,7 @@ defineExpose({
 		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
 		:reference="virtualRef"
 		:suppress-auto-focus="true"
+		:z-index="APP_Z_INDEXES.NDV + 1"
 	>
 		<template #content>
 			<InputPanel

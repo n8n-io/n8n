@@ -9,6 +9,7 @@ import {
 } from 'reka-ui';
 
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import { CSSProperties } from 'vue';
 
 interface Props
 	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
@@ -34,6 +35,10 @@ interface Props
 	 */
 	width?: string;
 	/**
+	 * z-index of popover content
+	 */
+	zIndex?: CSSProperties['zIndex'];
+	/**
 	 * Popover max height
 	 */
 	maxHeight?: string;
@@ -56,6 +61,7 @@ const props = withDefaults(defineProps<Props>(), {
 	sideOffset: 5,
 	sideFlip: undefined,
 	suppressAutoFocus: false,
+	zIndex: 999,
 });
 
 const emit = defineEmits<Emits>();
@@ -79,7 +85,7 @@ function handleOpenAutoFocus(e: Event) {
 				:align="align"
 				:side-offset="sideOffset"
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
-				:style="{ width }"
+				:style="{ width, zIndex }"
 				:reference="reference"
 				@open-auto-focus="handleOpenAutoFocus"
 			>
@@ -109,7 +115,6 @@ function handleOpenAutoFocus(e: Event) {
 		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
 		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 	will-change: transform, opacity;
-	z-index: 9999;
 
 	&.enableSlideIn {
 		animation-duration: 400ms;

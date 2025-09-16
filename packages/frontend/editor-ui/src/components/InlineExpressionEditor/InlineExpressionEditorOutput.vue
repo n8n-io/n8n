@@ -10,6 +10,7 @@ import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 import { N8nPopoverReka, N8nText } from '@n8n/design-system';
+import { useStyles } from '@/composables/useStyles';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
@@ -32,6 +33,7 @@ const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
 const contentRef = useTemplateRef('content');
+const { APP_Z_INDEXES } = useStyles();
 
 onBeforeUnmount(() => {
 	ndvStore.expressionOutputItemIndex = 0;
@@ -55,6 +57,7 @@ defineExpose({
 		:enable-slide-in="false"
 		:enable-scrolling="false"
 		:suppress-auto-focus="true"
+		:z-index="APP_Z_INDEXES.NDV + 1"
 	>
 		<template #content>
 			<div ref="content" :class="[$style.dropdown, 'ignore-key-press-canvas']">
