@@ -119,33 +119,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 
 	const source = this.getNodeParameter('source', 0) as string;
 
-	if (source === 'googleSheets') {
-		const googleSheetInstance = getGoogleSheet.call(this);
-		const googleSheet = await getSheet.call(this, googleSheetInstance);
-
-		await googleSheetInstance.updateRows(
-			googleSheet.title,
-			[columnNames],
-			'RAW', // default value for Value Input Mode
-			1, // header row
-		);
-
-		const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
-			[
-				{
-					row_number: rowNumber,
-					...outputs,
-				},
-			],
-			`${googleSheet.title}!A:Z`,
-			[columnNames],
-		);
-
-		await googleSheetInstance.batchUpdate(
-			preparedData.updateData,
-			'RAW', // default value for Value Input Mode
-		);
-	} else if (source === 'dataTable') {
+	if (source === 'dataTable') {
 		if (this.helpers.getDataStoreProxy === undefined) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -177,6 +151,32 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 			},
 			data,
 		});
+	} else {
+		const googleSheetInstance = getGoogleSheet.call(this);
+		const googleSheet = await getSheet.call(this, googleSheetInstance);
+
+		await googleSheetInstance.updateRows(
+			googleSheet.title,
+			[columnNames],
+			'RAW', // default value for Value Input Mode
+			1, // header row
+		);
+
+		const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
+			[
+				{
+					row_number: rowNumber,
+					...outputs,
+				},
+			],
+			`${googleSheet.title}!A:Z`,
+			[columnNames],
+		);
+
+		await googleSheetInstance.batchUpdate(
+			preparedData.updateData,
+			'RAW', // default value for Value Input Mode
+		);
 	}
 
 	return [withEvaluationData.call(this, outputs)];

@@ -180,7 +180,51 @@ export class EvaluationTrigger implements INodeType {
 		const previousRunRowNumber = inputData?.[0]?.json?.row_number;
 		const previousRunRowsLeft = inputData?.[0]?.json?._rowsLeft;
 
-		if (source === 'googleSheets') {
+		if (source === 'dataTable') {
+			const maxRows = this.getNodeParameter('limitRows', 0, false)
+				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
+				: MAX_ROWS;
+
+			if (this.helpers.getDataStoreProxy === undefined) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Attempted to use Data table node but the module is disabled',
+				);
+			}
+
+			const currentIndex =
+				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
+					? previousRunRowNumber + 1
+					: 0;
+
+			const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
+				extractValue: true,
+			}) as string;
+			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+
+			const { data, count } = await dataTableProxy.getManyRowsAndCount({
+				skip: currentIndex,
+				take: 1,
+			});
+
+			if (data.length === 0) {
+				throw new NodeOperationError(this.getNode(), 'No row found');
+			}
+
+			const effectiveTotal = Math.min(count, maxRows);
+			const rowsLeft = Math.max(0, effectiveTotal - (currentIndex + 1));
+
+			const currentRow = {
+				json: {
+					...data[0],
+					row_number: currentIndex,
+					row_id: data[0].id,
+					_rowsLeft: rowsLeft,
+				},
+			} satisfies INodeExecutionData;
+
+			return [[currentRow]];
+		} else {
 			const maxRows = this.getNodeParameter('limitRows', 0, false)
 				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 				: MAX_ROWS;
@@ -249,53 +293,7 @@ export class EvaluationTrigger implements INodeType {
 
 				return [[currentRow]];
 			}
-		} else if (source === 'dataTable') {
-			const maxRows = this.getNodeParameter('limitRows', 0, false)
-				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
-				: MAX_ROWS;
-
-			if (this.helpers.getDataStoreProxy === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Attempted to use Data table node but the module is disabled',
-				);
-			}
-
-			const currentIndex =
-				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
-					? previousRunRowNumber + 1
-					: 0;
-
-			const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
-				extractValue: true,
-			}) as string;
-			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
-
-			const { data, count } = await dataTableProxy.getManyRowsAndCount({
-				skip: currentIndex,
-				take: 1,
-			});
-
-			if (data.length === 0) {
-				throw new NodeOperationError(this.getNode(), 'No row found');
-			}
-
-			const effectiveTotal = Math.min(count, maxRows);
-			const rowsLeft = Math.max(0, effectiveTotal - (currentIndex + 1));
-
-			const currentRow = {
-				json: {
-					...data[0],
-					row_number: currentIndex,
-					row_id: data[0].id,
-					_rowsLeft: rowsLeft,
-				},
-			} satisfies INodeExecutionData;
-
-			return [[currentRow]];
 		}
-
-		throw new NodeOperationError(this.getNode(), 'Unknown source type');
 	}
 
 	customOperations = {
@@ -309,15 +307,7 @@ export class EvaluationTrigger implements INodeType {
 						? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 						: MAX_ROWS;
 
-					if (source === 'googleSheets') {
-						const googleSheetInstance = getGoogleSheet.call(this);
-						const googleSheet = await getSheet.call(this, googleSheetInstance);
-
-						const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
-						const result = results.slice(0, maxRows - 1);
-
-						return [result];
-					} else if (source === 'dataTable') {
+					if (source === 'dataTable') {
 						if (this.helpers.getDataStoreProxy === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -344,9 +334,15 @@ export class EvaluationTrigger implements INodeType {
 						}));
 
 						return [result];
-					}
+					} else {
+						const googleSheetInstance = getGoogleSheet.call(this);
+						const googleSheet = await getSheet.call(this, googleSheetInstance);
 
-					throw new NodeOperationError(this.getNode(), 'Unknown source type');
+						const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
+						const result = results.slice(0, maxRows - 1);
+
+						return [result];
+					}
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error);
 				}
