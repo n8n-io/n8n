@@ -187,16 +187,7 @@ const staleData = computed(() => {
 		return false;
 	}
 
-	if (settings.partialExecutionVersion === 2) {
-		return dirtinessByName.value[node.value.name] === CanvasNodeDirtiness.PARAMETERS_UPDATED;
-	}
-
-	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
-	if (!updatedAt || !runTaskData.value) {
-		return false;
-	}
-	const runAt = runTaskData.value.startTime;
-	return updatedAt > runAt;
+	return dirtinessByName.value[node.value.name] === CanvasNodeDirtiness.PARAMETERS_UPDATED;
 });
 
 const outputPanelEditMode = computed(() => {

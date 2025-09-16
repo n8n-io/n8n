@@ -226,11 +226,6 @@ export function useNodeDirtiness() {
 	});
 
 	const dirtinessByName = computed(() => {
-		// Do not highlight dirtiness if new partial execution is not enabled
-		if (settingsStore.partialExecutionVersion === 1) {
-			return {};
-		}
-
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
 		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
 
