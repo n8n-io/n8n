@@ -1978,7 +1978,7 @@
 	"settings.communityNodes.confirmModal.update.buttonLabel": "Confirm update",
 	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
 	"settings.mcp.sidebar.item": "MCP",
-	"settings.mcp.heading": "n8n MCP",
+	"settings.mcp.heading": "MCP Access",
 	"settings.mcp.toggle.label": "Enable MCP",
 	"settings.mcp.toggle.description": "Enable MCP access to this n8n instance",
 	"settings.mcp.how.to.connect": "To connect, add this to your <code>mcp.json</code> file. <a href=\"{docsURL}\" target=\"_blank\">Learn more</a>",
