@@ -17,7 +17,6 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
-	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
@@ -149,7 +148,7 @@ export class Supabase implements INodeType {
 			const tableId = this.getNodeParameter('tableId', 0) as string;
 
 			if (operation === 'create') {
-				const records: IDataObject[] = [];
+				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -172,36 +171,32 @@ export class Supabase implements INodeType {
 							record[`${field.fieldId}`] = field.fieldValue;
 						}
 					}
-					records.push(record);
-				}
-				const endpoint = `/${tableId}`;
 
-				try {
-					const createdRows: IDataObject[] = await supabaseApiRequest.call(
-						this,
-						'POST',
-						endpoint,
-						records,
-						{},
-						undefined,
-						{},
-						0,
-					);
-					createdRows.forEach((row, i) => {
+					try {
+						const createdRows: IDataObject[] = await supabaseApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							record,
+							{},
+							undefined,
+							{},
+							i,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(row),
+							this.helpers.returnJsonArray(createdRows as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-					});
-				} catch (error) {
-					if (this.continueOnFail()) {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.description }),
-							{ itemData: mapPairedItemsFrom(records) },
-						);
-						returnData.push(...executionData);
-					} else {
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+							continue;
+						}
 						throw error;
 					}
 				}
