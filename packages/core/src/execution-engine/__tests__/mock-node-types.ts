@@ -1,12 +1,11 @@
+import { NodeTypes } from '@test/helpers';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
-	Response,
-	Request,
+	EngineResponse,
+	EngineRequest,
 } from 'n8n-workflow';
-
-import { NodeTypes } from '@test/helpers';
 
 export const passThroughNode: INodeType = {
 	description: {
@@ -74,8 +73,8 @@ export const types: Record<keyof typeof nodeTypeArguments, string> = {
 
 type NodeExecuteResult =
 	| INodeExecutionData[][]
-	| Request
-	| ((response?: Response) => INodeExecutionData[][] | Request);
+	| EngineRequest
+	| ((response?: EngineResponse) => INodeExecutionData[][] | EngineRequest);
 
 interface NodeModifier {
 	return(result: NodeExecuteResult): NodeModifier;
@@ -97,8 +96,8 @@ export function modifyNode(originalNode: INodeType): NodeModifier {
 				...originalNode,
 				async execute(
 					this: IExecuteFunctions,
-					response?: Response,
-				): Promise<INodeExecutionData[][] | Request | null> {
+					response?: EngineResponse,
+				): Promise<INodeExecutionData[][] | EngineRequest | null> {
 					const currentCall = callCount++;
 
 					// If we have a predetermined response for this call, use it
