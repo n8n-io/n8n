@@ -1,23 +1,47 @@
 name: 'Release: Attach SBOM'
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'N8N version to generate SBOM for'
+        required: true
+        type: string
+      release_tag_ref:
+        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        required: true
+        type: string
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+
+  workflow_dispatch:
+    inputs:
+      n8n_version:
+        description: 'N8N version to generate SBOM for'
+        required: true
+        type: string
+      release_tag_ref:
+        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
 
 jobs:
-  generate-and-attach-sbom:
+  generate-sbom:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
+    continue-on-error: true
     steps:
       - name: Checkout release tag
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ inputs.release_tag_ref }}
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -63,7 +87,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Upload SBOM files to the existing release
-          gh release upload "${{ github.event.release.tag_name }}" \
+          gh release upload "${{ inputs.release_tag_ref }}" \
             sbom-source.cdx.json \
             sbom-source.cdx.sig \
             sbom-source.cdx.pem \
@@ -82,4 +106,4 @@ jobs:
           channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ github.event.release.tag_name }} >
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >
