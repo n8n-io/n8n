@@ -71,16 +71,49 @@ export const types: Record<keyof typeof nodeTypeArguments, string> = {
 	testNodeWithRequiredProperty: 'testNodeWithRequiredProperty',
 };
 
+/**
+ * Union type representing all possible return values from a node's execute method.
+ * Can be execution data, an engine request, or a function that processes engine responses.
+ */
 type NodeExecuteResult =
 	| INodeExecutionData[][]
 	| EngineRequest
 	| ((response?: EngineResponse) => INodeExecutionData[][] | EngineRequest);
 
+/**
+ * Interface for building modified node behavior through method chaining.
+ * Allows setting predetermined responses for sequential node executions.
+ */
 interface NodeModifier {
+	/**
+	 * Sets a predetermined result for the next node execution call.
+	 * @param result - The result to return on the next execution
+	 */
 	return(result: NodeExecuteResult): NodeModifier;
+
+	/**
+	 * Finalizes the node modification and returns the modified node.
+	 */
 	done(): INodeType;
 }
 
+/**
+ * Creates a modified version of a node with predetermined execution responses.
+ * Useful for testing scenarios where you need to control node execution results
+ * across multiple calls in a predictable sequence.
+ *
+ * @example
+ * ```typescript
+ * const modifiedNode = modifyNode(originalNode)
+ *   .return([mockData1])
+ *   .return(engineRequest)
+ *   .return((response) => processResponse(response))
+ *   .done();
+ * ```
+ *
+ * @param originalNode - The original node to modify
+ * @returns A NodeModifier instance for configuring predetermined responses
+ */
 export function modifyNode(originalNode: INodeType): NodeModifier {
 	const responses: NodeExecuteResult[] = [];
 	let callCount = 0;
