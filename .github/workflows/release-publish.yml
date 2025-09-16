@@ -80,8 +80,24 @@ jobs:
           path: ./packages/**/dist
           key: ${{ env.BUILD_CACHE_KEY }}
 
-      - name: Dry-run publishing
-        run: pnpm publish -r --no-git-checks --dry-run
+      - name: Install script dependencies
+        run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Get main packages
+        id: main-packages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { getMainPackageNames } = await import('${{ github.workspace }}/.github/scripts/constants.mjs');
+            const mainPackageNames = await getMainPackageNames();
+            console.log('main packages', mainPackageNames)
+
+            const otherMainFilterArgs = mainPackageNames.filter(name => name !== 'n8n').map(name => `--filter ${name}`).join(' ');
+            core.setOutput('other-main-filter-args', otherMainFilterArgs);
+
+      - name: Dry-run publishing main packages only
+        run: |
+          pnpm publish -r ${{ steps.main-packages.outputs.n8n-filter-args }} ${{ steps.main-packages.outputs.other-main-filter-args }} --dry-run --no-git-checks
 
       - name: Pre publishing changes
         run: |
@@ -91,8 +107,11 @@ jobs:
           cp README.md packages/cli/README.md
           sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
 
-      - name: Publish to NPM
-        run: pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+      - name: Publish n8n as rc
+        run: pnpm publish -r --filter n8n --publish-branch ${{ github.event.pull_request.base.ref }} --access public --tag rc --no-git-checks
+
+      - name: Publish other main packages as latest
+        run: pnpm publish -r ${{ steps.main-packages.outputs.other-main-filter-args }} --publish-branch ${{ github.event.pull_request.base.ref }} --access public --tag latest --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc

@@ -1,0 +1,48 @@
+name: 'Publish Changed Packages'
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'packages/cli/**'
+      - 'packages/core/**'
+      - 'packages/workflow/**'
+      - 'packages/nodes-base/**'
+      - 'packages/frontend/editor-ui/**'
+
+jobs:
+  publish-changed-packages:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      NPM_CONFIG_PROVENANCE: true
+    if: github.repository_owner == 'n8n-io'
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Install script dependencies
+        run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Get package filters
+        id: filters
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { getMainPackageNames } = await import('${{ github.workspace }}/.github/scripts/constants.mjs');
+            const mainPackageNames = await getMainPackageNames();
+            console.log('main packages', mainPackageNames)
+            const filters = mainPackageNames.map(name => `--filter='!${name}'`).join(' ');
+            core.setOutput('package-filters', filters);
+
+      # Publish all the packages that have versions not yet published to the registry.
+      - name: Publish independent packages
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          pnpm publish -r ${{ steps.filters.outputs.package-filters }}
