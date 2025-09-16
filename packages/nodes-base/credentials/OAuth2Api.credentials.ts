@@ -63,11 +63,6 @@ export class OAuth2Api implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
-			displayOptions: {
-				show: {
-					grantType: ['authorizationCode', 'clientCredentials'],
-				},
-			},
 			default: '',
 			required: true,
 		},
