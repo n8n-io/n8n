@@ -111,7 +111,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('UI Test Project');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Verify basic project settings form elements are visible (inner controls)
@@ -136,7 +136,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Edit Test Project');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Update project name
@@ -152,7 +152,7 @@ test.describe('Projects', () => {
 
 			// Wait for success notification
 			await expect(
-				n8n.page.getByText('Project saved successfully', { exact: false }),
+				n8n.page.getByText('Project Updated Project Name saved successfully', { exact: false }),
 			).toBeVisible();
 
 			// Verify the form shows the updated values
@@ -165,7 +165,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Table Structure Test');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			const table = n8n.projectSettings.getMembersTable();
@@ -191,7 +191,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Role Dropdown Test');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Current user (owner) should not have a role dropdown
@@ -207,7 +207,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Search Test Project');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Verify search input is visible
@@ -231,7 +231,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Validation Test');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Clear the project name (required field)
@@ -253,7 +253,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Unsaved Changes Test');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Initially, save and cancel buttons should be disabled (no changes)
@@ -283,7 +283,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Delete Test Project');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Scroll to bottom to see delete section
@@ -307,7 +307,7 @@ test.describe('Projects', () => {
 			const { projectId } = await n8n.projectComposer.createProject('Persistence Test');
 
 			// Navigate to project settings
-			await n8n.page.goto(`/home/projects/${projectId}/settings`);
+			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await n8n.page.waitForLoadState('domcontentloaded');
 
 			// Update project details
@@ -320,7 +320,7 @@ test.describe('Projects', () => {
 
 			// Wait for save confirmation (partial match to include project name)
 			await expect(
-				n8n.page.getByText('Project saved successfully', { exact: false }),
+				n8n.page.getByText('Project Persisted Project Name saved successfully', { exact: false }),
 			).toBeVisible();
 
 			// Reload the page
