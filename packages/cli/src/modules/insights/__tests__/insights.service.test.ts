@@ -362,10 +362,11 @@ describe('getInsightsByWorkflow', () => {
 
 	beforeEach(async () => {
 		project = await createTeamProject();
-		project2 = await createTeamProject();
 		workflow1 = await createWorkflow({}, project);
 		workflow2 = await createWorkflow({}, project);
 		workflow3 = await createWorkflow({}, project);
+
+		project2 = await createTeamProject();
 		workflow4 = await createWorkflow({}, project2);
 	});
 
@@ -635,13 +636,18 @@ describe('getInsightsByTime', () => {
 	});
 
 	let project: Project;
+	let otherProject: Project;
 	let workflow1: IWorkflowDb & WorkflowEntity;
 	let workflow2: IWorkflowDb & WorkflowEntity;
+	let workflow3: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
 		project = await createTeamProject();
 		workflow1 = await createWorkflow({}, project);
 		workflow2 = await createWorkflow({}, project);
+
+		otherProject = await createTeamProject();
+		workflow3 = await createWorkflow({}, otherProject);
 	});
 
 	test('returns empty array when no insights exist', async () => {
@@ -808,6 +814,113 @@ describe('getInsightsByTime', () => {
 		expect(byTime[1].values).toEqual({
 			timeSaved: 0,
 			failed: 4,
+		});
+	});
+
+	test('compacted data are are grouped by time correctly with projectId filter', async () => {
+		// ARRANGE
+		for (const workflow of [workflow1, workflow2, workflow3]) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: workflow === workflow1 ? 1 : 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			// Check that hourly data is grouped together with the previous daily data
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ day: 2 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'runtime_ms',
+				value: workflow === workflow1 ? 10 : 20,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+
+			// Barely in range insight (should be included)
+			// 1 hour before 14 days ago
+			await createCompactedInsightsEvent(workflow, {
+				type: workflow === workflow1 ? 'success' : 'failure',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+			});
+
+			// Out of date range insight (should not be included)
+			// 14 days ago
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 14 }),
+			});
+		}
+
+		// ACT
+		const byTime = await insightsService.getInsightsByTime({
+			maxAgeInDays: 14,
+			periodUnit: 'day',
+			projectId: project.id,
+		});
+
+		// ASSERT
+		expect(byTime).toHaveLength(4);
+
+		// expect date to be sorted by oldest first
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 14 }).startOf('day').toISO());
+		expect(byTime[1].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[2].date).toEqual(DateTime.utc().minus({ days: 2 }).startOf('day').toISO());
+		expect(byTime[3].date).toEqual(DateTime.utc().startOf('day').toISO());
+
+		expect(byTime[0].values).toEqual({
+			total: 2,
+			succeeded: 1,
+			failed: 1,
+			failureRate: 0.5,
+			averageRunTime: 0,
+			timeSaved: 0,
+		});
+
+		expect(byTime[1].values).toEqual({
+			total: 2,
+			succeeded: 2,
+			failed: 0,
+			failureRate: 0,
+			averageRunTime: 15,
+			timeSaved: 0,
+		});
+
+		expect(byTime[2].values).toEqual({
+			total: 2,
+			succeeded: 2,
+			failed: 0,
+			failureRate: 0,
+			averageRunTime: 0,
+			timeSaved: 0,
+		});
+
+		expect(byTime[3].values).toEqual({
+			total: 7,
+			succeeded: 3,
+			failed: 4,
+			failureRate: 4 / 7,
+			averageRunTime: 0,
+			timeSaved: 0,
 		});
 	});
 });
