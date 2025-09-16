@@ -9,6 +9,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const loadingService = useLoadingService();
 
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
+	const suppressInteraction = ref(false);
+
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
 		nodes.value.filter(
@@ -23,14 +25,20 @@ export const useCanvasStore = defineStore('canvas', () => {
 		hasRangeSelection.value = value;
 	}
 
+	function setSuppressInteraction(value: boolean) {
+		suppressInteraction.value = value;
+	}
+
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		hasRangeSelection: computed(() => hasRangeSelection.value),
+		suppressInteraction: computed(() => suppressInteraction.value),
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
 		setHasRangeSelection,
+		setSuppressInteraction,
 	};
 });
