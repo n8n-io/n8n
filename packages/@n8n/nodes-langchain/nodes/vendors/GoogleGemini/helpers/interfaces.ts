@@ -1,6 +1,7 @@
 import type { GenerateContentConfig, GenerateContentParameters } from '@google/genai';
 import type { IDataObject } from 'n8n-workflow';
 
+/* type created based on: https://ai.google.dev/api/generate-content#generationconfig */
 export type GenerateContentGenerationConfig = Pick<
 	GenerateContentConfig,
 	| 'stopSequences'
@@ -23,6 +24,7 @@ export type GenerateContentGenerationConfig = Pick<
 	| 'mediaResolution'
 >;
 
+/* Type created based on: https://ai.google.dev/api/generate-content#method:-models.streamgeneratecontent */
 export interface GenerateContentRequest extends IDataObject {
 	contents: GenerateContentParameters['contents'];
 	tools?: GenerateContentConfig['tools'];
