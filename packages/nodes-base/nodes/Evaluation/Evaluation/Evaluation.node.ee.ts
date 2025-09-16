@@ -5,6 +5,7 @@ import type {
 	INodeTypeDescription,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { metricRequiresModelConnection } from 'n8n-workflow'; // See packages/workflow/src/evaluation-helpers.ts
 
 import {
 	setCheckIfEvaluatingProperties,
@@ -22,7 +23,6 @@ import {
 	setOutputs,
 	setInputs,
 } from '../utils/evaluationUtils';
-import { metricRequiresModelConnection } from 'n8n-workflow'; // See packages/workflow/src/evaluation-helpers.ts
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,7 +30,7 @@ export class Evaluation implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluation',
 		group: ['transform'],
-		version: [4.6, 4.7],
+		version: [4.6, 4.7, 4.8],
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		subtitle: '={{$parameter["operation"]}}',
@@ -93,7 +93,36 @@ export class Evaluation implements INodeType {
 				],
 				default: 'setOutputs',
 			},
-			authentication,
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				options: [
+					{
+						name: 'Google Sheets',
+						value: 'googleSheets',
+						description: 'Load the test dataset from a Google Sheets document',
+					},
+					{
+						name: 'Data Table',
+						value: 'dataTable',
+						description: 'Load the test dataset from a local Data Table',
+					},
+				],
+				default: 'googleSheets',
+				description: 'Where to get the test dataset from',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 4.8 } }], operation: ['setOutputs'] },
+				},
+			},
+			{
+				...authentication,
+				displayOptions: {
+					hide: {
+						source: ['dataTable'],
+					},
+				},
+			},
 			...setInputsProperties,
 			...setOutputProperties,
 			...setMetricsProperties,

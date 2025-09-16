@@ -22,7 +22,6 @@ import {
 } from '../utils/evaluationTriggerUtils';
 
 export const DEFAULT_STARTING_ROW = 2;
-export const DATA_TABLE_ID_FIELD = 'dataTableId';
 
 const MAX_ROWS = 1000;
 
@@ -99,7 +98,7 @@ export class EvaluationTrigger implements INodeType {
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'Data table',
-				name: DATA_TABLE_ID_FIELD,
+				name: 'dataTableId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
@@ -111,6 +110,7 @@ export class EvaluationTrigger implements INodeType {
 						typeOptions: {
 							searchListMethod: 'dataTableSearch',
 							searchable: true,
+							skipCredentialsCheckInRLC: true,
 						},
 					},
 					{
@@ -138,7 +138,7 @@ export class EvaluationTrigger implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { limitRows: [true] } },
 			},
-			readFilter,
+			{ ...readFilter, displayOptions: { hide: { source: ['dataTable'] } } },
 		],
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
@@ -175,15 +175,16 @@ export class EvaluationTrigger implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
 
-		const maxRows = this.getNodeParameter('limitRows', 0, false)
-			? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
-			: MAX_ROWS;
 		const source = this.getNodeParameter('source', 0) as string;
 
 		const previousRunRowNumber = inputData?.[0]?.json?.row_number;
 		const previousRunRowsLeft = inputData?.[0]?.json?._rowsLeft;
 
 		if (source === 'googleSheets') {
+			const maxRows = this.getNodeParameter('limitRows', 0, false)
+				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
+				: MAX_ROWS;
+
 			const firstDataRow =
 				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
 					? previousRunRowNumber + 1
@@ -249,6 +250,10 @@ export class EvaluationTrigger implements INodeType {
 				return [[currentRow]];
 			}
 		} else if (source === 'dataTable') {
+			const maxRows = this.getNodeParameter('limitRows', 0, false)
+				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
+				: MAX_ROWS;
+
 			if (this.helpers.getDataStoreProxy === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -261,7 +266,7 @@ export class EvaluationTrigger implements INodeType {
 					? previousRunRowNumber + 1
 					: 0;
 
-			const dataTableId = this.getNodeParameter(DATA_TABLE_ID_FIELD, 0, undefined, {
+			const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
 				extractValue: true,
 			}) as string;
 			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
@@ -282,6 +287,7 @@ export class EvaluationTrigger implements INodeType {
 				json: {
 					...data[0],
 					row_number: currentIndex,
+					row_id: data[0].id,
 					_rowsLeft: rowsLeft,
 				},
 			} satisfies INodeExecutionData;
@@ -319,7 +325,7 @@ export class EvaluationTrigger implements INodeType {
 							);
 						}
 
-						const dataTableId = this.getNodeParameter(DATA_TABLE_ID_FIELD, 0, undefined, {
+						const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
 							extractValue: true,
 						}) as string;
 						const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
@@ -329,12 +335,13 @@ export class EvaluationTrigger implements INodeType {
 							take: maxRows,
 						});
 
-						const result = data.map(
-							(row) =>
-								({
-									json: row,
-								}) satisfies INodeExecutionData,
-						);
+						const result: INodeExecutionData[] = data.map((row, i) => ({
+							json: {
+								...row,
+								row_id: row.id,
+								row_number: i,
+							},
+						}));
 
 						return [result];
 					}

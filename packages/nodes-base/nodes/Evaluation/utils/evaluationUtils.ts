@@ -1,4 +1,9 @@
-import { UserError, NodeOperationError, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	UserError,
+	NodeOperationError,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	jsonStringify,
+} from 'n8n-workflow';
 import type {
 	INodeParameters,
 	IDataObject,
@@ -6,6 +11,7 @@ import type {
 	INodeExecutionData,
 	JsonObject,
 	JsonValue,
+	DataStoreColumnJsType,
 } from 'n8n-workflow';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
@@ -46,6 +52,19 @@ function isOutputsArray(
 	);
 }
 
+export function toDataTableValue(value: JsonValue): DataStoreColumnJsType {
+	if (
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean' ||
+		value instanceof Date ||
+		value === null
+	)
+		return value;
+
+	return jsonStringify(value);
+}
+
 export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
 	const parentNodes = this.getParentNodes(evaluationNode.name);
@@ -75,9 +94,6 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		});
 	}
 
-	const googleSheetInstance = getGoogleSheet.call(this);
-	const googleSheet = await getSheet.call(this, googleSheetInstance);
-
 	const evaluationTrigger = this.evaluateExpression(
 		`{{ $('${evalTrigger.name}').first().json }}`,
 		0,
@@ -96,33 +112,72 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		}
 	});
 
-	await googleSheetInstance.updateRows(
-		googleSheet.title,
-		[columnNames],
-		'RAW', // default value for Value Input Mode
-		1, // header row
-	);
-
 	const outputs = outputFields.reduce<JsonObject>((acc, { outputName, outputValue }) => {
 		acc[outputName] = outputValue;
 		return acc;
 	}, {});
 
-	const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
-		[
-			{
-				row_number: rowNumber,
-				...outputs,
-			},
-		],
-		`${googleSheet.title}!A:Z`,
-		[columnNames],
-	);
+	const source = this.getNodeParameter('source', 0) as string;
 
-	await googleSheetInstance.batchUpdate(
-		preparedData.updateData,
-		'RAW', // default value for Value Input Mode
-	);
+	if (source === 'googleSheets') {
+		const googleSheetInstance = getGoogleSheet.call(this);
+		const googleSheet = await getSheet.call(this, googleSheetInstance);
+
+		await googleSheetInstance.updateRows(
+			googleSheet.title,
+			[columnNames],
+			'RAW', // default value for Value Input Mode
+			1, // header row
+		);
+
+		const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
+			[
+				{
+					row_number: rowNumber,
+					...outputs,
+				},
+			],
+			`${googleSheet.title}!A:Z`,
+			[columnNames],
+		);
+
+		await googleSheetInstance.batchUpdate(
+			preparedData.updateData,
+			'RAW', // default value for Value Input Mode
+		);
+	} else if (source === 'dataTable') {
+		if (this.helpers.getDataStoreProxy === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Attempted to use Data table node but the module is disabled',
+			);
+		}
+
+		const dataTableId = this.getNodeParameter('dataTableId', 0, undefined, {
+			extractValue: true,
+		}) as string;
+		const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
+
+		const rowId = (evaluationTrigger.row_id as number) ?? 1;
+
+		const data = Object.fromEntries(
+			Object.entries(outputs).map(([k, v]) => [k, toDataTableValue(v)]),
+		);
+
+		await dataTableProxy.updateRow({
+			filter: {
+				type: 'and',
+				filters: [
+					{
+						columnName: 'id',
+						condition: 'eq',
+						value: rowId,
+					},
+				],
+			},
+			data,
+		});
+	}
 
 	return [withEvaluationData.call(this, outputs)];
 }

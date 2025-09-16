@@ -30,6 +30,7 @@ const ALLOWED_NODES: readonly string[] = [
 	'n8n-nodes-base.dataTable',
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.evaluationTrigger',
+	'n8n-nodes-base.evaluation',
 ] as const;
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];
