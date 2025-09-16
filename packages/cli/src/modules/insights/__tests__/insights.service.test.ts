@@ -258,6 +258,95 @@ describe('getInsightsSummary', () => {
 			total: { deviation: -1, unit: 'count', value: 4 },
 		});
 	});
+
+	test('filter by projectId', async () => {
+		// ARRANGE
+		const otherProject = await createTeamProject();
+		const otherWorkflow = await createWorkflow({}, otherProject);
+
+		// last 6 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 2 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+
+		await createCompactedInsightsEvent(otherWorkflow, {
+			type: 'runtime_ms',
+			value: 430,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 1 }),
+		});
+		await createCompactedInsightsEvent(otherWorkflow, {
+			type: 'failure',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 3 }),
+		});
+
+		// last 12 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(otherWorkflow, {
+			type: 'runtime_ms',
+			value: 45,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 11 }),
+		});
+		//Outside range should not be taken into account
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 13 }),
+		});
+		await createCompactedInsightsEvent(otherWorkflow, {
+			type: 'runtime_ms',
+			value: 100,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 20 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary({
+			periodLengthInDays: 6,
+			projectId: project.id,
+		});
+
+		console.log(summary);
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
+			failed: { deviation: 1, unit: 'count', value: 1 },
+			failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
+			timeSaved: { deviation: 0, unit: 'minute', value: 0 },
+			total: { deviation: 2, unit: 'count', value: 3 },
+		});
+	});
 });
 
 describe('getInsightsByWorkflow', () => {
