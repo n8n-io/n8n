@@ -152,6 +152,9 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopupPosition = 'over';
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: ['equals', 'notEqual', 'contains', 'blank', 'notBlank'],
+			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,
