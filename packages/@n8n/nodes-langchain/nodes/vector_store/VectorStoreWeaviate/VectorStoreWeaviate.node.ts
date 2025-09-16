@@ -64,16 +64,18 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
 			};
-			console.log('doing hybrid search with options', options);
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
+				if (typeof score !== 'number') {
+					throw new Error(`Unexpected score type: ${typeof score}`);
+				}
 				return [
 					new Document({
 						pageContent: doc.pageContent,
 						metadata,
 					}),
-					score as number,
+					score,
 				] as [Document, number];
 			});
 		}
