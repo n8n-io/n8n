@@ -72,11 +72,11 @@ export async function verifyIntegrity(
 	}
 }
 
-export async function isVersionExists(
+export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
-): Promise<boolean> {
+): Promise<true> {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
 	try {
