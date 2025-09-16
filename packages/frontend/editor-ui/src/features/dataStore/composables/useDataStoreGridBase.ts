@@ -153,7 +153,35 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
 			columnDef.filterParams = {
-				filterOptions: ['equals', 'notEqual', 'contains', 'blank', 'notBlank'],
+				filterOptions: [
+					'equals',
+					'notEqual',
+					'contains',
+					{
+						displayKey: 'isEmpty',
+						displayName: 'Is Empty',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+					{
+						displayKey: 'notEmpty',
+						displayName: 'Is Not Empty',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+					{
+						displayKey: 'null',
+						displayName: 'Is Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+					{
+						displayKey: 'notNull',
+						displayName: 'Is Not Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+				],
 			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
@@ -162,8 +190,53 @@ export const useDataStoreGridBase = ({
 			columnDef.valueFormatter = dateValueFormatter;
 			columnDef.cellEditorPopup = true;
 			columnDef.dateComponent = ElDatePickerFilter;
+			columnDef.filterParams = {
+				filterOptions: [
+					'equals',
+					'notEqual',
+					'lessThan',
+					'lessThanOrEqual',
+					'greaterThan',
+					'greaterThanOrEqual',
+					'inRange',
+					{
+						displayKey: 'null',
+						displayName: 'Is Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+					{
+						displayKey: 'notNull',
+						displayName: 'Is Not Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+				],
+			};
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
+			columnDef.filterParams = {
+				filterOptions: [
+					'equals',
+					'notEqual',
+					'lessThan',
+					'lessThanOrEqual',
+					'greaterThan',
+					'greaterThanOrEqual',
+					{
+						displayKey: 'null',
+						displayName: 'Is Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+					{
+						displayKey: 'notNull',
+						displayName: 'Is Not Null',
+						predicate: () => true, // Server-side filtering handles this
+						numberOfInputs: 0,
+					},
+				],
+			};
 		} else if (col.type === 'boolean') {
 			columnDef.filterParams = {
 				filterOptions: BOOLEAN_COLUMN_FILTER_OPTIONS,

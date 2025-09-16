@@ -62,9 +62,13 @@ export const useDataStoreColumnFilters = ({
 				return 'ilike';
 			case 'endsWith':
 				return 'ilike';
-			case 'blank':
+			case 'isEmpty':
 				return 'eq';
-			case 'notBlank':
+			case 'notEmpty':
+				return 'neq';
+			case 'null':
+				return 'eq';
+			case 'notNull':
 				return 'neq';
 			case 'true':
 				return 'eq';
@@ -89,6 +93,10 @@ export const useDataStoreColumnFilters = ({
 				return 'gt';
 			case 'greaterThanOrEqual':
 				return 'gte';
+			case 'null':
+				return 'eq'; // Check for null
+			case 'notNull':
+				return 'neq'; // Check for not null
 			default:
 				throw new Error(`Unknown number/date type: ${type}`);
 		}
@@ -138,6 +146,10 @@ export const useDataStoreColumnFilters = ({
 							// backend will auto-wrap to %value% if % not present
 							value = filter.filter;
 						}
+					} else if (filter.type === 'isEmpty' || filter.type === 'notEmpty') {
+						value = '';
+					} else if (filter.type === 'null' || filter.type === 'notNull') {
+						value = null;
 					} else if (filter.type === 'true') {
 						value = true;
 					} else if (filter.type === 'false') {
@@ -150,6 +162,9 @@ export const useDataStoreColumnFilters = ({
 					});
 					break;
 				case 'number':
+					if (filter.type === 'null' || filter.type === 'notNull') {
+						value = null;
+					}
 					filters.push({
 						columnName: colField,
 						condition: mapNumberDateTypeToBackend(filter.type),
@@ -157,23 +172,27 @@ export const useDataStoreColumnFilters = ({
 					});
 					break;
 				case 'date':
-					const filterStr = typeof filter.dateFrom === 'string' ? filter.dateFrom : undefined;
-					if (filterStr) {
-						value = new Date(String(filterStr)).toISOString();
-					}
-					const filterToStr = typeof filter.dateTo === 'string' ? filter.dateTo : undefined;
-					if (filter.type === 'inRange' && filterStr && filterToStr) {
-						const fromIso = new Date(String(filterStr)).toISOString();
-						const toIso = new Date(String(filterToStr)).toISOString();
-						filters.push({ columnName: colField, condition: 'gte', value: fromIso });
-						filters.push({ columnName: colField, condition: 'lte', value: toIso });
+					if (filter.type === 'null' || filter.type === 'notNull') {
+						value = null;
 					} else {
-						filters.push({
-							columnName: colField,
-							condition: mapNumberDateTypeToBackend(filter.type),
-							value,
-						});
+						const filterStr = typeof filter.dateFrom === 'string' ? filter.dateFrom : undefined;
+						if (filterStr) {
+							value = new Date(String(filterStr)).toISOString();
+						}
+						const filterToStr = typeof filter.dateTo === 'string' ? filter.dateTo : undefined;
+						if (filter.type === 'inRange' && filterStr && filterToStr) {
+							const fromIso = new Date(String(filterStr)).toISOString();
+							const toIso = new Date(String(filterToStr)).toISOString();
+							filters.push({ columnName: colField, condition: 'gte', value: fromIso });
+							filters.push({ columnName: colField, condition: 'lte', value: toIso });
+							break; // Skip the normal filter push below
+						}
 					}
+					filters.push({
+						columnName: colField,
+						condition: mapNumberDateTypeToBackend(filter.type),
+						value,
+					});
 					break;
 				default:
 					// Unrecognized filter type; skip
