@@ -30,6 +30,7 @@ import {
 import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export const mockNode = ({
 	id = uuid(),
@@ -69,22 +70,7 @@ export const mockNodeTypeDescription = ({
 	description,
 	webhooks,
 	eventTriggerDescription,
-}: {
-	name?: INodeTypeDescription['name'];
-	displayName?: INodeTypeDescription['displayName'];
-	icon?: INodeTypeDescription['icon'];
-	version?: INodeTypeDescription['version'];
-	credentials?: INodeTypeDescription['credentials'];
-	inputs?: INodeTypeDescription['inputs'];
-	outputs?: INodeTypeDescription['outputs'];
-	codex?: INodeTypeDescription['codex'];
-	properties?: INodeTypeDescription['properties'];
-	group?: INodeTypeDescription['group'];
-	hidden?: INodeTypeDescription['hidden'];
-	description?: INodeTypeDescription['description'];
-	webhooks?: INodeTypeDescription['webhooks'];
-	eventTriggerDescription?: INodeTypeDescription['eventTriggerDescription'];
-} = {}) =>
+}: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
@@ -291,6 +277,24 @@ export function createTestWorkflowExecutionResponse(
 		},
 		createdAt: '2025-04-16T00:00:00.000Z',
 		startedAt: '2025-04-16T00:00:01.000Z',
+		...data,
+	};
+}
+
+export function createTestExpressionLocalResolveContext(
+	data: Partial<ExpressionLocalResolveContext> = {},
+): ExpressionLocalResolveContext {
+	const workflow = data.workflow ?? createTestWorkflowObject();
+
+	return {
+		localResolve: true,
+		workflow,
+		nodeName: 'n0',
+		inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		envVars: {},
+		additionalKeys: {},
+		connections: workflow.connectionsBySourceNode,
+		execution: null,
 		...data,
 	};
 }

@@ -146,6 +146,7 @@ import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesS
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -208,6 +209,7 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -2069,6 +2071,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
+			:suppress-interaction="canvasStore.suppressInteraction"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
@@ -2216,7 +2219,9 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="!isLoading"
+			v-if="
+				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
+			"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"
