@@ -17,6 +17,7 @@ describe('GoogleGemini Node', () => {
 	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
 	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
 	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
+	const transferFileMock = jest.spyOn(utils, 'transferFile');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -629,11 +630,7 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			downloadFileMock.mockResolvedValue({
-				fileContent: Buffer.from('test'),
-				mimeType: 'application/pdf',
-			});
-			uploadFileMock.mockResolvedValue({
+			transferFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
 				mimeType: 'application/pdf',
 			});
@@ -648,11 +645,11 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(downloadFileMock).toHaveBeenCalledWith(
+			expect(transferFileMock).toHaveBeenCalledWith(
+				0,
 				'https://example.com/file.pdf',
 				'application/octet-stream',
 			);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'application/pdf');
 		});
 
 		it('should upload file from binary data', async () => {
@@ -666,16 +663,7 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			const mockBinaryData: IBinaryData = {
-				mimeType: 'application/pdf',
-				fileName: 'test.pdf',
-				fileSize: '1024',
-				fileExtension: 'pdf',
-				data: 'test',
-			};
-			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue(mockBinaryData);
-			executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test'));
-			uploadFileMock.mockResolvedValue({
+			transferFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
 				mimeType: 'application/pdf',
 			});
@@ -691,7 +679,7 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'application/pdf');
+			expect(transferFileMock).toHaveBeenCalledWith(0, undefined, 'application/octet-stream');
 		});
 	});
 
