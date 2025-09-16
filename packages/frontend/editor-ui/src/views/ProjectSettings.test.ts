@@ -71,8 +71,9 @@ vi.mock('@/components/Projects/ProjectMembersTable.vue', () => ({
 			data: { type: Object, required: true },
 			currentUserId: { type: String, required: false },
 			projectRoles: { type: Array, required: true },
+			actions: { type: Array, required: false },
 		},
-		emits: ['update:options', 'update:role'],
+		emits: ['update:options', 'update:role', 'action'],
 		setup(_, { emit }) {
 			addEmitter('projectMembersTable', emit as unknown as Emitter);
 			return {};

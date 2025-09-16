@@ -22,6 +22,8 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { UserAction } from '@n8n/design-system';
+import type { ProjectMemberData } from '@/types/projects.types';
 import { isProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
@@ -102,6 +104,17 @@ const projectRoles = computed(() =>
 );
 const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
+const projectMembersActions = computed((): Array<UserAction<ProjectMemberData>> => {
+	return [
+		{
+			label: i18n.baseText('projects.settings.table.row.removeUser'),
+			value: 'remove',
+			guard: (member) =>
+				member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
+		},
+	];
+});
+
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
 	const user = usersStore.usersById[userId];
@@ -175,6 +188,12 @@ const onUpdateMemberRole = async ({
 
 const onTextInput = () => {
 	isDirty.value = true;
+};
+
+const onMembersListAction = ({ action, userId }: { action: string; userId: string }) => {
+	if (action === 'remove') {
+		void onUpdateMemberRole({ userId, role: 'remove' });
+	}
 };
 
 const onCancel = () => {
@@ -526,8 +545,10 @@ onMounted(() => {
 						:data="filteredMembersData"
 						:current-user-id="usersStore.currentUser?.id"
 						:project-roles="projectRoles"
+						:actions="projectMembersActions"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
+						@action="onMembersListAction"
 					/>
 				</div>
 			</fieldset>
