@@ -1137,4 +1137,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return executions.map(({ id }) => id);
 	}
+
+	/**
+	 * The number of executions that are running and count towards the concurrent executions limit.
+	 * Concurrency control only applies to executions started from a webhook or trigger node.
+	 */
+	async getConcurrentExecutionsCount() {
+		const concurrentExecutionsCount = await this.count({
+			where: { status: 'running', mode: In(['webhook', 'trigger']) },
+		});
+
+		return concurrentExecutionsCount;
+	}
 }
