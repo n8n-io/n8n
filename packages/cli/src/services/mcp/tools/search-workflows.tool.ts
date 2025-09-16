@@ -42,8 +42,6 @@ export const createSearchWorkflowsTool = (
 					updatedAt: true,
 					triggerCount: true,
 					nodes: true,
-					connections: true,
-					settings: true,
 				},
 			};
 
