@@ -239,6 +239,7 @@ describe('ManualExecutionService', () => {
 				executionMode: 'manual',
 				destinationNode: undefined,
 				pinData: undefined,
+				runData: undefined,
 			});
 
 			const workflow = mock<Workflow>({
