@@ -239,7 +239,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+                        const region = extractRegion(responseData);
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
