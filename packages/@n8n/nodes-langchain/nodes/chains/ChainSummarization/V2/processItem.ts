@@ -10,6 +10,7 @@ import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { getTracingConfig } from '@utils/tracing';
 
 import { getChainPromptsArgs } from '../helpers';
+import { BatchedSummarizationChain } from './batchedSummarizationChain';
 
 export async function processItem(
 	ctx: IExecuteFunctions,
@@ -35,12 +36,41 @@ export async function processItem(
 		combineMapPrompt?: string;
 	};
 
-	const chainArgs = getChainPromptsArgs(
-		summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
-		summarizationMethodAndPrompts,
-	);
+	// Get batching parameters
+	const batchSize = ctx.getNodeParameter('options.batching.batchSize', itemIndex, 1) as number;
+	const delayBetweenBatches = ctx.getNodeParameter(
+		'options.batching.delayBetweenBatches',
+		itemIndex,
+		0,
+	) as number;
 
-	const chain = loadSummarizationChain(model, chainArgs);
+	// Check if we should use batched processing for chunks
+	const shouldUseBatchedProcessing = ctx.getNode().typeVersion >= 2.1 && batchSize > 1;
+
+	let chain: any;
+
+	if (shouldUseBatchedProcessing) {
+		// Use our custom batched implementation
+		const chainArgs = getChainPromptsArgs(
+			summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
+			summarizationMethodAndPrompts,
+		);
+
+		chain = new BatchedSummarizationChain({
+			model,
+			type: summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
+			batchSize,
+			delayBetweenBatches,
+			...chainArgs,
+		});
+	} else {
+		// Use standard LangChain implementation for backward compatibility
+		const chainArgs = getChainPromptsArgs(
+			summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
+			summarizationMethodAndPrompts,
+		);
+		chain = loadSummarizationChain(model, chainArgs);
+	}
 
 	let processedDocuments: Document[];
 
@@ -60,7 +90,7 @@ export async function processItem(
 		return await chain.withConfig(getTracingConfig(ctx)).invoke({
 			input_documents: processedDocuments,
 		});
-	} else if (['nodeInputJson', 'nodeInputBinary'].includes(operationMode)) {
+	} else if (['nodeInputJson', 'nodeInputBinary'].indexOf(operationMode) !== -1) {
 		// Take the input and use binary or json loader
 		let textSplitter: TextSplitter | undefined;
 
