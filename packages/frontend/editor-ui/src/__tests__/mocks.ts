@@ -223,6 +223,7 @@ export function createTestNodeProperties(data: Partial<INodeProperties> = {}): I
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
+		default: '',
 		...data,
 	};
 }
