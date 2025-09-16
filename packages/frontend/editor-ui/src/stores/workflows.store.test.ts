@@ -14,7 +14,6 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
-	ExecutionSummary,
 	IConnection,
 	INodeExecutionData,
 	INode,
@@ -314,26 +313,6 @@ describe('useWorkflowsStore', () => {
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
-		});
-	});
-
-	describe('shouldReplaceInputDataWithPinData', () => {
-		it('should return true when no active workflow execution', () => {
-			workflowsStore.activeWorkflowExecution = null;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return true when active workflow execution mode is manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'manual' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return false when active workflow execution mode is not manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'automatic' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(false);
 		});
 	});
 

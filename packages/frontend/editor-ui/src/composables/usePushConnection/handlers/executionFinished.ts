@@ -10,6 +10,7 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -48,6 +49,7 @@ export async function executionFinished(
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
 	workflowsStore.lastAddedExecutingNode = null;
 
@@ -76,6 +78,15 @@ export async function executionFinished(
 			);
 		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
 			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
+		} else if (
+			templateId === 'ready-to-run-ai-workflow-v1' ||
+			templateId === 'ready-to-run-ai-workflow-v2'
+		) {
+			if (data.status === 'success') {
+				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
+			} else {
+				readyToRunWorkflowsV2Store.trackExecuteAiWorkflow(data.status);
+			}
 		} else if (isPrebuiltAgentTemplateId(templateId)) {
 			telemetry.track('User executed pre-built Agent', {
 				template: templateId,

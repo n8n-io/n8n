@@ -1,16 +1,16 @@
-import { setup } from '@storybook/vue3';
-import { withThemeByDataAttribute } from '@storybook/addon-themes';
-
-import './storybook.scss';
-// import '../src/css/tailwind/index.css';
-
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
-
+import { sharedTags } from '@n8n/storybook/main';
+import { withThemeByDataAttribute } from '@storybook/addon-themes';
+import { setup } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
+// @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 
 import { N8nPlugin } from '../src/plugin';
+
+import './storybook.scss';
+// import '../src/css/tailwind/index.css';
 
 setup((app) => {
 	library.add(fas);
@@ -19,7 +19,7 @@ setup((app) => {
 		locale: lang,
 	});
 
-	app.use(N8nPlugin);
+	app.use(N8nPlugin, {});
 });
 
 export const parameters = {
@@ -83,3 +83,5 @@ export const decorators = [
 		parentSelector: 'body',
 	}),
 ];
+
+export const tags = sharedTags;

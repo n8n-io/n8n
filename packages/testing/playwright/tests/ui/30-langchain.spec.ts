@@ -529,4 +529,24 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field_4');
 		});
 	});
+
+	test('should keep the same session when switching tabs', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Test_workflow_chat_partial_execution.json');
+		await n8n.canvas.clickZoomToFitButton();
+
+		await n8n.canvas.logsPanel.open();
+
+		// Send a message
+		await n8n.canvas.logsPanel.sendManualChatMessage('Test');
+		await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field');
+
+		await n8n.canvas.clickExecutionsTab();
+
+		await n8n.canvas.clickEditorTab();
+		await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field');
+
+		// Refresh session
+		await n8n.page.getByTestId('refresh-session-button').click();
+		await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
+	});
 });

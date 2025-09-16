@@ -104,7 +104,9 @@ async function processEventStream(
 					let chunkText = '';
 					if (Array.isArray(chunkContent)) {
 						for (const message of chunkContent) {
-							chunkText += (message as MessageContentText)?.text;
+							if (message?.type === 'text') {
+								chunkText += (message as MessageContentText)?.text;
+							}
 						}
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;

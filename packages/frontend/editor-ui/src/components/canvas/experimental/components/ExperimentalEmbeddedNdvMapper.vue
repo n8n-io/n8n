@@ -3,11 +3,13 @@ import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { N8nPopover } from '@n8n/design-system';
+import { ElPopover } from 'element-plus';
 import { useVueFlow } from '@vue-flow/core';
-import { watchOnce } from '@vueuse/core';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, ref, useTemplateRef } from 'vue';
+import { useElementBounding, useElementSize } from '@vueuse/core';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -23,27 +25,52 @@ const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
 const isOnceVisible = ref(isVisible.value);
+const canvasStore = useCanvasStore();
+const contentElRef = computed(() => contentRef.value?.$el ?? null);
+const contentSize = useElementSize(contentElRef);
+const refBounding = useElementBounding(virtualRef);
 
-watchOnce(isVisible, (value) => {
-	isOnceVisible.value = isOnceVisible.value || value;
+watch(
+	isVisible,
+	(value) => {
+		isOnceVisible.value = isOnceVisible.value || value;
+		canvasStore.setSuppressInteraction(value);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	canvasStore.setSuppressInteraction(false);
 });
 
 defineExpose({
-	contentRef: computed<HTMLElement>(() => contentRef.value?.$el ?? null),
+	contentRef: contentElRef,
 });
 </script>
 
 <template>
-	<N8nPopover
+	<ElPopover
 		:visible="isVisible"
-		placement="left"
+		placement="left-start"
 		:show-arrow="false"
 		:popper-class="`${$style.component} ignore-key-press-canvas`"
 		:width="360"
 		:offset="8"
 		append-to="body"
 		:popper-options="{
-			modifiers: [{ name: 'flip', enabled: false }],
+			modifiers: [
+				{ name: 'flip', enabled: false },
+				{
+					// Ensures that the popover is re-positioned when the reference element is resized
+					name: 'custom modifier',
+					options: {
+						refX: refBounding.x.value,
+						refY: refBounding.y.value,
+						width: contentSize.width.value,
+						height: contentSize?.height.value,
+					},
+				},
+			],
 		}"
 		:persistent="isOnceVisible /* works like lazy initialization */"
 		virtual-triggering
@@ -68,16 +95,20 @@ defineExpose({
 			:focused-mappable-input="ndvStore.focusedMappableInput"
 			node-not-run-message-variant="simple"
 		/>
-	</N8nPopover>
+	</ElPopover>
 </template>
 
 <style lang="scss" module>
 .component {
 	background-color: transparent !important;
-	padding: var(--spacing-s) 0 !important;
+	padding: 0 !important;
 	border: none !important;
 	box-shadow: none !important;
 	margin-top: -2px;
+
+	/* Override styles set for el-popper */
+	word-break: normal;
+	text-align: unset;
 }
 
 .inputPanel {
