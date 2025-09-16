@@ -1045,9 +1045,6 @@ importers:
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
-      '@google-ai/generativelanguage':
-        specifier: 3.4.0
-        version: 3.4.0(encoding@0.1.13)
       '@google-cloud/resource-manager':
         specifier: 5.3.0
         version: 5.3.0(encoding@0.1.13)
@@ -18975,7 +18972,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.12.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -19313,6 +19310,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@google-cloud/paginator@5.0.2':
     dependencies:
@@ -23535,11 +23533,6 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.7.2: {}
-
-  axios-retry@4.5.0(axios@1.12.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.12.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
