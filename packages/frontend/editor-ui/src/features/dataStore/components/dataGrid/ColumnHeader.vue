@@ -23,6 +23,7 @@ const isDropdownOpen = ref(false);
 const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 const isFilterOpen = ref(false);
 const hasActiveFilter = ref(false);
+const currentSort = ref<SortDirection>(null);
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -51,6 +52,10 @@ const checkFilterStatus = () => {
 	const columnId = props.params.column.getColId();
 	const filterModel = gridApi.getFilterModel();
 	hasActiveFilter.value = filterModel && Boolean(filterModel[columnId]);
+};
+
+const checkSortStatus = () => {
+	currentSort.value = props.params.column.getSort() ?? null;
 };
 
 const isDropdownVisible = computed(() => {
@@ -84,10 +89,6 @@ const columnActionItems = [
 	} as const,
 ];
 
-const currentSort = computed(() => {
-	return props.params.column.getSort();
-});
-
 const isSortable = computed(() => {
 	return props.params.column.getColDef().sortable;
 });
@@ -116,6 +117,7 @@ const onHeaderClick = (event: MouseEvent) => {
 	}
 };
 const onShowFilter = (e: MouseEvent) => {
+	e.stopPropagation();
 	isFilterOpen.value = true;
 	props.params.showFilter(e.target as HTMLElement);
 };
@@ -125,13 +127,20 @@ const onFilterClosed = () => {
 };
 
 onMounted(() => {
+	// Check initial states
+	checkFilterStatus();
+	checkSortStatus();
+
+	// Listen to events
 	props.params.api.addEventListener('filterChanged', checkFilterStatus);
+	props.params.api.addEventListener('sortChanged', checkSortStatus);
 	// TODO: this event is marked as internal. What can we use instead?
 	props.params.api.addEventListener('filterClosed', onFilterClosed);
 });
 
 onUnmounted(() => {
 	props.params.api.removeEventListener('filterChanged', checkFilterStatus);
+	props.params.api.removeEventListener('sortChanged', checkSortStatus);
 	props.params.api.removeEventListener('filterClosed', onFilterClosed);
 });
 </script>
@@ -142,6 +151,7 @@ onUnmounted(() => {
 		data-test-id="data-store-column-header"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
+		@click="onHeaderClick"
 	>
 		<div class="data-store-column-header-icon-wrapper">
 			<N8nIcon v-if="typeIcon" :icon="typeIcon" />
