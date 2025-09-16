@@ -3,11 +3,12 @@ import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weav
 import { WeaviateStore } from '@langchain/weaviate';
 
 import { Document } from 'langchain/document';
-import type {
-	IDataObject,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
+import {
+	ApplicationError,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
 import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
@@ -68,7 +69,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			return content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
 				if (typeof score !== 'number') {
-					throw new Error(`Unexpected score type: ${typeof score}`);
+					throw new ApplicationError(`Unexpected score type: ${typeof score}`);
 				}
 				return [
 					new Document({
@@ -79,7 +80,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 				] as [Document, number];
 			});
 		}
-		return super.similaritySearchVectorWithScore(
+		return await super.similaritySearchVectorWithScore(
 			query,
 			k,
 			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
@@ -220,7 +221,7 @@ const retrieveFields: INodeProperties[] = [
 					},
 				],
 				default: 'RelativeScore',
-				description: 'Select the fusion type for combining vector and keyword search results.',
+				description: 'Select the fusion type for combining vector and keyword search results',
 			},
 			{
 				displayName: 'Hybrid: Auto Cut Limit',
