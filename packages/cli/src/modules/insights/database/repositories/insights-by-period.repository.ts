@@ -314,7 +314,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		if (projectId) {
 			rawRowsQuery
-				.addSelect('metadata.projectId')
 				.innerJoin('insights.metadata', 'metadata')
 				// Use a cross join with the CTE
 				.innerJoin('date_ranges', 'date_ranges', '1=1')
@@ -427,7 +426,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 		if (projectId) {
 			rawRowsQuery
-				.addSelect('metadata.projectId')
 				.innerJoin('insights.metadata', 'metadata')
 				.innerJoin('date_range', 'date_range', '1=1')
 				.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
