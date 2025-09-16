@@ -486,6 +486,7 @@ export class DataStoreService {
 
 	private async validateDataTableSize() {
 		await this.dataStoreSizeValidator.validateSize(
+			'global',
 			async () => await this.dataStoreRepository.findDataTablesSize(),
 		);
 	}
@@ -494,9 +495,18 @@ export class DataStoreService {
 		const accessibleProjects = await this.projectService.getAccessibleProjects(user);
 		const projectIds = accessibleProjects.map((p) => p.id);
 
-		const sizeData = await this.dataStoreSizeValidator.getCachedSizeData(
-			async () => await this.dataStoreRepository.findDataTablesSize(projectIds),
-		);
+		const sizeData = await this.dataStoreSizeValidator.getCachedSizeData(user.id, async () => {
+			const data = await this.dataStoreRepository.findDataTablesSize(projectIds);
+
+			// Also update the global cache with the total bytes
+			// eslint-disable-next-line @typescript-eslint/require-await
+			await this.dataStoreSizeValidator.getCachedSizeData('global', async () => ({
+				totalBytes: data.totalBytes,
+				dataTables: {},
+			}));
+
+			return data;
+		});
 
 		return {
 			sizeBytes: sizeData.totalBytes,

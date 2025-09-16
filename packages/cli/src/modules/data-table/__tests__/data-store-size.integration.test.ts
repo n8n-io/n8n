@@ -300,4 +300,143 @@ describe('Data Store Size Tests', () => {
 			expect(result.dataTables[dataStore.id].name).toBe('emptyDataStore');
 		});
 	});
+
+	describe('caching behavior', () => {
+		let owner: User;
+		let regularUser: User;
+
+		beforeEach(async () => {
+			owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+			regularUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
+		});
+
+		it('should cache data per user and not share between users', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'test-dataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+
+			const mockGetAccessibleProjects = jest.spyOn(projectService, 'getAccessibleProjects');
+			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+
+			// ACT & ASSERT
+			// First call - regular user sees no data tables
+			mockGetAccessibleProjects.mockResolvedValueOnce([]);
+			const userResult = await dataStoreService.getDataTablesSize(regularUser);
+			expect(Object.keys(userResult.dataTables)).toHaveLength(0);
+			expect(userResult.sizeBytes).toBeGreaterThan(0); // Still gets instance total
+
+			// Second call - owner sees the data table (different cache)
+			mockGetAccessibleProjects.mockResolvedValueOnce([project1]);
+			const ownerResult = await dataStoreService.getDataTablesSize(owner);
+			expect(Object.keys(ownerResult.dataTables)).toHaveLength(1);
+			expect(ownerResult.dataTables[dataStore.id]).toBeDefined();
+
+			// Should have called the repository 2 times (once for user, once for owner)
+			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
+
+			// Cleanup
+			mockGetAccessibleProjects.mockRestore();
+			mockFindDataTablesSize.mockRestore();
+		});
+
+		it('should update global cache when fetching user-specific data', async () => {
+			// ARRANGE
+			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'test-dataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+
+			const mockGetCachedSizeData = jest.spyOn(dataStoreSizeValidator, 'getCachedSizeData');
+			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+
+			// ACT
+			await dataStoreService.getDataTablesSize(owner);
+
+			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test2' }]);
+
+			// ASSERT
+			// 1. Once for user-specific data (user.id as cache key)
+			// 2. Once for global cache update ('global' as cache key)
+			// 3. Once for size validation ('global' as cache key) - but this should use cached data
+			expect(mockGetCachedSizeData).toHaveBeenCalledTimes(3);
+
+			// Check the cache keys used
+			const cacheKeyCalls = mockGetCachedSizeData.mock.calls.map((call) => call[0]);
+			expect(cacheKeyCalls).toContain(owner.id); // User-specific cache
+			expect(cacheKeyCalls).toContain('global'); // Global cache (appears twice)
+
+			// Repository should be called only once for the initial user data fetch
+			// The global cache update and validation should use the computed/cached data
+			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
+
+			// Cleanup
+			mockGetCachedSizeData.mockRestore();
+			mockFindDataTablesSize.mockRestore();
+		});
+
+		it('should invalidate cache on data modifications', async () => {
+			// ARRANGE
+			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'test-dataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			const mockReset = jest.spyOn(dataStoreSizeValidator, 'reset');
+			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
+
+			// ACT & ASSERT
+			const result1 = await dataStoreService.getDataTablesSize(owner);
+			expect(result1.sizeBytes).toBeGreaterThanOrEqual(0);
+			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
+
+			// Inserting new data should reset cache
+			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
+			expect(mockReset).toHaveBeenCalledTimes(1);
+
+			// Fetch data again (should call repository again due to cache reset)
+			await dataStoreService.getDataTablesSize(owner);
+			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
+
+			// Update data (should reset cache again)
+			await dataStoreService.updateRow(dataStore.id, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'data', condition: 'eq', value: 'test' }],
+				},
+				data: { data: 'updated' },
+			});
+			expect(mockReset).toHaveBeenCalledTimes(2);
+
+			// Upsert data (should reset cache again)
+			await dataStoreService.upsertRow(dataStore.id, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
+				},
+				data: { data: 'inserted' },
+			});
+			expect(mockReset).toHaveBeenCalledTimes(3);
+
+			// Delete data (should reset cache again)
+			await dataStoreService.deleteRows(dataStore.id, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'data', condition: 'eq', value: 'updated' }],
+				},
+			});
+			expect(mockReset).toHaveBeenCalledTimes(4);
+
+			// Cleanup
+			mockReset.mockRestore();
+			mockFindDataTablesSize.mockRestore();
+		});
+	});
 });
