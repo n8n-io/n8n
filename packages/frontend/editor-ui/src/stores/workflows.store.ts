@@ -567,6 +567,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		let allWorkflows = data;
 
+		// TODO: We don't need this anymore, we can now filter based on availableInMCP
 		// If there are more workflows than the current page size, fetch remaining pages
 		if (count > DEFAULT_WORKFLOW_PAGE_SIZE) {
 			const totalPages = Math.ceil(count / DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -596,7 +597,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			allWorkflows = [...data, ...remainingData.flat()];
 		}
 
-		// TODO: This needs to be filtered on the backend, then we can remove automatic pagination from here
 		return allWorkflows.filter((item: WorkflowResource) => {
 			return item.settings?.availableInMCP === true;
 		});
