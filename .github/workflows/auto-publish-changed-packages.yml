@@ -3,6 +3,8 @@ name: Auto-publish changed packages
 on:
   push:
     branches: [master]
+    # Ignore commits that only change main packages
+    # NOTE: Keep this up-to-date with MAIN_PACKAGES .github/scripts/constants.mjs
     paths-ignore:
       - 'packages/cli/**'
       - 'packages/core/**'

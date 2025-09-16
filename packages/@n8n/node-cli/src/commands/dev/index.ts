@@ -19,7 +19,6 @@ export default class Dev extends Command {
 		'<%= config.bin %> <%= command.id %>',
 		'<%= config.bin %> <%= command.id %> --external-n8n',
 		'<%= config.bin %> <%= command.id %> --custom-user-folder /Users/test',
-		'<%= config.bin %> <%= command.id %> --verbose',
 	];
 	static override flags = {
 		'external-n8n': Flags.boolean({
@@ -32,10 +31,6 @@ export default class Dev extends Command {
 			description:
 				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli.',
 		}),
-		verbose: Flags.boolean({
-			default: false,
-			description: 'Enable verbose logging for detailed build and runtime information.',
-		}),
 	};
 
 	async run(): Promise<void> {
@@ -45,12 +40,6 @@ export default class Dev extends Command {
 		const { runPersistentCommand } = commands();
 
 		intro(picocolors.inverse(' n8n-node dev '));
-
-		if (flags.verbose) {
-			log.info(`Using package manager: ${packageManager}`);
-			log.info(`Custom user folder: ${flags['custom-user-folder']}`);
-			log.info(`External n8n mode: ${flags['external-n8n']}`);
-		}
 
 		await ensureN8nPackage('n8n-node dev');
 
