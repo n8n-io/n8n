@@ -477,21 +477,23 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<N8nText v-if="nodeNotRunMessageVariant === 'simple'" color="text-base" size="small">
-					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
-						<template #link>
-							<NodeExecuteButton
-								:class="$style.executeButton"
-								size="medium"
-								:node-name="nodeNameToExecute"
-								:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
-								text
-								telemetry-source="inputs"
-								hide-icon
-							/>
-						</template>
-					</I18nT>
-				</N8nText>
+				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
+					<template #description>
+						<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+							<template #link>
+								<NodeExecuteButton
+									:class="$style.executeButton"
+									size="large"
+									:node-name="nodeNameToExecute"
+									:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+									text
+									telemetry-source="inputs"
+									hide-icon
+								/>
+							</template>
+						</I18nT>
+					</template>
+				</NDVEmptyState>
 
 				<template v-else-if="isNDVV2">
 					<NDVEmptyState
