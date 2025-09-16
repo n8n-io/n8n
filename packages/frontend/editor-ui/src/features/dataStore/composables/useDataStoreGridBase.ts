@@ -41,6 +41,9 @@ import {
 	stringCellEditorParams,
 	dateValueFormatter,
 	numberValueFormatter,
+	STRING_COLUMN_FILTER_OPTIONS,
+	DATE_COLUMN_FILTER_OPTIONS,
+	NUMBER_COLUMN_FILTER_OPTIONS,
 	BOOLEAN_COLUMN_FILTER_OPTIONS,
 } from '@/features/dataStore/utils/columnUtils';
 
@@ -153,35 +156,7 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
 			columnDef.filterParams = {
-				filterOptions: [
-					'equals',
-					'notEqual',
-					'contains',
-					{
-						displayKey: 'isEmpty',
-						displayName: 'Is Empty',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-					{
-						displayKey: 'notEmpty',
-						displayName: 'Is Not Empty',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-					{
-						displayKey: 'null',
-						displayName: 'Is Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-					{
-						displayKey: 'notNull',
-						displayName: 'Is Not Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-				],
+				filterOptions: STRING_COLUMN_FILTER_OPTIONS,
 			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
@@ -191,51 +166,12 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopup = true;
 			columnDef.dateComponent = ElDatePickerFilter;
 			columnDef.filterParams = {
-				filterOptions: [
-					'equals',
-					'notEqual',
-					'lessThan',
-					'lessThanOrEqual',
-					'greaterThan',
-					'greaterThanOrEqual',
-					'inRange',
-					{
-						displayKey: 'null',
-						displayName: 'Is Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-					{
-						displayKey: 'notNull',
-						displayName: 'Is Not Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-				],
+				filterOptions: DATE_COLUMN_FILTER_OPTIONS,
 			};
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
 			columnDef.filterParams = {
-				filterOptions: [
-					'equals',
-					'notEqual',
-					'lessThan',
-					'lessThanOrEqual',
-					'greaterThan',
-					'greaterThanOrEqual',
-					{
-						displayKey: 'null',
-						displayName: 'Is Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-					{
-						displayKey: 'notNull',
-						displayName: 'Is Not Null',
-						predicate: () => true, // Server-side filtering handles this
-						numberOfInputs: 0,
-					},
-				],
+				filterOptions: NUMBER_COLUMN_FILTER_OPTIONS,
 			};
 		} else if (col.type === 'boolean') {
 			columnDef.filterParams = {

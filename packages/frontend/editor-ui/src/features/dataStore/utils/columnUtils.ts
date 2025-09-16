@@ -117,6 +117,68 @@ export const numberValueFormatter = (
 	return numberWithSpaces(value);
 };
 
+// Common filter operators
+const NULL_FILTER_OPTION = {
+	displayKey: 'null',
+	displayName: 'Is Null',
+	predicate: () => true,
+	numberOfInputs: 0,
+};
+
+const NOT_NULL_FILTER_OPTION = {
+	displayKey: 'notNull',
+	displayName: 'Is Not Null',
+	predicate: () => true,
+	numberOfInputs: 0,
+};
+
+const IS_EMPTY_FILTER_OPTION = {
+	displayKey: 'isEmpty',
+	displayName: 'Is Empty',
+	predicate: () => true,
+	numberOfInputs: 0,
+};
+
+const IS_NOT_EMPTY_FILTER_OPTION = {
+	displayKey: 'notEmpty',
+	displayName: 'Is Not Empty',
+	predicate: () => true,
+	numberOfInputs: 0,
+};
+
+export const STRING_COLUMN_FILTER_OPTIONS = [
+	'equals',
+	'notEqual',
+	'contains',
+	IS_EMPTY_FILTER_OPTION,
+	IS_NOT_EMPTY_FILTER_OPTION,
+	NULL_FILTER_OPTION,
+	NOT_NULL_FILTER_OPTION,
+];
+
+export const DATE_COLUMN_FILTER_OPTIONS = [
+	'equals',
+	'notEqual',
+	'lessThan',
+	'lessThanOrEqual',
+	'greaterThan',
+	'greaterThanOrEqual',
+	'inRange',
+	NULL_FILTER_OPTION,
+	NOT_NULL_FILTER_OPTION,
+];
+
+export const NUMBER_COLUMN_FILTER_OPTIONS = [
+	'equals',
+	'notEqual',
+	'lessThan',
+	'lessThanOrEqual',
+	'greaterThan',
+	'greaterThanOrEqual',
+	NULL_FILTER_OPTION,
+	NOT_NULL_FILTER_OPTION,
+];
+
 export const BOOLEAN_COLUMN_FILTER_OPTIONS = [
 	'empty',
 	{
@@ -131,16 +193,6 @@ export const BOOLEAN_COLUMN_FILTER_OPTIONS = [
 		numberOfInputs: 0,
 		predicate: () => true,
 	},
-	{
-		displayKey: 'null',
-		displayName: 'Is Null',
-		numberOfInputs: 0,
-		predicate: () => true,
-	},
-	{
-		displayKey: 'notNull',
-		displayName: 'Is Not Null',
-		numberOfInputs: 0,
-		predicate: () => true,
-	},
+	NULL_FILTER_OPTION,
+	NOT_NULL_FILTER_OPTION,
 ];
