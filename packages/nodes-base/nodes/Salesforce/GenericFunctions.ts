@@ -268,7 +268,9 @@ export function filterAndManageProcessedItems(
 	const newItemIds: string[] = [];
 
 	for (const item of responseData) {
-		const itemId = item.Id as string;
+		if (typeof item.Id !== 'string') continue;
+
+		const itemId = item.Id;
 		if (!processedIdsSet.has(itemId)) {
 			newItems.push(item);
 			newItemIds.push(itemId);

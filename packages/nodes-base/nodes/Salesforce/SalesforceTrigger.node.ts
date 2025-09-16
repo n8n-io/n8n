@@ -187,7 +187,8 @@ export class SalesforceTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowData = this.getWorkflowStaticData('node');
+		const workflowData: { processedIds?: string[]; lastTimeChecked?: string } =
+			this.getWorkflowStaticData('node');
 		let responseData;
 		const qs: IDataObject = {};
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
@@ -203,10 +204,10 @@ export class SalesforceTrigger implements INodeType {
 		if (!workflowData.processedIds) {
 			workflowData.processedIds = [];
 		}
-		const processedIds = workflowData.processedIds as string[];
+		const processedIds = workflowData.processedIds;
 
 		try {
-			const pollStartDate = getPollStartDate(workflowData.lastTimeChecked as string);
+			const pollStartDate = getPollStartDate(workflowData.lastTimeChecked);
 			const pollEndDate = endDate;
 
 			const options = {
