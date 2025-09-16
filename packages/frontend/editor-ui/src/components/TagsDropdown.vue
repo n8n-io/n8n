@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -13,12 +13,12 @@ interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
 	eventBus: EventBus | null;
-	allTags: ITag[];
+	allTags: Tag[];
 	isLoading: boolean;
-	tagsById: Record<string, ITag>;
+	tagsById: Record<string, Tag>;
 	createEnabled?: boolean;
 	manageEnabled?: boolean;
-	createTag?: (name: string) => Promise<ITag>;
+	createTag?: (name: string) => Promise<Tag>;
 	multipleLimit?: number;
 }
 
@@ -58,9 +58,9 @@ const container = ref<HTMLDivElement>();
 
 const dropdownId = uuid();
 
-const options = computed<ITag[]>(() => {
+const options = computed<Tag[]>(() => {
 	return props.allTags.filter(
-		(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+		(tag: Tag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
 	);
 });
 

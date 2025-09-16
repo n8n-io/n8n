@@ -1,6 +1,6 @@
 import { createTagsApi } from '@/api/tags';
 import { STORES } from '@n8n/stores';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
@@ -17,7 +17,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 	return defineStore(
 		id,
 		() => {
-			const tagsById = ref<Record<string, ITag>>({});
+			const tagsById = ref<Record<string, Tag>>({});
 			const loading = ref(false);
 			const fetchedAll = ref(false);
 			const fetchedUsageCount = ref(false);
@@ -37,8 +37,8 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 
 			// Methods
 
-			const setAllTags = (loadedTags: ITag[]) => {
-				tagsById.value = loadedTags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
+			const setAllTags = (loadedTags: Tag[]) => {
+				tagsById.value = loadedTags.reduce((accu: { [id: string]: Tag }, tag: Tag) => {
 					accu[tag.id] = tag;
 
 					return accu;
@@ -46,7 +46,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 				fetchedAll.value = true;
 			};
 
-			const upsertTags = (toUpsertTags: ITag[]) => {
+			const upsertTags = (toUpsertTags: Tag[]) => {
 				toUpsertTags.forEach((toUpsertTag) => {
 					const tagId = toUpsertTag.id;
 					const currentTag = tagsById.value[tagId];

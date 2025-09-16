@@ -9,7 +9,7 @@ import type {
 	ITemplatesNode,
 	ITemplatesWorkflow,
 } from '@n8n/rest-api-client/api/templates';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import { useTemplatesStore } from '@/stores/templates.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { isFullTemplatesCollection, isTemplatesWorkflow } from '@/utils/templates/typeGuards';
@@ -28,7 +28,7 @@ const i18n = useI18n();
 
 const templatesStore = useTemplatesStore();
 
-const categoriesAsTags = computed<ITag[]>(() =>
+const categoriesAsTags = computed<Tag[]>(() =>
 	props.template && 'categories' in props.template
 		? props.template.categories.map((category) => ({
 				id: `${category.id}`,

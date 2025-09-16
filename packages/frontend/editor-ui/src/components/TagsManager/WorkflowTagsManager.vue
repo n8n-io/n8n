@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useTagsStore } from '@/stores/tags.store';
 import TagsManager from './TagsManager.vue';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
 const i18n = useI18n();
@@ -26,7 +26,7 @@ async function fetchTags() {
 	}
 }
 
-async function createTag(name: string): Promise<ITag> {
+async function createTag(name: string): Promise<Tag> {
 	try {
 		return await tagsStore.create(name);
 	} catch (error) {
@@ -42,7 +42,7 @@ async function createTag(name: string): Promise<ITag> {
 	}
 }
 
-async function updateTag(id: string, name: string): Promise<ITag> {
+async function updateTag(id: string, name: string): Promise<Tag> {
 	try {
 		const updatedTag = await tagsStore.rename({ id, name });
 		showMessage({

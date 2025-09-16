@@ -12,7 +12,7 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -2021,12 +2021,12 @@ export function useCanvasOperations() {
 		const allTags = await tagsStore.fetchAll();
 		const tagNames = new Set(allTags.map((tag) => tag.name));
 
-		const workflowTags = workflowData.tags as ITag[];
+		const workflowTags = workflowData.tags as Tag[];
 		const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
 
-		const creatingTagPromises: Array<Promise<ITag>> = [];
+		const creatingTagPromises: Array<Promise<Tag>> = [];
 		for (const tag of notFound) {
-			const creationPromise = tagsStore.create(tag.name).then((newTag: ITag) => {
+			const creationPromise = tagsStore.create(tag.name).then((newTag: Tag) => {
 				allTags.push(newTag);
 				return newTag;
 			});
@@ -2036,7 +2036,7 @@ export function useCanvasOperations() {
 
 		await Promise.all(creatingTagPromises);
 
-		const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
+		const tagIds = workflowTags.reduce((accu: string[], imported: Tag) => {
 			const tag = allTags.find((t) => t.name === imported.name);
 			if (tag) {
 				accu.push(tag.id);

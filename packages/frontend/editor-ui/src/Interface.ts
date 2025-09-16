@@ -52,7 +52,7 @@ import type {
 	WorkflowDataCreate,
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 
 import type {
 	AI_NODE_CREATOR_VIEW,
@@ -257,7 +257,7 @@ export interface IWorkflowDb {
 	nodes: INodeUi[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
-	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	tags?: Tag[] | string[]; // string[] when store or requested, Tag[] from API response
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
@@ -292,7 +292,7 @@ export type WorkflowResource = BaseResource & {
 	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
-	tags?: ITag[] | string[];
+	tags?: Tag[] | string[];
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
@@ -362,7 +362,7 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	tags?: ITag[];
+	tags?: Tag[];
 };
 
 export type ResourceParentFolder = {
@@ -405,7 +405,7 @@ export interface IWorkflowShortResponse {
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
-	tags: ITag[];
+	tags: Tag[];
 }
 
 export interface IWorkflowsShareResponse {
@@ -744,7 +744,7 @@ export interface SubcategorizedNodeTypes {
 }
 
 export interface ITagRow {
-	tag?: ITag;
+	tag?: Tag;
 	usage?: string;
 	create?: boolean;
 	disable?: boolean;
@@ -791,7 +791,7 @@ export interface ICredentialsState {
 }
 
 export interface ITagsState {
-	tags: { [id: string]: ITag };
+	tags: { [id: string]: Tag };
 	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;

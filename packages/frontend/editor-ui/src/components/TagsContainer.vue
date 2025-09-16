@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { ComponentInstance } from 'vue';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -9,7 +9,7 @@ import debounce from 'lodash/debounce';
 
 interface TagsContainerProps {
 	tagIds: string[];
-	tagsById: { [id: string]: ITag };
+	tagsById: { [id: string]: Tag };
 	limit?: number;
 	clickable?: boolean;
 	responsive?: boolean;
@@ -41,11 +41,11 @@ const style = computed(() => ({
 const tags = computed(() => {
 	const allTags = props.tagIds.map((tagId: string) => props.tagsById[tagId]).filter(Boolean);
 
-	let toDisplay: Array<ITag & { hidden?: boolean; title?: string; isCount?: boolean }> = props.limit
+	let toDisplay: Array<Tag & { hidden?: boolean; title?: string; isCount?: boolean }> = props.limit
 		? allTags.slice(0, props.limit)
 		: allTags;
 
-	toDisplay = toDisplay.map((tag: ITag) => ({
+	toDisplay = toDisplay.map((tag: Tag) => ({
 		...tag,
 		hidden: props.responsive && !visibility.value[tag.id],
 	}));
@@ -61,7 +61,7 @@ const tags = computed(() => {
 	if (visibleCount < allTags.length) {
 		const hidden = allTags.slice(visibleCount);
 		const hiddenTitle = hidden.reduce(
-			(accu: string, tag: ITag) => (accu ? `${accu}, ${tag.name}` : tag.name),
+			(accu: string, tag: Tag) => (accu ? `${accu}, ${tag.name}` : tag.name),
 			'',
 		);
 
@@ -98,7 +98,7 @@ const onObserved = ({ el, isIntersecting }: { el: HTMLElement; isIntersecting: b
 	}
 };
 
-const onClick = (e: MouseEvent, tag: ITag & { hidden?: boolean }) => {
+const onClick = (e: MouseEvent, tag: Tag & { hidden?: boolean }) => {
 	if (props.clickable) {
 		e.stopPropagation();
 	}

@@ -69,3 +69,6 @@ export type {
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
 } from './schemas/external-secrets.schema';
+
+export type * from './schemas/tag.schema';
+export type * from './schemas/workflow.schema';

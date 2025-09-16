@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import type { ITagRow } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
@@ -14,7 +14,7 @@ const props = withDefaults(
 	defineProps<{
 		usageColumnTitleLocaleKey?: BaseTextKey;
 		usageLocaleKey?: BaseTextKey;
-		tags: ITag[];
+		tags: Tag[];
 		isLoading: boolean;
 	}>(),
 	{
@@ -26,7 +26,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	update: [updateId: string, name: string, onUpdate: (updated: boolean) => void];
 	delete: [deleteId: string, onDelete: (deleted: boolean) => void];
-	create: [name: string, onCreate: (created: ITag | null) => void];
+	create: [name: string, onCreate: (created: Tag | null) => void];
 	disableCreate: [];
 }>();
 
@@ -138,7 +138,7 @@ const disableCreate = (): void => {
 const createTag = (): void => {
 	isSaving.value = true;
 	const name = newName.value.trim();
-	const onCreate = (created: ITag | null) => {
+	const onCreate = (created: Tag | null) => {
 		if (created) {
 			stickyIds.value.add(created.id);
 			disableCreate();

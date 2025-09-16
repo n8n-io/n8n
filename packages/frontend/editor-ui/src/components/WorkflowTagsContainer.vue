@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import TagsContainer from './TagsContainer.vue';
 import { useTagsStore } from '@/stores/tags.store';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 
 interface Props {
 	tagIds: string[];
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 const annotationTagsStore = useTagsStore();
 
-const tagsById = computed<Record<string, ITag>>(() => annotationTagsStore.tagsById);
+const tagsById = computed<Record<string, Tag>>(() => annotationTagsStore.tagsById);
 
 function onClick(tagId: string) {
 	emit('click', tagId);

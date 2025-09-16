@@ -42,7 +42,7 @@ import type {
 	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -990,7 +990,7 @@ export function useWorkflowHelpers() {
 			});
 		}
 
-		const tags = (workflowData.tags ?? []) as ITag[];
+		const tags = (workflowData.tags ?? []) as Tag[];
 		const tagIds = tags.map((tag) => tag.id);
 		workflowsStore.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);

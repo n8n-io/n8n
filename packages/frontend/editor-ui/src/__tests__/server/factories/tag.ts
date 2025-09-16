@@ -1,8 +1,8 @@
 import { Factory } from 'miragejs';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import { faker } from '@faker-js/faker';
 
-export const tagFactory = Factory.extend<ITag>({
+export const tagFactory = Factory.extend<Tag>({
 	id(i: number) {
 		return i.toString();
 	},

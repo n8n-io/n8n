@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
@@ -15,11 +15,11 @@ interface TagsManagerProps {
 	titleLocaleKey?: BaseTextKey;
 	noTagsTitleLocaleKey?: BaseTextKey;
 	noTagsDescriptionLocaleKey?: BaseTextKey;
-	tags: ITag[];
+	tags: Tag[];
 	isLoading: boolean;
 	onFetchTags: () => Promise<void>;
-	onCreateTag: (name: string) => Promise<ITag>;
-	onUpdateTag: (id: string, name: string) => Promise<ITag>;
+	onCreateTag: (name: string) => Promise<Tag>;
+	onUpdateTag: (id: string, name: string) => Promise<Tag>;
 	onDeleteTag: (id: string) => Promise<boolean>;
 }
 
@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<TagsManagerProps>(), {
 });
 
 const emit = defineEmits<{
-	'update:tags': [tags: ITag[]];
+	'update:tags': [tags: Tag[]];
 }>();
 
 const tagIds = ref(props.tags.map((tag) => tag.id));
@@ -42,7 +42,7 @@ const modalBus = createEventBus();
 const tags = computed(() =>
 	tagIds.value
 		.map((tagId) => props.tags.find((tag) => tag.id === tagId))
-		.filter((tag): tag is ITag => Boolean(tag)),
+		.filter((tag): tag is Tag => Boolean(tag)),
 );
 const hasTags = computed(() => tags.value.length > 0);
 
@@ -60,7 +60,7 @@ function onDisableCreate() {
 	isCreating.value = false;
 }
 
-async function onCreate(name: string, createCallback: (tag: ITag | null, error?: Error) => void) {
+async function onCreate(name: string, createCallback: (tag: Tag | null, error?: Error) => void) {
 	try {
 		if (!name) {
 			throw new Error(i18n.baseText('tagsManager.tagNameCannotBeEmpty'));

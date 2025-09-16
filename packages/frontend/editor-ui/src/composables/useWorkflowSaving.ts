@@ -16,7 +16,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
-import type { ITag } from '@n8n/rest-api-client/api/tags';
+import type { Tag } from '@n8n/api-types';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -232,8 +232,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			}
 
 			if (tags) {
-				const createdTags = (workflowData.tags || []) as ITag[];
-				const tagIds = createdTags.map((tag: ITag): string => tag.id);
+				const createdTags = (workflowData.tags || []) as Tag[];
+				const tagIds = createdTags.map((tag: Tag): string => tag.id);
 				workflowsStore.setWorkflowTagIds(tagIds);
 			}
 
@@ -400,8 +400,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				workflowsStore.setNodeValue(changes);
 			});
 
-			const createdTags = (workflowData.tags || []) as ITag[];
-			const tagIds = createdTags.map((tag: ITag) => tag.id);
+			const createdTags = (workflowData.tags || []) as Tag[];
+			const tagIds = createdTags.map((tag: Tag) => tag.id);
 			workflowsStore.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
