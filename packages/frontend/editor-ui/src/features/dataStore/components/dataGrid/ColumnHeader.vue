@@ -20,7 +20,6 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
-const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 const isFilterOpen = ref(false);
 const hasActiveFilter = ref(false);
 const currentSort = ref<SortDirection>(null);
@@ -98,11 +97,6 @@ const showSortIndicator = computed(() => {
 });
 
 const onHeaderClick = (event: MouseEvent) => {
-	const target = event.target as HTMLElement;
-	if (dropdownRef.value?.$el?.contains(target)) {
-		return;
-	}
-
 	if (isSortable.value) {
 		const currentSortDirection = currentSort.value;
 		let nextSort: SortDirection = null;
@@ -124,6 +118,10 @@ const onShowFilter = (e: MouseEvent) => {
 
 const onFilterClosed = () => {
 	isFilterOpen.value = false;
+};
+
+const onDropdownClick = (e: MouseEvent) => {
+	e.stopPropagation(); // Prevent the header click (sorting) from firing
 };
 
 onMounted(() => {
@@ -176,13 +174,13 @@ onUnmounted(() => {
 
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
-			ref="dropdownRef"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"
 			@visible-change="onDropdownVisibleChange"
+			@click="onDropdownClick"
 		/>
 	</div>
 </template>
