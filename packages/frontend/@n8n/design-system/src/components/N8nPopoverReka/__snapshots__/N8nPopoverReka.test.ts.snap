@@ -3,7 +3,6 @@
 exports[`N8nPopoverReka > should render correctly with default props 1`] = `
 "<mock-popover-root>
   <mock-popover-trigger><button></button></mock-popover-trigger>
-  <!--v-if-->
   <mock-popover-portal>
     <mock-popover-content>
       <div dir="ltr" style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;" class="scrollAreaRoot">

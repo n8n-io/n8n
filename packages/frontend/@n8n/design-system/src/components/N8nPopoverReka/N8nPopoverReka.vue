@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import {
-	PopoverAnchor,
-	type PopoverAnchorProps,
 	PopoverContent,
 	type PopoverContentProps,
 	PopoverPortal,
@@ -13,9 +11,8 @@ import {
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props
-	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset'>,
-		Pick<PopoverRootProps, 'open'>,
-		Pick<PopoverAnchorProps, 'reference'> {
+	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
+		Pick<PopoverRootProps, 'open'> {
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
@@ -64,7 +61,6 @@ const emit = defineEmits<Emits>();
 		<PopoverTrigger :as-child="true">
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
-		<PopoverAnchor v-if="reference" :reference="reference" />
 		<PopoverPortal>
 			<PopoverContent
 				:side="side"
@@ -73,6 +69,7 @@ const emit = defineEmits<Emits>();
 				:side-offset="sideOffset"
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width }"
+				:reference="reference"
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
