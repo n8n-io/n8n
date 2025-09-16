@@ -109,8 +109,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// Dev HMR for i18n is imported in main.ts before app mount
 </script>
 
 <template>
