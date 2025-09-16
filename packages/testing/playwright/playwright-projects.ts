@@ -21,16 +21,7 @@ const SERIAL_EXECUTION = /@db:reset/;
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: { proxyServerEnabled: true, taskRunner: true } },
 	{ name: 'postgres', config: { postgres: true } },
-	{
-		name: 'queue',
-		config: {
-			queueMode: true,
-			resourceQuota: {
-				memory: 0.5, // 500MB (very constrained)
-				cpu: 0.5, // Half a CPU core
-			},
-		},
-	},
+	{ name: 'queue', config: { queueMode: true } },
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 

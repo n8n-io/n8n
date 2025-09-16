@@ -26,7 +26,7 @@ import {
 	setupProxyServer,
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
-import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { createSilentLogConsumer, getResourceQuotaFromEnv } from './n8n-test-container-utils';
 
 // --- Constants ---
 
@@ -120,7 +120,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		env = {},
 		proxyServerEnabled = false,
 		projectName,
-		resourceQuota,
+		resourceQuota = getResourceQuotaFromEnv(),
 		taskRunner = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
