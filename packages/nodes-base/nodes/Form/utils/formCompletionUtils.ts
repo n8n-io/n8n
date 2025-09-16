@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { sanitizeCustomCss, sanitizeHtml } from './utils';
+import { getWebhookSandboxCSP } from 'n8n-core';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
@@ -52,7 +53,7 @@ export const renderFormCompletion = async (
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = context.getNodeParameter('responseText', '') as string;
+	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const binary =
 		context.getNodeParameter('respondWith', '') === 'returnBinary'
 			? await binaryResponse(context)
@@ -66,12 +67,13 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
+	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	res.render('form-trigger-completion', {
 		title: completionTitle,
 		message: sanitizeHtml(completionMessage),
 		formTitle: title,
 		appendAttribution,
-		responseText: sanitizeHtml(responseText),
+		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
