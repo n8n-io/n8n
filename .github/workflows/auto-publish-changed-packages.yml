@@ -1,0 +1,90 @@
+name: Auto-publish changed packages
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'packages/cli/**'
+      - 'packages/core/**'
+      - 'packages/workflow/**'
+      - 'packages/nodes-base/**'
+      - 'packages/frontend/editor-ui/**'
+
+concurrency:
+  group: auto-publish-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  auto-publish:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'n8n-io'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: https://registry.npmjs.org/
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install script dependencies
+        run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Version independent packages
+        run: node .github/scripts/version-independent-packages.mjs
+
+      - name: Generate changelogs for changed packages
+        run: |
+          changed_packages=$(git diff --name-only HEAD^ HEAD | grep 'package\.json$' | grep -v '^packages/\(cli\|core\|workflow\|nodes-base\|frontend/editor-ui\)/' | head -20)
+          for package_file in $changed_packages; do
+            if [ -f "$package_file" ]; then
+              package_dir=$(dirname "$package_file")
+              version=$(node -p "JSON.parse(require('fs').readFileSync('$package_file', 'utf8')).version")
+              echo "Generating changelog for $package_dir v$version"
+              node .github/scripts/generate-package-changelog.mjs --package-path "$package_dir" --version "$version"
+            fi
+          done
+
+      - name: Build and publish changed packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          changed_packages=$(git diff --name-only HEAD~2 HEAD | grep 'package\.json$' | grep -v '^packages/\(cli\|core\|workflow\|nodes-base\|frontend/editor-ui\)/' | head -20)
+          published_packages=()
+
+          for package_file in $changed_packages; do
+            if [ -f "$package_file" ]; then
+              package_dir=$(dirname "$package_file")
+              package_name=$(node -p "JSON.parse(require('fs').readFileSync('$package_file', 'utf8')).name")
+
+              echo "Building and publishing $package_name"
+
+              # Build if needed
+              if [ -f "$package_dir/tsconfig.json" ] || [ -f "$package_dir/tsconfig.build.json" ]; then
+                pnpm --filter="$package_name" build
+              fi
+
+              # Publish
+              cd "$package_dir"
+              pnpm publish --access public --no-git-checks
+              cd - > /dev/null
+
+              published_packages+=("$package_name")
+            fi
+          done
+
+          if [ ${#published_packages[@]} -gt 0 ]; then
+            echo "Published packages: ${published_packages[*]}"
+          else
+            echo "No packages to publish"
+          fi

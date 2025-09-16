@@ -1,31 +1,21 @@
 import createTempFile from 'tempfile';
-import conventionalChangelog from 'conventional-changelog';
 import { resolve } from 'path';
 import { createReadStream, createWriteStream } from 'fs';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { pipeline } from 'stream/promises';
 import packageJson from '../../package.json' with { type: 'json' };
+import { createChangelogStream } from './changelog-utils.mjs';
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const fullChangelogFile = resolve(baseDir, 'CHANGELOG.md');
 // Version includes experimental versions (e.g., 1.2.3-exp.0)
 const versionChangelogFile = resolve(baseDir, `CHANGELOG-${packageJson.version}.md`);
 
-const changelogStream = conventionalChangelog({
-	preset: 'angular',
-	releaseCount: 1,
+const changelogStream = createChangelogStream({
 	tagPrefix: 'n8n@',
-	transform: (commit, callback) => {
-		const hasNoChangelogInHeader = commit.header.includes('(no-changelog)');
-		const isBenchmarkScope = commit.scope === 'benchmark';
-
-		// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
-		callback(null, hasNoChangelogInHeader || isBenchmarkScope ? undefined : commit);
-	},
-}).on('error', (err) => {
-	console.error(err.stack);
-	process.exit(1);
+	releaseCount: 1,
+	independentPackage: false
 });
 
 // Write the new changelog to a new temporary file, so that the contents can be used in the PR description
