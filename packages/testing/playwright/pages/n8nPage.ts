@@ -13,6 +13,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
 import { VariablesPage } from './VariablesPage';
@@ -47,6 +48,7 @@ export class n8nPage {
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
+	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
@@ -87,6 +89,7 @@ export class n8nPage {
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
+		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
