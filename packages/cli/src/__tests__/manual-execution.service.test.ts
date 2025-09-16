@@ -234,6 +234,35 @@ describe('ManualExecutionService', () => {
 			);
 		});
 
+		it('should call workflowExecute.run for full execution when no runData or startNodes', async () => {
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode: undefined,
+				pinData: undefined,
+			});
+
+			const workflow = mock<Workflow>({
+				getNode: jest.fn().mockReturnValue(null),
+				getTriggerNodes: jest.fn().mockReturnValue([]),
+			});
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id';
+
+			const mockRun = jest.fn().mockReturnValue('mockRunReturn');
+			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
+				run: mockRun,
+				processRunExecutionData: jest.fn(),
+			}));
+
+			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
+
+			expect(mockRun.mock.calls[0][0]).toBe(workflow);
+			expect(mockRun.mock.calls[0][1]).toBeUndefined(); // startNode
+			expect(mockRun.mock.calls[0][2]).toBeUndefined(); // destinationNode
+			expect(mockRun.mock.calls[0][3]).toBeUndefined(); // pinData
+		});
+
 		it('should handle partial execution with provided runData, startNodes and no destinationNode', async () => {
 			const mockRunData = { node1: [{ data: { main: [[{ json: {} }]] } }] };
 			const startNodeName = 'node1';
