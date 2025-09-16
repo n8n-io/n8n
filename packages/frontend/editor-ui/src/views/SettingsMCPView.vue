@@ -165,7 +165,7 @@ onMounted(async () => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.headingContainer">
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.mcp.heading') }}</n8n-heading>
+			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</n8n-heading>
 		</div>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">

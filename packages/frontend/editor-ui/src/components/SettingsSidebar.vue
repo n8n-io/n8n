@@ -124,7 +124,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	menuItems.push({
 		id: 'settings-mcp',
 		icon: 'mcp',
-		label: i18n.baseText('settings.mcp.sidebar.item'),
+		label: i18n.baseText('settings.mcp'),
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.MCP_SETTINGS),
 		route: { to: { name: VIEWS.MCP_SETTINGS } },
