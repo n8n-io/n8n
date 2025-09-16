@@ -619,6 +619,149 @@ describe('toolsAgentExecute', () => {
 			expect(mockExecutor.streamEvents).not.toHaveBeenCalled();
 			expect(result[0][0].json.output).toBe('Regular response');
 		});
+
+		it('should handle mixed message content types in streaming', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock async generator for streamEvents with mixed content types
+			const mockStreamEvents = async function* () {
+				// Message with array content including text and non-text types
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: [
+								{ type: 'text', text: 'Hello ' },
+								{ type: 'thinking', content: 'This is thinking content' },
+								{ type: 'text', text: 'world!' },
+								{ type: 'image', url: 'data:image/png;base64,abc123' },
+							],
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Hello world!');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Hello world!');
+		});
+
+		it('should handle string content in streaming', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock async generator for streamEvents with string content
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: 'Direct string content',
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Direct string content');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('Direct string content');
+		});
+
+		it('should ignore non-text message types in array content', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock async generator with only non-text content
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: [
+								{ type: 'thinking', content: 'This is thinking content' },
+								{ type: 'image', url: 'data:image/png;base64,abc123' },
+								{ type: 'audio', data: 'audio-data' },
+							],
+						},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, '');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('');
+		});
+
+		it('should handle empty chunk content gracefully', async () => {
+			jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			jest.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// Mock async generator with empty content
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {
+							content: null,
+						},
+					},
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: {
+						chunk: {},
+					},
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.output).toBe('');
+		});
 	});
 
 	it('should process items if SupplyDataContext is passed and isStreaming is not set', async () => {
