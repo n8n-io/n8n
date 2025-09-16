@@ -29,6 +29,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
@@ -141,33 +142,6 @@ export function searchNodes(
 	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
 
 	return reRankedResults.map(({ item }) => item);
-}
-
-export function reRankSearchResults(
-	searchResults: Array<{ score: number; item: INodeCreateElement }>,
-	additionalFactors: Record<string, Record<string, number>>,
-) {
-	return searchResults
-		.map(({ score, item }) => {
-			// For each additional factor, we check if it exists for the item and type,
-			// and if so, we add the score to the item's score.
-			const additionalScore = Object.entries(additionalFactors).reduce((acc, [_, factorScores]) => {
-				const factorScore = factorScores[item.key];
-				if (factorScore) {
-					return acc + factorScore;
-				}
-
-				return acc;
-			}, 0);
-
-			return {
-				score: score + additionalScore,
-				item,
-			};
-		})
-		.sort((a, b) => {
-			return b.score - a.score;
-		});
 }
 
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
