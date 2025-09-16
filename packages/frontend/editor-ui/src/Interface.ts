@@ -202,6 +202,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	sessionId?: string;
 	agentRequest?: {
 		query: NodeParameterValueType;
 		tool: {

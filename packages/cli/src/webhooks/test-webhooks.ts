@@ -295,6 +295,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: string;
 		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+		sessionId?: string;
 	}) {
 		const {
 			userId,
@@ -304,7 +305,10 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			sessionId,
 		} = options;
+
+		console.log(`TestWebhooks.needsWebhook called with sessionId: ${sessionId}, workflowId: ${workflowEntity.id}`);
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
@@ -343,8 +347,22 @@ export class TestWebhooks implements IWebhookManager {
 		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 
 		for (const webhook of webhooks) {
+			webhook.path = removeTrailingSlash(webhook.path);
+
+			// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
+			// IMPORTANT: This must happen BEFORE key generation
+			if (sessionId && webhook.node && (
+				workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
+			)) {
+				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
+				webhook.path = `${workflow.id}/${sessionId}`;
+				console.log(`ChatTrigger webhook path set to: ${webhook.path} for sessionId: ${sessionId}`);
+			}
+
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
+
+			console.log(`Processing webhook for node ${webhook.node}, path: ${webhook.path}, key: ${key}`);
 
 			if (runData && webhook.node in runData) {
 				return false;
@@ -361,7 +379,6 @@ export class TestWebhooks implements IWebhookManager {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
-			webhook.path = removeTrailingSlash(webhook.path);
 			webhook.isTest = true;
 
 			/**

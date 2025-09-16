@@ -34,4 +34,7 @@ export interface ChatOptions {
 	allowFileUploads?: Ref<boolean> | boolean;
 	allowedFilesMimeTypes?: Ref<string> | string;
 	enableStreaming?: boolean;
+	// Event handlers for message lifecycle
+	beforeMessageSent?: (message: string) => void | Promise<void>;
+	afterMessageSent?: (message: string, response?: any) => void | Promise<void>;
 }
