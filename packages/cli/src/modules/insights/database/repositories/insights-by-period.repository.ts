@@ -388,7 +388,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.where('insights.periodStart >= date_range.start_date');
 
 		if (projectId) {
-			rawRowsQuery.where('metadata.projectId = :projectId', { projectId });
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
 		rawRowsQuery

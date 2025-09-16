@@ -336,8 +336,6 @@ describe('getInsightsSummary', () => {
 			projectId: project.id,
 		});
 
-		console.log(summary);
-
 		// ASSERT
 		expect(summary).toEqual({
 			averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
@@ -356,15 +354,19 @@ describe('getInsightsByWorkflow', () => {
 	});
 
 	let project: Project;
+	let project2: Project;
 	let workflow1: IWorkflowDb & WorkflowEntity;
 	let workflow2: IWorkflowDb & WorkflowEntity;
 	let workflow3: IWorkflowDb & WorkflowEntity;
+	let workflow4: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
 		project = await createTeamProject();
+		project2 = await createTeamProject();
 		workflow1 = await createWorkflow({}, project);
 		workflow2 = await createWorkflow({}, project);
 		workflow3 = await createWorkflow({}, project);
+		workflow4 = await createWorkflow({}, project2);
 	});
 
 	test('compacted data are are grouped by workflow correctly', async () => {
@@ -518,6 +520,100 @@ describe('getInsightsByWorkflow', () => {
 		expect(byWorkflow.count).toEqual(3);
 		expect(byWorkflow.data).toHaveLength(1);
 		expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
+	});
+
+	test('compacted data are grouped by workflow correctly with projectId filter', async () => {
+		// ARRANGE
+		for (const workflow of [workflow1, workflow2, workflow4]) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: workflow === workflow1 ? 1 : 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ day: 2 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: DateTime.utc(),
+			});
+			// last 14 days
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'runtime_ms',
+				value: 123,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+
+			// Barely in range insight (should be included)
+			// 1 hour before 14 days ago
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+			});
+
+			// Out of date range insight (should not be included)
+			// 14 days ago
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 14 }),
+			});
+		}
+
+		// ACT
+		const byWorkflow = await insightsService.getInsightsByWorkflow({
+			maxAgeInDays: 14,
+			projectId: project.id,
+		});
+
+		// ASSERT
+		expect(byWorkflow.count).toEqual(2);
+		expect(byWorkflow.data).toHaveLength(2);
+
+		// expect first workflow to be workflow 2, because it has a bigger total (default sorting)
+		expect(byWorkflow.data[0]).toMatchObject({
+			workflowId: workflow2.id,
+			workflowName: workflow2.name,
+			projectId: project.id,
+			projectName: project.name,
+			total: 7,
+			failed: 2,
+			runTime: 123,
+			succeeded: 5,
+			timeSaved: 0,
+		});
+		expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 7);
+		expect(byWorkflow.data[0].averageRunTime).toBeCloseTo(123 / 7);
+
+		expect(byWorkflow.data[1]).toMatchObject({
+			workflowId: workflow1.id,
+			workflowName: workflow1.name,
+			projectId: project.id,
+			projectName: project.name,
+			total: 6,
+			failed: 2,
+			runTime: 123,
+			succeeded: 4,
+			timeSaved: 0,
+		});
+		expect(byWorkflow.data[1].failureRate).toBeCloseTo(2 / 6);
+		expect(byWorkflow.data[1].averageRunTime).toBeCloseTo(123 / 6);
 	});
 
 	test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
