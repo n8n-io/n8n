@@ -73,7 +73,7 @@ export class PersonalSettingsPage extends BasePage {
 		updateEmail: (newEmail: string, currentPassword?: string) => {
 			this.getters.emailInput().type('{selectall}').type(newEmail).type('{enter}');
 			if (currentPassword) {
-				this.getters.currentPasswordConfirmationInput().type(currentPassword).type('{enter}');;
+				this.getters.currentPasswordConfirmationInput().type(currentPassword).type('{enter}');
 			}
 		},
 		tryToSetInvalidEmail: (newEmail: string) => {
