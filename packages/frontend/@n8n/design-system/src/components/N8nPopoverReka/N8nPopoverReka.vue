@@ -85,7 +85,7 @@ function handleOpenAutoFocus(e: Event) {
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"
-					:max-height="props.maxHeight"
+					:max-height="maxHeight"
 					:type="scrollType"
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"

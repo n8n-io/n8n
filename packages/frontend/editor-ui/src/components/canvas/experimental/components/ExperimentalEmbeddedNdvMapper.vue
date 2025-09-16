@@ -3,7 +3,6 @@ import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useVueFlow } from '@vue-flow/core';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
@@ -20,7 +19,6 @@ const { node, inputNodeName, visible, virtualRef } = defineProps<{
 
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
-const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
 const canvasStore = useCanvasStore();
@@ -50,8 +48,9 @@ defineExpose({
 		:side-flip="false"
 		align="start"
 		width="360px"
-		:max-height="`calc(${vf.viewportRef.value?.offsetHeight ?? 0}px - var(--spacing-s) * 2)`"
+		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
 		:reference="virtualRef"
+		:suppress-auto-focus="true"
 	>
 		<template #content>
 			<InputPanel
