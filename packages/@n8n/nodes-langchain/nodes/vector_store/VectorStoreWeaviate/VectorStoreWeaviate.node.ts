@@ -23,61 +23,65 @@ type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	alpha?: number;
 	queryProperties?: string;
 	maxVectorDistance?: number;
+	fusionType?: 'Ranked' | 'RelativeScore';
 };
+
 class ExtendedWeaviateVectorStore extends WeaviateStore {
-	private static defaultFilter: WeaviateCompositeFilter;
-	private static args: WeaviateLibArgs;
+	private defaultFilter?: WeaviateCompositeFilter;
+	private args!: WeaviateLibArgs;
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: WeaviateLibArgs,
 		defaultFilter?: WeaviateCompositeFilter,
-	): Promise<WeaviateStore> {
-		ExtendedWeaviateVectorStore.args = args;
+	): Promise<ExtendedWeaviateVectorStore> {
+		// Call parent constructor (returns a store instance)
+		const base = (await super.fromExistingIndex(embeddings, args)) as ExtendedWeaviateVectorStore;
+
+		// Attach per-instance config
+		base.args = args;
 		if (defaultFilter) {
-			ExtendedWeaviateVectorStore.defaultFilter = defaultFilter;
+			base.defaultFilter = defaultFilter;
 		}
-		return await super.fromExistingIndex(embeddings, args);
+
+		return base;
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
-		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
-		const args = ExtendedWeaviateVectorStore.args;
+		filter = filter ?? this.defaultFilter;
+		const args = this.args;
+
 		if (args.hybridQuery) {
 			const options = {
 				limit: !args.autoCutLimit ? k : undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
-				alpha: args.alpha ?? undefined,
+				alpha: args.alpha ?? 0.75,
 				vector: query,
 				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
 					? args.queryProperties.split(',').map((prop) => prop.trim())
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
+				fusionType: args.fusionType,
 			};
+			console.log('doing hybrid search with options', options);
 			const content = await super.hybridSearch(args.hybridQuery, options);
-			const result: Array<[Document, number]> = content.map((doc) => {
+			return content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
 				return [
 					new Document({
 						pageContent: doc.pageContent,
-						metadata, // score removed
+						metadata,
 					}),
 					score as number,
-				];
+				] as [Document, number];
 			});
-
-			return result;
 		}
-		if (filter) {
-			return await super.similaritySearchVectorWithScore(
-				query,
-				k,
-				parseCompositeFilter(filter as WeaviateCompositeFilter),
-			);
-		} else {
-			return await super.similaritySearchVectorWithScore(query, k, undefined);
-		}
+		return super.similaritySearchVectorWithScore(
+			query,
+			k,
+			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+		);
 	}
 }
 
@@ -200,6 +204,23 @@ const retrieveFields: INodeProperties[] = [
 				description: 'Provide a query text to combine vector search with a keyword/text search',
 			},
 			{
+				displayName: 'Hybrid: Fusion Type',
+				name: 'fusionType',
+				type: 'options',
+				options: [
+					{
+						name: 'Relative Score',
+						value: 'RelativeScore',
+					},
+					{
+						name: 'Ranked',
+						value: 'Ranked',
+					},
+				],
+				default: 'RelativeScore',
+				description: 'Select the fusion type for combining vector and keyword search results.',
+			},
+			{
 				displayName: 'Hybrid: Auto Cut Limit',
 				name: 'autoCutLimit',
 				type: 'number',
@@ -211,7 +232,7 @@ const retrieveFields: INodeProperties[] = [
 				displayName: 'Hybrid: Alpha',
 				name: 'alpha',
 				type: 'number',
-				default: 0.75,
+				default: 0.5,
 				validateType: 'number',
 				description:
 					'Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword.',
@@ -268,6 +289,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			queryProperties: string;
 			maxVectorDistance: number;
+			fusionType: 'Ranked' | 'RelativeScore';
 			alpha: undefined;
 			autoCutLimit: undefined;
 			hybridQuery: undefined;
@@ -313,6 +335,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			alpha: options.alpha ?? undefined,
 			queryProperties: options.queryProperties,
 			maxVectorDistance: options.maxVectorDistance,
+			fusionType: options.fusionType,
 		};
 
 		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
@@ -353,6 +376,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			alpha: undefined,
 			queryProperties: undefined,
 			maxVectorDistance: undefined,
+			fusionType: undefined,
 		};
 
 		if (options.clearStore) {
