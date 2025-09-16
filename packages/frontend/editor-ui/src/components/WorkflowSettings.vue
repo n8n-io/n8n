@@ -833,7 +833,7 @@ onBeforeUnmount(() => {
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						<label for="avalableInMCP">
+						<label for="availableInMCP">
 							{{ i18n.baseText('workflowSettings.availableInMCP') + ':' }}
 							<N8nTooltip placement="top">
 								<template #content>
@@ -850,7 +850,7 @@ onBeforeUnmount(() => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="workflowSettings.availableInMCP ?? false"
 								active-color="#13ce66"
-								data-test-id="workflow-settings-vailable-in-mcp"
+								data-test-id="workflow-settings-available-in-mcp"
 								@update:model-value="toggleAvailableInMCP"
 							></el-switch>
 						</div>
