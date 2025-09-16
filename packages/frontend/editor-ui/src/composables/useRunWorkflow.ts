@@ -165,7 +165,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				? workflowsStore.getNodeByName(options.destinationNode)?.type
 				: '';
 
-			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
 			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
@@ -181,7 +180,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodeNames.push(
 					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
-				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
@@ -319,7 +317,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflowObject.value.id && nodeId && version === 2) {
+				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
 					if (agentRequest) {

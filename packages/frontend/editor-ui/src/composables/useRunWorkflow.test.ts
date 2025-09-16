@@ -22,7 +22,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
 import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
-import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
@@ -139,7 +138,6 @@ describe('useRunWorkflow({ router })', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
-	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 
 	beforeEach(() => {
@@ -150,7 +148,6 @@ describe('useRunWorkflow({ router })', () => {
 		pushConnectionStore = usePushConnectionStore();
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
-		settingsStore = useSettingsStore();
 		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();

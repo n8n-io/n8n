@@ -26,9 +26,7 @@ import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import * as apiUtils from '@n8n/rest-api-client';
-import { useSettingsStore } from '@/stores/settings.store';
 import {
 	createTestNode,
 	createTestTaskData,
@@ -78,13 +76,11 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
-		settingsStore = mockedStore(useSettingsStore);
 		track.mockReset();
 	});
 

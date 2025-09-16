@@ -14,7 +14,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nRadioButtons, N8nText } from '@n8n/design-system';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
@@ -79,7 +78,6 @@ const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
-const settings = useSettingsStore();
 const { dirtinessByName } = useNodeDirtiness();
 
 // Composables

@@ -8,7 +8,6 @@ import {
 	type Undoable,
 } from '@/models/history';
 import { useHistoryStore } from '@/stores/history.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '@/types';
 import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
@@ -118,7 +117,6 @@ function findLoop(
 export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
 
 	function getParentSubNodes(nodeName: string) {
 		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
