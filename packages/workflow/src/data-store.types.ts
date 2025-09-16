@@ -103,10 +103,19 @@ export type DataTableInsertRowsResult<
 		: DataTableInsertRowsBulkResult;
 
 export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
+
+export type DataTableInfo = {
+	id: string;
+	name: string;
+	projectId: string;
+	projectName: string;
+	sizeBytes: number;
+};
+
 export type DataTablesSizeResult = {
 	sizeBytes: number;
 	sizeState: DataTableSizeStatus;
-	dataTables: Record<string, number>;
+	dataTables: Record<string, DataTableInfo>;
 };
 
 // APIs for a data store service operating on a specific projectId

@@ -1,8 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createUser } from '@test-integration/db/users';
+
+import { ProjectService } from '../../../services/project.service.ee';
 import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
@@ -29,10 +32,12 @@ afterAll(async () => {
 describe('Data Store Size Tests', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreRepository: DataStoreRepository;
+	let projectService: ProjectService;
 
 	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
 		dataStoreRepository = Container.get(DataStoreRepository);
+		projectService = Container.get(ProjectService);
 	});
 
 	let project1: Project;
@@ -129,16 +134,29 @@ describe('Data Store Size Tests', () => {
 		});
 	});
 
-	describe('findDataTablesSize', () => {
-		it('should return size information for data tables', async () => {
+	describe('getDataTablesSize', () => {
+		let owner: User;
+		let regularUser: User;
+		let project2: Project;
+
+		beforeEach(async () => {
+			project2 = await createTeamProject();
+
+			owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+			regularUser = await createUser({
+				role: GLOBAL_MEMBER_ROLE,
+			});
+		});
+
+		it('should return all data tables for admin user', async () => {
 			// ARRANGE
 			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore1',
+				name: 'project1-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const dataStore2 = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore2',
+			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+				name: 'project2-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
@@ -146,34 +164,119 @@ describe('Data Store Size Tests', () => {
 
 			await dataStoreService.insertRows(dataStore1.id, project1.id, data);
 
-			await dataStoreService.insertRows(dataStore2.id, project1.id, [{ data: 'test' }]);
+			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'test' }]);
 
 			// ACT
-			const result = await dataStoreRepository.findDataTablesSize();
+			const result = await dataStoreService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.totalBytes).toBeGreaterThan(0);
+			expect(result.sizeBytes).toBeGreaterThan(0);
+			expect(result.sizeState).toBe('ok');
 			expect(result.dataTables).toBeDefined();
+
 			expect(Object.keys(result.dataTables)).toHaveLength(2);
+			expect(result.dataTables[dataStore1.id]).toBeDefined();
+			expect(result.dataTables[dataStore2.id]).toBeDefined();
 
-			expect(result.dataTables[dataStore1.id]).toBeGreaterThan(0);
-			expect(result.dataTables[dataStore2.id]).toBeGreaterThan(0);
+			// Check info
+			expect(result.dataTables[dataStore1.id].name).toBe('project1-dataStore');
+			expect(result.dataTables[dataStore1.id].projectId).toBe(project1.id);
+			expect(result.dataTables[dataStore2.id].name).toBe('project2-dataStore');
+			expect(result.dataTables[dataStore2.id].projectId).toBe(project2.id);
 
-			expect(result.dataTables[dataStore1.id]).toBeGreaterThan(result.dataTables[dataStore2.id]);
+			expect(result.dataTables[dataStore1.id].sizeBytes).toBeGreaterThan(0);
+			expect(result.dataTables[dataStore2.id].sizeBytes).toBeGreaterThan(0);
+			expect(result.dataTables[dataStore1.id].sizeBytes).toBeGreaterThan(
+				result.dataTables[dataStore2.id].sizeBytes,
+			);
 
 			// Total should be sum of individual tables
-			const expectedTotal = result.dataTables[dataStore1.id] + result.dataTables[dataStore2.id];
-			expect(result.totalBytes).toBe(expectedTotal);
+			const expectedTotal =
+				result.dataTables[dataStore1.id].sizeBytes + result.dataTables[dataStore2.id].sizeBytes;
+			expect(result.sizeBytes).toBe(expectedTotal);
+		});
+
+		it('should return only accessible project data tables for regular user', async () => {
+			// ARRANGE
+			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+				name: 'accessible-dataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+				name: 'inaccessible-dataStore',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'accessible' }]);
+			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'inaccessible' }]);
+
+			const mockGetAccessibleProjects = jest
+				.spyOn(projectService, 'getAccessibleProjects')
+				.mockResolvedValue([project1]);
+
+			// ACT
+			const result = await dataStoreService.getDataTablesSize(regularUser);
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.sizeBytes).toBeGreaterThan(0);
+			expect(result.sizeState).toBe('ok');
+			expect(result.dataTables).toBeDefined();
+
+			expect(Object.keys(result.dataTables)).toHaveLength(1);
+			expect(result.dataTables[dataStore1.id]).toBeDefined();
+			expect(result.dataTables[dataStore2.id]).toBeUndefined(); // No access
+
+			expect(result.dataTables[dataStore1.id].name).toBe('accessible-dataStore');
+			expect(result.dataTables[dataStore1.id].projectId).toBe(project1.id);
+
+			// Cleanup
+			mockGetAccessibleProjects.mockRestore();
+		});
+
+		it('should return empty dataTables but full totalBytes when user has no project access', async () => {
+			// ARRANGE
+			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
+				name: 'inaccessible-dataStore1',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			const dataStore2 = await dataStoreService.createDataStore(project2.id, {
+				name: 'inaccessible-dataStore2',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			// Add data to both
+			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'test1' }]);
+			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'test2' }]);
+
+			const mockGetAccessibleProjects = jest
+				.spyOn(projectService, 'getAccessibleProjects')
+				.mockResolvedValue([]);
+
+			// ACT
+			const result = await dataStoreService.getDataTablesSize(regularUser);
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.sizeBytes).toBeGreaterThan(0); // Instance-wide size
+			expect(result.sizeState).toBe('ok');
+			expect(result.dataTables).toBeDefined();
+			expect(Object.keys(result.dataTables)).toHaveLength(0); // No accessible tables
+
+			// Cleanup
+			mockGetAccessibleProjects.mockRestore();
 		});
 
 		it('should return empty result when no data tables exist', async () => {
 			// ACT
-			const result = await dataStoreRepository.findDataTablesSize();
+			const result = await dataStoreService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.totalBytes).toBe(0);
+			expect(result.sizeBytes).toBe(0);
 			expect(result.dataTables).toBeDefined();
 			expect(Object.keys(result.dataTables)).toHaveLength(0);
 		});
@@ -186,13 +289,15 @@ describe('Data Store Size Tests', () => {
 			});
 
 			// ACT
-			const result = await dataStoreRepository.findDataTablesSize();
+			const result = await dataStoreService.getDataTablesSize(owner);
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.totalBytes).toBeGreaterThanOrEqual(0);
+			expect(result.sizeBytes).toBeGreaterThanOrEqual(0);
 			expect(result.dataTables).toBeDefined();
-			expect(result.dataTables[dataStore.id]).toBeGreaterThanOrEqual(0);
+			expect(result.dataTables[dataStore.id]).toBeDefined();
+			expect(result.dataTables[dataStore.id].sizeBytes).toBeGreaterThanOrEqual(0);
+			expect(result.dataTables[dataStore.id].name).toBe('emptyDataStore');
 		});
 	});
 });

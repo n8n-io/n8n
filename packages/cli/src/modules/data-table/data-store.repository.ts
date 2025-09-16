@@ -7,6 +7,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
+import type { DataTableInfo } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
@@ -244,7 +245,47 @@ export class DataStoreRepository extends Repository<DataTable> {
 	private parseSize = (bytes: number | string | null): number =>
 		bytes === null ? 0 : typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
 
-	async findDataTablesSize(): Promise<DataTablesSizeData> {
+	async findDataTablesSize(projectIds?: string[]): Promise<DataTablesSizeData> {
+		const sizeMap = await this.getAllDataTablesSizeMap();
+
+		// Calculate total bytes for the whole instance
+		const totalBytes = Array.from(sizeMap.values()).reduce((sum, size) => sum + size, 0);
+
+		if (projectIds === undefined || projectIds?.length === 0) {
+			return {
+				totalBytes,
+				dataTables: {},
+			};
+		}
+
+		const query = this.createQueryBuilder('dt')
+			.leftJoinAndSelect('dt.project', 'p')
+			.select(['dt.id', 'dt.name', 'p.id', 'p.name'])
+			.andWhere('dt.projectId IN (:...projectIds)', { projectIds });
+
+		const dataTablesWithProjects = await query.getMany();
+
+		// Combine size data with metadata
+		const dataTables: Record<string, DataTableInfo> = {};
+
+		for (const dt of dataTablesWithProjects) {
+			const sizeBytes = sizeMap.get(dt.id) ?? 0;
+			dataTables[dt.id] = {
+				id: dt.id,
+				name: dt.name,
+				projectId: dt.project.id,
+				projectName: dt.project.name,
+				sizeBytes,
+			};
+		}
+
+		return {
+			totalBytes,
+			dataTables,
+		};
+	}
+
+	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
 		const dbType = this.globalConfig.database.type;
 		const tablePattern = toTableName('%');
 
@@ -299,7 +340,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			}
 
 			default:
-				return { totalBytes: 0, dataTables: {} };
+				return new Map<string, number>();
 		}
 
 		const result = (await this.query(sql)) as Array<{
@@ -307,17 +348,16 @@ export class DataStoreRepository extends Repository<DataTable> {
 			table_bytes: number | string | null;
 		}>;
 
-		return result
-			.filter((row) => row.table_bytes !== null && row.table_name)
-			.reduce(
-				(acc, row) => {
-					const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
-					const sizeBytes = this.parseSize(row.table_bytes);
-					acc.dataTables[dataStoreId] = (acc.dataTables[dataStoreId] ?? 0) + sizeBytes;
-					acc.totalBytes += sizeBytes;
-					return acc;
-				},
-				{ dataTables: {} as Record<string, number>, totalBytes: 0 },
-			);
+		const sizeMap = new Map<string, number>();
+
+		for (const row of result) {
+			if (row.table_bytes !== null && row.table_name) {
+				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+				const sizeBytes = this.parseSize(row.table_bytes);
+				sizeMap.set(dataStoreId, (sizeMap.get(dataStoreId) ?? 0) + sizeBytes);
+			}
+		}
+
+		return sizeMap;
 	}
 }
