@@ -1,6 +1,7 @@
 import { Command } from '@n8n/decorators';
 import { z } from 'zod';
 import path from 'path';
+import { ensureDir } from 'fs-extra';
 
 import { BaseCommand } from '../base-command';
 
@@ -24,7 +25,6 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 
-		const { ensureDir } = await import('fs-extra');
 		await ensureDir(outputDir);
 
 		// TODO: Export entities
