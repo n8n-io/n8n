@@ -3067,6 +3067,7 @@
 	"projects.settings.delete.question.wipe.label": "Delete its workflows and credentials",
 	"projects.settings.delete.question.wipe.title": "Type \"delete all data\" to confirm",
 	"projects.settings.delete.question.wipe.placeholder": "delete all data",
+	"projects.settings.delete.dataTableDisclaimer": "{count} data table cannot be transferred and will be deleted. | {count} data tables cannot be transferred and will be deleted.",
 	"projects.settings.delete.confirm": "Yes, I am sure",
 	"projects.settings.delete.cancel": "No, cancel",
 	"projects.settings.delete.successful.title": "Project {projectName} deleted",
