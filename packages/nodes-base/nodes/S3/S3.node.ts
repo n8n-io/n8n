@@ -80,14 +80,17 @@ export class S3 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const hasLocationConstraint = (
+			value: unknown,
+		): value is { LocationConstraint?: string | { _: string | undefined } } =>
+			value !== null && typeof value === 'object' && 'LocationConstraint' in (value as object);
+
 		const extractRegion = (soapResponse: unknown): string => {
-			const response = soapResponse as { LocationConstraint?: unknown };
-			const location = response?.LocationConstraint as
-				| string
-				| { _: string | undefined }
-				| undefined;
-			if (typeof location === 'string') return location || 'us-east-1';
-			if (location && typeof location === 'object') return location._ || 'us-east-1';
+			if (hasLocationConstraint(soapResponse)) {
+				const location = soapResponse.LocationConstraint;
+				if (typeof location === 'string') return location || 'us-east-1';
+				if (location && typeof location === 'object') return location._ || 'us-east-1';
+			}
 			return 'us-east-1';
 		};
 		const items = this.getInputData();
@@ -305,7 +308,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -316,7 +319,7 @@ export class S3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region as string,
+							region,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -334,7 +337,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						responseData = await s3ApiRequestSOAPAllItems.call(
 							this,
@@ -346,7 +349,7 @@ export class S3 implements INodeType {
 							{ 'list-type': 2, prefix: folderKey },
 							{},
 							{},
-							region as string,
+							region,
 						);
 
 						// folder empty then just delete it
@@ -360,7 +363,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region as string,
+								region,
 							);
 
 							responseData = { deleted: [{ Key: folderKey }] };
@@ -398,7 +401,7 @@ export class S3 implements INodeType {
 								{ delete: '' },
 								headers,
 								{},
-								region as string,
+								region,
 							);
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
@@ -430,7 +433,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -443,7 +446,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region as string,
+								region,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -457,7 +460,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region as string,
+								region,
 							);
 						}
 						if (Array.isArray(responseData)) {
@@ -568,7 +571,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -579,7 +582,7 @@ export class S3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region as string,
+							region,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject),
@@ -607,7 +610,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						region = extractRegion(region) as string;
+						region = extractRegion(region);
 
 						const response = await s3ApiRequestREST.call(
 							this,
@@ -618,7 +621,7 @@ export class S3 implements INodeType {
 							qs,
 							{},
 							{ encoding: null, resolveWithFullResponse: true },
-							region as string,
+							region,
 						);
 
 						let mimeType: string | undefined;
@@ -666,7 +669,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						responseData = await s3ApiRequestSOAP.call(
 							this,
@@ -677,7 +680,7 @@ export class S3 implements INodeType {
 							qs,
 							{},
 							{},
-							region as string,
+							region,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -709,7 +712,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
@@ -722,7 +725,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region as string,
+								region,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -736,7 +739,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region as string,
+								region,
 							);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -843,7 +846,7 @@ export class S3 implements INodeType {
 							location: '',
 						});
 
-						const region = extractRegion(responseData) as string;
+						const region = extractRegion(responseData);
 
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
@@ -863,7 +866,7 @@ export class S3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region as string,
+								region,
 							);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
@@ -883,7 +886,7 @@ export class S3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region as string,
+								region,
 							);
 						}
 
