@@ -21,6 +21,19 @@ const setupWrapperRef = (wrapperRef: unknown, inputValue: string) => {
 	return mockInput;
 };
 
+const setupPickerRef = (pickerRef: unknown, throwError = false) => {
+	const focus = vi.fn();
+	// @ts-expect-error - pickerRef is unknown
+	pickerRef.value = {
+		focus: throwError
+			? () => {
+					throw new Error('Focus failed');
+				}
+			: focus,
+	};
+	return focus;
+};
+
 describe('useDatePickerCommon', () => {
 	let callbacks: DatePickerCallbacks;
 
@@ -148,9 +161,8 @@ describe('useDatePickerCommon', () => {
 
 	describe('focusPicker', () => {
 		it('should focus picker after nextTick', async () => {
-			const mockFocus = vi.fn();
 			const { focusPicker, pickerRef } = useDatePickerCommon(callbacks);
-			pickerRef.value = { focus: mockFocus };
+			const mockFocus = setupPickerRef(pickerRef);
 
 			await focusPicker();
 
@@ -159,11 +171,8 @@ describe('useDatePickerCommon', () => {
 		});
 
 		it('should handle focus error gracefully', async () => {
-			const mockFocus = vi.fn().mockImplementation(() => {
-				throw new Error('Focus failed');
-			});
 			const { focusPicker, pickerRef } = useDatePickerCommon(callbacks);
-			pickerRef.value = { focus: mockFocus };
+			setupPickerRef(pickerRef, true);
 
 			await expect(focusPicker()).resolves.not.toThrow();
 		});
