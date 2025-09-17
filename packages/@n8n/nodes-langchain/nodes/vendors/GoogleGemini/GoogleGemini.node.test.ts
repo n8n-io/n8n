@@ -80,7 +80,7 @@ describe('GoogleGemini Node', () => {
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
-				{
+				expect.objectContaining({
 					body: {
 						contents: [
 							{
@@ -107,7 +107,7 @@ describe('GoogleGemini Node', () => {
 							parts: [{ text: 'You are a helpful assistant.' }],
 						},
 					},
-				},
+				}),
 			);
 		});
 

@@ -1,8 +1,9 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
+	validateNodeParameters,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
@@ -241,19 +242,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}>;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
-	const options = this.getNodeParameter('options', i, {}) as {
-		systemMessage?: string;
-		codeExecution?: boolean;
-		frequencyPenalty?: number;
-		maxOutputTokens?: number;
-		candidateCount?: number;
-		presencePenalty?: number;
-		temperature?: number;
-		topP?: number;
-		topK?: number;
-		thinkingBudget?: number;
-		maxToolsIterations?: number;
-	};
+	const options = this.getNodeParameter('options', i, {});
+	validateNodeParameters(
+		options,
+		{
+			systemMessage: { type: 'string', required: false },
+			codeExecution: { type: 'boolean', required: false },
+			frequencyPenalty: { type: 'number', required: false },
+			maxOutputTokens: { type: 'number', required: false },
+			candidateCount: { type: 'number', required: false },
+			presencePenalty: { type: 'number', required: false },
+			temperature: { type: 'number', required: false },
+			topP: { type: 'number', required: false },
+			topK: { type: 'number', required: false },
+			thinkingBudget: { type: 'number', required: false },
+			maxToolsIterations: { type: 'number', required: false },
+		},
+		this.getNode(),
+	);
 
 	const generationConfig: GenerateContentGenerationConfig = {
 		frequencyPenalty: options.frequencyPenalty,
