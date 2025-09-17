@@ -78,6 +78,10 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 		label: i18n.baseText('projects.settings.role.viewer'),
 		desc: i18n.baseText('projects.settings.role.viewer.description'),
 	},
+	'project:personalOwner': {
+		label: i18n.baseText('projects.settings.role.personalOwner'),
+		desc: '',
+	},
 }));
 
 const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
