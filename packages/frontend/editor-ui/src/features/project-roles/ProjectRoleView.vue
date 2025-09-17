@@ -262,7 +262,6 @@ const displayNameValidationRules = [
 						:data-test-id="`scope-checkbox-${scope}`"
 						:model-value="form.scopes.includes(scope)"
 						:label="i18n.baseText(`projectRoles.${scope}`)"
-						:disabled="scope.endsWith(':read')"
 						validate-on-blur
 						type="checkbox"
 						@update:model-value="() => toggleScope(scope)"
