@@ -335,7 +335,7 @@ export class Server extends AbstractServer {
 				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(basePath.length), {
+					res.sendFile(path.substring(Math.max(basePath.length, 1)), {
 						root: staticCacheDir,
 					});
 				},
