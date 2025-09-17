@@ -8,7 +8,7 @@ import { ExportService } from '../export.service';
 // Mock fs/promises
 jest.mock('fs/promises');
 
-jest.mock('@n8n/typeorm', () => ({
+jest.mock('@n8n/db', () => ({
 	DataSource: mock<DataSource>(),
 }));
 
