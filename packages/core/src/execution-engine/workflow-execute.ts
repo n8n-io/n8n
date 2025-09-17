@@ -1575,6 +1575,52 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Prepares all data necessary to handle `ExecuteNodeAction`s and schedules
+	 * the node executions on the stack, including re-executing the node that
+	 * made the request.
+	 *
+	 * Make sure to continue the execution loop after calling this function.
+	 */
+	private handleEngineRequest({
+		workflow,
+		currentNode,
+		request,
+		runIndex,
+		executionData,
+		runData,
+	}: {
+		workflow: Workflow;
+		currentNode: INode;
+		request: EngineRequest;
+		runIndex: number;
+		executionData: IExecuteData;
+		runData: IRunData;
+	}) {
+		const { nodesToBeExecuted } = handleRequest({
+			workflow,
+			currentNode,
+			request,
+			runIndex,
+			executionData,
+			runData,
+			logger: Logger,
+		});
+
+		for (const nodeData of nodesToBeExecuted) {
+			this.addNodeToBeExecuted(
+				workflow,
+				nodeData.inputConnectionData,
+				nodeData.parentOutputIndex,
+				nodeData.parentNode,
+				nodeData.parentOutputData,
+				nodeData.runIndex,
+				nodeData.nodeRunIndex,
+				nodeData.metadata,
+			);
+		}
+	}
+
+	/**
 	 * Runs the given execution data.
 	 *
 	 */
@@ -1836,28 +1882,14 @@ export class WorkflowExecute {
 
 								// if runNodeData is Request
 								if (isEngineRequest(runNodeData)) {
-									const { nodesToBeExecuted } = handleRequest({
+									this.handleEngineRequest({
 										workflow,
 										currentNode: executionNode,
 										request: runNodeData,
 										runIndex,
 										executionData,
 										runData: this.runExecutionData.resultData.runData,
-										logger: Logger,
 									});
-
-									for (const nodeData of nodesToBeExecuted) {
-										this.addNodeToBeExecuted(
-											workflow,
-											nodeData.inputConnectionData,
-											nodeData.parentOutputIndex,
-											nodeData.parentNode,
-											nodeData.parentOutputData,
-											nodeData.runIndex,
-											nodeData.nodeRunIndex,
-											nodeData.metadata,
-										);
-									}
 
 									continue executionLoop;
 								}
