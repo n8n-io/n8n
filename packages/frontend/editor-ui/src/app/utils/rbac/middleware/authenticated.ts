@@ -18,8 +18,14 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 
 	// Remove the base path from the current pathname if it exists
 	let pathname = url.pathname;
-	if (basePath !== '/' && pathname.startsWith(basePath)) {
+	if (basePath !== '/' && (pathname === basePath || pathname.indexOf(basePath + '/') === 0)) {
 		pathname = pathname.substring(basePath.length);
+		// Normalize empty pathname to '/' and ensure the resulting path starts with '/' if it's not empty
+		if (!pathname || pathname === '') {
+			pathname = '/';
+		} else if (pathname.indexOf('/') !== 0) {
+			pathname = '/' + pathname;
+		}
 	}
 	// Ensure the resulting path starts with '/'
 	if (!pathname.startsWith('/')) {
