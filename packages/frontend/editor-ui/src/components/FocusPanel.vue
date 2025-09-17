@@ -39,6 +39,7 @@ import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/compo
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/types';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -70,6 +71,7 @@ const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
+const { renameNode } = useCanvasOperations();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 
@@ -419,6 +421,12 @@ function onOpenNdv() {
 		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
+
+function onRenameNode(value: string) {
+	if (node.value) {
+		void renameNode(node.value.name, value);
+	}
+}
 </script>
 
 <template>
@@ -428,6 +436,7 @@ function onOpenNdv() {
 		data-test-id="focus-panel"
 		:class="[
 			$style.wrapper,
+			'ignore-key-press-canvas',
 			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
 		]"
 		@keydown.stop
@@ -447,9 +456,11 @@ function onOpenNdv() {
 					:node="node"
 					:parameter="resolvedParameter?.parameter"
 					:is-executable="isExecutable"
+					:read-only="isCanvasReadOnly"
 					@execute="onExecute"
 					@open-ndv="onOpenNdv"
 					@clear-parameter="closeFocusPanel"
+					@rename-node="onRenameNode"
 				/>
 				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
 					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
