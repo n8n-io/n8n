@@ -50,6 +50,28 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
+				// Check if this credential extends oAuth2Api (OAuth2 credentials are exempt)
+				const extendsProperty = node.body.body.find(
+					(member) =>
+						member.type === 'PropertyDefinition' &&
+						member.key?.type === 'Identifier' &&
+						(member.key as any).name === 'extends',
+				);
+
+				if (
+					extendsProperty &&
+					extendsProperty.type === 'PropertyDefinition' &&
+					extendsProperty.value?.type === 'ArrayExpression'
+				) {
+					const extendsOAuth2 = extendsProperty.value.elements.some(
+						(element: any) => element?.type === 'Literal' && element.value === 'oAuth2Api',
+					);
+
+					if (extendsOAuth2) {
+						return; // Skip OAuth2 credentials
+					}
+				}
+
 				// Find the properties array
 				const propertiesProperty = node.body.body.find(
 					(member) =>

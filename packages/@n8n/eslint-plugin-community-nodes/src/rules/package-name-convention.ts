@@ -23,6 +23,12 @@ export const PackageNameConventionRule = ESLintUtils.RuleCreator.withoutDocs({
 
 		return {
 			ObjectExpression(node: TSESTree.ObjectExpression) {
+				// Only check the top-level object expression (root of package.json)
+				// Skip nested objects by checking if this node has a parent ObjectExpression
+				if (node.parent?.type === AST_NODE_TYPES.Property) {
+					return; // This is a nested object, skip it
+				}
+
 				const nameProperty = getNameProperty(node);
 				if (!nameProperty) return;
 

@@ -35,6 +35,45 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 			filename: 'some-config.json',
 			code: '{ "name": "my-config", "type": "config" }',
 		},
+		{
+			name: 'nested name fields should be ignored - only top-level name matters',
+			filename: 'package.json',
+			code: `{
+				"name": "n8n-nodes-example",
+				"version": "1.0.0",
+				"dependencies": {
+					"name": "invalid-nested-name"
+				},
+				"scripts": {
+					"name": "another-invalid-name"
+				},
+				"author": {
+					"name": "John Doe"
+				}
+			}`,
+		},
+		{
+			name: 'deeply nested name fields should be ignored',
+			filename: 'package.json',
+			code: `{
+				"name": "@author/n8n-nodes-service",
+				"version": "1.0.0",
+				"config": {
+					"nested": {
+						"deeply": {
+							"name": "very-invalid-name"
+						}
+					}
+				},
+				"repository": {
+					"type": "git",
+					"url": "https://github.com/user/repo",
+					"directory": {
+						"name": "bad-name"
+					}
+				}
+			}`,
+		},
 	],
 	invalid: [
 		{

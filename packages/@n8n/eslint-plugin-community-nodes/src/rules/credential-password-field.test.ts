@@ -64,6 +64,32 @@ export class RegularClass {
 	];
 }`,
 		},
+		{
+			// OAuth2 credential should be exempt from password field checks
+			code: `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class GithubOAuth2Api implements ICredentialType {
+	name = 'githubOAuth2Api';
+	extends = ['oAuth2Api'];
+	displayName = 'GitHub OAuth2 API';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden',
+			default: 'https://github.com/login/oauth/access_token',
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			default: '',
+		},
+	];
+}`,
+		},
 	],
 	invalid: [
 		{

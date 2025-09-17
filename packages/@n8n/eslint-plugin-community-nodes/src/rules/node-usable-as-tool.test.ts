@@ -3,29 +3,29 @@ import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 
 const ruleTester = new RuleTester();
 
-// Helper function to create node class code
-function createNodeCode(properties: string[]): string {
-	return `
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-export class TestNode implements INodeType {
-${properties.map((prop) => `\t${prop}`).join('\n')}
-}`;
-}
-
-// Helper to create a property string
-function createProperty(name: string, value: string): string {
-	return `${name} = ${value};`;
-}
-
 ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 	valid: [
 		{
-			// Node with usableAsTool set to true
-			code: createNodeCode([
-				createProperty('description', '{ displayName: "Test Node" }'),
-				createProperty('usableAsTool', 'true'),
-			]),
+			// Node with usableAsTool set to true in description
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		usableAsTool: true,
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}`,
 		},
 		{
 			// Class that doesn't implement INodeType
@@ -34,35 +34,90 @@ export class RegularClass {
 	someProperty = 'value';
 }`,
 		},
-		{
-			// Node with usableAsTool at the beginning
-			code: createNodeCode([
-				createProperty('usableAsTool', 'true'),
-				createProperty('description', '{ displayName: "Test Node" }'),
-			]),
-		},
 	],
 	invalid: [
 		{
-			// Node missing usableAsTool property
-			code: createNodeCode([createProperty('description', '{ displayName: "Test Node" }')]),
+			// Node missing usableAsTool property in description
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}`,
 			errors: [{ messageId: 'missingUsableAsTool' }],
-			output: createNodeCode([
-				createProperty('description', '{ displayName: "Test Node" }'),
-				createProperty('usableAsTool', 'true'),
-			]),
+			output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+		usableAsTool: true,
+	};
+}`,
 		},
 		{
-			// Node with usableAsTool set to false
-			code: createNodeCode([
-				createProperty('description', '{ displayName: "Test Node" }'),
-				createProperty('usableAsTool', 'false'),
-			]),
+			// Node with usableAsTool set to false in description
+			code: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		usableAsTool: false,
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}`,
 			errors: [{ messageId: 'missingUsableAsTool' }],
-			output: createNodeCode([
-				createProperty('description', '{ displayName: "Test Node" }'),
-				createProperty('usableAsTool', 'true'),
-			]),
+			output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		usableAsTool: true,
+		group: ['input'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: 'Test Node',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+	};
+}`,
 		},
 		{
 			// Node without description property
@@ -73,13 +128,6 @@ export class TestNode implements INodeType {
 	displayName = 'Test Node';
 }`,
 			errors: [{ messageId: 'missingUsableAsTool' }],
-			output: `
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-export class TestNode implements INodeType {
-	usableAsTool = true;
-	displayName = 'Test Node';
-}`,
 		},
 	],
 });

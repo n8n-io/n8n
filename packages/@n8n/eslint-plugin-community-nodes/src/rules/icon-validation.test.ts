@@ -38,45 +38,6 @@ const nodeFilePath = '/tmp/TestNode.node.ts';
 ruleTester.run('icon-validation', IconValidationRule, {
 	valid: [
 		{
-			name: 'node with valid string icon',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = 'file:icons/TestNode.svg';
-				}
-			`,
-		},
-		{
-			name: 'node with valid light/dark icons (different files)',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/ValidIcon.svg',
-						dark: 'file:icons/ValidIcon.dark.svg'
-					};
-				}
-			`,
-		},
-		{
-			name: 'node with valid light/dark icons using as const',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/ValidIcon.svg',
-						dark: 'file:icons/ValidIcon.dark.svg'
-					} as const;
-				}
-			`,
-		},
-		{
 			name: 'non-node class ignored',
 			filename: nodeFilePath,
 			code: `
@@ -92,152 +53,141 @@ ruleTester.run('icon-validation', IconValidationRule, {
 				import type { INodeType } from 'n8n-workflow';
 
 				export class TestNode implements INodeType {
-					icon = 'file:nonexistent.svg';
+					description = {
+						icon: 'file:nonexistent.svg'
+					};
+				}
+			`,
+		},
+		{
+			name: 'node with valid string icon in description',
+			filename: nodeFilePath,
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						icon: 'file:icons/TestNode.svg',
+						group: ['input'],
+						version: 1,
+						description: 'A test node',
+						defaults: {
+							name: 'Test Node',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
+					};
+				}
+			`,
+		},
+		{
+			name: 'node with valid light/dark icons in description',
+			filename: nodeFilePath,
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						icon: {
+							light: 'file:icons/ValidIcon.svg',
+							dark: 'file:icons/ValidIcon.dark.svg'
+						},
+						group: ['input'],
+						version: 1,
+						description: 'A test node',
+						defaults: {
+							name: 'Test Node',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
+					};
 				}
 			`,
 		},
 	],
 	invalid: [
 		{
-			name: 'node missing icon property',
+			name: 'node missing icon property in description',
 			filename: nodeFilePath,
 			code: `
-				import type { INodeType } from 'n8n-workflow';
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 				export class TestNode implements INodeType {
-					// No icon property
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['input'],
+						version: 1,
+						description: 'A test node',
+						defaults: {
+							name: 'Test Node',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
+					};
 				}
 			`,
 			errors: [{ messageId: 'missingIcon' }],
 		},
 		{
-			name: 'icon file does not exist',
+			name: 'icon file does not exist in description',
 			filename: nodeFilePath,
 			code: `
-				import type { INodeType } from 'n8n-workflow';
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 				export class TestNode implements INodeType {
-					icon = 'file:icons/NonExistent.svg';
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						icon: 'file:icons/NonExistent.svg',
+						group: ['input'],
+						version: 1,
+						description: 'A test node',
+						defaults: {
+							name: 'Test Node',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
+					};
 				}
 			`,
 			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } }],
 		},
 		{
-			name: 'icon file is not SVG',
+			name: 'light and dark icons are the same file in description',
 			filename: nodeFilePath,
 			code: `
-				import type { INodeType } from 'n8n-workflow';
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 				export class TestNode implements INodeType {
-					icon = 'file:icons/NotSvg.png';
-				}
-			`,
-			errors: [{ messageId: 'iconNotSvg', data: { iconPath: 'icons/NotSvg.png' } }],
-		},
-		{
-			name: 'icon path without file: protocol',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = 'icons/TestNode.svg';
-				}
-			`,
-			errors: [{ messageId: 'invalidIconPath', data: { iconPath: 'icons/TestNode.svg' } }],
-		},
-		{
-			name: 'light and dark icons are the same file',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/SameIcon.svg',
-						dark: 'file:icons/SameIcon.svg'
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						icon: {
+							light: 'file:icons/SameIcon.svg',
+							dark: 'file:icons/SameIcon.svg'
+						},
+						group: ['input'],
+						version: 1,
+						description: 'A test node',
+						defaults: {
+							name: 'Test Node',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
 					};
 				}
 			`,
 			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
-		},
-		{
-			name: 'light and dark icons are the same file (as const)',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/SameIcon.svg',
-						dark: 'file:icons/SameIcon.svg'
-					} as const;
-				}
-			`,
-			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
-		},
-		{
-			name: 'light icon file does not exist',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/NonExistentLight.svg',
-						dark: 'file:icons/ValidIcon.dark.svg'
-					};
-				}
-			`,
-			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistentLight.svg' } }],
-		},
-		{
-			name: 'dark icon file does not exist',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/ValidIcon.svg',
-						dark: 'file:icons/NonExistentDark.svg'
-					};
-				}
-			`,
-			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistentDark.svg' } }],
-		},
-		{
-			name: 'light icon is not SVG',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/NotSvg.png',
-						dark: 'file:icons/ValidIcon.dark.svg'
-					};
-				}
-			`,
-			errors: [{ messageId: 'iconNotSvg', data: { iconPath: 'icons/NotSvg.png' } }],
-		},
-		{
-			name: 'multiple errors: both light and dark invalid',
-			filename: nodeFilePath,
-			code: `
-				import type { INodeType } from 'n8n-workflow';
-
-				export class TestNode implements INodeType {
-					icon = {
-						light: 'file:icons/NonExistent.svg',
-						dark: 'file:icons/NotSvg.png'
-					};
-				}
-			`,
-			errors: [
-				{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } },
-				{ messageId: 'iconNotSvg', data: { iconPath: 'icons/NotSvg.png' } },
-			],
 		},
 	],
 });

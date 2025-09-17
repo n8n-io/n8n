@@ -28,53 +28,76 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				// Check if usableAsTool property exists and is set to true
-				const usableAsToolProperty = node.body.body.find(
+				// Look for description property containing usableAsTool
+				const descriptionProperty = node.body.body.find(
 					(member) =>
 						member.type === 'PropertyDefinition' &&
 						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'usableAsTool',
+						(member.key as any).name === 'description',
 				);
 
-				if (
-					!usableAsToolProperty ||
-					usableAsToolProperty.type !== 'PropertyDefinition' ||
-					!usableAsToolProperty.value ||
-					usableAsToolProperty.value.type !== 'Literal' ||
-					usableAsToolProperty.value.value !== true
-				) {
+				if (!descriptionProperty || descriptionProperty.type !== 'PropertyDefinition') {
+					context.report({
+						node,
+						messageId: 'missingUsableAsTool',
+					});
+					return;
+				}
+
+				// Look for usableAsTool property within description object
+				let usableAsToolProperty: any = null;
+				let hasUsableAsTool = false;
+				let isUsableAsToolTrue = false;
+
+				const descriptionValue = descriptionProperty.value;
+				if (descriptionValue?.type === 'ObjectExpression') {
+					const usableAsToolProp = descriptionValue.properties.find(
+						(prop: any) =>
+							prop.type === 'Property' &&
+							prop.key.type === 'Identifier' &&
+							prop.key.name === 'usableAsTool',
+					);
+
+					if (usableAsToolProp?.type === 'Property') {
+						usableAsToolProperty = usableAsToolProp;
+						hasUsableAsTool = true;
+						if (
+							usableAsToolProp.value.type === 'Literal' &&
+							usableAsToolProp.value.value === true
+						) {
+							isUsableAsToolTrue = true;
+						}
+					}
+				}
+
+				if (!hasUsableAsTool || !isUsableAsToolTrue) {
 					context.report({
 						node,
 						messageId: 'missingUsableAsTool',
 						fix(fixer) {
 							// If property exists but has wrong value, replace it
-							if (
-								usableAsToolProperty &&
-								usableAsToolProperty.type === 'PropertyDefinition' &&
-								usableAsToolProperty.value
-							) {
+							if (hasUsableAsTool && usableAsToolProperty?.value) {
 								return fixer.replaceText(usableAsToolProperty.value, 'true');
 							}
 
-							// Find where to insert the property (after description property if it exists)
-							const descriptionProperty = node.body.body.find(
-								(member) =>
-									member.type === 'PropertyDefinition' &&
-									member.key?.type === 'Identifier' &&
-									(member.key as any).name === 'description',
-							);
-
-							if (descriptionProperty) {
-								// Insert after description property
-								return fixer.insertTextAfter(descriptionProperty, '\n\tusableAsTool = true;');
-							} else {
-								// Insert at the beginning of the class body
-								const openBrace = node.body.range[0] + 1;
-								return fixer.insertTextAfterRange(
-									[openBrace, openBrace],
-									'\n\tusableAsTool = true;',
-								);
+							// If usableAsTool doesn't exist in description, add it
+							if (descriptionValue?.type === 'ObjectExpression') {
+								const properties = descriptionValue.properties;
+								if (properties.length === 0) {
+									// Empty object, add the property
+									const openBrace = descriptionValue.range![0] + 1;
+									return fixer.insertTextAfterRange(
+										[openBrace, openBrace],
+										'\n\t\tusableAsTool: true,',
+									);
+								} else {
+									// Add after the last property
+									const lastProperty = properties[properties.length - 1];
+									return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
+								}
 							}
+
+							return null;
 						},
 					});
 				}

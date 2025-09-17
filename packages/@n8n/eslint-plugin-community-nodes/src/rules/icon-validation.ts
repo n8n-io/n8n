@@ -63,97 +63,6 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 			return true;
 		};
 
-		const validateIconProperty = (iconProperty: TSESTree.PropertyDefinition) => {
-			const { value } = iconProperty;
-			if (!value) return;
-
-			if (value.type === 'Literal' && typeof value.value === 'string') {
-				// Simple string icon: icon = 'file:icons/MyNode.svg'
-				validateIconPath(value.value, value);
-			} else if (value.type === 'ObjectExpression') {
-				// Object with light/dark: icon = { light: '...', dark: '...' }
-				let lightPath: string | null = null;
-				let darkPath: string | null = null;
-				let lightNode: TSESTree.Node | null = null;
-				let darkNode: TSESTree.Node | null = null;
-
-				for (const property of value.properties) {
-					if (
-						property.type === 'Property' &&
-						property.key.type === 'Identifier' &&
-						property.value.type === 'Literal' &&
-						typeof property.value.value === 'string'
-					) {
-						if (property.key.name === 'light') {
-							lightPath = property.value.value;
-							lightNode = property.value;
-						} else if (property.key.name === 'dark') {
-							darkPath = property.value.value;
-							darkNode = property.value;
-						}
-					}
-				}
-
-				// Validate individual paths
-				if (lightPath && lightNode) {
-					validateIconPath(lightPath, lightNode);
-				}
-				if (darkPath && darkNode) {
-					validateIconPath(darkPath, darkNode);
-				}
-
-				// Check if light and dark are the same
-				if (lightPath && darkPath && lightPath === darkPath && lightNode) {
-					context.report({
-						node: lightNode,
-						messageId: 'lightDarkSame',
-						data: { iconPath: lightPath.replace(/^file:/, '') },
-					});
-				}
-			} else if (value.type === 'TSAsExpression' && value.expression.type === 'ObjectExpression') {
-				// Handle: icon = { light: '...', dark: '...' } as const;
-				const objExpression = value.expression;
-				let lightPath: string | null = null;
-				let darkPath: string | null = null;
-				let lightNode: TSESTree.Node | null = null;
-				let darkNode: TSESTree.Node | null = null;
-
-				for (const property of objExpression.properties) {
-					if (
-						property.type === 'Property' &&
-						property.key.type === 'Identifier' &&
-						property.value.type === 'Literal' &&
-						typeof property.value.value === 'string'
-					) {
-						if (property.key.name === 'light') {
-							lightPath = property.value.value;
-							lightNode = property.value;
-						} else if (property.key.name === 'dark') {
-							darkPath = property.value.value;
-							darkNode = property.value;
-						}
-					}
-				}
-
-				// Validate individual paths
-				if (lightPath && lightNode) {
-					validateIconPath(lightPath, lightNode);
-				}
-				if (darkPath && darkNode) {
-					validateIconPath(darkPath, darkNode);
-				}
-
-				// Check if light and dark are the same
-				if (lightPath && darkPath && lightPath === darkPath && lightNode) {
-					context.report({
-						node: lightNode,
-						messageId: 'lightDarkSame',
-						data: { iconPath: lightPath.replace(/^file:/, '') },
-					});
-				}
-			}
-		};
-
 		return {
 			ClassDeclaration(node) {
 				// Check if this class implements INodeType
@@ -168,15 +77,15 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				// Look for icon property
-				const iconProperty = node.body.body.find(
+				// Look for description property containing icon
+				const descriptionProperty = node.body.body.find(
 					(member) =>
 						member.type === 'PropertyDefinition' &&
 						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'icon',
+						(member.key as any).name === 'description',
 				);
 
-				if (!iconProperty || iconProperty.type !== 'PropertyDefinition') {
+				if (!descriptionProperty || descriptionProperty.type !== 'PropertyDefinition') {
 					context.report({
 						node,
 						messageId: 'missingIcon',
@@ -184,7 +93,79 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				validateIconProperty(iconProperty);
+				// Look for icon property within description object
+				let iconProperty: TSESTree.Property | null = null;
+
+				const descriptionValue = descriptionProperty.value;
+				if (descriptionValue?.type === 'ObjectExpression') {
+					const iconProp = descriptionValue.properties.find(
+						(prop) =>
+							prop.type === 'Property' &&
+							prop.key.type === 'Identifier' &&
+							prop.key.name === 'icon',
+					);
+
+					if (iconProp?.type === 'Property') {
+						iconProperty = iconProp;
+					}
+				}
+
+				if (!iconProperty) {
+					context.report({
+						node,
+						messageId: 'missingIcon',
+					});
+					return;
+				}
+
+				// Validate the icon property directly
+				const { value } = iconProperty;
+				if (!value) return;
+
+				if (value.type === 'Literal' && typeof value.value === 'string') {
+					// Simple string icon: icon = 'file:icons/MyNode.svg'
+					validateIconPath(value.value, value);
+				} else if (value.type === 'ObjectExpression') {
+					// Object with light/dark: icon = { light: '...', dark: '...' }
+					let lightPath: string | null = null;
+					let darkPath: string | null = null;
+					let lightNode: TSESTree.Node | null = null;
+					let darkNode: TSESTree.Node | null = null;
+
+					for (const property of value.properties) {
+						if (
+							property.type === 'Property' &&
+							property.key.type === 'Identifier' &&
+							property.value.type === 'Literal' &&
+							typeof property.value.value === 'string'
+						) {
+							if (property.key.name === 'light') {
+								lightPath = property.value.value;
+								lightNode = property.value;
+							} else if (property.key.name === 'dark') {
+								darkPath = property.value.value;
+								darkNode = property.value;
+							}
+						}
+					}
+
+					// Validate individual paths
+					if (lightPath && lightNode) {
+						validateIconPath(lightPath, lightNode);
+					}
+					if (darkPath && darkNode) {
+						validateIconPath(darkPath, darkNode);
+					}
+
+					// Check if light and dark are the same
+					if (lightPath && darkPath && lightPath === darkPath && lightNode) {
+						context.report({
+							node: lightNode,
+							messageId: 'lightDarkSame',
+							data: { iconPath: lightPath.replace(/^file:/, '') },
+						});
+					}
+				}
 			},
 		};
 	},
