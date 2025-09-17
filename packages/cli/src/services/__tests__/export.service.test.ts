@@ -41,6 +41,7 @@ describe('ExportService', () => {
 
 		beforeEach(() => {
 			// Mock DataSource entityMetadatas
+			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = [mockEntityMetadata, mockEntityMetadata2];
 		});
 
@@ -57,7 +58,8 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries
-			mockDataSource.query
+			jest
+				.mocked(mockDataSource.query)
 				.mockResolvedValueOnce(mockEntities) // First page
 				.mockResolvedValueOnce([]); // No more data
 
@@ -96,7 +98,8 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - multiple pages
-			mockDataSource.query
+			jest
+				.mocked(mockDataSource.query)
 				.mockResolvedValueOnce(page1Entities) // First page
 				.mockResolvedValueOnce(page2Entities) // Second page
 				.mockResolvedValueOnce([]); // No more data
@@ -126,7 +129,7 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries
-			mockDataSource.query.mockResolvedValue([]);
+			jest.mocked(mockDataSource.query).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
 
@@ -155,9 +158,9 @@ describe('ExportService', () => {
 
 			// Mock database queries - simulate 20 pages of 500 entities each (10,000 total)
 			for (let i = 0; i < 20; i++) {
-				mockDataSource.query.mockResolvedValueOnce(largePage);
+				jest.mocked(mockDataSource.query).mockResolvedValueOnce(largePage);
 			}
-			mockDataSource.query.mockResolvedValue([]); // Final empty result
+			jest.mocked(mockDataSource.query).mockResolvedValue([]); // Final empty result
 
 			await exportService.exportEntities(outputDir);
 
@@ -178,7 +181,7 @@ describe('ExportService', () => {
 			(mkdir as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - empty result
-			mockDataSource.query.mockResolvedValue([]);
+			jest.mocked(mockDataSource.query).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
 
@@ -197,7 +200,8 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries for both entity types
-			mockDataSource.query
+			jest
+				.mocked(mockDataSource.query)
 				.mockResolvedValueOnce(userEntities) // Users first page
 				.mockResolvedValueOnce(workflowEntities); // Workflows first page
 
@@ -227,7 +231,8 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries
-			mockDataSource.query
+			jest
+				.mocked(mockDataSource.query)
 				.mockResolvedValueOnce(mockEntities) // First entity type
 				.mockResolvedValueOnce([]) // No more data for first type
 				.mockResolvedValueOnce([]); // Second entity type is empty
