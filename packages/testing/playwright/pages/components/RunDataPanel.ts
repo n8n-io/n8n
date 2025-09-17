@@ -111,6 +111,10 @@ export class RunDataPanel {
 		return this.root.getByTestId('link-run');
 	}
 
+	getRelatedExecutionLink() {
+		return this.root.getByTestId('related-execution-link');
+	}
+
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
 	}

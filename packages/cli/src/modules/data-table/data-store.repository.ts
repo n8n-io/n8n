@@ -9,9 +9,10 @@ import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
-import { toTableName } from './utils/sql-utils';
+import { toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -240,49 +241,83 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return [`${alias}.id`, `${alias}.name`, `${alias}.type`, `${alias}.icon`];
 	}
 
-	async findDataTablesSize(): Promise<number> {
+	private parseSize = (bytes: number | string | null): number =>
+		bytes === null ? 0 : typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
+
+	async findDataTablesSize(): Promise<DataTablesSizeData> {
 		const dbType = this.globalConfig.database.type;
-		const schemaName = this.globalConfig.database.postgresdb.schema;
+		const tablePattern = toTableName('%');
 
 		let sql = '';
 
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-        	SELECT SUM(pgsize) AS total_bytes
-					FROM dbstat
-					WHERE name LIKE '${toTableName('%')}'
-				`;
+        SELECT name AS table_name, SUM(pgsize) AS table_bytes
+         FROM dbstat
+        WHERE name LIKE '${tablePattern}'
+        GROUP BY name
+      `;
 				break;
 
-			case 'postgresdb':
+			case 'postgresdb': {
+				const schemaName = this.globalConfig.database.postgresdb?.schema;
 				sql = `
-        	SELECT SUM(pg_relation_size(c.oid)) AS total_bytes
-					FROM pg_class c
-					JOIN pg_namespace n ON n.oid = c.relnamespace
-					WHERE n.nspname = '${schemaName}'
-					AND c.relname LIKE '${toTableName('%')}'
-					AND c.relkind IN ('r', 'm', 'p')
-    		`;
+        SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = '${schemaName}'
+           AND c.relname LIKE '${tablePattern}'
+           AND c.relkind IN ('r', 'm', 'p')
+      `;
 				break;
+			}
 
 			case 'mysqldb':
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
+				const isMariaDb = dbType === 'mariadb';
+				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
+				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
 				sql = `
-        	SELECT SUM((DATA_LENGTH + INDEX_LENGTH)) AS total_bytes
-					FROM information_schema.tables
-					WHERE table_schema = '${databaseName}'
-					AND table_name LIKE '${toTableName('%')}'
-				`;
+        SELECT t.TABLE_NAME AS table_name,
+            COALESCE(
+                (
+                  SELECT SUM(ists.ALLOCATED_SIZE)
+                    FROM information_schema.${innodbTables} ist
+                    JOIN information_schema.${innodbTablespaces} ists
+                      ON ists.SPACE = ist.SPACE
+                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
+                ),
+                (t.DATA_LENGTH + t.INDEX_LENGTH)
+            ) AS table_bytes
+        FROM information_schema.TABLES t
+        WHERE t.TABLE_SCHEMA = '${databaseName}'
+          AND t.TABLE_NAME LIKE '${tablePattern}'
+    `;
 				break;
 			}
 
 			default:
-				return 0;
+				return { totalBytes: 0, dataTables: {} };
 		}
 
-		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
-		return result[0]?.total_bytes ?? 0;
+		const result = (await this.query(sql)) as Array<{
+			table_name: string;
+			table_bytes: number | string | null;
+		}>;
+
+		return result
+			.filter((row) => row.table_bytes !== null && row.table_name)
+			.reduce(
+				(acc, row) => {
+					const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+					const sizeBytes = this.parseSize(row.table_bytes);
+					acc.dataTables[dataStoreId] = (acc.dataTables[dataStoreId] ?? 0) + sizeBytes;
+					acc.totalBytes += sizeBytes;
+					return acc;
+				},
+				{ dataTables: {} as Record<string, number>, totalBytes: 0 },
+			);
 	}
 }
