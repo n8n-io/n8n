@@ -514,14 +514,16 @@ export class DataStoreService {
 			};
 		}
 
+		// DB query will filter projects where the user actually has these roles
+		const roles = [
+			PROJECT_OWNER_ROLE_SLUG,
+			PROJECT_ADMIN_ROLE_SLUG,
+			PROJECT_EDITOR_ROLE_SLUG,
+			PROJECT_VIEWER_ROLE_SLUG,
+		];
 		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,
-			[
-				PROJECT_OWNER_ROLE_SLUG,
-				PROJECT_ADMIN_ROLE_SLUG,
-				PROJECT_EDITOR_ROLE_SLUG,
-				PROJECT_VIEWER_ROLE_SLUG,
-			],
+			roles,
 		);
 
 		// Filter the cached data based on user's accessible projects
