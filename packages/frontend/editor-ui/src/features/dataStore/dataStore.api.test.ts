@@ -32,7 +32,7 @@ describe('dataStore.api', () => {
 				`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 				{
 					filter: {
-						type: 'or',
+						type: 'and',
 						filters: [
 							{ columnName: 'id', condition: 'eq', value: 1 },
 							{ columnName: 'id', condition: 'eq', value: 2 },

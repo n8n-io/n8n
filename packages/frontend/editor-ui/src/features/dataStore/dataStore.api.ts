@@ -198,7 +198,7 @@ export const deleteDataStoreRowsApi = async (
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
 			filter: {
-				type: 'or',
+				type: 'and',
 				filters,
 			},
 		},
