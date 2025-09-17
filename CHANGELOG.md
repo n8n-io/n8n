@@ -1,3 +1,37 @@
+## [1.112.1](https://github.com/n8n-io/n8n/compare/n8n@1.112.0...n8n@1.112.1) (2025-09-17)
+
+
+### Bug Fixes
+
+* Add accurate concurrent executions count to executions list ([#19249](https://github.com/n8n-io/n8n/issues/19249)) ([dc75be3](https://github.com/n8n-io/n8n/commit/dc75be3a6fa333a24d01073df5c0d724681d53af))
+* **AI Agent Node:** Ignore non-text chunks ([#19568](https://github.com/n8n-io/n8n/issues/19568)) ([ccee1ac](https://github.com/n8n-io/n8n/commit/ccee1acf0592ffccf342cdb7cc4b37e8055c2e36))
+* **AI Agent Node:** Respect context window length in streaming mode ([#19567](https://github.com/n8n-io/n8n/issues/19567)) ([6b25c57](https://github.com/n8n-io/n8n/commit/6b25c570ed27eaed1da0c5678ea86094704b687b))
+* Disable update button when the user is not allowed to update ([#19223](https://github.com/n8n-io/n8n/issues/19223)) ([dfb0c4e](https://github.com/n8n-io/n8n/commit/dfb0c4e77a169963cf2a0ffafc59ba7285b5eab3))
+* **editor:** Canvas connections show `X items total` label when multiple run iterations ([#19648](https://github.com/n8n-io/n8n/issues/19648)) ([61edb72](https://github.com/n8n-io/n8n/commit/61edb7237949a6d9d162c574f0a3874e24bf3af1))
+* **editor:** Keep chat session when switching to other tabs ([#19483](https://github.com/n8n-io/n8n/issues/19483)) ([7e63e56](https://github.com/n8n-io/n8n/commit/7e63e56ccd0628563b73836ad3197eed13f19da9))
+* **Gemini Vertex Node:** Upgrading Langchain/google-vertexai to allow errors to bubble up correctly ([#19639](https://github.com/n8n-io/n8n/issues/19639)) ([3f1e764](https://github.com/n8n-io/n8n/commit/3f1e764c524198ddc298a67a763501c5eb85db5b))
+* **Github Node:** Modify regex validation to support custom urls ([#19076](https://github.com/n8n-io/n8n/issues/19076)) ([3537a73](https://github.com/n8n-io/n8n/commit/3537a734f39f0dca4871bf5dfaa4f2344ec7595d))
+* **Google Gemini Node:** Use streams when uploading file ([#19537](https://github.com/n8n-io/n8n/issues/19537)) ([82e707c](https://github.com/n8n-io/n8n/commit/82e707cdd7b05b9a719cd5fe86ab71aeb39d4b30))
+* Improve Node CLI error messages and dev command exit behavior ([#19637](https://github.com/n8n-io/n8n/issues/19637)) ([14a7c36](https://github.com/n8n-io/n8n/commit/14a7c36673ed3a0da46ed62e949270b818882468))
+* **n8n Form Node:** Add html table tags to allowedTags, CSP headers on form completion, free text sanitization removed ([#19446](https://github.com/n8n-io/n8n/issues/19446)) ([7ea920d](https://github.com/n8n-io/n8n/commit/7ea920dbe742c0ca7c79c9df749aa7d7c898c571))
+* **Notion Node:** Fix regex for getMany operation ([#19419](https://github.com/n8n-io/n8n/issues/19419)) ([185fc41](https://github.com/n8n-io/n8n/commit/185fc41ca940c5216b6ae8f8ba96325cf34a0ce4))
+* Open form popup for Form Trigger even if it has execution data ([#19416](https://github.com/n8n-io/n8n/issues/19416)) ([1c45d8b](https://github.com/n8n-io/n8n/commit/1c45d8ba2e3a578f1daddc961f6e319f6a866fd0))
+* **Salesforce Trigger Node:** Update polling logic to account for Salesforce processing delay ([#19377](https://github.com/n8n-io/n8n/issues/19377)) ([b480f49](https://github.com/n8n-io/n8n/commit/b480f495d96fd170f0b8efdc59511e4ea6834368))
+* String columns do not need comparable conditions ([#19565](https://github.com/n8n-io/n8n/issues/19565)) ([a400716](https://github.com/n8n-io/n8n/commit/a400716d37e7f26a6dc693423eb9d7004cafe6ae))
+* **Webhook Trigger Node:** Duplicate webhook paths are not detected for methods other than GET ([#19378](https://github.com/n8n-io/n8n/issues/19378)) ([3a38b32](https://github.com/n8n-io/n8n/commit/3a38b3286713708caaad3eb9729efb8328f8b707))
+
+
+### Features
+
+* Allow filtering insight by projectId ([#19552](https://github.com/n8n-io/n8n/issues/19552)) ([8086a21](https://github.com/n8n-io/n8n/commit/8086a21eb2b2bb6a66f9d4df0c54dd4abf7f2aed))
+* **core:** Prompt user to confirm password when changing email and mfa is disabled ([#19408](https://github.com/n8n-io/n8n/issues/19408)) ([f0388aa](https://github.com/n8n-io/n8n/commit/f0388aae7e2ec64d83e9e65e0604b711f86d906e))
+* **editor:** Add node popularity scores to improve search ranking ([#19561](https://github.com/n8n-io/n8n/issues/19561)) ([ae1af11](https://github.com/n8n-io/n8n/commit/ae1af1101bf8fd34ee71d6f450eaf4c3f63aa914))
+* **Git Node:** Add support for branches ([#18870](https://github.com/n8n-io/n8n/issues/18870)) ([7522607](https://github.com/n8n-io/n8n/commit/752260784c299ec8fab4aba69468227d2eea78a5))
+* PAY-3769 add db export command ([#19579](https://github.com/n8n-io/n8n/issues/19579)) ([2435b94](https://github.com/n8n-io/n8n/commit/2435b94c2ac2ff0f0791fbf91f60c4582027d05a))
+* PAY-3770 add db import command ([#19584](https://github.com/n8n-io/n8n/issues/19584)) ([cf4a551](https://github.com/n8n-io/n8n/commit/cf4a5511b62c78e8854c21d8fda16a124e7b5052))
+
+
+
 # [1.112.0](https://github.com/n8n-io/n8n/compare/n8n@1.111.0...n8n@1.112.0) (2025-09-15)
 
 
