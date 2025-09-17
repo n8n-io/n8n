@@ -27,6 +27,8 @@ import type {
 	DataStoreRows,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
+	DataTablesSizeResult,
+	DataTableInfoById,
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
@@ -492,44 +494,48 @@ export class DataStoreService {
 
 	private async validateDataTableSize() {
 		await this.dataStoreSizeValidator.validateSize(
-			'global',
 			async () => await this.dataStoreRepository.findDataTablesSize(),
 		);
 	}
 
-	async getDataTablesSize(user: User) {
+	async getDataTablesSize(user: User): Promise<DataTablesSizeResult> {
+		const allSizeData = await this.dataStoreSizeValidator.getCachedSizeData(
+			async () => await this.dataStoreRepository.findDataTablesSize(),
+		);
+
+		// Check permissions and filter the data
 		const canAccessDataTables = await userHasScopes(user, ['dataStore:list'], false, {});
 
-		let projectIds: string[] = [];
+		if (!canAccessDataTables) {
+			return {
+				sizeBytes: allSizeData.totalBytes,
+				sizeState: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
+				dataTables: {},
+			};
+		}
 
-		if (canAccessDataTables) {
-			projectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
+		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			[
 				PROJECT_OWNER_ROLE_SLUG,
 				PROJECT_ADMIN_ROLE_SLUG,
 				PROJECT_EDITOR_ROLE_SLUG,
 				PROJECT_VIEWER_ROLE_SLUG,
-			]);
+			],
+		);
+
+		// Filter the cached data based on user's accessible projects
+		const accessibleDataTables: DataTableInfoById = {};
+		for (const [dataTableId, dataTableInfo] of Object.entries(allSizeData.dataTables)) {
+			if (accessibleProjectIds.includes(dataTableInfo.projectId)) {
+				accessibleDataTables[dataTableId] = dataTableInfo;
+			}
 		}
 
-		const sizeData = await this.dataStoreSizeValidator.getCachedSizeData(user.id, async () => {
-			const data = await this.dataStoreRepository.findDataTablesSize(projectIds);
-
-			// Also update the global cache with the total bytes
-			// eslint-disable-next-line @typescript-eslint/require-await
-			await this.dataStoreSizeValidator.getCachedSizeData('global', async () => ({
-				totalBytes: data.totalBytes,
-				dataTables: {},
-			}));
-
-			return data;
-		});
-
-		// TODO: decouple size fetching from permission checking
-
 		return {
-			sizeBytes: sizeData.totalBytes,
-			sizeState: this.dataStoreSizeValidator.sizeToState(sizeData.totalBytes),
-			dataTables: sizeData.dataTables,
+			sizeBytes: allSizeData.totalBytes,
+			sizeState: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
+			dataTables: accessibleDataTables,
 		};
 	}
 }

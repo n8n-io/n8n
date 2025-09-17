@@ -301,7 +301,7 @@ describe('Data Store Size Tests', () => {
 			regularUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 		});
 
-		it('should cache data per user and not share between users', async () => {
+		it('should cache data globally and filter based on user permissions', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'test-dataStore',
@@ -313,24 +313,24 @@ describe('Data Store Size Tests', () => {
 			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
-			// First call - regular user sees no data tables
+			// First call - regular user sees no data tables (filtered from global cache)
 			const userResult = await dataStoreService.getDataTablesSize(regularUser);
 			expect(Object.keys(userResult.dataTables)).toHaveLength(0);
-			expect(userResult.sizeBytes).toBeGreaterThan(0); // Still gets instance total
+			expect(userResult.sizeBytes).toBeGreaterThan(0);
 
-			// Second call - owner sees the data table (different cache)
+			// Second call - owner sees the data table (same global cache, different filtering)
 			const ownerResult = await dataStoreService.getDataTablesSize(owner);
 			expect(Object.keys(ownerResult.dataTables)).toHaveLength(1);
 			expect(ownerResult.dataTables[dataStore.id]).toBeDefined();
 
-			// Should have called the repository 2 times (once for user, once for owner)
-			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
+			// Should have called the repository only once (global cache shared)
+			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
 
 			// Cleanup
 			mockFindDataTablesSize.mockRestore();
 		});
 
-		it('should update global cache when fetching user-specific data', async () => {
+		it('should use global cache for both data fetching and size validation', async () => {
 			// ARRANGE
 			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
@@ -344,23 +344,19 @@ describe('Data Store Size Tests', () => {
 			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
 
 			// ACT
+			// Fetch data (uses global cache)
 			await dataStoreService.getDataTablesSize(owner);
 
+			// Insert more data (triggers size validation which should use same cache)
 			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test2' }]);
 
 			// ASSERT
-			// 1. Once for user-specific data (user.id as cache key)
-			// 2. Once for global cache update ('global' as cache key)
-			// 3. Once for size validation ('global' as cache key) - but this should use cached data
-			expect(mockGetCachedSizeData).toHaveBeenCalledTimes(3);
+			// Should have called getCachedSizeData twice:
+			// 1. Once for getDataTablesSize
+			// 2. Once for size validation during insertRows
+			expect(mockGetCachedSizeData).toHaveBeenCalledTimes(2);
 
-			// Check the cache keys used
-			const cacheKeyCalls = mockGetCachedSizeData.mock.calls.map((call) => call[0]);
-			expect(cacheKeyCalls).toContain(owner.id); // User-specific cache
-			expect(cacheKeyCalls).toContain('global'); // Global cache (appears twice)
-
-			// Repository should be called only once for the initial user data fetch
-			// The global cache update and validation should use the computed/cached data
+			// Repository should be called only once - both operations use the same global cache
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
 
 			// Cleanup

@@ -112,10 +112,17 @@ export type DataTableInfo = {
 	sizeBytes: number;
 };
 
+export type DataTableInfoById = Record<string, DataTableInfo>;
+
+export type DataTablesSizeData = {
+	totalBytes: number;
+	dataTables: DataTableInfoById;
+};
+
 export type DataTablesSizeResult = {
 	sizeBytes: number;
 	sizeState: DataTableSizeStatus;
-	dataTables: Record<string, DataTableInfo>;
+	dataTables: DataTableInfoById;
 };
 
 // APIs for a data store service operating on a specific projectId

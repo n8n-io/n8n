@@ -22,7 +22,7 @@ describe('DataStoreSizeValidator', () => {
 		it('should fetch size on first call', async () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 50 * 1024 * 1024, dataTables: {} }); // 50MB
 
-			await validator.validateSize('test', fetchSizeFn, new Date('2024-01-01T00:00:00Z'));
+			await validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z'));
 
 			expect(fetchSizeFn).toHaveBeenCalledTimes(1);
 		});
@@ -31,7 +31,7 @@ describe('DataStoreSizeValidator', () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 50 * 1024 * 1024, dataTables: {} });
 
 			await expect(
-				validator.validateSize('test', fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
+				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
 			).resolves.toBeUndefined();
 		});
 
@@ -39,7 +39,7 @@ describe('DataStoreSizeValidator', () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 150 * 1024 * 1024, dataTables: {} });
 
 			await expect(
-				validator.validateSize('test', fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
+				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
 			).rejects.toThrow('Data store size limit exceeded: 150MB used, limit is 100MB');
 		});
 
@@ -47,7 +47,7 @@ describe('DataStoreSizeValidator', () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 100 * 1024 * 1024, dataTables: {} });
 
 			await expect(
-				validator.validateSize('test', fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
+				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
 			).rejects.toThrow('Data store size limit exceeded: 100MB used, limit is 100MB');
 		});
 	});
@@ -58,8 +58,8 @@ describe('DataStoreSizeValidator', () => {
 			const time1 = new Date('2024-01-01T00:00:00Z');
 			const time2 = new Date('2024-01-01T00:00:00.500Z'); // 500ms later
 
-			await validator.validateSize('test', fetchSizeFn, time1);
-			await validator.validateSize('test', fetchSizeFn, time2);
+			await validator.validateSize(fetchSizeFn, time1);
+			await validator.validateSize(fetchSizeFn, time2);
 
 			expect(fetchSizeFn).toHaveBeenCalledTimes(1);
 		});
@@ -69,8 +69,8 @@ describe('DataStoreSizeValidator', () => {
 			const time1 = new Date('2024-01-01T00:00:00Z');
 			const time2 = new Date('2024-01-01T00:00:01.001Z'); // 1001ms later
 
-			await validator.validateSize('test', fetchSizeFn, time1);
-			await validator.validateSize('test', fetchSizeFn, time2);
+			await validator.validateSize(fetchSizeFn, time1);
+			await validator.validateSize(fetchSizeFn, time2);
 
 			expect(fetchSizeFn).toHaveBeenCalledTimes(2);
 		});
@@ -79,11 +79,11 @@ describe('DataStoreSizeValidator', () => {
 			// First call: DB at 50MB
 			fetchSizeFn.mockResolvedValue({ totalBytes: 50 * 1024 * 1024, dataTables: {} });
 			const time1 = new Date('2024-01-01T00:00:00Z');
-			await validator.validateSize('test', fetchSizeFn, time1);
+			await validator.validateSize(fetchSizeFn, time1);
 
 			// Second call within cache duration: should still validate against 50MB
 			const time2 = new Date('2024-01-01T00:00:00.500Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time2)).resolves.toBeUndefined();
+			await expect(validator.validateSize(fetchSizeFn, time2)).resolves.toBeUndefined();
 
 			// Even though fetchSizeFn wasn't called again
 			expect(fetchSizeFn).toHaveBeenCalledTimes(1);
@@ -94,13 +94,13 @@ describe('DataStoreSizeValidator', () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 100 * 1024 * 1024, dataTables: {} });
 			const time1 = new Date('2024-01-01T00:00:00Z');
 
-			await expect(validator.validateSize('test', fetchSizeFn, time1)).rejects.toThrow(
+			await expect(validator.validateSize(fetchSizeFn, time1)).rejects.toThrow(
 				'Data store size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			// Subsequent calls within cache duration should also fail
 			const time2 = new Date('2024-01-01T00:00:00.500Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time2)).rejects.toThrow(
+			await expect(validator.validateSize(fetchSizeFn, time2)).rejects.toThrow(
 				'Data store size limit exceeded: 100MB used, limit is 100MB',
 			);
 
@@ -123,9 +123,9 @@ describe('DataStoreSizeValidator', () => {
 			const time = new Date('2024-01-01T00:00:00Z');
 
 			// Start multiple concurrent calls
-			const promise1 = validator.validateSize('test', fetchSizeFn, time);
-			const promise2 = validator.validateSize('test', fetchSizeFn, time);
-			const promise3 = validator.validateSize('test', fetchSizeFn, time);
+			const promise1 = validator.validateSize(fetchSizeFn, time);
+			const promise2 = validator.validateSize(fetchSizeFn, time);
+			const promise3 = validator.validateSize(fetchSizeFn, time);
 
 			// Let promises start
 			await new Promise((resolve) => setImmediate(resolve));
@@ -152,9 +152,9 @@ describe('DataStoreSizeValidator', () => {
 			const time = new Date('2024-01-01T00:00:00Z');
 
 			// Start multiple concurrent calls
-			const promise1 = validator.validateSize('test', fetchSizeFn, time);
-			const promise2 = validator.validateSize('test', fetchSizeFn, time);
-			const promise3 = validator.validateSize('test', fetchSizeFn, time);
+			const promise1 = validator.validateSize(fetchSizeFn, time);
+			const promise2 = validator.validateSize(fetchSizeFn, time);
+			const promise3 = validator.validateSize(fetchSizeFn, time);
 
 			// Resolve with size over limit
 			resolveCheck!({ totalBytes: 150 * 1024 * 1024, dataTables: {} });
@@ -181,7 +181,7 @@ describe('DataStoreSizeValidator', () => {
 			const time1 = new Date('2024-01-01T00:00:00Z');
 
 			// First call
-			await validator.validateSize('test', fetchSizeFn, time1);
+			await validator.validateSize(fetchSizeFn, time1);
 			expect(fetchSizeFn).toHaveBeenCalledTimes(1);
 
 			// Reset the cache
@@ -189,7 +189,7 @@ describe('DataStoreSizeValidator', () => {
 
 			// Next call should fetch again even within cache duration
 			const time2 = new Date('2024-01-01T00:00:00.500Z');
-			await validator.validateSize('test', fetchSizeFn, time2);
+			await validator.validateSize(fetchSizeFn, time2);
 			expect(fetchSizeFn).toHaveBeenCalledTimes(2);
 		});
 	});
@@ -208,23 +208,23 @@ describe('DataStoreSizeValidator', () => {
 			// First check: DB at 99MB (under limit)
 			fetchSizeFn.mockResolvedValueOnce({ totalBytes: 99 * 1024 * 1024, dataTables: {} });
 			const time1 = new Date('2024-01-01T00:00:00Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time1)).resolves.toBeUndefined();
+			await expect(validator.validateSize(fetchSizeFn, time1)).resolves.toBeUndefined();
 
 			// Within cache duration: still validates against cached 99MB
 			// This PASSES, which is correct - we're being consistent within our cache window
 			const time2 = new Date('2024-01-01T00:00:00.500Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time2)).resolves.toBeUndefined();
+			await expect(validator.validateSize(fetchSizeFn, time2)).resolves.toBeUndefined();
 
 			// After cache expires: new check fetches current state showing DB is now full
 			fetchSizeFn.mockResolvedValueOnce({ totalBytes: 100 * 1024 * 1024, dataTables: {} });
 			const time3 = new Date('2024-01-01T00:00:01.001Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time3)).rejects.toThrow(
+			await expect(validator.validateSize(fetchSizeFn, time3)).rejects.toThrow(
 				'Data store size limit exceeded: 100MB used, limit is 100MB',
 			);
 
 			// Subsequent calls use the cached "full" state and continue to fail correctly
 			const time4 = new Date('2024-01-01T00:00:01.500Z');
-			await expect(validator.validateSize('test', fetchSizeFn, time4)).rejects.toThrow(
+			await expect(validator.validateSize(fetchSizeFn, time4)).rejects.toThrow(
 				'Data store size limit exceeded: 100MB used, limit is 100MB',
 			);
 

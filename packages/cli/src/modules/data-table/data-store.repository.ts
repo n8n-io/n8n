@@ -7,10 +7,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
-import type { DataTableInfo } from 'n8n-workflow';
+import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
-import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
+import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
 import { toTableId, toTableName } from './utils/sql-utils';
@@ -245,23 +245,15 @@ export class DataStoreRepository extends Repository<DataTable> {
 	private parseSize = (bytes: number | string | null): number =>
 		bytes === null ? 0 : typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
 
-	async findDataTablesSize(projectIds?: string[]): Promise<DataTablesSizeData> {
+	async findDataTablesSize(): Promise<DataTablesSizeData> {
 		const sizeMap = await this.getAllDataTablesSizeMap();
 
 		// Calculate total bytes for the whole instance
 		const totalBytes = Array.from(sizeMap.values()).reduce((sum, size) => sum + size, 0);
 
-		if (projectIds === undefined || projectIds?.length === 0) {
-			return {
-				totalBytes,
-				dataTables: {},
-			};
-		}
-
 		const query = this.createQueryBuilder('dt')
 			.leftJoinAndSelect('dt.project', 'p')
-			.select(['dt.id', 'dt.name', 'p.id', 'p.name'])
-			.andWhere('dt.projectId IN (:...projectIds)', { projectIds });
+			.select(['dt.id', 'dt.name', 'p.id', 'p.name']);
 
 		const dataTablesWithProjects = await query.getMany();
 
