@@ -28,8 +28,9 @@ const enum ItemAction {
 	Delete = 'delete',
 }
 
-const onItemClick = (action: ItemAction) => {
-	if (action === ItemAction.Delete) {
+const onItemClick = (action: string) => {
+	const actionEnum = action as ItemAction;
+	if (actionEnum === ItemAction.Delete) {
 		props.params.onDelete(props.params.column.getColId());
 	}
 };
@@ -88,7 +89,7 @@ const showSortIndicator = computed(() => {
 	return isSortable.value && Boolean(currentSort.value);
 });
 
-const onHeaderClick = (event: MouseEvent) => {
+const onHeaderClick = () => {
 	if (isSortable.value) {
 		const currentSortDirection = currentSort.value;
 		let nextSort: SortDirection = null;
@@ -121,16 +122,17 @@ onMounted(() => {
 	checkFilterStatus();
 	checkSortStatus();
 
-	// Listen to events
 	props.params.api.addEventListener('filterChanged', checkFilterStatus);
 	props.params.api.addEventListener('sortChanged', checkSortStatus);
 	// TODO: this event is marked as internal. What can we use instead?
+	// @ts-expect-error - filterClosed is not a public event
 	props.params.api.addEventListener('filterClosed', onFilterClosed);
 });
 
 onUnmounted(() => {
 	props.params.api.removeEventListener('filterChanged', checkFilterStatus);
 	props.params.api.removeEventListener('sortChanged', checkSortStatus);
+	// @ts-expect-error - filterClosed is not a public event
 	props.params.api.removeEventListener('filterClosed', onFilterClosed);
 });
 </script>
@@ -157,7 +159,7 @@ onUnmounted(() => {
 
 		<N8nIconButton
 			v-show="areButtonsVisible"
-			icon="filter"
+			icon="funnel"
 			type="tertiary"
 			text
 			:class="{ 'filter-highlighted': hasActiveFilter }"

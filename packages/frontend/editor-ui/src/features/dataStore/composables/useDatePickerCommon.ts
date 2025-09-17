@@ -14,7 +14,8 @@ export const useDatePickerCommon = (callbacks: DatePickerCallbacks = {}) => {
 	const initialValue = ref<Date | null>(null);
 
 	const getInnerInput = (): HTMLInputElement | null => {
-		return (wrapperRef.value.querySelector('input') ?? null) as HTMLInputElement | null;
+		const wrapper = wrapperRef.value as HTMLElement;
+		return wrapper.querySelector('input') ?? null;
 	};
 
 	const commitIfParsedFromInput = (target?: EventTarget | null): boolean => {
