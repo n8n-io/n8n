@@ -13,7 +13,7 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	// to avoid infinite redirect loops
 	const url = new URL(window.location.href);
 	url.searchParams.delete('redirect');
-	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname}${url.search}`);
+	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname.replace(new RegExp(`^${window.BASE_PATH}`), "/")}${url.search}`);
 
 	const valid = isAuthenticated(options);
 	if (!valid) {
