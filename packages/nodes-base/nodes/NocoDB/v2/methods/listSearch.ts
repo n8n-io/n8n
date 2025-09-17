@@ -9,11 +9,25 @@ import { NodeOperationError } from 'n8n-workflow';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
 import { apiRequest } from '../transport';
 
+async function getBaseUrl(this: ILoadOptionsFunctions) {
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	const credentials = await this.getCredentials(authenticationMethod);
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+	return credentials.host as string;
+}
+
 export async function getWorkspaces(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	try {
+		const baseUrl = await getBaseUrl.call(this);
+		const constructUrl = (workspaceId: string) => {
+			return `${baseUrl}/#/${workspaceId && workspaceId !== 'none' ? workspaceId : 'nc'}`;
+		};
+
 		const requestMethod = 'GET';
 		// no v3 api yet for workspaces list
 		const endpoint = '/api/v2/meta/workspaces';
@@ -21,6 +35,7 @@ export async function getWorkspaces(
 		const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 			name: i.title,
 			value: i.id,
+			url: constructUrl(i.id as string),
 		}));
 		return {
 			results:
@@ -38,6 +53,11 @@ export async function getBases(
 	const workspaceId = this.getNodeParameter('workspaceId', 0, {
 		extractValue: true,
 	}) as string;
+	const baseUrl = await getBaseUrl.call(this);
+	const constructUrl = (baseId: string) => {
+		return `${baseUrl}/#/${workspaceId && workspaceId !== 'none' ? workspaceId : 'nc'}/${baseId}`;
+	};
+
 	try {
 		let results: INodeListSearchItems[];
 		if (workspaceId && workspaceId !== 'none') {
@@ -47,13 +67,21 @@ export async function getBases(
 					? `/api/v3/meta/workspaces/${workspaceId}/bases`
 					: `/api/v2/meta/workspaces/${workspaceId}/bases`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-			results = responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
+			results = responseData.list.map((i: IDataObject) => ({
+				name: i.title,
+				value: i.id,
+				url: constructUrl(i.id as string),
+			}));
 		} else {
 			const requestMethod = 'GET';
 			// no v3 api yet for bases list without workspace
 			const endpoint = version === 3 ? '/api/v2/meta/bases/' : '/api/v1/db/meta/projects/';
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-			results = responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
+			results = responseData.list.map((i: IDataObject) => ({
+				name: i.title,
+				value: i.id,
+				url: constructUrl(i.id as string),
+			}));
 		}
 		if (filter && filter !== '') {
 			results = results.filter((flt) => flt.name.includes(filter));
@@ -84,6 +112,13 @@ export async function getTables(
 		extractValue: true,
 	}) as string;
 	if (baseId) {
+		const baseUrl = await getBaseUrl.call(this);
+		const workspaceId = this.getNodeParameter('workspaceId', 0, {
+			extractValue: true,
+		}) as string;
+		const constructUrl = (tableId: string) => {
+			return `${baseUrl}/#/${workspaceId && workspaceId !== 'none' ? workspaceId : 'nc'}/${baseId}/${tableId}`;
+		};
 		try {
 			const requestMethod = 'GET';
 			const endpoint =
@@ -94,6 +129,7 @@ export async function getTables(
 			const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 				name: i.title,
 				value: i.id,
+				url: constructUrl(i.id as string),
 			}));
 
 			return {
