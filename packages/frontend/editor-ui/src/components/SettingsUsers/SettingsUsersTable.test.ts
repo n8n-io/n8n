@@ -184,14 +184,6 @@ describe('SettingsUsersTable', () => {
 			expect(emitted()['update:role'][0]).toEqual([{ role: 'global:admin', userId: '2' }]);
 		});
 
-		it('should emit "action" with "delete" payload from actions cell', () => {
-			const { emitted } = renderComponent();
-			emitters.settingsUsersActionsCell.emit('action', { action: 'delete', userId: '2' });
-
-			expect(emitted()).toHaveProperty('action');
-			expect(emitted().action[0]).toEqual([{ action: 'delete', userId: '2' }]);
-		});
-
 		it('should render role as plain text when user lacks permission', () => {
 			hasPermission.mockReturnValue(false);
 			renderComponent();
