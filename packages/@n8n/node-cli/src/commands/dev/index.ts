@@ -1,4 +1,4 @@
-import { intro, outro, spinner, log } from '@clack/prompts';
+import { intro, log, outro, spinner } from '@clack/prompts';
 import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,7 +29,7 @@ export default class Dev extends Command {
 		'custom-user-folder': Flags.directory({
 			default: path.join(os.homedir(), '.n8n-node-cli'),
 			description:
-				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli.',
+				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli. The node CLI will install your node here.',
 		}),
 	};
 
@@ -74,41 +74,44 @@ export default class Dev extends Command {
 			log.warn(picocolors.dim('First run may take a few minutes while dependencies are installed'));
 
 			// Run n8n with hot reload enabled, always attempt to use latest n8n
-			// TODO: Use n8n@latest. Currently using n8n@next because of broken hot reloading before n8n@1.111.0
-			await Promise.race([
-				new Promise<void>((resolve) => {
-					runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@next'], {
-						cwd: n8nUserFolder,
-						env: {
-							...process.env,
-							N8N_DEV_RELOAD: 'true',
-							N8N_RUNNERS_ENABLED: 'true',
-							DB_SQLITE_POOL_SIZE: '10',
-							N8N_USER_FOLDER: n8nUserFolder,
-							N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
-						},
-						name: 'n8n',
-						color: picocolors.green,
-						allowOutput: (line) => {
-							if (line.includes('Initializing n8n process')) {
-								resolve();
-							}
+			try {
+				await Promise.race([
+					new Promise<void>((resolve) => {
+						runPersistentCommand('npx', ['-y', '--quiet', '--prefer-online', 'n8n@latest'], {
+							cwd: n8nUserFolder,
+							env: {
+								...process.env,
+								N8N_DEV_RELOAD: 'true',
+								N8N_RUNNERS_ENABLED: 'true',
+								DB_SQLITE_POOL_SIZE: '10',
+								N8N_USER_FOLDER: n8nUserFolder,
+							},
+							name: 'n8n',
+							color: picocolors.green,
+							allowOutput: (line) => {
+								if (line.includes('Initializing n8n process')) {
+									resolve();
+								}
 
-							return setupComplete;
-						},
-					});
-				}),
-				new Promise<void>((_, reject) => {
-					setTimeout(() => {
-						const error = new Error('n8n startup timeout after 120 seconds');
-						onCancel(error.message);
-						reject(error);
-					}, 120_000);
-				}),
-			]);
+								return setupComplete;
+							},
+						});
+					}),
+					new Promise<void>((_, reject) => {
+						setTimeout(() => {
+							const error = new Error('n8n startup timeout after 120 seconds');
+							reject(error);
+						}, 120_000);
+					}),
+				]);
 
-			setupComplete = true;
-			npxN8nSpinner.stop('Started n8n dev server');
+				setupComplete = true;
+				npxN8nSpinner.stop('Started n8n dev server');
+			} catch (error) {
+				npxN8nSpinner.stop('Failed to start n8n dev server');
+				onCancel(error instanceof Error ? error.message : 'Unknown error occurred', 1);
+				return;
+			}
 		}
 
 		outro('✓ Setup complete');

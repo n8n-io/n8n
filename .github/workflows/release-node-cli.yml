@@ -1,0 +1,44 @@
+name: 'Release: Node CLI Tools'
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/@n8n/node-cli/package.json'
+      - 'packages/@n8n/create-node/package.json'
+  workflow_dispatch:
+
+concurrency:
+  group: release-node-cli
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          build-command: 'pnpm --filter "@n8n/node-cli" --filter "@n8n/create-node" build'
+
+      - name: Pre publishing changes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/ensure-provenance-fields.mjs
+
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter "@n8n/node-cli" --filter "@n8n/create-node" publish --access public --no-git-checks --publish-branch master

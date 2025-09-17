@@ -1,5 +1,6 @@
 /* eslint-disable id-denylist */
 import { I18nClass, loadLanguage, i18nInstance } from './index';
+import type { LocaleMessages } from './types';
 
 // Store original state for cleanup
 let originalLocale: string;
@@ -16,7 +17,7 @@ describe(I18nClass, () => {
 				minShort: 'm',
 				hrsShort: 'h',
 			},
-		});
+		} as unknown as LocaleMessages);
 		originalLocale = i18nInstance.global.locale.value;
 		originalHtmlLang = document.querySelector('html')?.getAttribute('lang') ?? 'en';
 	});
@@ -78,7 +79,7 @@ describe('loadLanguage', () => {
 		const messages = {
 			hello: 'Hallo',
 			world: 'Welt',
-		};
+		} as unknown as LocaleMessages;
 
 		const result = loadLanguage(locale, messages);
 
@@ -91,7 +92,7 @@ describe('loadLanguage', () => {
 
 	it('should set the HTML lang attribute when loading a language', () => {
 		const locale = 'fr';
-		const messages = { greeting: 'Bonjour' };
+		const messages = { greeting: 'Bonjour' } as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -109,7 +110,7 @@ describe('loadLanguage', () => {
 					currency: 'EUR',
 				},
 			},
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -122,8 +123,8 @@ describe('loadLanguage', () => {
 
 	it('should not reload a language if it has already been loaded', () => {
 		const locale = 'es';
-		const originalMessages = { hello: 'Hola' };
-		const newMessages = { hello: 'Buenos días' };
+		const originalMessages = { hello: 'Hola' } as unknown as LocaleMessages;
+		const newMessages = { hello: 'Buenos días' } as unknown as LocaleMessages;
 
 		// Load the language for the first time
 		loadLanguage(locale, originalMessages);
@@ -144,7 +145,7 @@ describe('loadLanguage', () => {
 
 	it('should handle empty messages object', () => {
 		const locale = 'it';
-		const messages = {};
+		const messages = {} as unknown as LocaleMessages;
 
 		const result = loadLanguage(locale, messages);
 
@@ -162,7 +163,7 @@ describe('loadLanguage', () => {
 				},
 			},
 			simple: 'Simples',
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -187,7 +188,7 @@ describe('loadLanguage', () => {
 					minimumFractionDigits: 2,
 				},
 			},
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -205,17 +206,17 @@ describe('loadLanguage', () => {
 		const locale2 = 'de-switch';
 
 		// Load first language
-		loadLanguage(locale1, { hello: 'Bonjour' });
+		loadLanguage(locale1, { hello: 'Bonjour' } as unknown as LocaleMessages);
 		expect(i18nInstance.global.locale.value).toBe(locale1);
 		expect(i18nInstance.global.t('hello')).toBe('Bonjour');
 
 		// Load second language
-		loadLanguage(locale2, { hello: 'Hallo' });
+		loadLanguage(locale2, { hello: 'Hallo' } as unknown as LocaleMessages);
 		expect(i18nInstance.global.locale.value).toBe(locale2);
 		expect(i18nInstance.global.t('hello')).toBe('Hallo');
 
 		// Switch back to first language (should not reload messages)
-		loadLanguage(locale1, { hello: 'Salut' }); // Different message
+		loadLanguage(locale1, { hello: 'Salut' } as unknown as LocaleMessages); // Different message
 		expect(i18nInstance.global.locale.value).toBe(locale1);
 		expect(i18nInstance.global.t('hello')).toBe('Bonjour'); // Should be original message
 		testLocales.add(locale1);
@@ -224,7 +225,7 @@ describe('loadLanguage', () => {
 
 	it('should return the locale that was set', () => {
 		const locale = 'nl';
-		const messages = { test: 'test' };
+		const messages = { test: 'test' } as unknown as LocaleMessages;
 
 		const result = loadLanguage(locale, messages);
 
@@ -239,7 +240,7 @@ describe('loadLanguage', () => {
 			special: '特殊字符测试',
 			emoji: '🚀 测试 🎉',
 			mixed: 'Mixed 混合 content',
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -256,7 +257,7 @@ describe('loadLanguage', () => {
 			defined: 'Valid message',
 			undefined,
 			null: null,
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -275,7 +276,7 @@ describe('loadLanguage', () => {
 			nested: {
 				list: ['a', 'b', 'c'],
 			},
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -290,7 +291,7 @@ describe('loadLanguage', () => {
 		const currentLocale = 'en';
 		const messages = {
 			newMessage: 'This is a new message',
-		};
+		} as unknown as LocaleMessages;
 
 		// Ensure we're starting with English
 		i18nInstance.global.locale.value = currentLocale;
@@ -322,7 +323,7 @@ describe('loadLanguage', () => {
 					maximumFractionDigits: 3,
 				},
 			},
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -347,7 +348,7 @@ describe('loadLanguage', () => {
 			number: 42,
 			zero: 0,
 			string: 'actual string',
-		};
+		} as unknown as LocaleMessages;
 
 		loadLanguage(locale, messages);
 
@@ -369,10 +370,10 @@ describe('loadLanguage', () => {
 		const locale1 = 'preserve-1';
 		const locale2 = 'preserve-2';
 
-		loadLanguage(locale1, { test: 'test1' });
+		loadLanguage(locale1, { test: 'test1' } as unknown as LocaleMessages);
 		expect(html?.getAttribute('lang')).toBe(locale1);
 
-		loadLanguage(locale2, { test: 'test2' });
+		loadLanguage(locale2, { test: 'test2' } as unknown as LocaleMessages);
 		expect(html?.getAttribute('lang')).toBe(locale2);
 
 		// Restore original

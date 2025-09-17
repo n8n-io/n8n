@@ -29,6 +29,25 @@ import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
 import { mock } from 'vitest-mock-extended';
 
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		shortNodeType: (nodeType: string) => nodeType,
+		nodeText: (key: string) => ({
+			eventTriggerDescription: () => key,
+		}),
+		baseText: (key: string, options: { interpolate: { count: number } }) => {
+			if (key === 'ndv.output.items') {
+				return `${options.interpolate.count} item${options.interpolate.count > 1 ? 's' : ''}`;
+			} else if (key === 'ndv.output.itemsTotal') {
+				return `${options.interpolate.count} items total`;
+			} else {
+				return key;
+			}
+		},
+	}),
+}));
+
 beforeEach(() => {
 	const pinia = createTestingPinia({
 		initialState: {
@@ -47,7 +66,7 @@ beforeEach(() => {
 						1: mockNodeTypeDescription({
 							name: FORM_TRIGGER_NODE_TYPE,
 							group: ['trigger'],
-							eventTriggerDescription: 'Waiting for you to submit the form',
+							eventTriggerDescription: 'n8n-nodes-base.formTrigger',
 						}),
 					},
 					[SET_NODE_TYPE]: {
@@ -1729,9 +1748,7 @@ describe('useCanvasMapping', () => {
 			});
 
 			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
-			expect(renderOptions.options.tooltip).toBe(
-				'Waiting for you to create an event in n8n-nodes-base.manualTrigger',
-			);
+			expect(renderOptions.options.tooltip).toBe('node.waitingForYouToCreateAnEventIn');
 		});
 
 		describe('when the node has a custom eventTriggerDescription', () => {
@@ -1760,7 +1777,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
-				expect(renderOptions.options.tooltip).toBe('Waiting for you to submit the form');
+				expect(renderOptions.options.tooltip).toBe('n8n-nodes-base.formTrigger');
 			});
 		});
 
@@ -2196,6 +2213,516 @@ describe('useCanvasMapping', () => {
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('running');
+			});
+		});
+
+		describe('getConnectionLabel', () => {
+			it('should return undefined when source node is not found', () => {
+				const [, setNode] = mockNodes.slice(0, 2);
+				const nodes = [setNode]; // manualTriggerNode is missing
+				const connections = {
+					'Non-existent Node': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe(undefined);
+			});
+
+			it('should return pinned data count label when node has pinned data', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Mock pinned data with 3 items
+				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
+					return nodeName === manualTriggerNode.name
+						? [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]
+						: undefined;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('3 items');
+			});
+
+			it('should return singular item label when pinned data has 1 item', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Mock pinned data with 1 item
+				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
+					return nodeName === manualTriggerNode.name ? [{ json: { id: 1 } }] : undefined;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('1 item');
+			});
+
+			it('should return empty string when pinned data is empty array', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Mock pinned data with empty array
+				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
+					return nodeName === manualTriggerNode.name ? [] : undefined;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('');
+			});
+
+			it('should return execution data count when node has run data and no pinned data', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('3 items');
+			});
+
+			it('should return singular item label for execution data with 1 item', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('1 item');
+			});
+
+			it('should return empty string when execution data total is 0', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('');
+			});
+
+			it('should handle multiple iterations with single execution data label', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('2 items');
+			});
+
+			it('should handle multiple iterations with total items label', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 1,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('3 items total');
+			});
+
+			it('should handle different connection types correctly', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('2 items');
+			});
+
+			it('should prioritize pinned data over execution data', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Mock both pinned data and execution data
+				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
+					return nodeName === manualTriggerNode.name
+						? [{ json: { id: 1 } }, { json: { id: 2 } }]
+						: undefined;
+				});
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Should show pinned data count (2 items), not execution data count (3 items)
+				expect(mappedConnections.value[0]?.label).toBe('2 items');
+			});
+
+			it('should return empty string when no data is available', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				expect(mappedConnections.value[0]?.label).toBe('');
+			});
+
+			it('should handle connection with specific output index', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
+				const nodes = [manualTriggerNode, setNode];
+				const connections = {
+					[manualTriggerNode.name]: {
+						[NodeConnectionTypes.Main]: [
+							[], // index 0 - empty
+							[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }], // index 1 - connected
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === manualTriggerNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [
+										[{ json: {} }], // index 0 - 1 item
+										[{ json: {} }, { json: {} }, { json: {} }], // index 1 - 3 items
+									],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Should show the count for output index 1 (3 items), not index 0 (1 item)
+				expect(mappedConnections.value[0]?.label).toBe('3 items');
 			});
 		});
 	});
