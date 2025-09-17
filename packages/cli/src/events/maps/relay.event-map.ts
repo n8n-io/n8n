@@ -206,6 +206,11 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'user-retried-execution': {
+		userId: string;
+		publicApi: boolean;
+	};
+
 	'user-retrieved-workflow': {
 		userId: string;
 		publicApi: boolean;

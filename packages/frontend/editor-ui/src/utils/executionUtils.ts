@@ -12,6 +12,7 @@ import type {
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
@@ -107,7 +108,7 @@ export const executionFilterToQueryFilter = (
 	return queryFilter;
 };
 
-let formPopupWindow: boolean = false;
+let formPopupWindow = false;
 
 export const openFormPopupWindow = (url: string) => {
 	if (!formPopupWindow) {
@@ -146,9 +147,10 @@ export async function displayForm({
 	for (const node of nodes) {
 		if (triggerNode !== undefined && triggerNode !== node.name) continue;
 
-		const hasNodeRun = runData?.hasOwnProperty(node.name);
+		const hasNodeRunAndIsNotFormTrigger =
+			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
 
-		if (hasNodeRun || pinData[node.name]) continue;
+		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
 
 		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
 
@@ -227,25 +229,41 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 };
 
 /**
+ * Check whether node execution data contains a trimmed item.
+ */
+export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
+	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
+}
+
+/**
  * Check whether task data contains a trimmed item.
  *
  * In manual executions in scaling mode, the payload in push messages may be
  * arbitrarily large. To protect Redis as it relays run data from workers to
- * main process, we set a limit on payload size. If the payload is oversize,
+ * the main process, we set a limit on payload size. If the payload is oversize,
  * we replace it with a placeholder, which is later overridden on execution
  * finish, when the client receives the full data.
  */
-export function hasTrimmedItem(taskData: ITaskData[]) {
-	return taskData[0]?.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+export function isTrimmedTaskData(taskData: ITaskData) {
+	return taskData.data?.main?.some((main) => isTrimmedNodeExecutionData(main));
+}
+
+/**
+ * Check whether task data contains a trimmed item.
+ *
+ * See {@link isTrimmedTaskData} for more details.
+ */
+export function hasTrimmedTaskData(taskData: ITaskData[]) {
+	return taskData.some(isTrimmedTaskData);
 }
 
 /**
  * Check whether run data contains any trimmed items.
  *
- * See {@link hasTrimmedItem} for more details.
+ * See {@link hasTrimmedTaskData} for more details.
  */
-export function hasTrimmedData(runData: IRunData) {
-	return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
+export function hasTrimmedRunData(runData: IRunData) {
+	return Object.keys(runData).some((nodeName) => hasTrimmedTaskData(runData[nodeName]));
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

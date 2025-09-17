@@ -43,7 +43,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 describe('AddColumnButton', () => {
-	const addColumnHandler = vi.fn().mockResolvedValue(true);
+	const addColumnHandler = vi.fn().mockResolvedValue({ success: true });
 	const renderComponent = createComponentRenderer(AddColumnButton, {
 		props: {
 			params: {
@@ -228,7 +228,7 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should close popover after successful submission', async () => {
-		const { getByPlaceholderText, getByTestId, queryByText } = renderComponent();
+		const { getByPlaceholderText, getByTestId, queryByTestId } = renderComponent();
 		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
@@ -240,13 +240,16 @@ describe('AddColumnButton', () => {
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
-			expect(queryByText('Column name')).not.toBeInTheDocument();
+			expect(queryByTestId('add-column-popover-content')).not.toBeInTheDocument();
 		});
 	});
 
 	it('should not close popover if submission fails', async () => {
 		const { getByPlaceholderText, getByTestId } = renderComponent();
-		addColumnHandler.mockResolvedValueOnce(false);
+		addColumnHandler.mockResolvedValueOnce({
+			success: false,
+			error: 'Column name already exists',
+		});
 		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
@@ -258,7 +261,7 @@ describe('AddColumnButton', () => {
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
-			expect(getByTestId('data-store-add-column-submit-button')).toBeInTheDocument();
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 	});
 
@@ -291,7 +294,31 @@ describe('AddColumnButton', () => {
 			expect(getByText('string')).toBeInTheDocument();
 			expect(getByText('number')).toBeInTheDocument();
 			expect(getByText('boolean')).toBeInTheDocument();
-			expect(getByText('date')).toBeInTheDocument();
+			expect(getByText('datetime')).toBeInTheDocument();
+		});
+	});
+
+	it('should set value to "date" when selecting "datetime" option', async () => {
+		const { getByTestId, getByRole, getByText, getByPlaceholderText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
+
+		await fireEvent.click(addButton);
+
+		const nameInput = getByPlaceholderText('Enter column name');
+		await fireEvent.update(nameInput, 'dateColumn');
+
+		const selectElement = getByRole('combobox');
+		await fireEvent.click(selectElement);
+
+		const dateOption = getByText('datetime');
+		await fireEvent.click(dateOption);
+
+		const submitButton = getByTestId('data-store-add-column-submit-button');
+		await fireEvent.click(submitButton);
+
+		expect(addColumnHandler).toHaveBeenCalledWith({
+			name: 'dateColumn',
+			type: 'date',
 		});
 	});
 

@@ -31,6 +31,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 const checkAll = ref(false);
 const indeterminate = ref(false);
+const popperContainer = ref(null);
 
 const groupedScopes = computed(() => {
 	const groups = {};

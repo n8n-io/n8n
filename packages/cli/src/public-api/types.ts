@@ -34,6 +34,7 @@ export declare namespace ExecutionRequest {
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
+	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 }
 
 export declare namespace TagRequest {

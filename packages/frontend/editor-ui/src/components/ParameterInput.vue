@@ -81,7 +81,13 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { onClickOutside, useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
+import {
+	hasFocusOnInput,
+	isBlurrableEl,
+	isEmpty,
+	isFocusableEl,
+	isSelectableEl,
+} from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
@@ -241,9 +247,13 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary filter until native Python runner is GA
-	if (props.parameter.name === 'language' && !settingsStore.isNativePythonRunnerEnabled) {
-		return safeOptions.filter((o) => o.value !== 'pythonNative');
+	// temporary until native Python runner is GA
+	if (props.parameter.name === 'language') {
+		if (settingsStore.isNativePythonRunnerEnabled) {
+			return safeOptions.filter((o) => o.value !== 'python');
+		} else {
+			return safeOptions.filter((o) => o.value !== 'pythonNative');
+		}
 	}
 
 	return safeOptions;
@@ -267,7 +277,7 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 
 const editorRows = computed(() => getTypeOption<number>('rows'));
 
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
 	return getTypeOption<EditorType>('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
@@ -621,6 +631,15 @@ const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM
 
 const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
+const isMapperAvailable = computed(
+	() =>
+		!props.parameter.isNodeSetting &&
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime') ||
+			editorType.value !== undefined),
+);
+
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
 }
@@ -807,10 +826,6 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
-
-		if (isModelValueExpression.value || props.forceShowExpression || props.modelValue === '') {
-			isMapperShown.value = true;
-		}
 	}
 
 	emit('focus');
@@ -951,14 +966,23 @@ function expressionUpdated(value: string) {
 	valueChanged(val);
 }
 
-function onBlur(event?: FocusEvent | KeyboardEvent) {
+function onBlur() {
 	emit('blur');
 	isFocused.value = false;
+}
 
+function onFocusIn() {
+	if (isMapperAvailable.value) {
+		isMapperShown.value = true;
+	}
+}
+
+function onFocusOutOrOutsideClickMapper(event: FocusEvent | MouseEvent) {
 	if (
+		!(event?.target instanceof Node && wrapper.value?.contains(event.target)) &&
 		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
 		!(
-			event instanceof FocusEvent &&
+			'relatedTarget' in event &&
 			event.relatedTarget instanceof Node &&
 			mapperElRef.value?.contains(event.relatedTarget)
 		)
@@ -1010,11 +1034,7 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
-function onClickOutsideMapper() {
-	if (!isFocused.value) {
-		isMapperShown.value = false;
-	}
-}
+const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
 
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
@@ -1150,7 +1170,8 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
-	valueChangedDebounced.cancel();
+	valueChangedDebounced.flush();
+	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
 });
 
@@ -1229,7 +1250,7 @@ onUpdated(async () => {
 	}
 });
 
-onClickOutside(mapperElRef, onClickOutsideMapper);
+onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 </script>
 
 <template>
@@ -1253,7 +1274,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="node && expressionLocalResolveCtx?.inputNode"
+			v-if="isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
 			ref="mapperRef"
 			:workflow="expressionLocalResolveCtx?.workflow"
 			:node="node"
@@ -1272,6 +1293,8 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 			]"
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
+			@focusin="onFocusIn"
+			@focusout="onFocusOutOrOutsideClickMapper"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
@@ -1289,7 +1312,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1309,7 +1332,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 				:path="path"
 				:parameter-issues="getIssues"
 				:is-read-only="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -1574,7 +1597,6 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 						:rows="editorRows"
 					/>
 				</div>
-
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1591,7 +1613,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@update:model-value="onUpdateTextInputDebounced($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1637,7 +1659,7 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"

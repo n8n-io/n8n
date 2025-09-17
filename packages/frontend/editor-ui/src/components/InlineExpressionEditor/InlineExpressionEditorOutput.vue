@@ -103,6 +103,10 @@ defineExpose({
 	background-color: transparent !important;
 	padding: 0 !important;
 	border: none !important;
+
+	/* Override styles set for el-popper */
+	word-break: normal;
+	text-align: unset;
 }
 
 .dropdown {

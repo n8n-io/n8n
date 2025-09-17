@@ -1584,6 +1584,7 @@ export class WorkflowExecute {
 			onCancel.shouldReject = false;
 			onCancel(() => {
 				this.status = 'canceled';
+				this.updateTaskStatusesToCancelled();
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
 				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
@@ -2652,6 +2653,17 @@ export class WorkflowExecute {
 		}
 
 		return nodeSuccessData;
+	}
+
+	private updateTaskStatusesToCancelled(): void {
+		Object.keys(this.runExecutionData.resultData.runData).forEach((nodeName) => {
+			const taskDataArray = this.runExecutionData.resultData.runData[nodeName];
+			taskDataArray.forEach((taskData) => {
+				if (taskData.executionStatus === 'running') {
+					taskData.executionStatus = 'canceled';
+				}
+			});
+		});
 	}
 
 	private get isCancelled() {

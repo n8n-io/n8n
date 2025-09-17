@@ -11,7 +11,9 @@ test.describe('AI-716 Correctly set up agent model shows error', () => {
 
 		await n8n.canvas.addNode('OpenAI Chat Model');
 
-		await n8n.credentials.createAndSaveNewCredential('apiKey', 'sk-123');
+		await n8n.credentialsComposer.createFromNdv({
+			apiKey: 'sk-123',
+		});
 
 		await n8n.page.keyboard.press('Escape');
 
