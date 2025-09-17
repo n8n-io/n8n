@@ -1,7 +1,11 @@
 import { computed, ref, type Ref } from 'vue';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import type { DataStoreRow } from '@/features/dataStore/datastore.types';
-import type { BackendFilter, FilterModel } from '../types/dataStoreFilters.types';
+import type {
+	BackendFilter,
+	BackendFilterRecord,
+	FilterModel,
+} from '../types/dataStoreFilters.types';
 import { GRID_FILTER_CONFIG, SPECIAL_COLUMNS } from '../utils/filterMappings';
 import {
 	processTextFilter,
@@ -40,7 +44,7 @@ export const useDataStoreColumnFilters = ({
 	};
 
 	function convertAgModelToBackend(model: FilterModel, defs: ColDef[]): BackendFilter | undefined {
-		const allFilters: import('../types/dataStoreFilters.types').BackendFilterRecord[] = [];
+		const allFilters: BackendFilterRecord[] = [];
 
 		const colIdToField = new Map<string, string>();
 		defs.forEach((d) => {
