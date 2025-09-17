@@ -151,7 +151,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 			},
 			data,
 		});
-	} else {
+	} else if (source === 'googleSheets') {
 		const googleSheetInstance = getGoogleSheet.call(this);
 		const googleSheet = await getSheet.call(this, googleSheetInstance);
 
@@ -177,6 +177,8 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 			preparedData.updateData,
 			'RAW', // default value for Value Input Mode
 		);
+	} else {
+		throw new NodeOperationError(this.getNode(), `Unknown source "${source}"`);
 	}
 
 	return [withEvaluationData.call(this, outputs)];

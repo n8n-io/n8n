@@ -80,6 +80,7 @@ describe('Test Evaluation', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
+						source: 'googleSheets',
 						'outputs.values': [{ outputName: 'foo', outputValue: 'clam' }],
 						documentId: {
 							mode: 'id',
@@ -117,6 +118,7 @@ describe('Test Evaluation', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
+						source: 'googleSheets',
 						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
 						documentId: {
 							mode: 'id',
@@ -144,6 +146,7 @@ describe('Test Evaluation', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
+						source: 'googleSheets',
 						'outputs.values': [{ outputName: 'bob', outputValue: 'clam' }],
 						documentId: {
 							mode: 'id',

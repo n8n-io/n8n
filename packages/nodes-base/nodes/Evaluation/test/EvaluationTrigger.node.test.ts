@@ -62,6 +62,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
 							options: {},
 							'filtersUI.values': [],
 							combineFilters: 'AND',
@@ -113,6 +114,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
 							options: {},
 							'filtersUI.values': [],
 							combineFilters: 'AND',
@@ -164,6 +166,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
 							options: {},
 							'filtersUI.values': [],
 							combineFilters: 'AND',
@@ -201,6 +204,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
 							options: {},
 							'filtersUI.values': [],
 							combineFilters: 'AND',
@@ -270,6 +274,7 @@ describe('Evaluation Trigger Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 						const mockParams: { [key: string]: unknown } = {
+							source: 'googleSheets',
 							limitRows: true,
 							maxRows: 2,
 							'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
@@ -352,6 +357,7 @@ describe('Evaluation Trigger Node', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
+						source: 'googleSheets',
 						options: {},
 						'filtersUI.values': [],
 						combineFilters: 'AND',
@@ -421,6 +427,7 @@ describe('Evaluation Trigger Node', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
+						source: 'googleSheets',
 						'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
 						options: {},
 						combineFilters: 'AND',

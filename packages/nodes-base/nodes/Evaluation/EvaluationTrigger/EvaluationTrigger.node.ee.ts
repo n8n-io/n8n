@@ -12,6 +12,7 @@ import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 import { readFilter } from '../../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
+import { sourcePicker } from '../Evaluation/Description.node';
 import { listSearch, loadOptions, credentialTest } from '../methods';
 import {
 	getGoogleSheet,
@@ -42,24 +43,14 @@ export class EvaluationTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'options',
-				options: [
-					{
-						name: 'Google Sheets',
-						value: 'googleSheets',
-						description: 'Load the test dataset from a Google Sheets document',
-					},
-					{
-						name: 'Data Table',
-						value: 'dataTable',
-						description: 'Load the test dataset from a local Data Table',
-					},
-				],
-				default: 'googleSheets',
-				description: 'Where to get the test dataset from',
+				...sourcePicker,
+				default: 'dataTable',
 				displayOptions: { show: { '@version': [{ _cnd: { gte: 4.7 } }] } },
+			},
+			{
+				...sourcePicker,
+				default: 'googleSheets',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 4.6 } }] } },
 			},
 			{
 				displayName:
@@ -224,7 +215,7 @@ export class EvaluationTrigger implements INodeType {
 			} satisfies INodeExecutionData;
 
 			return [[currentRow]];
-		} else {
+		} else if (source === 'googleSheets') {
 			const maxRows = this.getNodeParameter('limitRows', 0, false)
 				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
 				: MAX_ROWS;
@@ -294,6 +285,8 @@ export class EvaluationTrigger implements INodeType {
 				return [[currentRow]];
 			}
 		}
+
+		throw new NodeOperationError(this.getNode(), `Unknown source "${source}"`);
 	}
 
 	customOperations = {
@@ -334,7 +327,7 @@ export class EvaluationTrigger implements INodeType {
 						}));
 
 						return [result];
-					} else {
+					} else if (source === 'googleSheets') {
 						const googleSheetInstance = getGoogleSheet.call(this);
 						const googleSheet = await getSheet.call(this, googleSheetInstance);
 
@@ -343,6 +336,8 @@ export class EvaluationTrigger implements INodeType {
 
 						return [result];
 					}
+
+					throw new NodeOperationError(this.getNode(), `Unknown source "${source}"`);
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error);
 				}

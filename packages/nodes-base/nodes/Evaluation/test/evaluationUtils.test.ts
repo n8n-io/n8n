@@ -93,10 +93,16 @@ describe('setOutputs', () => {
 				if (expr.includes('first().json')) return { row_number: 2, inputField: 'inputValue' };
 				return true;
 			}),
-			getNodeParameter: jest.fn().mockReturnValue([
-				{ outputName: 'result', outputValue: 'success' },
-				{ outputName: 'score', outputValue: '95' },
-			]),
+			getNodeParameter: jest.fn().mockImplementation((param: string) => {
+				if (param === 'outputs.values') {
+					return [
+						{ outputName: 'result', outputValue: 'success' },
+						{ outputName: 'score', outputValue: '95' },
+					];
+				} else if (param === 'source') {
+					return 'googleSheets';
+				}
+			}),
 			getInputData: jest.fn().mockReturnValue([{ json: { test: 1 } }]),
 			addExecutionHints: jest.fn(),
 			getMode: jest.fn().mockReturnValue('evaluation'),
@@ -199,9 +205,13 @@ describe('setOutputs', () => {
 				if (expr.includes('first().json')) return { row_number: 2, existingCol: 'value' };
 				return true;
 			}),
-			getNodeParameter: jest
-				.fn()
-				.mockReturnValue([{ outputName: 'newCol', outputValue: 'newValue' }]),
+			getNodeParameter: jest.fn().mockImplementation((param) => {
+				if (param === 'outputs.values') {
+					return [{ outputName: 'newCol', outputValue: 'newValue' }];
+				} else if (param === 'source') {
+					return 'googleSheets';
+				}
+			}),
 		});
 		const result = await setOutputs.call(context);
 

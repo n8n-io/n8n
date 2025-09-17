@@ -12,6 +12,7 @@ import {
 	setInputsProperties,
 	setMetricsProperties,
 	setOutputProperties,
+	sourcePicker,
 } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions, credentialTest } from '../methods';
@@ -94,25 +95,17 @@ export class Evaluation implements INodeType {
 				default: 'setOutputs',
 			},
 			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'options',
-				options: [
-					{
-						name: 'Google Sheets',
-						value: 'googleSheets',
-						description: 'Load the test dataset from a Google Sheets document',
-					},
-					{
-						name: 'Data Table',
-						value: 'dataTable',
-						description: 'Load the test dataset from a local Data Table',
-					},
-				],
-				default: 'googleSheets',
-				description: 'Where to get the test dataset from',
+				...sourcePicker,
+				default: 'dataTable',
 				displayOptions: {
 					show: { '@version': [{ _cnd: { gte: 4.8 } }], operation: ['setOutputs'] },
+				},
+			},
+			{
+				...sourcePicker,
+				default: 'googleSheets',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { lte: 4.7 } }], operation: ['setOutputs'] },
 				},
 			},
 			{

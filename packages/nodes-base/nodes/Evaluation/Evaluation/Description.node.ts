@@ -476,3 +476,23 @@ export const setMetricsProperties: INodeProperties[] = [
 	...optionsForMetricBasic('stringSimilarity', 'String similarity'),
 	...optionsForMetricBasic('toolsUsed', 'Tools Used'),
 ];
+
+export const sourcePicker: INodeProperties = {
+	displayName: 'Source',
+	name: 'source',
+	type: 'options',
+	options: [
+		{
+			name: 'Data Table',
+			value: 'dataTable',
+			description: 'Load the test dataset from a local Data Table',
+		},
+		{
+			name: 'Google Sheets',
+			value: 'googleSheets',
+			description: 'Load the test dataset from a Google Sheets document',
+		},
+	],
+	default: 'dataTable',
+	description: 'Where to get the test dataset from',
+};
