@@ -320,6 +320,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
+				settings: resource.settings,
 			} satisfies WorkflowResource;
 		}
 	});

@@ -902,14 +902,21 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .workflow-settings {
 	font-size: var(--font-size-s);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-3xs);
+
 	.el-row {
-		padding: 0.25em 0;
+		display: flex;
+		align-items: center;
+	}
+
+	:deep(.el-switch) {
+		padding: var(--spacing-s) 0;
 	}
 }
 
 .setting-name {
-	line-height: 32px;
-
 	svg {
 		display: inline-flex;
 		opacity: 0;

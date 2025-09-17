@@ -345,7 +345,7 @@ export type SortingAndPaginationUpdates = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 };
