@@ -113,6 +113,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
+				:truncate-limit="60"
 			/>
 		</template>
 	</N8nPopoverReka>
