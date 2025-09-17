@@ -38,23 +38,37 @@ export class RoleService {
 		private readonly scopeRepository: ScopeRepository,
 	) {}
 
-	private dbRoleToRoleDTO(role: Role): RoleDTO {
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
 			licensed: this.isRoleLicensed(role.slug),
+			usedByUsers,
 		};
 	}
 
-	async getAllRoles(): Promise<RoleDTO[]> {
+	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
 		const roles = await this.roleRepository.findAll();
-		return roles.map((r) => this.dbRoleToRoleDTO(r));
+
+		if (!withCount) {
+			return roles.map((r) => this.dbRoleToRoleDTO(r));
+		}
+
+		const roleCounts = await this.roleRepository.findAllRoleCounts();
+
+		return roles.map((role) => {
+			const usedByUsers = roleCounts[role.slug] ?? 0;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
+		});
 	}
 
-	async getRole(slug: string): Promise<RoleDTO> {
+	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (role) {
-			return this.dbRoleToRoleDTO(role);
+			const usedByUsers = withCount
+				? await this.roleRepository.countUsersWithRole(role)
+				: undefined;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
 		}
 		throw new NotFoundError('Role not found');
 	}
