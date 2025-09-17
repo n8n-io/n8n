@@ -11,6 +11,7 @@
     "eslint": "catalog:",
     "fast-glob": "catalog:",
     "axios": "catalog:",
+    "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "semver": "^7.5.4",
     "tmp": "0.2.4"
   }
