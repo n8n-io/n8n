@@ -950,8 +950,6 @@ onBeforeUnmount(() => {
 	align-items: center;
 
 	:global(.el-input) {
-		width: 64px;
-	:global(.el-input) {
 		width: var(--spacing-3xl);
 	}
 
