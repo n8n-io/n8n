@@ -65,6 +65,25 @@ export function toDataTableValue(value: JsonValue): DataStoreColumnJsType {
 	return jsonStringify(value);
 }
 
+const toDataTableColumnType = (value: JsonValue) => {
+	switch (typeof value) {
+		case 'string':
+			return 'string';
+		case 'number':
+			return 'number';
+		case 'boolean':
+			return 'boolean';
+		case 'object':
+			if (value instanceof Date) {
+				return 'date';
+			}
+			// this catches null, arrays and objects
+			return 'string';
+		default:
+			return 'string';
+	}
+};
+
 export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const evaluationNode = this.getNode();
 	const parentNodes = this.getParentNodes(evaluationNode.name);
@@ -137,6 +156,18 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		const data = Object.fromEntries(
 			Object.entries(outputs).map(([k, v]) => [k, toDataTableValue(v)]),
 		);
+
+		const columns = await dataTableProxy.getColumns();
+		for (const [columnName, value] of Object.entries(outputs)) {
+			if (columns.find((c) => c.name === columnName)) {
+				continue;
+			}
+
+			await dataTableProxy.addColumn({
+				name: columnName,
+				type: toDataTableColumnType(value),
+			});
+		}
 
 		await dataTableProxy.updateRow({
 			filter: {
