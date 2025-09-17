@@ -29,7 +29,7 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 		for (const [connectionType, outputs] of Object.entries(pushData.itemCount)) {
 			if (isValidNodeConnectionType(connectionType)) {
 				placeholderOutputData[connectionType] = outputs.map(
-					(count) => Array.from({ length: count }).fill(fillObject) as INodeExecutionData[],
+					(count) => Array.from({ length: count }, (): INodeExecutionData => fillObject),
 				);
 			}
 		}
