@@ -498,12 +498,18 @@ export class Server extends AbstractServer {
 
 		// Match exact urls. We always expect them in this form, and only a matched route
 		// path can skip AuthService's browser-id check, which the editor's fetch needs.
-		const typeFiles = ['/types/nodes.json', '/types/credentials.json', '/types/node-versions.json'];
+		// Resolved against the configured base path so the mount and the skip-list
+		// entries stay in sync under N8N_BASE_PATH.
+		const typeFiles = ['types/nodes.json', 'types/credentials.json', 'types/node-versions.json'];
 		typeFiles.forEach((typeFile) => {
-			this.app.get(typeFile, authMiddleware, async (_, res: express.Response) => {
-				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-				res.sendFile(typeFile.substring(1), { root: staticCacheDir });
-			});
+			this.app.get(
+				this.pathResolvingService.resolveEndpoint(typeFile),
+				authMiddleware,
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(typeFile, { root: staticCacheDir });
+				},
+			);
 		});
 
 		// Deny any request that can reach /types/* that isn't caught above, rather than
