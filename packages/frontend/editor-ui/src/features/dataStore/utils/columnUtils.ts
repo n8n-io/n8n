@@ -8,6 +8,7 @@ import type {
 } from 'ag-grid-community';
 import type { Ref } from 'vue';
 import { DateTime } from 'luxon';
+import type { I18nClass } from '@n8n/i18n';
 import type { DataStoreColumn, DataStoreRow } from '@/features/dataStore/datastore.types';
 import {
 	ADD_ROW_ROW_ID,
@@ -117,52 +118,52 @@ export const numberValueFormatter = (
 	return numberWithSpaces(value);
 };
 
-const NULL_FILTER_OPTION = {
+const createNullFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'null',
-	displayName: 'Is Null',
+	displayName: i18n.baseText('dataStore.filters.isNull'),
 	predicate: () => true,
 	numberOfInputs: 0,
-};
+});
 
-const NOT_NULL_FILTER_OPTION = {
+const createNotNullFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'notNull',
-	displayName: 'Is not Null',
+	displayName: i18n.baseText('dataStore.filters.isNotNull'),
 	predicate: () => true,
 	numberOfInputs: 0,
-};
+});
 
-const IS_EMPTY_FILTER_OPTION = {
+const createIsEmptyFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'isEmpty',
-	displayName: 'Is empty',
+	displayName: i18n.baseText('dataStore.filters.isEmpty'),
 	predicate: () => true,
 	numberOfInputs: 0,
-};
+});
 
-const IS_NOT_EMPTY_FILTER_OPTION = {
+const createIsNotEmptyFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'notEmpty',
-	displayName: 'Is not empty',
+	displayName: i18n.baseText('dataStore.filters.isNotEmpty'),
 	predicate: () => true,
 	numberOfInputs: 0,
-};
+});
 
-const BETWEEN_FILTER_OPTION = {
+const createBetweenFilterOption = (i18n: I18nClass) => ({
 	displayKey: 'between',
-	displayName: 'Between',
+	displayName: i18n.baseText('dataStore.filters.between'),
 	predicate: () => true,
 	numberOfInputs: 2,
-};
+});
 
-export const STRING_COLUMN_FILTER_OPTIONS = [
+export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
 	'contains',
-	IS_EMPTY_FILTER_OPTION,
-	IS_NOT_EMPTY_FILTER_OPTION,
-	NULL_FILTER_OPTION,
-	NOT_NULL_FILTER_OPTION,
+	createIsEmptyFilterOption(i18n),
+	createIsNotEmptyFilterOption(i18n),
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
 ];
 
-export const DATE_COLUMN_FILTER_OPTIONS = [
+export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
 	'lessThan',
@@ -170,36 +171,36 @@ export const DATE_COLUMN_FILTER_OPTIONS = [
 	'greaterThan',
 	'greaterThanOrEqual',
 	'inRange',
-	NULL_FILTER_OPTION,
-	NOT_NULL_FILTER_OPTION,
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
 ];
 
-export const NUMBER_COLUMN_FILTER_OPTIONS = [
+export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
 	'lessThan',
 	'lessThanOrEqual',
 	'greaterThan',
 	'greaterThanOrEqual',
-	BETWEEN_FILTER_OPTION,
-	NULL_FILTER_OPTION,
-	NOT_NULL_FILTER_OPTION,
+	createBetweenFilterOption(i18n),
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
 ];
 
-export const BOOLEAN_COLUMN_FILTER_OPTIONS = [
+export const getBooleanColumnFilterOptions = (i18n: I18nClass) => [
 	'empty',
 	{
 		displayKey: 'true',
-		displayName: 'True',
+		displayName: i18n.baseText('dataStore.filters.true'),
 		numberOfInputs: 0,
 		predicate: () => true,
 	},
 	{
 		displayKey: 'false',
-		displayName: 'False',
+		displayName: i18n.baseText('dataStore.filters.false'),
 		numberOfInputs: 0,
 		predicate: () => true,
 	},
-	NULL_FILTER_OPTION,
-	NOT_NULL_FILTER_OPTION,
+	createNullFilterOption(i18n),
+	createNotNullFilterOption(i18n),
 ];

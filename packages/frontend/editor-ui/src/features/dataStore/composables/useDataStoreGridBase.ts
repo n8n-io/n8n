@@ -41,11 +41,12 @@ import {
 	stringCellEditorParams,
 	dateValueFormatter,
 	numberValueFormatter,
-	STRING_COLUMN_FILTER_OPTIONS,
-	DATE_COLUMN_FILTER_OPTIONS,
-	NUMBER_COLUMN_FILTER_OPTIONS,
-	BOOLEAN_COLUMN_FILTER_OPTIONS,
+	getStringColumnFilterOptions,
+	getDateColumnFilterOptions,
+	getNumberColumnFilterOptions,
+	getBooleanColumnFilterOptions,
 } from '@/features/dataStore/utils/columnUtils';
+import { useI18n } from '@n8n/i18n';
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -63,6 +64,7 @@ export const useDataStoreGridBase = ({
 	const isTextEditorOpen = ref(false);
 	const { mapToAGCellType } = useDataStoreTypes();
 	const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
+	const i18n = useI18n();
 	const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
 	const currentSortOrder = ref<SortDirection>('asc');
 
@@ -156,7 +158,7 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
 			columnDef.filterParams = {
-				filterOptions: STRING_COLUMN_FILTER_OPTIONS,
+				filterOptions: getStringColumnFilterOptions(i18n),
 			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
@@ -166,16 +168,16 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopup = true;
 			columnDef.dateComponent = ElDatePickerFilter;
 			columnDef.filterParams = {
-				filterOptions: DATE_COLUMN_FILTER_OPTIONS,
+				filterOptions: getDateColumnFilterOptions(i18n),
 			};
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
 			columnDef.filterParams = {
-				filterOptions: NUMBER_COLUMN_FILTER_OPTIONS,
+				filterOptions: getNumberColumnFilterOptions(i18n),
 			};
 		} else if (col.type === 'boolean') {
 			columnDef.filterParams = {
-				filterOptions: BOOLEAN_COLUMN_FILTER_OPTIONS,
+				filterOptions: getBooleanColumnFilterOptions(i18n),
 			};
 		}
 
