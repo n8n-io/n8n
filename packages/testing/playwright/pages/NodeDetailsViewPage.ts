@@ -872,6 +872,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
 	}
 
+	getResourceLocatorModeSelectorInput(paramName: string) {
+		return this.getResourceLocatorModeSelector(paramName).locator('input');
+	}
+
+	getResourceLocatorErrorMessage(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+	}
+
+	getResourceLocatorAddCredentials(paramName: string) {
+		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+	}
+
 	async setRLCValue(paramName: string, value: string): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
 
