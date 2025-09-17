@@ -171,8 +171,8 @@ describe('Data Store Size Tests', () => {
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.sizeBytes).toBeGreaterThan(0);
-			expect(result.sizeState).toBe('ok');
+			expect(result.totalBytes).toBeGreaterThan(0);
+			expect(result.quotaStatus).toBe('ok');
 			expect(result.dataTables).toBeDefined();
 
 			expect(Object.keys(result.dataTables)).toHaveLength(2);
@@ -194,7 +194,7 @@ describe('Data Store Size Tests', () => {
 			// Total should be sum of individual tables
 			const expectedTotal =
 				result.dataTables[dataStore1.id].sizeBytes + result.dataTables[dataStore2.id].sizeBytes;
-			expect(result.sizeBytes).toBe(expectedTotal);
+			expect(result.totalBytes).toBe(expectedTotal);
 		});
 
 		it('should return only accessible project data tables for regular user', async () => {
@@ -219,8 +219,8 @@ describe('Data Store Size Tests', () => {
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.sizeBytes).toBeGreaterThan(0);
-			expect(result.sizeState).toBe('ok');
+			expect(result.totalBytes).toBeGreaterThan(0);
+			expect(result.quotaStatus).toBe('ok');
 			expect(result.dataTables).toBeDefined();
 
 			expect(Object.keys(result.dataTables)).toHaveLength(1);
@@ -252,8 +252,8 @@ describe('Data Store Size Tests', () => {
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.sizeBytes).toBeGreaterThan(0); // Instance-wide size
-			expect(result.sizeState).toBe('ok');
+			expect(result.totalBytes).toBeGreaterThan(0); // Instance-wide size
+			expect(result.quotaStatus).toBe('ok');
 			expect(result.dataTables).toBeDefined();
 			expect(Object.keys(result.dataTables)).toHaveLength(0); // No accessible tables
 		});
@@ -264,7 +264,7 @@ describe('Data Store Size Tests', () => {
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.sizeBytes).toBe(0);
+			expect(result.totalBytes).toBe(0);
 			expect(result.dataTables).toBeDefined();
 			expect(Object.keys(result.dataTables)).toHaveLength(0);
 		});
@@ -281,7 +281,7 @@ describe('Data Store Size Tests', () => {
 
 			// ASSERT
 			expect(result).toBeDefined();
-			expect(result.sizeBytes).toBeGreaterThanOrEqual(0);
+			expect(result.totalBytes).toBeGreaterThanOrEqual(0);
 			expect(result.dataTables).toBeDefined();
 			expect(result.dataTables[dataStore.id]).toBeDefined();
 			expect(result.dataTables[dataStore.id].sizeBytes).toBeGreaterThanOrEqual(0);
@@ -316,7 +316,7 @@ describe('Data Store Size Tests', () => {
 			// First call - regular user sees no data tables (filtered from global cache)
 			const userResult = await dataStoreService.getDataTablesSize(regularUser);
 			expect(Object.keys(userResult.dataTables)).toHaveLength(0);
-			expect(userResult.sizeBytes).toBeGreaterThan(0);
+			expect(userResult.totalBytes).toBeGreaterThan(0);
 
 			// Second call - owner sees the data table (same global cache, different filtering)
 			const ownerResult = await dataStoreService.getDataTablesSize(owner);
@@ -377,7 +377,7 @@ describe('Data Store Size Tests', () => {
 
 			// ACT & ASSERT
 			const result1 = await dataStoreService.getDataTablesSize(owner);
-			expect(result1.sizeBytes).toBeGreaterThanOrEqual(0);
+			expect(result1.totalBytes).toBeGreaterThanOrEqual(0);
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
 
 			// Inserting new data should reset cache

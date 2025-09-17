@@ -119,10 +119,8 @@ export type DataTablesSizeData = {
 	dataTables: DataTableInfoById;
 };
 
-export type DataTablesSizeResult = {
-	sizeBytes: number;
-	sizeState: DataTableSizeStatus;
-	dataTables: DataTableInfoById;
+export type DataTablesSizeResult = DataTablesSizeData & {
+	quotaStatus: DataTableSizeStatus;
 };
 
 // APIs for a data store service operating on a specific projectId

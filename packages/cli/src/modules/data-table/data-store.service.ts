@@ -508,8 +508,8 @@ export class DataStoreService {
 
 		if (!canAccessDataTables) {
 			return {
-				sizeBytes: allSizeData.totalBytes,
-				sizeState: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
+				totalBytes: allSizeData.totalBytes,
+				quotaStatus: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
 				dataTables: {},
 			};
 		}
@@ -535,8 +535,8 @@ export class DataStoreService {
 		}
 
 		return {
-			sizeBytes: allSizeData.totalBytes,
-			sizeState: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
+			totalBytes: allSizeData.totalBytes,
+			quotaStatus: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables: accessibleDataTables,
 		};
 	}

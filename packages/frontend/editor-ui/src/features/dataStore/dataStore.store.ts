@@ -232,8 +232,8 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const fetchDataStoreSize = async () => {
 		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
-		dataStoreSize.value = formatSize(result.sizeBytes);
-		dataStoreSizeLimitState.value = result.sizeState;
+		dataStoreSize.value = formatSize(result.totalBytes);
+		dataStoreSizeLimitState.value = result.quotaStatus;
 
 		const tableSizes: Record<string, number> = {};
 		for (const [dataStoreId, info] of Object.entries(result.dataTables)) {
