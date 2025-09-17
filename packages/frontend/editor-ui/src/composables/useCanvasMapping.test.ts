@@ -29,6 +29,25 @@ import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
 import { mock } from 'vitest-mock-extended';
 
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		shortNodeType: (nodeType: string) => nodeType,
+		nodeText: (key: string) => ({
+			eventTriggerDescription: () => key,
+		}),
+		baseText: (key: string, options: { interpolate: { count: number } }) => {
+			if (key === 'ndv.output.items') {
+				return `${options.interpolate.count} item${options.interpolate.count > 1 ? 's' : ''}`;
+			} else if (key === 'ndv.output.itemsTotal') {
+				return `${options.interpolate.count} items total`;
+			} else {
+				return key;
+			}
+		},
+	}),
+}));
+
 beforeEach(() => {
 	const pinia = createTestingPinia({
 		initialState: {
@@ -47,7 +66,7 @@ beforeEach(() => {
 						1: mockNodeTypeDescription({
 							name: FORM_TRIGGER_NODE_TYPE,
 							group: ['trigger'],
-							eventTriggerDescription: 'Waiting for you to submit the form',
+							eventTriggerDescription: 'n8n-nodes-base.formTrigger',
 						}),
 					},
 					[SET_NODE_TYPE]: {
@@ -1729,9 +1748,7 @@ describe('useCanvasMapping', () => {
 			});
 
 			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
-			expect(renderOptions.options.tooltip).toBe(
-				'Waiting for you to create an event in n8n-nodes-base.manualTrigger',
-			);
+			expect(renderOptions.options.tooltip).toBe('node.waitingForYouToCreateAnEventIn');
 		});
 
 		describe('when the node has a custom eventTriggerDescription', () => {
@@ -1760,7 +1777,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
-				expect(renderOptions.options.tooltip).toBe('Waiting for you to submit the form');
+				expect(renderOptions.options.tooltip).toBe('n8n-nodes-base.formTrigger');
 			});
 		});
 
