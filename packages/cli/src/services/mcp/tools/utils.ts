@@ -15,13 +15,11 @@ export const getWebhookDetails = async (
 	isWorkflowActive: boolean,
 	crednetialsService: CredentialsService,
 ): Promise<string> => {
-	let triggerNotice = 'This workflow does not have a trigger node that can be executed via MCP.';
-
 	if (webhookNodes.length === 0) {
-		return triggerNotice;
+		return 'This workflow does not have a trigger node that can be executed via MCP.';
 	}
 
-	triggerNotice = 'This workflow is triggered by the following webhook(s):\n\n';
+	let triggerNotice = 'This workflow is triggered by the following webhook(s):\n\n';
 
 	const webhookPromises = webhookNodes.map(async (node, index) => {
 		let credentialsInfo: string | null = null;
