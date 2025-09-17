@@ -1,4 +1,3 @@
-import { NodeTypes } from '@test/helpers';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,6 +5,8 @@ import type {
 	EngineResponse,
 	EngineRequest,
 } from 'n8n-workflow';
+
+import { NodeTypes } from '@test/helpers';
 
 export const passThroughNode: INodeType = {
 	description: {
