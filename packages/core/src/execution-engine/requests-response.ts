@@ -27,7 +27,7 @@ type NodeToBeExecuted = {
  * and preparing the current node to resume after tools complete. The current node
  * is paused and will be re-executed with tool results once all actions finish.
  */
-export function handleRequests({
+export function handleRequest({
 	workflow,
 	currentNode,
 	request,

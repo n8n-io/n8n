@@ -75,7 +75,7 @@ import {
 	rewireGraph,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { handleRequests, isRequest } from './requests-response';
+import { handleRequest, isRequest } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
@@ -1833,7 +1833,7 @@ export class WorkflowExecute {
 
 								// if runNodeData is Request
 								if (isRequest(runNodeData)) {
-									const { nodesToBeExecuted } = handleRequests({
+									const { nodesToBeExecuted } = handleRequest({
 										workflow,
 										currentNode: executionNode,
 										request: runNodeData,
