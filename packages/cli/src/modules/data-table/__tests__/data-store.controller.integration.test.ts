@@ -21,6 +21,7 @@ import * as utils from '@test-integration/utils';
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
+import { mockDataStoreSizeValidator } from './test-helpers';
 
 let owner: User;
 let member: User;
@@ -42,6 +43,7 @@ let dataStoreRowsRepository: DataStoreRowsRepository;
 
 beforeAll(async () => {
 	await testDb.init();
+	mockDataStoreSizeValidator();
 });
 
 beforeEach(async () => {
