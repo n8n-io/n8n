@@ -4,12 +4,14 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { mockDataStoreSizeValidator } from './test-helpers';
 import { DataStoreService } from '../data-store.service';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	mockDataStoreSizeValidator();
 });
 
 beforeEach(async () => {
