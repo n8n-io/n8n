@@ -40,6 +40,8 @@ export abstract class AbstractServer {
 
 	protected sslCert: string;
 
+	protected basePath: string;
+
 	protected restEndpoint: string;
 
 	protected endpointForm: string;
@@ -77,6 +79,14 @@ export abstract class AbstractServer {
 
 		this.sslKey = this.globalConfig.ssl_key;
 		this.sslCert = this.globalConfig.ssl_cert;
+
+		this.basePath = this.globalConfig.path;
+		if (this.basePath.endsWith('/')) {
+			this.basePath = this.basePath.slice(0, -1);
+		}
+		if (this.basePath.length > 0 && !this.basePath.startsWith('/')) {
+			this.basePath = '/' + this.basePath;
+		}
 
 		const { endpoints } = this.globalConfig;
 		this.restEndpoint = endpoints.rest;
@@ -123,13 +133,13 @@ export abstract class AbstractServer {
 
 	private setupHealthCheck() {
 		// main health check should not care about DB connections
-		this.app.get('/healthz', (_req, res) => {
+		this.app.get(`${this.basePath}/healthz`, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get('/healthz/readiness', (_req, res) => {
+		this.app.get(`${this.basePath}/healthz/readiness`, (_req, res) => {
 			const { connected, migrated } = connectionState;
 			if (connected && migrated) {
 				res.status(200).send({ status: 'ok' });
@@ -217,36 +227,36 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
 			this.app.all(
-				`/${this.endpointFormWaiting}/:path{/:suffix}`,
+				`${this.basePath}/${this.endpointFormWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				`${this.basePath}/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
 		}
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`${this.basePath}/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
 		}
 
 		// Block bots from scanning the application
@@ -268,7 +278,7 @@ export abstract class AbstractServer {
 			// Removes a test webhook
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
+				`${this.basePath}/${this.restEndpoint}/test-webhook/:id`,
 				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
 			);
 		}

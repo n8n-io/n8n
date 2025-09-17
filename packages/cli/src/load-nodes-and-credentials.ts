@@ -152,12 +152,12 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	resolveIcon(packageName: string, url: string): string | undefined {
+	resolveIcon(basePath: string, packageName: string, url: string): string | undefined {
 		const loader = this.loaders[packageName];
 		if (!loader) {
 			return undefined;
 		}
-		const pathPrefix = `/icons/${packageName}/`;
+		const pathPrefix = `${basePath}/icons/${packageName}/`;
 		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
 
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
