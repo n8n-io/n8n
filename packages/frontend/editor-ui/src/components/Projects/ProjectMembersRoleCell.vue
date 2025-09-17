@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
-import type { ProjectRole } from '@n8n/permissions';
-import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
-import { ElRadio } from 'element-plus';
-import { isProjectRole } from '@/utils/typeGuards';
 import type { ProjectMemberData } from '@/types/projects.types';
+import { isProjectRole } from '@/utils/typeGuards';
+import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
+import type { ProjectRole } from '@n8n/permissions';
+import { ElRadio } from 'element-plus';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
 	data: ProjectMemberData;
@@ -25,11 +25,10 @@ watch(
 		selectedRole.value = newRole;
 	},
 );
-const roleLabel = computed(() =>
-	isProjectRole(selectedRole.value)
-		? props.roles[selectedRole.value]?.label || selectedRole.value
-		: selectedRole.value,
-);
+const roleLabel = computed(() => {
+	// @ts-ignore - backend type is incorrect
+	return props.roles[selectedRole.value]?.label || selectedRole.value;
+});
 
 const onActionSelect = (role: ProjectRole | 'remove') => {
 	emit('update:role', {

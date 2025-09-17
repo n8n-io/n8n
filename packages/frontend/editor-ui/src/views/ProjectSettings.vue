@@ -381,13 +381,11 @@ const relationUsers = computed(() =>
 		.filter((relation: ProjectRelation) => !pendingRemovals.value.has(relation.id))
 		.map((relation: ProjectRelation) => {
 			const user = usersStore.usersById[relation.id];
-			// Ensure type safety for UI display while preserving original role in formData
-			const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
 
 			if (!user) {
 				return {
 					...relation,
-					role: safeRole,
+					role: relation.role,
 					firstName: null,
 					lastName: null,
 					email: null,
@@ -396,7 +394,7 @@ const relationUsers = computed(() =>
 			return {
 				...user,
 				...relation,
-				role: safeRole,
+				role: relation.role,
 			};
 		}),
 );
@@ -416,6 +414,7 @@ const filteredMembersData = computed(() => {
 		const email = (member.email || '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
+	console.log(filtered);
 	return {
 		items: filtered,
 		count: filtered.length,
