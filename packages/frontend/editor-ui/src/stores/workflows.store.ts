@@ -559,12 +559,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		};
-		const { data } = await workflowsApi.getWorkflowsAndFolders(
+		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
 			{ isArchived: false, availableInMCP: true },
 			Object.keys(options).length ? options : undefined,
 			false,
 		);
+		totalWorkflowCount.value = count;
+		data
+			.filter((item) => item.resource !== 'folder')
+			.forEach((item) => {
+				addWorkflow({
+					...item,
+					nodes: [],
+					connections: {},
+					versionId: '',
+				});
+			});
 		return data.filter((item): item is WorkflowListItem => item.resource === 'workflow');
 	}
 

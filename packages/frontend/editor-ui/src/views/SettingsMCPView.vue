@@ -145,10 +145,19 @@ const onUpdateMCPEnabled = async (value: boolean) => {
 	}
 };
 
-const onWorkflowAction = async (_action: string, _workflow: WorkflowListItem) => {
-	toast.showMessage({
-		title: '🚧 Coming soon',
-	});
+const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
+	switch (action) {
+		case 'removeFromMCP':
+			try {
+				await workflowsStore.toggleWorkflowMCPAccess(workflow.id, false);
+				await fetchAvailableWorkflows();
+			} catch (error) {
+				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+			}
+			break;
+		default:
+			break;
+	}
 };
 
 const onAddWorkflow = () => {
