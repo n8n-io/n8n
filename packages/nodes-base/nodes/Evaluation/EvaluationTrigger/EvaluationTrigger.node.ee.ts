@@ -8,8 +8,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import {
+	getSelectFields as dataTableFilters,
+	getSelectFilter as getDataTableFilter,
+} from '../../DataTable/common/selectMany';
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
-import { readFilter } from '../../Google/Sheet/v2/actions/sheet/read.operation';
+import { readFilter as googleSheetFilters } from '../../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
 import { sourcePicker } from '../Evaluation/Description.node';
@@ -129,7 +133,17 @@ export class EvaluationTrigger implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { limitRows: [true] } },
 			},
-			{ ...readFilter, displayOptions: { hide: { source: ['dataTable'] } } },
+			{ ...googleSheetFilters, displayOptions: { hide: { source: ['dataTable'] } } },
+			{
+				displayName: 'Filter Rows',
+				name: 'filterRows',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to filter rows to process',
+				displayOptions: { show: { source: ['dataTable'] } },
+			},
+			...dataTableFilters({ show: { filterRows: [true] } }),
 		],
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
@@ -193,9 +207,12 @@ export class EvaluationTrigger implements INodeType {
 			}) as string;
 			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
 
+			const filter = getDataTableFilter(this, 0);
+
 			const { data, count } = await dataTableProxy.getManyRowsAndCount({
 				skip: currentIndex,
 				take: 1,
+				filter,
 			});
 
 			if (data.length === 0) {
