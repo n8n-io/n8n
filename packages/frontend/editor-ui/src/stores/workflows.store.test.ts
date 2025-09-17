@@ -1409,7 +1409,7 @@ function generateMockExecutionEvents() {
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',
 		nodeName: 'When clicking ‘Execute workflow’',
-		itemCount: 1,
+		itemCount: { main: [1] },
 		data: {
 			hints: [],
 			startTime: 1727867966633,
