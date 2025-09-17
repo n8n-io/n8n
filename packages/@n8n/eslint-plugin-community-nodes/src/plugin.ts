@@ -16,6 +16,7 @@ const plugin = {
 
 const configs = {
 	recommended: {
+		ignores: ['eslint.config.{js,mjs,ts,mts}'],
 		plugins: {
 			'n8n-community-nodes': plugin,
 		},
@@ -33,6 +34,7 @@ const configs = {
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
+		ignores: ['eslint.config.{js,mjs,ts,mts}'],
 		plugins: {
 			'n8n-community-nodes': plugin,
 		},
