@@ -123,19 +123,22 @@ export class Code implements INodeType {
 				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
 				: 'javaScript';
 
-		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
+		const isJsLang = language === 'javaScript';
+		const isPyLang = language === 'python' || language === 'pythonNative';
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isJsRunner = runnersConfig.enabled;
+		const isPyRunner = runnersConfig.isNativePythonRunnerEnabled;
+
+		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
 			throw new PythonDisabledError();
 		}
-
-		const runnersConfig = Container.get(TaskRunnersConfig);
-		const isRunnerEnabled = runnersConfig.enabled;
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
 		const codeParameterName =
 			language === 'python' || language === 'pythonNative' ? 'pythonCode' : 'jsCode';
 
-		if (language === 'javaScript' && isRunnerEnabled) {
+		if (isJsLang && isJsRunner) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
@@ -145,9 +148,13 @@ export class Code implements INodeType {
 				: [await sandbox.runCodeForEachItem(numInputItems)];
 		}
 
-		if (language === 'pythonNative' && !isRunnerEnabled) throw new NativePythonWithoutRunnerError();
+		if (language === 'pythonNative' && !isPyRunner) {
+			throw new NativePythonWithoutRunnerError();
+		}
 
-		if (language === 'pythonNative') {
+		if (isPyLang && isPyRunner) {
+			// When the native Python runner is enabled, both `python` and `pythonNative` are
+			// sent to the runner, to ensure there is no path to run Pyodide in this scenario.
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 

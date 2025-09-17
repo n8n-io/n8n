@@ -111,7 +111,8 @@ export interface CanvasNodeData {
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		items: string[];
+		execution: string[];
+		validation: string[];
 		visible: boolean;
 	};
 	pinnedData: {
@@ -183,7 +184,7 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[] };
+	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
 };
 
 export interface CanvasNodeInjectionData {

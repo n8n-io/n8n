@@ -9,6 +9,10 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
+    command: >
+      --wait-timeout=300
+      --interactive-timeout=300
+      --max-connections=200
 
   mysql-8.4:
     image: mysql:8.4
@@ -19,6 +23,10 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
+    command: >
+      --wait-timeout=300
+      --interactive-timeout=300
+      --max-connections=200
 
   postgres:
     image: postgres:16

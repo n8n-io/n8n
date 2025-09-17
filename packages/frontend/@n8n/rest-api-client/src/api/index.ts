@@ -4,6 +4,7 @@ export * from './communityNodes';
 export * from './ctas';
 export * from './eventbus.ee';
 export * from './events';
+export * from './externalSecrets.ee';
 export * from './ldap';
 export * from './mfa';
 export * from './nodeTypes';

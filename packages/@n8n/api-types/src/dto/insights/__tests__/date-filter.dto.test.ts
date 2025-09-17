@@ -17,6 +17,15 @@ describe('InsightsDateFilterDto', () => {
 					dateRange: 'week',
 				},
 			},
+			{
+				name: 'valid projectId',
+				request: {
+					projectId: '2gQLpmP5V4wOY627',
+				},
+				parsedResult: {
+					projectId: '2gQLpmP5V4wOY627',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = InsightsDateFilterDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -34,6 +43,13 @@ describe('InsightsDateFilterDto', () => {
 					dateRange: 'invalid-value',
 				},
 				expectedErrorPath: ['dateRange'],
+			},
+			{
+				name: 'invalid projectId value',
+				request: {
+					projectId: 10,
+				},
+				expectedErrorPath: ['projectId'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = InsightsDateFilterDto.safeParse(request);

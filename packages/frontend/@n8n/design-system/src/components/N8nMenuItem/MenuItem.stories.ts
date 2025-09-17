@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import { ElMenu } from 'element-plus';
 
 import N8nMenuItem from '.';

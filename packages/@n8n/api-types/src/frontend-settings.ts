@@ -81,6 +81,9 @@ export interface FrontendSettings {
 		disableSessionRecording: boolean;
 		debug: boolean;
 	};
+	dataTables: {
+		maxSize: number;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;

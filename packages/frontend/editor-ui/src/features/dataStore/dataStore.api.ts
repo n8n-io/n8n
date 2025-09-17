@@ -7,6 +7,7 @@ import type {
 	DataStoreColumn,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
+import type { DataTablesSizeResult } from 'n8n-workflow';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -157,7 +158,7 @@ export const insertDataStoreRowApi = async (
 		'POST',
 		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
-			returnData: true,
+			returnType: 'all',
 			data: [row],
 		},
 	);
@@ -190,12 +191,24 @@ export const deleteDataStoreRowsApi = async (
 	rowIds: number[],
 	projectId: string,
 ) => {
+	const filters = rowIds.map((id) => ({ columnName: 'id', condition: 'eq', value: id }));
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
-			ids: rowIds.join(','),
+			filter: {
+				type: 'or',
+				filters,
+			},
 		},
+	);
+};
+
+export const fetchDataStoreGlobalLimitInBytes = async (context: IRestApiContext) => {
+	return await makeRestApiRequest<DataTablesSizeResult>(
+		context,
+		'GET',
+		'/data-tables-global/limits',
 	);
 };
