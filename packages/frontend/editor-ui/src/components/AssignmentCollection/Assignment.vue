@@ -10,7 +10,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
 	path: string;
@@ -21,6 +21,9 @@ interface Props {
 	isReadOnly?: boolean;
 	index?: number;
 }
+
+const BINARY_DATA_TOOLTIP =
+	'Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ ("Target Node").item.binary.data }}';
 
 const props = defineProps<Props>();
 
@@ -168,13 +171,18 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 					/>
 				</template>
 				<template v-if="!hideType" #middle>
-					<TypeSelect
-						:class="$style.select"
-						:model-value="assignment.type ?? 'string'"
-						:is-read-only="disableType || isReadOnly"
-						@update:model-value="onAssignmentTypeChange"
-					>
-					</TypeSelect>
+					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+						<template #content>
+							{{ BINARY_DATA_TOOLTIP }}
+						</template>
+						<TypeSelect
+							:class="$style.select"
+							:model-value="assignment.type ?? 'string'"
+							:is-read-only="disableType || isReadOnly"
+							@update:model-value="onAssignmentTypeChange"
+						>
+						</TypeSelect>
+					</N8nTooltip>
 				</template>
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">

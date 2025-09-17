@@ -10,6 +10,7 @@ import {
 	validateFieldType,
 } from 'n8n-workflow';
 import type {
+	AssignmentCollectionValue,
 	FieldType,
 	IBinaryData,
 	IDataObject,
@@ -244,6 +245,73 @@ export function resolveRawData(
 	return returnData;
 }
 
-export function isBinaryData(obj: unknown): obj is IBinaryData {
+function isBinaryData(obj: unknown): obj is IBinaryData {
 	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+}
+
+export function prepareReturnItem(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	value: AssignmentCollectionValue,
+	itemIndex: number,
+	item: INodeExecutionData,
+	node: INode,
+	options: SetNodeOptions,
+) {
+	const jsonValues: AssignmentCollectionValue['assignments'] = [];
+	const binaryValues: AssignmentCollectionValue['assignments'] = [];
+
+	for (const assignment of value?.assignments ?? []) {
+		if (assignment.type === 'binary') {
+			binaryValues.push(assignment);
+		} else {
+			jsonValues.push(assignment);
+		}
+	}
+
+	const newData = Object.fromEntries(
+		jsonValues.map((assignment) => {
+			const { name, value } = validateEntry(
+				assignment.name,
+				assignment.type as FieldType,
+				assignment.value,
+				node,
+				itemIndex,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
+
+			return [name, value];
+		}),
+	);
+
+	const returnItem = composeReturnItem.call(
+		context,
+		itemIndex,
+		item,
+		newData,
+		options,
+		node.typeVersion,
+	);
+
+	if (binaryValues.length) {
+		if (!returnItem.binary) {
+			returnItem.binary = {};
+		}
+
+		for (const assignment of binaryValues) {
+			const name = assignment.name;
+			const value = assignment.value as string;
+			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
+			if (!isBinaryData(binaryData)) {
+				throw new NodeOperationError(
+					node,
+					`Could not find binary data specified in field ${name}`,
+					{ itemIndex },
+				);
+			}
+			returnItem.binary[name] = binaryData;
+		}
+	}
+
+	return returnItem;
 }

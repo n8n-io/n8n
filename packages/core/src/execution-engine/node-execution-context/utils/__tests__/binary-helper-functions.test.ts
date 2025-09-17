@@ -12,9 +12,6 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 
-import type { BinaryDataConfig } from '@/binary-data';
-import { BinaryDataService } from '@/binary-data/binary-data.service';
-
 import {
 	assertBinaryData,
 	binaryToString,
@@ -25,6 +22,9 @@ import {
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
+
+import type { BinaryDataConfig } from '@/binary-data';
+import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 const workflowId = 'workflow123';
 const executionId = 'execution456';
@@ -322,6 +322,78 @@ describe('assertBinaryData', () => {
 
 		const result = assertBinaryData(inputData, mockNode, 0, 'testFile', 0);
 		expect(result).toBe(binaryData);
+	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData', () => {
+		const binaryData = mock<IBinaryData>({
+			fileName: 'test.txt',
+			mimeType: 'text/plain',
+			data: 'base64data',
+		});
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData with minimal properties', () => {
+		const binaryData: IBinaryData = {
+			mimeType: 'application/octet-stream',
+			data: 'somedata',
+		};
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+	});
+
+	it('should return IBinaryData directly when parameterData is IBinaryData with all properties', () => {
+		const binaryData: IBinaryData = {
+			fileName: 'document.pdf',
+			mimeType: 'application/pdf',
+			data: 'pdfbase64data',
+			fileExtension: 'pdf',
+			fileType: 'pdf',
+			directory: '/tmp',
+		};
+		const inputData = { main: [[{ json: {} }]] };
+
+		const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0);
+		expect(result).toBe(binaryData);
+		expect(result.fileName).toBe('document.pdf');
+		expect(result.mimeType).toBe('application/pdf');
+		expect(result.fileExtension).toBe('pdf');
+		expect(result.fileType).toBe('pdf');
+		expect(result.directory).toBe('/tmp');
+	});
+
+	it('should throw error when parameterData is neither string nor IBinaryData', () => {
+		const inputData = { main: [[{ json: {} }]] };
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, 123 as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, null as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, undefined as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, {} as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(() => assertBinaryData(inputData, mockNode, 0, [] as any, 0)).toThrow(
+			'Provided parameter is not a string or binary data object.',
+		);
 	});
 });
 

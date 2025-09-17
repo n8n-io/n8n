@@ -64,6 +64,17 @@ export function assertBinaryData(
 	if (isBinaryData(parameterData)) {
 		return parameterData;
 	}
+	if (typeof parameterData !== 'string') {
+		throw new NodeOperationError(
+			node,
+			'Provided parameter is not a string or binary data object.',
+			{
+				itemIndex,
+				description:
+					'Specify the property name of the binary data in input item or use an expression to access the binary data in previous nodes, e.g. "{{ $(_target_node_).item.binary[_binary_property_name_] }}"',
+			},
+		);
+	}
 	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
