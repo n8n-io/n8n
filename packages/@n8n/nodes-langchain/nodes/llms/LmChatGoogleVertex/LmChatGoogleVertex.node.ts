@@ -11,6 +11,7 @@ import {
 	type ILoadOptionsFunctions,
 	type JsonObject,
 	NodeOperationError,
+	validateNodeParameters,
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -143,13 +144,20 @@ export class LmChatGoogleVertex implements INodeType {
 			temperature: 0.4,
 			topK: 40,
 			topP: 0.9,
-		}) as {
-			maxOutputTokens: number;
-			temperature: number;
-			topK: number;
-			topP: number;
-			thinkingBudget?: number;
-		};
+		});
+
+		// Validate options parameter
+		validateNodeParameters(
+			options,
+			{
+				maxOutputTokens: { type: 'number', required: false },
+				temperature: { type: 'number', required: false },
+				topK: { type: 'number', required: false },
+				topP: { type: 'number', required: false },
+				thinkingBudget: { type: 'number', required: false },
+			},
+			this.getNode(),
+		);
 
 		const safetySettings = this.getNodeParameter(
 			'options.safetySettings.values',
