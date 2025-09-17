@@ -1,4 +1,5 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
+import type { TSESLint } from '@typescript-eslint/utils';
 
 const restrictedGlobals = [
 	'clearInterval',
@@ -27,53 +28,41 @@ export const NoRestrictedGlobalsRule = ESLintUtils.RuleCreator.withoutDocs({
 	},
 	defaultOptions: [],
 	create(context) {
+		function checkReference(ref: TSESLint.Scope.Reference, name: string) {
+			const { parent } = ref.identifier;
+
+			// Skip property access (like console.process - we want process.exit but not obj.process)
+			if (
+				parent?.type === 'MemberExpression' &&
+				parent.property === ref.identifier &&
+				!parent.computed
+			) {
+				return;
+			}
+
+			context.report({
+				node: ref.identifier,
+				messageId: 'restrictedGlobal',
+				data: { name },
+			});
+		}
+
 		return {
-			Identifier(node) {
-				if (!restrictedGlobals.includes(node.name)) {
-					return;
-				}
+			Program() {
+				const globalScope = context.sourceCode.getScope(context.sourceCode.ast);
 
-				const { parent } = node;
-				if (!parent) {
-					return;
-				}
+				const allReferences = [
+					...globalScope.variables.flatMap((variable) =>
+						restrictedGlobals.includes(variable.name)
+							? variable.references.map((ref) => ({ ref, name: variable.name }))
+							: [],
+					),
+					...globalScope.through
+						.filter((ref) => restrictedGlobals.includes(ref.identifier.name))
+						.map((ref) => ({ ref, name: ref.identifier.name })),
+				];
 
-				// Allow usage as property keys in object literals
-				if (parent.type === 'Property' && parent.key === node && !parent.computed) {
-					return;
-				}
-
-				// Allow usage in function declarations
-				if (parent.type === 'FunctionDeclaration' && parent.id === node) {
-					return;
-				}
-
-				// Allow usage as property in member expressions (e.g., window.setTimeout)
-				if (parent.type === 'MemberExpression' && parent.property === node && !parent.computed) {
-					return;
-				}
-
-				// Allow usage as object in member expressions if it's not the restricted global itself
-				if (parent.type === 'MemberExpression' && parent.object === node) {
-					// This is the actual global usage we want to restrict
-					context.report({
-						node,
-						messageId: 'restrictedGlobal',
-						data: {
-							name: node.name,
-						},
-					});
-					return;
-				}
-
-				// Direct usage of global (not as member expression object or property)
-				context.report({
-					node,
-					messageId: 'restrictedGlobal',
-					data: {
-						name: node.name,
-					},
-				});
+				allReferences.forEach(({ ref, name }) => checkReference(ref, name));
 			},
 		};
 	},

@@ -6,134 +6,52 @@ const ruleTester = new RuleTester();
 ruleTester.run('no-deprecated-workflow-functions', NoDeprecatedWorkflowFunctionsRule, {
 	valid: [
 		{
-			name: 'using recommended httpRequest',
-			code: `
-const response = await this.helpers.httpRequest({
-	method: 'GET',
-	url: 'https://api.example.com/data',
-});`,
-		},
-		{
-			name: 'using recommended httpRequestWithAuthentication',
-			code: `
-const response = await this.helpers.httpRequestWithAuthentication.call(this, 'oAuth2Api', {
-	method: 'POST',
-	url: 'https://api.example.com/data',
-	body: data,
-});`,
-		},
-		{
-			name: 'using recommended type',
+			name: 'using recommended functions and types',
 			code: `
 import { IHttpRequestOptions } from 'n8n-workflow';
 
 const requestOptions: IHttpRequestOptions = {
 	method: 'GET',
 	url: 'https://example.com',
-};`,
+};
+
+const response1 = await this.helpers.httpRequest(requestOptions);
+const response2 = await this.helpers.httpRequestWithAuthentication.call(this, 'oAuth2Api', {
+	method: 'POST',
+	url: 'https://api.example.com/data',
+});`,
 		},
 		{
-			name: 'non-deprecated function with similar name',
+			name: 'functions with similar names should not trigger',
 			code: `
-const result = await this.helpers.requestSomething();`,
+import { request } from 'axios';
+
+const result = await this.helpers.requestSomething();
+const response = await request('https://api.example.com');
+const config = { request: 'some value' };
+
+// Other objects with helpers property should not trigger
+const otherObject = {
+	helpers: {
+		request: () => 'not n8n',
+		requestWithAuthentication: () => 'not n8n'
+	}
+};
+const result2 = otherObject.helpers.request();`,
 		},
 		{
-			name: 'property access that is not a function call',
+			name: 'types with same name from other modules should not trigger',
 			code: `
-const config = {
-	request: 'some value',
-};`,
+import { IRequestOptions } from 'some-other-package';
+
+function test(options: IRequestOptions) {
+	return options.url;
+}`,
 		},
 	],
 	invalid: [
 		{
-			name: 'deprecated request function',
-			code: `
-const response = await this.helpers.request('https://api.example.com/data');`,
-			errors: [
-				{
-					messageId: 'deprecatedRequestFunction',
-					data: { functionName: 'request', replacement: 'httpRequest' },
-				},
-			],
-		},
-		{
-			name: 'deprecated requestWithAuthentication function',
-			code: `
-const response = await this.helpers.requestWithAuthentication.call(this, 'oAuth2Api', {
-	method: 'POST',
-	url: 'https://api.example.com/data',
-});`,
-			errors: [
-				{
-					messageId: 'deprecatedRequestFunction',
-					data: {
-						functionName: 'requestWithAuthentication',
-						replacement: 'httpRequestWithAuthentication',
-					},
-				},
-			],
-		},
-		{
-			name: 'deprecated requestOAuth1 function',
-			code: `
-const response = await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', requestOptions);`,
-			errors: [
-				{
-					messageId: 'deprecatedRequestFunction',
-					data: { functionName: 'requestOAuth1', replacement: 'httpRequestWithAuthentication' },
-				},
-			],
-		},
-		{
-			name: 'deprecated requestOAuth2 function',
-			code: `
-const response = await this.helpers.requestOAuth2.call(this, 'googleOAuth2Api', requestOptions);`,
-			errors: [
-				{
-					messageId: 'deprecatedRequestFunction',
-					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
-				},
-			],
-		},
-		{
-			name: 'deprecated type in import and type annotation',
-			code: `
-import { IRequestOptions } from 'n8n-workflow';
-
-const options: IRequestOptions = {
-	url: 'https://example.com',
-};`,
-			errors: [
-				{
-					messageId: 'deprecatedType',
-					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
-				},
-				{
-					messageId: 'deprecatedType',
-					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
-				},
-			],
-		},
-		{
-			name: 'deprecated type and function in same code',
-			code: `
-function makeRequest(options: IRequestOptions): Promise<any> {
-	return this.helpers.request(options);
-}`,
-			errors: [
-				{
-					messageId: 'deprecatedType',
-					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
-				},
-				{
-					messageId: 'deprecatedRequestFunction',
-					data: { functionName: 'request', replacement: 'httpRequest' },
-				},
-			],
-		},
-		{
-			name: 'multiple deprecated functions in same file',
+			name: 'deprecated request functions',
 			code: `
 const response1 = await this.helpers.request('https://example.com/1');
 const response2 = await this.helpers.requestWithAuthentication.call(this, 'oauth', options);
@@ -157,31 +75,18 @@ const response3 = await this.helpers.requestOAuth2.call(this, 'google', options)
 			],
 		},
 		{
-			name: 'deprecated function without replacement',
+			name: 'deprecated types',
 			code: `
-const result = await this.helpers.copyBinaryFile();`,
-			errors: [
-				{
-					messageId: 'deprecatedWithoutReplacement',
-					data: { functionName: 'copyBinaryFile' },
-				},
-			],
-		},
-		{
-			name: 'complex case with multiple deprecated items',
-			code: `
-export class MyNode implements INodeType {
-	async execute(): Promise<INodeExecutionData[][]> {
-		const requestOptions: IRequestOptions = {
-			method: 'GET',
-			url: 'https://api.example.com',
-		};
+import { IRequestOptions } from 'n8n-workflow';
 
-		const response = await this.helpers.request(requestOptions);
-		return this.helpers.prepareOutputData([{ json: response }]);
-	}
+function makeRequest(options: IRequestOptions): Promise<any> {
+	return this.helpers.request(options);
 }`,
 			errors: [
+				{
+					messageId: 'deprecatedType',
+					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+				},
 				{
 					messageId: 'deprecatedType',
 					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
@@ -190,24 +95,21 @@ export class MyNode implements INodeType {
 					messageId: 'deprecatedRequestFunction',
 					data: { functionName: 'request', replacement: 'httpRequest' },
 				},
-				{
-					messageId: 'deprecatedWithoutReplacement',
-					data: { functionName: 'prepareOutputData' },
-				},
 			],
 		},
 		{
-			name: 'import with alias',
+			name: 'functions without replacement',
 			code: `
-import { IRequestOptions as RequestOpts } from 'n8n-workflow';
-
-function test(opts: RequestOpts) {
-	return opts.url;
-}`,
+const result = await this.helpers.copyBinaryFile();
+return this.helpers.prepareOutputData([{ json: response }]);`,
 			errors: [
 				{
-					messageId: 'deprecatedType',
-					data: { typeName: 'IRequestOptions', replacement: 'IHttpRequestOptions' },
+					messageId: 'deprecatedWithoutReplacement',
+					data: { functionName: 'copyBinaryFile' },
+				},
+				{
+					messageId: 'deprecatedWithoutReplacement',
+					data: { functionName: 'prepareOutputData' },
 				},
 			],
 		},

@@ -1,4 +1,4 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
 
 const DEPRECATED_FUNCTIONS = {
 	request: 'httpRequest',
@@ -31,12 +31,28 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 	},
 	defaultOptions: [],
 	create(context) {
+		const n8nWorkflowTypes = new Set<string>();
+
 		return {
+			ImportDeclaration(node) {
+				if (node.source.value === 'n8n-workflow') {
+					node.specifiers.forEach((specifier) => {
+						if (specifier.type === 'ImportSpecifier' && specifier.imported.type === 'Identifier') {
+							n8nWorkflowTypes.add(specifier.local.name);
+						}
+					});
+				}
+			},
+
 			MemberExpression(node) {
 				if (
 					node.property.type === 'Identifier' &&
 					DEPRECATED_FUNCTIONS.hasOwnProperty(node.property.name)
 				) {
+					if (!isThisHelpersAccess(node)) {
+						return;
+					}
+
 					const functionName = node.property.name as keyof typeof DEPRECATED_FUNCTIONS;
 					const replacement = DEPRECATED_FUNCTIONS[functionName];
 
@@ -69,7 +85,8 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			TSTypeReference(node) {
 				if (
 					node.typeName.type === 'Identifier' &&
-					DEPRECATED_TYPES.hasOwnProperty(node.typeName.name)
+					DEPRECATED_TYPES.hasOwnProperty(node.typeName.name) &&
+					n8nWorkflowTypes.has(node.typeName.name)
 				) {
 					const typeName = node.typeName.name as keyof typeof DEPRECATED_TYPES;
 					const replacement = DEPRECATED_TYPES[typeName];
@@ -86,7 +103,11 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			},
 
 			ImportSpecifier(node) {
+				// Check if this import is from n8n-workflow by looking at the parent ImportDeclaration
+				const importDeclaration = node.parent;
 				if (
+					importDeclaration?.type === 'ImportDeclaration' &&
+					importDeclaration.source.value === 'n8n-workflow' &&
 					node.imported.type === 'Identifier' &&
 					DEPRECATED_TYPES.hasOwnProperty(node.imported.name)
 				) {
@@ -103,38 +124,24 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 					});
 				}
 			},
-
-			CallExpression(node) {
-				if (
-					node.callee.type === 'Identifier' &&
-					DEPRECATED_FUNCTIONS.hasOwnProperty(node.callee.name)
-				) {
-					const functionName = node.callee.name as keyof typeof DEPRECATED_FUNCTIONS;
-					const replacement = DEPRECATED_FUNCTIONS[functionName];
-
-					if (replacement) {
-						context.report({
-							node: node.callee,
-							messageId: 'deprecatedRequestFunction',
-							data: {
-								functionName,
-								replacement,
-							},
-						});
-					} else {
-						context.report({
-							node: node.callee,
-							messageId: 'deprecatedWithoutReplacement',
-							data: {
-								functionName,
-							},
-						});
-					}
-				}
-			},
 		};
 	},
 });
+
+/**
+ * Check if the MemberExpression follows the this.helpers.* pattern
+ */
+function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
+	if (node.object?.type === 'MemberExpression') {
+		const outerObject = node.object;
+		return (
+			outerObject.object?.type === 'ThisExpression' &&
+			outerObject.property?.type === 'Identifier' &&
+			outerObject.property.name === 'helpers'
+		);
+	}
+	return false;
+}
 
 function getDeprecationMessage(functionName: string): string {
 	switch (functionName) {

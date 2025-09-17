@@ -1,11 +1,10 @@
 {
-  "private": true,
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "exports": {
     ".": {
-      "types": "./dist/plugin.d.js",
+      "types": "./dist/plugin.d.ts",
       "default": "./dist/plugin.js"
     }
   },

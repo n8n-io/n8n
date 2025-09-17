@@ -29,6 +29,34 @@ ruleTester.run('no-restricted-globals', NoRestrictedGlobalsRule, {
 		{
 			code: 'const helper = require("./helper");',
 		},
+		{
+			name: 'variable declarations should be allowed',
+			code: 'const process = "my-process"; let global = "my-global";',
+		},
+		{
+			name: 'function parameters should be allowed',
+			code: 'function test(process, global, setTimeout) { return process; }',
+		},
+		{
+			name: 'arrow function parameters should be allowed',
+			code: 'const fn = (process, global) => process + global;',
+		},
+		{
+			name: 'destructuring should be allowed',
+			code: 'const { process, global } = someObject; const [setTimeout] = someArray;',
+		},
+		{
+			name: 'class methods should be allowed',
+			code: 'class MyClass { process() {} global = "value"; }',
+		},
+		{
+			name: 'import should be allowed',
+			code: 'import { process } from "./utils";',
+		},
+		{
+			name: 'function expressions should be allowed',
+			code: 'const fn = function process() {}; const fn2 = function global() {};',
+		},
 	],
 	invalid: [
 		{

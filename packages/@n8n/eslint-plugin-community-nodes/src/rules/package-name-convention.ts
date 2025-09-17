@@ -14,7 +14,7 @@ export const PackageNameConventionRule = ESLintUtils.RuleCreator.withoutDocs({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!context.filename.includes('package.json')) {
+		if (!context.filename.endsWith('package.json')) {
 			return {};
 		}
 
