@@ -1054,6 +1054,9 @@ importers:
       '@google/genai':
         specifier: 1.19.0
         version: 1.19.0(@modelcontextprotocol/sdk@1.12.0)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@google/generative-ai':
+        specifier: 0.21.0
+        version: 0.21.0
       '@huggingface/inference':
         specifier: 4.0.5
         version: 4.0.5
@@ -4829,6 +4832,10 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@google/generative-ai@0.21.0':
+    resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
+    engines: {node: '>=18.0.0'}
 
   '@google/generative-ai@0.24.1':
     resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
@@ -19360,6 +19367,8 @@ snapshots:
       - encoding
       - supports-color
       - utf-8-validate
+
+  '@google/generative-ai@0.21.0': {}
 
   '@google/generative-ai@0.24.1': {}
 
