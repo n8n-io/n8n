@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/types/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 type Props = {
 	currentProject: Project;
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { isSharedSubPage } = useProjectPages();
 
 const projectIcon = computed((): IconOrEmoji => {
 	if (props.currentProject?.type === ProjectTypes.Personal) {
@@ -33,10 +35,23 @@ const projectIcon = computed((): IconOrEmoji => {
 });
 
 const projectName = computed(() => {
+	// Show "Shared with you" when viewing shared workflows
+	if (isSharedSubPage) {
+		return i18n.baseText('projects.menu.shared');
+	}
 	if (props.currentProject.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
 	return props.currentProject.name;
+});
+
+const navigationUrl = computed(() => {
+	// Navigate to shared workflows page when viewing shared content
+	if (isSharedSubPage) {
+		return '/shared/workflows';
+	}
+	// Default to project page
+	return `/projects/${props.currentProject.id}`;
 });
 
 const onHover = () => {
@@ -56,7 +71,7 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<n8n-link :to="`/projects/${currentProject.id}`" :class="[$style['project-link']]">
+		<n8n-link :to="navigationUrl" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
 			<N8nText size="medium" color="text-base" :class="$style['project-label']">
 				{{ projectName }}
