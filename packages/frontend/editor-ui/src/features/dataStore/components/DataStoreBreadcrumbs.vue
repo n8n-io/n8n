@@ -51,13 +51,6 @@ const onItemClicked = async (item: PathItem) => {
 	}
 };
 
-const onDelete = async () => {
-	await router.push({
-		name: PROJECT_DATA_STORES,
-		params: { projectId: props.dataStore.projectId },
-	});
-};
-
 const onRename = async () => {
 	// Focus rename input if the action is rename
 	// We need this timeout to ensure action toggle is closed before focusing
@@ -128,7 +121,6 @@ watch(
 				:data-store="props.dataStore"
 				location="breadcrumbs"
 				@rename="onRename"
-				@on-deleted="onDelete"
 			/>
 		</div>
 	</div>

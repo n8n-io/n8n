@@ -127,6 +127,9 @@ describe('DataStoreActions', () => {
 
 	it('should show confirmation dialog when delete action is triggered', async () => {
 		const { getByTestId } = renderComponent({
+			props: {
+				location: 'card',
+			},
 			pinia: createTestingPinia({
 				initialState: {},
 				stubActions: false,
@@ -152,6 +155,9 @@ describe('DataStoreActions', () => {
 
 	it('should call delete when confirmed and emit onDeleted', async () => {
 		const { getByTestId, emitted } = renderComponent({
+			props: {
+				location: 'card',
+			},
 			pinia: createTestingPinia({
 				initialState: {},
 				stubActions: false,
@@ -173,6 +179,9 @@ describe('DataStoreActions', () => {
 		mockMessage.confirm.mockResolvedValue('cancel');
 
 		const { getByTestId, emitted } = renderComponent({
+			props: {
+				location: 'card',
+			},
 			pinia: createTestingPinia({
 				initialState: {},
 				stubActions: false,
@@ -194,6 +203,9 @@ describe('DataStoreActions', () => {
 		mockDeleteDataStore.mockResolvedValue(false);
 
 		const { getByTestId } = renderComponent({
+			props: {
+				location: 'card',
+			},
 			pinia: createTestingPinia({
 				initialState: {},
 				stubActions: false,
@@ -218,6 +230,9 @@ describe('DataStoreActions', () => {
 		mockDeleteDataStore.mockRejectedValue(deleteError);
 
 		const { getByTestId } = renderComponent({
+			props: {
+				location: 'card',
+			},
 			pinia: createTestingPinia({
 				initialState: {},
 				stubActions: false,
@@ -280,6 +295,29 @@ describe('DataStoreActions', () => {
 			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.RENAME}`)).not.toBeInTheDocument();
 			// But delete action should still be present
 			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.DELETE}`)).toBeInTheDocument();
+		});
+
+		it('should not show delete action when location is breadcrumbs', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					dataStore: mockDataStore,
+					isReadOnly: false,
+					location: 'breadcrumbs',
+				},
+				pinia: createTestingPinia({
+					initialState: {},
+					stubActions: false,
+				}),
+			});
+
+			// Click on the action toggle to open dropdown
+			await userEvent.click(getByTestId('data-store-card-actions'));
+			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
+
+			// Check that delete action is NOT present in breadcrumbs
+			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.DELETE}`)).not.toBeInTheDocument();
+			// But rename action should still be present
+			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.RENAME}`)).toBeInTheDocument();
 		});
 	});
 });

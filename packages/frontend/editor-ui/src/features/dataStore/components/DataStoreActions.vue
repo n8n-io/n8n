@@ -38,20 +38,24 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const actions = computed<Array<UserAction<IUser>>>(() => {
-	const availableActions = [
-		{
-			label: i18n.baseText('generic.delete'),
-			value: DATA_STORE_CARD_ACTIONS.DELETE,
-			disabled: props.isReadOnly,
-		},
-	];
+	const availableActions = [];
+	
 	if (props.location === 'breadcrumbs') {
-		availableActions.unshift({
+		// Only show rename action in breadcrumbs, no delete action
+		availableActions.push({
 			label: i18n.baseText('generic.rename'),
 			value: DATA_STORE_CARD_ACTIONS.RENAME,
 			disabled: props.isReadOnly,
 		});
+	} else {
+		// Show delete action in card location
+		availableActions.push({
+			label: i18n.baseText('generic.delete'),
+			value: DATA_STORE_CARD_ACTIONS.DELETE,
+			disabled: props.isReadOnly,
+		});
 	}
+	
 	return availableActions;
 });
 
