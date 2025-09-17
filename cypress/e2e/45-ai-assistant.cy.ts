@@ -14,18 +14,6 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
 
-// Migrated to Playwright
-describe.skip('AI Assistant::disabled', () => {
-	beforeEach(() => {
-		aiAssistant.actions.disableAssistant();
-		wf.actions.visit();
-	});
-
-	it('does not show assistant button if feature is disabled', () => {
-		aiAssistant.getters.askAssistantFloatingButton().should('not.exist');
-	});
-});
-
 describe('AI Assistant::enabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.enableAssistant();
@@ -255,6 +243,9 @@ describe('AI Assistant::enabled', () => {
 			);
 
 		ndv.getters.nodeExecuteButton().click();
+
+		// Wait for a message from AI to be shown
+		aiAssistant.getters.chatMessagesAssistant().should('have.length', 3);
 
 		getEditor()
 			.type('{selectall}')

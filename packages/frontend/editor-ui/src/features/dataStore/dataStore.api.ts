@@ -7,6 +7,7 @@ import type {
 	DataStoreColumn,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
+import type { DataTablesSizeResult } from 'n8n-workflow';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -27,7 +28,7 @@ export const fetchDataStoresApi = async (
 		'GET',
 		apiEndpoint,
 		{
-			options: options ?? undefined,
+			...options,
 			filter: filter ?? undefined,
 		},
 	);
@@ -135,6 +136,7 @@ export const getDataStoreRowsApi = async (
 	options?: {
 		skip?: number;
 		take?: number;
+		sortBy?: string;
 	},
 ) => {
 	return await makeRestApiRequest<{
@@ -151,11 +153,12 @@ export const insertDataStoreRowApi = async (
 	row: DataStoreRow,
 	projectId: string,
 ) => {
-	return await makeRestApiRequest<Array<{ id: number }>>(
+	return await makeRestApiRequest<DataStoreRow[]>(
 		context,
 		'POST',
 		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
+			returnType: 'all',
 			data: [row],
 		},
 	);
@@ -173,7 +176,10 @@ export const updateDataStoreRowsApi = async (
 		'PATCH',
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
-			filter: { id: rowId },
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: rowId }],
+			},
 			data: rowData,
 		},
 	);
@@ -185,12 +191,24 @@ export const deleteDataStoreRowsApi = async (
 	rowIds: number[],
 	projectId: string,
 ) => {
+	const filters = rowIds.map((id) => ({ columnName: 'id', condition: 'eq', value: id }));
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
 		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
-			ids: rowIds.join(','),
+			filter: {
+				type: 'or',
+				filters,
+			},
 		},
+	);
+};
+
+export const fetchDataStoreGlobalLimitInBytes = async (context: IRestApiContext) => {
+	return await makeRestApiRequest<DataTablesSizeResult>(
+		context,
+		'GET',
+		'/data-tables-global/limits',
 	);
 };

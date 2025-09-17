@@ -11,6 +11,7 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
 
@@ -23,6 +24,7 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	disabled?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
 	title?: string;
@@ -61,6 +63,13 @@ function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assistan
 		id: msg.id || `msg-${index}`,
 		read: msg.read ?? true,
 	}));
+}
+
+// filter out these messages so that tool collapsing works correctly
+function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.filter(
+		(message) => Boolean(getSupportedMessageComponent(message.type)) || message.type === 'custom',
+	);
 }
 
 function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -136,7 +145,17 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 // Ensure all messages have required id and read properties, and collapse tool messages
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(normalized);
+	return collapseToolMessages(filterOutHiddenMessages(normalized));
+});
+
+// Get quickReplies from the last message in the original messages (before filtering)
+const lastMessageQuickReplies = computed(() => {
+	if (!props.messages?.length || props.streaming) return [];
+
+	const lastMessage = props.messages[props.messages.length - 1];
+	return 'quickReplies' in lastMessage && lastMessage.quickReplies?.length
+		? lastMessage.quickReplies
+		: [];
 });
 
 const textInputValue = ref<string>('');
@@ -149,7 +168,7 @@ const sessionEnded = computed(() => {
 });
 
 const sendDisabled = computed(() => {
-	return !textInputValue.value || props.streaming || sessionEnded.value;
+	return !textInputValue.value || props.streaming || sessionEnded.value || props.disabled;
 });
 
 const showPlaceholder = computed(() => {
@@ -210,6 +229,13 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// Expose focusInput method to parent components
+defineExpose({
+	focusInput: () => {
+		chatInput.value?.focus();
+	},
+});
 </script>
 
 <template>
@@ -249,21 +275,24 @@ watch(
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 							@feedback="onRateMessage"
-						/>
+						>
+							<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
+								<slot name="custom-message" v-bind="customMessageProps" />
+							</template>
+						</MessageWrapper>
 
 						<div
-							v-if="
-								!streaming &&
-								'quickReplies' in message &&
-								message.quickReplies?.length &&
-								i === normalizedMessages.length - 1
-							"
+							v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
 							:class="$style.quickReplies"
 						>
 							<div :class="$style.quickRepliesTitle">
 								{{ t('assistantChat.quickRepliesTitle') }}
 							</div>
-							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
+							<div
+								v-for="opt in lastMessageQuickReplies"
+								:key="opt.type"
+								data-test-id="quick-replies"
+							>
 								<N8nButton
 									v-if="opt.text"
 									type="secondary"
@@ -321,8 +350,8 @@ watch(
 					ref="chatInput"
 					v-model="textInputValue"
 					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming }"
-					:disabled="sessionEnded || streaming"
+					:class="{ [$style.disabled]: sessionEnded || streaming || disabled }"
+					:disabled="sessionEnded || streaming || disabled"
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"

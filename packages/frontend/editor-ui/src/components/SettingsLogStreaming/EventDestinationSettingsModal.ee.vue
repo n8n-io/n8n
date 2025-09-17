@@ -183,7 +183,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowsStore.removeNode(node.value);
-	ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
+	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowsStore.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -294,7 +294,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.stateIsDirty = false;
 }

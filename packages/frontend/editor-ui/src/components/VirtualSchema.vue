@@ -46,6 +46,8 @@ import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -72,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -416,6 +419,7 @@ const onDragEnd = (el: HTMLElement) => {
 			src_has_credential: hasCredential,
 			src_element: el,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
@@ -427,10 +431,15 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <template>
-	<div :class="['run-data-schema', 'full-height', props.compact ? 'compact' : '']">
-		<div v-if="noSearchResults" class="no-results">
-			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
-			<N8nText>
+	<div
+		:class="[
+			'run-data-schema',
+			'full-height',
+			{ compact: props.compact, 'no-search-results': noSearchResults },
+		]"
+	>
+		<NDVEmptyState v-if="noSearchResults" :title="i18n.baseText('ndv.search.noNodeMatch.title')">
+			<template #description>
 				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
@@ -438,8 +447,8 @@ const onDragEnd = (el: HTMLElement) => {
 						</a>
 					</template>
 				</I18nT>
-			</N8nText>
-		</div>
+			</template>
+		</NDVEmptyState>
 
 		<Draggable
 			v-if="items.length"
@@ -549,6 +558,12 @@ const onDragEnd = (el: HTMLElement) => {
 
 .run-data-schema {
 	padding: 0;
+
+	&.no-search-results {
+		display: flex;
+		justify-content: center;
+		padding: var(--spacing-l) 0;
+	}
 }
 
 .scroller {
@@ -558,17 +573,6 @@ const onDragEnd = (el: HTMLElement) => {
 	.compact & {
 		padding: 0 var(--spacing-2xs);
 	}
-}
-
-.no-results {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	height: 100%;
-	gap: var(--spacing-2xs);
-	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing-xl) var(--ndv-spacing);
 }
 
 .icon {

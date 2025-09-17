@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
@@ -56,6 +57,9 @@ jest.mock('@/utils/tool-executor', () => ({
 }));
 jest.mock('@/chains/conversation-compact', () => ({
 	conversationCompactChain: jest.fn(),
+}));
+jest.mock('@/chains/workflow-name', () => ({
+	workflowNameChain: jest.fn(),
 }));
 
 const mockRandomUUID = jest.fn();

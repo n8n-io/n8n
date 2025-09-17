@@ -12,6 +12,7 @@ import {
 	watch,
 	h,
 	onBeforeUnmount,
+	useTemplateRef,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -122,7 +123,10 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
@@ -141,6 +145,8 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -203,6 +209,7 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -260,6 +267,7 @@ useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
 
+const canvasRef = useTemplateRef('canvas');
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
@@ -485,7 +493,7 @@ async function fetchAndSetParentFolder(folderId?: string) {
 }
 
 async function fetchAndSetProject(projectId: string) {
-	if (!projectsStore.currentProject) {
+	if (projectsStore.currentProject?.id !== projectId) {
 		const project = await projectsStore.fetchProject(projectId);
 		projectsStore.setCurrentProject(project);
 	}
@@ -608,9 +616,15 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	isBlankRedirect.value = true;
 	const templateId = workflow.meta.templateId;
 	const parentFolderId = route.query.parentFolderId as string | undefined;
+
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
+	await fetchAndSetParentFolder(parentFolderId);
+
 	await router.replace({
 		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId, parentFolderId },
+		query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
 	});
 
 	await importTemplate({
@@ -698,8 +712,8 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-function onTidyUp(event: CanvasLayoutEvent) {
-	tidyUp(event);
+function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean }) {
+	tidyUp(event, options);
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
@@ -769,7 +783,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -882,6 +896,10 @@ async function onSaveWorkflow() {
 	}
 }
 
+function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+	canvasRef.value?.executeContextMenuAction(action, nodeIds);
+}
+
 function addWorkflowSavedEventBindings() {
 	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
 	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
@@ -917,7 +935,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
@@ -1098,9 +1116,11 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
+	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
+		trackEvents,
 	});
 
 	fitView();
@@ -1111,6 +1131,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 			canvasEventBus.emit('tidyUp', {
 				source: 'import-workflow-data',
 				nodeIdsFilter: nodesIdsToTidyUp,
+				trackEvents,
 			});
 		}, 0);
 	}
@@ -1212,7 +1233,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1773,7 +1794,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1795,7 +1816,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
@@ -1824,7 +1845,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
@@ -1873,13 +1894,15 @@ watch(
 			name: CanvasNodeRenderType.AIPrompt,
 			type: CanvasNodeRenderType.AIPrompt,
 			typeVersion: 1,
-			position: [-690, -15],
+			position: [-300, -100],
 			parameters: {},
 			draggable: false,
 		};
 
 		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled
+			builderStore.isAIBuilderEnabled &&
+			builderStore.isAssistantEnabled &&
+			builderStore.assistantMessages.length === 0
 				? [aiPromptItem]
 				: [addNodesItem];
 	},
@@ -1889,7 +1912,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -2038,6 +2061,7 @@ onBeforeUnmount(() => {
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
 			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
+			ref="canvas"
 			:id="editableWorkflow.id"
 			:workflow="editableWorkflow"
 			:workflow-object="editableWorkflowObject"
@@ -2047,6 +2071,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
+			:suppress-interaction="canvasStore.suppressInteraction"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
@@ -2194,9 +2219,12 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="!isLoading"
+			v-if="
+				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
+			"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
+			@context-menu-action="onContextMenuAction"
 		/>
 	</div>
 </template>

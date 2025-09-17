@@ -64,7 +64,10 @@ export class ProjectController {
 				uiContext: payload.uiContext,
 			});
 
-			const relations = await this.projectsService.getProjectRelations(project.id);
+			const relation = await this.projectsService.getProjectRelationForUserAndProject(
+				req.user.id,
+				project.id,
+			);
 
 			return {
 				...project,
@@ -72,10 +75,7 @@ export class ProjectController {
 				scopes: [
 					...combineScopes({
 						global: getAuthPrincipalScopes(req.user),
-						project:
-							relations
-								.find((pr) => pr.userId === req.user.id)
-								?.role.scopes.map((scope) => scope.slug) || [],
+						project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
 					}),
 				],
 			};
@@ -156,14 +156,14 @@ export class ProjectController {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
 
-		const relations = await this.projectsService.getProjectRelations(project.id);
+		const relation = await this.projectsService.getProjectRelationForUserAndProject(
+			req.user.id,
+			project.id,
+		);
 		const scopes: Scope[] = [
 			...combineScopes({
 				global: getAuthPrincipalScopes(req.user),
-				project:
-					relations
-						.find((pr) => pr.userId === req.user.id)
-						?.role.scopes.map((scope) => scope.slug) ?? [],
+				project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
 			}),
 		];
 		return {

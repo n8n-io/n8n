@@ -18,6 +18,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { INode } from 'n8n-workflow';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -38,6 +40,7 @@ const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
+const projectsStore = useProjectsStore();
 
 const node = computed(() =>
 	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
@@ -52,6 +55,7 @@ const parentNode = computed(() => {
 
 const parameters = ref<IFormInput[]>([]);
 const selectedTool = ref<string>('');
+const error = ref<Error | undefined>(undefined);
 
 const nodeRunData = computed(() => {
 	if (!node.value) return undefined;
@@ -86,9 +90,71 @@ const mapTypes: {
 	},
 };
 
+const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFormInput[]> => {
+	const result: IFormInput[] = [];
+
+	const tools = await nodeTypesStore.getNodeParameterOptions({
+		nodeTypeAndVersion: {
+			name: newNode.type,
+			version: newNode.typeVersion,
+		},
+		path: 'parameters.includedTools',
+		methodName: 'getTools',
+		currentNodeParameters: newNode.parameters,
+		credentials: newNode.credentials,
+		projectId: projectsStore.currentProjectId,
+	});
+
+	// Load available tools
+	const toolOptions = tools?.map((tool) => ({
+		label: tool.name,
+		value: String(tool.value),
+		disabled: false,
+	}));
+
+	result.push({
+		name: 'toolName',
+		initialValue: '',
+		properties: {
+			label: 'Tool name',
+			type: 'select',
+			options: toolOptions,
+			required: true,
+		},
+	});
+
+	// Only show parameters for selected tool
+	if (newSelectedTool) {
+		const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
+		const schema = selectedToolData?.inputSchema as JSONSchema7;
+		if (schema.properties) {
+			for (const [propertyName, value] of Object.entries(schema.properties)) {
+				const type =
+					typeof value === 'object' && 'type' in value && typeof value.type === 'string'
+						? value.type
+						: 'text';
+
+				result.push({
+					name: 'query.' + propertyName,
+					initialValue: '',
+					properties: {
+						label: propertyName,
+						type: mapTypes[type].inputType,
+						required: true,
+					},
+				});
+			}
+		}
+	}
+
+	return result;
+};
+
 watch(
 	[node, selectedTool],
 	async ([newNode, newSelectedTool]) => {
+		error.value = undefined;
+
 		if (!newNode) {
 			parameters.value = [];
 			return;
@@ -98,59 +164,14 @@ watch(
 
 		// Handle MCPClientTool nodes differently
 		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
-			const tools = await nodeTypesStore.getNodeParameterOptions({
-				nodeTypeAndVersion: {
-					name: newNode.type,
-					version: newNode.typeVersion,
-				},
-				path: 'parmeters.includedTools',
-				methodName: 'getTools',
-				currentNodeParameters: newNode.parameters,
-			});
+			try {
+				const mcpResult = await getMCPTools(newNode, newSelectedTool);
+				parameters.value = mcpResult;
 
-			// Load available tools
-			const toolOptions = tools?.map((tool) => ({
-				label: tool.name,
-				value: String(tool.value),
-				disabled: false,
-			}));
-
-			result.push({
-				name: 'toolName',
-				initialValue: '',
-				properties: {
-					label: 'Tool name',
-					type: 'select',
-					options: toolOptions,
-					required: true,
-				},
-			});
-
-			// Only show parameters for selected tool
-			if (newSelectedTool) {
-				const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-				const schema = selectedToolData?.inputSchema as JSONSchema7;
-				if (schema.properties) {
-					for (const [propertyName, value] of Object.entries(schema.properties)) {
-						const typedValue = value as {
-							type: string;
-							description: string;
-						};
-
-						result.push({
-							name: 'query.' + propertyName,
-							initialValue: '',
-							properties: {
-								label: propertyName,
-								type: mapTypes[typedValue.type ?? 'text'].inputType,
-								required: true,
-							},
-						});
-					}
-				}
+				return;
+			} catch (e: unknown) {
+				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
 			}
-
-			parameters.value = result;
 		}
 
 		// Handle regular tool nodes
@@ -267,7 +288,12 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 		:center="true"
 		:close-on-click-modal="false"
 	>
-		<template #content>
+		<template v-if="error" #content>
+			<N8nCallout v-if="error" theme="danger">
+				{{ error.message }}
+			</N8nCallout>
+		</template>
+		<template v-else #content>
 			<el-col>
 				<el-row :class="$style.row">
 					<n8n-text data-testid="from-ai-parameters-modal-description">
@@ -292,7 +318,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 				</el-row>
 			</el-col>
 		</template>
-		<template #footer>
+		<template v-if="!error" #footer>
 			<el-row justify="end">
 				<el-col :span="5" :offset="19">
 					<n8n-button

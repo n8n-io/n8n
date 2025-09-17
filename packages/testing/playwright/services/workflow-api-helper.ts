@@ -59,10 +59,15 @@ export class WorkflowApiHelper {
 		const webhookPrefix = options?.webhookPrefix ?? 'test-webhook';
 		const uniqueSuffix = nanoid(idLength);
 
-		// Make workflow name unique
-		if (workflow.name) {
+		// Make workflow name unique; add a default if missing
+		if (workflow.name && workflow.name.trim().length > 0) {
 			workflow.name = `${workflow.name} (Test ${uniqueSuffix})`;
+		} else {
+			workflow.name = `Test Workflow ${uniqueSuffix}`;
 		}
+
+		// Ensure workflow is inactive by default when not specified
+		workflow.active ??= false;
 
 		// Check if workflow has webhook nodes and process them
 		let webhookId: string | undefined;

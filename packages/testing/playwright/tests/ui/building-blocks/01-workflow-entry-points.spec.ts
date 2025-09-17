@@ -17,7 +17,7 @@ test.describe('01 - UI Test Entry Points', () => {
 
 	test.describe('Entry Point: Basic Workflow Creation', () => {
 		test('should create a new project and workflow', async ({ n8n }) => {
-			await n8n.start.fromNewProject();
+			await n8n.start.fromNewProjectBlankCanvas();
 			await expect(n8n.canvas.canvasPane()).toBeVisible();
 		});
 	});

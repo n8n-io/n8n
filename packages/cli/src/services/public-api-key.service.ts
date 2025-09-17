@@ -119,6 +119,8 @@ export class PublicApiKeyService {
 
 			if (!user) return false;
 
+			if (user.disabled) return false;
+
 			// Legacy API keys are not JWTs and do not need to be verified.
 			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
 				try {

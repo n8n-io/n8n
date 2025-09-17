@@ -219,7 +219,7 @@
 	--color-json-brackets: var(--p-gray-670);
 	--color-json-brackets-hover: var(--p-color-alt-e-430);
 	--color-json-line: var(--p-gray-200);
-	--color-json-highlight: var(--p-gray-070);
+	--color-json-highlight: var(--color-background-base);
 	--color-code-background: var(--p-white);
 	--color-code-background-readonly: var(--p-gray-040);
 	--color-code-lineHighlight: var(--p-gray-320-a-010);
@@ -276,15 +276,15 @@
 	--color-button-secondary-disabled-border: var(--p-gray-200);
 
 	// Button highlight
-	--color-button-highlight-font: var(--prim-gray-670);
+	--color-button-highlight-font: var(--p-gray-670);
 	--color-button-highlight-border: transparent;
 	--color-button-highlight-background: transparent;
-	--color-button-highlight-hover-active-focus-font: var(--prim-color-primary-shade-100);
-	--color-button-highlight-hover-active-focus-border: var(--prim-gray-40);
-	--color-button-highlight-hover-background: var(--prim-gray-40);
-	--color-button-highlight-active-focus-background: var(--prim-gray-40);
-	--color-button-highlight-focus-outline: var(--prim-gray-40);
-	--color-button-highlight-disabled-font: var(--prim-gray-120);
+	--color-button-highlight-hover-active-focus-font: var(--p-color-primary-shade-100);
+	--color-button-highlight-hover-active-focus-border: var(--p-gray-40);
+	--color-button-highlight-hover-background: var(--p-gray-40);
+	--color-button-highlight-active-focus-background: var(--p-gray-40);
+	--color-button-highlight-focus-outline: var(--p-gray-40);
+	--color-button-highlight-disabled-font: var(--p-gray-120);
 	--color-button-highlight-disabled-border: transparent;
 	--color-button-highlight-disabled-background: transparent;
 
@@ -689,6 +689,7 @@
 
 	/* Ag Grid */
 	--grid-row-selected-background: var(--p-color-secondary-070);
+	--grid-cell-editing-border: 2px solid var(--color-secondary);
 }
 
 :root {

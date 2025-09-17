@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
+import type {
+	AddColumnResponse,
+	DataStore,
+	DataStoreColumnCreatePayload,
+} from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -82,8 +86,14 @@ const onToggleSave = (value: boolean) => {
 	}
 };
 
-const onAddColumn = (column: DataStoreColumnCreatePayload) => {
-	dataStoreTableRef.value?.addColumn(column);
+const onAddColumn = async (column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> => {
+	if (!dataStoreTableRef.value) {
+		return {
+			success: false,
+			errorMessage: i18n.baseText('dataStore.error.tableNotInitialized'),
+		};
+	}
+	return await dataStoreTableRef.value.addColumn(column);
 };
 
 onMounted(async () => {

@@ -5,12 +5,13 @@ import EmptyOutput from './custom/empty-output.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
-import NodeError from './custom/node-error.svg';
+import NodeExecutionError from './custom/node-execution-error.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
 import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/node-trash.svg';
+import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
@@ -85,6 +86,7 @@ import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
 import IconLucideEqual from '~icons/lucide/equal';
+import IconLucideExpand from '~icons/lucide/expand';
 import IconLucideExternalLink from '~icons/lucide/external-link';
 import IconLucideEye from '~icons/lucide/eye';
 import IconLucideEyeOff from '~icons/lucide/eye-off';
@@ -168,6 +170,7 @@ import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
+import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -434,7 +437,8 @@ export const updatedIconSet = {
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
-	'node-error': NodeError,
+	'node-execution-error': NodeExecutionError,
+	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
@@ -498,6 +502,7 @@ export const updatedIconSet = {
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
 	equal: IconLucideEqual,
+	expand: IconLucideExpand,
 	'external-link': IconLucideExternalLink,
 	eye: IconLucideEye,
 	'eye-off': IconLucideEyeOff,
@@ -581,6 +586,7 @@ export const updatedIconSet = {
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
+	sparkles: IconLucideSparkles,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-pen': IconLucideSquarePen,

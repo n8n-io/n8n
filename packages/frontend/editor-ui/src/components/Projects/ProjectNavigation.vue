@@ -179,7 +179,7 @@ onBeforeMount(async () => {
 				type="secondary"
 				icon="plus"
 				data-test-id="add-first-project-button"
-				@click="globalEntityCreation.createProject"
+				@click="globalEntityCreation.createProject('add_first_project_button')"
 			>
 				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
 			</N8nButton>

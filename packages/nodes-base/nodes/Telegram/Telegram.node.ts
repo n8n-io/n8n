@@ -2563,10 +2563,10 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const itemBinaryData = items[i].binary![binaryPropertyName];
 					const propertyName = getPropertyName(operation);
-					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
+					const fileName = this.getNodeParameter('additionalFields.fileName', i, '') as string;
 
 					const filename = fileName || itemBinaryData.fileName?.toString();
 
@@ -2631,7 +2631,7 @@ export class Telegram implements INodeType {
 						);
 
 						const fileName = filePath.split('/').pop() as string;
-						const additionalFields = this.getNodeParameter('additionalFields', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const providedMimeType = additionalFields?.mimeType as string | undefined;
 						const mimeType = providedMimeType ?? (lookup(fileName) || 'application/octet-stream');
 
@@ -2656,7 +2656,6 @@ export class Telegram implements INodeType {
 					returnData.push(...executionData);
 					continue;
 				}
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },

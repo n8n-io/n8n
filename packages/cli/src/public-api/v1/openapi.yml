@@ -48,6 +48,8 @@ paths:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /executions/{id}/retry:
+    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:

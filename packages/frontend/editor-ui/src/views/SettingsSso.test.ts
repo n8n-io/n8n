@@ -331,6 +331,11 @@ describe('SettingsSso View', () => {
 			ssoStore.isOidcLoginEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
 
+			ssoStore.getOidcConfig.mockResolvedValue({
+				...oidcConfig,
+				discoveryEndpoint: '',
+			});
+
 			const { getByTestId, getByRole } = renderView();
 
 			// Set authProtocol component ref to OIDC
@@ -381,6 +386,66 @@ describe('SettingsSso View', () => {
 					is_active: true,
 				}),
 			);
+		});
+
+		it('shows error message to user when OIDC config save fails', async () => {
+			const error = new Error('Save failed');
+			ssoStore.saveOidcConfig.mockRejectedValue(error);
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.isEnterpriseSamlEnabled = false;
+			ssoStore.isOidcLoginEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+
+			ssoStore.getOidcConfig.mockResolvedValue({
+				...oidcConfig,
+				discoveryEndpoint: '',
+			});
+
+			const { getByTestId, getByRole } = renderView();
+			showError.mockClear();
+
+			// Set authProtocol component ref to OIDC
+			const protocolSelect = getByRole('combobox');
+			expect(protocolSelect).toBeInTheDocument();
+			await userEvent.click(protocolSelect);
+
+			const dropdown = await waitFor(() => getByRole('listbox'));
+			expect(dropdown).toBeInTheDocument();
+			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
+			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
+			expect(oidcItem).toBeDefined();
+
+			await userEvent.click(oidcItem!);
+
+			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+			expect(saveButton).toBeVisible();
+
+			const oidcDiscoveryUrlInput = getByTestId('oidc-discovery-endpoint');
+
+			expect(oidcDiscoveryUrlInput).toBeVisible();
+			await userEvent.type(oidcDiscoveryUrlInput, oidcConfig.discoveryEndpoint);
+
+			const clientIdInput = getByTestId('oidc-client-id');
+			expect(clientIdInput).toBeVisible();
+			await userEvent.type(clientIdInput, 'test-client-id');
+			const clientSecretInput = getByTestId('oidc-client-secret');
+			expect(clientSecretInput).toBeVisible();
+			await userEvent.type(clientSecretInput, 'test-client-secret');
+
+			expect(saveButton).not.toBeDisabled();
+			await userEvent.click(saveButton);
+
+			expect(ssoStore.saveOidcConfig).toHaveBeenCalledWith(
+				expect.objectContaining({
+					discoveryEndpoint: oidcConfig.discoveryEndpoint,
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					loginEnabled: true,
+				}),
+			);
+
+			expect(telemetryTrack).not.toBeCalled();
+			expect(showError).toHaveBeenCalledWith(error, 'Error saving OIDC SSO configuration');
 		});
 	});
 

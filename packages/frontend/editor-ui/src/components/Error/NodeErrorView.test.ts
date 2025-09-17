@@ -273,7 +273,7 @@ describe('NodeErrorView.vue', () => {
 			await userEvent.click(button);
 
 			expect(window.open).not.toHaveBeenCalled();
-			expect(mockNDVStore.activeNodeName).toBe('ErrorCode');
+			expect(mockNDVStore.setActiveNodeName).toHaveBeenCalledWith('ErrorCode', expect.any(String));
 		});
 
 		it('sets active node name when error has no workflow/execution IDs', async () => {
@@ -293,7 +293,7 @@ describe('NodeErrorView.vue', () => {
 			await userEvent.click(button);
 
 			expect(window.open).not.toHaveBeenCalled();
-			expect(mockNDVStore.activeNodeName).toBe('ErrorCode');
+			expect(mockNDVStore.setActiveNodeName).toHaveBeenCalledWith('ErrorCode', expect.any(String));
 		});
 	});
 });

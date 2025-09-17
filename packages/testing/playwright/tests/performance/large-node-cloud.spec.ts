@@ -1,41 +1,34 @@
-/**
- * Large Node Performance Tests with Cloud Resource Constraints
- *
- * These tests use @cloud-* tags to automatically create resource-limited containers
- * that simulate n8n Cloud plan constraints.
- */
-
 import { test, expect } from '../../fixtures/cloud';
 import type { n8nPage } from '../../pages/n8nPage';
-import { measurePerformance } from '../../utils/performance-helper';
+import { measurePerformance, attachMetric } from '../../utils/performance-helper';
 
 async function setupPerformanceTest(n8n: n8nPage, size: number) {
-	await n8n.goHome();
-	await n8n.workflows.clickNewWorkflowCard();
-	await n8n.canvas.importWorkflow('large.json', 'Large Workflow');
+	await n8n.start.fromImportedWorkflow('large.json');
 	await n8n.notifications.closeNotificationByText('Successful');
 
-	// Configure data size
 	await n8n.canvas.openNode('Edit Fields');
-	await n8n.page
-		.getByTestId('parameter-input-value')
-		.getByTestId('parameter-input-field')
-		.fill(size.toString());
+	await n8n.ndv.fillParameterInputByName('value', size.toString());
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
-test.describe('Large Node Performance - Cloud Resources', () => {
-	test('Large workflow with starter plan resources @cloud:starter', async ({ n8n }) => {
-		await setupPerformanceTest(n8n, 30000);
-		const loopSize = 20;
+test.describe('Large Data Size Performance - Cloud Resources', () => {
+	test('Code Node with 30000 items @cloud:starter', async ({ n8n }, testInfo) => {
+		const itemCount = 30000;
+		await setupPerformanceTest(n8n, itemCount);
+		const workflowExecuteBudget = 10_000;
+		const openNodeBudget = 600;
+		const loopSize = 30;
 		const stats = [];
 
-		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-			'Workflow executed successfully',
-			{
-				timeout: 30000,
-			},
-		);
+		const triggerDuration = await measurePerformance(n8n.page, 'trigger-workflow', async () => {
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+				{
+					// Add buffer, we still assert at the end and expect less than the budget
+					timeout: workflowExecuteBudget + 5000,
+				},
+			);
+		});
 
 		for (let i = 0; i < loopSize; i++) {
 			const openNodeDuration = await measurePerformance(n8n.page, `open-node-${i}`, async () => {
@@ -44,28 +37,15 @@ test.describe('Large Node Performance - Cloud Resources', () => {
 
 			stats.push(openNodeDuration);
 			await n8n.ndv.clickBackToCanvasButton();
-
-			console.log(`✓ Open node (${i + 1} of ${loopSize}): ${openNodeDuration.toFixed(1)}ms`);
 		}
 		const average = stats.reduce((a, b) => a + b, 0) / stats.length;
-		console.log(`Average open node duration: ${average.toFixed(1)}ms`);
-		expect(average).toBeLessThan(5000);
+
+		await attachMetric(testInfo, `open-node-${itemCount}`, average, 'ms');
+		await attachMetric(testInfo, `trigger-workflow-${itemCount}`, triggerDuration, 'ms');
+
+		expect.soft(average, `Open node duration for ${itemCount} items`).toBeLessThan(openNodeBudget);
+		expect
+			.soft(triggerDuration, `Trigger workflow duration for ${itemCount} items`)
+			.toBeLessThan(workflowExecuteBudget);
 	});
 });
-
-/*
-Usage:
-
-# Run all performance tests (including cloud resource tests)
-pnpm --filter n8n-playwright test:performance
-
-# Run only cloud resource tests
-pnpm --filter n8n-playwright test --grep "@cloud:"
-
-# Run specific cloud plan tests
-pnpm --filter n8n-playwright test --grep "@cloud:trial"
-pnpm --filter n8n-playwright test --grep "@cloud:enterprise"
-
-# Run this specific file (cloud resource tests only)
-pnpm --filter n8n-playwright test tests/performance/large-node-cloud.spec.ts
-*/

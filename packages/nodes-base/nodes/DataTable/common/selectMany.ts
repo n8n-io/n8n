@@ -1,5 +1,6 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type {
+	DataTableFilter,
 	DataStoreRowReturn,
 	IDataStoreProjectService,
 	IDisplayOptions,
@@ -7,7 +8,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import type { FilterType } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
@@ -22,16 +23,16 @@ export function getSelectFields(
 			type: 'options',
 			options: [
 				{
-					name: 'Any Filter',
-					value: 'anyFilter',
+					name: 'Any Condition',
+					value: ANY_CONDITION,
 				},
 				{
-					name: 'All Filters',
-					value: 'allFilters',
+					name: 'All Conditions',
+					value: ALL_CONDITIONS,
 				},
 			] satisfies Array<{ value: FilterType; name: string }>,
 			displayOptions,
-			default: 'anyFilter',
+			default: ANY_CONDITION,
 		},
 		{
 			displayName: 'Conditions',
@@ -50,11 +51,13 @@ export function getSelectFields(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name or ID',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+							displayName: 'Column',
 							name: 'keyName',
 							type: 'options',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
 								loadOptionsMethod: 'getDataTableColumns',
@@ -62,26 +65,27 @@ export function getSelectFields(
 							default: 'id',
 						},
 						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Condition',
 							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
-							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-							],
+							typeOptions: {
+								loadOptionsDependsOn: ['&keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
 							default: 'eq',
 						},
 						{
-							displayName: 'Field Value',
+							displayName: 'Value',
 							name: 'keyValue',
 							type: 'string',
 							default: '',
+							displayOptions: {
+								hide: {
+									condition: ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'],
+								},
+							},
 						},
 					],
 				},
@@ -91,15 +95,16 @@ export function getSelectFields(
 	];
 }
 
-export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
+export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataTableFilter {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
-	const matchType = ctx.getNodeParameter('matchType', index, []);
+	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
+	const node = ctx.getNode();
 
 	if (!isMatchType(matchType)) {
-		throw new NodeOperationError(ctx.getNode(), 'unexpected match type');
+		throw new NodeOperationError(node, 'unexpected match type');
 	}
 	if (!isFieldArray(fields)) {
-		throw new NodeOperationError(ctx.getNode(), 'unexpected fields input');
+		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
 	return buildGetManyFilter(fields, matchType);
@@ -117,33 +122,49 @@ export async function executeSelectMany(
 		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
 	}
 
-	let take = 1000;
+	const PAGE_SIZE = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
-	let totalCount = undefined;
-	do {
-		const response = await dataStoreProxy.getManyRowsAndCount({
-			skip: result.length,
-			take,
+
+	const returnAll = ctx.getNodeParameter('returnAll', index, false);
+	const limit = !returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0;
+
+	let expectedTotal: number | undefined;
+	let skip = 0;
+	let take = PAGE_SIZE;
+
+	while (true) {
+		const { data, count } = await dataStoreProxy.getManyRowsAndCount({
+			skip,
+			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
 		});
-		const data = response.data.map((json) => ({ json }));
+		const wrapped = data.map((json) => ({ json }));
 
-		// Optimize common path of <1000 results
-		if (response.count === response.data.length) {
-			return data;
+		// Fast path: everything fits in a single page
+		if (skip === 0 && count === data.length) {
+			return wrapped;
 		}
 
-		if (totalCount !== undefined && response.count !== totalCount) {
+		// Ensure the total doesn't change mid-pagination
+		if (expectedTotal !== undefined && count !== expectedTotal) {
 			throw new NodeOperationError(
 				ctx.getNode(),
 				'synchronization error: result count changed during pagination',
 			);
 		}
-		totalCount = response.count;
+		expectedTotal = count;
 
-		result.push.apply(result, data);
-		take = Math.min(take, response.count - result.length);
-	} while (take > 0);
+		result.push.apply(result, wrapped);
+
+		// Stop if we've hit the limit
+		if (limit && result.length >= limit) break;
+
+		// Stop if we've collected everything
+		if (result.length >= count) break;
+
+		skip = result.length;
+		take = Math.min(PAGE_SIZE, count - result.length);
+	}
 
 	return result;
 }

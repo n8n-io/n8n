@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import type { ContextMenuTarget } from '@/composables/useContextMenu';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
@@ -35,7 +35,7 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -56,6 +56,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 const $style = useCssModule();
 
@@ -102,7 +103,7 @@ const emit = defineEmits<{
 	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
-	'tidy-up': [CanvasLayoutEvent];
+	'tidy-up': [CanvasLayoutEvent, { trackEvents?: boolean }];
 	'toggle:focus-panel': [];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
@@ -122,6 +123,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -133,6 +135,7 @@ const props = withDefaults(
 		executing: false,
 		keyBindings: true,
 		loading: false,
+		suppressInteraction: false,
 	},
 );
 
@@ -148,6 +151,7 @@ const {
 	removeSelectedNodes,
 	viewportRef,
 	fitView,
+	fitBounds,
 	zoomIn,
 	zoomOut,
 	zoomTo,
@@ -447,11 +451,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, {
-			duration: 200,
-			// TODO: restore when re-upgrading vue-flow to >= 1.45
-			// interpolate: 'linear',
-		});
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
@@ -469,16 +469,23 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 
 function onUpdateNodeInputs(id: string) {
 	emit('update:node:inputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onFocusNode(id: string) {
 	const node = vueFlow.nodeLookup.value.get(id);
 
 	if (node) {
+		addSelectedNodes([node]);
 		experimentalNdvStore.focusNode(node, {
 			canvasViewport: viewport.value,
 			canvasDimensions: dimensions.value,
@@ -632,6 +639,10 @@ function onClickPane(event: MouseEvent) {
 	emit('click:pane', getProjectedPosition(event));
 }
 
+async function onFitBounds(nodes: GraphNode[]) {
+	await fitBounds(getRectOfNodes(nodes), { padding: 2 });
+}
+
 async function onFitView() {
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
@@ -650,11 +661,6 @@ async function onZoomOut() {
 
 async function onResetZoom() {
 	await onZoomTo(defaultZoom);
-}
-
-function setReadonly(value: boolean) {
-	setInteractive(!value);
-	elementsSelectable.value = true;
 }
 
 function onPaneMove({ event }: { event: unknown }) {
@@ -754,7 +760,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 	}
 }
 
-async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: string[] }) {
+async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
 		clearSelectedNodes();
 		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
@@ -763,10 +769,12 @@ async function onTidyUp(payload: { source: CanvasLayoutSource; nodeIdsFilter?: s
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source: payload.source });
+	emit('tidy-up', { result, target, source: payload.source }, { trackEvents: payload.trackEvents });
 
-	if (!applyOnSelection) {
-		await nextTick();
+	await nextTick();
+	if (applyOnSelection) {
+		await onFitBounds(selectedNodes.value);
+	} else {
 		await onFitView();
 	}
 }
@@ -865,9 +873,16 @@ onNodesInitialized(() => {
 	initialized.value = true;
 });
 
-watch(() => props.readOnly, setReadonly, {
-	immediate: true,
-});
+watch(
+	[() => props.readOnly, () => props.suppressInteraction],
+	([readOnly, suppressInteraction]) => {
+		setInteractive(!readOnly && !suppressInteraction);
+		elementsSelectable.value = !suppressInteraction;
+	},
+	{
+		immediate: true,
+	},
+);
 
 watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
@@ -905,6 +920,10 @@ provide(CanvasKey, {
 	viewport,
 	isExperimentalNdvActive,
 	isPaneMoving,
+});
+
+defineExpose({
+	executeContextMenuAction: onContextMenuAction,
 });
 </script>
 

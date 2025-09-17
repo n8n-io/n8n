@@ -13,6 +13,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { LicenseMocker } from '@test-integration/license';
 
 import { createUser } from './shared/db/users';
+import { LicenseState } from '@n8n/backend-common';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -26,6 +27,7 @@ describe('ProjectService', () => {
 
 		const license: LicenseMocker = new LicenseMocker();
 		license.mock(Container.get(License));
+		license.mockLicenseState(Container.get(LicenseState));
 		license.enable('feat:projectRole:editor');
 	});
 

@@ -94,6 +94,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const workflowMessages = computed(() => chatMessages.value.filter(isWorkflowUpdatedMessage));
 
+	const assistantMessages = computed(() =>
+		chatMessages.value.filter((msg) => msg.role === 'assistant'),
+	);
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -439,6 +443,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowPrompt,
 		toolMessages,
 		workflowMessages,
+		assistantMessages,
 		trackingSessionId,
 		streamingAbortController,
 		initialGeneration,

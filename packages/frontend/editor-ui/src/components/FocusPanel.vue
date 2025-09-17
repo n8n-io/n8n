@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
-import { computed, nextTick, ref, watch, toRef } from 'vue';
+import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -28,7 +28,7 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useThrottleFn } from '@vueuse/core';
+import { useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -36,6 +36,9 @@ import { useExperimentalNdvStore } from '@/components/canvas/experimental/experi
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type CanvasNode, CanvasNodeRenderType } from '@/types';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -46,11 +49,13 @@ const props = defineProps<{
 const emit = defineEmits<{
 	focus: [];
 	saveKeyboardShortcut: [event: KeyboardEvent];
+	contextMenuAction: [action: ContextMenuAction, nodeIds: string[]];
 }>();
 
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
+const wrapperRef = useTemplateRef('wrapper');
 
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
@@ -64,13 +69,11 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
+const activeElement = useActiveElement();
 
-const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
-const resolvedParameter = computed(() =>
-	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
-		? focusedNodeParameter.value
-		: undefined,
-);
+useTelemetryContext({ view_shown: 'focus_panel' });
+
+const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const inputValue = ref<string>('');
 
@@ -110,9 +113,11 @@ const node = computed<INodeUi | undefined>(() => {
 		return resolvedParameter.value?.node;
 	}
 
-	const selected = vueFlow.getSelectedNodes.value[0]?.id;
+	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
-	return selected ? workflowsStore.allNodes.find((n) => n.id === selected) : undefined;
+	return selected?.data?.render.type === CanvasNodeRenderType.Default
+		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		: undefined;
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
@@ -205,6 +210,20 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 
 const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
+const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
+
+const emptyTitle = computed(() =>
+	experimentalNdvStore.isNdvInFocusPanelEnabled
+		? locale.baseText('nodeView.focusPanel.v2.noParameters.title')
+		: locale.baseText('nodeView.focusPanel.noParameters.title'),
+);
+
+const emptySubtitle = computed(() =>
+	experimentalNdvStore.isNdvInFocusPanelEnabled
+		? locale.baseText('nodeView.focusPanel.v2.noParameters.subtitle')
+		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
+);
+
 const { resolvedExpression } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
@@ -288,6 +307,12 @@ function optionSelected(command: string) {
 function closeFocusPanel() {
 	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
 		focusPanelStore.unsetParameters();
+
+		telemetry.track('User removed focused param', {
+			source: 'closeIcon',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		});
+
 		return;
 	}
 
@@ -365,6 +390,24 @@ watch(
 	{ immediate: true },
 );
 
+watch(activeElement, (active) => {
+	if (!node.value || !active || !wrapperRef.value?.contains(active)) {
+		return;
+	}
+
+	const path = active.closest('.parameter-input')?.getAttribute('data-parameter-path');
+
+	if (!path) {
+		return;
+	}
+
+	telemetry.track('User focused focus panel', {
+		node_id: node.value.id,
+		node_type: node.value.type,
+		parameter_path: path,
+	});
+});
+
 function onResize(event: ResizeData) {
 	focusPanelStore.updateWidth(event.width);
 }
@@ -373,13 +416,22 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 function onOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name);
+		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
+	<div
+		v-if="focusPanelActive"
+		ref="wrapper"
+		data-test-id="focus-panel"
+		:class="[
+			$style.wrapper,
+			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
+		]"
+		@keydown.stop
+	>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
@@ -399,7 +451,7 @@ function onOpenNdv() {
 					@open-ndv="onOpenNdv"
 					@clear-parameter="closeFocusPanel"
 				/>
-				<div v-if="resolvedParameter" :class="$style.content">
+				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
 					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
 							<N8nText color="text-dark" size="small">
@@ -547,37 +599,39 @@ function onOpenNdv() {
 				<ExperimentalNodeDetailsDrawer
 					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
 					:node="node"
-					:nodes="vueFlow.getSelectedNodes.value"
+					:node-ids="selectedNodeIds"
+					:is-read-only="isReadOnly"
 					@open-ndv="onOpenNdv"
+					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
 				/>
 				<div v-else :class="[$style.content, $style.emptyContent]">
-					<div :class="$style.emptyText">
-						<div :class="$style.focusParameterWrapper">
-							<div :class="$style.iconWrapper">
-								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
-								<N8nIcon
-									:class="$style.pointerIcon"
-									icon="mouse-pointer"
-									color="text-dark"
-									size="large"
-								/>
-							</div>
-							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-							<N8nRadioButtons
-								size="small"
-								:model-value="'expression'"
-								:disabled="true"
-								:options="[
-									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
-									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
-								]"
+					<div :class="$style.focusParameterWrapper">
+						<div :class="$style.iconWrapper">
+							<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+							<N8nIcon
+								:class="$style.pointerIcon"
+								icon="mouse-pointer"
+								color="text-dark"
+								size="large"
 							/>
 						</div>
+						<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+						<N8nRadioButtons
+							size="small"
+							:model-value="'expression'"
+							:disabled="true"
+							:options="[
+								{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+								{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+							]"
+						/>
+					</div>
+					<div :class="$style.emptyText">
 						<N8nText color="text-base" size="medium" :bold="true">
-							{{ locale.baseText('nodeView.focusPanel.noParameters.title') }}
+							{{ emptyTitle }}
 						</N8nText>
 						<N8nText color="text-base" size="small">
-							{{ locale.baseText('nodeView.focusPanel.noParameters.subtitle') }}
+							{{ emptySubtitle }}
 						</N8nText>
 					</div>
 				</div>
@@ -616,35 +670,39 @@ function onOpenNdv() {
 		justify-content: center;
 		align-items: center;
 
+		.isNdvInFocusPanelEnabled & {
+			flex-direction: column-reverse;
+		}
+
 		.emptyText {
 			margin: 0 var(--spacing-xl);
 			display: flex;
 			flex-direction: column;
 			gap: var(--spacing-2xs);
+		}
 
-			.focusParameterWrapper {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				gap: var(--spacing-2xs);
-				margin-bottom: var(--spacing-m);
+		.focusParameterWrapper {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: var(--spacing-2xs);
+			margin-block: var(--spacing-m);
 
-				.iconWrapper {
-					position: relative;
-					display: inline-block;
-				}
+			.iconWrapper {
+				position: relative;
+				display: inline-block;
+			}
 
-				.pointerIcon {
-					position: absolute;
-					top: 100%;
-					left: 50%;
-					transform: translate(-20%, -30%);
-					pointer-events: none;
-				}
+			.pointerIcon {
+				position: absolute;
+				top: 100%;
+				left: 50%;
+				transform: translate(-20%, -30%);
+				pointer-events: none;
+			}
 
-				:global([class*='_disabled_']) {
-					cursor: default !important;
-				}
+			:global([class*='_disabled_']) {
+				cursor: default !important;
 			}
 		}
 	}
@@ -686,8 +744,8 @@ function onOpenNdv() {
 		}
 
 		.editorContainer {
-			height: 100%;
-			overflow-y: auto;
+			height: 0;
+			flex-grow: 1;
 
 			.editor {
 				display: flex;

@@ -3,27 +3,41 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
-import { getDataTableColumns, getDataTables, tableSearch } from './common/methods';
+import {
+	getConditionsForColumn,
+	getDataTableColumns,
+	getDataTables,
+	tableSearch,
+} from './common/methods';
 
 export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Data Table',
+		displayName: 'Data table',
 		name: 'dataTable',
 		icon: 'fa:table',
-		iconColor: 'orange',
-		group: ['transform'],
+		iconColor: 'orange-red',
+		group: ['input', 'transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
-		description: 'Save data across workflow executions in a table',
+		description: 'Permanently save data across workflow executions in a table',
 		defaults: {
-			name: 'Data Table',
+			name: 'Data table',
 		},
 		usableAsTool: true,
 		// We have custom logic in the frontend to ignore `hidden` for this
-		// particular node type if the data table module is enabled
+		// particular node type if the data-table module is enabled
 		hidden: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				message: 'The selected Data Table has no columns.',
+				displayCondition: '={{ $parameter.columns?.schema?.length === 0 }}',
+				whenToDisplay: 'always',
+				location: 'ndv',
+				type: 'warning',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -48,6 +62,7 @@ export class DataTable implements INodeType {
 		},
 		loadOptions: {
 			getDataTableColumns,
+			getConditionsForColumn,
 		},
 		resourceMapping: {
 			getDataTables,

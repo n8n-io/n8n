@@ -10,7 +10,7 @@ import type {
 } from '@n8n/db';
 import type {
 	AssignableGlobalRole,
-	CustomRole,
+	AssignableProjectRole,
 	GlobalRole,
 	ProjectRole,
 	Scope,
@@ -275,7 +275,7 @@ export declare namespace ActiveWorkflowRequest {
 
 export declare namespace ProjectRequest {
 	type GetMyProjectsResponse = Array<
-		Project & { role: ProjectRole | GlobalRole | CustomRole; scopes?: Scope[] }
+		Project & { role: ProjectRole | AssignableProjectRole | GlobalRole; scopes?: Scope[] }
 	>;
 
 	type ProjectRelationResponse = {
@@ -283,7 +283,7 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
-		role: ProjectRole | CustomRole;
+		role: ProjectRole | AssignableProjectRole;
 	};
 	type ProjectWithRelations = {
 		id: string;

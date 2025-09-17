@@ -17,7 +17,6 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
 	return {
@@ -48,7 +47,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 
 	if (isActiveNode) {
-		ndvStore.activeNodeName = node.name;
+		ndvStore.setActiveNodeName(node.name, 'other');
 	}
 
 	await useSettingsStore().getSettings();
@@ -68,12 +67,7 @@ describe('NodeDetailsView', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -173,7 +167,7 @@ describe('NodeDetailsView', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.setActiveNodeName(nodeName, 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 			await waitFor(() => expect(queryByTestId('ndv-modal')).toBeInTheDocument());

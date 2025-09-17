@@ -14,7 +14,6 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
-	ExecutionSummary,
 	IConnection,
 	INodeExecutionData,
 	INode,
@@ -317,26 +316,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('shouldReplaceInputDataWithPinData', () => {
-		it('should return true when no active workflow execution', () => {
-			workflowsStore.activeWorkflowExecution = null;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return true when active workflow execution mode is manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'manual' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(true);
-		});
-
-		it('should return false when active workflow execution mode is not manual', () => {
-			workflowsStore.activeWorkflowExecution = { mode: 'automatic' } as unknown as ExecutionSummary;
-
-			expect(workflowsStore.shouldReplaceInputDataWithPinData).toBe(false);
-		});
-	});
-
 	describe('getWorkflowResultDataByNodeName()', () => {
 		it('should return null when no workflow run data is present', () => {
 			workflowsStore.workflowExecutionData = null;
@@ -615,10 +594,81 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.pinData({ node, data });
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
+
+		it('should preserve binary data when pinning', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [
+				{
+					json: { test: 'data' },
+					binary: {
+						data: {
+							fileName: 'test.txt',
+							mimeType: 'text/plain',
+							data: 'dGVzdCBkYXRh',
+						},
+					},
+				},
+			] as unknown as INodeExecutionData[];
+
+			workflowsStore.pinData({ node, data });
+
+			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual([
+				{
+					json: { test: 'data' },
+					binary: {
+						data: {
+							fileName: 'test.txt',
+							mimeType: 'text/plain',
+							data: 'dGVzdCBkYXRh',
+						},
+					},
+				},
+			]);
+		});
+
+		it('should not update timestamp during restoration', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
+
+			// Set up existing pinned data with metadata
+			workflowsStore.workflow.pinData = { [node.name]: data };
+			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
+
+			workflowsStore.pinData({ node, data, isRestoration: true });
+
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
+		});
+
+		it('should clear timestamps during restoration', async () => {
+			const node = { name: 'TestNode' } as INodeUi;
+			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
+
+			// Set up existing metadata with timestamps
+			workflowsStore.nodeMetadata[node.name] = {
+				pristine: false,
+				pinnedDataLastUpdatedAt: 1000,
+				pinnedDataLastRemovedAt: 2000,
+			};
+
+			workflowsStore.pinData({ node, data, isRestoration: true });
+
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
+			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt).toBeUndefined();
+		});
 	});
 
 	describe('updateNodeExecutionData', () => {
-		const { successEvent, errorEvent, executionResponse } = generateMockExecutionEvents();
+		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
+		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
+		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
+
+		beforeEach(() => {
+			const events = generateMockExecutionEvents();
+			successEvent = events.successEvent;
+			errorEvent = events.errorEvent;
+			executionResponse = events.executionResponse;
+		});
+
 		it('should throw error if not initialized', () => {
 			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
 		});
@@ -1359,6 +1409,7 @@ function generateMockExecutionEvents() {
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',
 		nodeName: 'When clicking ‘Execute workflow’',
+		itemCount: 1,
 		data: {
 			hints: [],
 			startTime: 1727867966633,
@@ -1366,18 +1417,6 @@ function generateMockExecutionEvents() {
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
-			data: {
-				main: [
-					[
-						{
-							json: {},
-							pairedItem: {
-								item: 0,
-							},
-						},
-					],
-				],
-			},
 		},
 	};
 

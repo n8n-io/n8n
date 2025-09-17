@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	modalName: string;
@@ -20,6 +21,7 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 const dataStoreName = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -37,14 +39,18 @@ const onSubmit = async () => {
 			dataStoreName.value,
 			route.params.projectId as string,
 		);
+		telemetry.track('User created data table', {
+			data_table_id: newDataStore.id,
+			data_table_project_id: newDataStore.project?.id,
+		});
+		dataStoreName.value = '';
+		uiStore.closeModal(props.modalName);
 		void router.push({
 			name: DATA_STORE_DETAILS,
 			params: {
 				id: newDataStore.id,
 			},
 		});
-		dataStoreName.value = '';
-		uiStore.closeModal(props.modalName);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	}
@@ -63,11 +69,12 @@ const redirectToDataStores = () => {
 <template>
 	<Modal :name="props.modalName" :center="true" width="540px" :before-close="redirectToDataStores">
 		<template #header>
-			<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
+			<div :class="$style.header">
+				<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<p>{{ i18n.baseText('dataStore.add.description') }}</p>
 				<n8n-input-label
 					:label="i18n.baseText('dataStore.add.input.name.label')"
 					:required="true"
@@ -89,7 +96,7 @@ const redirectToDataStores = () => {
 			<div :class="$style.footer">
 				<n8n-button
 					:disabled="!dataStoreName"
-					:label="i18n.baseText('dataStore.add.button.label')"
+					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-store-button"
 					@click="onSubmit"
 				/>
@@ -105,10 +112,13 @@ const redirectToDataStores = () => {
 </template>
 
 <style module lang="scss">
+.header {
+	margin-bottom: var(--spacing-xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
 }
 
 .footer {
