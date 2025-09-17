@@ -35,17 +35,15 @@ const headers = ref<Array<TableHeader<Role>>>([
 	},
 	{
 		title: 'Assigned to',
-		key: 'test',
+		key: 'usedByUsers',
 		disableSort: true,
-		value: () => '-',
 		align: 'end',
 		width: 75,
 	},
 	{
 		title: 'Last edited',
-		key: 'test2',
+		key: 'updatedAt',
 		disableSort: true,
-		value: () => '-',
 	},
 	{
 		title: '',

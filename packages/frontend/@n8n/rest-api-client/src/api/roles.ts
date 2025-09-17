@@ -5,7 +5,7 @@ import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
 export const getRoles = async (context: IRestApiContext): Promise<AllRolesMap> => {
-	return await makeRestApiRequest(context, 'GET', '/roles');
+	return await makeRestApiRequest(context, 'GET', '/roles?withUsageCount=true');
 };
 
 export const createProjectRole = async (
@@ -19,7 +19,7 @@ export const getRoleBySlug = async (
 	context: IRestApiContext,
 	body: { slug: string },
 ): Promise<Role> => {
-	return await makeRestApiRequest(context, 'GET', `/roles/${body.slug}`);
+	return await makeRestApiRequest(context, 'GET', `/roles/${body.slug}?withUsageCount=true`);
 };
 
 export const updateProjectRole = async (
