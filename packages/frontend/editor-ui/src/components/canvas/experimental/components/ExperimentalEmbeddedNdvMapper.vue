@@ -8,7 +8,18 @@ import type { Workflow } from 'n8n-workflow';
 import { computed, useTemplateRef } from 'vue';
 import { N8nPopoverReka } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
-import { onClickOutside, useElementHover, useEventListener } from '@vueuse/core';
+import {
+	onClickOutside,
+	useElementHover,
+	type UseElementHoverOptions,
+	useEventListener,
+} from '@vueuse/core';
+
+type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
+
+const hoverOptions: UseElementHoverOptions = {
+	delayLeave: 200, // should be a positive value, otherwise user cannot click on the mapper
+};
 
 const {
 	node,
@@ -23,18 +34,18 @@ const {
 	reference: HTMLElement;
 }>();
 
-const state = ref<{ isOpen: true; hasInteracted: boolean } | { isOpen: false }>({ isOpen: false });
+const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
 const canvasStore = useCanvasStore();
 const contentElRef = computed(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
-const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, { delayLeave: 200 });
-const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, { delayLeave: 200 });
+const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
+const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, hoverOptions);
 const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
 
 function handleFocusIn() {
-	state.value = { isOpen: true, hasInteracted: true };
+	state.value = { isOpen: true, closeOnMouseLeave: false };
 }
 
 function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
@@ -48,17 +59,17 @@ function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
 }
 
 watch(isHovered, (hovered) => {
-	if (!visibleOnHover || (state.value.isOpen && state.value.hasInteracted)) {
+	if (!visibleOnHover || (state.value.isOpen && !state.value.closeOnMouseLeave)) {
 		return;
 	}
 
-	state.value = hovered ? { isOpen: true, hasInteracted: false } : { isOpen: false };
+	state.value = hovered ? { isOpen: true, closeOnMouseLeave: true } : { isOpen: false };
 });
 
 watch(
 	state,
 	(value) => {
-		canvasStore.setSuppressInteraction(value.isOpen);
+		canvasStore.setSuppressInteraction(value.isOpen && !value.closeOnMouseLeave);
 	},
 	{ immediate: true },
 );
