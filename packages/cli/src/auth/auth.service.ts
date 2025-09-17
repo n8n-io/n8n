@@ -83,7 +83,7 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
-
+			
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
@@ -292,7 +292,7 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
