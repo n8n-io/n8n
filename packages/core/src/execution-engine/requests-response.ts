@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import {
 	type IConnection,
 	type IExecuteData,
@@ -8,10 +9,11 @@ import {
 	type ITaskMetadata,
 	type EngineRequest,
 	type Workflow,
-	type LoggerProxy,
+	type EngineResponse,
 	UnexpectedError,
-	EngineResponse,
 } from 'n8n-workflow';
+
+import { ErrorReporter } from '../errors/error-reporter';
 
 type NodeToBeExecuted = {
 	inputConnectionData: IConnection;
@@ -35,7 +37,6 @@ export function handleRequest({
 	runIndex,
 	executionData,
 	runData,
-	logger,
 }: {
 	workflow: Workflow;
 	currentNode: INode;
@@ -43,7 +44,6 @@ export function handleRequest({
 	runIndex: number;
 	executionData: IExecuteData;
 	runData: IRunData;
-	logger: typeof LoggerProxy;
 }): {
 	nodesToBeExecuted: NodeToBeExecuted[];
 } {
@@ -114,16 +114,23 @@ export function handleRequest({
 	// 2. create metadata for current node
 	const parentNode = executionData.source?.main?.[0]?.previousNode;
 	if (!parentNode) {
-		logger.warn('Cannot find parent node for subnode execution - request will be ignored', {
-			executionNode: executionData.node.name,
-			sourceData: executionData.source,
-			workflowId: workflow.id,
-			requestActions: request.actions.map((a) => ({
-				nodeName: a.nodeName,
-				actionType: a.actionType,
-				id: a.id,
-			})),
-		});
+		Container.get(ErrorReporter).error(
+			new UnexpectedError(
+				'Cannot find parent node for subnode execution - request will be ignored',
+			),
+			{
+				extra: {
+					executionNode: executionData.node.name,
+					sourceData: executionData.source,
+					workflowId: workflow.id,
+					requestActions: request.actions.map((a) => ({
+						nodeName: a.nodeName,
+						actionType: a.actionType,
+						id: a.id,
+					})),
+				},
+			},
+		);
 
 		return { nodesToBeExecuted: [] };
 	}

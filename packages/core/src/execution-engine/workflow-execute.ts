@@ -1603,7 +1603,6 @@ export class WorkflowExecute {
 			runIndex,
 			executionData,
 			runData,
-			logger: Logger,
 		});
 
 		for (const nodeData of nodesToBeExecuted) {
