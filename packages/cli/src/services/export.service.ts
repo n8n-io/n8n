@@ -69,6 +69,10 @@ export class ExportService {
 			let currentFileEntityCount = 0;
 
 			do {
+				/*
+				 * use raw SQL query to avoid typeorm limitations,
+				 * typeorm repositories do not return joining table entries
+				 */
 				const pageEntities = await this.dataSource.query(
 					`SELECT ${columns} FROM ${tableName} LIMIT ${pageSize} OFFSET ${offset}`,
 				);
