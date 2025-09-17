@@ -3,6 +3,7 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
+// @ts-ignore n8n-local-rules/misplaced-n8n-typeorm-import
 import { type DataSource } from '@n8n/typeorm';
 
 @Service()
