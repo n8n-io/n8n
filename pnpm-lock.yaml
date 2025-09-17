@@ -206,7 +206,6 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   tmp: 0.2.4
-  gaxios: ^7.1.1
 
 patchedDependencies:
   '@lezer/highlight':
@@ -1045,7 +1044,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(f461b118585bdb288345da9017188aa6))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1072,7 +1071,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(83767eb68b6566cd47b181f7a2d8e1f2)
+        version: 0.3.50(1d46c3bb1c9ee92d26993485f871091b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1080,8 +1079,8 @@ importers:
         specifier: 0.2.17
         version: 0.2.17(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       '@langchain/google-vertexai':
-        specifier: 0.2.13
-        version: 0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
+        specifier: 0.2.18
+        version: 0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       '@langchain/groq':
         specifier: 0.2.3
         version: 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
@@ -1090,7 +1089,7 @@ importers:
         version: 0.2.1(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(zod@3.25.67)
       '@langchain/mongodb':
         specifier: ^0.1.0
-        version: 0.1.0(@aws-sdk/credential-providers@3.808.0)(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(gcp-metadata@5.3.0)(socks@2.8.3)
+        version: 0.1.0(@aws-sdk/credential-providers@3.808.0)(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       '@langchain/ollama':
         specifier: 0.2.3
         version: 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
@@ -1135,7 +1134,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3))(mssql@10.0.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))
+        version: 0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1195,7 +1194,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
+        version: 0.3.33(f461b118585bdb288345da9017188aa6)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1207,7 +1206,7 @@ importers:
         version: 2.1.35
       mongodb:
         specifier: 6.11.0
-        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
+        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -3002,7 +3001,7 @@ importers:
         version: 0.5.48
       mongodb:
         specifier: 6.11.0
-        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
+        version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mqtt:
         specifier: 5.7.2
         version: 5.7.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -5516,14 +5515,14 @@ packages:
     resolution: {integrity: sha512-dWPT1h9ObG1TK9uivFTk/pgBULZ6/tBmq8czGUjZjR+1xh9jB4tm/D5FY6o5FklXcEpnAI9peNq2x17Kl9wbMg==}
     engines: {node: '>=18'}
 
-  '@langchain/google-common@0.2.13':
-    resolution: {integrity: sha512-Wd254vAajKxK3bIYPmuFRrk90oN3YIDzwwiO+3ojYKoWP+EBzW3eg3B4f8ofvGXUkJPxEwp/u8ymSsVUElUGlw==}
+  '@langchain/google-common@0.2.18':
+    resolution: {integrity: sha512-HjWB6Bx4zj7KkiHnqRpx8YNaXdA97sKQMQ17keyWl7nQJlRauNyymm8QGeduKSEfECDr2nGzY8Y/SNY64X6cSA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.3.58 <0.4.0'
 
-  '@langchain/google-gauth@0.2.13':
-    resolution: {integrity: sha512-JAIMtdmN+6/5aPRz3XUCFQ8+4TP272V8QCLhcyZ9LhDlnmY5DJv+LhzjMk9L5XZx9sRnKRvthVWiAY0Xbs3qAg==}
+  '@langchain/google-gauth@0.2.18':
+    resolution: {integrity: sha512-xof4jBnPB0YI6OlFuETdbODoM05XBTJoC+qQKJ4qNOcWI7u760sRKm57cvG+jzjParojAxdCdrNEKV47wUpoKg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.3.58 <0.4.0'
@@ -5534,8 +5533,8 @@ packages:
     peerDependencies:
       '@langchain/core': '>=0.3.58 <0.4.0'
 
-  '@langchain/google-vertexai@0.2.13':
-    resolution: {integrity: sha512-Y97f0IBr4uWsyJTcDJROWXuu+qh4elSDLK1e6MD+mrxCx+UlgcXCReg4zvEFJzqpBKrfFt+lvXstJ6XTR6Zfyg==}
+  '@langchain/google-vertexai@0.2.18':
+    resolution: {integrity: sha512-oZsOp9Sx4rsFpHH5UiuObo5NYCAqhhmroL3f3pDZ06DB6hpfnNc6XNjdpbmt0AemP6PO/52UlKHeSYtnYlBzIQ==}
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.3.58 <0.4.0'
@@ -10631,6 +10630,14 @@ packages:
     resolution: {integrity: sha512-f9m+BEN5jkg6a0fZjleidjN51VE1X+mPFQ2DJ0uv1V39oCLCbsGe6yjbBnp7eK7z/+GAon99a3nHuqbuuthyPg==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
     deprecated: This package is no longer supported.
+
+  gaxios@5.1.3:
+    resolution: {integrity: sha512-95hVgBRgEIRQQQHIbnxBXeHbW4TqFk4ZDJW7wmVtvYar72FdhRIo1UGOLS2eRAKCPEdPBWu+M7+A33D9CdX9rA==}
+    engines: {node: '>=12'}
+
+  gaxios@6.7.1:
+    resolution: {integrity: sha512-LDODD4TMYx7XXdpwxAVRAIAuB0bzv0s+ywFonY46k126qzQHT9ygyoa9tncmOiQmmDrik65UYsEkv3lbfqQ3yQ==}
+    engines: {node: '>=14'}
 
   gaxios@7.1.1:
     resolution: {integrity: sha512-Odju3uBUJyVCkW64nLD4wKLhbh93bh6vIg/ZIXkWiLPBrdgtc65+tls/qml+un3pr6JqYVFDZbbmLDQT68rTOQ==}
@@ -18807,7 +18814,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(f461b118585bdb288345da9017188aa6))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -18816,7 +18823,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
+      langchain: 0.3.33(f461b118585bdb288345da9017188aa6)
     transitivePeerDependencies:
       - encoding
 
@@ -18865,8 +18872,8 @@ snapshots:
       async-retry: 1.3.3
       duplexify: 4.1.3
       fast-xml-parser: 4.4.1
-      gaxios: 7.1.1
-      google-auth-library: 9.10.0
+      gaxios: 6.7.1(encoding@0.1.13)
+      google-auth-library: 9.10.0(encoding@0.1.13)
       html-entities: 2.5.2
       mime: 3.0.0
       p-limit: 3.1.0
@@ -19369,7 +19376,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(83767eb68b6566cd47b181f7a2d8e1f2)':
+  '@langchain/community@0.3.50(1d46c3bb1c9ee92d26993485f871091b)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -19381,7 +19388,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
+      langchain: 0.3.33(f461b118585bdb288345da9017188aa6)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -19395,7 +19402,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(f461b118585bdb288345da9017188aa6))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -19424,7 +19431,7 @@ snapshots:
       jsonwebtoken: 9.0.2
       lodash: 4.17.21
       mammoth: 1.7.2
-      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mysql2: 3.15.0
       pdf-parse: 1.1.1
       pg: 8.12.0
@@ -19473,15 +19480,15 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - openai
 
-  '@langchain/google-common@0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
+  '@langchain/google-common@0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       uuid: 10.0.0
 
-  '@langchain/google-gauth@0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
+  '@langchain/google-gauth@0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      '@langchain/google-common': 0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
+      '@langchain/google-common': 0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       google-auth-library: 10.1.0
     transitivePeerDependencies:
       - supports-color
@@ -19492,10 +19499,10 @@ snapshots:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       uuid: 11.1.0
 
-  '@langchain/google-vertexai@0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
+  '@langchain/google-vertexai@0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))':
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      '@langchain/google-gauth': 0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
+      '@langchain/google-gauth': 0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
     transitivePeerDependencies:
       - supports-color
 
@@ -19542,10 +19549,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@langchain/mongodb@0.1.0(@aws-sdk/credential-providers@3.808.0)(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(gcp-metadata@5.3.0)(socks@2.8.3)':
+  '@langchain/mongodb@0.1.0(@aws-sdk/credential-providers@3.808.0)(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)':
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
@@ -19762,7 +19769,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3))(mssql@10.0.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -19784,7 +19791,7 @@ snapshots:
     optionalDependencies:
       '@sentry/node': 9.42.1
       ioredis: 5.3.2
-      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mssql: 10.0.2
       mysql2: 3.15.0
       pg: 8.12.0
@@ -25733,6 +25740,28 @@ snapshots:
       wide-align: 1.1.5
     optional: true
 
+  gaxios@5.1.3(encoding@0.1.13):
+    dependencies:
+      extend: 3.0.2
+      https-proxy-agent: 5.0.1
+      is-stream: 2.0.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    optional: true
+
+  gaxios@6.7.1(encoding@0.1.13):
+    dependencies:
+      extend: 3.0.2
+      https-proxy-agent: 7.0.6
+      is-stream: 2.0.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+      uuid: 9.0.1
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
   gaxios@7.1.1:
     dependencies:
       extend: 3.0.2
@@ -25741,19 +25770,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  gcp-metadata@5.3.0:
+  gcp-metadata@5.3.0(encoding@0.1.13):
     dependencies:
-      gaxios: 7.1.1
+      gaxios: 5.1.3(encoding@0.1.13)
       json-bigint: 1.0.0
     transitivePeerDependencies:
+      - encoding
       - supports-color
     optional: true
 
-  gcp-metadata@6.1.0:
+  gcp-metadata@6.1.0(encoding@0.1.13):
     dependencies:
-      gaxios: 7.1.1
+      gaxios: 6.7.1(encoding@0.1.13)
       json-bigint: 1.0.0
     transitivePeerDependencies:
+      - encoding
       - supports-color
 
   gcp-metadata@7.0.0:
@@ -25971,15 +26002,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  google-auth-library@9.10.0:
+  google-auth-library@9.10.0(encoding@0.1.13):
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
-      gaxios: 7.1.1
-      gcp-metadata: 6.1.0
-      gtoken: 7.1.0
+      gaxios: 6.7.1(encoding@0.1.13)
+      gcp-metadata: 6.1.0(encoding@0.1.13)
+      gtoken: 7.1.0(encoding@0.1.13)
       jws: 4.0.0
     transitivePeerDependencies:
+      - encoding
       - supports-color
 
   google-gax@4.6.1(encoding@0.1.13):
@@ -25989,7 +26021,7 @@ snapshots:
       '@types/long': 4.0.2
       abort-controller: 3.0.0
       duplexify: 4.1.3
-      google-auth-library: 9.10.0
+      google-auth-library: 9.10.0(encoding@0.1.13)
       node-fetch: 2.7.0(encoding@0.1.13)
       object-hash: 3.0.0
       proto3-json-serializer: 2.0.2
@@ -26030,11 +26062,12 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  gtoken@7.1.0:
+  gtoken@7.1.0(encoding@0.1.13):
     dependencies:
-      gaxios: 7.1.1
+      gaxios: 6.7.1(encoding@0.1.13)
       jws: 4.0.0
     transitivePeerDependencies:
+      - encoding
       - supports-color
 
   gtoken@8.0.0:
@@ -27432,7 +27465,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2):
+  langchain@0.3.33(f461b118585bdb288345da9017188aa6):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.7(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -27451,7 +27484,7 @@ snapshots:
       '@langchain/aws': 0.1.11(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       '@langchain/cohere': 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/google-genai': 0.2.17(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
-      '@langchain/google-vertexai': 0.2.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
+      '@langchain/google-vertexai': 0.2.18(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       '@langchain/groq': 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
@@ -28466,14 +28499,14 @@ snapshots:
       '@types/whatwg-url': 11.0.4
       whatwg-url: 13.0.0
 
-  mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3):
+  mongodb@6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3):
     dependencies:
       '@mongodb-js/saslprep': 1.1.9
       bson: 6.10.0
       mongodb-connection-string-url: 3.0.0
     optionalDependencies:
       '@aws-sdk/credential-providers': 3.808.0
-      gcp-metadata: 5.3.0
+      gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.3
 
   mqtt-packet@9.0.0:
