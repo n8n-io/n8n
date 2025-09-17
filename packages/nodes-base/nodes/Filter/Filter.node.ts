@@ -12,7 +12,7 @@ export class Filter extends VersionedNodeType {
 			icon: 'fa:filter',
 			iconColor: 'light-blue',
 			group: ['transform'],
-			description: 'Remove items matching a condition',
+			description: 'Keep only items matching a condition',
 			defaultVersion: 2.2,
 		};
 
