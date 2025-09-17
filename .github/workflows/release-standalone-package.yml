@@ -10,7 +10,6 @@ on:
         options:
           - '@n8n/node-cli'
           - '@n8n/create-node'
-          - '@n8n/chat'
           - '@n8n/scan-community-package'
 
 env:
