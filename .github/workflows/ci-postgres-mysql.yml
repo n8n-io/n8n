@@ -66,6 +66,7 @@ jobs:
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
+      NODE_OPTIONS: '--max-old-space-size=7168'
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -94,6 +95,7 @@ jobs:
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
+      NODE_OPTIONS: '--max-old-space-size=7168'
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
