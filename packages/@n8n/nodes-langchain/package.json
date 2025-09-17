@@ -145,6 +145,7 @@
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js"
     ]
@@ -166,6 +167,7 @@
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
+    "@chroma-core/default-embed": "0.1.8",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "2.6.0",
@@ -206,6 +208,7 @@
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "basic-auth": "catalog:",
     "cheerio": "1.0.0",
+    "chromadb": "^3.0.15",
     "cohere-ai": "7.14.0",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
