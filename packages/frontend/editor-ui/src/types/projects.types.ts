@@ -13,7 +13,13 @@ export type ProjectType = ProjectTypeKeys[keyof ProjectTypeKeys];
 export type ProjectRelation = Pick<IUserResponse, 'id' | 'email' | 'firstName' | 'lastName'> & {
 	role: string;
 };
-export type ProjectRelationPayload = { userId: string; role: ProjectRole };
+export type ProjectMemberData = {
+	id: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+	role: ProjectRole;
+};
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
