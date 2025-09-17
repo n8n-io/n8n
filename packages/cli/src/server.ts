@@ -321,20 +321,20 @@ export class Server extends AbstractServer {
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		// Protect type files with authentication regardless of UI availability
-		// const authService = Container.get(AuthService);
-		// const protectedTypeFiles = [`${basePath}/types/nodes.json`, `${basePath}/types/credentials.json`];
-		// protectedTypeFiles.forEach((path) => {
-		// 	this.app.get(
-		// 		path,
-		// 		authService.createAuthMiddleware(true),
-		// 		async (_, res: express.Response) => {
-		// 			res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-		// 			res.sendFile(path.substring(basePath.length), {
-		// 				root: staticCacheDir,
-		// 			});
-		// 		},
-		// 	);
-		// });
+		const authService = Container.get(AuthService);
+		const protectedTypeFiles = [`${basePath}/types/nodes.json`, `${basePath}/types/credentials.json`];
+		protectedTypeFiles.forEach((path) => {
+			this.app.get(
+				path,
+				authService.createAuthMiddleware(true),
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(path.substring(basePath.length), {
+						root: staticCacheDir,
+					});
+				},
+			);
+		});
 
 		if (frontendService) {
 			this.app.use(
