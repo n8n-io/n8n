@@ -23,7 +23,7 @@ interface Props {
 }
 
 const BINARY_DATA_TOOLTIP =
-	'Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ ("Target Node").item.binary.data }}';
+	'Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $("Target Node").item.binary.data }}';
 
 const props = defineProps<Props>();
 
