@@ -118,13 +118,13 @@ export function runMockWorkflowExecution({
 			data: pick(nodeRunData, ['startTime', 'executionIndex', 'source', 'hints']),
 		});
 		const { data: _, ...taskData } = nodeRunData;
-		const itemCount: Record<string, number[]> = {};
+		const itemCountByConnectionType: Record<string, number[]> = {};
 		for (const connectionType of Object.keys(nodeRunData.data ?? {})) {
 			const connectionData = nodeRunData.data?.[connectionType];
 			if (Array.isArray(connectionData)) {
-				itemCount[connectionType] = connectionData.map((d) => (d ? d.length : 0));
+				itemCountByConnectionType[connectionType] = connectionData.map((d) => (d ? d.length : 0));
 			} else {
-				itemCount[connectionType] = [0];
+				itemCountByConnectionType[connectionType] = [0];
 			}
 		}
 
@@ -132,13 +132,13 @@ export function runMockWorkflowExecution({
 			executionId,
 			nodeName,
 			data: taskData,
-			itemCount,
+			itemCountByConnectionType,
 		});
 		cy.push('nodeExecuteAfterData', {
 			executionId,
 			nodeName,
 			data: nodeRunData,
-			itemCount,
+			itemCountByConnectionType,
 		});
 	});
 
