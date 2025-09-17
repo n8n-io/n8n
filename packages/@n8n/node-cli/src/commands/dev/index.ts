@@ -85,7 +85,6 @@ export default class Dev extends Command {
 								N8N_RUNNERS_ENABLED: 'true',
 								DB_SQLITE_POOL_SIZE: '10',
 								N8N_USER_FOLDER: n8nUserFolder,
-								N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'false',
 							},
 							name: 'n8n',
 							color: picocolors.green,
@@ -110,7 +109,7 @@ export default class Dev extends Command {
 				npxN8nSpinner.stop('Started n8n dev server');
 			} catch (error) {
 				npxN8nSpinner.stop('Failed to start n8n dev server');
-				onCancel(error instanceof Error ? error.message : 'Unknown error occurred');
+				onCancel(error instanceof Error ? error.message : 'Unknown error occurred', 1);
 				return;
 			}
 		}

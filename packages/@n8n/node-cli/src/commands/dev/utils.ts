@@ -44,11 +44,15 @@ export function commands() {
 		};
 
 		childProcesses.forEach((child) => {
-			child.once('exit', onChildExit);
-			child.kill(signal);
+			if (!child.killed) {
+				child.once('exit', onChildExit);
+				killChild(child, signal);
 
-			// Escalate to SIGKILL after 5 seconds
-			setTimeout(() => killChild(child, 'SIGKILL'), 5000);
+				// Escalate to SIGKILL after 5 seconds
+				setTimeout(() => killChild(child, 'SIGKILL'), 5000);
+			} else {
+				onChildExit(); // Process already dead
+			}
 		});
 	};
 
