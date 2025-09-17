@@ -1,9 +1,14 @@
-import type { GenerateContentConfig, GenerateContentParameters } from '@google/genai';
+import type {
+	GenerateContentConfig,
+	GenerationConfig,
+	GenerateContentParameters,
+} from '@google/genai';
 import type { IDataObject } from 'n8n-workflow';
+export { Modality } from '@google/genai';
 
 /* type created based on: https://ai.google.dev/api/generate-content#generationconfig */
 export type GenerateContentGenerationConfig = Pick<
-	GenerateContentConfig,
+	GenerationConfig,
 	| 'stopSequences'
 	| 'responseMimeType'
 	| 'responseSchema'

@@ -1,10 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
-import type {
-	GenerateContentRequest,
-	GenerateContentResponse,
-	ImagenResponse,
+import {
+	type GenerateContentRequest,
+	type GenerateContentResponse,
+	type ImagenResponse,
+	Modality,
 } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
@@ -71,7 +72,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (model.includes('gemini')) {
 		const generationConfig = {
-			responseModalities: ['IMAGE', 'TEXT'],
+			responseModalities: [Modality.IMAGE, Modality.TEXT],
 		};
 		const body: GenerateContentRequest = {
 			contents: [
