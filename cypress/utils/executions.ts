@@ -118,7 +118,16 @@ export function runMockWorkflowExecution({
 			data: pick(nodeRunData, ['startTime', 'executionIndex', 'source', 'hints']),
 		});
 		const { data: _, ...taskData } = nodeRunData;
-		const itemCount = nodeRunData.data?.main?.[0]?.length ?? 0;
+		const itemCount: Record<string, number[]> = {};
+		for (const connectionType of Object.keys(nodeRunData.data ?? {})) {
+			const connectionData = nodeRunData.data?.[connectionType];
+			if (Array.isArray(connectionData)) {
+				itemCount[connectionType] = connectionData.map((d) => (d ? d.length : 0));
+			} else {
+				itemCount[connectionType] = [0];
+			}
+		}
+
 		cy.push('nodeExecuteAfter', {
 			executionId,
 			nodeName,
