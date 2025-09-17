@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	ITaskData,
 	ITaskStartedData,
+	NodeConnectionType,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -62,7 +63,7 @@ export type NodeExecuteAfter = {
 		executionId: string;
 		nodeName: string;
 		data: Omit<ITaskData, 'data'>;
-		itemCount: number;
+		itemCount: Partial<Record<NodeConnectionType, number[]>>;
 	};
 };
 
@@ -81,7 +82,7 @@ export type NodeExecuteAfterData = {
 		 * Later we fetch the entire execution data and fill in any placeholders.
 		 */
 		data: ITaskData;
-		itemCount: number;
+		itemCount: Partial<Record<NodeConnectionType, number[]>>;
 	};
 };
 
