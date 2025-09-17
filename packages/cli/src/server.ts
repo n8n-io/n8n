@@ -328,14 +328,14 @@ export class Server extends AbstractServer {
 
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
-		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		const protectedTypeFiles = [`${basePath}/types/nodes.json`, `${basePath}/types/credentials.json`];
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
 				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(1), {
+					res.sendFile(path.substring(basePath.length), {
 						root: staticCacheDir,
 					});
 				},
