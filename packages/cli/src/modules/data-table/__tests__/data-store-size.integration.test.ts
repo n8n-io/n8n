@@ -1,11 +1,10 @@
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createUser } from '@test-integration/db/users';
 
-import { ProjectService } from '../../../services/project.service.ee';
 import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
@@ -32,12 +31,10 @@ afterAll(async () => {
 describe('Data Store Size Tests', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreRepository: DataStoreRepository;
-	let projectService: ProjectService;
 
 	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
 		dataStoreRepository = Container.get(DataStoreRepository);
-		projectService = Container.get(ProjectService);
 	});
 
 	let project1: Project;
@@ -143,6 +140,9 @@ describe('Data Store Size Tests', () => {
 			project2 = await createTeamProject();
 
 			owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await linkUserToProject(owner, project1, 'project:admin');
+			await linkUserToProject(owner, project2, 'project:admin');
+
 			regularUser = await createUser({
 				role: GLOBAL_MEMBER_ROLE,
 			});
@@ -199,6 +199,8 @@ describe('Data Store Size Tests', () => {
 
 		it('should return only accessible project data tables for regular user', async () => {
 			// ARRANGE
+			await linkUserToProject(regularUser, project1, 'project:viewer');
+
 			const dataStore1 = await dataStoreService.createDataStore(project1.id, {
 				name: 'accessible-dataStore',
 				columns: [{ name: 'data', type: 'string' }],
@@ -211,10 +213,6 @@ describe('Data Store Size Tests', () => {
 
 			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'accessible' }]);
 			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'inaccessible' }]);
-
-			const mockGetAccessibleProjects = jest
-				.spyOn(projectService, 'getAccessibleProjects')
-				.mockResolvedValue([project1]);
 
 			// ACT
 			const result = await dataStoreService.getDataTablesSize(regularUser);
@@ -231,9 +229,6 @@ describe('Data Store Size Tests', () => {
 
 			expect(result.dataTables[dataStore1.id].name).toBe('accessible-dataStore');
 			expect(result.dataTables[dataStore1.id].projectId).toBe(project1.id);
-
-			// Cleanup
-			mockGetAccessibleProjects.mockRestore();
 		});
 
 		it('should return empty dataTables but full totalBytes when user has no project access', async () => {
@@ -252,10 +247,6 @@ describe('Data Store Size Tests', () => {
 			await dataStoreService.insertRows(dataStore1.id, project1.id, [{ data: 'test1' }]);
 			await dataStoreService.insertRows(dataStore2.id, project2.id, [{ data: 'test2' }]);
 
-			const mockGetAccessibleProjects = jest
-				.spyOn(projectService, 'getAccessibleProjects')
-				.mockResolvedValue([]);
-
 			// ACT
 			const result = await dataStoreService.getDataTablesSize(regularUser);
 
@@ -265,9 +256,6 @@ describe('Data Store Size Tests', () => {
 			expect(result.sizeState).toBe('ok');
 			expect(result.dataTables).toBeDefined();
 			expect(Object.keys(result.dataTables)).toHaveLength(0); // No accessible tables
-
-			// Cleanup
-			mockGetAccessibleProjects.mockRestore();
 		});
 
 		it('should return empty result when no data tables exist', async () => {
@@ -307,6 +295,9 @@ describe('Data Store Size Tests', () => {
 
 		beforeEach(async () => {
 			owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await linkUserToProject(owner, project1, 'project:admin');
+
+			// user with no access to project1
 			regularUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 		});
 
@@ -319,18 +310,15 @@ describe('Data Store Size Tests', () => {
 
 			await dataStoreService.insertRows(dataStore.id, project1.id, [{ data: 'test' }]);
 
-			const mockGetAccessibleProjects = jest.spyOn(projectService, 'getAccessibleProjects');
 			const mockFindDataTablesSize = jest.spyOn(dataStoreRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			// First call - regular user sees no data tables
-			mockGetAccessibleProjects.mockResolvedValueOnce([]);
 			const userResult = await dataStoreService.getDataTablesSize(regularUser);
 			expect(Object.keys(userResult.dataTables)).toHaveLength(0);
 			expect(userResult.sizeBytes).toBeGreaterThan(0); // Still gets instance total
 
 			// Second call - owner sees the data table (different cache)
-			mockGetAccessibleProjects.mockResolvedValueOnce([project1]);
 			const ownerResult = await dataStoreService.getDataTablesSize(owner);
 			expect(Object.keys(ownerResult.dataTables)).toHaveLength(1);
 			expect(ownerResult.dataTables[dataStore.id]).toBeDefined();
@@ -339,7 +327,6 @@ describe('Data Store Size Tests', () => {
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
 
 			// Cleanup
-			mockGetAccessibleProjects.mockRestore();
 			mockFindDataTablesSize.mockRestore();
 		});
 
