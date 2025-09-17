@@ -126,21 +126,21 @@ const NULL_FILTER_OPTION = {
 
 const NOT_NULL_FILTER_OPTION = {
 	displayKey: 'notNull',
-	displayName: 'Is Not Null',
+	displayName: 'Is not Null',
 	predicate: () => true,
 	numberOfInputs: 0,
 };
 
 const IS_EMPTY_FILTER_OPTION = {
 	displayKey: 'isEmpty',
-	displayName: 'Is Empty',
+	displayName: 'Is empty',
 	predicate: () => true,
 	numberOfInputs: 0,
 };
 
 const IS_NOT_EMPTY_FILTER_OPTION = {
 	displayKey: 'notEmpty',
-	displayName: 'Is Not Empty',
+	displayName: 'Is not empty',
 	predicate: () => true,
 	numberOfInputs: 0,
 };
