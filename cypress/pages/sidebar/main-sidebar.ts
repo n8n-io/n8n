@@ -25,6 +25,10 @@ export class MainSidebar extends BasePage {
 	};
 
 	actions = {
+		expandSidebar: () => {
+			cy.get('#collapse-change-button svg[data-icon="chevron-right"]').should('be.visible');
+			cy.get('#collapse-change-button').click();
+		},
 		goToSettings: () => {
 			this.getters.userMenu().click();
 			cy.getByTestId('user-menu-item-settings').should('be.visible').click();
@@ -43,6 +47,7 @@ export class MainSidebar extends BasePage {
 		signout: () => {
 			const workflowsPage = new WorkflowsPage();
 			cy.visit(workflowsPage.url);
+			this.actions.expandSidebar();
 			this.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 			cy.wrap(Cypress.session.clearAllSavedSessions());

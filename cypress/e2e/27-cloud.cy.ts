@@ -41,6 +41,7 @@ describe('Cloud', () => {
 		cy.wait('@getPlanData');
 		cy.wait('@projects');
 		cy.wait('@roles');
+		mainSidebar.actions.expandSidebar();
 	}
 
 	describe('BannerStack', () => {

@@ -40,6 +40,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
+		mainSidebar.actions.expandSidebar();
 		mainSidebar.actions.goToSettings();
 		settingsSidebar.getters.users().should('be.visible');
 

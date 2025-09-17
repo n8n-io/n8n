@@ -50,6 +50,7 @@ export class SettingsUsersPage extends BasePage {
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
 			cy.signin({ email, password });
 			workflowPage.actions.visit();
+			mainSidebar.actions.expandSidebar();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
 				settingsSidebar.getters.users().click();
