@@ -942,7 +942,7 @@ onBeforeUnmount(() => {
 }
 
 .timeout-input {
-	margin-left: 5px;
+	margin-left: var(--spacing-3xs);
 }
 
 .time-saved {
@@ -951,6 +951,8 @@ onBeforeUnmount(() => {
 
 	:global(.el-input) {
 		width: 64px;
+	:global(.el-input) {
+		width: var(--spacing-3xl);
 	}
 
 	span {

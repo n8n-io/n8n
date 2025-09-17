@@ -81,7 +81,9 @@ jobs:
           key: ${{ env.BUILD_CACHE_KEY }}
 
       - name: Dry-run publishing
-        run: pnpm publish -r --no-git-checks --dry-run
+        run: |
+          pnpm --filter n8n publish --no-git-checks --dry-run
+          pnpm publish -r --filter '!n8n' --no-git-checks --dry-run
 
       - name: Pre publishing changes
         run: |
@@ -91,8 +93,11 @@ jobs:
           cp README.md packages/cli/README.md
           sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
 
-      - name: Publish to NPM
-        run: pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+      - name: Publish n8n to NPM with rc tag
+        run: pnpm --filter n8n publish --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+
+      - name: Publish other packages to NPM with latest tag
+        run: pnpm publish -r --filter '!n8n' --publish-branch ${{github.event.pull_request.base.ref}} --access public --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc

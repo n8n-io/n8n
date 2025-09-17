@@ -1197,6 +1197,7 @@
 	"ndv.output.branch": "Branch",
 	"ndv.output.executing": "Executing node...",
 	"ndv.output.items": "{count} item | {count} items",
+	"ndv.output.itemsTotal": "{count} item total | {count} items total",
 	"ndv.output.andSubExecutions": ", {count} sub-execution | , {count} sub-executions",
 	"ndv.output.noOutputData.message": "n8n stops executing the workflow when a node has no output data. You can change this default behaviour via",
 	"ndv.output.noOutputData.message.settings": "Settings",
