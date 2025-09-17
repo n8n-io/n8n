@@ -170,7 +170,8 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).toHaveBeenCalled();
 	});
 
-	// TODO: check if necessary
+	// TODO: check if still relevant before merging PR
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it.skip('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);

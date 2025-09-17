@@ -492,6 +492,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 			} as unknown as IRunData;
+			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockRejectedValue({});
 
 			// ACT
 			await runWorkflow({ destinationNode: destinationNodeName });
