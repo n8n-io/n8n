@@ -26,6 +26,9 @@ ruleTester.run('no-restricted-globals', NoRestrictedGlobalsRule, {
 		{
 			code: 'function globalThis() { return "allowed"; }',
 		},
+		{
+			code: 'const helper = require("./helper");',
+		},
 	],
 	invalid: [
 		{
@@ -72,16 +75,6 @@ const fn = () => {
 			name: 'SECURITY: __filename usage',
 			code: 'console.log(__filename);',
 			errors: [{ messageId: 'restrictedGlobal', data: { name: '__filename' } }],
-		},
-		{
-			name: 'SECURITY: Buffer usage',
-			code: 'const buf = Buffer.from("data");',
-			errors: [{ messageId: 'restrictedGlobal', data: { name: 'Buffer' } }],
-		},
-		{
-			name: 'SECURITY: require usage',
-			code: 'const module = require("some-module");',
-			errors: [{ messageId: 'restrictedGlobal', data: { name: 'require' } }],
 		},
 		{
 			name: 'SECURITY: globalThis usage',

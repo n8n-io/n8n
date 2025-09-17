@@ -11,8 +11,6 @@ import glob from 'fast-glob';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
-import plugin from './eslint-plugin.mjs';
-
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;

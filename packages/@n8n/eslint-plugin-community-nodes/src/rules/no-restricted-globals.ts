@@ -12,8 +12,6 @@ const restrictedGlobals = [
 	'clearImmediate',
 	'__dirname',
 	'__filename',
-	'Buffer',
-	'require',
 ];
 
 export const NoRestrictedGlobalsRule = ESLintUtils.RuleCreator.withoutDocs({
