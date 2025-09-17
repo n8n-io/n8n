@@ -20,7 +20,8 @@ export const createSearchWorkflowsTool = (
 	return {
 		name: 'search_workflows',
 		config: {
-			description: 'Search for workflows with optional filters',
+			description:
+				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 		},
 		handler: async ({ limit = 500, active, name, projectId }) => {
@@ -71,11 +72,7 @@ export const createSearchWorkflowsTool = (
 					{
 						type: 'text',
 						text: JSON.stringify({
-							data: {
-								notice:
-									'Workflow data here is not complete. To get more information about a specific workflow, use the `get_workflow_info` tool with the workflow ID.',
-								results: formattedWorkflows,
-							},
+							data: formattedWorkflows,
 							count,
 						}),
 					},

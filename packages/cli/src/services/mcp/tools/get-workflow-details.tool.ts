@@ -21,7 +21,7 @@ export const createWorkflowDetailsTool = (
 	return {
 		name: 'get_workflow_details',
 		config: {
-			description: 'Get information about a specific workflow including trigger details',
+			description: 'Get detailed information about a specific workflow including trigger details',
 			inputSchema,
 		},
 		handler: async ({ workflowId }) => {
