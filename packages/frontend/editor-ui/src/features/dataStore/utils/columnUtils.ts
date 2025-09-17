@@ -145,6 +145,13 @@ const IS_NOT_EMPTY_FILTER_OPTION = {
 	numberOfInputs: 0,
 };
 
+const BETWEEN_FILTER_OPTION = {
+	displayKey: 'between',
+	displayName: 'Between',
+	predicate: () => true,
+	numberOfInputs: 2,
+};
+
 export const STRING_COLUMN_FILTER_OPTIONS = [
 	'equals',
 	'notEqual',
@@ -174,6 +181,7 @@ export const NUMBER_COLUMN_FILTER_OPTIONS = [
 	'lessThanOrEqual',
 	'greaterThan',
 	'greaterThanOrEqual',
+	BETWEEN_FILTER_OPTION,
 	NULL_FILTER_OPTION,
 	NOT_NULL_FILTER_OPTION,
 ];

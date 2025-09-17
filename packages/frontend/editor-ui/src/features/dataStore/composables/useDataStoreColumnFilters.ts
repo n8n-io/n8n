@@ -65,7 +65,7 @@ export const useDataStoreColumnFilters = ({
 					allFilters.push(processTextFilter(filter, colField));
 					break;
 				case 'number':
-					allFilters.push(processNumberFilter(filter, colField));
+					allFilters.push(...processNumberFilter(filter, colField));
 					break;
 				case 'date':
 					allFilters.push(...processDateFilter(filter, colField));

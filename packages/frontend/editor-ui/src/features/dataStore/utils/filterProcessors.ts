@@ -36,18 +36,35 @@ export function processTextFilter(
 export function processNumberFilter(
 	filter: FilterModel[string],
 	colField: string,
-): BackendFilterRecord {
+): BackendFilterRecord[] {
 	let value: string | number | boolean | Date | null = filter.filter ?? null;
 
 	if (filter.type === 'null' || filter.type === 'notNull') {
 		value = null;
 	}
 
-	return {
-		columnName: colField,
-		condition: mapNumberDateTypeToBackend(filter.type),
-		value,
-	};
+	if (filter.type === 'between') {
+		return [
+			{
+				columnName: colField,
+				condition: 'gte',
+				value: filter.filter ?? null,
+			},
+			{
+				columnName: colField,
+				condition: 'lte',
+				value: filter.filterTo ?? null,
+			},
+		];
+	}
+
+	return [
+		{
+			columnName: colField,
+			condition: mapNumberDateTypeToBackend(filter.type),
+			value,
+		},
+	];
 }
 
 export function processDateFilter(

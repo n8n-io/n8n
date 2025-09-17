@@ -132,54 +132,77 @@ describe('filterProcessors', () => {
 	});
 
 	describe('processNumberFilter', () => {
-		const createNumberFilter = (type: FilterOperation, filter?: string): FilterModel[string] => ({
+		const createNumberFilter = (
+			type: FilterOperation,
+			filter?: string,
+			filterTo?: string,
+		): FilterModel[string] => ({
 			filterType: 'number',
 			type,
 			filter,
+			filterTo,
 		});
 
 		it('should process equals filter', () => {
 			const filter = createNumberFilter('equals', '42');
 			const result = processNumberFilter(filter, 'columnName');
 
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: '42',
-			});
+			expect(result).toEqual([
+				{
+					columnName: 'columnName',
+					condition: 'eq',
+					value: '42',
+				},
+			]);
 		});
 
 		it('should process greaterThan filter', () => {
 			const filter = createNumberFilter('greaterThan', '100');
 			const result = processNumberFilter(filter, 'columnName');
 
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'gt',
-				value: '100',
-			});
+			expect(result).toEqual([
+				{
+					columnName: 'columnName',
+					condition: 'gt',
+					value: '100',
+				},
+			]);
 		});
 
 		it('should process null filter with null value', () => {
 			const filter = createNumberFilter('null');
 			const result = processNumberFilter(filter, 'columnName');
 
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: null,
-			});
+			expect(result).toEqual([
+				{
+					columnName: 'columnName',
+					condition: 'eq',
+					value: null,
+				},
+			]);
 		});
 
 		it('should process notNull filter with null value', () => {
 			const filter = createNumberFilter('notNull');
 			const result = processNumberFilter(filter, 'columnName');
 
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'neq',
-				value: null,
-			});
+			expect(result).toEqual([
+				{
+					columnName: 'columnName',
+					condition: 'neq',
+					value: null,
+				},
+			]);
+		});
+
+		it('should process between filter', () => {
+			const filter = createNumberFilter('between', '100', '200');
+			const result = processNumberFilter(filter, 'columnName');
+
+			expect(result).toEqual([
+				{ columnName: 'columnName', condition: 'gte', value: '100' },
+				{ columnName: 'columnName', condition: 'lte', value: '200' },
+			]);
 		});
 	});
 
