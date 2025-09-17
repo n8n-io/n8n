@@ -1,7 +1,7 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ExecuteContext, isRequest } from 'n8n-core';
+import { ExecuteContext, isEngineRequest } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	INodeExecutionData,
@@ -132,7 +132,7 @@ export class ChatExecutionManager {
 
 		const result = await this.runNode(execution, message);
 
-		if (isRequest(result)) {
+		if (isEngineRequest(result)) {
 			throw new UnexpectedError("Can't handle actions inside the chat trigger.");
 		}
 

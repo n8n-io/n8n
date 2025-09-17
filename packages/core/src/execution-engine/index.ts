@@ -24,4 +24,4 @@ export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
-export { isEngineRequest as isRequest } from './requests-response';
+export { isEngineRequest } from './requests-response';
