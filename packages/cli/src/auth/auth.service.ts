@@ -322,7 +322,7 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
