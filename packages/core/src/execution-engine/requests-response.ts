@@ -10,6 +10,7 @@ import {
 	type Workflow,
 	type LoggerProxy,
 	UnexpectedError,
+	EngineResponse,
 } from 'n8n-workflow';
 
 type NodeToBeExecuted = {
@@ -152,4 +153,8 @@ export function isEngineRequest(
 	responseOrRequest: INodeExecutionData[][] | IRunNodeResponse | EngineRequest | null | undefined,
 ): responseOrRequest is EngineRequest {
 	return !!responseOrRequest && 'actions' in responseOrRequest;
+}
+
+export function makeEngineResponse(): EngineResponse {
+	return { actionResponses: [], metadata: {} };
 }

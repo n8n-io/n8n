@@ -75,7 +75,7 @@ import {
 	rewireGraph,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { handleRequest, isEngineRequest } from './requests-response';
+import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
@@ -1590,7 +1590,7 @@ export class WorkflowExecute {
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
-		let subNodeExecutionResults: EngineResponse = { actionResponses: [], metadata: {} };
+		let subNodeExecutionResults: EngineResponse = makeEngineResponse();
 		let executionError: ExecutionBaseError | undefined;
 		let executionNode: INode;
 		let runIndex: number;
@@ -1666,7 +1666,7 @@ export class WorkflowExecute {
 						return;
 					}
 
-					subNodeExecutionResults = { actionResponses: [], metadata: {} };
+					subNodeExecutionResults = makeEngineResponse();
 
 					let nodeSuccessData: INodeExecutionData[][] | null | undefined = null;
 					executionError = undefined;
