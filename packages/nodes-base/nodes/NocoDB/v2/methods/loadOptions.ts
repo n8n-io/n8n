@@ -1,8 +1,6 @@
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
-import { apiRequest } from '../transport';
 
 export async function getApiVersions(this: ILoadOptionsFunctions) {
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -25,61 +23,6 @@ export async function getApiVersions(this: ILoadOptionsFunctions) {
 				value: 4,
 			},
 		];
-	}
-}
-
-export async function getViews(this: ILoadOptionsFunctions) {
-	const version = this.getNodeParameter('version', 0) as number;
-	const baseId = this.getNodeParameter('projectId', 0, {
-		extractValue: true,
-	}) as string;
-	const tableId = this.getNodeParameter('table', 0, {
-		extractValue: true,
-	}) as string;
-
-	if (tableId) {
-		try {
-			const requestMethod = 'GET';
-			const endpoint =
-				version === 3
-					? `/api/v2/meta/tables/${tableId}/views`
-					: `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
-			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-			if (version === 3) {
-				return responseData.list.map((i: IDataObject) => {
-					if (i.is_default) {
-						return {
-							name: 'Default View',
-							value: '',
-						};
-					}
-					return {
-						name: i.title,
-						value: i.id,
-					};
-				});
-			} else {
-				return responseData.views.map((i: IDataObject) => {
-					return {
-						name: i.title,
-						value: i.id,
-					};
-				});
-			}
-		} catch (e) {
-			const message = e.messages?.[0] ?? '';
-			throw new NodeOperationError(
-				this.getNode(),
-				new Error(`Error while fetching views: ${message}`, { cause: e }),
-				{
-					level: 'warning',
-				},
-			);
-		}
-	} else {
-		throw new NodeOperationError(this.getNode(), 'No table selected!', {
-			level: 'warning',
-		});
 	}
 }
 
