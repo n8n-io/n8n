@@ -16,8 +16,6 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 		messages: {
 			tooManyOperationsWithoutResources:
 				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 10 operations.',
-			operationsWithoutResources:
-				'Node has {{ operationCount }} operations without resources. Consider using resources to organize operations for better UX.',
 		},
 		schema: [],
 	},
@@ -70,24 +68,14 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 				}
 			}
 
-			if (operationCount > 0 && !hasResources && operationNode) {
-				if (operationCount > 10) {
-					context.report({
-						node: operationNode,
-						messageId: 'tooManyOperationsWithoutResources',
-						data: {
-							operationCount: operationCount.toString(),
-						},
-					});
-				} else {
-					context.report({
-						node: operationNode,
-						messageId: 'operationsWithoutResources',
-						data: {
-							operationCount: operationCount.toString(),
-						},
-					});
-				}
+			if (operationCount > 5 && !hasResources && operationNode) {
+				context.report({
+					node: operationNode,
+					messageId: 'tooManyOperationsWithoutResources',
+					data: {
+						operationCount: operationCount.toString(),
+					},
+				});
 			}
 		};
 

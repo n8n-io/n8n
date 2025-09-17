@@ -39,7 +39,6 @@ export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements ICredent
 }`;
 }
 
-// Helper function to create non-credential class
 function createNonCredentialClass(className: string = 'SomeOtherClass'): string {
 	return `
 export class ${className} {

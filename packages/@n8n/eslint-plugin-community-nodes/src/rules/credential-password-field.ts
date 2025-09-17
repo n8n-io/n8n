@@ -116,15 +116,16 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 									if (passwordProperty) {
 										return fixer.replaceText(passwordProperty.value, 'true');
 									} else {
-										const lastProperty =
-											typeOptionsProperty.value.properties[
-												typeOptionsProperty.value.properties.length - 1
-											];
-										const insertText =
-											typeOptionsProperty.value.properties.length > 0
-												? ', password: true'
-												: 'password: true';
-										return fixer.insertTextAfter(lastProperty, insertText);
+										if (typeOptionsProperty.value.properties.length > 0) {
+											const lastProperty =
+												typeOptionsProperty.value.properties[
+													typeOptionsProperty.value.properties.length - 1
+												];
+											return fixer.insertTextAfter(lastProperty, ', password: true');
+										} else {
+											const openBrace = typeOptionsProperty.value.range![0] + 1;
+											return fixer.insertTextAfterRange([openBrace, openBrace], ' password: true ');
+										}
 									}
 								} else {
 									const lastProperty = element.properties[element.properties.length - 1];

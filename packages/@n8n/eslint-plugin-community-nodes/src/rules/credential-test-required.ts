@@ -10,11 +10,10 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure credential classes have a test property unless they extend oAuth2Api',
+			description: 'Ensure credentials have a credential test',
 		},
 		messages: {
-			missingCredentialTest:
-				'Credential class "{{ className }}" must have a test property or extend oAuth2Api',
+			missingCredentialTest: 'Credential class "{{ className }}" must have a test property',
 		},
 		schema: [],
 	},

@@ -13,10 +13,8 @@ const allowedModules = [
 ];
 
 const isModuleAllowed = (modulePath: string): boolean => {
-	// Allow relative paths
 	if (modulePath.startsWith('./') || modulePath.startsWith('../')) return true;
 
-	// Extract module name from imports that might contain additional path
 	const moduleName = modulePath.startsWith('@')
 		? modulePath.split('/').slice(0, 2).join('/')
 		: modulePath.split('/')[0];
@@ -30,9 +28,12 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 			description: 'Disallow usage of restricted imports in community nodes.',
 		},
 		messages: {
-			restrictedImport: "Import of '{{ modulePath }}' is not allowed.",
-			restrictedRequire: "Require of '{{ modulePath }}' is not allowed.",
-			restrictedDynamicImport: "Dynamic import of '{{ modulePath }}' is not allowed.",
+			restrictedImport:
+				"Import of '{{ modulePath }}' is not allowed. n8n Cloud does not allow community nodes with dependencies.",
+			restrictedRequire:
+				"Require of '{{ modulePath }}' is not allowed. n8n Cloud does not allow community nodes with dependencies.",
+			restrictedDynamicImport:
+				"Dynamic import of '{{ modulePath }}' is not allowed. n8n Cloud does not allow community nodes with dependencies.",
 		},
 		schema: [],
 	},

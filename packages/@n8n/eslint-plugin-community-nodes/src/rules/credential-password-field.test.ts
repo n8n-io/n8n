@@ -20,10 +20,14 @@ ${properties.map((prop) => `\t\t${prop}`).join(',\n')},
 function createProperty(
 	displayName: string,
 	name: string,
-	options: { password?: boolean } = {},
+	options: { password?: boolean; emptyTypeOptions?: boolean } = {},
 ): string {
-	const typeOptionsStr =
-		options.password !== undefined ? `\n\t\t\ttypeOptions: { password: ${options.password} },` : '';
+	let typeOptionsStr = '';
+	if (options.emptyTypeOptions) {
+		typeOptionsStr = '\n\t\t\ttypeOptions: {},';
+	} else if (options.password !== undefined) {
+		typeOptionsStr = `\n\t\t\ttypeOptions: { password: ${options.password} },`;
+	}
 
 	return `{
 			displayName: '${displayName}',
@@ -149,6 +153,16 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			code: createOAuth2CredentialCode(false),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'clientSecret' } }],
 			output: createOAuth2CredentialCode(true),
+		},
+		{
+			name: 'field has empty typeOptions object',
+			code: createCredentialCode([
+				createProperty('Access Token', 'accessToken', { emptyTypeOptions: true }),
+			]),
+			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'accessToken' } }],
+			output: createCredentialCode([
+				createProperty('Access Token', 'accessToken', { password: true }),
+			]),
 		},
 	],
 });

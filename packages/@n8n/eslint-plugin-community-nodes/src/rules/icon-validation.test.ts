@@ -27,6 +27,7 @@ function setupMockFileSystem() {
 setupMockFileSystem();
 
 const nodeFilePath = '/tmp/TestNode.node.ts';
+const credentialFilePath = '/tmp/TestCredential.credentials.ts';
 
 function createNodeCode(
 	icon?: string | { light: string; dark: string },
@@ -71,6 +72,30 @@ export class TestNode implements INodeType {
 }`;
 }
 
+function createCredentialCode(icon?: string | { light: string; dark: string }): string {
+	let iconProperty = '';
+	if (icon) {
+		if (typeof icon === 'string') {
+			iconProperty = `icon = '${icon}';`;
+		} else {
+			iconProperty = `icon = {
+		light: '${icon.light}',
+		dark: '${icon.dark}'
+	};`;
+		}
+	}
+
+	return `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class TestCredential implements ICredentialType {
+	name = 'testApi';
+	displayName = 'Test API';
+	${iconProperty}
+	properties: INodeProperties[] = [];
+}`;
+}
+
 // Helper function to create non-node class
 function createNonNodeClass(icon: string): string {
 	return `
@@ -107,6 +132,19 @@ ruleTester.run('icon-validation', IconValidationRule, {
 				true,
 			),
 		},
+		{
+			name: 'credential with valid string icon',
+			filename: credentialFilePath,
+			code: createCredentialCode('file:icons/TestNode.svg'),
+		},
+		{
+			name: 'credential with valid light/dark icons',
+			filename: credentialFilePath,
+			code: createCredentialCode({
+				light: 'file:icons/ValidIcon.svg',
+				dark: 'file:icons/ValidIcon.dark.svg',
+			}),
+		},
 	],
 	invalid: [
 		{
@@ -131,6 +169,27 @@ ruleTester.run('icon-validation', IconValidationRule, {
 				},
 				true,
 			),
+			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
+		},
+		{
+			name: 'credential missing icon property',
+			filename: credentialFilePath,
+			code: createCredentialCode(),
+			errors: [{ messageId: 'missingIcon' }],
+		},
+		{
+			name: 'credential icon file does not exist',
+			filename: credentialFilePath,
+			code: createCredentialCode('file:icons/NonExistent.svg'),
+			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } }],
+		},
+		{
+			name: 'credential light and dark icons are the same file',
+			filename: credentialFilePath,
+			code: createCredentialCode({
+				light: 'file:icons/SameIcon.svg',
+				dark: 'file:icons/SameIcon.svg',
+			}),
 			errors: [{ messageId: 'lightDarkSame', data: { iconPath: 'icons/SameIcon.svg' } }],
 		},
 	],
