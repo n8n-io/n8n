@@ -453,12 +453,13 @@ export class DataStoreService {
 	}
 
 	async getDataTablesSize() {
-		const sizeBytes = await this.dataStoreSizeValidator.getCachedSize(
+		const sizeData = await this.dataStoreSizeValidator.getCachedSizeData(
 			async () => await this.dataStoreRepository.findDataTablesSize(),
 		);
 		return {
-			sizeBytes,
-			sizeState: this.dataStoreSizeValidator.sizeToState(sizeBytes),
+			sizeBytes: sizeData.totalBytes,
+			sizeState: this.dataStoreSizeValidator.sizeToState(sizeData.totalBytes),
+			dataTables: sizeData.dataTables,
 		};
 	}
 }
