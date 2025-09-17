@@ -48,11 +48,6 @@ describe('dataStore', () => {
 		project2 = await createTeamProject();
 	});
 
-	afterEach(async () => {
-		// Clean up any created user data stores
-		await dataStoreService.deleteDataStoreAll();
-	});
-
 	describe('createDataStore', () => {
 		it('should create a columns table and a user table if columns are provided', async () => {
 			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {

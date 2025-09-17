@@ -40,12 +40,13 @@ describe('dataStoreAggregate', () => {
 	let project1: Project;
 	let project2: Project;
 
-	beforeEach(async () => {
-		// Get services in beforeEach to ensure DB is ready
+	beforeAll(async () => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
 		dataStoreAggregateService = Container.get(DataStoreAggregateService);
 		dataStoreService = Container.get(DataStoreService);
+	});
 
+	beforeEach(async () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
 		user = await createUser({ role: GLOBAL_OWNER_ROLE });
