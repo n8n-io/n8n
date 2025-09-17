@@ -9,13 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
 
 @Service()
 export class ChatExecutionManager {
