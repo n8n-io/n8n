@@ -64,6 +64,7 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
+	'workflow:toggle-mcp-access': [value: { id: string; enabled: boolean }];
 	'action:move-to-folder': [
 		value: {
 			id: string;
@@ -288,14 +289,10 @@ async function onAction(action: string) {
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
-			toast.showMessage({
-				title: '🚧 Coming soon',
-			});
+			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: true });
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
-			toast.showMessage({
-				title: '🚧 Coming soon',
-			});
+			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: false });
 			break;
 	}
 }
@@ -589,7 +586,7 @@ const tags = computed(
 }
 
 .cardDescription {
-	min-height: 19px;
+	min-height: var(--spacing-xl);
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);

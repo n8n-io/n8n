@@ -1711,6 +1711,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return newWorkflow;
 	}
 
+	async function toggleWorkflowMCPAccess(id: string, enabled: boolean): Promise<boolean> {
+		const wf = workflowsById.value[id];
+		if (!wf) {
+			throw new Error(i18n.baseText('workflowSettings.toggleMCP.notFoundError'));
+		}
+		const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
+			settings: {
+				...wf.settings,
+				availableInMCP: enabled,
+			},
+		};
+		const updatedWorkflow = await updateWorkflow(id, data, true);
+		wf.settings = updatedWorkflow.settings;
+		return updatedWorkflow.settings?.availableInMCP === true;
+	}
+
 	async function updateWorkflow(
 		id: string,
 		data: WorkflowDataUpdate,
@@ -2074,5 +2090,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		toggleWorkflowMCPAccess,
 	};
 });
