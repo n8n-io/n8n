@@ -6,8 +6,9 @@ import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
-import type { FolderPathItem, FolderShortInfo } from '@/Interface';
+import type { FolderPathItem, FolderShortInfo, IWorkflowDb } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
+import { VIEWS } from '@/constants';
 
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
@@ -16,6 +17,8 @@ type Props = {
 	hiddenItemsTrigger?: 'hover' | 'click';
 	currentFolderAsLink?: boolean;
 	visibleLevels?: 1 | 2;
+	// Workflow data to detect if this is a shared workflow
+	workflow?: IWorkflowDb | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -24,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsTrigger: 'click',
 	currentFolderAsLink: false,
 	visibleLevels: 1,
+	workflow: null,
 });
 
 const emit = defineEmits<{
@@ -47,11 +51,42 @@ const currentProject = computed(
 	() => projectsStore.currentProject ?? projectsStore.personalProject,
 );
 
+// Detect if this is a shared workflow
+const isSharedWorkflow = computed(() => {
+	if (!props.workflow || !projectsStore.personalProject) {
+		return false;
+	}
+	
+	// Check if the workflow's home project is not the current user's personal project
+	// and the workflow is shared with the current user's personal project
+	const isNotOwnedByUser = props.workflow.homeProject?.id !== projectsStore.personalProject.id;
+	const isSharedWithUser = props.workflow.sharedWithProjects?.some(
+		(project) => project.id === projectsStore.personalProject?.id,
+	);
+	
+	return isNotOwnedByUser && isSharedWithUser;
+});
+
 const projectName = computed(() => {
+	if (isSharedWorkflow.value) {
+		return i18n.baseText('projects.header.shared.title');
+	}
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
 	return currentProject.value?.name;
+});
+
+// Create a virtual project for shared workflows
+const breadcrumbProject = computed(() => {
+	if (isSharedWorkflow.value) {
+		return {
+			id: 'shared',
+			name: i18n.baseText('projects.header.shared.title'),
+			type: ProjectTypes.Personal, // Use Personal type to get the user icon
+		};
+	}
+	return currentProject.value;
 });
 
 const isDragging = computed(() => {
@@ -187,9 +222,9 @@ onBeforeUnmount(() => {
 			@item-hover="onItemHover"
 			@item-drop="emit('itemDrop', $event)"
 		>
-			<template v-if="currentProject" #prepend>
+			<template v-if="breadcrumbProject" #prepend>
 				<ProjectBreadcrumb
-					:current-project="currentProject"
+					:current-project="breadcrumbProject"
 					:is-dragging="isDragging"
 					@project-drop="onProjectDrop"
 					@project-hover="onProjectHover"
@@ -200,9 +235,9 @@ onBeforeUnmount(() => {
 			</template>
 		</n8n-breadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
-		<div v-else-if="currentProject" :class="$style['home-project']">
+		<div v-else-if="breadcrumbProject" :class="$style['home-project']">
 			<ProjectBreadcrumb
-				:current-project="currentProject"
+				:current-project="breadcrumbProject"
 				:is-dragging="isDragging"
 				@project-drop="onProjectDrop"
 				@project-hover="onProjectHover"

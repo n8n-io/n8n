@@ -724,6 +724,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
+					:workflow="{ id, name, homeProject: workflowsStore.workflow?.homeProject, sharedWithProjects: workflowsStore.workflow?.sharedWithProjects }"
 					@item-selected="onBreadcrumbsItemSelected"
 				>
 					<template #append>

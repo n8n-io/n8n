@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { FolderShortInfo, UserAction } from '@/Interface';
+import type { FolderShortInfo, UserAction, IWorkflowDb } from '@/Interface';
 import FolderBreadcrumbs from './FolderBreadcrumbs.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -10,6 +10,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes, type Project } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { IUser } from 'n8n-workflow';
+import { VIEWS } from '@/constants';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -46,6 +47,48 @@ const TEST_ACTIONS: Array<UserAction<IUser>> = [
 	{ label: 'Action 1', value: 'action1', disabled: false },
 	{ label: 'Action 2', value: 'action2', disabled: true },
 ];
+
+const TEST_PERSONAL_PROJECT: Project = {
+	id: 'personal-1',
+	name: 'Personal Project',
+	icon: { type: 'icon', value: 'user' },
+	type: ProjectTypes.Personal,
+	createdAt: new Date().toISOString(),
+	updatedAt: new Date().toISOString(),
+	relations: [],
+	scopes: [],
+};
+
+const TEST_SHARED_WORKFLOW: IWorkflowDb = {
+	id: 'workflow-1',
+	name: 'Shared Workflow',
+	homeProject: {
+		id: 'other-project',
+		name: 'Other Project',
+		icon: { type: 'icon', value: 'folder' },
+		type: ProjectTypes.Team,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	sharedWithProjects: [
+		{
+			id: 'personal-1',
+			name: 'Personal Project',
+			icon: { type: 'icon', value: 'user' },
+			type: ProjectTypes.Personal,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		},
+	],
+	active: false,
+	isArchived: false,
+	nodes: [],
+	connections: {},
+	createdAt: new Date().toISOString(),
+	updatedAt: new Date().toISOString(),
+	versionId: '1',
+	scopes: [],
+};
 
 const renderComponent = createComponentRenderer(FolderBreadcrumbs, {});
 
@@ -138,5 +181,84 @@ describe('FolderBreadcrumbs', () => {
 		// Now, parent folder should also be visible
 		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
 		expect(getByTestId('home-project')).toBeVisible();
+	});
+
+	describe('Shared Workflow Breadcrumbs', () => {
+		beforeEach(() => {
+			projectsStore.personalProject = TEST_PERSONAL_PROJECT;
+		});
+
+		it('should show "Shared with you" for shared workflows', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					currentFolder: null,
+					workflow: TEST_SHARED_WORKFLOW,
+				},
+			});
+
+			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+			expect(getByTestId('home-project')).toBeVisible();
+			
+			// Check that the project breadcrumb shows "Shared with you"
+			const projectBreadcrumb = getByTestId('home-project');
+			expect(projectBreadcrumb).toHaveTextContent('Shared with you');
+		});
+
+		it('should link to shared workflows page for shared workflows', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					currentFolder: null,
+					workflow: TEST_SHARED_WORKFLOW,
+				},
+			});
+
+			const projectLink = getByTestId('home-project').querySelector('a');
+			expect(projectLink).toHaveAttribute('href', `#${VIEWS.SHARED_WORKFLOWS}`);
+		});
+
+		it('should show normal project name for owned workflows', () => {
+			const ownedWorkflow: IWorkflowDb = {
+				...TEST_SHARED_WORKFLOW,
+				homeProject: {
+					id: 'personal-1',
+					name: 'Personal Project',
+					icon: { type: 'icon', value: 'user' },
+					type: ProjectTypes.Personal,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+				sharedWithProjects: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					currentFolder: null,
+					workflow: ownedWorkflow,
+				},
+			});
+
+			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+			expect(getByTestId('home-project')).toBeVisible();
+			
+			// Check that the project breadcrumb shows "Personal" for owned workflows
+			const projectBreadcrumb = getByTestId('home-project');
+			expect(projectBreadcrumb).toHaveTextContent('Personal');
+		});
+
+		it('should show normal project name when no workflow is provided', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					currentFolder: null,
+					workflow: null,
+				},
+			});
+
+			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+			expect(getByTestId('home-project')).toBeVisible();
+			
+			// Check that the project breadcrumb shows "Personal" when no workflow is provided
+			const projectBreadcrumb = getByTestId('home-project');
+			expect(projectBreadcrumb).toHaveTextContent('Personal');
+		});
 	});
 });

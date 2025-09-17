@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type Project, ProjectTypes } from '@/types/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { VIEWS } from '@/constants';
 
 type Props = {
 	currentProject: Project;
@@ -39,6 +40,14 @@ const projectName = computed(() => {
 	return props.currentProject.name;
 });
 
+const projectHref = computed(() => {
+	// Special case for shared workflows
+	if (props.currentProject.id === 'shared') {
+		return { name: VIEWS.SHARED_WORKFLOWS };
+	}
+	return `/projects/${props.currentProject.id}`;
+});
+
 const onHover = () => {
 	emit('projectHover');
 };
@@ -56,7 +65,7 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<n8n-link :to="`/projects/${currentProject.id}`" :class="[$style['project-link']]">
+		<n8n-link :to="projectHref" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
 			<N8nText size="medium" color="text-base" :class="$style['project-label']">
 				{{ projectName }}
