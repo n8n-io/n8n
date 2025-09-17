@@ -2,7 +2,11 @@ import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { hasHttpHeaderAuthDecryptedData } from '@/services/mcp/mcp.typeguards';
+import {
+	hasHttpHeaderAuthDecryptedData,
+	hasJwtPemKeyDecryptedData,
+	hasJwtSecretDecryptedData,
+} from '@/services/mcp/mcp.typeguards';
 
 export const getWebhookDetails = async (
 	user: User,
@@ -91,11 +95,9 @@ const getJWTAuthDetails = async (
 	const id = node.credentials?.jwtAuth?.id;
 	if (!id) return null;
 	const creds = await credentialsService.getOne(user, id, true);
-	// Passphrase
-	if (creds && 'data' in creds && (creds as any).data?.secret) {
+	if (hasJwtSecretDecryptedData(creds)) {
 		return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
-	} else if (creds && 'data' in creds && (creds as any).data?.keyType) {
-		// PEM keys
+	} else if (hasJwtPemKeyDecryptedData(creds)) {
 		return '\n\t - This webhook requires a JWT private and public keys that should be provided by the user.';
 	}
 	return null;
