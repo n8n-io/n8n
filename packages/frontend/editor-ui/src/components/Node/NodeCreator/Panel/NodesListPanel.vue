@@ -33,7 +33,8 @@ const { callDebounced } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
-const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
+const { activeItemId, setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } =
+	useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
 
 const { isInstanceOwner } = useUsersStore();
@@ -152,6 +153,17 @@ watch(
 		});
 	},
 	{ immediate: true },
+);
+
+// Ensure active item is initialized once items are rendered (e.g. when opening via NDV + flows)
+watch(
+	() => activeViewStack.value.items,
+	(items) => {
+		if (!activeItemId || !('value' in activeItemId)) return;
+		if (!activeItemId.value && (items?.length ?? 0) > 0) {
+			void setActiveItemIndex(getDefaultActiveIndex(activeViewStack.value.search ?? ''));
+		}
+	},
 );
 
 function onBackButton() {

@@ -550,3 +550,32 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
 	});
 });
+
+test('Nodes panel navigation works from global plus and NDV AI sub-connection', async ({ n8n }) => {
+	await n8n.canvas.openNewWorkflow();
+
+	// Open via global canvas plus
+	await n8n.canvas.clickNodeCreatorPlusButton();
+	const nodeCreator = n8n.page.getByTestId('node-creator');
+	await expect(nodeCreator).toBeVisible();
+
+	// Move selection with ArrowDown and verify selection marker (.active)
+	await n8n.page.keyboard.press('ArrowDown');
+	await expect(n8n.page.locator('[data-test-id="item-iterator-item"].active').first()).toBeVisible();
+
+	// Close node creator
+	await n8n.page.keyboard.press('Escape');
+	await expect(nodeCreator).toBeHidden();
+
+	// Add Agent node to open AI sub-connection + and then open node creator from it
+	await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: false });
+    // Click the plus to open the node creator but don't select an item
+    await n8n.ndv.getAddSubNodeButton('ai_languageModel', 0).click();
+	await expect(nodeCreator).toBeVisible();
+
+	// Arrow navigation should work and active marker should be visible
+	await n8n.page.keyboard.press('ArrowDown');
+	await expect(n8n.page.locator('[data-test-id="item-iterator-item"].active').first()).toBeVisible();
+	await n8n.page.keyboard.press('ArrowUp');
+	await expect(n8n.page.locator('[data-test-id="item-iterator-item"].active').first()).toBeVisible();
+});
