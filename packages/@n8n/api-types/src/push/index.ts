@@ -6,8 +6,6 @@ import type { WebhookPushMessage } from './webhook';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
 
-export type * from './execution';
-
 export type PushMessage =
 	| ExecutionPushMessage
 	| WorkflowPushMessage

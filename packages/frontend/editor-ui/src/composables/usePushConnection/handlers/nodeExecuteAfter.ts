@@ -24,12 +24,15 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 		main: [],
 	};
 
-	if (pushData.itemCount && typeof pushData.itemCount === 'object') {
-		const fillObject = { json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } };
-		for (const [connectionType, outputs] of Object.entries(pushData.itemCount)) {
+	if (
+		pushData.itemCountByConnectionType &&
+		typeof pushData.itemCountByConnectionType === 'object'
+	) {
+		const fillObject: INodeExecutionData = { json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } };
+		for (const [connectionType, outputs] of Object.entries(pushData.itemCountByConnectionType)) {
 			if (isValidNodeConnectionType(connectionType)) {
-				placeholderOutputData[connectionType] = outputs.map(
-					(count) => Array.from({ length: count }).fill(fillObject) as INodeExecutionData[],
+				placeholderOutputData[connectionType] = outputs.map((count) =>
+					Array.from({ length: count }, () => fillObject),
 				);
 			}
 		}

@@ -25,7 +25,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: { main: [2, 1] },
+				itemCountByConnectionType: { main: [2, 1] },
 				data: {
 					executionTime: 100,
 					startTime: 1234567890,
@@ -61,7 +61,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: {
+				itemCountByConnectionType: {
 					main: [3],
 					ai_memory: [1, 2],
 					ai_tool: [1],
@@ -92,7 +92,7 @@ describe('nodeExecuteAfter', () => {
 		});
 	});
 
-	it('should handle empty itemCount', async () => {
+	it('should handle empty itemCountByConnectionType', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 
 		const event: NodeExecuteAfter = {
@@ -100,7 +100,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: {},
+				itemCountByConnectionType: {},
 				data: {
 					executionTime: 100,
 					startTime: 1234567890,
@@ -126,7 +126,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: { main: [1] },
+				itemCountByConnectionType: { main: [1] },
 				data: {
 					executionTime: 100,
 					startTime: 1234567890,
@@ -162,7 +162,7 @@ describe('nodeExecuteAfter', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: {
+				itemCountByConnectionType: {
 					main: [1],
 					// @ts-expect-error Testing invalid connection type
 					invalid_connection: [2], // This should be filtered out by isValidNodeConnectionType
