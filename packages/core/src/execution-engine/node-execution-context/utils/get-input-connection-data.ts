@@ -19,7 +19,6 @@ import type {
 	NodeConnectionType,
 	NodeOutput,
 	GenericValue,
-	Logger,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,

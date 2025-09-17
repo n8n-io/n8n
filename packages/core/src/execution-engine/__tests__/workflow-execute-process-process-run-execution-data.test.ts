@@ -3,7 +3,7 @@ import type {
 	IDataObject,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
-	Response,
+	EngineResponse,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
@@ -231,7 +231,7 @@ describe('processRunExecutionData', () => {
 	describe('waiting tools', () => {
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
-			let response: Response | undefined;
+			let response: EngineResponse | undefined;
 
 			const tool1Node = createNodeData({ name: 'tool1', type: types.passThrough });
 			const tool2Node = createNodeData({ name: 'tool2', type: types.passThrough });
@@ -381,7 +381,7 @@ describe('processRunExecutionData', () => {
 			// ARRANGE
 			// This test simulates the scenario where executionData.source.main[0].previousNode
 			// is null/undefined (line 2037-2044 in workflow-execute.ts)
-			let response: Response | undefined;
+			let response: EngineResponse | undefined;
 
 			const tool1Node = createNodeData({ name: 'tool1', type: types.passThrough });
 			const tool1Input = { query: 'test input' };
@@ -467,8 +467,8 @@ describe('processRunExecutionData', () => {
 
 		test('resets responses between different node executions', async () => {
 			// ARRANGE
-			let firstResponse: Response | undefined;
-			let secondResponse: Response | undefined;
+			let firstResponse: EngineResponse | undefined;
+			let secondResponse: EngineResponse | undefined;
 
 			// Create first node that returns Request with actions
 			const firstNodeWithRequests = modifyNode(passThroughNode)
@@ -485,7 +485,7 @@ describe('processRunExecutionData', () => {
 					],
 					metadata: { requestId: 'first_request' },
 				})
-				.return((response?: Response) => {
+				.return((response?: EngineResponse) => {
 					firstResponse = response;
 					return [[{ json: { result: 'first node completed' } }]];
 				})
@@ -493,7 +493,7 @@ describe('processRunExecutionData', () => {
 
 			// Create second node that should NOT receive responses from the first node
 			const secondNodeWithRequests = modifyNode(passThroughNode)
-				.return((response?: Response) => {
+				.return((response?: EngineResponse) => {
 					secondResponse = response;
 					// This should receive an empty response, not the first node's responses
 					return [[{ json: { result: 'second node completed' } }]];
