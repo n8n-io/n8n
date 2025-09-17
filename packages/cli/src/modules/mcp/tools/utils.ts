@@ -6,7 +6,7 @@ import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
-} from '@/services/mcp/mcp.typeguards';
+} from '../mcp.typeguards';
 
 export const getWebhookDetails = async (
 	user: User,

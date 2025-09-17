@@ -47,7 +47,7 @@ export const createWorkflowDetailsTool = (
 			triggerNotice += `${
 				workflow.active
 					? '\n- Workflow is active and accessible. n8n Webhooks nodes do not have information about required request payloads, if that cannot be determined from the workflow itself, ask the user to provide it.'
-					: '\n- Workflow is not active, it can only be triggered after clicking "Listen for test	 event" button in the n8n editor.'
+					: '\n- Workflow is not active, it can only be triggered after clicking "Listen for test\t event" button in the n8n editor.'
 			}`;
 
 			// Remove sensitive information

@@ -6,7 +6,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { UrlService } from '../url.service';
+import { UrlService } from '@/services/url.service';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 

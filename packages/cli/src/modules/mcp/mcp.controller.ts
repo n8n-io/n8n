@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { McpService } from '@/services/mcp/mcp.service';
+import { McpService } from './mcp.service';
 
 export type FlushableResponse = Response & { flush: () => void };
 
