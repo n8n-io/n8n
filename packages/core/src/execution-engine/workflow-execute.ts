@@ -61,6 +61,11 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
+
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -78,11 +83,6 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
-
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
