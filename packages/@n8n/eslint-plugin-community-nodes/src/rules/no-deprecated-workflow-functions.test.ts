@@ -6,7 +6,7 @@ const ruleTester = new RuleTester();
 ruleTester.run('no-deprecated-workflow-functions', NoDeprecatedWorkflowFunctionsRule, {
 	valid: [
 		{
-			// Using recommended httpRequest
+			name: 'using recommended httpRequest',
 			code: `
 const response = await this.helpers.httpRequest({
 	method: 'GET',
@@ -14,7 +14,7 @@ const response = await this.helpers.httpRequest({
 });`,
 		},
 		{
-			// Using recommended httpRequestWithAuthentication
+			name: 'using recommended httpRequestWithAuthentication',
 			code: `
 const response = await this.helpers.httpRequestWithAuthentication.call(this, 'oAuth2Api', {
 	method: 'POST',
@@ -23,7 +23,7 @@ const response = await this.helpers.httpRequestWithAuthentication.call(this, 'oA
 });`,
 		},
 		{
-			// Using recommended type
+			name: 'using recommended type',
 			code: `
 import { IHttpRequestOptions } from 'n8n-workflow';
 
@@ -33,12 +33,12 @@ const requestOptions: IHttpRequestOptions = {
 };`,
 		},
 		{
-			// Non-deprecated function with similar name
+			name: 'non-deprecated function with similar name',
 			code: `
 const result = await this.helpers.requestSomething();`,
 		},
 		{
-			// Property access that's not a function call
+			name: 'property access that is not a function call',
 			code: `
 const config = {
 	request: 'some value',
@@ -47,7 +47,7 @@ const config = {
 	],
 	invalid: [
 		{
-			// Deprecated request function
+			name: 'deprecated request function',
 			code: `
 const response = await this.helpers.request('https://api.example.com/data');`,
 			errors: [
@@ -58,7 +58,7 @@ const response = await this.helpers.request('https://api.example.com/data');`,
 			],
 		},
 		{
-			// Deprecated requestWithAuthentication function
+			name: 'deprecated requestWithAuthentication function',
 			code: `
 const response = await this.helpers.requestWithAuthentication.call(this, 'oAuth2Api', {
 	method: 'POST',
@@ -75,7 +75,7 @@ const response = await this.helpers.requestWithAuthentication.call(this, 'oAuth2
 			],
 		},
 		{
-			// Deprecated requestOAuth1 function
+			name: 'deprecated requestOAuth1 function',
 			code: `
 const response = await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', requestOptions);`,
 			errors: [
@@ -86,7 +86,7 @@ const response = await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api',
 			],
 		},
 		{
-			// Deprecated requestOAuth2 function
+			name: 'deprecated requestOAuth2 function',
 			code: `
 const response = await this.helpers.requestOAuth2.call(this, 'googleOAuth2Api', requestOptions);`,
 			errors: [
@@ -97,7 +97,7 @@ const response = await this.helpers.requestOAuth2.call(this, 'googleOAuth2Api', 
 			],
 		},
 		{
-			// Deprecated type in import and type annotation
+			name: 'deprecated type in import and type annotation',
 			code: `
 import { IRequestOptions } from 'n8n-workflow';
 
@@ -116,7 +116,7 @@ const options: IRequestOptions = {
 			],
 		},
 		{
-			// Deprecated type in type annotation - only type should be autofixed
+			name: 'deprecated type and function in same code',
 			code: `
 function makeRequest(options: IRequestOptions): Promise<any> {
 	return this.helpers.request(options);
@@ -133,7 +133,7 @@ function makeRequest(options: IRequestOptions): Promise<any> {
 			],
 		},
 		{
-			// Multiple deprecated functions in same file
+			name: 'multiple deprecated functions in same file',
 			code: `
 const response1 = await this.helpers.request('https://example.com/1');
 const response2 = await this.helpers.requestWithAuthentication.call(this, 'oauth', options);
@@ -157,7 +157,7 @@ const response3 = await this.helpers.requestOAuth2.call(this, 'google', options)
 			],
 		},
 		{
-			// Deprecated function without replacement
+			name: 'deprecated function without replacement',
 			code: `
 const result = await this.helpers.copyBinaryFile();`,
 			errors: [
@@ -166,10 +166,9 @@ const result = await this.helpers.copyBinaryFile();`,
 					data: { functionName: 'copyBinaryFile' },
 				},
 			],
-			// No output since there's no replacement
 		},
 		{
-			// Complex case with nested calls - only type should be autofixed
+			name: 'complex case with multiple deprecated items',
 			code: `
 export class MyNode implements INodeType {
 	async execute(): Promise<INodeExecutionData[][]> {
@@ -198,7 +197,7 @@ export class MyNode implements INodeType {
 			],
 		},
 		{
-			// Import with alias
+			name: 'import with alias',
 			code: `
 import { IRequestOptions as RequestOpts } from 'n8n-workflow';
 

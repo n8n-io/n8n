@@ -1,12 +1,10 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 const DEPRECATED_FUNCTIONS = {
-	// Request functions with different signatures - no autofix to avoid breaking changes
 	request: 'httpRequest',
 	requestWithAuthentication: 'httpRequestWithAuthentication',
 	requestOAuth1: 'httpRequestWithAuthentication',
 	requestOAuth2: 'httpRequestWithAuthentication',
-	// Other deprecated functions without replacement
 	copyBinaryFile: null,
 	prepareOutputData: null,
 } as const;
@@ -34,7 +32,6 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 	defaultOptions: [],
 	create(context) {
 		return {
-			// Handle function calls like this.helpers.request()
 			MemberExpression(node) {
 				if (
 					node.property.type === 'Identifier' &&
@@ -44,7 +41,6 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 					const replacement = DEPRECATED_FUNCTIONS[functionName];
 
 					if (replacement) {
-						// Special message for request functions
 						const messageId = functionName.includes('request')
 							? 'deprecatedRequestFunction'
 							: 'deprecatedFunction';
@@ -70,7 +66,6 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 				}
 			},
 
-			// Handle type annotations like IRequestOptions
 			TSTypeReference(node) {
 				if (
 					node.typeName.type === 'Identifier' &&
@@ -90,7 +85,6 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 				}
 			},
 
-			// Handle import statements
 			ImportSpecifier(node) {
 				if (
 					node.imported.type === 'Identifier' &&
@@ -110,7 +104,6 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 				}
 			},
 
-			// Handle CallExpression for direct function calls (less common but possible)
 			CallExpression(node) {
 				if (
 					node.callee.type === 'Identifier' &&

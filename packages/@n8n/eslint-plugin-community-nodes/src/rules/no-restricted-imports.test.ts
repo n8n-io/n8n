@@ -44,6 +44,18 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 		{
 			code: 'const _ = require("lodash");',
 		},
+		{
+			code: 'const workflow = await import("n8n-workflow");',
+		},
+		{
+			code: 'import("lodash").then((_) => {});',
+		},
+		{
+			code: 'const helper = await import("./helper");',
+		},
+		{
+			code: 'import("../utils").then((utils) => {});',
+		},
 	],
 	invalid: [
 		{
@@ -96,6 +108,28 @@ const lodash = require("lodash");`,
 			errors: [
 				{ messageId: 'restrictedRequire', data: { modulePath: 'fs' } },
 				{ messageId: 'restrictedRequire', data: { modulePath: 'express' } },
+			],
+		},
+		{
+			code: 'const fs = await import("fs");',
+			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'fs' } }],
+		},
+		{
+			code: 'import("path").then((path) => {});',
+			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'path' } }],
+		},
+		{
+			code: 'const express = await import("express");',
+			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'express' } }],
+		},
+		{
+			code: `
+const fs = await import("fs");
+import("axios").then((axios) => {});
+const workflow = await import("n8n-workflow");`,
+			errors: [
+				{ messageId: 'restrictedDynamicImport', data: { modulePath: 'fs' } },
+				{ messageId: 'restrictedDynamicImport', data: { modulePath: 'axios' } },
 			],
 		},
 	],

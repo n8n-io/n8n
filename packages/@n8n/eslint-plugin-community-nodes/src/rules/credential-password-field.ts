@@ -1,4 +1,11 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
+import {
+	isCredentialTypeClass,
+	findClassProperty,
+	findObjectProperty,
+	getStringLiteralValue,
+	getBooleanLiteralValue,
+} from '../utils/index.js';
 
 // Common sensitive field name patterns
 const SENSITIVE_FIELD_PATTERNS = [
@@ -14,8 +21,31 @@ const SENSITIVE_FIELD_PATTERNS = [
 	'passphrase',
 ];
 
+// URL fields that shouldn't be considered sensitive
+const URL_FIELD_PATTERNS = [
+	'url',
+	'uri',
+	'endpoint',
+	'baseurl',
+	'serverurl',
+	'authorizationurl',
+	'accesstokenurl',
+	'tokenurl',
+	'redirecturl',
+	'callbackurl',
+];
+
 const isSensitiveFieldName = (name: string): boolean => {
 	const lowerName = name.toLowerCase();
+
+	const isUrlField = URL_FIELD_PATTERNS.some(
+		(pattern) => lowerName.includes(pattern) || lowerName.endsWith(pattern),
+	);
+
+	if (isUrlField) {
+		return false;
+	}
+
 	return SENSITIVE_FIELD_PATTERNS.some(
 		(pattern) => lowerName.includes(pattern) || lowerName.endsWith(pattern),
 	);
@@ -38,99 +68,39 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 	create(context) {
 		return {
 			ClassDeclaration(node) {
-				// Check if this class implements ICredentialType
-				const implementsCredentialType = node.implements?.some(
-					(impl) =>
-						impl.type === 'TSClassImplements' &&
-						impl.expression.type === 'Identifier' &&
-						impl.expression.name === 'ICredentialType',
-				);
-
-				if (!implementsCredentialType) {
+				if (!isCredentialTypeClass(node)) {
 					return;
 				}
 
-				// Check if this credential extends oAuth2Api (OAuth2 credentials are exempt)
-				const extendsProperty = node.body.body.find(
-					(member) =>
-						member.type === 'PropertyDefinition' &&
-						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'extends',
-				);
-
-				if (
-					extendsProperty &&
-					extendsProperty.type === 'PropertyDefinition' &&
-					extendsProperty.value?.type === 'ArrayExpression'
-				) {
-					const extendsOAuth2 = extendsProperty.value.elements.some(
-						(element: any) => element?.type === 'Literal' && element.value === 'oAuth2Api',
-					);
-
-					if (extendsOAuth2) {
-						return; // Skip OAuth2 credentials
-					}
-				}
-
-				// Find the properties array
-				const propertiesProperty = node.body.body.find(
-					(member) =>
-						member.type === 'PropertyDefinition' &&
-						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'properties',
-				);
-
-				if (
-					!propertiesProperty ||
-					propertiesProperty.type !== 'PropertyDefinition' ||
-					!propertiesProperty.value ||
-					propertiesProperty.value.type !== 'ArrayExpression'
-				) {
+				const propertiesProperty = findClassProperty(node, 'properties');
+				if (!propertiesProperty?.value || propertiesProperty.value.type !== 'ArrayExpression') {
 					return;
 				}
 
-				// Check each property in the array
 				propertiesProperty.value.elements.forEach((element: any) => {
 					if (element?.type !== 'ObjectExpression') {
 						return;
 					}
 
-					let fieldName = '';
+					const nameProperty = findObjectProperty(element, 'name');
+					const fieldName = nameProperty ? getStringLiteralValue(nameProperty.value) : null;
+
+					if (!fieldName || !isSensitiveFieldName(fieldName)) {
+						return;
+					}
+
+					const typeOptionsProperty = findObjectProperty(element, 'typeOptions');
 					let hasPasswordTypeOption = false;
 
-					// Analyze the property object
-					element.properties.forEach((prop: any) => {
-						if (prop.type !== 'Property' || prop.key.type !== 'Identifier') {
-							return;
+					if (typeOptionsProperty?.value?.type === 'ObjectExpression') {
+						const passwordProperty = findObjectProperty(typeOptionsProperty.value, 'password');
+						if (passwordProperty) {
+							const passwordValue = getBooleanLiteralValue(passwordProperty.value);
+							hasPasswordTypeOption = passwordValue === true;
 						}
+					}
 
-						// Get field name
-						if (
-							prop.key.name === 'name' &&
-							prop.value.type === 'Literal' &&
-							typeof prop.value.value === 'string'
-						) {
-							fieldName = prop.value.value;
-						}
-
-						// Check for typeOptions.password
-						if (prop.key.name === 'typeOptions' && prop.value.type === 'ObjectExpression') {
-							const passwordOption = prop.value.properties.find(
-								(opt: any) =>
-									opt.type === 'Property' &&
-									opt.key.type === 'Identifier' &&
-									opt.key.name === 'password' &&
-									opt.value.type === 'Literal' &&
-									opt.value.value === true,
-							);
-							if (passwordOption) {
-								hasPasswordTypeOption = true;
-							}
-						}
-					});
-
-					// Report if sensitive field name but no password option
-					if (fieldName && isSensitiveFieldName(fieldName) && !hasPasswordTypeOption) {
+					if (!hasPasswordTypeOption) {
 						context.report({
 							node: element,
 							messageId: 'missingPasswordOption',
@@ -138,28 +108,14 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 								fieldName,
 							},
 							fix(fixer) {
-								// Check if typeOptions already exists
-								const typeOptionsProperty = element.properties.find(
-									(prop: any) =>
-										prop.type === 'Property' &&
-										prop.key.type === 'Identifier' &&
-										prop.key.name === 'typeOptions',
-								);
-
-								if (typeOptionsProperty && typeOptionsProperty.value.type === 'ObjectExpression') {
-									// typeOptions exists but doesn't have password: true
-									const passwordProperty = typeOptionsProperty.value.properties.find(
-										(opt: any) =>
-											opt.type === 'Property' &&
-											opt.key.type === 'Identifier' &&
-											opt.key.name === 'password',
+								if (typeOptionsProperty?.value?.type === 'ObjectExpression') {
+									const passwordProperty = findObjectProperty(
+										typeOptionsProperty.value,
+										'password',
 									);
-
 									if (passwordProperty) {
-										// password property exists but is false, change it to true
 										return fixer.replaceText(passwordProperty.value, 'true');
 									} else {
-										// Add password: true to existing typeOptions
 										const lastProperty =
 											typeOptionsProperty.value.properties[
 												typeOptionsProperty.value.properties.length - 1
@@ -171,7 +127,6 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 										return fixer.insertTextAfter(lastProperty, insertText);
 									}
 								} else {
-									// No typeOptions property exists, add the entire typeOptions
 									const lastProperty = element.properties[element.properties.length - 1];
 									return fixer.insertTextAfter(
 										lastProperty,

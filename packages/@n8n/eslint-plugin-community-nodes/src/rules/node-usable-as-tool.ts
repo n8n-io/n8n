@@ -1,4 +1,10 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
+import {
+	isNodeTypeClass,
+	findClassProperty,
+	findObjectProperty,
+	getBooleanLiteralValue,
+} from '../utils/index.js';
 
 export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -16,27 +22,12 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 	create(context) {
 		return {
 			ClassDeclaration(node) {
-				// Check if this class implements INodeType
-				const implementsNodeType = node.implements?.some(
-					(impl) =>
-						impl.type === 'TSClassImplements' &&
-						impl.expression.type === 'Identifier' &&
-						impl.expression.name === 'INodeType',
-				);
-
-				if (!implementsNodeType) {
+				if (!isNodeTypeClass(node)) {
 					return;
 				}
 
-				// Look for description property containing usableAsTool
-				const descriptionProperty = node.body.body.find(
-					(member) =>
-						member.type === 'PropertyDefinition' &&
-						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'description',
-				);
-
-				if (!descriptionProperty || descriptionProperty.type !== 'PropertyDefinition') {
+				const descriptionProperty = findClassProperty(node, 'description');
+				if (!descriptionProperty) {
 					context.report({
 						node,
 						messageId: 'missingUsableAsTool',
@@ -44,29 +35,17 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				// Look for usableAsTool property within description object
-				let usableAsToolProperty: any = null;
+				let usableAsToolProperty = null;
 				let hasUsableAsTool = false;
 				let isUsableAsToolTrue = false;
 
 				const descriptionValue = descriptionProperty.value;
 				if (descriptionValue?.type === 'ObjectExpression') {
-					const usableAsToolProp = descriptionValue.properties.find(
-						(prop: any) =>
-							prop.type === 'Property' &&
-							prop.key.type === 'Identifier' &&
-							prop.key.name === 'usableAsTool',
-					);
-
-					if (usableAsToolProp?.type === 'Property') {
-						usableAsToolProperty = usableAsToolProp;
+					usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
+					if (usableAsToolProperty) {
 						hasUsableAsTool = true;
-						if (
-							usableAsToolProp.value.type === 'Literal' &&
-							usableAsToolProp.value.value === true
-						) {
-							isUsableAsToolTrue = true;
-						}
+						const value = getBooleanLiteralValue(usableAsToolProperty.value);
+						isUsableAsToolTrue = value === true;
 					}
 				}
 
@@ -75,23 +54,19 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 						node,
 						messageId: 'missingUsableAsTool',
 						fix(fixer) {
-							// If property exists but has wrong value, replace it
 							if (hasUsableAsTool && usableAsToolProperty?.value) {
 								return fixer.replaceText(usableAsToolProperty.value, 'true');
 							}
 
-							// If usableAsTool doesn't exist in description, add it
 							if (descriptionValue?.type === 'ObjectExpression') {
 								const properties = descriptionValue.properties;
 								if (properties.length === 0) {
-									// Empty object, add the property
 									const openBrace = descriptionValue.range![0] + 1;
 									return fixer.insertTextAfterRange(
 										[openBrace, openBrace],
 										'\n\t\tusableAsTool: true,',
 									);
 								} else {
-									// Add after the last property
 									const lastProperty = properties[properties.length - 1];
 									return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
 								}

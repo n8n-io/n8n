@@ -1,4 +1,10 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import { ESLintUtils } from '@typescript-eslint/utils';
+import {
+	isCredentialTypeClass,
+	findClassProperty,
+	hasArrayLiteralValue,
+	isFileType,
+} from '../utils/index.js';
 
 export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -14,40 +20,23 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 	},
 	defaultOptions: [],
 	create(context) {
-		// Only run on .credentials.ts files
-		if (!context.filename.endsWith('.credentials.ts')) {
+		if (!isFileType(context.filename, '.credentials.ts')) {
 			return {};
 		}
 
 		return {
 			ClassDeclaration(node) {
-				// Check if this class implements ICredentialType
-				const implementsCredentialType = node.implements?.some(
-					(impl) =>
-						impl.type === 'TSClassImplements' &&
-						impl.expression.type === 'Identifier' &&
-						impl.expression.name === 'ICredentialType',
-				);
-
-				if (!implementsCredentialType) {
+				if (!isCredentialTypeClass(node)) {
 					return;
 				}
 
-				// Check if the class extends oAuth2Api
-				const extendsOAuth2 = hasExtendsOAuth2Api(node);
-				if (extendsOAuth2) {
-					return; // Exempt from test requirement
+				const extendsProperty = findClassProperty(node, 'extends');
+				if (extendsProperty && hasArrayLiteralValue(extendsProperty, 'extends', 'oAuth2Api')) {
+					return;
 				}
 
-				// Check if the class has a test property
-				const hasTestProperty = node.body.body.some(
-					(member) =>
-						member.type === 'PropertyDefinition' &&
-						member.key?.type === 'Identifier' &&
-						(member.key as any).name === 'test',
-				);
-
-				if (!hasTestProperty) {
+				const testProperty = findClassProperty(node, 'test');
+				if (!testProperty) {
 					context.report({
 						node,
 						messageId: 'missingCredentialTest',
@@ -60,27 +49,3 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 		};
 	},
 });
-
-// Look for extends = ['oAuth2Api'] property in the class body
-function hasExtendsOAuth2Api(node: TSESTree.ClassDeclaration): boolean {
-	return node.body.body.some((member) => {
-		if (
-			member.type === 'PropertyDefinition' &&
-			member.key?.type === 'Identifier' &&
-			(member.key as any).name === 'extends'
-		) {
-			if (
-				member.value?.type === 'ArrayExpression' &&
-				member.value.elements.some(
-					(element) =>
-						element?.type === 'Literal' &&
-						typeof element.value === 'string' &&
-						element.value === 'oAuth2Api',
-				)
-			) {
-				return true;
-			}
-		}
-		return false;
-	});
-}

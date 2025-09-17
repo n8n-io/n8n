@@ -3,7 +3,6 @@ import { CredentialPasswordFieldRule } from './credential-password-field.js';
 
 const ruleTester = new RuleTester();
 
-// Helper function to create credential class code
 function createCredentialCode(properties: string[]): string {
 	return `
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
@@ -18,7 +17,6 @@ ${properties.map((prop) => `\t\t${prop}`).join(',\n')},
 }`;
 }
 
-// Helper to create a property object string
 function createProperty(
 	displayName: string,
 	name: string,
@@ -35,38 +33,10 @@ function createProperty(
 		}`;
 }
 
-ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
-	valid: [
-		{
-			// Correct usage with password field having typeOptions.password = true
-			code: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
-		},
-		{
-			// Field name is not sensitive
-			code: createCredentialCode([createProperty('Base URL', 'baseUrl')]),
-		},
-		{
-			// Multiple sensitive fields with correct typeOptions
-			code: createCredentialCode([
-				createProperty('Password', 'password', { password: true }),
-				createProperty('Secret Token', 'secretToken', { password: true }),
-			]),
-		},
-		{
-			// Class doesn't implement ICredentialType
-			code: `
-export class RegularClass {
-	properties = [
-		{
-			name: 'password',
-			type: 'string',
-		},
-	];
-}`,
-		},
-		{
-			// OAuth2 credential should be exempt from password field checks
-			code: `
+function createOAuth2CredentialCode(hasPasswordProtection: boolean = true): string {
+	const passwordOptions = hasPasswordProtection ? '\n\t\t\ttypeOptions: { password: true },' : '';
+
+	return `
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GithubOAuth2Api implements ICredentialType {
@@ -85,27 +55,66 @@ export class GithubOAuth2Api implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
-			default: '',
+			default: '',${passwordOptions}
 		},
 	];
-}`,
+}`;
+}
+
+// Helper function to create a regular (non-credential) class
+function createRegularClass(): string {
+	return `
+export class RegularClass {
+	properties = [
+		{
+			name: 'password',
+			type: 'string',
+		},
+	];
+}`;
+}
+
+ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
+	valid: [
+		{
+			name: 'correct usage with password field having typeOptions.password = true',
+			code: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
+		},
+		{
+			name: 'field name is not sensitive',
+			code: createCredentialCode([createProperty('Base URL', 'baseUrl')]),
+		},
+		{
+			name: 'multiple sensitive fields with correct typeOptions',
+			code: createCredentialCode([
+				createProperty('Password', 'password', { password: true }),
+				createProperty('Secret Token', 'secretToken', { password: true }),
+			]),
+		},
+		{
+			name: 'class does not implement ICredentialType',
+			code: createRegularClass(),
+		},
+		{
+			name: 'OAuth2 credential with URL fields and proper client secret protection',
+			code: createOAuth2CredentialCode(true),
 		},
 	],
 	invalid: [
 		{
-			// Password field missing typeOptions.password = true
+			name: 'password field missing typeOptions.password = true',
 			code: createCredentialCode([createProperty('Password', 'password')]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'password' } }],
 			output: createCredentialCode([createProperty('Password', 'password', { password: true })]),
 		},
 		{
-			// API key field missing typeOptions.password = true
+			name: 'API key field missing typeOptions.password = true',
 			code: createCredentialCode([createProperty('API Key', 'apiKey')]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'apiKey' } }],
 			output: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
 		},
 		{
-			// Secret field missing typeOptions.password = true
+			name: 'secret field missing typeOptions.password = true',
 			code: createCredentialCode([createProperty('Client Secret', 'clientSecret')]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'clientSecret' } }],
 			output: createCredentialCode([
@@ -113,7 +122,7 @@ export class GithubOAuth2Api implements ICredentialType {
 			]),
 		},
 		{
-			// Multiple invalid fields
+			name: 'multiple invalid fields',
 			code: createCredentialCode([
 				createProperty('Password', 'password'),
 				createProperty('Username', 'username'),
@@ -130,10 +139,16 @@ export class GithubOAuth2Api implements ICredentialType {
 			]),
 		},
 		{
-			// Field has typeOptions but password is false
+			name: 'field has typeOptions but password is false',
 			code: createCredentialCode([createProperty('API Key', 'apiKey', { password: false })]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'apiKey' } }],
 			output: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
+		},
+		{
+			name: 'OAuth2 credential with missing password protection for clientSecret',
+			code: createOAuth2CredentialCode(false),
+			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'clientSecret' } }],
+			output: createOAuth2CredentialCode(true),
 		},
 	],
 });

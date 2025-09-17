@@ -1,4 +1,5 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
+import { getStringLiteralValue } from '../utils/index.js';
 
 const allowedModules = [
 	'n8n-workflow',
@@ -31,6 +32,7 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 		messages: {
 			restrictedImport: "Import of '{{ modulePath }}' is not allowed.",
 			restrictedRequire: "Require of '{{ modulePath }}' is not allowed.",
+			restrictedDynamicImport: "Dynamic import of '{{ modulePath }}' is not allowed.",
 		},
 		schema: [],
 	},
@@ -38,11 +40,24 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 	create(context) {
 		return {
 			ImportDeclaration(node) {
-				const modulePath = node.source.value as string;
-				if (!isModuleAllowed(modulePath)) {
+				const modulePath = getStringLiteralValue(node.source);
+				if (modulePath && !isModuleAllowed(modulePath)) {
 					context.report({
 						node,
 						messageId: 'restrictedImport',
+						data: {
+							modulePath,
+						},
+					});
+				}
+			},
+
+			ImportExpression(node) {
+				const modulePath = getStringLiteralValue(node.source);
+				if (modulePath && !isModuleAllowed(modulePath)) {
+					context.report({
+						node,
+						messageId: 'restrictedDynamicImport',
 						data: {
 							modulePath,
 						},
@@ -54,12 +69,10 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 				if (
 					node.callee.type === 'Identifier' &&
 					node.callee.name === 'require' &&
-					node.arguments.length > 0 &&
-					node.arguments[0].type === 'Literal' &&
-					typeof node.arguments[0].value === 'string'
+					node.arguments.length > 0
 				) {
-					const modulePath = node.arguments[0].value;
-					if (!isModuleAllowed(modulePath)) {
+					const modulePath = getStringLiteralValue(node.arguments[0]);
+					if (modulePath && !isModuleAllowed(modulePath)) {
 						context.report({
 							node,
 							messageId: 'restrictedRequire',
