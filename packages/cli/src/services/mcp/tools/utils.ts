@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { hasHttpHeaderAuthDecryptedData } from '@/services/mcp/mcp.typeguards';
 
 export const getWebhookDetails = async (
 	user: User,
@@ -75,15 +76,9 @@ const getHeaderAuthDetails = async (
 	const id = node.credentials?.httpHeaderAuth?.id;
 	if (!id) return null;
 
-	// TODO: Fix these type castings (check correct type for credentials)
 	const creds = await credentialsService.getOne(user, id, true);
-	if (
-		creds &&
-		'data' in creds &&
-		(creds as any).data?.name &&
-		typeof (creds as any).data?.name === 'string'
-	) {
-		return `\n\t - This webhook requires a header with name "${creds.data.name as string}" and a value that should be provided by the user.`;
+	if (hasHttpHeaderAuthDecryptedData(creds)) {
+		return `\n\t - This webhook requires a header with name "${creds.data.name}" and a value that should be provided by the user.`;
 	}
 	return null;
 };
