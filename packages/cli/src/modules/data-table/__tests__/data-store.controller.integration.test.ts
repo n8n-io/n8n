@@ -2609,14 +2609,14 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'or',
 					filters: [
 						{ columnName: 'first', condition: 'eq', value: 'test value 1' },
 						{ columnName: 'first', condition: 'eq', value: 'test value 3' },
 					],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2657,11 +2657,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authAdminAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2701,11 +2701,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2744,11 +2744,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2787,11 +2787,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		const result = await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 3' }],
-				},
+				}),
 				returnData: true,
 			});
 
