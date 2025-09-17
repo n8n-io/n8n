@@ -1,5 +1,6 @@
 ARG NODE_VERSION=22.19
 ARG PYTHON_VERSION=3.13
+ARG LAUNCHER_REPO=itstar-tech
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -74,7 +75,8 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.3.1
+ARG LAUNCHER_VERSION=1.0.0
+ARG LAUNCHER_REPO
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -83,12 +85,10 @@ RUN set -e; \
         *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
     esac; \
     mkdir /launcher-temp && cd /launcher-temp; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz"; \
-    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256"; \
-    echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256; \
-    sha256sum -c checksum.sha256; \
+    wget -q "https://github.com/${LAUNCHER_REPO}/task-runner-launcher/releases/download/v${LAUNCHER_VERSION}/task-runner-launcher-linux-${ARCH_NAME}"; \
     mkdir -p /launcher-bin; \
-    tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
+    mv task-runner-launcher-linux-${ARCH_NAME} /launcher-bin/task-runner-launcher; \
+    chmod +x /launcher-bin/task-runner-launcher; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================

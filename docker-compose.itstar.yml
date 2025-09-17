@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: itstar/n8n:snapshot
+    container_name: n8n-itstar
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+      # Task Runners Configuration
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_TASK_BROKER_URI=http://task-runners:5680
+      - N8N_RUNNERS_AUTH_TOKEN=itstar-secure-token-2024
+      # Security
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_METRICS=false
+      # Logging
+      - N8N_LOG_LEVEL=info
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - task-runners
+    networks:
+      - n8n-network
+    restart: unless-stopped
+
+  task-runners:
+    image: itstar/runners:snapshot
+    container_name: n8n-runners-itstar
+    environment:
+      # Task Runner Configuration
+      - N8N_RUNNERS_AUTH_TOKEN=itstar-secure-token-2024
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_LAUNCHER_LOG_LEVEL=info
+      # Optional: Restrict external packages (security)
+      - NODE_FUNCTION_ALLOW_EXTERNAL=lodash,moment,axios
+      - N8N_RUNNERS_EXTERNAL_ALLOW=requests,pandas,numpy
+    ports:
+      - "5680:5680"
+    networks:
+      - n8n-network
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+    name: n8n_itstar_data
+
+networks:
+  n8n-network:
+    name: n8n-itstar-network
+    driver: bridge
