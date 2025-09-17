@@ -14,6 +14,8 @@ module.exports = {
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
 	testTimeout: 10_000,
 	prettierPath: null,
-	// Only run integration tests - exclude unit tests in src/
-	testPathIgnorePatterns: ['/dist/', '/node_modules/', '/src/'],
+	// Run integration tests from both test/integration and src/ directories
+	testRegex: undefined, // Override base config testRegex
+	testMatch: ['<rootDir>/test/integration/**/*.test.ts', '<rootDir>/src/**/*.integration.test.ts'],
+	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 };

@@ -50,7 +50,6 @@ describe('dataStore', () => {
 	});
 
 	afterEach(async () => {
-		// Clean up any created user data stores
 		await dataStoreService.deleteDataStoreAll();
 	});
 
