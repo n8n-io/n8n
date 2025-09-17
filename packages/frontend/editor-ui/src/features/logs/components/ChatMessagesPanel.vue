@@ -94,7 +94,7 @@ const webhookUrl = computed(() => {
 	// Generate predictable webhook URL using sessionId
 	// This matches the backend path generation: /${workflowId}/${sessionId}
 	const url = `${rootStore.webhookTestUrl}/${workflowId}/${props.sessionId}`;
-	
+
 	console.log('Chat webhook URL (sessionId-based):', url);
 	return url;
 });
@@ -184,8 +184,10 @@ async function registerChatWebhook(): Promise<void> {
 }
 
 
-function initializeChat() {
+async function initializeChat() {
 	if (!chatContainer.value) return;
+
+	await registerChatWebhook();
 
 	// Create Vue app instance with chat SDK
 	chatApp = createApp(Chat);
@@ -226,13 +228,13 @@ async function setupChatWithWebhook() {
 	}
 
 	// Initialize chat immediately - webhook will be registered on-demand before each message
-	initializeChat();
+	await initializeChat();
 }
 
 // Create a fresh execution placeholder (replicates what runWorkflow does)
 function createFreshExecutionPlaceholder() {
 	const workflowData = workflowsStore.workflow;
-	
+
 	const executionData: IExecutionResponse = {
 		id: IN_PROGRESS_EXECUTION_ID,
 		finished: false,
@@ -260,7 +262,7 @@ function createFreshExecutionPlaceholder() {
 			...workflowData,
 		} as IWorkflowDb,
 	};
-	
+
 	workflowsStore.setWorkflowExecutionData(executionData);
 }
 
@@ -419,92 +421,116 @@ onUnmounted(() => {
 	border-radius: 0;
 
 	:global(.chat-layout) {
-		--chat-font-family: var(--font-family) !important;
-		--chat-color-primary: var(--color-primary) !important;
-		--chat-color-secondary: var(--color-secondary) !important;
-		--chat-color-tertiary: var(--color-foreground-base) !important;
-		--chat-color-background: var(--color-background-base) !important;
-		--chat-color-text: var(--color-text-base) !important;
-		--chat-color-light-shade-100: var(--color-foreground-base) !important;
-		--chat-color-light-shade-200: var(--color-foreground-dark) !important;
-		--chat-color-light-shade-300: var(--color-background-light) !important;
-		--chat-color-light-shade-400: var(--color-background-xlight) !important;
-		--chat-color-disabled: var(--color-text-light) !important;
-		--chat-border-radius: var(--border-radius-base) !important;
-		--chat-spacing: var(--spacing-m) !important;
-		--chat-transition-duration: 0.15s !important;
-		--chat-header-height: auto !important;
-		--chat-header-padding: var(--spacing-m) !important;
-		--chat-header-background: var(--color-background-light) !important;
-		--chat-header-color: var(--color-text-base) !important;
-		--chat-header-border-bottom: var(--border-base) !important;
-		--chat-heading-font-size: var(--font-size-l) !important;
-		--chat-subtitle-font-size: var(--font-size-s) !important;
-		--chat-subtitle-line-height: var(--font-line-height-regular) !important;
-		--chat-body-background: var(--color-background-base) !important;
-		--chat-footer-background: var(--color-background-base) !important;
-		--chat-footer-color: var(--color-text-base) !important;
-		--chat-messages-list-padding: var(--spacing-m) !important;
-		--chat-message-font-size: var(--font-size-s) !important;
-		--chat-message-padding: var(--spacing-s) var(--spacing-m) !important;
-		--chat-message-border-radius: var(--border-radius-base) !important;
-		--chat-message-line-height: var(--font-line-height-regular) !important;
-		--chat-message-margin-bottom: var(--spacing-xs) !important;
-		--chat-message-bot-background: var(--color-background-light) !important;
-		--chat-message-bot-color: var(--color-text-base) !important;
-		--chat-message-bot-border: var(--border-base) !important;
-		--chat-message-user-background: var(--color-primary) !important;
-		--chat-message-user-color: white !important;
-		--chat-message-user-border: none !important;
-		--chat-message-pre-background: var(--color-background-xlight) !important;
-		--chat-input-font-size: var(--font-size-s) !important;
-		--chat-input-padding: var(--spacing-s) !important;
-		--chat-input-border-radius: var(--border-radius-base) !important;
-		--chat-input-border: var(--border-base) !important;
-		--chat-input-border-active: var(--color-primary) !important;
-		--chat-input-background: var(--color-background-xlight) !important;
-		--chat-input-text-color: var(--color-text-base) !important;
-		--chat-input-line-height: var(--font-line-height-regular) !important;
-		--chat-input-placeholder-font-size: var(--font-size-s) !important;
-		--chat-textarea-height: 44px !important;
-		--chat-textarea-max-height: 200px !important;
-		--chat-input-send-button-color: var(--color-primary) !important;
-		--chat-input-send-button-color-hover: var(--color-primary-shade-1) !important;
-		--chat-input-send-button-background: transparent !important;
-		--chat-input-send-button-background-hover: transparent !important;
-		--chat-input-file-button-color: var(--color-text-light) !important;
-		--chat-input-file-button-color-hover: var(--color-text-base) !important;
-		--chat-input-file-button-background: transparent !important;
-		--chat-input-file-button-background-hover: transparent !important;
-		--chat-close-button-color-hover: var(--color-primary) !important;
+		/* Font and Basic Styling */
+		--chat--font-family: var(--font-family) !important;
+		--chat--border-radius: var(--border-radius-base) !important;
+		--chat--spacing: var(--spacing-m) !important;
+		--chat--transition-duration: 0.15s !important;
+
+		/* Colors - Primary and Secondary */
+		--chat--color-primary: var(--color-primary) !important;
+		--chat--color-secondary: var(--color-secondary) !important;
+		--chat--color-light-shade-100: var(--color-foreground-base) !important;
+		--chat--color-disabled: var(--color-text-light) !important;
+
+		/* Header Styling */
+		--chat--header-height: auto !important;
+		--chat--header--padding: var(--spacing-m) !important;
+		--chat--header--background: var(--color-background-light) !important;
+		--chat--header--color: var(--color-text-base) !important;
+		--chat--header--border-bottom: var(--border-base) !important;
+		--chat--heading--font-size: var(--font-size-l) !important;
+		--chat--subtitle--font-size: var(--font-size-s) !important;
+		--chat--subtitle--line-height: var(--font-line-height-regular) !important;
+
+		/* Body and Footer */
+		--chat--body--background: var(--color-background-light);
+		--chat--footer--background: var(--color-background-base) !important;
+		--chat--footer--color: var(--color-text-base) !important;
+
+		/* Messages List */
+		--chat--messages-list--padding: var(--spacing-m) !important;
+
+		/* Message Styling */
+		--chat--message--font-size: var(--font-size-s) !important;
+		--chat--message--padding: var(--spacing-s) var(--spacing-m) !important;
+		--chat--message--border-radius: var(--border-radius-base) !important;
+		--chat--message-line-height: var(--font-line-height-regular) !important;
+		--chat--message--margin-bottom: var(--spacing-xs) !important;
+
+		/* Bot Messages */
+		--chat--message--bot--background: none !important;
+		--chat--message--bot--color: var(--color-text-dark) !important;
+		--chat--message--bot--border: none !important;
+
+		/* User Messages */
+		--chat--message--user--background: var(--color-text-lighter);
+		--chat--message--user--color: var(--color-text-dark) !important;
+		--chat--message--user--border: none !important;
+
+		/* Code blocks in messages */
+		--chat--message--pre--background: var(--color-background-xlight) !important;
+
+		/* Input Area */
+		--chat--input--font-size: var(--font-size-s) !important;
+		--chat--input--padding: var(--spacing-s) !important;
+		--chat--input--border-radius: var(--border-radius-base) !important;
+		--chat--input--border: var(--border-base) !important;
+		--chat--input--border-active: 1px solid var(--color-primary) !important;
+		--chat--input--background: var(--color-background-xlight) !important;
+		--chat--input--text-color: var(--color-text-base) !important;
+		--chat--input--line-height: var(--font-line-height-regular) !important;
+		--chat--input--placeholder--font-size: var(--font-size-s) !important;
+		--chat--textarea--height: 44px !important;
+		--chat--textarea--max-height: 200px !important;
+
+		/* Input Buttons */
+		--chat--input--send--button--color: var(--color-primary) !important;
+		--chat--input--send--button--color-hover: var(--color-primary-shade-1) !important;
+		--chat--input--send--button--background: transparent !important;
+		--chat--input--send--button--background-hover: transparent !important;
+		--chat--input--file--button--color: var(--color-text-light) !important;
+		--chat--input--file--button--color-hover: var(--color-text-base) !important;
+		--chat--input--file--button--background: transparent !important;
+		--chat--input--file--button--background-hover: transparent !important;
+		--chat--close--button--color-hover: var(--color-primary) !important;
 	}
 
+	/* Hide the default chat header since we use our own */
 	:global(.chat-header) {
 		display: none !important;
 	}
 
+	/* Dark Mode Overrides */
 	body[data-theme='dark'] & {
 		:global(.chat-layout) {
-			--chat-color-background: var(--p-gray-670) !important;
-			--chat-color-text: var(--p-gray-200) !important;
-			--chat-color-light-shade-100: var(--p-gray-540) !important;
-			--chat-color-light-shade-300: var(--p-gray-820) !important;
-			--chat-color-light-shade-400: var(--p-gray-740) !important;
-			--chat-header-background: var(--p-gray-820) !important;
-			--chat-header-color: var(--p-gray-200) !important;
-			--chat-header-border-bottom: 1px solid var(--p-gray-540) !important;
-			--chat-body-background: var(--p-gray-670) !important;
-			--chat-footer-background: var(--p-gray-670) !important;
-			--chat-footer-color: var(--p-gray-200) !important;
-			--chat-message-bot-background: var(--p-gray-740) !important;
-			--chat-message-bot-color: var(--p-gray-200) !important;
-			--chat-message-bot-border: 1px solid var(--p-gray-490) !important;
-			--chat-message-user-background: var(--p-color-alt-a-700) !important;
-			--chat-message-user-color: var(--p-white) !important;
-			--chat-message-pre-background: var(--p-gray-820) !important;
-			--chat-input-background: var(--p-gray-740) !important;
-			--chat-input-text-color: var(--p-gray-200) !important;
-			--chat-input-border: 1px solid var(--p-gray-540) !important;
+			/* Header */
+			--chat--header--background: var(--color-background-dark) !important;
+			--chat--header--color: var(--color-text-base) !important;
+			--chat--header--border-bottom: var(--border-base) !important;
+
+			/* Body and Footer - darker background like the old design */
+			--chat--body--background: var(--color-background-xlight) !important;
+			--chat--footer--background: var(--color-background-dark) !important;
+			--chat--footer--color: var(--color-text-base) !important;
+
+			/* Bot Messages - darker background with subtle border */
+			--chat--message--bot--background: var(--color-background-medium) !important;
+			--chat--message--bot--color: var(--color-text-base) !important;
+			--chat--message--bot--border: 1px solid var(--color-foreground-base) !important;
+
+			/* User Messages - darker user message background */
+			--chat--message--user--background: var(--color-foreground-dark) !important;
+			--chat--message--user--color: white !important;
+
+			/* Code blocks */
+			--chat--message--pre--background: var(--color-background-base) !important;
+
+			/* Input Area - match the old design's input styling */
+			--chat--input--background: var(--color-background-medium) !important;
+			--chat--input--text-color: var(--color-text-base) !important;
+			--chat--input--border: 1px solid var(--color-foreground-base) !important;
+			--chat--input--border-active: 1px solid var(--color-primary) !important;
 		}
 	}
 }
