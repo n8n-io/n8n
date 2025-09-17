@@ -77,7 +77,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					name: 'viewId',
 					type: 'options',
 					default: '',
-					noDataExpression: true,
 					description:
 						'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					typeOptions: {
