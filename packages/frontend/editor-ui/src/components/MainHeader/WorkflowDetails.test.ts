@@ -102,15 +102,15 @@ const initialState = {
 };
 
 const renderComponent = createComponentRenderer(WorkflowDetails, {
-	pinia: createTestingPinia({ initialState }),
-	global: {
-		stubs: {
-			RouterLink: true,
-			FolderBreadcrumbs: {
-				template: '<div><slot name="append" /></div>',
-			},
-		},
-	},
+    pinia: createTestingPinia({ initialState }),
+    global: {
+        stubs: {
+            RouterLink: true,
+            FolderBreadcrumbs: {
+                template: '<div data-test-id="folder-breadcrumbs-stub"><slot name="append" /></div>',
+            },
+        },
+    },
 });
 
 let uiStore: ReturnType<typeof useUIStore>;

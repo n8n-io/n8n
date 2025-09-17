@@ -8,6 +8,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
+import { VIEWS } from '@/constants';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
@@ -43,8 +45,10 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 // This will be used to filter out items that are already visible in the breadcrumbs
 const visibleIds = ref<Set<string>>(new Set());
 
-const currentProject = computed(
-	() => projectsStore.currentProject ?? projectsStore.personalProject,
+const isSharedContext = computed(() => projectsStore.projectNavActiveId === 'shared');
+
+const currentProject = computed(() =>
+	isSharedContext.value ? null : projectsStore.currentProject ?? projectsStore.personalProject,
 );
 
 const projectName = computed(() => {
@@ -86,9 +90,10 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		id: props.currentFolder.id,
 		label: props.currentFolder.name,
 		parentFolder: props.currentFolder.parentFolder,
-		href: props.currentFolderAsLink
-			? `/projects/${currentProject.value?.id}/folders/${props.currentFolder.id}/workflows`
-			: undefined,
+		href:
+			props.currentFolderAsLink && currentProject.value
+				? `/projects/${currentProject.value.id}/folders/${props.currentFolder.id}/workflows`
+				: undefined,
 	});
 	if (currentProject.value) {
 		visibleIds.value.add(currentProject.value.id);
@@ -187,29 +192,48 @@ onBeforeUnmount(() => {
 			@item-hover="onItemHover"
 			@item-drop="emit('itemDrop', $event)"
 		>
-			<template v-if="currentProject" #prepend>
-				<ProjectBreadcrumb
-					:current-project="currentProject"
-					:is-dragging="isDragging"
-					@project-drop="onProjectDrop"
-					@project-hover="onProjectHover"
-				/>
+			<template #prepend>
+				<template v-if="isSharedContext">
+					<div :class="$style['home-project']">
+						<n8n-link :to="{ name: VIEWS.SHARED_WORKFLOWS }" data-test-id="shared-root-breadcrumb">
+							<ProjectIcon :icon="{ type: 'icon', value: 'share' }" :border-less="true" size="mini" />
+							<N8nText size="medium" color="text-base">
+								{{ i18n.baseText('projects.menu.shared') }}
+							</N8nText>
+						</n8n-link>
+					</div>
+				</template>
+				<template v-else-if="currentProject">
+					<ProjectBreadcrumb
+						:current-project="currentProject"
+						:is-dragging="isDragging"
+						@project-drop="onProjectDrop"
+						@project-hover="onProjectHover"
+					/>
+				</template>
 			</template>
 			<template #append>
 				<slot name="append"></slot>
 			</template>
 		</n8n-breadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
-		<div v-else-if="currentProject" :class="$style['home-project']">
-			<ProjectBreadcrumb
-				:current-project="currentProject"
-				:is-dragging="isDragging"
-				@project-drop="onProjectDrop"
-				@project-hover="onProjectHover"
-			/>
-			<slot name="append"></slot>
-		</div>
-		<div v-else>
+		<div v-else :class="$style['home-project']">
+			<template v-if="isSharedContext">
+				<n8n-link :to="{ name: VIEWS.SHARED_WORKFLOWS }" data-test-id="shared-root-breadcrumb">
+					<ProjectIcon :icon="{ type: 'icon', value: 'share' }" :border-less="true" size="mini" />
+					<N8nText size="medium" color="text-base">
+						{{ i18n.baseText('projects.menu.shared') }}
+					</N8nText>
+				</n8n-link>
+			</template>
+			<template v-else-if="projectsStore.personalProject">
+				<ProjectBreadcrumb
+					:current-project="projectsStore.personalProject"
+					:is-dragging="isDragging"
+					@project-drop="onProjectDrop"
+					@project-hover="onProjectHover"
+				/>
+			</template>
 			<slot name="append"></slot>
 		</div>
 		<n8n-action-toggle

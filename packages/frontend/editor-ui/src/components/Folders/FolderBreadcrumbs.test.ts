@@ -47,7 +47,19 @@ const TEST_ACTIONS: Array<UserAction<IUser>> = [
 	{ label: 'Action 2', value: 'action2', disabled: true },
 ];
 
-const renderComponent = createComponentRenderer(FolderBreadcrumbs, {});
+const N8nLinkStub = {
+  props: ['to'],
+  template:
+    '<a :data-test-id="$attrs[\'data-test-id\']" :data-to-name="to?.name || \"\""><slot /></a>',
+};
+
+const renderComponent = createComponentRenderer(FolderBreadcrumbs, {
+  global: {
+    stubs: {
+      'n8n-link': N8nLinkStub,
+    },
+  },
+});
 
 describe('FolderBreadcrumbs', () => {
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
@@ -139,4 +151,34 @@ describe('FolderBreadcrumbs', () => {
 		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
 		expect(getByTestId('home-project')).toBeVisible();
 	});
+
+  it('should render "Shared with you" root and link when in shared context', () => {
+    projectsStore.projectNavActiveId = 'shared';
+
+    const { getByTestId, queryByTestId } = renderComponent({
+      props: {
+        currentFolder: TEST_FOLDER,
+      },
+    });
+
+    const sharedRoot = getByTestId('shared-root-breadcrumb');
+    expect(sharedRoot).toBeVisible();
+    expect(sharedRoot).toHaveTextContent('Shared with you');
+    expect(sharedRoot).toHaveAttribute('data-to-name', 'SharedWorkflows');
+    expect(queryByTestId('home-project')).not.toBeInTheDocument();
+  });
+
+  it('should render project badge and not shared root when owned context', () => {
+    projectsStore.projectNavActiveId = null as unknown as string;
+    projectsStore.currentProject = TEST_PROJECT;
+
+    const { getByTestId, queryByTestId } = renderComponent({
+      props: {
+        currentFolder: null,
+      },
+    });
+
+    expect(getByTestId('home-project')).toBeVisible();
+    expect(queryByTestId('shared-root-breadcrumb')).not.toBeInTheDocument();
+  });
 });

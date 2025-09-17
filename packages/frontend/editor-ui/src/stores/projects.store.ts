@@ -161,8 +161,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				projectNavActiveId.value = homeProject?.id ?? null;
 				currentProject.value = personalProject.value;
 			} else {
-				// Else default to overview page
-				projectNavActiveId.value = 'home';
+				// Else default to "Shared with you" section
+				projectNavActiveId.value = 'shared';
 			}
 		} else {
 			// Handle team projects
