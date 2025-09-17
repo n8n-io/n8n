@@ -1264,7 +1264,9 @@ export class WorkflowExecute {
 					? await nodeType.execute(context, subNodeExecutionResults)
 					: await nodeType.execute.call(context, subNodeExecutionResults);
 		} else {
-			throw new Error();
+			throw new UnexpectedError(
+				"Can't execute node. There is no custom operation and the node has not execute function.",
+			);
 		}
 
 		if (isEngineRequest(data)) {
