@@ -505,9 +505,13 @@ onBeforeUnmount(() => {
 		:scrollable="true"
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
+			<div
+				v-loading="isLoading"
+				:class="$style['workflow-settings']"
+				data-test-id="workflow-settings-dialog"
+			>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionOrder') }}
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
@@ -532,7 +536,7 @@ onBeforeUnmount(() => {
 				</el-row>
 
 				<el-row data-test-id="error-workflow">
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.errorWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -565,7 +569,7 @@ onBeforeUnmount(() => {
 				</el-row>
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
-						<el-col :span="10" class="setting-name">
+						<el-col :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
 								<template #content>
@@ -594,7 +598,7 @@ onBeforeUnmount(() => {
 						</el-col>
 					</el-row>
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
-						<el-col :span="10" class="setting-name">
+						<el-col :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerIds') }}
 							<N8nTooltip placement="top">
 								<template #content>
@@ -616,7 +620,7 @@ onBeforeUnmount(() => {
 					</el-row>
 				</div>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timezone') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -645,7 +649,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -674,7 +678,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -703,7 +707,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.saveManualExecutions') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -732,7 +736,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.saveExecutionProgress') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -761,7 +765,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
@@ -788,7 +792,7 @@ onBeforeUnmount(() => {
 					data-test-id="workflow-settings-timeout-form"
 				>
 					<el-row>
-						<el-col :span="10" class="setting-name">
+						<el-col :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
 								<template #content>
@@ -807,7 +811,7 @@ onBeforeUnmount(() => {
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
 							</N8nInput>
 						</el-col>
-						<el-col :span="4" class="timeout-input">
+						<el-col :span="4" :class="$style['timeout-input']">
 							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.minutes"
@@ -818,7 +822,7 @@ onBeforeUnmount(() => {
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
 							</N8nInput>
 						</el-col>
-						<el-col :span="4" class="timeout-input">
+						<el-col :span="4" :class="$style['timeout-input']">
 							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.seconds"
@@ -832,7 +836,7 @@ onBeforeUnmount(() => {
 					</el-row>
 				</div>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						<label for="availableInMCP">
 							{{ i18n.baseText('workflowSettings.availableInMCP') + ':' }}
 							<N8nTooltip placement="top">
@@ -857,7 +861,7 @@ onBeforeUnmount(() => {
 					</el-col>
 				</el-row>
 				<el-row>
-					<el-col :span="10" class="setting-name">
+					<el-col :span="10" :class="$style['setting-name']">
 						<label for="timeSavedPerExecution">
 							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') }}
 							<N8nTooltip placement="top">
@@ -869,7 +873,7 @@ onBeforeUnmount(() => {
 						</label>
 					</el-col>
 					<el-col :span="14">
-						<div class="time-saved">
+						<div :class="$style['time-saved']">
 							<N8nInput
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
@@ -886,7 +890,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<template #footer>
-			<div class="action-buttons" data-test-id="workflow-settings-save-button">
+			<div class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
 				<N8nButton
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
@@ -899,24 +903,31 @@ onBeforeUnmount(() => {
 	</Modal>
 </template>
 
-<style scoped lang="scss">
+<style module lang="scss">
 .workflow-settings {
 	font-size: var(--font-size-s);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-3xs);
 
-	.el-row {
+	:global(.el-row) {
 		display: flex;
 		align-items: center;
 	}
 
-	:deep(.el-switch) {
-		padding: var(--spacing-s) 0;
+	:global(.el-switch) {
+		padding: var(--spacing-m) 0;
 	}
 }
 
 .setting-name {
+	&,
+	& label {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+	}
+
 	svg {
 		display: inline-flex;
 		opacity: 0;
@@ -938,7 +949,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 
-	:deep(.el-input) {
+	:global(.el-input) {
 		width: 64px;
 	}
 
