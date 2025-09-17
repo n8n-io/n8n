@@ -1699,7 +1699,11 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | EngineRequest | null;
+export type NodeOutput =
+	| INodeExecutionData[][]
+	| NodeExecutionWithMetadata[][]
+	| EngineRequest
+	| null;
 
 export interface INodeType {
 	description: INodeTypeDescription;

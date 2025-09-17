@@ -17,6 +17,9 @@ import type {
 	INode,
 	INodeInputConfiguration,
 	NodeConnectionType,
+	NodeOutput,
+	GenericValue,
+	Logger,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -37,6 +40,60 @@ function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) 
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 }
 
+function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
+	if (isRequest(nodeExecutionResult)) {
+		return false;
+	}
+
+	if (nodeExecutionResult === undefined || nodeExecutionResult === null) {
+		return false;
+	}
+
+	return nodeExecutionResult.some((outputBranch) => outputBranch.some((item) => item.binary));
+}
+
+function containsDataThatIsUsefulToTheAgent(nodeExecutionResult?: NodeOutput): boolean {
+	if (isRequest(nodeExecutionResult)) {
+		return false;
+	}
+
+	if (nodeExecutionResult === undefined || nodeExecutionResult === null) {
+		return false;
+	}
+
+	return nodeExecutionResult.some((outputBranch) =>
+		outputBranch.some((item) => Object.keys(item.json).length > 0),
+	);
+}
+
+/**
+ * Filters out non-json items and reports if the result contained mixed
+ * responses (e.g. json and binary).
+ */
+function mapResult(result?: NodeOutput) {
+	let response:
+		| string
+		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
+		| undefined;
+	let nodeHasMixedJsonAndBinaryData = false;
+
+	if (result === undefined) {
+		response = undefined;
+	} else if (isRequest(result)) {
+		response =
+			'Error: The Tool attempted to return an engine request, which is not supported in Agents';
+	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
+		response = 'Error: The Tool attempted to return binary data, which is not supported in Agents';
+	} else {
+		if (containsBinaryData(result)) {
+			nodeHasMixedJsonAndBinaryData = true;
+		}
+		response = result?.[0]?.flatMap((item) => item.json);
+	}
+
+	return { response, nodeHasMixedJsonAndBinaryData };
+}
+
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
 	node: INode,
@@ -51,7 +108,6 @@ export function makeHandleToolInvocation(
 	// of the same tool when the tool is used in a loop or in a parallel execution.
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
-	// eslint-disable-next-line complexity
 	return async (toolArgs: IDataObject) => {
 		let maxTries = 1;
 		if (node.retryOnFail === true) {
@@ -96,24 +152,13 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				// Process and map the results
-				const mappedResults = isRequest(result)
-					? undefined
-					: result?.[0]?.flatMap((item) => item.json);
-				let response: string | typeof mappedResults = mappedResults;
+				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
 
-				if (!isRequest(result)) {
-					// Warn if any (unusable) binary data was returned
-					if (result?.some((x) => x.some((y) => y.binary))) {
-						if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
-							response =
-								'Error: The Tool attempted to return binary data, which is not supported in Agents';
-						} else {
-							context.logger.warn(
-								`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
-							);
-						}
-					}
+				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
+				if (nodeHasMixedJsonAndBinaryData) {
+					context.logger.warn(
+						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+					);
 				}
 
 				// Add output data to the context
