@@ -71,25 +71,33 @@ export class AuthService {
 		private readonly mfaService: MfaService,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
+		let basePath = globalConfig.path;
+		if (basePath.endsWith('/')) {
+			basePath = basePath.slice(0, -1);
+		}
+		if (basePath.length > 0 && !basePath.startsWith('/')) {
+			basePath = '/' + basePath;
+		}
+
 		this.skipBrowserIdCheckEndpoints = [
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-			`/${restEndpoint}/push`,
+			`${basePath}/${restEndpoint}/push`,
 
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-			`/${restEndpoint}/binary-data/`,
+			`${basePath}/${restEndpoint}/binary-data/`,
 
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
-			`/${restEndpoint}/oauth1-credential/callback`,
-			`/${restEndpoint}/oauth2-credential/callback`,
+			`${basePath}/${restEndpoint}/oauth1-credential/callback`,
+			`${basePath}/${restEndpoint}/oauth2-credential/callback`,
 			
 			// Skip browser ID check for type files
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/mcp-oauth/authorize/',
+			`${basePath}/types/nodes.json`,
+			`${basePath}/types/credentials.json`,
+			`${basePath}/mcp-oauth/authorize/`,
 
 			// Skip browser ID check for chat hub attachments
-			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+			`${basePath}/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 		];
 	}
 
@@ -230,7 +238,7 @@ export class AuthService {
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.some(skipEndpoint => endpoint.includes(skipEndpoint))) {
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
