@@ -139,6 +139,9 @@ describe('RoleCacheService', () => {
 					systemRole: true,
 					roleType: 'project' as const,
 					projectRelations: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: () => {},
 					scopes: [
 						{
 							slug: 'project:read' as const,
@@ -157,6 +160,9 @@ describe('RoleCacheService', () => {
 					displayName: 'Credential Owner',
 					description: 'Owner of credentials',
 					systemRole: true,
+					createdAt: new Date(),
+					setUpdateDate: () => {},
+					updatedAt: new Date(),
 					roleType: 'credential' as const,
 					projectRelations: [],
 					scopes: [
@@ -225,6 +231,9 @@ describe('RoleCacheService', () => {
 					systemRole: false,
 					roleType: 'workflow' as const,
 					projectRelations: [],
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: () => {},
 					scopes: [
 						{
 							slug: 'workflow:read' as const,
