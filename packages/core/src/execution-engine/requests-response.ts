@@ -148,7 +148,7 @@ export function handleRequest({
 	return { nodesToBeExecuted };
 }
 
-export function isRequest(
+export function isEngineRequest(
 	responseOrRequest: INodeExecutionData[][] | IRunNodeResponse | EngineRequest | null | undefined,
 ): responseOrRequest is EngineRequest {
 	return !!responseOrRequest && 'actions' in responseOrRequest;

@@ -3,7 +3,7 @@ import type { IExecuteData, IRunData, LoggerProxy, EngineRequest } from 'n8n-wor
 
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
-import { handleRequests } from '../requests-response';
+import { handleRequest } from '../requests-response';
 import { nodeTypes, types } from './mock-node-types';
 
 describe('handleRequests', () => {
@@ -31,7 +31,7 @@ describe('handleRequests', () => {
 
 		// ASSERT
 		expect(() =>
-			handleRequests({
+			handleRequest({
 				workflow,
 				currentNode,
 				request,

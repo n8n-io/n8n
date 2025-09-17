@@ -34,14 +34,14 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
-import { isRequest } from '../../requests-response';
+import { isEngineRequest } from '../../requests-response';
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 }
 
 function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
-	if (isRequest(nodeExecutionResult)) {
+	if (isEngineRequest(nodeExecutionResult)) {
 		return false;
 	}
 
@@ -53,7 +53,7 @@ function containsBinaryData(nodeExecutionResult?: NodeOutput): boolean {
 }
 
 function containsDataThatIsUsefulToTheAgent(nodeExecutionResult?: NodeOutput): boolean {
-	if (isRequest(nodeExecutionResult)) {
+	if (isEngineRequest(nodeExecutionResult)) {
 		return false;
 	}
 
@@ -79,7 +79,7 @@ function mapResult(result?: NodeOutput) {
 
 	if (result === undefined) {
 		response = undefined;
-	} else if (isRequest(result)) {
+	} else if (isEngineRequest(result)) {
 		response =
 			'Error: The Tool attempted to return an engine request, which is not supported in Agents';
 	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {

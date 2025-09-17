@@ -75,7 +75,7 @@ import {
 	rewireGraph,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
-import { handleRequest, isRequest } from './requests-response';
+import { handleRequest, isEngineRequest } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
@@ -1267,7 +1267,7 @@ export class WorkflowExecute {
 			throw new Error();
 		}
 
-		if (isRequest(data)) {
+		if (isEngineRequest(data)) {
 			return data;
 		}
 
@@ -1809,7 +1809,8 @@ export class WorkflowExecute {
 								);
 
 								let didContinueOnFail =
-									!isRequest(runNodeData) && runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+									!isEngineRequest(runNodeData) &&
+									runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1826,13 +1827,13 @@ export class WorkflowExecute {
 									);
 
 									didContinueOnFail =
-										!isRequest(runNodeData) &&
+										!isEngineRequest(runNodeData) &&
 										runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
 									tryIndex++;
 								}
 
 								// if runNodeData is Request
-								if (isRequest(runNodeData)) {
+								if (isEngineRequest(runNodeData)) {
 									const { nodesToBeExecuted } = handleRequest({
 										workflow,
 										currentNode: executionNode,
