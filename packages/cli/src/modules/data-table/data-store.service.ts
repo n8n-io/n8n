@@ -338,6 +338,8 @@ export class DataStoreService {
 		const fieldType = columnTypeToFieldType[columnType];
 		if (!fieldType) return;
 
+		if (columnType === 'json') return;
+
 		const validationResult = validateFieldType(key, cell, fieldType, {
 			strict: false, // Allow type coercion (e.g., string numbers to numbers)
 			parseStrings: false,

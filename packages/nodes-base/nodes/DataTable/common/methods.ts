@@ -162,7 +162,7 @@ export async function getDataTables(this: ILoadOptionsFunctions): Promise<Resour
 	const fields: ResourceMapperField[] = [];
 
 	for (const field of result) {
-		const type = field.type === 'date' ? 'dateTime' : field.type;
+		const type = field.type === 'date' ? 'dateTime' : field.type === 'json' ? 'object' : field.type;
 
 		fields.push({
 			id: field.name,

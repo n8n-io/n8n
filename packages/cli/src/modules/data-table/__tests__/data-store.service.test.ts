@@ -867,6 +867,69 @@ describe('dataStore', () => {
 			expect(data).toEqual(expected);
 		});
 
+		it.only('inserts json', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'json' }],
+			});
+
+			// ACT
+			const d = new Date();
+			const rows = [{ c1: { a: 3, b: { c: true }, d } }];
+			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'id');
+
+			// ASSERT
+			expect(result).toEqual([{ id: 1 }]);
+			{
+				const { count, data } = await dataStoreService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+				expect(count).toEqual(1);
+				expect(data).toHaveLength(1);
+				expect(data[0]).toMatchObject({
+					c1: { a: 3, b: { c: true }, d: `${d.toISOString()}` },
+				});
+			}
+			{
+				const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: 3,
+								path: 'a',
+							},
+							{
+								columnName: 'c1',
+								condition: 'eq',
+								value: true,
+								path: 'b.c',
+							},
+							{
+								columnName: 'c1',
+								condition: 'gte',
+								value: d,
+								path: 'd',
+							},
+						],
+					},
+				});
+				expect(data).toEqual([
+					{
+						c1: { a: 3, b: { c: true }, d: d.toISOString() },
+						id: 1,
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+					},
+				]);
+			}
+		});
+
 		it('inserts a row even if it matches with the existing one', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {

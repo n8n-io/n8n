@@ -3,7 +3,12 @@ import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
+import type {
+	DataStoreColumnJsType,
+	DataStoreColumnType,
+	DataStoreRowReturn,
+	DataStoreRowsReturn,
+} from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -24,6 +29,8 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
+			case 'json':
+				return name.json;
 			default:
 				return name.text;
 		}
@@ -56,6 +63,8 @@ function dataStoreColumnTypeToSql(
 				return 'TIMESTAMP';
 			}
 			return 'DATETIME';
+		case 'json':
+			return 'JSON';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -188,11 +197,21 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColum
 	];
 
 	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
+	// eslint-disable-next-line complexity
 	return rows.map((row) => {
 		const normalized = { ...row };
 		for (const [key, value] of Object.entries(row)) {
 			const type = typeMap.get(key);
 
+			if (type === 'json') {
+				try {
+					if (typeof value === 'string') {
+						normalized[key] = JSON.parse(value) as never;
+					}
+				} catch (e) {
+					normalized[key] = 'failed to parse';
+				}
+			}
 			if (type === 'boolean') {
 				// Convert boolean values to true/false
 				if (typeof value === 'boolean') {
@@ -240,10 +259,25 @@ function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): 
 
 export function normalizeValue(
 	value: DataStoreColumnJsType,
-	columnType: string | undefined,
+	columnType: DataStoreColumnType | undefined,
 	dbType?: DataSourceOptions['type'],
+	path?: string,
 ): DataStoreColumnJsType {
-	if (columnType !== 'date' || value === null || value === undefined) {
+	if (value === null || value === undefined) {
+		return value;
+	}
+
+	if (columnType === 'json') {
+		if (path) {
+			if (value instanceof Date) {
+				return formatDateForDatabase(value, dbType);
+			}
+			return value;
+		}
+		return JSON.stringify(value);
+	}
+
+	if (columnType !== 'date') {
 		return value;
 	}
 

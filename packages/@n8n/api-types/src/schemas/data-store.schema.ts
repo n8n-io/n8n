@@ -19,7 +19,7 @@ export const dataStoreColumnNameSchema = z
 		DATA_STORE_COLUMN_REGEX,
 		'Only alphabetical characters and non-leading numbers and underscores are allowed for column names',
 	);
-export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'json']);
 
 export const dataStoreCreateColumnSchema = z.object({
 	name: dataStoreColumnNameSchema,
@@ -64,4 +64,5 @@ export const dataStoreColumnValueSchema = z.union([
 	z.boolean(),
 	z.null(),
 	z.date(),
+	z.record(z.any()),
 ]);

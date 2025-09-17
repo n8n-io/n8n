@@ -1,4 +1,5 @@
 import type { Project } from '@/types/projects.types';
+import type { DataStoreColumnJsType } from 'n8n-workflow';
 
 export type DataStore = {
 	id: string;
@@ -34,7 +35,7 @@ export type DataStoreColumn = {
 
 export type DataStoreColumnCreatePayload = Pick<DataStoreColumn, 'name' | 'type'>;
 
-export type DataStoreValue = string | number | boolean | Date | null;
+export type DataStoreValue = DataStoreColumnJsType;
 
 export type DataStoreRow = Record<string, DataStoreValue>;
 

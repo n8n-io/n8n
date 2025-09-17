@@ -1,4 +1,4 @@
-export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
+export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date' | 'json';
 
 export type DataStoreColumn = {
 	id: string;
@@ -78,7 +78,13 @@ export type MoveDataStoreColumnOptions = {
 export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 	Partial<Pick<DataStoreColumn, 'index'>>;
 
-export type DataStoreColumnJsType = string | number | boolean | Date | null;
+export type DataStoreColumnJsType =
+	| string
+	| number
+	| boolean
+	| Date
+	| null
+	| { [k: string]: DataStoreColumnJsType };
 
 export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'] as const;
 
