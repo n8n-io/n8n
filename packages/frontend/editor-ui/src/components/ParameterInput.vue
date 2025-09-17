@@ -78,7 +78,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onClickOutside, useElementSize } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import {
@@ -167,7 +167,6 @@ const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, un
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
-const mapperRef = ref<InstanceType<typeof ExperimentalEmbeddedNdvMapper>>();
 
 const nodeName = ref('');
 const codeEditDialogVisible = ref(false);
@@ -209,7 +208,6 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
-const isMapperShown = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -629,8 +627,6 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
-const mapperElRef = computed(() => mapperRef.value?.contentRef);
-
 const isMapperAvailable = computed(
 	() =>
 		!props.parameter.isNodeSetting &&
@@ -971,26 +967,6 @@ function onBlur() {
 	isFocused.value = false;
 }
 
-function onFocusIn() {
-	if (isMapperAvailable.value) {
-		isMapperShown.value = true;
-	}
-}
-
-function onFocusOutOrOutsideClickMapper(event: FocusEvent | MouseEvent) {
-	if (
-		!(event?.target instanceof Node && wrapper.value?.contains(event.target)) &&
-		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
-		!(
-			'relatedTarget' in event &&
-			event.relatedTarget instanceof Node &&
-			mapperElRef.value?.contains(event.relatedTarget)
-		)
-	) {
-		isMapperShown.value = false;
-	}
-}
-
 function onPaste(event: ClipboardEvent) {
 	const pastedText = event.clipboardData?.getData('text');
 	const input = event.target;
@@ -1050,7 +1026,6 @@ async function optionSelected(command: string) {
 
 		case 'removeExpression':
 			isFocused.value = false;
-			isMapperShown.value = false;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1249,8 +1224,6 @@ onUpdated(async () => {
 		}
 	}
 });
-
-onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 </script>
 
 <template>
@@ -1274,13 +1247,11 @@ onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
-			ref="mapperRef"
-			:workflow="expressionLocalResolveCtx?.workflow"
+			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
+			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
-			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-			:visible="isMapperShown"
-			:virtual-ref="wrapper"
+			:input-node-name="expressionLocalResolveCtx.inputNode.name"
+			:reference="wrapper"
 		/>
 
 		<div
@@ -1293,8 +1264,6 @@ onClickOutside(mapperElRef, onFocusOutOrOutsideClickMapper);
 			]"
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
-			@focusin="onFocusIn"
-			@focusout="onFocusOutOrOutsideClickMapper"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
