@@ -3,7 +3,7 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { type DataSource } from '@n8n/typeorm';
 
 @Service()
 export class ExportService {
@@ -132,7 +132,7 @@ export class ExportService {
 			totalEntitiesExported += totalEntityCount;
 		}
 
-		this.logger.info(`\n📊 Export Summary:`);
+		this.logger.info('\n📊 Export Summary:');
 		this.logger.info(`   Tables processed: ${totalTablesProcessed}`);
 		this.logger.info(`   Total entities exported: ${totalEntitiesExported}`);
 		this.logger.info(`   Output directory: ${outputDir}`);
