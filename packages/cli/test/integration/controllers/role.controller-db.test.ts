@@ -59,6 +59,8 @@ describe('RoleController - Integration Tests', () => {
 					roleType: role.roleType,
 					scopes: role.scopes.map((scope) => scope.slug).sort(),
 					licensed: expect.any(Boolean),
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 			});
 		},
@@ -90,6 +92,8 @@ describe('RoleController - Integration Tests', () => {
 				slug: expect.any(String),
 				licensed: expect.any(Boolean),
 				systemRole: false,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
 			},
 		});
 
@@ -102,6 +106,8 @@ describe('RoleController - Integration Tests', () => {
 				slug: response.body.data.slug,
 				licensed: expect.any(Boolean),
 				systemRole: false,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
 			},
 		});
 	});
@@ -147,6 +153,8 @@ describe('RoleController - Integration Tests', () => {
 				roleType: 'project',
 				licensed: expect.any(Boolean),
 				systemRole: false,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
 			},
 		});
 
@@ -161,6 +169,8 @@ describe('RoleController - Integration Tests', () => {
 				roleType: 'project',
 				licensed: expect.any(Boolean),
 				systemRole: false,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
 			},
 		});
 	});

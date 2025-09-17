@@ -15,6 +15,7 @@ export type PubSubCommandMap = {
 	// # region SSO
 
 	'reload-oidc-config': never;
+	'reload-saml-config': never;
 
 	// #endregion
 

@@ -53,16 +53,19 @@ jobs:
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
-        run: pnpm jest
+        run: pnpm test:sqlite
 
   mariadb:
     name: MariaDB
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 20
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -83,11 +86,14 @@ jobs:
   mysql:
     name: MySQL 8.4
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 20
+      DB_MYSQLDB_POOL_SIZE: 30
+      DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
+      DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
+      DB_MYSQLDB_TIMEOUT: 120000
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -132,7 +138,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [mariadb, postgres, mysql]
+    needs: [sqlite-pooled, mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
