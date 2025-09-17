@@ -308,7 +308,6 @@ export class TestWebhooks implements IWebhookManager {
 			sessionId,
 		} = options;
 
-		console.log(`TestWebhooks.needsWebhook called with sessionId: ${sessionId}, workflowId: ${workflowEntity.id}`);
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
@@ -337,12 +336,7 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		// Use longer timeout for ChatTrigger webhooks
-		const isChatTrigger = Object.values(workflow.nodes).some(
-			(node: any) =>
-				node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
-		);
-		const timeoutDuration = isChatTrigger ? 10 * 60 * 1000 : TEST_WEBHOOK_TIMEOUT; // 10 minutes for ChatTrigger, normal for others
+		const timeoutDuration = TEST_WEBHOOK_TIMEOUT; // 10 minutes for ChatTrigger, normal for others
 
 		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 
@@ -356,13 +350,11 @@ export class TestWebhooks implements IWebhookManager {
 			)) {
 				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
 				webhook.path = `${workflow.id}/${sessionId}`;
-				console.log(`ChatTrigger webhook path set to: ${webhook.path} for sessionId: ${sessionId}`);
 			}
 
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
 
-			console.log(`Processing webhook for node ${webhook.node}, path: ${webhook.path}, key: ${key}`);
 
 			if (runData && webhook.node in runData) {
 				return false;
