@@ -43,24 +43,34 @@ export async function getViews(this: ILoadOptionsFunctions) {
 			const endpoint =
 				version === 3
 					? `/api/v2/meta/tables/${tableId}/views`
-					: `/api/v3/meta/bases/${baseId}/tables/${tableId}/views`;
+					: `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-			return responseData.list.map((i: IDataObject) => {
-				if (i.is_default) {
+			if (version === 3) {
+				return responseData.list.map((i: IDataObject) => {
+					if (i.is_default) {
+						return {
+							name: 'Default View',
+							value: '',
+						};
+					}
 					return {
-						name: 'Default View',
-						value: '',
+						name: i.title,
+						value: i.id,
 					};
-				}
-				return {
-					name: i.title,
-					value: i.id,
-				};
-			});
+				});
+			} else {
+				return responseData.views.map((i: IDataObject) => {
+					return {
+						name: i.title,
+						value: i.id,
+					};
+				});
+			}
 		} catch (e) {
+			const message = e.messages?.[0] ?? '';
 			throw new NodeOperationError(
 				this.getNode(),
-				new Error('Error while fetching tables!', { cause: e }),
+				new Error(`Error while fetching views: ${message}`, { cause: e }),
 				{
 					level: 'warning',
 				},
