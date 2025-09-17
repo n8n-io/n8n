@@ -152,6 +152,74 @@ export async function getTables(
 	}
 }
 
+export async function getViews(this: ILoadOptionsFunctions) {
+	const version = this.getNodeParameter('version', 0) as number;
+	const baseId = this.getNodeParameter('projectId', 0, {
+		extractValue: true,
+	}) as string;
+	const tableId = this.getNodeParameter('table', 0, {
+		extractValue: true,
+	}) as string;
+
+	const baseUrl = await getBaseUrl.call(this);
+	const workspaceId = this.getNodeParameter('workspaceId', 0, {
+		extractValue: true,
+	}) as string;
+	const constructUrl = (viewId: string) => {
+		return `${baseUrl}/#/${workspaceId && workspaceId !== 'none' ? workspaceId : 'nc'}/${baseId}/${tableId}/${viewId}`;
+	};
+	if (tableId) {
+		try {
+			const requestMethod = 'GET';
+			const endpoint =
+				version === 3
+					? `/api/v2/meta/tables/${tableId}/views`
+					: `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
+			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+			if (version === 3) {
+				return {
+					results: responseData.list.map((i: IDataObject) => {
+						if (i.is_default) {
+							return {
+								name: 'Default View',
+								value: '',
+							};
+						}
+						return {
+							name: i.title,
+							value: i.id,
+							url: constructUrl(i.id as string),
+						};
+					}),
+				};
+			} else {
+				return {
+					results: responseData.views.map((i: IDataObject) => {
+						return {
+							name: i.title,
+							value: i.id,
+							url: constructUrl(i.id as string),
+						};
+					}),
+				};
+			}
+		} catch (e) {
+			const message = e.messages?.[0] ?? '';
+			throw new NodeOperationError(
+				this.getNode(),
+				new Error(`Error while fetching views: ${message}`, { cause: e }),
+				{
+					level: 'warning',
+				},
+			);
+		}
+	} else {
+		throw new NodeOperationError(this.getNode(), 'No table selected!', {
+			level: 'warning',
+		});
+	}
+}
+
 // This only supports using the table ID
 export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: string) {
 	// version supported is only 4

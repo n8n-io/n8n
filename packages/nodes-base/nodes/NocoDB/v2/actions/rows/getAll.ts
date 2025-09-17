@@ -75,15 +75,30 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				{
 					displayName: 'View Name or ID',
 					name: 'viewId',
-					type: 'options',
-					default: '',
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
 					description:
 						'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					typeOptions: {
 						loadOptionsDependsOn: ['table.value'],
-						loadOptionsMethod: 'getViews',
 					},
-					placeholder: 'View ID',
+					modes: [
+						{
+							displayName: 'From List',
+							name: 'list',
+							type: 'list',
+							typeOptions: {
+								searchListMethod: 'getViews',
+								searchable: true,
+							},
+						},
+						{
+							displayName: 'ID',
+							name: 'id',
+							type: 'string',
+							placeholder: 'vw5t20qcex4d5zpk',
+						},
+					],
 				},
 				{
 					displayName: 'Fields',
@@ -190,6 +205,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 			if (qs.fields) {
 				qs.fields = (qs.fields as IDataObject[]).join(',');
+			}
+			if (qs.viewId && (qs.viewId as IDataObject).value) {
+				qs.viewId = (qs.viewId as IDataObject).value;
 			}
 
 			if (returnAll) {
