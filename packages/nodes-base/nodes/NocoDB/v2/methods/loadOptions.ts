@@ -83,7 +83,7 @@ export async function getDownloadFields(this: ILoadOptionsFunctions) {
 		.map((field: any) => {
 			return {
 				name: field.title,
-				value: field.id,
+				value: field.title,
 			};
 		});
 }

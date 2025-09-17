@@ -44,7 +44,7 @@ export async function apiRequest(
 
 	query = query ?? {};
 	uri =
-		(uri ?? baseUrl.endsWith('/')) ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
+		uri ?? (baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`);
 
 	const options: IHttpRequestOptions = {
 		method,
