@@ -856,7 +856,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<template #footer>
-			<div class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
+			<div :class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
 				<N8nButton
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
