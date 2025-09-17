@@ -18,17 +18,15 @@ const onAction = (action: string) => {
 </script>
 
 <template>
-	<div>
-		<N8nActionToggle
-			v-if="
-				props.data.id !== props.currentUserId &&
-				props.data.role !== 'project:personalOwner' &&
-				props.actions.length > 0
-			"
-			placement="bottom"
-			:actions="props.actions"
-			theme="dark"
-			@action="onAction"
-		/>
-	</div>
+	<N8nActionToggle
+		v-if="
+			props.data.id !== props.currentUserId &&
+			props.data.role !== 'project:personalOwner' &&
+			props.actions.length > 0
+		"
+		placement="bottom"
+		:actions="props.actions"
+		theme="dark"
+		@action="onAction"
+	/>
 </template>

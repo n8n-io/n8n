@@ -104,7 +104,7 @@ vi.mock('@/components/Projects/ProjectMembersActionsCell.vue', () => ({
 			currentUserId: { type: String },
 		},
 		emits: ['action'],
-		template: `<div :data-test-id="'actions-cell-' + data.id"></div>`,
+		template: '<div :data-test-id="`actions-cell-` + data.id"></div>',
 	},
 }));
 

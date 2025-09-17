@@ -13,7 +13,6 @@ import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import ProjectMembersActionsCell from '@/components/Projects/ProjectMembersActionsCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
-import { isProjectRole } from '@/utils/typeGuards';
 import type { ProjectMemberData } from '@/types/projects.types';
 
 const i18n = useI18n();
@@ -79,10 +78,6 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 		label: i18n.baseText('projects.settings.role.viewer'),
 		desc: i18n.baseText('projects.settings.role.viewer.description'),
 	},
-	'project:personalOwner': {
-		label: i18n.baseText('projects.settings.role.personalOwner'),
-		desc: '',
-	},
 }));
 
 const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
@@ -93,10 +88,7 @@ const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 	})),
 ]);
 
-const canUpdateRole = (member: ProjectMemberData): boolean => {
-	// User cannot change their own role or remove themselves
-	return member.id !== props.currentUserId;
-};
+const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
 
 const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: string }) => {
 	emit('update:role', { role, userId });
@@ -129,9 +121,7 @@ const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: 
 					:actions="roleActions"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{
-					isProjectRole(item.role) ? roles[item.role]?.label || item.role : item.role
-				}}</N8nText>
+				<N8nText v-else color="text-dark">{{ roles[item.role]?.label ?? item.role }}</N8nText>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<ProjectMembersActionsCell

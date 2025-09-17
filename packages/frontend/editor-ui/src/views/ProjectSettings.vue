@@ -104,16 +104,13 @@ const projectRoles = computed(() =>
 );
 const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
-const projectMembersActions = computed((): Array<UserAction<ProjectMemberData>> => {
-	return [
-		{
-			label: i18n.baseText('projects.settings.table.row.removeUser'),
-			value: 'remove',
-			guard: (member) =>
-				member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
-		},
-	];
-});
+const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
+	{
+		label: i18n.baseText('projects.settings.table.row.removeUser'),
+		value: 'remove',
+		guard: (member) => member.id !== usersStore.currentUser?.id,
+	},
+]);
 
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
