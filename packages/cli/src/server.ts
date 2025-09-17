@@ -210,10 +210,10 @@ export class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
-		const { restEndpoint, app } = this;
+		const { basePath, restEndpoint, app } = this;
 
 		const push = Container.get(Push);
-		push.setupPushHandler(restEndpoint, app);
+		push.setupPushHandler(basePath, restEndpoint, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
@@ -247,7 +247,7 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+		this.app.get(`${basePath}/${this.restEndpoint}/options/timezones`, (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
@@ -276,7 +276,7 @@ export class Server extends AbstractServer {
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
 			this.app.post(
-				`/${this.endpointPresetCredentials}`,
+				`${basePath}/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
 					try {
 						// If authentication is enforced we can allow multiple overwrites
@@ -347,14 +347,14 @@ export class Server extends AbstractServer {
 		if (frontendService) {
 			this.app.use(
 				[
-					'/icons/{@:scope/}:packageName/*path/*file.svg',
-					'/icons/{@:scope/}:packageName/*path/*file.png',
+					`${basePath}/icons/{@:scope/}:packageName/*path/*file.svg`,
+					`${basePath}/icons/{@:scope/}:packageName/*path/*file.png`,
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(basePath, packageName, req.originalUrl);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -382,7 +382,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			this.app.use(`${basePath}/schemas/:node/:version{/:resource}{/:operation}.json`, serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -468,7 +468,7 @@ export class Server extends AbstractServer {
 			};
 
 			this.app.use(
-				'/',
+				`${basePath}/`,
 				historyApiHandler,
 				express.static(staticCacheDir, {
 					...cacheOptions,
@@ -477,20 +477,20 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+			this.app.use(`${basePath}/`, express.static(staticCacheDir, cacheOptions));
 		}
 
 		installGlobalProxyAgent();
 	}
 
 	private configureSettingsRoute() {
-		const { frontendService } = this;
+		const { frontendService, basePath } = this;
 		const authService = Container.get(AuthService);
 
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(
-				`/${this.restEndpoint}/settings`,
+				`${basePath}/${this.restEndpoint}/settings`,
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
