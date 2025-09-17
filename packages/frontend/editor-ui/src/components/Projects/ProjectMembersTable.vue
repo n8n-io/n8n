@@ -27,7 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
-	'update:role': [payload: { role: ProjectRole | 'remove'; userId: string }];
+	'update:role': [payload: { role: ProjectRole; userId: string }];
 	action: [value: { action: string; userId: string }];
 }>();
 
@@ -94,7 +94,7 @@ const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 
 const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
 
-const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: string }) => {
+const onRoleChange = ({ role, userId }: { role: ProjectRole; userId: string }) => {
 	emit('update:role', { role, userId });
 };
 </script>

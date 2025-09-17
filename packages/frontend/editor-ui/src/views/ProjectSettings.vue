@@ -55,6 +55,8 @@ const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	description: '',
 	relations: [],
 });
+// Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
+const suppressNextSync = ref(false);
 
 const projectRoleTranslations = ref<{ [key: string]: string }>({
 	'project:viewer': i18n.baseText('projects.settings.role.viewer'),
@@ -78,8 +80,6 @@ const membersTableState = ref<TableOptions>({
 		{ id: 'email', desc: false },
 	],
 });
-
-const pendingRemovals = ref<Set<string>>(new Set());
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -108,7 +108,8 @@ const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() 
 	{
 		label: i18n.baseText('projects.settings.table.row.removeUser'),
 		value: 'remove',
-		guard: (member) => member.id !== usersStore.currentUser?.id,
+		guard: (member) =>
+			member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
 	},
 ]);
 
@@ -127,20 +128,7 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onUpdateMemberRole = async ({
-	userId,
-	role,
-}: {
-	userId: string;
-	role: ProjectRole | 'remove';
-}) => {
-	if (role === 'remove') {
-		// Mark for pending removal instead of immediate removal
-		pendingRemovals.value.add(userId);
-		isDirty.value = true;
-		return;
-	}
-
+const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
 	if (!projectsStore.currentProject) {
 		return;
 	}
@@ -158,9 +146,6 @@ const onUpdateMemberRole = async ({
 
 	try {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name ?? '',
-			icon: projectIcon.value,
-			description: formData.value.description ?? '',
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
 				role: r.role,
@@ -187,9 +172,50 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
-const onMembersListAction = ({ action, userId }: { action: string; userId: string }) => {
-	if (action === 'remove') {
-		void onUpdateMemberRole({ userId, role: 'remove' });
+async function onRemoveMember(userId: string) {
+	const current = projectsStore.currentProject;
+	if (!current) return;
+
+	const idx = formData.value.relations.findIndex((r) => r.id === userId);
+	if (idx === -1) return;
+
+	// Optimistically remove from UI
+	const removed = formData.value.relations.splice(idx, 1)[0];
+
+	// Only persist if user existed in server relations
+	const isPersisted = current.relations.some((r) => r.id === userId);
+	if (!isPersisted) return;
+
+	try {
+		// Prevent next sync from wiping unsaved edits
+		suppressNextSync.value = true;
+		await projectsStore.updateProject(current.id, {
+			relations: current.relations
+				.filter((r) => r.id !== userId)
+				.map((r) => ({ userId: r.id, role: r.role })),
+		});
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.member.removed.title'),
+		});
+		telemetry.track('User removed member from project', {
+			project_id: current.id,
+			target_user_id: userId,
+		});
+	} catch (error) {
+		formData.value.relations.splice(idx, 0, removed);
+		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+	}
+}
+
+const onMembersListAction = async ({ action, userId }: { action: string; userId: string }) => {
+	switch (action) {
+		case 'remove':
+			await onRemoveMember(userId);
+			break;
+		default:
+			// no-op for now; future actions can be added here
+			break;
 	}
 };
 
@@ -199,7 +225,6 @@ const onCancel = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
-	pendingRemovals.value.clear();
 	isDirty.value = false;
 };
 
@@ -281,24 +306,15 @@ const updateProject = async () => {
 			throw new Error('Invalid role selected for this project.');
 		}
 
-		// Remove pending removal members from relations before saving
-		const relationsToSave = formData.value.relations.filter(
-			(r: ProjectRelation) => !pendingRemovals.value.has(r.id),
-		);
-
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			icon: projectIcon.value,
 			description: formData.value.description ?? '',
-			relations: relationsToSave.map((r: ProjectRelation) => ({
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
 				role: r.role,
 			})),
 		});
-
-		// After successful save, actually remove pending members from formData
-		formData.value.relations = relationsToSave;
-		pendingRemovals.value.clear();
 		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -372,9 +388,14 @@ const onIconUpdated = async () => {
 	});
 };
 
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
 watch(
 	() => projectsStore.currentProject,
 	async () => {
+		if (suppressNextSync.value) {
+			suppressNextSync.value = false;
+			return;
+		}
 		formData.value.name = projectsStore.currentProject?.name ?? '';
 		formData.value.description = projectsStore.currentProject?.description ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
@@ -391,30 +412,27 @@ watch(
 
 // Add users property to the relation objects,
 // So that the table has access to the full user data
-// Filter out users marked for pending removal
 const relationUsers = computed(() =>
-	formData.value.relations
-		.filter((relation: ProjectRelation) => !pendingRemovals.value.has(relation.id))
-		.map((relation: ProjectRelation) => {
-			const user = usersStore.usersById[relation.id];
-			// Ensure type safety for UI display while preserving original role in formData
-			const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+	formData.value.relations.map((relation: ProjectRelation) => {
+		const user = usersStore.usersById[relation.id];
+		// Ensure type safety for UI display while preserving original role in formData
+		const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
 
-			if (!user) {
-				return {
-					...relation,
-					role: safeRole,
-					firstName: null,
-					lastName: null,
-					email: null,
-				};
-			}
+		if (!user) {
 			return {
-				...user,
 				...relation,
 				role: safeRole,
+				firstName: null,
+				lastName: null,
+				email: null,
 			};
-		}),
+		}
+		return {
+			...user,
+			...relation,
+			role: safeRole,
+		};
+	}),
 );
 
 const membersTableData = computed(() => ({
