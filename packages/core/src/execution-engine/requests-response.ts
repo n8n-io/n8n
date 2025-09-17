@@ -25,28 +25,13 @@ type NodeToBeExecuted = {
 	metadata?: ITaskMetadata;
 };
 
-/**
- * Processes a Request object by scheduling the requested tool nodes for execution
- * and preparing the current node to resume after tools complete. The current node
- * is paused and will be re-executed with tool results once all actions finish.
- */
-export function handleRequest({
-	workflow,
-	currentNode,
-	request,
-	runIndex,
-	executionData,
-	runData,
-}: {
-	workflow: Workflow;
-	currentNode: INode;
-	request: EngineRequest;
-	runIndex: number;
-	executionData: IExecuteData;
-	runData: IRunData;
-}): {
-	nodesToBeExecuted: NodeToBeExecuted[];
-} {
+function prepareRequestedNodesForExecution(
+	workflow: Workflow,
+	currentNode: INode,
+	request: EngineRequest,
+	runIndex: number,
+	runData: IRunData,
+) {
 	// 1. collect nodes to be put on the stack
 	const nodesToBeExecuted: NodeToBeExecuted[] = [];
 	const subNodeExecutionData: ITaskMetadata['subNodeExecutionData'] = {
@@ -111,7 +96,14 @@ export function handleRequest({
 		});
 	}
 
-	// 2. create metadata for current node
+	return { nodesToBeExecuted, subNodeExecutionData };
+}
+
+function prepareRequestingNodeForResuming(
+	workflow: Workflow,
+	request: EngineRequest,
+	executionData: IExecuteData,
+) {
 	const parentNode = executionData.source?.main?.[0]?.previousNode;
 	if (!parentNode) {
 		Container.get(ErrorReporter).error(
@@ -132,7 +124,7 @@ export function handleRequest({
 			},
 		);
 
-		return { nodesToBeExecuted: [] };
+		return undefined;
 	}
 	const connectionData: IConnection = {
 		// agents always have a main input
@@ -142,11 +134,51 @@ export function handleRequest({
 		index: 0,
 	};
 
+	return { connectionData, parentNode };
+}
+
+/**
+ * Processes a Request object by scheduling the requested tool nodes for execution
+ * and preparing the current node to resume after tools complete. The current node
+ * is paused and will be re-executed with tool results once all actions finish.
+ */
+export function handleRequest({
+	workflow,
+	currentNode,
+	request,
+	runIndex,
+	executionData,
+	runData,
+}: {
+	workflow: Workflow;
+	currentNode: INode;
+	request: EngineRequest;
+	runIndex: number;
+	executionData: IExecuteData;
+	runData: IRunData;
+}): {
+	nodesToBeExecuted: NodeToBeExecuted[];
+} {
+	// 1. collect nodes to be put on the stack
+	const { nodesToBeExecuted, subNodeExecutionData } = prepareRequestedNodesForExecution(
+		workflow,
+		currentNode,
+		request,
+		runIndex,
+		runData,
+	);
+
+	// 2. create metadata for current node
+	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
+	if (!result) {
+		return { nodesToBeExecuted: [] };
+	}
+
 	// 3. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
-		inputConnectionData: connectionData,
+		inputConnectionData: result.connectionData,
 		parentOutputIndex: 0,
-		parentNode,
+		parentNode: result.parentNode,
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
 		runIndex,
 		nodeRunIndex: runIndex,
