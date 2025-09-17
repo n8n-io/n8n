@@ -36,15 +36,15 @@ describe('dataStoreAggregate', () => {
 	const manager = mock<EntityManager>();
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 
-	let user: User;
-	let project1: Project;
-	let project2: Project;
-
-	beforeAll(async () => {
+	beforeAll(() => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
 		dataStoreAggregateService = Container.get(DataStoreAggregateService);
 		dataStoreService = Container.get(DataStoreService);
 	});
+
+	let user: User;
+	let project1: Project;
+	let project2: Project;
 
 	beforeEach(async () => {
 		project1 = await createTeamProject();

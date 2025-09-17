@@ -9,10 +9,6 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
-    command: >
-      --wait-timeout=300
-      --interactive-timeout=300
-      --max-connections=200
 
   mysql-8.4:
     image: mysql:8.4
@@ -23,15 +19,6 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
-    command: >
-      --innodb-redo-log-capacity=1G
-      --innodb-io-capacity=2000
-      --innodb-io-capacity-max=4000
-      --wait-timeout=300
-      --interactive-timeout=300
-      --max-connections=200
-      --innodb-buffer-pool-size=512M
-      --innodb-log-buffer-size=32M
 
   postgres:
     image: postgres:16

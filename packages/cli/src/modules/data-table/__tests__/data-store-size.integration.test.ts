@@ -30,12 +30,12 @@ describe('Data Store Size Tests', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreRepository: DataStoreRepository;
 
-	let project1: Project;
-
-	beforeAll(async () => {
+	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
 		dataStoreRepository = Container.get(DataStoreRepository);
 	});
+
+	let project1: Project;
 
 	beforeEach(async () => {
 		project1 = await createTeamProject();

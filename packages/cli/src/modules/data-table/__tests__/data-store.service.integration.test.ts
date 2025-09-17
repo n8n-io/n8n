@@ -35,17 +35,22 @@ describe('dataStore', () => {
 	let dataStoreRepository: DataStoreRepository;
 	let dataStoreRowsRepository: DataStoreRowsRepository;
 
+	beforeAll(() => {
+		dataStoreService = Container.get(DataStoreService);
+		dataStoreRepository = Container.get(DataStoreRepository);
+		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+	});
+
 	let project1: Project;
 	let project2: Project;
 
 	beforeEach(async () => {
-		// Get services in beforeEach to ensure DB is ready
-		dataStoreService = Container.get(DataStoreService);
-		dataStoreRepository = Container.get(DataStoreRepository);
-		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
-
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
+	});
+
+	afterEach(async () => {
+		await dataStoreService.deleteDataStoreAll();
 	});
 
 	describe('createDataStore', () => {

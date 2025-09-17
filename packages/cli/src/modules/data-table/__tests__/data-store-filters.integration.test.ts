@@ -25,10 +25,11 @@ afterAll(async () => {
 describe('dataStore filters', () => {
 	let dataStoreService: DataStoreService;
 
-	let project: Project;
-	beforeAll(async () => {
+	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
 	});
+
+	let project: Project;
 
 	beforeEach(async () => {
 		project = await createTeamProject();

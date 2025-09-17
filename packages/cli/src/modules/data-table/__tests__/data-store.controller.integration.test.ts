@@ -22,7 +22,6 @@ import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
 import { mockDataStoreSizeValidator } from './test-helpers';
-import { DataStoreService } from '../data-store.service';
 
 let owner: User;
 let member: User;
@@ -48,14 +47,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// Ensure clean state and stable connections
-	try {
-		const dataStoreService = Container.get(DataStoreService);
-		await dataStoreService.deleteDataStoreAll();
-	} catch (error) {
-		console.warn('Pre-cleanup failed:', error.message);
-	}
-
 	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
