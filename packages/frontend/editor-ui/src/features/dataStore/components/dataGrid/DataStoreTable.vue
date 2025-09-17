@@ -163,10 +163,6 @@ watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], asy
 	await setCurrentPage(1);
 });
 
-watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
-	await setCurrentPage(1);
-});
-
 watch(currentFilterJSON, async () => {
 	await setCurrentPage(1);
 });
