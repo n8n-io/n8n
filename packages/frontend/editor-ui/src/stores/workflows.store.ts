@@ -149,7 +149,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const activeWorkflows = ref<string[]>([]);
-	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
@@ -279,10 +278,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	);
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
-
-	const shouldReplaceInputDataWithPinData = computed(() => {
-		return !activeWorkflowExecution.value || activeWorkflowExecution.value.mode === 'manual';
-	});
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
@@ -1905,7 +1900,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow,
 		usedCredentials,
 		activeWorkflows,
-		activeWorkflowExecution,
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
@@ -1945,7 +1939,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodesByName,
 		nodesIssuesExist,
 		pinnedWorkflowData,
-		shouldReplaceInputDataWithPinData,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
