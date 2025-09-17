@@ -90,13 +90,10 @@ export const useDatePickerCommon = (callbacks: DatePickerCallbacks = {}) => {
 	};
 
 	return {
-		// Refs
 		pickerRef,
 		wrapperRef,
 		dateValue,
 		initialValue,
-
-		// Functions
 		getInnerInput,
 		commitIfParsedFromInput,
 		onKeydown,

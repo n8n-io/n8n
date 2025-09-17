@@ -27,10 +27,8 @@ export const useDataStoreColumnFilters = ({
 	const currentFilterJSON = ref<string | undefined>(undefined);
 
 	const initializeFilters = () => {
-		// Enable default filters for all columns via defaultColDef
 		gridApi.value.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
 
-		// Explicitly disable filters for special columns that shouldn't be filterable
 		const updated = colDefs.value.map((def) => {
 			const colId = def.colId ?? def.field;
 			if (!colId) return def;
@@ -54,10 +52,7 @@ export const useDataStoreColumnFilters = ({
 
 		for (const [key, filter] of Object.entries(model)) {
 			const colField = colIdToField.get(key) ?? key;
-			// Skip special/internal columns
-			if (SPECIAL_COLUMNS.includes(colField as (typeof SPECIAL_COLUMNS)[number])) continue;
-
-			const filterType: string | undefined = filter?.filterType || filter?.type;
+			const filterType = filter.filterType || filter.type;
 			if (!filterType) continue;
 
 			switch (filter.filterType) {
@@ -71,7 +66,6 @@ export const useDataStoreColumnFilters = ({
 					allFilters.push(...processDateFilter(filter, colField));
 					break;
 				default:
-					// Unrecognized filter type; skip
 					break;
 			}
 		}

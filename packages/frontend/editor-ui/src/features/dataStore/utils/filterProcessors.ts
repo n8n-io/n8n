@@ -39,10 +39,6 @@ export function processNumberFilter(
 ): BackendFilterRecord[] {
 	let value: string | number | boolean | Date | null = filter.filter ?? null;
 
-	if (filter.type === 'null' || filter.type === 'notNull') {
-		value = null;
-	}
-
 	if (filter.type === 'between') {
 		return [
 			{
@@ -56,6 +52,10 @@ export function processNumberFilter(
 				value: filter.filterTo ?? null,
 			},
 		];
+	}
+
+	if (filter.type === 'null' || filter.type === 'notNull') {
+		value = null;
 	}
 
 	return [
