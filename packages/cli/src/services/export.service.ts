@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { writeFile, mkdir, rm, readdir, appendFile } from 'fs/promises';
+import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
@@ -24,7 +24,7 @@ export class ExportService {
 			);
 			for (const file of entityFiles) {
 				await rm(path.join(outputDir, file));
-				this.logger.info(`     Deleted: ${file}`);
+				this.logger.info(`      Deleted: ${file}`);
 			}
 		}
 	}
@@ -46,6 +46,7 @@ export class ExportService {
 		let totalTablesProcessed = 0;
 		let totalEntitiesExported = 0;
 		const pageSize = 500;
+		const entitiesPerFile = 10000;
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name
@@ -59,13 +60,13 @@ export class ExportService {
 
 			// Get column information for this table
 			const columns = metadata.columns.map((col) => col.databaseName).join(', ');
-			this.logger.info(`   Columns: ${columns}`);
+			this.logger.info(`   💭 Columns: ${columns}`);
 
 			let offset = 0;
 			let totalEntityCount = 0;
 			let hasNextPage = true;
-			const fileName = `${entityName}.jsonl`;
-			const filePath = path.join(outputDir, fileName);
+			let fileIndex = 1;
+			let currentFileEntityCount = 0;
 
 			do {
 				const pageEntities = await this.dataSource.query(
@@ -74,9 +75,22 @@ export class ExportService {
 
 				// If no entities returned, we've reached the end
 				if (pageEntities.length === 0) {
-					this.logger.info(`     No more entities available at offset ${offset}`);
+					this.logger.info(`      No more entities available at offset ${offset}`);
 					hasNextPage = false;
 					break;
+				}
+
+				// Determine which file to write to based on current entity count
+				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
+				const fileName =
+					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
+				const filePath = path.join(outputDir, fileName);
+
+				// If we've moved to a new file, log the completion of the previous file
+				if (targetFileIndex > fileIndex) {
+					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
+					fileIndex = targetFileIndex;
+					currentFileEntityCount = 0;
 				}
 
 				// Append all entities in this page as JSONL (one JSON object per line)
@@ -86,24 +100,30 @@ export class ExportService {
 				await appendFile(filePath, entitiesJsonl + '\n', 'utf8');
 
 				totalEntityCount += pageEntities.length;
+				currentFileEntityCount += pageEntities.length;
 				offset += pageEntities.length;
 
 				this.logger.info(
-					`     Fetched page: ${pageEntities.length} entities (offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
+					`      Fetched page containing ${pageEntities.length} entities (page size: ${pageSize}, offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
 				);
 
 				// If we got fewer entities than requested, we've reached the end
 				if (pageEntities.length < pageSize) {
 					this.logger.info(
-						`     Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
+						`      Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
 					);
 					hasNextPage = false;
-					break;
 				}
 			} while (hasNextPage);
 
-			this.logger.info(`   ✅ Written ${totalEntityCount} entities to ${fileName}`);
-			this.logger.info(`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities`);
+			// Log completion of the final file
+			if (currentFileEntityCount > 0) {
+				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
+			}
+
+			this.logger.info(
+				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileIndex} file(s)`,
+			);
 			totalTablesProcessed++;
 			totalEntitiesExported += totalEntityCount;
 		}
