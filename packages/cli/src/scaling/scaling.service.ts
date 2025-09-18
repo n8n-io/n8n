@@ -480,7 +480,7 @@ export class ScalingService {
 	 * Mark in-progress executions as `crashed` if stored in DB as `new` or `running`
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
-	private async recoverFromQueue() {
+	async recoverFromQueue() {
 		const { waitMs, batchSize } = this.queueRecoveryContext;
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
@@ -491,16 +491,9 @@ export class ScalingService {
 		}
 
 		const runningJobs = await this.findJobsByStatus(['active', 'waiting']);
-
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 
-		if (queuedIds.size === 0) {
-			this.logger.debug('Completed queue recovery check, no dangling executions');
-			return waitMs;
-		}
-
 		const danglingIds = storedIds.filter((id) => !queuedIds.has(id));
-
 		if (danglingIds.length === 0) {
 			this.logger.debug('Completed queue recovery check, no dangling executions');
 			return waitMs;

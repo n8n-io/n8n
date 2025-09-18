@@ -327,7 +327,11 @@ class TaskRunner:
 
         except Exception as e:
             self.logger.error(f"Task {task_id} failed", exc_info=True)
-            response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            error = {
+                "message": getattr(e, "message", str(e)),
+                "description": getattr(e, "description", ""),
+            }
+            response = RunnerTaskError(task_id=task_id, error=error)
             await self._send_message(response)
 
         finally:

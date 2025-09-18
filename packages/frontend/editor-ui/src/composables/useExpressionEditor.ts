@@ -6,6 +6,7 @@ import {
 	ref,
 	toRef,
 	toValue,
+	unref,
 	watch,
 	watchEffect,
 	type MaybeRefOrGetter,
@@ -41,6 +42,7 @@ import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '@/plugins/codemirror/completions/constants';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -51,6 +53,7 @@ export const useExpressionEditor = ({
 	skipSegments = [],
 	autocompleteTelemetry,
 	isReadOnly = false,
+	disableSearchDialog = false,
 	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
@@ -61,11 +64,13 @@ export const useExpressionEditor = ({
 	skipSegments?: MaybeRefOrGetter<string[]>;
 	autocompleteTelemetry?: MaybeRefOrGetter<{ enabled: true; parameterPath: string }>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
+	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
+	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
@@ -198,6 +203,17 @@ export const useExpressionEditor = ({
 		dragging.value = false;
 	}
 
+	function onKeyDown(e: KeyboardEvent) {
+		if (
+			unref(disableSearchDialog) &&
+			// Avoid blocking editor shortcuts like `ctrl+f` to go to next character on mac
+			((isMacOs && e.metaKey) || (!isMacOs && e.ctrlKey)) &&
+			e.key === 'f'
+		) {
+			e.preventDefault();
+		}
+	}
+
 	watch(toRef(editorRef), () => {
 		const parent = toValue(editorRef);
 
@@ -237,6 +253,8 @@ export const useExpressionEditor = ({
 			editor.value.destroy();
 		}
 		editor.value = new EditorView({ parent, state });
+		// Capture is needed here to prevent the browser search window to open in the inline editor
+		editor.value.dom.addEventListener('keydown', onKeyDown, { capture: true });
 		debouncedUpdateSegments();
 	});
 

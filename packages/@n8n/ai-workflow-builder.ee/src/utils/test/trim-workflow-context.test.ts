@@ -127,7 +127,7 @@ describe('trimWorkflowJSON', () => {
 					type: 'n8n-nodes-base.test',
 					parameters: {
 						nullValue: null,
-						// eslint-disable-next-line no-undefined
+
 						undefinedValue: undefined,
 						validValue: 'test',
 					},

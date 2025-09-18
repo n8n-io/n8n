@@ -7,8 +7,16 @@ import type {
 	ValueFormatterParams,
 } from 'ag-grid-community';
 import type { Ref } from 'vue';
+import { DateTime } from 'luxon';
 import type { DataStoreColumn, DataStoreRow } from '@/features/dataStore/datastore.types';
-import { ADD_ROW_ROW_ID, EMPTY_VALUE, NULL_VALUE } from '@/features/dataStore/constants';
+import {
+	ADD_ROW_ROW_ID,
+	EMPTY_VALUE,
+	NULL_VALUE,
+	NUMBER_DECIMAL_SEPARATOR,
+	NUMBER_THOUSAND_SEPARATOR,
+	NUMBER_WITH_SPACES_REGEX,
+} from '@/features/dataStore/constants';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 
@@ -91,5 +99,20 @@ export const dateValueFormatter = (
 ): string => {
 	const value = params.value;
 	if (value === null || value === undefined) return '';
-	return value.toISOString();
+	// Format using user's local timezone (includes offset)
+	return DateTime.fromJSDate(value).toISO() ?? '';
+};
+
+const numberWithSpaces = (num: number) => {
+	const parts = num.toString().split('.');
+	parts[0] = parts[0].replace(NUMBER_WITH_SPACES_REGEX, NUMBER_THOUSAND_SEPARATOR);
+	return parts.join(NUMBER_DECIMAL_SEPARATOR);
+};
+
+export const numberValueFormatter = (
+	params: ValueFormatterParams<DataStoreRow, number | null | undefined>,
+): string => {
+	const value = params.value;
+	if (value === null || value === undefined) return '';
+	return numberWithSpaces(value);
 };

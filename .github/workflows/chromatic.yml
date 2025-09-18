@@ -30,7 +30,7 @@ jobs:
         with:
           filters: |
             design_system:
-              - packages/design-system/**
+              - packages/frontend/@n8n/design-system/**
               - .github/workflows/chromatic.yml
 
     outputs:
@@ -72,7 +72,7 @@ jobs:
         id: chromatic_tests
         continue-on-error: true
         with:
-          workingDir: packages/design-system
+          workingDir: packages/frontend/@n8n/design-system
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false

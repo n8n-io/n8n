@@ -166,17 +166,6 @@ export namespace ChatRequest {
 	}
 
 	// API-only types
-	export interface PlanMessage {
-		role: 'assistant';
-		type: 'plan';
-		plan: Array<{
-			nodeType: string;
-			nodeName: string;
-			reasoning: string;
-		}>;
-		message?: string; // For plan-review messages
-	}
-
 	export type MessageResponse =
 		| ((
 				| TextMessage
@@ -187,7 +176,6 @@ export namespace ChatRequest {
 				| ChatUI.WorkflowUpdatedMessage
 				| ToolMessage
 				| ChatUI.ErrorMessage
-				| PlanMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
@@ -276,8 +264,4 @@ export function isEndSessionMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.EndSessionMessage {
 	return 'type' in msg && msg.type === 'event' && msg.eventName === 'end-session';
-}
-
-export function isPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.PlanMessage {
-	return 'type' in msg && msg.type === 'plan' && 'plan' in msg && Array.isArray(msg.plan);
 }

@@ -1,19 +1,16 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref, nextTick } from 'vue';
+import { computed, watch, ref } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import type { ChatUI, RatingFeedback } from '@n8n/design-system/types/assistant';
+import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
-import type { NodesPlanMessageType } from './NodesPlanMessage.vue';
-import NodesPlanMessage from './NodesPlanMessage.vue';
-import { PLAN_APPROVAL_MESSAGE } from '@/constants';
 
 const emit = defineEmits<{
 	close: [];
@@ -31,8 +28,8 @@ const workflowSaver = useWorkflowSaving({ router });
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const planStatus = ref<'pending' | 'approved' | 'rejected'>();
 const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
+const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -60,6 +57,7 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	trackedTools.value.clear();
+	workflowUpdated.value = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -79,38 +77,31 @@ function onFeedback(feedback: RatingFeedback) {
 	}
 }
 
-function isNodesPlanMessage(message: ChatUI.AssistantMessage): message is NodesPlanMessageType {
-	return (
-		message.type === 'custom' && message.customType === 'nodesPlan' && Array.isArray(message.data)
-	);
+function dedupeToolNames(toolNames: string[]): string[] {
+	return [...new Set(toolNames)];
 }
 
-function onApprovePlan() {
-	planStatus.value = 'approved';
+function trackWorkflowModifications() {
+	if (workflowUpdated.value) {
+		// Track tool usage for telemetry
+		const newToolMessages = builderStore.toolMessages.filter(
+			(toolMsg) =>
+				toolMsg.status !== 'running' &&
+				toolMsg.toolCallId &&
+				!trackedTools.value.has(toolMsg.toolCallId),
+		);
 
-	telemetry.track('User clicked Approve plan', {
-		session_id: builderStore.trackingSessionId,
-	});
+		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
+		telemetry.track('Workflow modified by builder', {
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
+			session_id: builderStore.trackingSessionId,
+			start_workflow_json: workflowUpdated.value.start,
+			end_workflow_json: workflowUpdated.value.end,
+			workflow_id: workflowsStore.workflowId,
+		});
 
-	void onUserMessage(PLAN_APPROVAL_MESSAGE);
-}
-
-function onRequestChanges() {
-	planStatus.value = 'rejected';
-
-	telemetry.track('User clicked Request changes', {
-		session_id: builderStore.trackingSessionId,
-	});
-
-	// Focus the input after rejecting the plan
-	void nextTick(() => {
-		assistantChatRef.value?.focusInput();
-	});
-}
-
-function shouldShowPlanControls(message: NodesPlanMessageType) {
-	const planMessageIndex = builderStore.chatMessages.findIndex((msg) => msg.id === message.id);
-	return planMessageIndex === builderStore.chatMessages.length - 1;
+		workflowUpdated.value = undefined;
+	}
 }
 
 // Watch for workflow updates and apply them
@@ -125,7 +116,8 @@ watch(
 				if (msg.id && isWorkflowUpdatedMessage(msg)) {
 					processedWorkflowUpdates.value.add(msg.id);
 
-					const currentWorkflowJson = builderStore.getWorkflowSnapshot();
+					const originalWorkflowJson =
+						workflowUpdated.value?.start ?? builderStore.getWorkflowSnapshot();
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
@@ -135,34 +127,16 @@ watch(
 							tidyUp: true,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
+							trackEvents: false,
 						});
 
-						// Track tool usage for telemetry
-						const newToolMessages = builderStore.toolMessages.filter(
-							(toolMsg) =>
-								toolMsg.status !== 'running' &&
-								toolMsg.toolCallId &&
-								!trackedTools.value.has(toolMsg.toolCallId),
-						);
-
-						newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
-
-						telemetry.track('Workflow modified by builder', {
-							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
-							session_id: builderStore.trackingSessionId,
-							start_workflow_json: currentWorkflowJson,
-							end_workflow_json: msg.codeSnippet,
-							workflow_id: workflowsStore.workflowId,
-						});
+						workflowUpdated.value = {
+							start: originalWorkflowJson,
+							end: msg.codeSnippet,
+						};
 					}
 				}
 			});
-
-		// Check if last message is a plan message and if so, whether to show controls
-		const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
-		if (lastMessage && isNodesPlanMessage(lastMessage)) {
-			planStatus.value = 'pending';
-		}
 	},
 	{ deep: true },
 );
@@ -171,10 +145,14 @@ watch(
 // we want to save the workflow
 watch(
 	() => builderStore.streaming,
-	async () => {
+	async (isStreaming) => {
+		if (!isStreaming) {
+			trackWorkflowModifications();
+		}
+
 		if (
 			builderStore.initialGeneration &&
-			!builderStore.streaming &&
+			!isStreaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
 			// Check if the generation completed successfully (no error or cancellation)
@@ -207,7 +185,6 @@ watch(currentRoute, () => {
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
-			:disabled="planStatus === 'pending'"
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
@@ -222,16 +199,6 @@ watch(currentRoute, () => {
 		>
 			<template #header>
 				<slot name="header" />
-			</template>
-			<template #custom-message="{ message, ...props }">
-				<NodesPlanMessage
-					v-if="message.customType === 'nodesPlan' && isNodesPlanMessage(message)"
-					:message="message"
-					:show-controls="shouldShowPlanControls(message)"
-					v-bind="props"
-					@approve-plan="onApprovePlan"
-					@request-changes="onRequestChanges"
-				/>
 			</template>
 			<template #placeholder>
 				<n8n-text :class="$style.topText">{{
