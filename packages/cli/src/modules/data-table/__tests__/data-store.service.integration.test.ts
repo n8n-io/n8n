@@ -50,7 +50,6 @@ describe('dataStore', () => {
 	});
 
 	afterEach(async () => {
-		// Clean up any created user data stores
 		await dataStoreService.deleteDataStoreAll();
 	});
 
@@ -1814,7 +1813,7 @@ describe('dataStore', () => {
 			expect(count).toBe(1);
 		});
 
-		it('should delete all rows when no filter is provided', async () => {
+		it('should not delete all rows when no filter is provided', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1829,13 +1828,42 @@ describe('dataStore', () => {
 			]);
 
 			// ACT
-			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {});
+			const result = dataStoreService.deleteRows(dataStoreId, project1.id, {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				filter: undefined as any,
+			});
 
-			// ASSERT
-			expect(result).toBe(true);
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError(
+					'Filter is required for delete operations to prevent accidental deletion of all data',
+				),
+			);
+		});
 
-			const { count } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(count).toBe(0);
+		it('should not delete all rows when no filter is empty', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				{ name: 'Charlie' },
+			]);
+
+			// ACT
+			const result = dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: { type: 'and', filters: [] },
+			});
+
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError(
+					'Filter is required for delete operations to prevent accidental deletion of all data',
+				),
+			);
 		});
 	});
 

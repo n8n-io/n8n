@@ -1,9 +1,10 @@
 import { Command } from '@n8n/decorators';
 import { z } from 'zod';
 import path from 'path';
-import { ensureDir } from 'fs-extra';
+import { Container } from '@n8n/di';
 
 import { BaseCommand } from '../base-command';
+import { ExportService } from '@/services/export.service';
 
 const flagsSchema = z.object({
 	outputDir: z
@@ -22,15 +23,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 	async run() {
 		const outputDir = this.flags.outputDir;
 
-		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
-		this.logger.info('\n🚀 Starting entity export...');
-		this.logger.info(`📁 Output directory: ${outputDir}`);
-
-		await ensureDir(outputDir);
-
-		// TODO: Export entities
-
-		this.logger.info('✅ Task completed successfully! \n');
+		await Container.get(ExportService).exportEntities(outputDir);
 	}
 
 	catch(error: Error) {

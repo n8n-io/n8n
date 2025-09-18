@@ -288,9 +288,13 @@ export class DataStoreService {
 			);
 		}
 
-		if (dto.filter?.filters && dto.filter.filters.length !== 0) {
-			this.validateAndTransformFilters(dto.filter, columns);
+		if (!dto.filter?.filters || dto.filter.filters.length === 0) {
+			throw new DataStoreValidationError(
+				'Filter is required for delete operations to prevent accidental deletion of all data',
+			);
 		}
+
+		this.validateAndTransformFilters(dto.filter, columns);
 
 		const result = await this.dataStoreRowsRepository.deleteRows(
 			dataStoreId,
