@@ -59,6 +59,7 @@
     "@types/supertest": "^6.0.3",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "bundlemon": "^3.1.0",
+    "cy2": "^4.0.9",
     "cross-env": "^7.0.3",
     "eslint": "catalog:",
     "jest": "^29.6.2",
