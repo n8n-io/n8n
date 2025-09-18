@@ -43,7 +43,6 @@ const SettingsPersonalView = async () => await import('./views/SettingsPersonalV
 const SettingsUsersView = async () => await import('./views/SettingsUsersView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
-const SettingsMcpView = async () => await import('./views/SettingsMCPView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
@@ -702,19 +701,6 @@ export const routes: RouteRecordRaw[] = [
 							return settingsStore.isCommunityNodesFeatureEnabled;
 						},
 					},
-					telemetry: {
-						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'mcp',
-				name: VIEWS.MCP_SETTINGS,
-				components: {
-					settingsView: SettingsMcpView,
-				},
-				meta: {
-					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 					},
