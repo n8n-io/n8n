@@ -42,7 +42,6 @@ let dataStoreColumnRepository: DataStoreColumnRepository;
 let dataStoreRowsRepository: DataStoreRowsRepository;
 
 beforeAll(async () => {
-	await testDb.init();
 	mockDataStoreSizeValidator();
 
 	projectRepository = Container.get(ProjectRepository);
@@ -71,6 +70,10 @@ afterAll(async () => {
 });
 
 describe('POST /projects/:projectId/data-tables', () => {
+	beforeEach(async () => {
+		await testDb.truncate(['DataTable', 'DataTableColumn']);
+	});
+
 	test('should not create data store when project does not exist', async () => {
 		const payload = {
 			name: 'Test Data Store',
