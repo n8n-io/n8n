@@ -42,8 +42,8 @@ describe('getItemCountByConnectionType', () => {
 	it('should handle multiple connection types', () => {
 		const data: ITaskData['data'] = {
 			main: [[{ json: { id: 1 } }, { json: { id: 2 } }]],
-			error: [[{ json: { error: 'test' } }]],
-			custom: [
+			ai_agent: [[{ json: { error: 'test' } }]],
+			ai_memory: [
 				[
 					{ json: { data: 'custom' } },
 					{ json: { data: 'custom2' } },
@@ -55,8 +55,8 @@ describe('getItemCountByConnectionType', () => {
 		const result = getItemCountByConnectionType(data);
 		expect(result).toEqual({
 			main: [2],
-			error: [1],
-			custom: [3],
+			ai_agent: [1],
+			ai_memory: [3],
 		});
 	});
 
@@ -91,5 +91,55 @@ describe('getItemCountByConnectionType', () => {
 		expect(result).toEqual({
 			main: [1, 0, 2, 0, 0],
 		});
+	});
+
+	it('should discard unknown connection types', () => {
+		const data: ITaskData['data'] = {
+			main: [[{ json: { id: 1 } }, { json: { id: 2 } }]],
+			unknownType: [[{ json: { data: 'should be ignored' } }]],
+			anotherInvalid: [[{ json: { test: 'data' } }]],
+		};
+
+		const result = getItemCountByConnectionType(data);
+
+		// Should only include 'main' and discard unknown types
+		expect(result).toEqual({
+			main: [2],
+		});
+		expect(result).not.toHaveProperty('unknownType');
+		expect(result).not.toHaveProperty('anotherInvalid');
+	});
+
+	it('should handle mix of valid and invalid connection types', () => {
+		const data: ITaskData['data'] = {
+			invalidType1: [[{ json: { data: 'ignored' } }]],
+			main: [[{ json: { id: 1 } }]],
+			invalidType2: [[{ json: { data: 'also ignored' } }]],
+			ai_agent: [[{ json: { error: 'test error' } }]],
+			notAValidType: [[{ json: { foo: 'bar' } }]],
+		};
+
+		const result = getItemCountByConnectionType(data);
+
+		// Should only include valid NodeConnectionTypes
+		expect(result).toEqual({
+			main: [1],
+			ai_agent: [1],
+		});
+		expect(Object.keys(result)).toHaveLength(2);
+	});
+
+	it('should handle data with only invalid connection types', () => {
+		const data: ITaskData['data'] = {
+			fakeType1: [[{ json: { data: 'test' } }]],
+			fakeType2: [[{ json: { data: 'test2' } }]],
+			notReal: [[{ json: { id: 1 } }, { json: { id: 2 } }]],
+		};
+
+		const result = getItemCountByConnectionType(data);
+
+		// Should return empty object when no valid types found
+		expect(result).toEqual({});
+		expect(Object.keys(result)).toHaveLength(0);
 	});
 });
