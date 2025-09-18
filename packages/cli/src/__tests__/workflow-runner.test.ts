@@ -161,6 +161,7 @@ describe('run', () => {
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
+			runData: {},
 		});
 
 		// ACT
@@ -170,9 +171,7 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).toHaveBeenCalled();
 	});
 
-	// TODO: check if still relevant before merging PR
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	it.skip('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
+	it('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -180,7 +179,7 @@ describe('run', () => {
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+		jest.spyOn(WorkflowExecute.prototype, 'runPartialWorkflow2').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -195,6 +194,7 @@ describe('run', () => {
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
+			runData: {},
 		});
 
 		// ACT
