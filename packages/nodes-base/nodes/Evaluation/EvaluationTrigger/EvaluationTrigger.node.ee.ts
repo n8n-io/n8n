@@ -313,11 +313,11 @@ export class EvaluationTrigger implements INodeType {
 			): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
 				try {
 					const source = this.getNodeParameter('source', 0) as string;
-					const maxRows = this.getNodeParameter('limitRows', 0, false)
-						? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
-						: MAX_ROWS;
-
 					if (source === 'dataTable') {
+						const maxRows = this.getNodeParameter('limitRows', 0, false)
+							? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
+							: MAX_ROWS;
+
 						if (this.helpers.getDataStoreProxy === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -330,9 +330,11 @@ export class EvaluationTrigger implements INodeType {
 						}) as string;
 						const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
 
+						const filter = getDataTableFilter(this, 0);
 						const { data } = await dataTableProxy.getManyRowsAndCount({
 							skip: 0,
 							take: maxRows,
+							filter,
 						});
 
 						const result: INodeExecutionData[] = data.map((row, i) => ({
@@ -341,10 +343,15 @@ export class EvaluationTrigger implements INodeType {
 								row_id: row.id,
 								row_number: i,
 							},
+							pairedItem: { item: 0 },
 						}));
 
 						return [result];
 					} else if (source === 'googleSheets') {
+						const maxRows = this.getNodeParameter('limitRows', 0, false)
+							? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number) + 1
+							: MAX_ROWS;
+
 						const googleSheetInstance = getGoogleSheet.call(this);
 						const googleSheet = await getSheet.call(this, googleSheetInstance);
 
