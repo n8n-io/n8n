@@ -1,5 +1,5 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
-import { getStringLiteralValue } from '../utils/index.js';
+import { getModulePath, isDirectRequireCall, isRequireMemberCall } from '../utils/index.js';
 
 const allowedModules = [
 	'n8n-workflow',
@@ -41,7 +41,7 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 	create(context) {
 		return {
 			ImportDeclaration(node) {
-				const modulePath = getStringLiteralValue(node.source);
+				const modulePath = getModulePath(node.source);
 				if (modulePath && !isModuleAllowed(modulePath)) {
 					context.report({
 						node,
@@ -54,7 +54,7 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 			},
 
 			ImportExpression(node) {
-				const modulePath = getStringLiteralValue(node.source);
+				const modulePath = getModulePath(node.source);
 				if (modulePath && !isModuleAllowed(modulePath)) {
 					context.report({
 						node,
@@ -67,12 +67,8 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 			},
 
 			CallExpression(node) {
-				if (
-					node.callee.type === 'Identifier' &&
-					node.callee.name === 'require' &&
-					node.arguments.length > 0
-				) {
-					const modulePath = getStringLiteralValue(node.arguments[0]);
+				if (isDirectRequireCall(node) || isRequireMemberCall(node)) {
+					const modulePath = getModulePath(node.arguments[0]);
 					if (modulePath && !isModuleAllowed(modulePath)) {
 						context.report({
 							node,

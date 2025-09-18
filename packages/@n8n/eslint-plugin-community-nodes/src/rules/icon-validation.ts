@@ -35,7 +35,16 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 			return {};
 		}
 
-		const validateIcon = (iconPath: string, node: TSESTree.Node): boolean => {
+		const validateIcon = (iconPath: string | null, node: TSESTree.Node): boolean => {
+			if (!iconPath) {
+				context.report({
+					node,
+					messageId: 'invalidIconPath',
+					data: { iconPath: iconPath || '' },
+				});
+				return false;
+			}
+
 			const currentDir = dirname(context.filename);
 			const validation = validateIconPath(iconPath, currentDir);
 
@@ -74,9 +83,7 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 		const validateIconValue = (iconValue: TSESTree.Node) => {
 			if (iconValue.type === 'Literal') {
 				const iconPath = getStringLiteralValue(iconValue);
-				if (iconPath) {
-					validateIcon(iconPath, iconValue);
-				}
+				validateIcon(iconPath, iconValue);
 			} else if (iconValue.type === 'ObjectExpression') {
 				const lightProperty = findObjectProperty(iconValue, 'light');
 				const darkProperty = findObjectProperty(iconValue, 'dark');
@@ -84,10 +91,10 @@ export const IconValidationRule = ESLintUtils.RuleCreator.withoutDocs({
 				const lightPath = lightProperty ? getStringLiteralValue(lightProperty.value) : null;
 				const darkPath = darkProperty ? getStringLiteralValue(darkProperty.value) : null;
 
-				if (lightPath && lightProperty) {
+				if (lightProperty) {
 					validateIcon(lightPath, lightProperty.value);
 				}
-				if (darkPath && darkProperty) {
+				if (darkProperty) {
 					validateIcon(darkPath, darkProperty.value);
 				}
 

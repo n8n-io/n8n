@@ -15,7 +15,7 @@ export const ResourceOperationPatternRule = ESLintUtils.RuleCreator.withoutDocs(
 		},
 		messages: {
 			tooManyOperationsWithoutResources:
-				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 10 operations.',
+				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 5 operations.',
 		},
 		schema: [],
 	},

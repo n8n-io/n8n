@@ -57,6 +57,18 @@ ruleTester.run('no-restricted-globals', NoRestrictedGlobalsRule, {
 			name: 'function expressions should be allowed',
 			code: 'const fn = function process() {}; const fn2 = function global() {};',
 		},
+		{
+			name: 'locally declared variables should not trigger false positives',
+			code: `
+const process = require('process');
+const global = {};
+const setTimeout = () => {};
+function clearInterval() {}
+let setInterval;
+var __dirname = '/path';
+const __filename = 'file.js';
+			`,
+		},
 	],
 	invalid: [
 		{

@@ -13,6 +13,14 @@ const DEPRECATED_TYPES = {
 	IRequestOptions: 'IHttpRequestOptions',
 } as const;
 
+function isDeprecatedFunctionName(name: string): name is keyof typeof DEPRECATED_FUNCTIONS {
+	return name in DEPRECATED_FUNCTIONS;
+}
+
+function isDeprecatedTypeName(name: string): name is keyof typeof DEPRECATED_TYPES {
+	return name in DEPRECATED_TYPES;
+}
+
 export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
@@ -45,15 +53,12 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			},
 
 			MemberExpression(node) {
-				if (
-					node.property.type === 'Identifier' &&
-					DEPRECATED_FUNCTIONS.hasOwnProperty(node.property.name)
-				) {
+				if (node.property.type === 'Identifier' && isDeprecatedFunctionName(node.property.name)) {
 					if (!isThisHelpersAccess(node)) {
 						return;
 					}
 
-					const functionName = node.property.name as keyof typeof DEPRECATED_FUNCTIONS;
+					const functionName = node.property.name;
 					const replacement = DEPRECATED_FUNCTIONS[functionName];
 
 					if (replacement) {
@@ -85,10 +90,10 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			TSTypeReference(node) {
 				if (
 					node.typeName.type === 'Identifier' &&
-					DEPRECATED_TYPES.hasOwnProperty(node.typeName.name) &&
+					isDeprecatedTypeName(node.typeName.name) &&
 					n8nWorkflowTypes.has(node.typeName.name)
 				) {
-					const typeName = node.typeName.name as keyof typeof DEPRECATED_TYPES;
+					const typeName = node.typeName.name;
 					const replacement = DEPRECATED_TYPES[typeName];
 
 					context.report({
@@ -109,9 +114,9 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 					importDeclaration?.type === 'ImportDeclaration' &&
 					importDeclaration.source.value === 'n8n-workflow' &&
 					node.imported.type === 'Identifier' &&
-					DEPRECATED_TYPES.hasOwnProperty(node.imported.name)
+					isDeprecatedTypeName(node.imported.name)
 				) {
-					const typeName = node.imported.name as keyof typeof DEPRECATED_TYPES;
+					const typeName = node.imported.name;
 					const replacement = DEPRECATED_TYPES[typeName];
 
 					context.report({

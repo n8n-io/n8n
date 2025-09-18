@@ -52,11 +52,13 @@ export const NoRestrictedGlobalsRule = ESLintUtils.RuleCreator.withoutDocs({
 				const globalScope = context.sourceCode.getScope(context.sourceCode.ast);
 
 				const allReferences = [
-					...globalScope.variables.flatMap((variable) =>
-						restrictedGlobals.includes(variable.name)
-							? variable.references.map((ref) => ({ ref, name: variable.name }))
-							: [],
-					),
+					...globalScope.variables
+						.filter(
+							(variable) => restrictedGlobals.includes(variable.name) && variable.defs.length === 0, // No definitions means it's a global
+						)
+						.flatMap((variable) =>
+							variable.references.map((ref) => ({ ref, name: variable.name })),
+						),
 					...globalScope.through
 						.filter((ref) => restrictedGlobals.includes(ref.identifier.name))
 						.map((ref) => ({ ref, name: ref.identifier.name })),

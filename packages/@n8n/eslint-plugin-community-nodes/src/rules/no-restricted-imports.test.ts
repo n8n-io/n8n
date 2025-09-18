@@ -45,6 +45,15 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 			code: 'const _ = require("lodash");',
 		},
 		{
+			code: 'require.resolve("lodash");',
+		},
+		{
+			code: 'require.resolve("./helper");',
+		},
+		{
+			code: 'require.resolve("../utils");',
+		},
+		{
 			code: 'const workflow = await import("n8n-workflow");',
 		},
 		{
@@ -55,6 +64,18 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 		},
 		{
 			code: 'import("../utils").then((utils) => {});',
+		},
+		{
+			code: 'import(`lodash`).then((_) => {});',
+		},
+		{
+			code: 'require(`./helper`);',
+		},
+		{
+			code: 'require.resolve(`n8n-workflow`);',
+		},
+		{
+			code: 'const workflow = await import(`n8n-workflow`);',
 		},
 	],
 	invalid: [
@@ -91,6 +112,18 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'express' } }],
 		},
 		{
+			code: 'require.resolve("fs");',
+			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'fs' } }],
+		},
+		{
+			code: 'require.resolve("express");',
+			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'express' } }],
+		},
+		{
+			code: 'const resolved = require.resolve("axios");',
+			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'axios' } }],
+		},
+		{
 			code: `
 import fs from "fs";
 import path from "path";
@@ -121,6 +154,18 @@ const lodash = require("lodash");`,
 		{
 			code: 'const express = await import("express");',
 			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'express' } }],
+		},
+		{
+			code: 'const path = require(`path`);',
+			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'path' } }],
+		},
+		{
+			code: 'require.resolve(`express`);',
+			errors: [{ messageId: 'restrictedRequire', data: { modulePath: 'express' } }],
+		},
+		{
+			code: 'const axios = await import(`axios`);',
+			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'axios' } }],
 		},
 		{
 			code: `

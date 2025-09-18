@@ -30,7 +30,7 @@ export function findClassProperty(
 		(member) =>
 			member.type === 'PropertyDefinition' &&
 			member.key?.type === 'Identifier' &&
-			(member.key as any).name === propertyName,
+			member.key.name === propertyName,
 	);
 	return property?.type === 'PropertyDefinition' ? property : null;
 }
@@ -56,6 +56,23 @@ export function getLiteralValue(node: TSESTree.Node | null): string | boolean | 
 export function getStringLiteralValue(node: TSESTree.Node | null): string | null {
 	const value = getLiteralValue(node);
 	return typeof value === 'string' ? value : null;
+}
+
+export function getModulePath(node: TSESTree.Node | null): string | null {
+	const stringValue = getStringLiteralValue(node);
+	if (stringValue) {
+		return stringValue;
+	}
+
+	if (
+		node?.type === 'TemplateLiteral' &&
+		node.expressions.length === 0 &&
+		node.quasis.length === 1
+	) {
+		return node.quasis[0].value.cooked;
+	}
+
+	return null;
 }
 
 export function getBooleanLiteralValue(node: TSESTree.Node | null): boolean | null {
@@ -100,6 +117,21 @@ export function getTopLevelObjectInJson(
 
 export function isFileType(filename: string, extension: string): boolean {
 	return filename.endsWith(extension);
+}
+
+export function isDirectRequireCall(node: TSESTree.CallExpression): boolean {
+	return (
+		node.callee.type === 'Identifier' && node.callee.name === 'require' && node.arguments.length > 0
+	);
+}
+
+export function isRequireMemberCall(node: TSESTree.CallExpression): boolean {
+	return (
+		node.callee.type === 'MemberExpression' &&
+		node.callee.object.type === 'Identifier' &&
+		node.callee.object.name === 'require' &&
+		node.arguments.length > 0
+	);
 }
 
 export function extractCredentialNameFromArray(
