@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fetchInstalledPackageInfo } from './utils';
+import { fetchInstalledPackageInfo } from './communityNodeUtils';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { type NodeTypesStore, useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';

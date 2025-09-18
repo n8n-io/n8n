@@ -3,19 +3,19 @@ import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeTypeDescription, PublicInstalledPackage } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { N8nTabs } from '@n8n/design-system';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
+import { N8nTabs } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 type Props = {
 	modelValue?: NodeSettingsTab;
@@ -50,15 +50,9 @@ const communityNodesStore = useCommunityNodesStore();
 
 const activeNode = computed(() => ndvStore.activeNode);
 
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
-
-const isCommunityNode = computed(() => {
-	const nodeType = props.nodeType;
-	if (nodeType) {
-		return isCommunityPackageName(nodeType.name);
-	}
-	return false;
-});
+const { installedPackage, isCommunityNode, isUpdateCheckAvailable } = useInstalledCommunityPackage(
+	props.nodeType?.name,
+);
 
 const packageName = computed(() => props.nodeType?.name.split('.')[0] ?? '');
 
@@ -101,7 +95,8 @@ const options = computed(() => {
 		},
 		{
 			value: 'settings',
-			notification: installedPackage.value?.updateAvailable ? true : undefined,
+			notification:
+				isUpdateCheckAvailable.value && installedPackage.value?.updateAvailable ? true : undefined,
 			...(props.compact
 				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
 				: { label: i18n.baseText('nodeSettings.settings') }),
