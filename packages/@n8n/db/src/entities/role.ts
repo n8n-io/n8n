@@ -1,12 +1,13 @@
 import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 
+import { WithTimestamps } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import { Scope } from './scope';
 
 @Entity({
 	name: 'role',
 })
-export class Role {
+export class Role extends WithTimestamps {
 	@PrimaryColumn({
 		type: String,
 		name: 'slug',

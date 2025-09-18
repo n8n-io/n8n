@@ -68,7 +68,7 @@ export type UpsertDataStoreRowOptions = {
 };
 
 export type DeleteDataTableRowsOptions = {
-	filter?: DataTableFilter;
+	filter: DataTableFilter;
 };
 
 export type MoveDataStoreColumnOptions = {
@@ -106,6 +106,7 @@ export type DataTableSizeStatus = 'ok' | 'warn' | 'error';
 export type DataTablesSizeResult = {
 	sizeBytes: number;
 	sizeState: DataTableSizeStatus;
+	dataTables: Record<string, number>;
 };
 
 // APIs for a data store service operating on a specific projectId

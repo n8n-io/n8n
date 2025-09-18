@@ -282,7 +282,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 	async getPreviousAndCurrentPeriodTypeAggregates({
 		periodLengthInDays,
-	}: { periodLengthInDays: number }): Promise<
+		projectId,
+	}: { periodLengthInDays: number; projectId?: string }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
@@ -296,7 +297,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
 		`;
 
-		const rawRows = await this.createQueryBuilder('insights')
+		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
 			.select(
 				sql`
@@ -312,13 +313,19 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addSelect('SUM(value)', 'total_value')
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
-			// Filter to only include data from the last 14 days
 			.where('insights.periodStart >= date_ranges.previous_start')
 			.andWhere('insights.periodStart <= date_ranges.current_end')
 			// Group by both period and type
 			.groupBy('period')
-			.addGroupBy('insights.type')
-			.getRawMany();
+			.addGroupBy('insights.type');
+
+		if (projectId) {
+			rawRowsQuery
+				.innerJoin('insights.metadata', 'metadata')
+				.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		const rawRows = await rawRowsQuery.getRawMany();
 
 		return summaryParser.parse(rawRows);
 	}
@@ -333,11 +340,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
+		projectId,
 	}: {
 		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		projectId?: string;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
@@ -375,6 +384,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addGroupBy('metadata.projectName')
 			.orderBy(this.escapeField(sortField), sortOrder);
 
+		if (projectId) {
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
 		const count = (await rawRowsQuery.getRawMany()).length;
 		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
 
@@ -385,20 +398,32 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		maxAgeInDays,
 		periodUnit,
 		insightTypes,
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes: TypeUnit[] }) {
+		projectId,
+	}: {
+		maxAgeInDays: number;
+		periodUnit: PeriodUnit;
+		insightTypes: TypeUnit[];
+		projectId?: string;
+	}) {
 		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
 
 		const typesAggregation = insightTypes.map((type) => {
-			return `SUM(CASE WHEN type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
+			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
-		const rawRowsQuery = this.createQueryBuilder()
+		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_range')
 			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_range', 'date_range', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
+
+		if (projectId) {
+			rawRowsQuery
+				.innerJoin('insights.metadata', 'metadata')
+				.andWhere('metadata.projectId = :projectId', { projectId });
+		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
