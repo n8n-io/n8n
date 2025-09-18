@@ -12,7 +12,6 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRouter } from 'vue-router';
 
-
 interface Props {
 	sessionId: string;
 	showCloseButton?: boolean;
@@ -51,7 +50,6 @@ const sessionIdText = computed(() =>
 	}),
 );
 
-
 // Find ChatTrigger node in the workflow
 const chatTriggerNode = computed(() => {
 	return workflowsStore.allNodes.find(
@@ -63,14 +61,10 @@ const chatTriggerNode = computed(() => {
 const isStreamingEnabled = computed(() => {
 	const options = chatTriggerNode.value?.parameters?.options;
 
-	if(options &&
-		typeof options === 'object' &&
-		'responseMode' in options
-	) {
-		const responseMode = options.responseMode ;
+	if (options && typeof options === 'object' && 'responseMode' in options) {
+		const responseMode = options.responseMode;
 		return responseMode === 'streaming';
 	}
-
 
 	return false;
 });
@@ -89,7 +83,6 @@ const webhookUrl = computed(() => {
 
 	return url;
 });
-
 
 const chatOptions = computed<ChatOptions>(() => {
 	const options = {
@@ -119,8 +112,7 @@ const chatOptions = computed<ChatOptions>(() => {
 				subtitle: 'Test your workflow',
 				footer: '',
 				getStarted: 'Send a message',
-				inputPlaceholder:
-					locale.baseText('chat.window.chat.placeholder') || 'Type your message...',
+				inputPlaceholder: locale.baseText('chat.window.chat.placeholder') || 'Type your message...',
 				closeButtonTooltip: 'Close',
 			},
 		},
@@ -154,7 +146,6 @@ async function registerChatWebhook(): Promise<void> {
 		isRegistering.value = false;
 	}
 }
-
 
 async function initializeChat() {
 	if (!props.isOpen || !chatTriggerNode.value) {

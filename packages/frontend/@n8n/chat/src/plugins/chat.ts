@@ -260,7 +260,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			}
 
 			// Use provided sessionId if available, otherwise check localStorage or generate new one
-			const sessionId = options.sessionId ?? localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
+			const sessionId =
+				options.sessionId ?? localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
