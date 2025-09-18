@@ -60,10 +60,10 @@ export class SettingsUsersPage extends BasePage {
 				cy.url().should('match', new RegExp(workflowsPage.url));
 			}
 		},
-    opedDeleteDialog: (email: string) => {
-      this.getters.userActionsToggle(email).should('be.visible').click();
-      this.getters.deleteUserAction().click();
-      this.getters.confirmDeleteModal().should('be.visible');
-    },
+		opedDeleteDialog: (email: string) => {
+			this.getters.userActionsToggle(email).should('be.visible').click();
+			this.getters.deleteUserAction().click();
+			this.getters.confirmDeleteModal().should('be.visible');
+		},
 	};
 }
