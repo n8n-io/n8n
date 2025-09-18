@@ -308,7 +308,7 @@ export class SourceControlExportService {
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const tags = await this.tagRepository.find();
-			// clear tags if there are none to export
+
 			if (tags.length === 0) {
 				await fsWriteFile(
 					path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE),
@@ -333,7 +333,6 @@ export class SourceControlExportService {
 					),
 			});
 
-			console.log(mappingsOfAllowedWorkflows);
 			const allowedWorkflows = await this.workflowRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
