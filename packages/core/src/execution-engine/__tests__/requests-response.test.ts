@@ -7,7 +7,7 @@ import { handleRequest } from '../requests-response';
 import { nodeTypes, types } from './mock-node-types';
 
 describe('handleRequests', () => {
-	test('throws if an action mentions a node that does not exist in the workflow', async () => {
+	test('throws if an action mentions a node that does not exist in the workflow', () => {
 		// ARRANGE
 		const request: EngineRequest = {
 			actions: [
