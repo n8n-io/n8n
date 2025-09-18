@@ -125,6 +125,7 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 			:no-data-text="i18n.baseText('folders.move.modal.folder.noData.label')"
 			option-label="name"
 			option-value="id"
+			data-test-id="move-to-folder-select"
 		>
 			<template #prefix>
 				<N8nIcon icon="search" />

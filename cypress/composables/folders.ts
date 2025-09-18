@@ -203,7 +203,7 @@ export function getMoveToFolderOption(name: string) {
 }
 
 export function getMoveToFolderInput() {
-	return getMoveToFolderDropdown().find('input');
+	return cy.get('[data-test-id="move-to-folder-select"]').find('input');
 }
 
 export function getProjectSharingInput() {
@@ -215,7 +215,11 @@ export function getProjectSharingOption(name: string) {
 }
 
 export function getEmptyFolderDropdownMessage(text: string) {
-	return cy.get('.el-select-dropdown__empty').contains(text);
+	// Wait for the dropdown to be open and either show options or empty state
+	return cy.get('[data-test-id="move-to-folder-select"]').should('be.visible').then(() => {
+		// Try to find the empty state message in the dropdown
+		return cy.get('body').find('.el-select-dropdown__empty').contains(text);
+	});
 }
 
 export function getMoveFolderConfirmButton() {
@@ -506,23 +510,37 @@ function deleteFolderAndMoveContents(folderName: string, destinationName: string
 }
 
 function moveFolder(folderName: string, destinationName: string) {
-	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
+	// Set up API intercepts
+	cy.intercept('PATCH', '/rest/projects/*/folders/*').as('moveFolder');
+	cy.intercept('GET', '/rest/projects/*/folders*').as('fetchFolders');
+	
 	getMoveFolderModal().should('be.visible');
 	getMoveFolderModal().find('h1').first().contains(`Move folder ${folderName}`);
 
-	// The dropdown focuses after a small delay (once modal's slide in animation is done).
-	// On the component we listen for an event, but here the wait should be very predictable.
-	cy.wait(500);
+	// Wait for the dropdown to be ready and focused
+	cy.get('[data-test-id="move-to-folder-select"]').should('be.visible');
+	cy.wait(500); // Wait for modal animation to complete
 
-	// Try to find current folder in the dropdown
-	// This tests that auto-focus worked as expected
-	cy.focused().type(folderName, { delay: 50 });
-	// Should not be available
+	// Wait for initial folder fetch to complete
+	cy.wait('@fetchFolders');
+
+	// Click on the dropdown to open it
+	getMoveToFolderDropdown().click();
+	
+	// Wait for the dropdown to open and be populated
+	cy.get('[data-test-id="move-to-folder-select"]').should('have.class', 'is-focus');
+
+	// Try to find current folder in the dropdown (should not be available)
+	getMoveToFolderInput().clear().type(folderName, { delay: 50 });
+	cy.wait('@fetchFolders'); // Wait for search results
+	
+	// Should not be available - check for empty state
 	getEmptyFolderDropdownMessage('No folders found').should('exist');
+	
 	// Select destination folder
-	getMoveToFolderInput().type(`{selectall}{backspace}${destinationName}`, {
-		delay: 50,
-	});
+	getMoveToFolderInput().clear().type(destinationName, { delay: 50 });
+	cy.wait('@fetchFolders'); // Wait for search results
+	
 	getMoveToFolderOption(destinationName).should('be.visible').click();
 	getMoveFolderConfirmButton().should('be.enabled').click();
 	cy.wait('@moveFolder');
