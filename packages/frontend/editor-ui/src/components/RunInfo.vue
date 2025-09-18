@@ -53,6 +53,7 @@ const runMetadata = computed(() => {
 	</N8nInfoTip>
 	<div v-else-if="runMetadata" :class="$style.tooltipRow">
 		<N8nInfoTip
+			v-if="taskData?.executionStatus !== 'canceled'"
 			type="note"
 			:theme="theme"
 			:data-test-id="`node-run-status-${theme}`"
@@ -69,7 +70,9 @@ const runMetadata = computed(() => {
 					>{{
 						runTaskData?.error
 							? i18n.baseText('runData.executionStatus.failed')
-							: i18n.baseText('runData.executionStatus.success')
+							: runTaskData?.executionStatus === 'canceled'
+								? i18n.baseText('runData.executionStatus.canceled')
+								: i18n.baseText('runData.executionStatus.success')
 					}} </n8n-text
 				><br />
 				<n8n-text :bold="true" size="small">{{

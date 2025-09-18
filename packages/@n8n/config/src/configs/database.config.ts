@@ -113,6 +113,10 @@ class MysqlConfig {
 	/** MySQL database user */
 	@Env('DB_MYSQLDB_USER')
 	user: string = 'root';
+
+	/** MySQL connection pool size */
+	@Env('DB_MYSQLDB_POOL_SIZE')
+	poolSize: number = 10;
 }
 
 @Config

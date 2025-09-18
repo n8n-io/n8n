@@ -1,3 +1,4 @@
+import { useI18n } from '@n8n/i18n';
 import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import {
@@ -57,3 +58,17 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 				unit: INSIGHTS_UNIT_MAPPING[key](data[key].value),
 			}))
 		: [];
+
+export const getTimeRangeLabels = () => {
+	const i18n = useI18n();
+
+	return {
+		day: i18n.baseText('insights.lastNHours', { interpolate: { count: 24 } }),
+		week: i18n.baseText('insights.lastNDays', { interpolate: { count: 7 } }),
+		'2weeks': i18n.baseText('insights.lastNDays', { interpolate: { count: 14 } }),
+		month: i18n.baseText('insights.lastNDays', { interpolate: { count: 30 } }),
+		quarter: i18n.baseText('insights.lastNDays', { interpolate: { count: 90 } }),
+		'6months': i18n.baseText('insights.months', { interpolate: { count: 6 } }),
+		year: i18n.baseText('insights.oneYear'),
+	};
+};

@@ -7,19 +7,19 @@ A powerful scaffolding tool to quickly create custom n8n community nodes with be
 Create a new n8n node in seconds:
 
 ```bash
-pnpm create @n8n/node
+npm create @n8n/node@latest # or pnpm/yarn/...
 ```
 
 Follow the interactive prompts to configure your node, or specify options directly:
 
 ```bash
-pnpm create @n8n/node my-awesome-node --template declarative/custom
+npm create @n8n/node my-awesome-node --template declarative/custom
 ```
 
 ## 📋 Command Line Options
 
 ```bash
-pnpm create @n8n/node [NAME] [OPTIONS]
+npm create @n8n/node [NAME] [OPTIONS]
 ```
 
 ### Options
@@ -41,7 +41,7 @@ pnpm create @n8n/node [NAME] [OPTIONS]
 The CLI will guide you through setting up your node:
 
 ```
-$ pnpm create @n8n/node
+$ npm create @n8n/node
 ┌ @n8n/create-node
 │
 ◇ What is your node called?
@@ -65,7 +65,7 @@ $ pnpm create @n8n/node
 │
 ◇ Next Steps ─────────────────────────────────────────────────────────────────────╮
 │                                                                                  │
-│  cd ./my-awesome-api-node && pnpm run dev                                       │
+│  cd ./my-awesome-api-node && npm run dev                                       │
 │                                                                                  │
 │  📚 Documentation: https://docs.n8n.io/integrations/creating-nodes/            │
 │  💬 Community: https://community.n8n.io                                        │
@@ -86,7 +86,7 @@ cd ./my-awesome-api-node
 ### 2. Start development server
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 This command:
@@ -109,28 +109,28 @@ Your generated project comes with these convenient npm scripts:
 
 ### Development
 ```bash
-pnpm dev
+npm run dev
 # Runs: n8n-node dev
 ```
 
 ### Building
 ```bash
-pnpm build
+npm run build
 # Runs: n8n-node build
 ```
 
 ### Linting
 ```bash
-pnpm lint
+npm run lint
 # Runs: n8n-node lint
 
-pnpm lint:fix
+npm run lint:fix
 # Runs: n8n-node lint --fix
 ```
 
 ### Publishing
 ```bash
-pnpm run release
+npm run release
 # Runs: n8n-node release
 ```
 
@@ -139,7 +139,7 @@ pnpm run release
 ### Build for production
 
 ```bash
-pnpm build
+npm run build
 ```
 
 Generates:
@@ -151,7 +151,7 @@ Generates:
 ### Quality checks
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 Validates:
@@ -163,13 +163,13 @@ Validates:
 Fix issues automatically:
 
 ```bash
-pnpm lint:fix
+npm run lint:fix
 ```
 
 ### Publish your node
 
 ```bash
-pnpm run release
+npm run release
 ```
 
 Runs [release-it](https://github.com/release-it/release-it) to handle the complete release process:
@@ -238,28 +238,28 @@ Choose the right template for your use case:
 ```bash
 # Clear n8n node cli cache and restart
 rm -rf ~/.n8n-node-cli/.n8n/custom
-pnpm dev
+npm run dev
 ```
 
 **TypeScript errors:**
 ```bash
 # Reinstall dependencies
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
+rm -rf node_modules npm-lock.yaml
+npm install
 ```
 
 **Build failures:**
 ```bash
 # Check for linting issues first
-pnpm lint --fix
-pnpm build
+npm run lint --fix
+npm run build
 ```
 
 **Development server issues:**
 ```bash
 # Clear cache and restart development server
 rm -rf ~/.n8n-node-cli/.n8n/custom
-pnpm dev
+npm run dev
 ```
 
 ## 🔧 Advanced Usage
@@ -269,7 +269,7 @@ pnpm dev
 If you prefer to use your own n8n installation:
 
 ```bash
-pnpm dev --external-n8n
+npm run dev --external-n8n
 ```
 
 ### Custom User Folder
@@ -277,7 +277,7 @@ pnpm dev --external-n8n
 Specify a custom location for n8n user data:
 
 ```bash
-pnpm dev --custom-user-folder /path/to/custom/folder
+npm run dev --custom-user-folder /path/to/custom/folder
 ```
 
 ## 📚 Resources

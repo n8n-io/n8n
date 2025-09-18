@@ -37,7 +37,7 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 
-type LoginHook = (user: CurrentUserResponse) => void;
+export type LoginHook = (user: CurrentUserResponse) => void;
 type LogoutHook = () => void;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
@@ -78,6 +78,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isEasyAIWorkflowOnboardingDone = computed(() =>
 		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
 	);
+
+	const canUserUpdateVersion = computed(() => {
+		return isInstanceOwner.value;
+	});
 
 	const setEasyAIWorkflowOnboardingDone = () => {
 		if (currentUser.value?.settings) {
@@ -446,6 +450,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		canUserUpdateVersion,
 		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,

@@ -4,9 +4,10 @@ import { Z } from 'zod-class';
 import {
 	dataStoreColumnNameSchema,
 	dataStoreColumnValueSchema,
+	insertRowReturnType,
 } from '../../schemas/data-store.schema';
 
 export class AddDataStoreRowsDto extends Z.class({
-	returnData: z.boolean().optional().default(false),
 	data: z.array(z.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)),
+	returnType: insertRowReturnType,
 }) {}

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { DATA_STORE_STORE } from '@/features/dataStore/constants';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	fetchDataStoresApi,
@@ -14,6 +14,7 @@ import {
 	insertDataStoreRowApi,
 	updateDataStoreRowsApi,
 	deleteDataStoreRowsApi,
+	fetchDataStoreGlobalLimitInBytes,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -22,13 +23,35 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import { reorderItem } from '@/features/dataStore/utils';
+import { type DataTableSizeStatus } from 'n8n-workflow';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
+	const settingsStore = useSettingsStore();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
+	const dataStoreSize = ref(0);
+	const dataStoreSizeLimitState = ref<DataTableSizeStatus>('ok');
+	const dataStoreTableSizes = ref<Record<string, number>>({});
+
+	const formatSize = (sizeBytes: number) => {
+		return Number((sizeBytes / 1024 / 1024).toFixed(2));
+	};
+
+	const maxSizeMB = computed(() =>
+		Math.floor(settingsStore.settings?.dataTables?.maxSize / 1024 / 1024),
+	);
+
+	const dataStoreSizes = computed(() => {
+		const formattedSizes: Record<string, number> = {};
+		for (const [dataStoreId, sizeBytes] of Object.entries(dataStoreTableSizes.value)) {
+			formattedSizes[dataStoreId] = formatSize(sizeBytes);
+		}
+		return formattedSizes;
+	});
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
@@ -207,10 +230,23 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await deleteDataStoreRowsApi(rootStore.restApiContext, dataStoreId, rowIds, projectId);
 	};
 
+	const fetchDataStoreSize = async () => {
+		const result = await fetchDataStoreGlobalLimitInBytes(rootStore.restApiContext);
+		dataStoreSize.value = formatSize(result.sizeBytes);
+		dataStoreSizeLimitState.value = result.sizeState;
+		dataStoreTableSizes.value = result.dataTables;
+		return result;
+	};
+
 	return {
 		dataStores,
 		totalCount,
 		fetchDataStores,
+		fetchDataStoreSize,
+		dataStoreSize: computed(() => dataStoreSize.value),
+		dataStoreSizeLimitState: computed(() => dataStoreSizeLimitState.value),
+		dataStoreSizes,
+		maxSizeMB,
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,

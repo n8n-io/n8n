@@ -3,6 +3,8 @@ import type { Completion } from '@codemirror/autocomplete';
 import type { RangeNode } from './types';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import type { Node } from 'estree';
+import type { CodeNodeLanguageOption } from './CodeNodeEditor.vue';
+import type { CodeExecutionMode } from 'n8n-workflow';
 
 export function walk<T extends RangeNode>(
 	node: Node | esprima.Program,
@@ -56,4 +58,46 @@ export const addInfoRenderer = (option: Completion): Completion => {
 		};
 	}
 	return option;
+};
+
+const DOT_CHAINS = /((?:\.[A-Za-z_$][A-Za-z0-9_$]*)+)/g;
+const DOT_KEY = /\.(?<key>[A-Za-z_$][A-Za-z0-9_$]*)/g;
+
+// Convert dot notation ".a.b.c" chains -> ["a"]["b"]["c"]
+const toBracketNotation = (input: string): string => {
+	return input.replace(DOT_CHAINS, (chain) => chain.replace(DOT_KEY, '["$<key>"]'));
+};
+
+const pythonInsert = (value: string, mode: CodeExecutionMode): string => {
+	const base =
+		mode === 'runOnceForAllItems'
+			? value.replace('$json', '_items[0]["json"]')
+			: value.replace('$json', '_item["json"]');
+
+	return toBracketNotation(base);
+};
+
+const pyodideInsert = (value: string, mode: CodeExecutionMode): string => {
+	return value
+		.replace('$json', mode === 'runOnceForAllItems' ? '_input.first().json' : '_input.item.json')
+		.replace(/\$\((.*)\)\.item/, mode === 'runOnceForAllItems' ? '_($1).first()' : '_($1).item');
+};
+
+const jsInsertForAllItems = (value: string): string => {
+	return value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()');
+};
+
+const isPyodide = (language: CodeNodeLanguageOption) => language === 'python';
+const isPython = (language: CodeNodeLanguageOption) => language === 'pythonNative';
+
+export const valueToInsert = (
+	value: string,
+	language: CodeNodeLanguageOption,
+	mode: CodeExecutionMode,
+): string => {
+	if (isPython(language)) return pythonInsert(value, mode);
+	if (isPyodide(language)) return pyodideInsert(value, mode);
+	if (mode === 'runOnceForAllItems') return jsInsertForAllItems(value);
+
+	return value;
 };

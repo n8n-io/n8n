@@ -31,7 +31,14 @@ describe('dataStore.api', () => {
 				'DELETE',
 				`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 				{
-					ids: '1,2,3',
+					filter: {
+						type: 'or',
+						filters: [
+							{ columnName: 'id', condition: 'eq', value: 1 },
+							{ columnName: 'id', condition: 'eq', value: 2 },
+							{ columnName: 'id', condition: 'eq', value: 3 },
+						],
+					},
 				},
 			);
 			expect(result).toBe(true);
