@@ -76,6 +76,8 @@ const defaultValues = ref({
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
 });
+
+const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -835,7 +837,7 @@ onBeforeUnmount(() => {
 						</el-col>
 					</el-row>
 				</div>
-				<el-row>
+				<el-row v-if="isMCPEnabled" data-test-id="workflow-settings-available-in-mcp">
 					<el-col :span="10" :class="$style['setting-name']">
 						<label for="availableInMCP">
 							{{ i18n.baseText('workflowSettings.availableInMCP') + ':' }}
