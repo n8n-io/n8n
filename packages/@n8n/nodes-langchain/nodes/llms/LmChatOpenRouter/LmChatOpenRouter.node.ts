@@ -24,26 +24,26 @@ export class LmChatOpenRouter implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const credentials = await this.getCredentials('openRouterApi');
+				const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
 
-				const response = await this.helpers.httpRequest({
+				const response = (await this.helpers.httpRequest({
 					method: 'GET',
 					url: `${credentials.url}/models`,
 					headers: {
 						Authorization: `Bearer ${credentials.apiKey}`,
 					},
-				});
+				})) as { data: Array<{ id: string }> };
 
-				const filteredModels = response.data.filter((model: any) => {
+				const filteredModels = (response.data || []).filter((model: { id: string }) => {
 					if (!filter) return true;
 					return model.id.toLowerCase().includes(filter.toLowerCase());
 				});
 
 				// Sort models alphabetically for better user experience
-				filteredModels.sort((a: any, b: any) => a.id.localeCompare(b.id));
+				filteredModels.sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id));
 
 				return {
-					results: filteredModels.map((model: any) => ({
+					results: filteredModels.map((model: { id: string }) => ({
 						name: model.id,
 						value: model.id,
 					})),
@@ -57,7 +57,7 @@ export class LmChatOpenRouter implements INodeType {
 		name: 'lmChatOpenRouter',
 		icon: { light: 'file:openrouter.svg', dark: 'file:openrouter.dark.svg' },
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenRouter Chat Model',
@@ -108,6 +108,59 @@ export class LmChatOpenRouter implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://openrouter.ai/docs/models">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'openai/gpt-4.1-mini',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			// Newer resourceLocator model selector (shown for >=1.1)
+			{
+				displayName: 'Model',
+				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'openai/gpt-4.1-mini' },
 				required: true,
@@ -144,6 +197,11 @@ export class LmChatOpenRouter implements INodeType {
 					send: {
 						type: 'body',
 						property: 'model',
+					},
+				},
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1.0 } }],
 					},
 				},
 			},
@@ -275,8 +333,14 @@ export class LmChatOpenRouter implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
 
-		const modelParam = this.getNodeParameter('model', itemIndex) as any;
-		const modelName = typeof modelParam === 'string' ? modelParam : modelParam?.value || modelParam;
+		const version = this.getNode().typeVersion;
+
+		// Determine modelName based on node version only; rest of the flow is compatible
+		const modelName =
+			version >= 1.1
+				? (this.getNodeParameter('model.value', itemIndex) as string) ||
+					(this.getNodeParameter('model', itemIndex) as string)
+				: (this.getNodeParameter('model', itemIndex) as string);
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
