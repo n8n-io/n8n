@@ -307,6 +307,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
+			disableBareRepos: false,
 		},
 		executions: {
 			timeout: -1,
