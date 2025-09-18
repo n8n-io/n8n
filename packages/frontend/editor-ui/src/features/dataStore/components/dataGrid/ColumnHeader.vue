@@ -113,10 +113,6 @@ const onFilterClosed = () => {
 	isFilterOpen.value = false;
 };
 
-const onDropdownClick = (e: MouseEvent) => {
-	e.stopPropagation(); // Prevent the header click (sorting) from firing
-};
-
 onMounted(() => {
 	// Check initial states
 	checkFilterStatus();
@@ -174,7 +170,7 @@ onUnmounted(() => {
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"
 			@visible-change="onDropdownVisibleChange"
-			@click="onDropdownClick"
+			@click.stop
 		/>
 	</div>
 </template>
