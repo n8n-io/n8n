@@ -982,4 +982,17 @@ export class NodeDetailsViewPage extends BasePage {
 		// Step 3: Set the parameter value
 		await this.setupHelper.setParameter(parameterName, parameterValue);
 	}
+
+	async setInvalidExpression({
+		fieldName,
+		invalidExpression,
+	}: {
+		fieldName: string;
+		invalidExpression?: string;
+	}): Promise<void> {
+		await this.activateParameterExpressionEditor(fieldName);
+		const editor = this.getInlineExpressionEditorInput(fieldName);
+		await editor.click();
+		await this.page.keyboard.type(invalidExpression ?? '{{ invalid_expression');
+	}
 }
