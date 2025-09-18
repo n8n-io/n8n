@@ -10,7 +10,7 @@ import type {
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
-import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
+import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
 
 export function getSelectFields(
 	displayOptions: IDisplayOptions,
@@ -95,7 +95,10 @@ export function getSelectFields(
 	];
 }
 
-export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataTableFilter {
+export async function getSelectFilter(
+	ctx: IExecuteFunctions,
+	index: number,
+): Promise<DataTableFilter> {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
 	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
 	const node = ctx.getNode();
@@ -107,6 +110,26 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataTabl
 		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
+	// Validate filter conditions against current table schema
+	if (fields.length > 0) {
+		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
+		const availableColumns = await dataStoreProxy.getColumns();
+		const systemColumns = ['id', 'createdAt', 'updatedAt'];
+		const allColumns = new Set([...systemColumns, ...availableColumns.map((col) => col.name)]);
+
+		const invalidConditions = fields.filter((field) => !allColumns.has(field.keyName));
+
+		if (invalidConditions.length > 0) {
+			const invalidColumnNames = invalidConditions.map((c) => c.keyName).join(', ');
+			throw new NodeOperationError(
+				node,
+				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +
+					'This often happens when switching between tables with different schemas. ' +
+					'Please try deleting this condition and then adding it again.',
+			);
+		}
+	}
+
 	return buildGetManyFilter(fields, matchType);
 }
 
@@ -116,7 +139,7 @@ export async function executeSelectMany(
 	dataStoreProxy: IDataStoreProjectService,
 	rejectEmpty = false,
 ): Promise<Array<{ json: DataStoreRowReturn }>> {
-	const filter = getSelectFilter(ctx, index);
+	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
 		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
