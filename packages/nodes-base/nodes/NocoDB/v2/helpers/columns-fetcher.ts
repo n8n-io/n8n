@@ -7,6 +7,16 @@ const makeUidtMapper = (version: number) => {
 		ID: (_field: any) => {
 			return undefined;
 		},
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		QrCode: (field: any) => {
+			return {
+				id: field.title,
+				displayName: field.title,
+				type: 'string',
+				display: true,
+				readOnly: true,
+			} as ResourceMapperField;
+		},
 		Attachment: (field: any) => {
 			return {
 				id: field.title,
@@ -99,6 +109,19 @@ const makeUidtMapper = (version: number) => {
 	uidtMapper['Rating'] = uidtMapper['Number'];
 	uidtMapper['Year'] = uidtMapper['Number'];
 	uidtMapper['Date'] = uidtMapper['DateTime'];
+	// readonly
+	uidtMapper['Barcode'] = uidtMapper['QrCode'];
+	uidtMapper['Links'] = uidtMapper['QrCode'];
+	uidtMapper['LinkToAnotherRecord'] = uidtMapper['QrCode'];
+	uidtMapper['ForeignKey'] = uidtMapper['QrCode'];
+	uidtMapper['CreatedAt'] = uidtMapper['QrCode'];
+	uidtMapper['CreatedTime'] = uidtMapper['QrCode'];
+	uidtMapper['LastModifiedAt'] = uidtMapper['QrCode'];
+	uidtMapper['LastModifiedTime'] = uidtMapper['QrCode'];
+	uidtMapper['Lookup'] = uidtMapper['QrCode'];
+	uidtMapper['Formula'] = uidtMapper['QrCode'];
+	uidtMapper['Rollup'] = uidtMapper['QrCode'];
+	uidtMapper['Button'] = uidtMapper['QrCode'];
 	return uidtMapper;
 };
 
