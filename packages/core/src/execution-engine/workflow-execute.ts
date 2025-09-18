@@ -1916,7 +1916,7 @@ export class WorkflowExecute {
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
 
-							if (!nodeSuccessData) {
+							if (nodeSuccessData) {
 								this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 							}
 

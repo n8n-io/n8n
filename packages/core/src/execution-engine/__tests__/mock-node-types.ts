@@ -4,6 +4,7 @@ import type {
 	INodeType,
 	EngineResponse,
 	EngineRequest,
+	NodeOutput,
 } from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
@@ -77,8 +78,7 @@ export const types: Record<keyof typeof nodeTypeArguments, string> = {
  * Can be execution data, an engine request, or a function that processes engine responses.
  */
 type NodeExecuteResult =
-	| INodeExecutionData[][]
-	| EngineRequest
+	| NodeOutput
 	| ((response?: EngineResponse) => INodeExecutionData[][] | EngineRequest);
 
 /**

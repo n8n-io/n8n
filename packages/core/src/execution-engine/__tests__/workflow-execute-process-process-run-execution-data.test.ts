@@ -560,4 +560,74 @@ describe('processRunExecutionData', () => {
 			expect(runData[secondNode.name]).toHaveLength(1);
 		});
 	});
+
+	describe('lastNodeExecuted tracking', () => {
+		test('sets lastNodeExecuted when node returns successful data', async () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'successfulNode', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(node)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
+			const executionData: IRunExecutionData = {
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			// When node returns data, lastNodeExecuted should be set (line 1919-1921 in workflow-execute.ts)
+			expect(result.data.resultData.lastNodeExecuted).toBe('successfulNode');
+		});
+
+		test('does not set lastNodeExecuted when node returns no data', async () => {
+			// ARRANGE
+			const nodeReturningNull = modifyNode(passThroughNode).return(null).done();
+
+			const node = createNodeData({ name: 'nodeReturningNull', type: 'nodeReturningNull' });
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeReturningNull: { type: nodeReturningNull, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(node)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
+			const executionData: IRunExecutionData = {
+				startData: { startNodes: [{ name: node.name, sourceData: null }] },
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			// When node returns null, lastNodeExecuted should NOT be set
+			expect(result.data.resultData.lastNodeExecuted).toBeUndefined();
+		});
+	});
 });
