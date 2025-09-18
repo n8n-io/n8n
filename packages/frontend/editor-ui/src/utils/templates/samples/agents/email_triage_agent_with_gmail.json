@@ -72,13 +72,13 @@
 		},
 		{
 			"parameters": {
-				"content": "### Email Triage Agent\nAutomatically categorizes new, unread emails by analyzing their content and applying relevant labels using AI.\n\n#### Set up\n- Configure credentials in the **Gmail** and **Model** nodes\n- Create the labels you want to use in Gmail\n- Click **Execute workflow** button to test with the last email in your inbox\n\n#### Next steps\nTry setting up the agent to configure draft responses to important emails.\n",
-				"height": 384,
-				"width": 304,
+				"content": "## Start here!\n@[youtube](U1zxP7Ut1Kc)",
+				"height": 320,
+				"width": 464,
 				"color": 5
 			},
 			"type": "n8n-nodes-base.stickyNote",
-			"position": [-464, -96],
+			"position": [-608, -144],
 			"typeVersion": 1,
 			"id": "db4fcd5d-7f0a-41f6-9dd7-4100a63f38cc",
 			"name": "Sticky Note"

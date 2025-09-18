@@ -8,6 +8,7 @@ import type { IFormInputs, ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
+	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
@@ -21,11 +22,17 @@ import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/stores/sso.store';
+import type { ConfirmPasswordModalEvents } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
+import { confirmPasswordEventBus } from '@/components/ConfirmPasswordModal/confirm-password.event-bus';
 
 type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
 	email: string;
+	/**
+	 * Required when changing the user email and no MFA enabled
+	 */
+	currentPassword?: string;
 };
 
 type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
@@ -215,6 +222,20 @@ async function onSubmit(data: Record<string, string | number | boolean | null | 
 				mfaCode: payload.mfaCode,
 			});
 		});
+	} else if (emailChanged) {
+		uiStore.openModal(CONFIRM_PASSWORD_MODAL_KEY);
+		confirmPasswordEventBus.once('close', async (payload: ConfirmPasswordModalEvents['close']) => {
+			if (!payload) {
+				// User closed the modal without submitting the form
+				return;
+			}
+
+			await saveUserSettings({
+				...form,
+				currentPassword: payload.currentPassword,
+			});
+			uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
+		});
 	} else {
 		await saveUserSettings(form);
 	}
@@ -230,6 +251,7 @@ async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
 		lastName: userBasicInfo.lastName,
 		email: userBasicInfo.email,
 		mfaCode: userBasicInfo.mfaCode,
+		currentPassword: userBasicInfo.currentPassword,
 	});
 	hasAnyBasicInfoChanges.value = false;
 }

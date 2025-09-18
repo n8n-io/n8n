@@ -330,7 +330,7 @@ describe('LogsPanel', () => {
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',
 			executionId: '567',
-			itemCount: 1,
+			itemCountByConnectionType: { ai_agent: [1] },
 			data: {
 				executionIndex: 0,
 				startTime: Date.parse('2025-04-20T12:34:51.000Z'),
@@ -682,16 +682,18 @@ describe('LogsPanel', () => {
 			];
 
 			beforeEach(() => {
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
-					messages.value.push(...mockMessages);
+				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(
+					({ onNewMessage: addChatMessage }) => {
+						addChatMessage(mockMessages[0]);
 
-					return {
-						sendMessage: vi.fn(),
-						previousMessageIndex: ref(0),
-						isLoading: computed(() => false),
-						setLoadingState: vi.fn(),
-					};
-				});
+						return {
+							sendMessage: vi.fn(),
+							previousMessageIndex: ref(0),
+							isLoading: computed(() => false),
+							setLoadingState: vi.fn(),
+						};
+					},
+				);
 			});
 
 			it('should allow copying session ID', async () => {
@@ -826,16 +828,19 @@ describe('LogsPanel', () => {
 						sender: 'bot',
 					},
 				];
-				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
-					messages.value.push(...mockMessages);
+				vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(
+					({ onNewMessage: addChatMessage }) => {
+						addChatMessage(mockMessages[0]);
+						addChatMessage(mockMessages[1]);
 
-					return {
-						sendMessage: sendMessageSpy,
-						previousMessageIndex: ref(0),
-						isLoading: computed(() => false),
-						setLoadingState: vi.fn(),
-					};
-				});
+						return {
+							sendMessage: sendMessageSpy,
+							previousMessageIndex: ref(0),
+							isLoading: computed(() => false),
+							setLoadingState: vi.fn(),
+						};
+					},
+				);
 			});
 
 			it('should repost user message with new execution', async () => {
