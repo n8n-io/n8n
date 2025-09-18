@@ -75,7 +75,7 @@ jobs:
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
       - name: Download build artifacts
-        uses: actions/download-artifact@65d862660abb3549b588b37db4038d3fd1a05f8a # v4.1.8
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: ${{ env.BUILD_DIST_NAME }}
           path: .
@@ -152,8 +152,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Download build artifacts
-        uses: actions/download-artifact@65d862660abb3549b588b37db4038d3fd1a05f8a # v4.1.8
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: ${{ env.BUILD_DIST_NAME }}
           path: .
