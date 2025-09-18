@@ -98,7 +98,7 @@ class TaskRunnerConfig:
             auto_shutdown_timeout=auto_shutdown_timeout,
             graceful_shutdown_timeout=graceful_shutdown_timeout,
             stdlib_allow=parse_allowlist(
-                os.getenv(ENV_STDLIB_ALLOW, ""), ENV_STDLIB_ALLOW
+                os.getenv(ENV_STDLIB_ALLOW, "time"), ENV_STDLIB_ALLOW
             ),
             external_allow=parse_allowlist(
                 os.getenv(ENV_EXTERNAL_ALLOW, ""), ENV_EXTERNAL_ALLOW
