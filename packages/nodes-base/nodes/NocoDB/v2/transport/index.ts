@@ -81,8 +81,7 @@ export async function apiRequestAllItems(
 	const version = this.getNodeParameter('version', 0) as number;
 
 	query = query ?? {};
-	const TRUE_LIMIT = 100;
-	const QUERY_LIMIT = 101;
+	const QUERY_LIMIT = 100;
 	query.limit = QUERY_LIMIT;
 	query.offset = query?.offset ? (query.offset as number) : 0;
 	const returnData: IDataObject[] = [];
@@ -90,6 +89,7 @@ export async function apiRequestAllItems(
 	let responseData:
 		| {
 				records: IDataObject[];
+				next?: string;
 		  }
 		| {
 				list: IDataObject[];
@@ -101,12 +101,12 @@ export async function apiRequestAllItems(
 	let continueFetch;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		query.offset += TRUE_LIMIT;
+		query.offset += QUERY_LIMIT;
 		if (version === 4 && 'records' in responseData) {
-			returnData.push.apply(returnData, responseData.records.slice(0, TRUE_LIMIT));
-			continueFetch = responseData.records.length > TRUE_LIMIT;
+			returnData.push.apply(returnData, responseData.records.slice(0, QUERY_LIMIT));
+			continueFetch = !!responseData.next;
 		} else if ('list' in responseData) {
-			returnData.push.apply(returnData, responseData.list.slice(0, TRUE_LIMIT));
+			returnData.push.apply(returnData, responseData.list.slice(0, QUERY_LIMIT));
 			continueFetch = !responseData.pageInfo.isLastPage;
 		}
 	} while (continueFetch);
