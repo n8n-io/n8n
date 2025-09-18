@@ -2,19 +2,16 @@
 import { useI18n } from '@n8n/i18n';
 import Chat from '@n8n/chat/components/Chat.vue';
 import { ChatPlugin } from '@n8n/chat/plugins';
-import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ChatOptions } from '@n8n/chat/types';
 import { computed, createApp, onMounted, onUnmounted, useTemplateRef, watch, ref } from 'vue';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRouter } from 'vue-router';
-import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
-import type { IExecutionResponse, IRunExecutionData, IWorkflowDb } from '@/Interface';
+
 
 interface Props {
 	sessionId: string;
@@ -40,7 +37,6 @@ const locale = useI18n();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const workflowHelpers = useWorkflowHelpers();
-const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 const { runWorkflow } = useRunWorkflow({ router });
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
@@ -65,21 +61,20 @@ const chatTriggerNode = computed(() => {
 
 // Check if streaming is enabled in ChatTrigger node
 const isStreamingEnabled = computed(() => {
-	if (!chatTriggerNode.value?.parameters?.options) {
-		console.log('No ChatTrigger options found, defaulting to non-streaming');
-		return false;
+	const options = chatTriggerNode.value?.parameters?.options;
+
+	if(options &&
+		typeof options === 'object' &&
+		'responseMode' in options
+	) {
+		const responseMode = options.responseMode ;
+		return responseMode === 'streaming';
 	}
 
-	const responseMode = chatTriggerNode.value.parameters.options.responseMode;
-	const isStreaming = responseMode === 'streaming';
 
-	console.log('ChatTrigger responseMode:', responseMode, 'isStreaming:', isStreaming);
-	console.log('ChatTrigger node parameters:', chatTriggerNode.value.parameters);
-
-	return isStreaming;
+	return false;
 });
 
-// Generate test webhook URL using sessionId-based path
 const webhookUrl = computed(() => {
 	if (!chatTriggerNode.value) {
 		return '';
@@ -87,18 +82,13 @@ const webhookUrl = computed(() => {
 
 	const workflowId = workflowsStore.workflowId;
 	if (!workflowId) {
-		console.error('No workflow ID found');
 		return '';
 	}
 
-	// Generate predictable webhook URL using sessionId
-	// This matches the backend path generation: /${workflowId}/${sessionId}
 	const url = `${rootStore.webhookTestUrl}/${workflowId}/${props.sessionId}`;
 
-	console.log('Chat webhook URL (sessionId-based):', url);
 	return url;
 });
-
 
 
 const chatOptions = computed<ChatOptions>(() => {
@@ -114,6 +104,8 @@ const chatOptions = computed<ChatOptions>(() => {
 		showWindowCloseButton: false,
 		showWelcomeScreen: false,
 		loadPreviousSession: true,
+		// Force the chat SDK to use our canvas session ID
+		sessionId: props.sessionId,
 		// Enable streaming based on ChatTrigger node configuration
 		enableStreaming: isStreamingEnabled.value,
 		// Use the correct field names that ChatTrigger expects
@@ -121,10 +113,6 @@ const chatOptions = computed<ChatOptions>(() => {
 		chatSessionKey: 'sessionId',
 		defaultLanguage: 'en' as const,
 		initialMessages: [],
-		// Pass the actual session ID value
-		metadata: {
-			sessionId: props.sessionId,
-		},
 		i18n: {
 			en: {
 				title: locale.baseText('chat.window.title') || 'Chat',
@@ -136,24 +124,11 @@ const chatOptions = computed<ChatOptions>(() => {
 				closeButtonTooltip: 'Close',
 			},
 		},
-		// Event handlers for message lifecycle
-		beforeMessageSent: async (message: string) => {
-			console.log('Before sending message:', message);
+		beforeMessageSent: async (_message: string) => {
 			// Register fresh webhook before each message to ensure it's active
 			// This gives us a fresh webhook with full timeout for each message
-			console.log('Registering fresh webhook for message...');
 			await registerChatWebhook();
-			// Replace execution data with a fresh placeholder (like runWorkflow does)
-			// This clears the visual display while preserving the infrastructure
-			if (workflowsStore.workflowExecutionData?.id) {
-				console.log('Replacing execution data with fresh placeholder');
-				createFreshExecutionPlaceholder();
-			}
 		},
-		afterMessageSent: (message: string, response?: any) => {
-			console.log('After sending message:', message, 'Response:', response);
-		},
-
 	};
 	return options;
 });
@@ -168,9 +143,6 @@ async function registerChatWebhook(): Promise<void> {
 
 	try {
 		// Use the useRunWorkflow composable to properly register the webhook
-		// This handles all execution data initialization correctly, including
-		// replacing the old execution data with a fresh placeholder
-		console.log(`Calling runWorkflow with sessionId: ${props.sessionId}`);
 		await runWorkflow({
 			triggerNode: chatTriggerNode.value.name,
 			source: 'RunData.ManualChatTrigger',
@@ -185,6 +157,10 @@ async function registerChatWebhook(): Promise<void> {
 
 
 async function initializeChat() {
+	if (!props.isOpen || !chatTriggerNode.value) {
+		return;
+	}
+
 	if (!chatContainer.value) return;
 
 	await registerChatWebhook();
@@ -210,10 +186,9 @@ function destroyChat() {
 watch(
 	() => props.isOpen,
 	async (newIsOpen, oldIsOpen) => {
-		console.log('isOpen changed:', { newIsOpen, oldIsOpen });
 		if (newIsOpen && !oldIsOpen) {
 			// Panel reopened - register webhook and reinitialize chat
-			await setupChatWithWebhook();
+			await initializeChat();
 		} else if (!newIsOpen && oldIsOpen) {
 			// Panel closed - cleanup
 			destroyChat();
@@ -221,55 +196,21 @@ watch(
 	},
 );
 
-// Setup chat with webhook registration
-async function setupChatWithWebhook() {
-	if (!props.isOpen || !chatTriggerNode.value) {
-		return;
-	}
-
-	// Initialize chat immediately - webhook will be registered on-demand before each message
-	await initializeChat();
-}
-
-// Create a fresh execution placeholder (replicates what runWorkflow does)
-function createFreshExecutionPlaceholder() {
-	const workflowData = workflowsStore.workflow;
-
-	const executionData: IExecutionResponse = {
-		id: IN_PROGRESS_EXECUTION_ID,
-		finished: false,
-		mode: 'manual',
-		status: 'running',
-		createdAt: new Date(),
-		startedAt: new Date(),
-		stoppedAt: undefined,
-		workflowId: workflowsStore.workflowId,
-		executedNode: chatTriggerNode.value?.name,
-		triggerNode: chatTriggerNode.value?.name,
-		data: {
-			resultData: {
-				runData: {}, // Empty run data - new execution events will populate this
-				pinData: workflowData.pinData,
-				workflowData,
-			},
-		} as IRunExecutionData,
-		workflowData: {
-			id: workflowsStore.workflowId,
-			name: workflowData.name!,
-			active: workflowData.active!,
-			createdAt: 0,
-			updatedAt: 0,
-			...workflowData,
-		} as IWorkflowDb,
-	};
-
-	workflowsStore.setWorkflowExecutionData(executionData);
-}
+// Watch for streaming configuration changes
+watch(
+	() => isStreamingEnabled.value,
+	async (newStreaming, oldStreaming) => {
+		if (props.isOpen && chatApp && newStreaming !== oldStreaming) {
+			// Reinitialize chat when streaming configuration changes
+			destroyChat();
+			await initializeChat();
+		}
+	},
+);
 
 onMounted(() => {
 	if (props.isOpen) {
-		// Setup chat with webhook registration
-		void setupChatWithWebhook();
+		void initializeChat();
 	}
 });
 
@@ -294,7 +235,7 @@ onUnmounted(() => {
 			<template #actions>
 				<N8nTooltip v-if="!isReadOnly">
 					<template #content>
-						{{ sessionId }}
+						{{ props.sessionId }}
 						<br />
 						{{ locale.baseText('chat.window.session.id.copy') }}
 					</template>
@@ -433,16 +374,6 @@ onUnmounted(() => {
 		--chat--color-light-shade-100: var(--color-foreground-base) !important;
 		--chat--color-disabled: var(--color-text-light) !important;
 
-		/* Header Styling */
-		--chat--header-height: auto !important;
-		--chat--header--padding: var(--spacing-m) !important;
-		--chat--header--background: var(--color-background-light) !important;
-		--chat--header--color: var(--color-text-base) !important;
-		--chat--header--border-bottom: var(--border-base) !important;
-		--chat--heading--font-size: var(--font-size-l) !important;
-		--chat--subtitle--font-size: var(--font-size-s) !important;
-		--chat--subtitle--line-height: var(--font-line-height-regular) !important;
-
 		/* Body and Footer */
 		--chat--body--background: var(--color-background-light);
 		--chat--footer--background: var(--color-background-base) !important;
@@ -504,11 +435,6 @@ onUnmounted(() => {
 	/* Dark Mode Overrides */
 	body[data-theme='dark'] & {
 		:global(.chat-layout) {
-			/* Header */
-			--chat--header--background: var(--color-background-dark) !important;
-			--chat--header--color: var(--color-text-base) !important;
-			--chat--header--border-bottom: var(--border-base) !important;
-
 			/* Body and Footer - darker background like the old design */
 			--chat--body--background: var(--color-background-xlight) !important;
 			--chat--footer--background: var(--color-background-dark) !important;
