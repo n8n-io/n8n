@@ -5,7 +5,6 @@ import type { UserAction } from '@n8n/design-system';
 const props = defineProps<{
 	data: ProjectMemberData;
 	actions: Array<UserAction<ProjectMemberData>>;
-	currentUserId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -19,11 +18,7 @@ const onAction = (action: string) => {
 
 <template>
 	<N8nActionToggle
-		v-if="
-			props.data.id !== props.currentUserId &&
-			props.data.role !== 'project:personalOwner' &&
-			props.actions.length > 0
-		"
+		v-if="props.actions.length > 0"
 		placement="bottom"
 		:actions="props.actions"
 		theme="dark"

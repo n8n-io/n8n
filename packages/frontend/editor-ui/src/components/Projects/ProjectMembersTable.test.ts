@@ -101,7 +101,6 @@ vi.mock('@/components/Projects/ProjectMembersActionsCell.vue', () => ({
 		props: {
 			data: { type: Object, required: true },
 			actions: { type: Array, required: true },
-			currentUserId: { type: String },
 		},
 		emits: ['action'],
 		template: '<div :data-test-id="`actions-cell-` + data.id"></div>',

@@ -63,7 +63,6 @@ describe('ProjectMembersActionsCell', () => {
 		const props = {
 			data: baseMember,
 			actions: [removeAction],
-			currentUserId: '2', // not self
 		};
 		const { emitted } = renderComponent({ props });
 
@@ -78,29 +77,10 @@ describe('ProjectMembersActionsCell', () => {
 		const props = {
 			data: baseMember,
 			actions: [],
-			currentUserId: '2',
 		};
 		const { container } = renderComponent({ props });
 		expect(container.querySelector('button')).toBeNull();
 	});
 
-	it('does not render for current user', () => {
-		const props = {
-			data: baseMember,
-			actions: [removeAction],
-			currentUserId: '1',
-		};
-		renderComponent({ props });
-		expect(screen.queryByTestId('action-remove')).not.toBeInTheDocument();
-	});
-
-	it('does not render for personal owner role', () => {
-		const props = {
-			data: { ...baseMember, role: 'project:personalOwner' },
-			actions: [removeAction],
-			currentUserId: '2',
-		};
-		renderComponent({ props });
-		expect(screen.queryByTestId('action-remove')).not.toBeInTheDocument();
-	});
+	// Visibility filtering is handled by ProjectMembersTable now
 });

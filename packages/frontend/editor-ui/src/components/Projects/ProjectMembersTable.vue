@@ -97,6 +97,11 @@ const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== prop
 const onRoleChange = ({ role, userId }: { role: ProjectRole; userId: string }) => {
 	emit('update:role', { role, userId });
 };
+
+const filterActions = (member: ProjectMemberData) => {
+	if (member.id === props.currentUserId || member.role === 'project:personalOwner') return [];
+	return (props.actions ?? []).filter((action) => action.guard?.(member) ?? true);
+};
 </script>
 
 <template>
@@ -130,8 +135,7 @@ const onRoleChange = ({ role, userId }: { role: ProjectRole; userId: string }) =
 			<template #[`item.actions`]="{ item }">
 				<ProjectMembersActionsCell
 					:data="item"
-					:actions="props.actions ?? []"
-					:current-user-id="currentUserId"
+					:actions="filterActions(item)"
 					@action="$emit('action', $event)"
 				/>
 			</template>
