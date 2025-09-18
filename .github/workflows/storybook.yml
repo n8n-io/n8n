@@ -39,18 +39,25 @@ jobs:
   cloudflare:
     name: Cloudflare Pages
     needs: [get-metadata]
-    if: |
-      needs.get-metadata.outputs.is_dispatch == 'true' ||
-      (
-       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-       needs.get-metadata.outputs.is_community_pr == 'false' &&
-       needs.get-metadata.outputs.is_pr_target_master == 'true'
-      )
+    # if: |
+    #   needs.get-metadata.outputs.is_dispatch == 'true' ||
+    #   (
+    #    needs.get-metadata.outputs.design_system_files_changed == 'true' &&
+    #    needs.get-metadata.outputs.is_community_pr == 'false' &&
+    #    needs.get-metadata.outputs.is_pr_target_master == 'true'
+    #   )
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     steps:
+      - name: Output needs
+        run: |
+          echo "design_system_files_changed=${{ needs.get-metadata.outputs.design_system_files_changed }}"
+          echo "is_community_pr=${{ needs.get-metadata.outputs.is_community_pr }}"
+          echo "is_pr_target_master=${{ needs.get-metadata.outputs.is_pr_target_master }}"
+          echo "is_dispatch=${{ needs.get-metadata.outputs.is_dispatch }}"
+
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
