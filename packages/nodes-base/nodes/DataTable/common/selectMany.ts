@@ -8,7 +8,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
+import {
+	ALL_CONDITIONS,
+	ANY_CONDITION,
+	ROWS_LIMIT_DEFAULT,
+	SYSTEM_COLUMN_NAMES,
+	type FilterType,
+} from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
 
@@ -114,8 +120,10 @@ export async function getSelectFilter(
 	if (fields.length > 0) {
 		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
 		const availableColumns = await dataStoreProxy.getColumns();
-		const systemColumns = ['id', 'createdAt', 'updatedAt'];
-		const allColumns = new Set([...systemColumns, ...availableColumns.map((col) => col.name)]);
+		const allColumns = new Set([
+			...SYSTEM_COLUMN_NAMES,
+			...availableColumns.map((col) => col.name),
+		]);
 
 		const invalidConditions = fields.filter((field) => !allColumns.has(field.keyName));
 

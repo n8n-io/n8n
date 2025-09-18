@@ -6,6 +6,7 @@ import {
 	type ResourceMapperFields,
 } from 'n8n-workflow';
 
+import { SYSTEM_COLUMNS } from './constants';
 import { getDataTableAggregateProxy, getDataTableProxyLoadOptions } from './utils';
 
 // @ADO-3904: Pagination here does not work until a filter is entered or removed, suspected bug in ResourceLocator
@@ -42,14 +43,11 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	const returnData: Array<INodePropertyOptions & { type: string }> = [
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'id (number)', value: 'id', type: 'number' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt (date)', value: 'createdAt', type: 'date' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt (date)', value: 'updatedAt', type: 'date' },
-	];
+	const returnData: Array<INodePropertyOptions & { type: string }> = SYSTEM_COLUMNS.map((col) => ({
+		name: `${col.name} (${col.type})`,
+		value: col.name,
+		type: col.type,
+	}));
 
 	const proxy = await getDataTableProxyLoadOptions(this);
 	if (!proxy) {
@@ -66,12 +64,6 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	}
 	return returnData;
 }
-
-const systemColumns = [
-	{ name: 'id', type: 'number' },
-	{ name: 'createdAt', type: 'date' },
-	{ name: 'updatedAt', type: 'date' },
-] as const;
 
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const proxy = await getDataTableProxyLoadOptions(this);
@@ -122,7 +114,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 
 	// Get column type to determine available conditions
 	const column =
-		systemColumns.find((col) => col.name === keyName) ??
+		SYSTEM_COLUMNS.find((col) => col.name === keyName) ??
 		(await proxy.getColumns()).find((col) => col.name === keyName);
 
 	if (!column) {

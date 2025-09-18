@@ -5,6 +5,14 @@ export const ALL_CONDITIONS = 'allConditions';
 
 export const ROWS_LIMIT_DEFAULT = 50;
 
+export const SYSTEM_COLUMNS = [
+	{ name: 'id', type: 'number' },
+	{ name: 'createdAt', type: 'date' },
+	{ name: 'updatedAt', type: 'date' },
+] as const;
+
+export const SYSTEM_COLUMN_NAMES = SYSTEM_COLUMNS.map((col) => col.name);
+
 export type FilterType = typeof ANY_CONDITION | typeof ALL_CONDITIONS;
 
 export type FieldEntry =
