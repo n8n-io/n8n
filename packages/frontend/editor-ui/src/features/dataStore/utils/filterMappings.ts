@@ -8,7 +8,10 @@ export const MAX_CONDITIONS = 1;
 export const GRID_FILTER_CONFIG = {
 	defaultColDef: {
 		filter: true,
-		filterParams: { maxNumConditions: MAX_CONDITIONS },
+		filterParams: {
+			maxNumConditions: MAX_CONDITIONS,
+			buttons: ['reset'],
+		},
 	},
 	excludedColumns: SPECIAL_COLUMNS,
 } as const;
