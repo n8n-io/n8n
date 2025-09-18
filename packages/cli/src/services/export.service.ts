@@ -37,6 +37,8 @@ export class ExportService {
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
 
+		console.log(this);
+
 		// Get DataSource from Container and fetch all repositories
 		const entityMetadatas = this.dataSource.entityMetadatas;
 
