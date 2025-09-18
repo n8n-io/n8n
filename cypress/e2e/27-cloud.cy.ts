@@ -1,4 +1,5 @@
 import { overrideFeatureFlag } from '../composables/featureFlags';
+import { expandSidebar } from '../composables/sidebar';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import {
 	MainSidebar,
@@ -41,12 +42,12 @@ describe('Cloud', () => {
 		cy.wait('@getPlanData');
 		cy.wait('@projects');
 		cy.wait('@roles');
-		mainSidebar.actions.expandSidebar();
 	}
 
 	describe('BannerStack', () => {
 		it('should render trial banner for opt-in cloud user', () => {
 			visitWorkflowPage();
+			expandSidebar();
 
 			cy.getByTestId('banner-stack').should('be.visible');
 
@@ -59,6 +60,7 @@ describe('Cloud', () => {
 	describe('Admin Home', () => {
 		it('Should show admin button', () => {
 			visitWorkflowPage();
+			expandSidebar();
 
 			mainSidebar.getters.adminPanel().should('be.visible');
 		});

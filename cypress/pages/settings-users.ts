@@ -4,6 +4,7 @@ import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
 import { getVisiblePopper } from '../utils';
+import { expandSidebar } from '../composables/sidebar';
 
 const workflowPage = new WorkflowPage();
 const workflowsPage = new WorkflowsPage();
@@ -50,7 +51,7 @@ export class SettingsUsersPage extends BasePage {
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
 			cy.signin({ email, password });
 			workflowPage.actions.visit();
-			mainSidebar.actions.expandSidebar();
+			expandSidebar();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
 				settingsSidebar.getters.users().click();
