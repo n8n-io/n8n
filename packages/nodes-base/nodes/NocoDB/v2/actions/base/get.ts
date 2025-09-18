@@ -74,6 +74,26 @@ export const description: INodeProperties[] = updateDisplayOptions(
 	],
 );
 
+async function getTables(
+	this: IExecuteFunctions,
+	{
+		baseId,
+		tables,
+	}: {
+		baseId: string;
+		tables: Array<{
+			id: string;
+		}>;
+	},
+) {
+	return await Promise.all(
+		tables.map(async (table) => {
+			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${table.id}`;
+			return await apiRequest.call(this, 'GET', endpoint, {}, {});
+		}),
+	);
+}
+
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
@@ -92,6 +112,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			endPoint = `/api/v3/meta/bases/${baseId}`;
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+			const tableResponse = await apiRequest.call(
+				this,
+				requestMethod,
+				`${endPoint}/tables`,
+				{},
+				{},
+			);
+			responseData.tables = await getTables.call(this, { baseId, tables: tableResponse.list });
 			returnData.push(responseData as IDataObject);
 		} catch (error) {
 			if (this.continueOnFail()) {
