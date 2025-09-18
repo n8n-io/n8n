@@ -88,7 +88,7 @@ export class TestRunnerService {
 		}
 
 		const { parameters, credentials, name, typeVersion } = triggerNode;
-		const source = parameters.source
+		const source = parameters?.source
 			? (parameters.source as string)
 			: typeVersion >= 4.7
 				? 'dataTable'
