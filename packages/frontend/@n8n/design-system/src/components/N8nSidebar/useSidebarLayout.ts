@@ -88,7 +88,7 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 
 	onMounted(() => {
 		window.addEventListener('keydown', (event) => {
-			if (event.key === ']') {
+			if (event.key === '[') {
 				const target = event.target as HTMLElement;
 				if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
 					return;

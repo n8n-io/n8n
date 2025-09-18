@@ -98,7 +98,7 @@ const {
 				<template #content>
 					<div class="toggleTooltip">
 						<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
-						<N8nKeyboardShortcut :keys="[']']" />
+						<N8nKeyboardShortcut :keys="['[']" />
 					</div>
 				</template>
 				<N8nIconButton
@@ -204,9 +204,7 @@ const {
 .resizeWrapper {
 	max-height: 100%;
 	height: 100%;
-
-	overflow-x: hidden;
-	overflow-y: auto;
+	overflow: hidden;
 	border-right: var(--border-base);
 	border-color: var(--color-foreground-light);
 	display: flex;
@@ -276,11 +274,10 @@ const {
 .sidebar {
 	padding: var(--spacing-xs);
 	padding-top: var(--spacing-5xs);
-	padding-right: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
-	overflow-y: scroll;
+	overflow-y: auto;
 	overflow-x: hidden;
 	flex-grow: 1;
 	display: flex;

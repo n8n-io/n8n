@@ -9,7 +9,7 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 
 <template>
 	<TreeRoot :items :get-key="(item: IMenuElement) => item.id">
-		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name" :estimate-size="29">
+		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name" :estimate-size="33">
 			<TreeItem
 				as-child
 				:key="item.value.id"
@@ -21,7 +21,7 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 			>
 				<div v-if="item.value.type === 'empty'">
 					<span class="itemIdent" v-for="level in new Array((item.level || 1) - 1)" :key="level" />
-					<N8nText size="small" color="text-light" class="sidebarEmptyState">
+					<N8nText color="text-light" class="sidebarEmptyState">
 						{{ item.value.label }}
 					</N8nText>
 				</div>

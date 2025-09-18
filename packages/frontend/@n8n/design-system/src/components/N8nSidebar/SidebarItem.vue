@@ -73,7 +73,7 @@ const icon = computed<IconName>(() => {
 			>
 				<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
 			</button>
-			<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
+			<N8nText class="sidebarItemText">{{ item.label }}</N8nText>
 		</N8nRoute>
 	</div>
 </template>
@@ -83,7 +83,7 @@ const icon = computed<IconName>(() => {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
-	margin-bottom: 1px;
+	margin-bottom: 2px;
 }
 
 .router-link-active {
@@ -93,7 +93,7 @@ const icon = computed<IconName>(() => {
 .sidebarItem {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-3xs) var(--spacing-4xs);
+	padding: var(--spacing-3xs);
 	gap: var(--spacing-3xs);
 	cursor: pointer;
 	color: var(--color-text-base);
@@ -145,7 +145,7 @@ const icon = computed<IconName>(() => {
 		align-items: center;
 		justify-content: center;
 		pointer-events: none;
-		color: var(--color-foreground-dark);
+		color: var(--color-text-light);
 	}
 }
 
