@@ -1,3 +1,12 @@
+## [1.112.2](https://github.com/n8n-io/n8n/compare/n8n@1.112.1...n8n@1.112.2) (2025-09-18)
+
+
+### Bug Fixes
+
+* Always generate tags.json file when using environments ([#19698](https://github.com/n8n-io/n8n/issues/19698)) ([374aa9d](https://github.com/n8n-io/n8n/commit/374aa9dcea15cd2deee85b78a1be3368db37c353))
+
+
+
 ## [1.112.1](https://github.com/n8n-io/n8n/compare/n8n@1.112.0...n8n@1.112.1) (2025-09-17)
 
 
