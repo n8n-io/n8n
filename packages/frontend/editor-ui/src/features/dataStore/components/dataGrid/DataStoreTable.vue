@@ -174,8 +174,9 @@ defineExpose({
 </script>
 
 <template>
-	<div ref="gridContainerRef" :class="$style.wrapper">
+	<div :class="$style.wrapper">
 		<div
+			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
 			data-test-id="data-store-grid"
 		>
@@ -206,19 +207,19 @@ defineExpose({
 				@cell-key-down="dataStoreOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
-		</div>
-		<div :class="$style.footer">
-			<el-pagination
-				v-model:current-page="currentPage"
-				v-model:page-size="pageSize"
-				data-test-id="data-store-content-pagination"
-				background
-				:total="totalItems"
-				:page-sizes="pageSizeOptions"
-				layout="total, prev, pager, next, sizes"
-				@update:current-page="setCurrentPage"
-				@size-change="setPageSize"
-			/>
+			<div :class="$style.footer">
+				<el-pagination
+					v-model:current-page="currentPage"
+					v-model:page-size="pageSize"
+					data-test-id="data-store-content-pagination"
+					background
+					:total="totalItems"
+					:page-sizes="pageSizeOptions"
+					layout="total, prev, pager, next, sizes"
+					@update:current-page="setCurrentPage"
+					@size-change="setPageSize"
+				/>
+			</div>
 		</div>
 		<SelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
@@ -254,12 +255,6 @@ defineExpose({
 	--ag-input-padding-start: var(--spacing-2xs);
 	--ag-input-background-color: var(--color-text-xlight);
 	--ag-focus-shadow: none;
-
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-	align-items: center;
-	min-height: 500px;
 
 	:global(.ag-cell) {
 		display: flex;
@@ -396,6 +391,10 @@ defineExpose({
 	position: relative;
 	display: flex;
 	width: 100%;
+	min-height: 500px;
+	flex-direction: column;
+	gap: var(--spacing-m);
+	align-items: center;
 }
 
 .footer {
