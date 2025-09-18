@@ -23,7 +23,7 @@ const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const rootStore = useRootStore();
 
-const isMCPEnabled = ref(true);
+// Use store state directly in template
 const workflowsLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
@@ -139,8 +139,8 @@ const fetchAvailableWorkflows = async () => {
 
 // TODO: Only owners can toggle this
 const onUpdateMCPEnabled = async (value: boolean) => {
-	isMCPEnabled.value = value;
-	if (value) {
+	const updated = await mcpStore.setMcpAccessEnabled(value);
+	if (updated) {
 		await fetchAvailableWorkflows();
 	} else {
 		workflowsLoading.value = false;
@@ -170,7 +170,7 @@ const onAddWorkflow = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
-	await fetchAvailableWorkflows();
+	if (mcpStore.mcpAccessEnabled) await fetchAvailableWorkflows();
 });
 </script>
 <template>
@@ -187,14 +187,14 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.settingsContainerAction">
 				<el-switch
-					:model-value="isMCPEnabled"
+					:model-value="mcpStore.mcpAccessEnabled"
 					size="large"
 					data-test-id="enable-n8n-mcp"
 					@update:model-value="onUpdateMCPEnabled"
 				/>
 			</div>
 		</div>
-		<div v-if="isMCPEnabled" :class="$style.connectionStringContainer">
+		<div v-if="mcpStore.mcpAccessEnabled" :class="$style.connectionStringContainer">
 			<div :class="$style.connectionStringLabel">
 				<n8n-text
 					v-n8n-html="
@@ -219,7 +219,7 @@ onMounted(async () => {
 				/>
 			</div>
 		</div>
-		<div v-if="isMCPEnabled" :class="$style['workflow-list-container']">
+		<div v-if="mcpStore.mcpAccessEnabled" :class="$style['workflow-list-container']">
 			<div v-if="workflowsLoading">
 				<n8n-loading
 					v-if="workflowsLoading"
