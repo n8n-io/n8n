@@ -7,56 +7,23 @@ on:
   pull_request:
     branches:
       - master
-
+    paths:
+      - 'packages/frontend/@n8n/design-system/**'
+      - '.github/workflows/storybook.yml'
 concurrency:
-  group: storybook-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
+  group: storybook-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  get-metadata:
-    name: Get Metadata
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out current commit
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
-
-      - name: Determine changed files
-        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
-        id: changed
-        with:
-          filters: |
-            design_system:
-              - packages/frontend/@n8n/design-system/**
-              - .github/workflows/storybook.yml
-
-    outputs:
-      design_system_files_changed: ${{ steps.changed.outputs.design_system == 'true' }}
-      is_community_pr: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
-      is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
-
   cloudflare:
     name: Cloudflare Pages
-    needs: [get-metadata]
     if: |
-      needs.get-metadata.outputs.is_dispatch == 'true' ||
-      (
-       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-       needs.get-metadata.outputs.is_community_pr == 'false'
-      )
+      !contains(github.event.pull_request.labels.*.name, 'community')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     steps:
-      - name: Output needs
-        run: |
-          echo "design_system_files_changed=${{ needs.get-metadata.outputs.design_system_files_changed }}"
-          echo "is_community_pr=${{ needs.get-metadata.outputs.is_community_pr }}"
-          echo "is_dispatch=${{ needs.get-metadata.outputs.is_dispatch }}"
-
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
@@ -71,12 +38,8 @@ jobs:
         run: |
           pnpm build:storybook
 
-      - name: Install Wrangler
-        run: |
-          pnpm add -w wrangler
-
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@707f63750981584eb6abc365a50d441516fb04b8
         id: cloudflare_deployment
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
