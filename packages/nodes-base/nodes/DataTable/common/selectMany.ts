@@ -59,7 +59,7 @@ export function getSelectFields(
 							description:
 								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
-								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
+								loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 								loadOptionsMethod: 'getDataTableColumns',
 							},
 							default: 'id',
