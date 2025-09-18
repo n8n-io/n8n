@@ -11,6 +11,7 @@ export interface ChatOptions {
 	showWindowCloseButton?: boolean;
 	showWelcomeScreen?: boolean;
 	loadPreviousSession?: boolean;
+	sessionId?: string;
 	chatInputKey?: string;
 	chatSessionKey?: string;
 	defaultLanguage?: 'en';

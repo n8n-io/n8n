@@ -259,7 +259,8 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				return;
 			}
 
-			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
+			// Use provided sessionId if available, otherwise check localStorage or generate new one
+			const sessionId = options.sessionId ?? localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
@@ -268,16 +269,19 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
 			}));
 
-			if (messages.value.length) {
-				currentSessionId.value = sessionId;
-			}
+			// Always set currentSessionId when we have a sessionId (either from options, localStorage, or generated)
+			currentSessionId.value = sessionId;
+
+			// Store the sessionId in localStorage for future use
+			localStorage.setItem(localStorageSessionIdKey, sessionId);
 
 			return sessionId;
 		}
 
 		// eslint-disable-next-line @typescript-eslint/require-await
 		async function startNewSession() {
-			currentSessionId.value = uuidv4();
+			// Use provided sessionId if available, otherwise generate new one
+			currentSessionId.value = options.sessionId ?? uuidv4();
 
 			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
 		}
