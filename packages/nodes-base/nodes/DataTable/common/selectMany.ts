@@ -125,7 +125,7 @@ export async function getSelectFilter(
 				node,
 				`Filter validation failed: Column(s) "${invalidColumnNames}" do not exist in the selected table. ` +
 					'This often happens when switching between tables with different schemas. ' +
-					'Please try deleting this condition and then adding it again.',
+					'Please update your filter conditions.',
 			);
 		}
 	}
