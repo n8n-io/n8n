@@ -1,18 +1,18 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import type { ProjectRole } from '@n8n/permissions';
-import { useI18n } from '@n8n/i18n';
+import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
+import type { ProjectMemberData } from '@/types/projects.types';
+import { isProjectRole } from '@/utils/typeGuards';
 import {
-	N8nUserInfo,
 	N8nDataTableServer,
 	N8nText,
+	N8nUserInfo,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
-import { isProjectRole } from '@/utils/typeGuards';
-import type { ProjectMemberData } from '@/types/projects.types';
+import { useI18n } from '@n8n/i18n';
+import type { ProjectRole } from '@n8n/permissions';
+import { computed, ref } from 'vue';
 
 const i18n = useI18n();
 
@@ -52,24 +52,20 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 	},
 ]);
 
-const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() => ({
-	'project:admin': {
-		label: i18n.baseText('projects.settings.role.admin'),
-		desc: i18n.baseText('projects.settings.role.admin.description'),
-	},
-	'project:editor': {
-		label: i18n.baseText('projects.settings.role.editor'),
-		desc: i18n.baseText('projects.settings.role.editor.description'),
-	},
-	'project:viewer': {
-		label: i18n.baseText('projects.settings.role.viewer'),
-		desc: i18n.baseText('projects.settings.role.viewer.description'),
-	},
-	'project:personalOwner': {
-		label: i18n.baseText('projects.settings.role.personalOwner'),
-		desc: '',
-	},
-}));
+const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() =>
+	props.projectRoles.reduce(
+		(acc, role) => {
+			acc[role.slug as ProjectRole] = {
+				label: role.displayName,
+				// @ts-ignore - backend type is incorrect
+				desc: 'description' in role ? role.description : '',
+			};
+			console.log(acc);
+			return acc;
+		},
+		{} as Record<ProjectRole, { label: string; desc: string }>,
+	),
+);
 
 const roleActions = computed<Array<ActionDropdownItem<ProjectRole | 'remove'>>>(() => [
 	...props.projectRoles.map((role) => ({
