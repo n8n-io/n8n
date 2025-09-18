@@ -348,7 +348,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: {
 							executionId,
 							nodeName,
-							itemCount: {
+							itemCountByConnectionType: {
 								main: [1],
 							},
 							data: taskDataWithoutData,
@@ -364,7 +364,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: {
 							executionId,
 							nodeName,
-							itemCount: {
+							itemCountByConnectionType: {
 								main: [1],
 							},
 							data: mockTaskData,
