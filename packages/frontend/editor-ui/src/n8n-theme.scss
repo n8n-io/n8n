@@ -286,3 +286,15 @@
 		}
 	}
 }
+
+.content-toast {
+	/* Account for logs panel height and AI assistant height */
+	margin-bottom: calc(
+		(var(--logs-panel-height, 0px) + var(--ask-assistant-floating-button-height, 0px))
+	);
+
+	/* When NDV is opened, only account for AI assistant height */
+	body:has(dialog[open]) & {
+		margin-bottom: var(--ask-assistant-floating-button-height, 0);
+	}
+}

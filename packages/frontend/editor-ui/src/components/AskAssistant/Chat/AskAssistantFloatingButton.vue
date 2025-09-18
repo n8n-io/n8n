@@ -2,15 +2,21 @@
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
-import { useLogsStore } from '@/stores/logs.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
-import { computed } from 'vue';
+import { useCssVar } from '@vueuse/core';
+import { computed, watch } from 'vue';
 
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
-const logsStore = useLogsStore();
+const isVisible = computed(
+	() =>
+		assistantStore.canShowAssistantButtonsOnCanvas &&
+		!assistantStore.isAssistantOpen &&
+		!assistantStore.hideAssistantFloatingButton,
+);
+const heightCssVar = useCssVar('--ask-assistant-floating-button-height');
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -34,19 +40,18 @@ const onClick = () => {
 		has_existing_session: !assistantStore.isSessionEnded,
 	});
 };
+
+watch(
+	isVisible,
+	(visible) => {
+		heightCssVar.value = `${visible ? 64 : 0}px`;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
-	<div
-		v-if="
-			assistantStore.canShowAssistantButtonsOnCanvas &&
-			!assistantStore.isAssistantOpen &&
-			!assistantStore.hideAssistantFloatingButton
-		"
-		:class="$style.container"
-		data-test-id="ask-assistant-floating-button"
-		:style="{ '--canvas-panel-height-offset': `${logsStore.height}px` }"
-	>
+	<div v-if="isVisible" :class="$style.container" data-test-id="ask-assistant-floating-button">
 		<n8n-tooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"
@@ -68,9 +73,16 @@ const onClick = () => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	bottom: var(--spacing-2xl);
 	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
+
+	/* Account for logs panel height */
+	bottom: calc(var(--logs-panel-height, 0px) + var(--spacing-s));
+
+	/* When NDV is opened, bring to the bottom */
+	body:has(dialog[open]) & {
+		bottom: var(--spacing-s);
+	}
 }
 
 .tooltip {
