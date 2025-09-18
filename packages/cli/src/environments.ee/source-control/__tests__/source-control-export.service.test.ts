@@ -223,7 +223,7 @@ describe('SourceControlExportService', () => {
 			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 
-		it('clear tags file when there are no tags', async () => {
+		it('should clear tags file and export it when there are no tags', async () => {
 			// Arrange
 			tagRepository.find.mockResolvedValue([]);
 			const fileName = '/mock/n8n/git/tags.json';
