@@ -71,6 +71,10 @@ jobs:
         run: |
           pnpm build:storybook
 
+      - name: Install Wrangler
+        run: |
+          pnpm add -w wrangler
+
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         id: cloudflare_deployment
