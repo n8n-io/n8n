@@ -41,7 +41,6 @@ export class MfaSetupModal extends BasePage {
 		await this.getSaveButton().click();
 	}
 
-	// Query methods (async, return data)
 	async isVisible(): Promise<boolean> {
 		return await this.getModalContainer().isVisible();
 	}
@@ -51,25 +50,5 @@ export class MfaSetupModal extends BasePage {
 	 */
 	async waitForHidden(): Promise<void> {
 		await expect(this.getModalContainer()).toBeHidden();
-	}
-
-	/**
-	 * Get the MFA secret from clipboard after copying
-	 * Simple helper for clipboard reading
-	 */
-	async getMfaSecretFromClipboard(): Promise<string> {
-		await this.getCopySecretToClipboardButton().waitFor({ state: 'visible' });
-		await this.clickCopySecretToClipboard();
-		return await this.page.evaluate(() => navigator.clipboard.readText());
-	}
-
-	/**
-	 * Get recovery code elements for extraction (simple query method)
-	 * @returns Array of text content from potential recovery code elements
-	 */
-	async getRecoveryCodeElements(): Promise<string[]> {
-		const container = this.page.locator('[class*="recoveryCodesContainer"]');
-		await container.waitFor();
-		return await container.locator('div').allTextContents();
 	}
 }

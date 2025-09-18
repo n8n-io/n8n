@@ -32,6 +32,7 @@ export class PersonalSettingsPage extends BasePage {
 
 	async fillEmail(email: string) {
 		await this.getEmailField().fill(email);
+		await this.getEmailField().press('Enter');
 	}
 
 	async saveSettings() {
@@ -50,7 +51,6 @@ export class PersonalSettingsPage extends BasePage {
 		await this.saveSettings();
 	}
 
-	// MFA-related getters
 	getEnableMfaButton() {
 		return this.page.getByTestId('enable-mfa-button');
 	}
@@ -59,7 +59,14 @@ export class PersonalSettingsPage extends BasePage {
 		return this.page.getByTestId('disable-mfa-button');
 	}
 
-	// MFA-related actions
+	getMfaCodeOrRecoveryCodeInput() {
+		return this.page.locator('input[name="mfaCodeOrMfaRecoveryCode"]');
+	}
+
+	getMfaSaveButton() {
+		return this.page.getByTestId('mfa-save-button');
+	}
+
 	async clickEnableMfa() {
 		await this.getEnableMfaButton().click();
 	}
@@ -71,6 +78,11 @@ export class PersonalSettingsPage extends BasePage {
 	async triggerDisableMfa() {
 		await this.goToPersonalSettings();
 		await this.clickDisableMfa();
+	}
+
+	async fillMfaCodeAndSave(code: string) {
+		await this.getMfaCodeOrRecoveryCodeInput().fill(code);
+		await this.getMfaSaveButton().click();
 	}
 
 	async waitForMfaQrResponse(): Promise<void> {

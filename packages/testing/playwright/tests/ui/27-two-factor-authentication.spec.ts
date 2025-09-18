@@ -3,6 +3,9 @@ import { authenticator } from 'otplib';
 import { INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
 import { test, expect } from '../../fixtures/base';
 
+const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
+const RECOVERY_CODE = 'd04ea17f-e8b2-4afa-a9aa-57a2c735b30e';
+
 test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	const TEST_DATA = {
 		NEW_EMAIL: 'newemail@test.com',
@@ -13,39 +16,32 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	test('Should be able to login with MFA code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const secret = await n8n.mfaComposer.setupUser(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 		await n8n.sideBar.signOutFromWorkflows();
 
-		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
+		await n8n.mfaComposer.loginWithMfaCode(email, password, MFA_SECRET);
 		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should be able to login with MFA recovery code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const { recoveryCode } = await n8n.mfaComposer.setupUserWithRecoveryCode(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 		await n8n.sideBar.signOutFromWorkflows();
 
-		await n8n.signIn.fillEmail(email);
-		await n8n.signIn.fillPassword(password);
-		await n8n.signIn.clickSubmit();
-
-		await expect(n8n.mfaLogin.getForm()).toBeVisible();
-		await n8n.mfaLogin.submitMfaRecoveryCode(recoveryCode);
-
-		await expect(n8n.page).toHaveURL(/\/workflow/);
+		await n8n.mfaComposer.loginWithMfaRecoveryCode(email, password, RECOVERY_CODE);
 		await n8n.sideBar.signOutFromWorkflows();
 	});
 
 	test('Should be able to disable MFA in account with MFA code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const secret = await n8n.mfaComposer.setupUser(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 		await n8n.sideBar.signOutFromWorkflows();
 
-		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
+		await n8n.mfaComposer.loginWithMfaCode(email, password, MFA_SECRET);
 
-		const disableToken = authenticator.generate(secret);
+		const disableToken = authenticator.generate(MFA_SECRET);
 		await n8n.personalSettings.triggerDisableMfa();
 		await n8n.promptMfaCodeModal.submitMfaCode(disableToken);
 
@@ -56,14 +52,13 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	test('Should prompt for MFA code when email changes', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const secret = await n8n.mfaComposer.setupUser(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 
 		await n8n.personalSettings.goToPersonalSettings();
 		await n8n.personalSettings.fillEmail(TEST_DATA.NEW_EMAIL);
-		await n8n.personalSettings.saveSettings();
 
-		const mfaCode = authenticator.generate(secret);
-		await n8n.promptMfaCodeModal.submitMfaCode(mfaCode);
+		const mfaCode = authenticator.generate(MFA_SECRET);
+		await n8n.personalSettings.fillMfaCodeAndSave(mfaCode);
 
 		await expect(
 			n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
@@ -75,13 +70,15 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	test('Should prompt for MFA recovery code when email changes', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const { recoveryCode } = await n8n.mfaComposer.setupUserWithRecoveryCode(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 
 		await n8n.personalSettings.goToPersonalSettings();
 		await n8n.personalSettings.fillEmail(TEST_DATA.NEW_EMAIL);
-		await n8n.personalSettings.saveSettings();
+		await n8n.personalSettings.fillMfaCodeAndSave(RECOVERY_CODE);
 
-		await n8n.promptMfaCodeModal.submitMfaCode(recoveryCode);
+		await expect(
+			n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
+		).toBeVisible();
 
 		await n8n.sideBar.signOutFromWorkflows();
 	});
@@ -91,7 +88,7 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	}) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		await n8n.mfaComposer.setupUser(email, password);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 
 		await n8n.personalSettings.updateFirstAndLastName(
 			TEST_DATA.NEW_FIRST_NAME,
@@ -108,16 +105,13 @@ test.describe('Two-factor authentication @auth:none @db:reset', () => {
 	test('Should be able to disable MFA in account with recovery code', async ({ n8n }) => {
 		const { email, password } = INSTANCE_OWNER_CREDENTIALS;
 
-		const { secret, recoveryCode } = await n8n.mfaComposer.setupUserWithRecoveryCode(
-			email,
-			password,
-		);
+		await n8n.mfaComposer.enableMfa(email, password, MFA_SECRET);
 		await n8n.sideBar.signOutFromWorkflows();
 
-		await n8n.mfaComposer.loginWithMfaCode(email, password, secret);
+		await n8n.mfaComposer.loginWithMfaCode(email, password, MFA_SECRET);
 
 		await n8n.personalSettings.triggerDisableMfa();
-		await n8n.promptMfaCodeModal.submitMfaCode(recoveryCode);
+		await n8n.promptMfaCodeModal.submitMfaCode(RECOVERY_CODE);
 
 		await expect(n8n.personalSettings.getEnableMfaButton()).toBeVisible();
 		await n8n.sideBar.signOutFromWorkflows();
