@@ -1,4 +1,4 @@
-name: Chromatic
+name: Storybook
 
 on:
   schedule:
@@ -7,14 +7,13 @@ on:
   push:
 
 concurrency:
-  group: chromatic-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
+  group: storybook-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
   cancel-in-progress: true
 
 jobs:
   get-metadata:
     name: Get Metadata
     runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved'
     steps:
       - name: Check out current commit
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -78,5 +77,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/frontend/@n8n/design-system/storybook-static --project-name=storybook
+          command: pages deploy packages/frontend/@n8n/design-system/storybook-static --project-name=storybook --branch=${{github.ref_name}} --commit-hash=${{ github.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
