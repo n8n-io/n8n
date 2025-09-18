@@ -949,7 +949,7 @@
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
-    "ws": "8.17.1",
+    "ws": "8.18.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0"
