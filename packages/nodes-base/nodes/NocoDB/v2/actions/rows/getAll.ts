@@ -10,6 +10,255 @@ import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 
+const v3Options: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	default: {},
+	placeholder: 'Add option',
+	displayOptions: {
+		show: {
+			version: [3],
+		},
+	},
+	options: [
+		{
+			displayName: 'View Name or ID',
+			name: 'viewId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			description:
+				'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			typeOptions: {
+				loadOptionsDependsOn: ['table.value'],
+			},
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'getViews',
+						searchable: true,
+					},
+				},
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					placeholder: 'vw5t20qcex4d5zpk',
+				},
+			],
+		},
+		{
+			displayName: 'Fields',
+			name: 'fields',
+			type: 'string',
+			typeOptions: {
+				multipleValues: true,
+				multipleValueButtonText: 'Add Field',
+			},
+			default: [],
+			placeholder: 'Name',
+			description: 'The select fields of the returned rows',
+		},
+		{
+			displayName: 'Sort',
+			name: 'sort',
+			placeholder: 'Add Sort Rule',
+			description: 'The sorting rules for the returned rows',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			default: {},
+			options: [
+				{
+					name: 'property',
+					displayName: 'Property',
+					values: [
+						{
+							displayName: 'Field',
+							name: 'field',
+							type: 'string',
+							default: '',
+							description: 'Name of the field to sort on',
+						},
+						{
+							displayName: 'Direction',
+							name: 'direction',
+							type: 'options',
+							options: [
+								{
+									name: 'ASC',
+									value: 'asc',
+									description: 'Sort in ascending order (small -> large)',
+								},
+								{
+									name: 'DESC',
+									value: 'desc',
+									description: 'Sort in descending order (large -> small)',
+								},
+							],
+							default: 'asc',
+							description: 'The sort direction',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Filter By Formula',
+			name: 'where',
+			type: 'string',
+			default: '',
+			placeholder: '(name,like,example%)~or(name,eq,test)',
+			description: 'A formula used to filter rows',
+		},
+	],
+};
+const v4Options: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	default: {},
+	placeholder: 'Add option',
+	displayOptions: {
+		show: {
+			version: [4],
+		},
+	},
+	options: [
+		{
+			displayName: 'View Name or ID',
+			name: 'viewId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			description:
+				'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			typeOptions: {
+				loadOptionsDependsOn: ['table.value'],
+			},
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'getViews',
+						searchable: true,
+					},
+				},
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					placeholder: 'vw5t20qcex4d5zpk',
+				},
+			],
+		},
+		{
+			displayName: 'Fields',
+			name: 'fields',
+			type: 'fixedCollection',
+			description: 'The select fields of the returned rows',
+			typeOptions: {
+				multipleValues: true,
+			},
+			default: [],
+			placeholder: 'Add field',
+			options: [
+				{
+					name: 'items',
+					displayName: 'Items',
+					values: [
+						{
+							displayName: 'Field',
+							name: 'field',
+							type: 'resourceLocator',
+							description: 'Name of the field to select on',
+							default: { mode: 'list', value: '' },
+							typeOptions: {
+								loadOptionsDependsOn: ['table.value'],
+							},
+							modes: [
+								{
+									displayName: 'From List',
+									name: 'list',
+									type: 'list',
+									typeOptions: {
+										searchListMethod: 'getFields',
+										searchable: true,
+									},
+								},
+								{
+									displayName: 'ID',
+									name: 'id',
+									type: 'string',
+									placeholder: 'c9xxmrtn2wfe39l',
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Sort',
+			name: 'sort',
+			placeholder: 'Add Sort Rule',
+			description: 'The sorting rules for the returned rows',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			default: {},
+			options: [
+				{
+					name: 'property',
+					displayName: 'Property',
+					values: [
+						{
+							displayName: 'Field',
+							name: 'field',
+							type: 'string',
+							default: '',
+							description: 'Name of the field to sort on',
+						},
+						{
+							displayName: 'Direction',
+							name: 'direction',
+							type: 'options',
+							options: [
+								{
+									name: 'ASC',
+									value: 'asc',
+									description: 'Sort in ascending order (small -> large)',
+								},
+								{
+									name: 'DESC',
+									value: 'desc',
+									description: 'Sort in descending order (large -> small)',
+								},
+							],
+							default: 'asc',
+							description: 'The sort direction',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Filter By Formula',
+			name: 'where',
+			type: 'string',
+			default: '',
+			placeholder: '(name,like,example%)~or(name,eq,test)',
+			description: 'A formula used to filter rows',
+		},
+	],
+};
+
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
 		show: {
@@ -65,112 +314,13 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description:
 				'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
-		{
-			displayName: 'Options',
-			name: 'options',
-			type: 'collection',
-			default: {},
-			placeholder: 'Add option',
-			options: [
-				{
-					displayName: 'View Name or ID',
-					name: 'viewId',
-					type: 'resourceLocator',
-					default: { mode: 'list', value: '' },
-					description:
-						'The view to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-					typeOptions: {
-						loadOptionsDependsOn: ['table.value'],
-					},
-					modes: [
-						{
-							displayName: 'From List',
-							name: 'list',
-							type: 'list',
-							typeOptions: {
-								searchListMethod: 'getViews',
-								searchable: true,
-							},
-						},
-						{
-							displayName: 'ID',
-							name: 'id',
-							type: 'string',
-							placeholder: 'vw5t20qcex4d5zpk',
-						},
-					],
-				},
-				{
-					displayName: 'Fields',
-					name: 'fields',
-					type: 'string',
-					typeOptions: {
-						multipleValues: true,
-						multipleValueButtonText: 'Add Field',
-					},
-					default: [],
-					placeholder: 'Name',
-					description: 'The select fields of the returned rows',
-				},
-				{
-					displayName: 'Sort',
-					name: 'sort',
-					placeholder: 'Add Sort Rule',
-					description: 'The sorting rules for the returned rows',
-					type: 'fixedCollection',
-					typeOptions: {
-						multipleValues: true,
-					},
-					default: {},
-					options: [
-						{
-							name: 'property',
-							displayName: 'Property',
-							values: [
-								{
-									displayName: 'Field',
-									name: 'field',
-									type: 'string',
-									default: '',
-									description: 'Name of the field to sort on',
-								},
-								{
-									displayName: 'Direction',
-									name: 'direction',
-									type: 'options',
-									options: [
-										{
-											name: 'ASC',
-											value: 'asc',
-											description: 'Sort in ascending order (small -> large)',
-										},
-										{
-											name: 'DESC',
-											value: 'desc',
-											description: 'Sort in descending order (large -> small)',
-										},
-									],
-									default: 'asc',
-									description: 'The sort direction',
-								},
-							],
-						},
-					],
-				},
-				{
-					displayName: 'Filter By Formula',
-					name: 'where',
-					type: 'string',
-					default: '',
-					placeholder: '(name,like,example%)~or(name,eq,test)',
-					description: 'A formula used to filter rows',
-				},
-			],
-		},
+		v3Options,
+		v4Options,
 	],
 );
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const version = this.getNodeParameter('version', 0) as number;
 	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -204,7 +354,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					.join(',');
 			}
 			if (qs.fields) {
-				qs.fields = (qs.fields as IDataObject[]).join(',');
+				if (version === 3) {
+					qs.fields = (qs.fields as IDataObject[]).join(',');
+				} else {
+					qs.fields = ((qs.fields as IDataObject).items as IDataObject[])
+						.map((field: IDataObject) => (field.field as IDataObject).value)
+						.join(',');
+				}
 			}
 			if (qs.viewId && (qs.viewId as IDataObject).value) {
 				qs.viewId = (qs.viewId as IDataObject).value;
