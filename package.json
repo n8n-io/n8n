@@ -53,6 +53,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
+    "ghostscript4js": "^3.2.1",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",

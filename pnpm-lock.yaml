@@ -282,6 +282,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@1.21.7)
+      ghostscript4js:
+        specifier: ^3.2.1
+        version: 3.2.3
       jest:
         specifier: ^29.6.2
         version: 29.6.2(@types/node@20.17.57)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2))
@@ -10915,6 +10918,10 @@ packages:
   getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
 
+  ghostscript4js@3.2.3:
+    resolution: {integrity: sha512-mR/MQuJ0G1FMPC1pbDENfdSQLCgBdqDDewhHRIQIKiO5IL88KKoc7YTrhmQ3daEsSUN4l+1Ts1KfrD10rQtQuQ==}
+    engines: {node: '>= 6.0.0'}
+
   giget@1.2.5:
     resolution: {integrity: sha512-r1ekGw/Bgpi3HLV3h1MRBIlSAdHoIMklpaQ3OQLFcRw9PwAj2rqigvIbg+dBUI51OxVI2jsEtDywDBjSiuf7Ug==}
     hasBin: true
@@ -13155,6 +13162,9 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+
+  node-addon-api@2.0.2:
+    resolution: {integrity: sha512-Ntyt4AIXyaLIuMHF6IOoTakB3K+RWxwtsHNRxllEoA6vPwP9o4866g6YWDLUdnucilZhmkxiHwHr11gAENw+QA==}
 
   node-addon-api@7.1.0:
     resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
@@ -26538,6 +26548,11 @@ snapshots:
     dependencies:
       assert-plus: 1.0.0
 
+  ghostscript4js@3.2.3:
+    dependencies:
+      bindings: 1.5.0
+      node-addon-api: 2.0.2
+
   giget@1.2.5:
     dependencies:
       citty: 0.1.6
@@ -29496,6 +29511,8 @@ snapshots:
       semver: 7.7.2
 
   node-abort-controller@3.1.1: {}
+
+  node-addon-api@2.0.2: {}
 
   node-addon-api@7.1.0: {}
 
