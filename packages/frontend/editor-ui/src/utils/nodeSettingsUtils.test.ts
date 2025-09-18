@@ -17,6 +17,7 @@ import {
 	parseFromExpression,
 	setValue,
 	shouldSkipParamValidation,
+	removeMismatchedOptionValues,
 } from './nodeSettingsUtils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -598,5 +599,377 @@ describe('setValue', () => {
 		setValue(nodeValues, 'newProperty', 'newValue');
 
 		expect(nodeValues.value.newProperty).toBe('newValue');
+	});
+});
+
+describe('removeMismatchedOptionValues', () => {
+	describe('Data Table node filter conditions', () => {
+		const createDataTableNodeType = (): INodeTypeDescription => ({
+			name: 'dataTable',
+			displayName: 'Data Table',
+			group: ['input'],
+			version: 1,
+			description: 'Data Table Node',
+			defaults: { name: 'Data Table' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Data table',
+					name: 'dataTableId',
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: true,
+				},
+				{
+					displayName: 'Conditions',
+					name: 'filters',
+					type: 'fixedCollection',
+					typeOptions: { multipleValues: true },
+					default: {},
+					placeholder: 'Add Condition',
+					options: [
+						{
+							displayName: 'Conditions',
+							name: 'conditions',
+							values: [
+								{
+									displayName: 'Column',
+									name: 'keyName',
+									type: 'options',
+									typeOptions: {
+										loadOptionsDependsOn: ['dataTableId'],
+										loadOptionsMethod: 'getDataTableColumns',
+									},
+									default: 'id',
+									options: [],
+								},
+								{
+									displayName: 'Condition',
+									name: 'condition',
+									type: 'options',
+									typeOptions: {
+										loadOptionsDependsOn: ['&keyName'],
+										loadOptionsMethod: 'getConditionsForColumn',
+									},
+									default: 'eq',
+									options: [],
+								},
+								{
+									displayName: 'Value',
+									name: 'keyValue',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+
+		it('should clear condition field values when dataTableId changes', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				filters: {
+					conditions: [
+						{
+							keyName: 'name',
+							condition: 'eq',
+							keyValue: 'test',
+						},
+						{
+							keyName: 'age',
+							condition: 'gt',
+							keyValue: '18',
+						},
+					],
+				},
+			};
+
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'dataTableId',
+				value: { mode: 'list', value: 'table2' },
+			});
+
+			// All condition fields should be cleared
+			expect(nodeParameters.filters.conditions[0]).toEqual({});
+			expect(nodeParameters.filters.conditions[1]).toEqual({});
+		});
+
+		it('should preserve conditions structure when clearing values', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				filters: {
+					conditions: [
+						{
+							keyName: 'name',
+							condition: 'eq',
+							keyValue: 'test',
+						},
+					],
+				},
+			};
+
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'dataTableId',
+				value: { mode: 'list', value: 'table2' },
+			});
+
+			// Structure should be preserved but values cleared
+			expect(nodeParameters.filters).toBeDefined();
+			expect(nodeParameters.filters.conditions).toHaveLength(1);
+			expect(nodeParameters.filters.conditions[0]).toEqual({});
+		});
+
+		it('should handle multiple nested condition arrays', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				filters: {
+					conditions: [
+						{
+							keyName: 'name',
+							condition: 'eq',
+							keyValue: 'test1',
+						},
+						{
+							keyName: 'email',
+							condition: 'like',
+							keyValue: 'test2',
+						},
+						{
+							keyName: 'status',
+							condition: 'neq',
+							keyValue: 'active',
+						},
+					],
+				},
+			};
+
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'dataTableId',
+				value: { mode: 'list', value: 'table2' },
+			});
+
+			// All conditions should be cleared
+			expect(nodeParameters.filters.conditions).toHaveLength(3);
+			nodeParameters.filters.conditions.forEach((condition) => {
+				expect(condition).toEqual({});
+			});
+		});
+
+		it('should not affect other parameters when clearing conditions', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				otherParam: 'should remain',
+				filters: {
+					conditions: [
+						{
+							keyName: 'name',
+							condition: 'eq',
+							keyValue: 'test',
+						},
+					],
+				},
+			};
+
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'dataTableId',
+				value: { mode: 'list', value: 'table2' },
+			});
+
+			// Other parameters should remain unchanged
+			expect(nodeParameters.otherParam).toBe('should remain');
+			expect(nodeParameters.dataTableId).toEqual({ mode: 'list', value: 'table2' });
+			// Only condition values should be cleared
+			expect(nodeParameters.filters.conditions[0]).toEqual({});
+		});
+
+		it('should handle empty or undefined condition arrays gracefully', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				filters: {
+					conditions: [],
+				},
+			};
+
+			expect(() => {
+				removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+					name: 'dataTableId',
+					value: { mode: 'list', value: 'table2' },
+				});
+			}).not.toThrow();
+
+			expect(nodeParameters.filters.conditions).toEqual([]);
+		});
+
+		it('should handle missing filters parameter gracefully', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+			};
+
+			expect(() => {
+				removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+					name: 'dataTableId',
+					value: { mode: 'list', value: 'table2' },
+				});
+			}).not.toThrow();
+
+			expect(nodeParameters.dataTableId).toEqual({ mode: 'list', value: 'table2' });
+		});
+
+		it('should clear dependent condition and value fields when keyName is cleared', () => {
+			const nodeType = createDataTableNodeType();
+			const nodeParameters: INodeParameters = {
+				dataTableId: { mode: 'list', value: 'table1' },
+				filters: {
+					conditions: [
+						{
+							keyName: 'oldField',
+							condition: 'eq',
+							keyValue: 'test',
+						},
+					],
+				},
+			};
+
+			// Simulate clearing keyName due to loadOptionsDependsOn change
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'dataTableId',
+				value: { mode: 'list', value: 'table2' },
+			});
+
+			// All related fields should be cleared
+			expect(nodeParameters.filters.conditions[0]).toEqual({});
+		});
+	});
+
+	describe('displayOptions-based clearing (existing functionality)', () => {
+		const createNodeTypeWithDisplayOptions = (): INodeTypeDescription => ({
+			name: 'testNode',
+			displayName: 'Test Node',
+			group: ['input'],
+			version: 1,
+			description: 'Test Node',
+			defaults: { name: 'Test Node' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					options: [
+						{ name: 'Mode A', value: 'modeA' },
+						{ name: 'Mode B', value: 'modeB' },
+					],
+					default: 'modeA',
+				},
+				{
+					displayName: 'Dependent Field',
+					name: 'dependentField',
+					type: 'options',
+					displayOptions: {
+						show: {
+							mode: ['modeA'],
+						},
+					},
+					options: [
+						{ name: 'Option 1', value: 'option1' },
+						{ name: 'Option 2', value: 'option2' },
+					],
+					default: 'option1',
+				},
+			],
+		});
+
+		it('should clear dependent fields when display conditions change', () => {
+			const nodeType = createNodeTypeWithDisplayOptions();
+			const nodeParameters: INodeParameters = {
+				mode: 'modeA',
+				dependentField: 'option1',
+			};
+
+			removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+				name: 'mode',
+				value: 'modeB',
+			});
+
+			// dependentField should be cleared because it's only shown for modeA
+			expect(nodeParameters.mode).toBe('modeB');
+			expect(nodeParameters.dependentField).toBeUndefined();
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle null nodeParameterValues gracefully', () => {
+			const nodeType = mock<INodeTypeDescription>({
+				properties: [],
+			});
+
+			expect(() => {
+				removeMismatchedOptionValues(nodeType, 1, null, {
+					name: 'testParam',
+					value: 'testValue',
+				});
+			}).not.toThrow();
+		});
+
+		it('should handle empty properties array', () => {
+			const nodeType = mock<INodeTypeDescription>({
+				properties: [],
+			});
+			const nodeParameters: INodeParameters = {
+				someParam: 'value',
+			};
+
+			expect(() => {
+				removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+					name: 'testParam',
+					value: 'testValue',
+				});
+			}).not.toThrow();
+
+			expect(nodeParameters.someParam).toBe('value');
+		});
+
+		it('should handle parameters with no typeOptions', () => {
+			const nodeType: INodeTypeDescription = {
+				name: 'testNode',
+				displayName: 'Test Node',
+				group: ['input'],
+				version: 1,
+				description: 'Test Node',
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Simple Field',
+						name: 'simpleField',
+						type: 'string',
+						default: '',
+					},
+				],
+			};
+			const nodeParameters: INodeParameters = {
+				simpleField: 'value',
+			};
+
+			expect(() => {
+				removeMismatchedOptionValues(nodeType, 1, nodeParameters, {
+					name: 'otherParam',
+					value: 'otherValue',
+				});
+			}).not.toThrow();
+
+			expect(nodeParameters.simpleField).toBe('value');
+		});
 	});
 });

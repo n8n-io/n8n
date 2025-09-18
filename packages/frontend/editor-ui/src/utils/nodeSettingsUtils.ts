@@ -247,7 +247,8 @@ export function updateDynamicConnections(
 /**
  * Removes node values that are not valid options for the given parameter.
  * This can happen when there are multiple node parameters with the same name
- * but different options and display conditions
+ * but different options and display conditions, or when loadOptionsDependsOn
+ * parameters change and invalidate nested parameter values.
  * @param nodeType The node type description
  * @param nodeParameterValues Current node parameter values
  * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
@@ -258,43 +259,107 @@ export function removeMismatchedOptionValues(
 	nodeParameterValues: INodeParameters | null,
 	updatedParameter: { name: string; value: NodeParameterValue },
 ) {
+	if (!nodeParameterValues) {
+		return;
+	}
+
+	// Helper function to recursively process parameters and their nested properties
+	function processParameter(
+		param: INodeProperties,
+		currentPath: string = '',
+		currentValues: INodeParameters | null = nodeParameterValues,
+	) {
+		if (!currentValues) return;
+
+		// Handle top-level parameters with displayOptions
+		const displayOptions = param.displayOptions;
+		if (displayOptions && Object.prototype.hasOwnProperty.call(currentValues, param.name)) {
+			const showCondition = displayOptions.show?.[updatedParameter.name];
+			const hideCondition = displayOptions.hide?.[updatedParameter.name];
+			
+			if (showCondition !== undefined || hideCondition !== undefined) {
+				let hasValidOptions = true;
+
+				if (param.options) {
+					// Every value should be a possible option
+					if (isINodePropertyCollectionList(param.options) || isINodePropertiesList(param.options)) {
+						hasValidOptions = Object.keys(currentValues).every(
+							(key) => (param.options ?? []).find((option) => option.name === key) !== undefined,
+						);
+					} else if (isINodePropertyOptionsList(param.options)) {
+						hasValidOptions = !!param.options.find(
+							(option) => option.value === currentValues[param.name],
+						);
+					}
+
+					if (
+						!hasValidOptions &&
+						displayParameter(currentValues, param, { typeVersion: nodeTypeVersion }, nodeType)
+					) {
+						unset(currentValues as object, param.name);
+					}
+				}
+			}
+		}
+
+		// Handle parameters with loadOptionsDependsOn
+		if (
+			param.typeOptions?.loadOptionsDependsOn &&
+			param.typeOptions.loadOptionsDependsOn.some(dep => 
+				dep === updatedParameter.name || dep.replace(/^parameters\./, '') === updatedParameter.name
+			)
+		) {
+			const fullPath = currentPath ? `${currentPath}.${param.name}` : param.name;
+			if (get(nodeParameterValues, fullPath) !== undefined) {
+				// Clear the parameter value since its options are no longer valid
+				unset(nodeParameterValues as object, fullPath);
+				
+				// Also clear any dependent parameters (like condition operators)
+				if (param.name === 'keyName') {
+					// Clear the condition parameter that depends on keyName
+					const conditionPath = fullPath.replace('.keyName', '.condition');
+					if (get(nodeParameterValues, conditionPath) !== undefined) {
+						unset(nodeParameterValues as object, conditionPath);
+					}
+					
+					// Clear the value parameter as well
+					const valuePath = fullPath.replace('.keyName', '.keyValue');
+					if (get(nodeParameterValues, valuePath) !== undefined) {
+						unset(nodeParameterValues as object, valuePath);
+					}
+				}
+			}
+		}
+
+		// Recursively process nested parameters
+		if (param.type === 'fixedCollection' && param.options) {
+			for (const collection of param.options as INodePropertyCollection[]) {
+				const collectionPath = currentPath ? `${currentPath}.${param.name}.${collection.name}` : `${param.name}.${collection.name}`;
+				const collectionValues = get(nodeParameterValues, collectionPath) as INodeParameters[] | undefined;
+				
+				if (Array.isArray(collectionValues)) {
+					collectionValues.forEach((itemValues, index) => {
+						collection.values.forEach((nestedParam) => {
+							processParameter(nestedParam, `${collectionPath}[${index}]`, itemValues);
+						});
+					});
+				}
+			}
+		} else if (param.type === 'collection' && param.options) {
+			const collectionPath = currentPath ? `${currentPath}.${param.name}` : param.name;
+			const collectionValues = get(nodeParameterValues, collectionPath) as INodeParameters | undefined;
+			
+			if (collectionValues && typeof collectionValues === 'object') {
+				for (const nestedParam of param.options as INodeProperties[]) {
+					processParameter(nestedParam, collectionPath, collectionValues);
+				}
+			}
+		}
+	}
+
+	// Process all top-level properties
 	nodeType.properties.forEach((prop) => {
-		const displayOptions = prop.displayOptions;
-		// Not processing parameters that are not set or don't have options
-		if (
-			!nodeParameterValues ||
-			!Object.prototype.hasOwnProperty.call(nodeParameterValues, prop.name) ||
-			!displayOptions ||
-			!prop.options
-		) {
-			return;
-		}
-		// Only process the parameters that depend on the updated parameter
-		const showCondition = displayOptions.show?.[updatedParameter.name];
-		const hideCondition = displayOptions.hide?.[updatedParameter.name];
-		if (showCondition === undefined && hideCondition === undefined) {
-			return;
-		}
-
-		let hasValidOptions = true;
-
-		// Every value should be a possible option
-		if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
-			hasValidOptions = Object.keys(nodeParameterValues).every(
-				(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-			);
-		} else if (isINodePropertyOptionsList(prop.options)) {
-			hasValidOptions = !!prop.options.find(
-				(option) => option.value === nodeParameterValues[prop.name],
-			);
-		}
-
-		if (
-			!hasValidOptions &&
-			displayParameter(nodeParameterValues, prop, { typeVersion: nodeTypeVersion }, nodeType)
-		) {
-			unset(nodeParameterValues as object, prop.name);
-		}
+		processParameter(prop);
 	});
 }
 
