@@ -4,7 +4,9 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
-  push:
+  pull_request:
+    branches:
+      - master
 
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}-${{github.event.review.state}}
@@ -33,19 +35,17 @@ jobs:
     outputs:
       design_system_files_changed: ${{ steps.changed.outputs.design_system == 'true' }}
       is_community_pr: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
-      is_pr_target_master: ${{ github.event.pull_request.base.ref == 'master' }}
       is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
 
   cloudflare:
     name: Cloudflare Pages
     needs: [get-metadata]
-    # if: |
-    #   needs.get-metadata.outputs.is_dispatch == 'true' ||
-    #   (
-    #    needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-    #    needs.get-metadata.outputs.is_community_pr == 'false' &&
-    #    needs.get-metadata.outputs.is_pr_target_master == 'true'
-    #   )
+    if: |
+      needs.get-metadata.outputs.is_dispatch == 'true' ||
+      (
+       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
+       needs.get-metadata.outputs.is_community_pr == 'false'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,7 +55,6 @@ jobs:
         run: |
           echo "design_system_files_changed=${{ needs.get-metadata.outputs.design_system_files_changed }}"
           echo "is_community_pr=${{ needs.get-metadata.outputs.is_community_pr }}"
-          echo "is_pr_target_master=${{ needs.get-metadata.outputs.is_pr_target_master }}"
           echo "is_dispatch=${{ needs.get-metadata.outputs.is_dispatch }}"
 
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
