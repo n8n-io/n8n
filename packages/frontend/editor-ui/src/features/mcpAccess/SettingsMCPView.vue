@@ -12,6 +12,7 @@ import { VIEWS } from '@/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
+import { useUsersStore } from '@/stores/users.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -21,6 +22,8 @@ const { copy, copied, isSupported } = useClipboard();
 
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
+const usersStore = useUsersStore();
+const isOwner = computed(() => usersStore.isInstanceOwner);
 const rootStore = useRootStore();
 
 // Use store state directly in template
@@ -186,12 +189,20 @@ onMounted(async () => {
 				}}</n8n-text>
 			</div>
 			<div :class="$style.settingsContainerAction">
-				<el-switch
-					:model-value="mcpStore.mcpAccessEnabled"
-					size="large"
-					data-test-id="enable-n8n-mcp"
-					@update:model-value="onUpdateMCPEnabled"
-				/>
+				<N8nTooltip :disabled="isOwner" placement="top">
+					<template #content>
+						<span>Only the instance owner can change this</span>
+					</template>
+					<div>
+						<el-switch
+							:model-value="mcpStore.mcpAccessEnabled"
+							size="large"
+							data-test-id="enable-n8n-mcp"
+							:disabled="!isOwner"
+							@update:model-value="onUpdateMCPEnabled"
+						/>
+					</div>
+				</N8nTooltip>
 			</div>
 		</div>
 		<div v-if="mcpStore.mcpAccessEnabled" :class="$style.connectionStringContainer">
