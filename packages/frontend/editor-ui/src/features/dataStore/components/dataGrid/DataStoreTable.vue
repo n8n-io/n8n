@@ -352,6 +352,17 @@ defineExpose({
 		}
 	}
 
+	:global(.ag-text-field-input-wrapper),
+	:global(.ag-number-field-input-wrapper) {
+		&:before {
+			display: none;
+		}
+
+		:global(.ag-input-field-input) {
+			padding-left: var(--ag-spacing);
+		}
+	}
+
 	:global(.ag-cell-inline-editing) {
 		box-shadow: none;
 
