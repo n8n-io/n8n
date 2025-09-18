@@ -9,7 +9,7 @@ import {
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
 } from '@/features/logs/logs.constants';
-import { useCssVar } from '@vueuse/core';
+import { useCssVarWithCleanup } from '@/composables/useCssVarWithCleanup';
 
 const INITIAL_POPUP_HEIGHT = 400;
 const COLLAPSED_PANEL_HEIGHT = 32;
@@ -23,7 +23,7 @@ export function useLogsPanelLayout(
 ) {
 	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
-	const heightCssVar = useCssVar('--logs-panel-height');
+	const heightCssVar = useCssVarWithCleanup('--logs-panel-height');
 
 	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
 		container: document.body,

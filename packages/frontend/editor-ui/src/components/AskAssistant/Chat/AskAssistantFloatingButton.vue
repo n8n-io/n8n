@@ -4,8 +4,8 @@ import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
-import { useCssVar } from '@vueuse/core';
 import { computed, watch } from 'vue';
+import { useCssVarWithCleanup } from '@/composables/useCssVarWithCleanup';
 
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
@@ -16,7 +16,7 @@ const isVisible = computed(
 		!assistantStore.isAssistantOpen &&
 		!assistantStore.hideAssistantFloatingButton,
 );
-const heightCssVar = useCssVar('--ask-assistant-floating-button-height');
+const heightCssVar = useCssVarWithCleanup('--ask-assistant-floating-button-height');
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -80,7 +80,7 @@ watch(
 	bottom: calc(var(--logs-panel-height, 0px) + var(--spacing-s));
 
 	/* When NDV is opened, bring to the bottom */
-	body:has(#ndv) & {
+	body:has(:global(#ndv)) & {
 		bottom: var(--spacing-s);
 	}
 }
