@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="8.189" tests="37" failures="0" skipped="36">
+  <testsuite name="Root Suite" timestamp="2025-09-18T09:12:10" tests="0" file="e2e/49-folders.cy.ts" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Folders" timestamp="2025-09-18T09:12:10" tests="0" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Create and navigate folders" timestamp="2025-09-18T09:12:10" tests="9" time="0.025" failures="0">
+  </testsuite>
+  <testsuite name="Empty State" timestamp="2025-09-18T09:12:10" tests="2" time="0.022" failures="0">
+  </testsuite>
+  <testsuite name="Create workflows inside folders" timestamp="2025-09-18T09:12:10" tests="2" time="0.020" failures="0">
+  </testsuite>
+  <testsuite name="Rename and delete folders" timestamp="2025-09-18T09:12:10" tests="8" time="0.024" failures="0">
+  </testsuite>
+  <testsuite name="Move folders and workflows" timestamp="2025-09-18T09:12:10" tests="7" time="7.347" failures="0">
+    <testcase name="Folders Move folders and workflows should move empty folder to another folder - from folder card action" time="7.241" classname="should move empty folder to another folder - from folder card action">
+    </testcase>
+  </testsuite>
+  <testsuite name="Card breadcrumbs" timestamp="2025-09-18T09:12:18" tests="2" time="0.021" failures="0">
+  </testsuite>
+  <testsuite name="Duplicate workflows" timestamp="2025-09-18T09:12:18" tests="4" time="0.016" failures="0">
+  </testsuite>
+  <testsuite name="Drag and drop" timestamp="2025-09-18T09:12:18" tests="3" time="0.021" failures="0">
+  </testsuite>
+</testsuites>

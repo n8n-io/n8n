@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="51.046" tests="37" failures="1" skipped="36">
+  <testsuite name="Root Suite" timestamp="2025-09-18T09:06:02" tests="0" file="e2e/49-folders.cy.ts" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Folders" timestamp="2025-09-18T09:06:02" tests="0" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="Create and navigate folders" timestamp="2025-09-18T09:06:03" tests="9" time="0.025" failures="0">
+  </testsuite>
+  <testsuite name="Empty State" timestamp="2025-09-18T09:06:03" tests="2" time="0.025" failures="0">
+  </testsuite>
+  <testsuite name="Create workflows inside folders" timestamp="2025-09-18T09:06:03" tests="2" time="0.016" failures="0">
+  </testsuite>
+  <testsuite name="Rename and delete folders" timestamp="2025-09-18T09:06:03" tests="8" time="0.023" failures="0">
+  </testsuite>
+  <testsuite name="Move folders and workflows" timestamp="2025-09-18T09:06:03" tests="7" time="50.139" failures="1">
+    <testcase name="Folders Move folders and workflows should move empty folder to another folder - from folder card action" time="16.324" classname="should move empty folder to another folder - from folder card action">
+      <failure message="Timed out retrying after 10000ms: Expected to find content: &apos;No folders found&apos; within the element: &lt;ul#el-id-3863-166.el-scrollbar__view.el-select-dropdown__list&gt; but never did." type="AssertionError"><![CDATA[AssertionError: Timed out retrying after 10000ms: Expected to find content: 'No folders found' within the element: <ul#el-id-3863-166.el-scrollbar__view.el-select-dropdown__list> but never did.
+    at moveFolder (webpack://n8n-cypress/./composables/folders.ts:543:54)
+    at moveFolderFromFolderCardActions (webpack://n8n-cypress/./composables/folders.ts:432:1)
+    at Context.eval (webpack://n8n-cypress/./e2e/49-folders.cy.ts:397:35)]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="Card breadcrumbs" timestamp="2025-09-18T09:06:53" tests="2" time="0.032" failures="0">
+  </testsuite>
+  <testsuite name="Duplicate workflows" timestamp="2025-09-18T09:06:53" tests="4" time="0.043" failures="0">
+  </testsuite>
+  <testsuite name="Drag and drop" timestamp="2025-09-18T09:06:53" tests="3" time="0.040" failures="0">
+  </testsuite>
+</testsuites>

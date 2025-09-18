@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.383" tests="1" failures="1">
+  <testsuite name="Root Suite" timestamp="2025-09-18T09:01:04" tests="1" file="e2e/19-execution.cy.ts" time="0.382" failures="1">
+    <testcase name="An uncaught error was detected outside of a test" time="0.084" classname="An uncaught error was detected outside of a test">
+      <failure message="The following error originated from your test code, not from Cypress.
+
+  &gt; Invalid grep burn value: 49-folders
+
+When Cypress detects uncaught errors originating from your test code it will automatically fail the current test.
+
+Cypress could not associate this error to any specific test.
+
+We dynamically generated a new test to display this failure." type="Error"><![CDATA[Error: The following error originated from your test code, not from Cypress.
+
+  > Invalid grep burn value: 49-folders
+
+When Cypress detects uncaught errors originating from your test code it will automatically fail the current test.
+
+Cypress could not associate this error to any specific test.
+
+We dynamically generated a new test to display this failure.
+    at cypressGrep (webpack://n8n-cypress/../node_modules/.pnpm/@cypress+grep@4.1.0_@babel+core@7.26.10_cypress@14.4.0/node_modules/@cypress/grep/src/support.js:56:0)
+    at ./support/e2e.ts (webpack://n8n-cypress/./support/e2e.ts:7:19)
+    at __webpack_require__ (webpack://n8n-cypress/webpack/bootstrap:19:0)
+    at eval (webpack://n8n-cypress/webpack/startup:4:0)
+    at eval (http://localhost:5678/__cypress/tests?p=support/e2e.ts:19553:12)
+    at eval (<anonymous>)
+    at <unknown> (http://localhost:5678/__cypress/runner/cypress_runner.js:112902:23)
+    at tryCatcher (http://localhost:5678/__cypress/runner/cypress_runner.js:1777:23)
+    at Object.gotValue (http://localhost:5678/__cypress/runner/cypress_runner.js:6446:18)
+    at Object.gotAccum (http://localhost:5678/__cypress/runner/cypress_runner.js:6435:25)]]></failure>
+    </testcase>
+  </testsuite>
+</testsuites>

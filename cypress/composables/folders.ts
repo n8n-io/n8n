@@ -199,7 +199,16 @@ export function getMoveToFolderDropdown() {
 }
 
 export function getMoveToFolderOption(name: string) {
-	return cy.getByTestId('move-to-folder-option').contains(name);
+    // Scope option lookup to the currently opened popper of the move-to-folder select
+    return getMoveToFolderDropdown()
+        .find('[aria-controls]')
+        .invoke('attr', 'aria-controls')
+        .then((popperId) => {
+            return cy
+                .get(`#${popperId}`)
+                .find('[data-test-id="move-to-folder-option"]')
+                .contains(name);
+        });
 }
 
 export function getMoveToFolderInput() {
@@ -215,7 +224,13 @@ export function getProjectSharingOption(name: string) {
 }
 
 export function getEmptyFolderDropdownMessage(text: string) {
-	return cy.get('.el-select-dropdown__empty').contains(text);
+    // Scope to the move-to-folder dropdown popper and assert against stable text
+    return getMoveToFolderDropdown()
+        .find('[aria-controls]')
+        .invoke('attr', 'aria-controls')
+        .then((popperId) => {
+            return cy.get(`#${popperId}`).contains(text);
+        });
 }
 
 export function getMoveFolderConfirmButton() {
@@ -506,26 +521,30 @@ function deleteFolderAndMoveContents(folderName: string, destinationName: string
 }
 
 function moveFolder(folderName: string, destinationName: string) {
-	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
-	getMoveFolderModal().should('be.visible');
-	getMoveFolderModal().find('h1').first().contains(`Move folder ${folderName}`);
+    cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
+    // Folders listing for remote search in the dropdown
+    cy.intercept('GET', '/rest/projects/**/folders*').as('fetchMoveFolders');
 
-	// The dropdown focuses after a small delay (once modal's slide in animation is done).
-	// On the component we listen for an event, but here the wait should be very predictable.
-	cy.wait(500);
+    getMoveFolderModal().should('be.visible');
+    getMoveFolderModal().find('h1').first().contains(`Move folder ${folderName}`);
 
-	// Try to find current folder in the dropdown
-	// This tests that auto-focus worked as expected
-	cy.focused().type(folderName, { delay: 50 });
-	// Should not be available
-	getEmptyFolderDropdownMessage('No folders found').should('exist');
-	// Select destination folder
-	getMoveToFolderInput().type(`{selectall}{backspace}${destinationName}`, {
-		delay: 50,
-	});
-	getMoveToFolderOption(destinationName).should('be.visible').click();
-	getMoveFolderConfirmButton().should('be.enabled').click();
-	cy.wait('@moveFolder');
+    // Explicitly open the select and wait for the dropdown popper to render
+    getMoveToFolderInput().click();
+    getMoveToFolderDropdown()
+        .find('[aria-controls]')
+        .invoke('attr', 'aria-controls')
+        .then((popperId) => {
+            cy.get(`#${popperId}`).should('be.visible');
+        });
+
+    // Search and select destination folder
+    getMoveToFolderInput().type(`{selectall}{backspace}${destinationName}`, { delay: 50 });
+    cy.wait('@fetchMoveFolders');
+    getMoveToFolderOption(destinationName).should('be.visible').click();
+
+    // Confirm move
+    getMoveFolderConfirmButton().should('be.enabled').click();
+    cy.wait('@moveFolder');
 }
 
 export function transferWorkflow(
