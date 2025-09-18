@@ -1,93 +1,111 @@
+import type { Locator } from '@playwright/test';
+
 import { BasePage } from './BasePage';
 
+/**
+ * Page object for the Personal Settings page where users can update their profile and manage MFA.
+ */
 export class PersonalSettingsPage extends BasePage {
-	async goToPersonalSettings() {
+	async goToPersonalSettings(): Promise<void> {
 		await this.page.goto('/settings/personal');
 	}
 
-	getPersonalDataForm() {
+	getPersonalDataForm(): Locator {
 		return this.page.getByTestId('personal-data-form');
 	}
 
-	getFirstNameField() {
+	getFirstNameField(): Locator {
 		return this.getPersonalDataForm().locator('input[name="firstName"]');
 	}
 
-	getLastNameField() {
+	getLastNameField(): Locator {
 		return this.getPersonalDataForm().locator('input[name="lastName"]');
 	}
 
-	getEmailField() {
+	getEmailField(): Locator {
 		return this.getPersonalDataForm().locator('input[name="email"]');
 	}
 
-	getSaveSettingsButton() {
+	getSaveSettingsButton(): Locator {
 		return this.page.getByTestId('save-settings-button');
 	}
 
-	async fillPersonalData(firstName: string, lastName: string) {
+	async fillPersonalData(firstName: string, lastName: string): Promise<void> {
 		await this.getFirstNameField().fill(firstName);
 		await this.getLastNameField().fill(lastName);
 	}
 
-	async fillEmail(email: string) {
+	async fillEmail(email: string): Promise<void> {
 		await this.getEmailField().fill(email);
+	}
+
+	async pressEnterOnEmail(): Promise<void> {
 		await this.getEmailField().press('Enter');
 	}
 
-	async saveSettings() {
-		await this.getSaveSettingsButton().click();
+	async saveSettings(): Promise<void> {
+		await this.clickByTestId('save-settings-button');
 	}
 
-	async updateEmail(newEmail: string) {
+	/**
+	 * Complete workflow to update user's email address
+	 * @param newEmail - The new email address to set
+	 */
+	async updateEmail(newEmail: string): Promise<void> {
 		await this.goToPersonalSettings();
 		await this.fillEmail(newEmail);
 		await this.saveSettings();
 	}
 
-	async updateFirstAndLastName(firstName: string, lastName: string) {
+	/**
+	 * Complete workflow to update user's first and last name
+	 * @param firstName - The new first name
+	 * @param lastName - The new last name
+	 */
+	async updateFirstAndLastName(firstName: string, lastName: string): Promise<void> {
 		await this.goToPersonalSettings();
 		await this.fillPersonalData(firstName, lastName);
 		await this.saveSettings();
 	}
 
-	getEnableMfaButton() {
+	getEnableMfaButton(): Locator {
 		return this.page.getByTestId('enable-mfa-button');
 	}
 
-	getDisableMfaButton() {
+	getDisableMfaButton(): Locator {
 		return this.page.getByTestId('disable-mfa-button');
 	}
 
-	getMfaCodeOrRecoveryCodeInput() {
+	getMfaCodeOrRecoveryCodeInput(): Locator {
 		return this.page.locator('input[name="mfaCodeOrMfaRecoveryCode"]');
 	}
 
-	getMfaSaveButton() {
+	getMfaSaveButton(): Locator {
 		return this.page.getByTestId('mfa-save-button');
 	}
 
-	async clickEnableMfa() {
-		await this.getEnableMfaButton().click();
+	async clickEnableMfa(): Promise<void> {
+		await this.clickByTestId('enable-mfa-button');
 	}
 
-	async clickDisableMfa() {
-		await this.getDisableMfaButton().click();
+	async clickDisableMfa(): Promise<void> {
+		await this.clickByTestId('disable-mfa-button');
 	}
 
-	async triggerDisableMfa() {
+	/**
+	 * Navigate to personal settings and initiate MFA disable workflow
+	 */
+	async triggerDisableMfa(): Promise<void> {
 		await this.goToPersonalSettings();
 		await this.clickDisableMfa();
 	}
 
-	async fillMfaCodeAndSave(code: string) {
+	/**
+	 * Fill in MFA code or recovery code and save the form
+	 * @param code - MFA token or recovery code
+	 */
+	async fillMfaCodeAndSave(code: string): Promise<void> {
 		await this.getMfaCodeOrRecoveryCodeInput().fill(code);
-		await this.getMfaSaveButton().click();
-	}
-
-	async waitForMfaQrResponse(): Promise<void> {
-		await this.page.waitForResponse(
-			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
-		);
+		await this.clickByTestId('mfa-save-button');
 	}
 }

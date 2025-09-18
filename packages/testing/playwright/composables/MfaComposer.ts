@@ -47,7 +47,7 @@ export class MfaComposer {
 		await expect(this.n8n.mfaLogin.getForm()).toBeVisible();
 		const loginMfaCode = authenticator.generate(mfaSecret);
 		await this.n8n.mfaLogin.submitMfaCode(loginMfaCode);
-		await expect(this.n8n.page).toHaveURL(/\/workflow/);
+		await expect(this.n8n.page).toHaveURL(/workflows/);
 	}
 
 	/**
@@ -67,6 +67,6 @@ export class MfaComposer {
 
 		await expect(this.n8n.mfaLogin.getForm()).toBeVisible();
 		await this.n8n.mfaLogin.submitMfaRecoveryCode(recoveryCode);
-		await expect(this.n8n.page).toHaveURL(/\/workflow/);
+		await expect(this.n8n.page).toHaveURL(/workflows/);
 	}
 }

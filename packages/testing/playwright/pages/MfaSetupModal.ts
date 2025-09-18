@@ -3,6 +3,9 @@ import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
+/**
+ * Page object for the MFA setup modal that appears when enabling two-factor authentication.
+ */
 export class MfaSetupModal extends BasePage {
 	getModalContainer(): Locator {
 		return this.page.getByTestId('mfaSetup-modal');
@@ -29,16 +32,16 @@ export class MfaSetupModal extends BasePage {
 	}
 
 	async clickCopySecretToClipboard(): Promise<void> {
-		await this.getCopySecretToClipboardButton().click();
+		await this.clickByTestId('mfa-secret-button');
 	}
 
 	async clickDownloadRecoveryCodes(): Promise<void> {
 		await expect(this.getDownloadRecoveryCodesButton()).toBeVisible();
-		await this.getDownloadRecoveryCodesButton().click();
+		await this.clickByTestId('mfa-recovery-codes-button');
 	}
 
 	async clickSave(): Promise<void> {
-		await this.getSaveButton().click();
+		await this.clickByTestId('mfa-save-button');
 	}
 
 	async isVisible(): Promise<boolean> {

@@ -23,7 +23,7 @@ export class PromptMfaCodeModal extends BasePage {
 	}
 
 	async clickMfaSave(): Promise<void> {
-		await this.getMfaSaveButton().click();
+		await this.clickByTestId('mfa-save-button');
 	}
 
 	async submitMfaCode(code: string): Promise<void> {
