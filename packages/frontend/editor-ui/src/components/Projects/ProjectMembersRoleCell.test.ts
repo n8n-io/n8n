@@ -26,8 +26,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					</div>
 					<ul data-test-id="dropdown-menu">
 						<li v-for="item in items" :key="item.id">
-							<button 
-								:data-test-id="'action-' + item.id" 
+							<button
+								:data-test-id="'action-' + item.id"
 								:disabled="item.disabled"
 								@click="$emit('select', item.id)"
 							>
@@ -73,9 +73,9 @@ vi.mock('element-plus', async (importOriginal) => {
 			emits: ['update:model-value'],
 			template: `
 				<label>
-					<input 
-						type="radio" 
-						:value="label" 
+					<input
+						type="radio"
+						:value="label"
 						:checked="modelValue === label"
 						:disabled="disabled"
 						@change="$emit('update:model-value', label)"
@@ -130,7 +130,6 @@ const mockActions: Array<ActionDropdownItem<string>> = [
 	{ id: 'project:admin', label: 'Admin' },
 	{ id: 'project:editor', label: 'Editor' },
 	{ id: 'project:viewer', label: 'Viewer', disabled: true },
-	{ id: 'remove', label: 'Remove User', divided: true },
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -224,11 +223,10 @@ describe('ProjectMembersRoleCell', () => {
 		it('should pass actions to dropdown component', () => {
 			renderComponent();
 
-			// Check that all action items are rendered
+			// Check that all role action items are rendered
 			expect(screen.getByTestId('action-project:admin')).toBeInTheDocument();
 			expect(screen.getByTestId('action-project:editor')).toBeInTheDocument();
 			expect(screen.getByTestId('action-project:viewer')).toBeInTheDocument();
-			expect(screen.getByTestId('action-remove')).toBeInTheDocument();
 		});
 	});
 
@@ -243,21 +241,6 @@ describe('ProjectMembersRoleCell', () => {
 			expect(emitted()['update:role'][0]).toEqual([
 				{
 					role: 'project:admin',
-					userId: '123',
-				},
-			]);
-		});
-
-		it('should emit update:role when remove action is selected', async () => {
-			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			await user.click(screen.getByTestId('action-remove'));
-
-			expect(emitted()).toHaveProperty('update:role');
-			expect(emitted()['update:role'][0]).toEqual([
-				{
-					role: 'remove',
 					userId: '123',
 				},
 			]);
@@ -319,13 +302,6 @@ describe('ProjectMembersRoleCell', () => {
 			// Radio buttons should be present for role actions (not remove)
 			const radioInputs = screen.getAllByRole('radio');
 			expect(radioInputs).toHaveLength(3); // admin, editor, viewer (remove is not a radio)
-		});
-
-		it('should render remove option without radio button', () => {
-			renderComponent();
-
-			expect(screen.getByTestId('action-remove')).toBeInTheDocument();
-			expect(screen.getByText('Remove User')).toBeInTheDocument();
 		});
 
 		it('should handle disabled actions correctly', () => {
