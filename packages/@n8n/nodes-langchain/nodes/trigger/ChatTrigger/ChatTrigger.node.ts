@@ -477,7 +477,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 					},
