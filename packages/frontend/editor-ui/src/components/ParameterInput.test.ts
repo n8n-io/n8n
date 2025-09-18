@@ -4,17 +4,24 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+import {
+	createTestExpressionLocalResolveContext,
+	createMockEnterpriseSettings,
+	createTestNode,
+	createTestWorkflowObject,
+	createTestNodeProperties,
+} from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -34,6 +41,8 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 		expressionOutputItemIndex: 0,
 		isTableHoverOnboarded: false,
 		setHighlightDraggables: vi.fn(),
+		setNDVPanelDataIsEmpty: vi.fn(),
+		setNDVBranchIndex: vi.fn(),
 	};
 }
 
@@ -111,6 +120,8 @@ describe('ParameterInput.vue', () => {
 			expressionOutputItemIndex: 0,
 			isTableHoverOnboarded: false,
 			setHighlightDraggables: vi.fn(),
+			setNDVPanelDataIsEmpty: vi.fn(),
+			setNDVBranchIndex: vi.fn(),
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],
@@ -647,6 +658,97 @@ describe('ParameterInput.vue', () => {
 				expect(updateEvents.length).toBeLessThan(5);
 				expect(updateEvents).toContainEqual([expect.objectContaining({ value: 'hello' })]);
 			});
+		});
+	});
+
+	describe('data mapper', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
+			connections: {
+				n1: {
+					[NodeConnectionTypes.Main]: [[{ node: 'n0', index: 0, type: NodeConnectionTypes.Main }]],
+				},
+			},
+		});
+		const ctx = createTestExpressionLocalResolveContext({
+			workflow,
+			nodeName: 'n0',
+			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		});
+
+		it('should render mapper when the current value is empty', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties(),
+					modelValue: '',
+				},
+			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when editor type is specified in the parameter', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ typeOptions: { editor: 'sqlEditor' } }),
+					modelValue: 'SELECT 1;',
+				},
+			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when the current value is an expression', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties(),
+					modelValue: '={{$today}}',
+				},
+			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should not render mapper if given node property is a node setting', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ isNodeSetting: true }),
+					modelValue: '',
+				},
+			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
+		});
+
+		it('should not render mapper if given node property has datetime type', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ type: 'dateTime' }),
+					modelValue: '',
+				},
+			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
 		});
 	});
 });

@@ -76,6 +76,7 @@ describe('OIDC service', () => {
 			};
 
 			await oidcService.updateConfig(newConfig);
+
 			const loadedConfig = await oidcService.loadConfig();
 
 			expect(loadedConfig.clientId).toEqual('test-client-id');

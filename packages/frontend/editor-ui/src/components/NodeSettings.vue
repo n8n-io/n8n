@@ -824,7 +824,7 @@ function handleSelectAction(params: INodeParameters) {
 		gap: var(--spacing-4xs);
 		margin-top: var(--spacing-xl);
 
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-light);
 	}
