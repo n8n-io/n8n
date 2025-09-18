@@ -310,20 +310,12 @@ export class SourceControlExportService {
 			const tags = await this.tagRepository.find();
 
 			if (tags.length === 0) {
-				await fsWriteFile(
-					path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE),
-					JSON.stringify({ tags: [], mappings: [] }, null, 2),
-				);
+				await fsWriteFile(fileName, JSON.stringify({ tags: [], mappings: [] }, null, 2));
 
 				return {
 					count: 0,
 					folder: this.gitFolder,
-					files: [
-						{
-							id: '',
-							name: fileName,
-						},
-					],
+					files: [{ id: '', name: fileName }],
 				};
 			}
 			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
@@ -362,12 +354,7 @@ export class SourceControlExportService {
 			return {
 				count: tags.length,
 				folder: this.gitFolder,
-				files: [
-					{
-						id: '',
-						name: fileName,
-					},
-				],
+				files: [{ id: '', name: fileName }],
 			};
 		} catch (error) {
 			this.logger.error('Failed to export tags to work folder', { error });
