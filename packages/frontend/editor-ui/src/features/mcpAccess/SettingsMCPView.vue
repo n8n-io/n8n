@@ -2,7 +2,7 @@
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import type { UserAction, WorkflowListItem } from '@/Interface';
-// import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
@@ -19,7 +19,7 @@ const documentTitle = useDocumentTitle();
 
 const { copy, copied, isSupported } = useClipboard();
 
-// const workflowsStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const rootStore = useRootStore();
 
@@ -151,7 +151,7 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	switch (action) {
 		case 'removeFromMCP':
 			try {
-				await mcpStore.toggleWorkflowMCPAccess(workflow.id, false);
+				await workflowsStore.updateWorkflowSetting(workflow.id, 'availableInMCP', false);
 				await fetchAvailableWorkflows();
 			} catch (error) {
 				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));

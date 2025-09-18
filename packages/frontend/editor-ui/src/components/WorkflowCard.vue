@@ -64,6 +64,7 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
+	// TODO: Handle this in card
 	'workflow:toggle-mcp-access': [value: { id: string; enabled: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -95,6 +96,8 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+
+const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
@@ -180,7 +183,12 @@ const actions = computed(() => {
 		}
 	}
 
-	if (workflowPermissions.value.update && !props.readOnly && !props.data.isArchived) {
+	if (
+		isMCPEnabled.value &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
 		if (props.data.settings?.availableInMCP) {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
@@ -468,10 +476,10 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="data.settings?.availableInMCP">|</span>
+				<span v-if="isMCPEnabled && data.settings?.availableInMCP">|</span>
 			</span>
 			<span
-				v-show="data.settings?.availableInMCP"
+				v-show="isMCPEnabled && data.settings?.availableInMCP"
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
 			>
 				<n8n-tooltip

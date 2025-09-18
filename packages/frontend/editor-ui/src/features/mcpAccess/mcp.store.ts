@@ -42,24 +42,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return data.filter((item): item is WorkflowListItem => item.resource === 'workflow');
 	}
 
-	async function toggleWorkflowMCPAccess(id: string, enabled: boolean): Promise<boolean> {
-		const wf = workflowsStore.getWorkflowById(id);
-		if (!wf) {
-			throw new Error(i18n.baseText('workflowSettings.toggleMCP.notFoundError'));
-		}
-		const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
-			settings: {
-				...wf.settings,
-				availableInMCP: enabled,
-			},
-		};
-		const updatedWorkflow = await workflowsStore.updateWorkflow(id, data, true);
-		wf.settings = updatedWorkflow.settings;
-		return updatedWorkflow.settings?.availableInMCP === true;
-	}
-
 	return {
 		fetchWorkflowsAvailableForMCP,
-		toggleWorkflowMCPAccess,
 	};
 });
