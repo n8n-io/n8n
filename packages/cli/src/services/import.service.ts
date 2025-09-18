@@ -11,6 +11,8 @@ import {
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { readdir, readFile } from 'fs/promises';
+import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { DataSource } from '@n8n/db';
@@ -131,10 +133,163 @@ export class ImportService {
 	}
 
 	/**
+	 * Get list of entity files from the input directory
+	 * @param inputDir - Directory containing exported entity files
+	 * @returns Array of entity file paths grouped by entity name
+	 */
+	async getEntityFiles(inputDir: string): Promise<Map<string, string[]>> {
+		const files = await readdir(inputDir);
+		const entityFiles = new Map<string, string[]>();
+
+		// Group files by entity name (e.g., "user.jsonl", "user.2.jsonl" -> "user")
+		for (const file of files) {
+			if (file.endsWith('.jsonl')) {
+				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+				if (!entityFiles.has(entityName)) {
+					entityFiles.set(entityName, []);
+				}
+
+				entityFiles.get(entityName)!.push(path.join(inputDir, file));
+			}
+		}
+
+		return entityFiles;
+	}
+
+	/**
+	 * Read and parse JSONL file content
+	 * @param filePath - Path to the JSONL file
+	 * @returns Array of parsed entity objects
+	 */
+	async readEntityFile(filePath: string): Promise<unknown[]> {
+		const content = await readFile(filePath, 'utf8');
+
+		// For JSONL, we need to split by actual line endings (\n or \r\n)
+		// Each line should contain exactly one complete JSON object
+		const lines = content.split(/\r?\n/);
+		const entities: unknown[] = [];
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i].trim();
+
+			// Skip empty lines
+			if (!line) {
+				continue;
+			}
+
+			try {
+				const entity = JSON.parse(line);
+				entities.push(entity);
+			} catch (error) {
+				// If parsing fails, it might be because the JSON spans multiple lines
+				// This shouldn't happen in proper JSONL, but let's handle it gracefully
+				this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, error);
+				this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
+				throw new Error(
+					`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
+				);
+			}
+		}
+
+		return entities;
+	}
+
+	/**
+	 * Import entities from JSONL files into the database
+	 * @param inputDir - Directory containing exported entity files
+	 * @returns Promise that resolves when all entities are imported
+	 */
+	async importEntitiesFromFiles(inputDir: string): Promise<void> {
+		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
+
+		const entityFiles = await this.getEntityFiles(inputDir);
+
+		if (entityFiles.size === 0) {
+			this.logger.warn('No entity files found in input directory');
+			return;
+		}
+
+		this.logger.info(`📋 Found ${entityFiles.size} entity types to import:`);
+		for (const [entityName, files] of entityFiles) {
+			this.logger.info(`   • ${entityName}: ${files.length} file(s)`);
+		}
+
+		let totalEntitiesImported = 0;
+
+		// Process each entity type
+		for (const [entityName, files] of entityFiles) {
+			this.logger.info(`\n📊 Importing ${entityName} entities...`);
+
+			// Find the corresponding entity metadata
+			const entityMetadata = this.dataSource.entityMetadatas.find(
+				(meta) => meta.name.toLowerCase() === entityName,
+			);
+
+			if (!entityMetadata) {
+				this.logger.warn(`   ⚠️  No entity metadata found for ${entityName}, skipping...`);
+				continue;
+			}
+
+			const tableName = entityMetadata.tableName;
+			this.logger.info(`   📋 Target table: ${tableName}`);
+
+			// Read all files for this entity
+			let entityCount = 0;
+			for (const filePath of files) {
+				this.logger.info(`   📁 Reading file: ${path.basename(filePath)}`);
+
+				const entities = await this.readEntityFile(filePath);
+				this.logger.info(`      Found ${entities.length} entities`);
+
+				// Import entities in batches
+				if (entities.length > 0) {
+					await this.importEntityBatch(tableName, entities);
+					entityCount += entities.length;
+				}
+			}
+
+			this.logger.info(`   ✅ Completed ${entityName}: ${entityCount} entities imported`);
+			totalEntitiesImported += entityCount;
+		}
+
+		this.logger.info(`\n📊 Import Summary:`);
+		this.logger.info(`   Total entities imported: ${totalEntitiesImported}`);
+		this.logger.info(`   Entity types processed: ${entityFiles.size}`);
+		this.logger.info('✅ Import completed successfully!');
+	}
+
+	/**
+	 * Import a batch of entities into a specific table
+	 * @param tableName - Name of the target table
+	 * @param entities - Array of entity objects to import
+	 */
+	async importEntityBatch(tableName: string, entities: unknown[]): Promise<void> {
+		if (entities.length === 0) return;
+
+		// Get column names from the first entity
+		const firstEntity = entities[0] as Record<string, unknown>;
+		const columns = Object.keys(firstEntity);
+		const columnNames = columns.join(', ');
+		const placeholders = columns.map(() => '?').join(', ');
+
+		// Create batch insert query
+		const query = `INSERT OR REPLACE INTO ${tableName} (${columnNames}) VALUES (${placeholders})`;
+
+		// Execute batch insert
+		for (const entity of entities) {
+			const values = columns.map((col) => (entity as Record<string, unknown>)[col]);
+			await this.dataSource.query(query, values);
+		}
+
+		this.logger.debug(`      Imported ${entities.length} entities into ${tableName}`);
+	}
+
+	/**
 	 * Disable and re-enable foreign key constraints for entity import operations
+	 * @param inputDir - Directory containing exported entity files
 	 * @returns Promise that resolves when foreign key constraints are disabled and re-enabled
 	 */
-	async importEntities(): Promise<void> {
+	async importEntities(inputDir: string): Promise<void> {
 		if (!this.dataSource.isInitialized) {
 			throw new Error('DataSource is not initialized');
 		}
@@ -154,12 +309,17 @@ export class ImportService {
 
 		this.logger.info('Foreign key constraints disabled');
 
-		// Re-enable foreign key constraints
-		const enableCommand = this.generateForeignKeyEnableCommand(dbType);
-		this.logger.debug(`Executing: ${enableCommand}`);
-		await this.dataSource.query(enableCommand);
+		try {
+			// Import entities from files
+			await this.importEntitiesFromFiles(inputDir);
+		} finally {
+			// Re-enable foreign key constraints
+			const enableCommand = this.generateForeignKeyEnableCommand(dbType);
+			this.logger.debug(`Executing: ${enableCommand}`);
+			await this.dataSource.query(enableCommand);
 
-		this.logger.info('Foreign key constraints re-enabled');
+			this.logger.info('Foreign key constraints re-enabled');
+		}
 	}
 
 	/**

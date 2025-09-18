@@ -1,14 +1,15 @@
 import { Command } from '@n8n/decorators';
 import { z } from 'zod';
-import path from 'path';
+import { Container } from '@n8n/di';
 
 import { BaseCommand } from '../base-command';
+import { ImportService } from '../../services/import.service';
 
 const flagsSchema = z.object({
 	inputDir: z
 		.string()
 		.describe('Input directory that holds output files for import')
-		.default(path.join(__dirname, './outputs')),
+		.default('./outputs'),
 });
 
 @Command({
@@ -25,7 +26,8 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info('\n🚀 Starting entity import...');
 		this.logger.info(`📁 Input directory: ${inputDir}`);
 
-		// TODO: Import entities
+		// Import entities from the specified directory
+		await Container.get(ImportService).importEntities(inputDir);
 
 		this.logger.info('✅ Task completed successfully! \n');
 	}
