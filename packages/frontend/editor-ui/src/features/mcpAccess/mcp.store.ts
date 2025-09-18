@@ -4,15 +4,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useI18n } from '@n8n/i18n';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IWorkflowSettings } from 'n8n-workflow';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-
-	const i18n = useI18n();
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
