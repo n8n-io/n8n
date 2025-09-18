@@ -46,6 +46,18 @@ export const registerModuleProjectTabs = () => {
 };
 
 /**
+ * Initialize modules settings sidebar items (used in SettingsSidebar), done in init.ts
+ */
+export const registerModuleSettingsSidebarItems = () => {
+	const uiStore = useUIStore();
+	modules.forEach((module) => {
+		if (module.settingsSidebarItems && module.settingsSidebarItems.length > 0) {
+			uiStore.registerSettingsSidebarItems(module.id, module.settingsSidebarItems);
+		}
+	});
+};
+
+/**
  * Middleware function to check if a module is available
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

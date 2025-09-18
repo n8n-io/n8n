@@ -121,16 +121,10 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
 
-	menuItems.push({
-		id: 'settings-mcp',
-		icon: 'mcp',
-		label: i18n.baseText('settings.mcp'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.MCP_SETTINGS),
-		route: { to: { name: VIEWS.MCP_SETTINGS } },
-	});
+	// Append module-registered settings sidebar items.
+	const moduleItems = uiStore.settingsSidebarItems;
 
-	return menuItems;
+	return menuItems.concat(moduleItems);
 });
 </script>
 

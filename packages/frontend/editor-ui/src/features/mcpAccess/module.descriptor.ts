@@ -26,4 +26,13 @@ export const MCPModule: FrontendModuleDescription = {
 			},
 		},
 	],
+	settingsSidebarItems: [
+		{
+			id: 'settings-mcp',
+			icon: 'mcp',
+			label: i18n.baseText('settings.mcp'),
+			position: 'top',
+			route: { to: { name: MCP_SETTINGS_VIEW } },
+		},
+	],
 };

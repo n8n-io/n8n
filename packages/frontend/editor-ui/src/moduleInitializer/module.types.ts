@@ -2,6 +2,7 @@ import type { ModalState } from '@/Interface';
 import type { DynamicTabOptions } from '@/utils/modules/tabUtils';
 import type { RouteRecordRaw } from 'vue-router';
 import type { Component } from 'vue/dist/vue.js';
+import type { IMenuItem } from '@n8n/design-system';
 
 export type ModalDefinition = {
 	key: string;
@@ -28,4 +29,9 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
+	/**
+	 * Optional settings sidebar items to render under Settings.
+	 * Items are registered per-module and only shown when the module is active.
+	 */
+	settingsSidebarItems?: IMenuItem[];
 };
