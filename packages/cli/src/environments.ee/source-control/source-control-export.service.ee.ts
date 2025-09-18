@@ -305,14 +305,25 @@ export class SourceControlExportService {
 
 	async exportTagsToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
+			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const tags = await this.tagRepository.find();
-			// do not export empty tags
+			// clear tags if there are none to export
 			if (tags.length === 0) {
+				await fsWriteFile(
+					path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE),
+					JSON.stringify({ tags: [], mappings: [] }, null, 2),
+				);
+
 				return {
 					count: 0,
 					folder: this.gitFolder,
-					files: [],
+					files: [
+						{
+							id: '',
+							name: fileName,
+						},
+					],
 				};
 			}
 			const mappingsOfAllowedWorkflows = await this.workflowTagMappingRepository.find({
@@ -321,11 +332,13 @@ export class SourceControlExportService {
 						context,
 					),
 			});
+
+			console.log(mappingsOfAllowedWorkflows);
 			const allowedWorkflows = await this.workflowRepository.find({
 				where:
 					this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
 			});
-			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+
 			const existingTagsAndMapping = await readTagAndMappingsFromSourceControlFile(fileName);
 
 			// keep all mappings that are not accessible by the current user
