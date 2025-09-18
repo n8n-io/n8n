@@ -151,7 +151,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		}) as string;
 		const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
 
-		const rowId = (evaluationTrigger.row_id as number) ?? 1;
+		const rowId = typeof evaluationTrigger.row_id === 'number' ? evaluationTrigger.row_id : 1;
 
 		const data = Object.fromEntries(
 			Object.entries(outputs).map(([k, v]) => [k, toDataTableValue(v)]),
