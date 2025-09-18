@@ -96,7 +96,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}) as string;
 			body = [{ id }];
 
-			(await apiRequest.call(this, requestMethod, endPoint, body, qs)) as any[];
+			const responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+			returnData.push.apply(returnData, responseData.records as IDataObject[]);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ error: error.toString() });
