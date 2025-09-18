@@ -18,6 +18,7 @@ const isModuleAllowed = (modulePath: string): boolean => {
 	const moduleName = modulePath.startsWith('@')
 		? modulePath.split('/').slice(0, 2).join('/')
 		: modulePath.split('/')[0];
+	if (!moduleName) return true;
 	return allowedModules.includes(moduleName);
 };
 
@@ -68,7 +69,7 @@ export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
 
 			CallExpression(node) {
 				if (isDirectRequireCall(node) || isRequireMemberCall(node)) {
-					const modulePath = getModulePath(node.arguments[0]);
+					const modulePath = getModulePath(node.arguments[0] ?? null);
 					if (modulePath && !isModuleAllowed(modulePath)) {
 						context.report({
 							node,

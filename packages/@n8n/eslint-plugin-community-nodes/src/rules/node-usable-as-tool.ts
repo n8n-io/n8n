@@ -67,8 +67,10 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 										'\n\t\tusableAsTool: true,',
 									);
 								} else {
-									const lastProperty = properties[properties.length - 1];
-									return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
+									const lastProperty = properties.at(-1);
+									if (lastProperty) {
+										return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
+									}
 								}
 							}
 

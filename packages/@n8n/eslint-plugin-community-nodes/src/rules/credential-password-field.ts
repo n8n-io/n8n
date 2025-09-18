@@ -121,6 +121,7 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 												typeOptionsProperty.value.properties[
 													typeOptionsProperty.value.properties.length - 1
 												];
+											if (!lastProperty) return null;
 											return fixer.insertTextAfter(lastProperty, ', password: true');
 										} else {
 											const openBrace = typeOptionsProperty.value.range![0] + 1;
