@@ -84,7 +84,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 				const data = await downloadRecordAttachments.call(
 					this,
-					[responseData.map((row: any) => ({ ...row, ...row.fields })) as IDataObject],
+					[responseData as IDataObject],
 					downloadFieldNames,
 					[{ item: i }],
 				);
