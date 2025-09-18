@@ -99,7 +99,7 @@ test.describe('Resource Locator', () => {
 		await n8n.canvas.addNode('Google Sheets', { closeNDV: false, action: 'Update row in sheet' });
 
 		await n8n.ndv.setRLCValue('documentId', '123');
-		await n8n.ndv.setRLCValue('sheetName', '123');
+		await n8n.ndv.setRLCValue('sheetName', '123', 1);
 		await n8n.ndv.setRLCValue('documentId', '321');
 
 		await expect(n8n.ndv.getResourceLocatorInput('sheetName').locator('input')).toHaveValue('');

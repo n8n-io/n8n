@@ -884,12 +884,9 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocatorErrorMessage(paramName).locator('a');
 	}
 
-	async setRLCValue(paramName: string, value: string): Promise<void> {
+	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
-
-		const visibleOptions = this.page.locator('.el-popper:visible .el-select-dropdown__item');
-		await visibleOptions.last().click();
-
+		await this.page.getByTestId('mode-id').nth(index).click();
 		const input = this.getResourceLocatorInput(paramName).locator('input');
 		await input.fill(value);
 	}
