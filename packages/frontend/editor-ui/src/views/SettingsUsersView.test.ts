@@ -18,16 +18,32 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
+import * as permissions from '@/utils/rbac/permissions';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
-// Mock the SettingsUsersTable component to emit events
+// Mock the SettingsUsersTable component to emit events and render an accessible actions list per user
 vi.mock('@/components/SettingsUsers/SettingsUsersTable.vue', () => ({
 	default: defineComponent({
+		name: 'SettingsUsersTableStub',
+		props: {
+			data: { type: Object, required: false },
+			actions: { type: Array, required: false },
+		},
 		setup(_, { emit }) {
 			addEmitter('settingsUsersTable', emit);
 		},
-		template: '<div />',
+		template: `
+			<div data-test-id="settings-users-table">
+				<div v-for="u in (data?.items || [])" :key="u.id" :data-test-id="'user-' + u.id">
+					<ul :aria-label="'Actions for user ' + u.id" role="list" :data-test-id="'actions-for-' + u.id">
+						<li v-for="a in (actions || []).filter(act => !act?.guard || act.guard(u))" :key="a.value" role="listitem">
+							<button type="button" :data-test-id="'action-' + a.value + '-' + u.id">{{ a.label || a.value }}</button>
+						</li>
+					</ul>
+				</div>
+			</div>
+		`,
 	}),
 }));
 
@@ -290,6 +306,19 @@ describe('SettingsUsersView', () => {
 
 		// The users container should be visible when there are multiple users
 		expect(getByTestId('settings-users-table')).toBeInTheDocument();
+	});
+
+	it('should include delete action and pass guard for non-current user', () => {
+		const spy = vi
+			.spyOn(permissions, 'hasPermission')
+			.mockImplementation((features: string[]) => features.includes('rbac'));
+		renderComponent();
+
+		// ensure the member (id: 2) has Delete action rendered in the accessible list
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-delete-2')).toBeInTheDocument();
+		spy.mockRestore();
 	});
 
 	describe('search functionality', () => {

@@ -7,11 +7,12 @@ import {
 	N8nDataTableServer,
 	N8nText,
 	type ActionDropdownItem,
+	type UserAction,
 } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
+import ProjectMembersActionsCell from '@/components/Projects/ProjectMembersActionsCell.vue';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
-import { isProjectRole } from '@/utils/typeGuards';
 import type { ProjectMemberData } from '@/types/projects.types';
 
 const i18n = useI18n();
@@ -21,11 +22,13 @@ const props = defineProps<{
 	loading?: boolean;
 	currentUserId?: string;
 	projectRoles: Array<{ slug: string; displayName: string; licensed: boolean }>;
+	actions?: Array<UserAction<ProjectMemberData>>;
 }>();
 
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
-	'update:role': [payload: { role: ProjectRole | 'remove'; userId: string }];
+	'update:role': [payload: { role: ProjectRole; userId: string }];
+	action: [value: { action: string; userId: string }];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -50,6 +53,16 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 		key: 'role',
 		disableSort: true,
 	},
+	{
+		title: '',
+		key: 'actions',
+		align: 'end',
+		width: 46,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
 ]);
 
 const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() => ({
@@ -71,26 +84,23 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 	},
 }));
 
-const roleActions = computed<Array<ActionDropdownItem<ProjectRole | 'remove'>>>(() => [
+const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 	...props.projectRoles.map((role) => ({
 		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
 	})),
-	{
-		id: 'remove',
-		label: i18n.baseText('projects.settings.table.row.removeUser'),
-		divided: true,
-	},
 ]);
 
-const canUpdateRole = (member: ProjectMemberData): boolean => {
-	// User cannot change their own role or remove themselves
-	return member.id !== props.currentUserId;
+const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
+
+const onRoleChange = ({ role, userId }: { role: ProjectRole; userId: string }) => {
+	emit('update:role', { role, userId });
 };
 
-const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: string }) => {
-	emit('update:role', { role, userId });
+const filterActions = (member: ProjectMemberData) => {
+	if (member.id === props.currentUserId || member.role === 'project:personalOwner') return [];
+	return (props.actions ?? []).filter((action) => action.guard?.(member) ?? true);
 };
 </script>
 
@@ -120,9 +130,14 @@ const onRoleChange = ({ role, userId }: { role: ProjectRole | 'remove'; userId: 
 					:actions="roleActions"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{
-					isProjectRole(item.role) ? roles[item.role]?.label || item.role : item.role
-				}}</N8nText>
+				<N8nText v-else color="text-dark">{{ roles[item.role]?.label ?? item.role }}</N8nText>
+			</template>
+			<template #[`item.actions`]="{ item }">
+				<ProjectMembersActionsCell
+					:data="item"
+					:actions="filterActions(item)"
+					@action="$emit('action', $event)"
+				/>
 			</template>
 		</N8nDataTableServer>
 	</div>
