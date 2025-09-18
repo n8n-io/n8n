@@ -37,15 +37,15 @@ jobs:
       is_pr_target_master: ${{ github.event.pull_request.base.ref == 'master' }}
       is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
 
-  chromatic:
+  cloudflare:
     needs: [get-metadata]
-    if: |
-      needs.get-metadata.outputs.is_dispatch == 'true' ||
-      (
-       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-       needs.get-metadata.outputs.is_community_pr == 'false' &&
-       needs.get-metadata.outputs.is_pr_target_master == 'true'
-      )
+    # if: |
+    #   needs.get-metadata.outputs.is_dispatch == 'true' ||
+    #   (
+    #    needs.get-metadata.outputs.design_system_files_changed == 'true' &&
+    #    needs.get-metadata.outputs.is_community_pr == 'false' &&
+    #    needs.get-metadata.outputs.is_pr_target_master == 'true'
+    #   )
     runs-on: ubuntu-latest
     permissions:
       contents: read
