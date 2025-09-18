@@ -194,7 +194,6 @@
 	"aiAssistant.n8nAi": "n8n AI",
 	"aiAssistant.tabs.ask": "Ask",
 	"aiAssistant.tabs.build": "Build",
-	"aiAssistant.builder.name": "Builder",
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "Ask n8n to build...",
 	"aiAssistant.builder.generateNew": "Generate new workflow",
