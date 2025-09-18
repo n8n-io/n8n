@@ -1703,7 +1703,7 @@ describe('validateResponseModeConfiguration', () => {
 		]);
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
-			'TestNode node not correctly configured',
+			'Extra Respond to Webhook node found in the workflow',
 		);
 	});
 
