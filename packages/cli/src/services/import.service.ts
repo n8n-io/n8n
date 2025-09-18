@@ -13,6 +13,7 @@ import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8
 import { v4 as uuid } from 'uuid';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { DataSource } from '@n8n/db';
 
 @Service()
 export class ImportService {
@@ -24,6 +25,7 @@ export class ImportService {
 		private readonly logger: Logger,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagRepository: TagRepository,
+		private readonly dataSource: DataSource,
 	) {}
 
 	async initRecords() {
@@ -92,6 +94,72 @@ export class ImportService {
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
+	}
+
+	/**
+	 * Generate SQL command to disable foreign key constraints for the specified database type
+	 * @param dbType - Database type ('sqlite' or 'postgres')
+	 * @returns SQL command string to disable foreign key constraints
+	 */
+	generateForeignKeyDisableCommand(dbType: string): string {
+		switch (dbType.toLowerCase()) {
+			case 'sqlite':
+				return 'PRAGMA foreign_keys = OFF;';
+			case 'postgres':
+			case 'postgresql':
+				return 'SET session_replication_role = replica;';
+			default:
+				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
+		}
+	}
+
+	/**
+	 * Generate SQL command to enable foreign key constraints for the specified database type
+	 * @param dbType - Database type ('sqlite' or 'postgres')
+	 * @returns SQL command string to enable foreign key constraints
+	 */
+	generateForeignKeyEnableCommand(dbType: string): string {
+		switch (dbType.toLowerCase()) {
+			case 'sqlite':
+				return 'PRAGMA foreign_keys = ON;';
+			case 'postgres':
+			case 'postgresql':
+				return 'SET session_replication_role = DEFAULT;';
+			default:
+				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
+		}
+	}
+
+	/**
+	 * Disable and re-enable foreign key constraints for entity import operations
+	 * @returns Promise that resolves when foreign key constraints are disabled and re-enabled
+	 */
+	async importEntities(): Promise<void> {
+		if (!this.dataSource.isInitialized) {
+			throw new Error('DataSource is not initialized');
+		}
+
+		// Get database type from DataSource
+		const dbType = this.dataSource.options.type;
+		if (!dbType) {
+			throw new Error('Unable to determine database type from DataSource');
+		}
+
+		this.logger.info(`Disabling foreign key constraints for database type: ${dbType}`);
+
+		// Disable foreign key constraints
+		const disableCommand = this.generateForeignKeyDisableCommand(dbType);
+		this.logger.debug(`Executing: ${disableCommand}`);
+		await this.dataSource.query(disableCommand);
+
+		this.logger.info('Foreign key constraints disabled');
+
+		// Re-enable foreign key constraints
+		const enableCommand = this.generateForeignKeyEnableCommand(dbType);
+		this.logger.debug(`Executing: ${enableCommand}`);
+		await this.dataSource.query(enableCommand);
+
+		this.logger.info('Foreign key constraints re-enabled');
 	}
 
 	/**
