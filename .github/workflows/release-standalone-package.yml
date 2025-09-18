@@ -46,7 +46,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs-blacksmith
         with:
-          build-command: 'pnpm --filter "${{ github.event.inputs.package }}" run --if-present build'
+          build-command: 'pnpm --filter "...${{ github.event.inputs.package }}" run --if-present build'
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
