@@ -840,7 +840,7 @@ onBeforeUnmount(() => {
 				<el-row v-if="isMCPEnabled" data-test-id="workflow-settings-available-in-mcp">
 					<el-col :span="10" :class="$style['setting-name']">
 						<label for="availableInMCP">
-							{{ i18n.baseText('workflowSettings.availableInMCP') + ':' }}
+							{{ i18n.baseText('workflowSettings.availableInMCP') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
