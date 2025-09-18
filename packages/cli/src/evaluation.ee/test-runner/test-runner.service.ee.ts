@@ -87,10 +87,15 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		const { parameters, credentials, name } = triggerNode;
+		const { parameters, credentials, name, typeVersion } = triggerNode;
+		const source = parameters.source
+			? (parameters.source as string)
+			: typeVersion >= 4.7
+				? 'dataTable'
+				: 'googleSheets';
 
 		const isConfigured =
-			parameters.source === 'dataTable'
+			source === 'dataTable'
 				? checkNodeParameterNotEmpty(parameters?.dataTableId)
 				: !!credentials &&
 					checkNodeParameterNotEmpty(parameters?.documentId) &&
