@@ -158,8 +158,6 @@ n8n uses a layered configuration system:
 - **Authentication**: JWT-based with refresh tokens (implemented in `AuthService`)
 - **Authorization**: RBAC with projects and resource permissions via `@n8n/permissions`
 - **Credentials**: AES-256-GCM encryption at rest (see `packages/core/src/Cipher.ts`)
-- **API Security**: API key support, rate limiting
-- **Network**: HTTPS support, webhook signature validation
 - **Task Isolation**: Sandboxed execution for user code via `@n8n/task-runner`
 
 ## Monitoring & Observability

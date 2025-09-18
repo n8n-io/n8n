@@ -2,8 +2,6 @@
 
 > **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
-n8n supports two execution modes to accommodate various deployment scenarios, from simple single-instance setups to highly scalable distributed systems.
-
 ## Overview
 
 n8n can run in two execution modes:
@@ -23,26 +21,14 @@ EXECUTIONS_MODE=queue
 
 In regular mode, a single n8n process handles all responsibilities:
 
-**Characteristics:**
-- Single process architecture
 - All functionality in one process
 - Direct execution without queue overhead
 - Simpler deployment and debugging
-- Limited by single process resources
-
-**When to Use:**
-- Personal or small team deployments
-- Low to medium workflow volume
-- Development and testing environments
-- When simplicity is prioritized over scalability
 
 **Configuration:**
 ```bash
 # Set execution mode (default is regular)
 EXECUTIONS_MODE=regular
-
-# Optional: Set concurrency limit
-N8N_CONCURRENCY_PRODUCTION_LIMIT=5  # Default: -1 (unlimited)
 
 # Start n8n
 n8n start
@@ -82,14 +68,6 @@ Queue mode distributes n8n functionality across multiple specialized processes, 
 ```bash
 # Required: Enable queue mode
 EXECUTIONS_MODE=queue
-
-# Redis configuration
-QUEUE_BULL_REDIS_HOST=localhost
-QUEUE_BULL_REDIS_PORT=6379
-QUEUE_BULL_REDIS_DB=0
-
-# Optional: Redis authentication
-QUEUE_BULL_REDIS_PASSWORD=yourpassword
 
 # Start main process
 n8n start
@@ -144,7 +122,6 @@ QUEUE_HEALTH_CHECK_PORT=5678
 ```bash
 # Same Redis configuration as main process
 EXECUTIONS_MODE=queue
-QUEUE_BULL_REDIS_HOST=localhost
 
 # Start webhook process
 n8n webhook

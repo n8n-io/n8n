@@ -24,11 +24,7 @@ If you're new to n8n's architecture, start here:
   - Service architecture patterns
 
 - **[Execution Modes](./execution-modes.md)**
-  - Main process (`n8n start`)
-  - Worker process (`n8n worker`)
-  - Webhook process (`n8n webhook`)
-  - Choosing between Regular and Queue mode
-  - Migration between modes
+  - Regular and Queue modes
 
 - **[Data Flow](./data-flow.md)**
   - Workflow execution lifecycle
