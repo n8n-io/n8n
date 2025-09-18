@@ -26,7 +26,7 @@ import { OwnershipService } from '@/services/ownership.service';
 
 import { DataStoreService } from './data-store.service';
 
-const ALLOWED_NODES: readonly string[] = [
+const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.evaluationTrigger',
@@ -36,7 +36,7 @@ const ALLOWED_NODES: readonly string[] = [
 type AllowedNode = (typeof ALLOWED_NODES)[number];
 
 export function isAllowedNode(s: string): s is AllowedNode {
-	return ALLOWED_NODES.includes(s);
+	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
 @Service()
