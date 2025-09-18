@@ -14,6 +14,7 @@ const MOCK_BASE_SETTINGS: RecursivePartial<ReturnType<typeof useSettingsStoreTyp
 	isDocker: true,
 	deploymentType: 'cloud',
 	nodeJsVersion: '14.17.0',
+	nodeEnv: 'production',
 	databaseType: 'postgresdb',
 	isQueueModeEnabled: false,
 	settings: {

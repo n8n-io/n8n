@@ -16,13 +16,13 @@ export const fetchInsightsSummary = async (
 
 export const fetchInsightsByTime = async (
 	context: IRestApiContext,
-	filter?: { dateRange: InsightsDateRange['key'] },
+	filter?: { dateRange: InsightsDateRange['key']; projectId?: string },
 ): Promise<InsightsByTime[]> =>
 	await makeRestApiRequest(context, 'GET', '/insights/by-time', filter);
 
 export const fetchInsightsTimeSaved = async (
 	context: IRestApiContext,
-	filter?: { dateRange: InsightsDateRange['key'] },
+	filter?: { dateRange: InsightsDateRange['key']; projectId?: string },
 ): Promise<InsightsByTime[]> =>
 	await makeRestApiRequest(context, 'GET', '/insights/by-time/time-saved', filter);
 
