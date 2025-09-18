@@ -39,25 +39,18 @@ jobs:
   cloudflare:
     name: Cloudflare Pages
     needs: [get-metadata]
-    # if: |
-    #   needs.get-metadata.outputs.is_dispatch == 'true' ||
-    #   (
-    #    needs.get-metadata.outputs.design_system_files_changed == 'true' &&
-    #    needs.get-metadata.outputs.is_community_pr == 'false' &&
-    #    needs.get-metadata.outputs.is_pr_target_master == 'true'
-    #   )
+    if: |
+      needs.get-metadata.outputs.is_dispatch == 'true' ||
+      (
+       needs.get-metadata.outputs.design_system_files_changed == 'true' &&
+       needs.get-metadata.outputs.is_community_pr == 'false' &&
+       needs.get-metadata.outputs.is_pr_target_master == 'true'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     steps:
-      - name: Output needs
-        run: |
-          echo "design_system_files_changed: ${{ needs.get-metadata.outputs.design_system_files_changed }}"
-          echo "is_community_pr: ${{ needs.get-metadata.outputs.is_community_pr }}"
-          echo "is_pr_target_master: ${{ needs.get-metadata.outputs.is_pr_target_master }}"
-          echo "is_dispatch: ${{ needs.get-metadata.outputs.is_dispatch }}"
-
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
@@ -65,7 +58,7 @@ jobs:
       - name: Setup Node.js
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vite-config --filter=@n8n/design-system
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
       - name: Build
         working-directory: packages/frontend/@n8n/design-system
