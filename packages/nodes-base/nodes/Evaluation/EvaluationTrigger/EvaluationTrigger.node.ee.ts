@@ -134,7 +134,16 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { limitRows: [true] } },
 			},
 			{ ...googleSheetFilters, displayOptions: { hide: { source: ['dataTable'] } } },
-			...dataTableFilters({ show: { source: ['dataTable'] } }),
+			{
+				displayName: 'Filter Rows',
+				name: 'filterRows',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to filter rows to process',
+				displayOptions: { show: { source: ['dataTable'] } },
+			},
+			...dataTableFilters({ show: { filterRows: [true] } }),
 		],
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
