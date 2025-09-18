@@ -38,6 +38,7 @@ jobs:
       is_dispatch: ${{ github.event_name == 'workflow_dispatch' }}
 
   cloudflare:
+    name: Cloudflare Pages
     needs: [get-metadata]
     # if: |
     #   needs.get-metadata.outputs.is_dispatch == 'true' ||
@@ -51,6 +52,13 @@ jobs:
       contents: read
       deployments: write
     steps:
+      - name: Output needs
+        run: |
+          echo "design_system_files_changed: ${{ needs.get-metadata.outputs.design_system_files_changed }}"
+          echo "is_community_pr: ${{ needs.get-metadata.outputs.is_community_pr }}"
+          echo "is_pr_target_master: ${{ needs.get-metadata.outputs.is_pr_target_master }}"
+          echo "is_dispatch: ${{ needs.get-metadata.outputs.is_dispatch }}"
+
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
@@ -65,6 +73,10 @@ jobs:
           corepack enable
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Build Dependencies
+        run: |
+          pnpm build --filter @n8n/vitest-config
 
       - name: Build
         working-directory: packages/frontend/@n8n/design-system
