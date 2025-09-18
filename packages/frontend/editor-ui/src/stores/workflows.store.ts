@@ -28,7 +28,6 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
-	WorkflowListItem,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -549,34 +548,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'GET',
 			`/active-workflows/error/${id}`,
 		);
-	}
-
-	async function fetchWorkflowsAvailableForMCP(
-		page = 1,
-		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
-	): Promise<WorkflowListItem[]> {
-		const options = {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-		};
-		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
-			rootStore.restApiContext,
-			{ isArchived: false, availableInMCP: true },
-			Object.keys(options).length ? options : undefined,
-			false,
-		);
-		totalWorkflowCount.value = count;
-		data
-			.filter((item) => item.resource !== 'folder')
-			.forEach((item) => {
-				addWorkflow({
-					...item,
-					nodes: [],
-					connections: {},
-					versionId: '',
-				});
-			});
-		return data.filter((item): item is WorkflowListItem => item.resource === 'workflow');
 	}
 
 	async function fetchWorkflowsPage(
@@ -1722,22 +1693,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return newWorkflow;
 	}
 
-	async function toggleWorkflowMCPAccess(id: string, enabled: boolean): Promise<boolean> {
-		const wf = workflowsById.value[id];
-		if (!wf) {
-			throw new Error(i18n.baseText('workflowSettings.toggleMCP.notFoundError'));
-		}
-		const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
-			settings: {
-				...wf.settings,
-				availableInMCP: enabled,
-			},
-		};
-		const updatedWorkflow = await updateWorkflow(id, data, true);
-		wf.settings = updatedWorkflow.settings;
-		return updatedWorkflow.settings?.availableInMCP === true;
-	}
-
 	async function updateWorkflow(
 		id: string,
 		data: WorkflowDataUpdate,
@@ -2016,7 +1971,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		searchWorkflows,
 		fetchAllWorkflows,
 		fetchWorkflowsPage,
-		fetchWorkflowsAvailableForMCP,
 		fetchWorkflow,
 		fetchWorkflowsWithNodesIncluded,
 		getNewWorkflowData,
@@ -2101,6 +2055,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
-		toggleWorkflowMCPAccess,
 	};
 });

@@ -62,7 +62,6 @@ export const registerModuleSettingsSidebarItems = () => {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const checkModuleAvailability = (options: any) => {
-	console.log('CHECK MODULE AVAILABLITY');
 	if (!options?.to?.meta?.moduleName || typeof options.to.meta.moduleName !== 'string') {
 		return true;
 	}

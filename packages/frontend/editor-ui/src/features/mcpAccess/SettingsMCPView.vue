@@ -2,7 +2,7 @@
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import type { UserAction, WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+// import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
@@ -11,6 +11,7 @@ import { useClipboard } from '@vueuse/core';
 import { VIEWS } from '@/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -18,7 +19,8 @@ const documentTitle = useDocumentTitle();
 
 const { copy, copied, isSupported } = useClipboard();
 
-const workflowsStore = useWorkflowsStore();
+// const workflowsStore = useWorkflowsStore();
+const mcpStore = useMCPStore();
 const rootStore = useRootStore();
 
 const isMCPEnabled = ref(true);
@@ -125,7 +127,7 @@ const getProjectName = (workflow: WorkflowListItem): string => {
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
 	try {
-		const workflows = await workflowsStore.fetchWorkflowsAvailableForMCP(1, 200);
+		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
 		availableWorkflows.value = workflows;
 		// TODO: Add empty state if no workflows are available
 	} catch (error) {
@@ -149,7 +151,7 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	switch (action) {
 		case 'removeFromMCP':
 			try {
-				await workflowsStore.toggleWorkflowMCPAccess(workflow.id, false);
+				await mcpStore.toggleWorkflowMCPAccess(workflow.id, false);
 				await fetchAvailableWorkflows();
 			} catch (error) {
 				toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
