@@ -351,7 +351,7 @@ test.describe('Credentials', () => {
 		const saveBtn = n8n.canvas.credentialModal.getSaveButton();
 		await saveBtn.click();
 
-		const errorNotification = page.locator('.el-notification:has(.el-notification--error)');
+		const errorNotification = n8n.notifications.getErrorNotifications();
 		await expect(errorNotification).toBeVisible();
 		await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 

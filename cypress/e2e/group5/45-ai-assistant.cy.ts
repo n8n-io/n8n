@@ -244,6 +244,9 @@ describe('AI Assistant::enabled', () => {
 
 		ndv.getters.nodeExecuteButton().click();
 
+		// Wait for a message from AI to be shown
+		aiAssistant.getters.chatMessagesAssistant().should('have.length', 3);
+
 		getEditor()
 			.type('{selectall}')
 			.paste(
