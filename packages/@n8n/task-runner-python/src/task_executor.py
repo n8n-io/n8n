@@ -10,7 +10,6 @@ import logging
 
 from src.errors import (
     TaskResultMissingError,
-    TaskRuntimeError,
     TaskTimeoutError,
     TaskProcessExitError,
 )
@@ -98,12 +97,15 @@ class TaskExecutor:
             if process.exitcode != 0:
                 assert process.exitcode is not None
 
-                if process.exitcode == -15: # SIGTERM
+                if process.exitcode == -15:  # SIGTERM
                     if continue_on_fail:
                         return [{"json": {"error": "Task was cancelled"}}], print_args
                     else:
                         from src.errors.task_runtime_error import TaskRuntimeError
-                        raise TaskRuntimeError({"message": "Task was cancelled", "stack": ""})
+
+                        raise TaskRuntimeError(
+                            {"message": "Task was cancelled", "stack": ""}
+                        )
 
                 raise TaskProcessExitError(process.exitcode)
 

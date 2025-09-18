@@ -330,7 +330,7 @@ class TaskRunner:
         except TaskRuntimeError as e:
             if str(e) != "Task was cancelled":
                 self.logger.error(f"Task {task_id} failed", exc_info=True)
-            
+
             error = {
                 "message": str(e),
                 "description": getattr(e, "description", ""),
