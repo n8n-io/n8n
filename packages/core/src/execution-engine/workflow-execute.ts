@@ -1855,11 +1855,11 @@ export class WorkflowExecute {
 									subNodeExecutionResults,
 								);
 
-								let didContinueOnFail =
+								let nodeFailed =
 									!isEngineRequest(runNodeData) &&
 									runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
 
-								while (didContinueOnFail && tryIndex !== maxTries - 1) {
+								while (nodeFailed && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
 
 									// retries for failure happen here
@@ -1873,7 +1873,7 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
-									didContinueOnFail =
+									nodeFailed =
 										!isEngineRequest(runNodeData) &&
 										runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
 									tryIndex++;
