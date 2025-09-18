@@ -98,6 +98,7 @@ const makeUidtMapper = (version: number) => {
 	uidtMapper['Currency'] = uidtMapper['Number'];
 	uidtMapper['Rating'] = uidtMapper['Number'];
 	uidtMapper['Year'] = uidtMapper['Number'];
+	uidtMapper['Date'] = uidtMapper['DateTime'];
 	return uidtMapper;
 };
 
