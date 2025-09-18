@@ -363,6 +363,11 @@ defineExpose({
 		}
 	}
 
+	:global(.ag-picker-field-wrapper) {
+		border-radius: var(--border-radius-base);
+		padding-left: var(--ag-spacing);
+	}
+
 	:global(.ag-cell-inline-editing) {
 		box-shadow: none;
 
