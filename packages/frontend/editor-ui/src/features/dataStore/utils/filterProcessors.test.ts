@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { processTextFilter, processNumberFilter, processDateFilter } from './filterProcessors';
 import type { FilterModel, FilterOperation } from '../types/dataStoreFilters.types';
 
-vi.mock('../filterMappings', () => ({
+vi.mock('./filterMappings', () => ({
 	mapTextTypeToBackend: vi.fn((type: string) => {
 		const mapping: Record<string, string> = {
 			contains: 'ilike',

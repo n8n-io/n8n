@@ -86,11 +86,13 @@ export function processDateFilter(
 			value = new Date(String(filter.dateFrom)).toISOString();
 		}
 
-		if (filter.type === 'inRange' && filter.dateFrom && filter.dateTo) {
-			const fromIso = new Date(String(filter.dateFrom)).toISOString();
-			const toIso = new Date(String(filter.dateTo)).toISOString();
-			filters.push({ columnName: colField, condition: 'gte', value: fromIso });
-			filters.push({ columnName: colField, condition: 'lte', value: toIso });
+		if (filter.type === 'inRange') {
+			if (filter.dateFrom && filter.dateTo) {
+				const fromIso = new Date(String(filter.dateFrom)).toISOString();
+				const toIso = new Date(String(filter.dateTo)).toISOString();
+				filters.push({ columnName: colField, condition: 'gte', value: fromIso });
+				filters.push({ columnName: colField, condition: 'lte', value: toIso });
+			}
 		} else {
 			filters.push({
 				columnName: colField,

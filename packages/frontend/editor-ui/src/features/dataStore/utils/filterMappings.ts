@@ -1,6 +1,8 @@
 import type { BackendFilterCondition, FilterOperation } from '../types/dataStoreFilters.types';
 
 export const SPECIAL_COLUMNS = ['add-column', 'ag-Grid-SelectionColumn'] as const;
+export const isSpecialColumn = (value: unknown): value is (typeof SPECIAL_COLUMNS)[number] =>
+	typeof value === 'string' && (SPECIAL_COLUMNS as readonly string[]).includes(value);
 export const MAX_CONDITIONS = 1;
 
 export const GRID_FILTER_CONFIG = {
@@ -11,7 +13,7 @@ export const GRID_FILTER_CONFIG = {
 	excludedColumns: SPECIAL_COLUMNS,
 } as const;
 
-const TEXT_TYPE_TO_BACKEND_MAP: Record<string, BackendFilterCondition> = {
+const TEXT_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFilterCondition>> = {
 	contains: 'ilike',
 	equals: 'eq',
 	notEqual: 'neq',
@@ -23,9 +25,9 @@ const TEXT_TYPE_TO_BACKEND_MAP: Record<string, BackendFilterCondition> = {
 	notNull: 'neq',
 	true: 'eq',
 	false: 'eq',
-};
+} as const;
 
-const NUMBER_DATE_TYPE_TO_BACKEND_MAP: Record<string, BackendFilterCondition> = {
+const NUMBER_DATE_TYPE_TO_BACKEND_MAP: Partial<Record<FilterOperation, BackendFilterCondition>> = {
 	equals: 'eq',
 	notEqual: 'neq',
 	lessThan: 'lt',
@@ -34,9 +36,11 @@ const NUMBER_DATE_TYPE_TO_BACKEND_MAP: Record<string, BackendFilterCondition> = 
 	greaterThanOrEqual: 'gte',
 	null: 'eq',
 	notNull: 'neq',
-};
+} as const;
 
-export function mapTextTypeToBackend(type: FilterOperation): BackendFilterCondition {
+export function mapTextTypeToBackend(
+	type: keyof typeof TEXT_TYPE_TO_BACKEND_MAP,
+): BackendFilterCondition {
 	const condition = TEXT_TYPE_TO_BACKEND_MAP[type];
 	if (!condition) {
 		throw new Error(`Unknown text type: ${type}`);
@@ -44,7 +48,9 @@ export function mapTextTypeToBackend(type: FilterOperation): BackendFilterCondit
 	return condition;
 }
 
-export function mapNumberDateTypeToBackend(type: FilterOperation): BackendFilterCondition {
+export function mapNumberDateTypeToBackend(
+	type: keyof typeof NUMBER_DATE_TYPE_TO_BACKEND_MAP,
+): BackendFilterCondition {
 	const condition = NUMBER_DATE_TYPE_TO_BACKEND_MAP[type];
 	if (!condition) {
 		throw new Error(`Unknown number/date type: ${type}`);

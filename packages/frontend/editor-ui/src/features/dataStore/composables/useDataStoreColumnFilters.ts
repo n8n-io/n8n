@@ -6,7 +6,7 @@ import type {
 	BackendFilterRecord,
 	FilterModel,
 } from '../types/dataStoreFilters.types';
-import { GRID_FILTER_CONFIG, SPECIAL_COLUMNS } from '../utils/filterMappings';
+import { GRID_FILTER_CONFIG, isSpecialColumn } from '../utils/filterMappings';
 import {
 	processTextFilter,
 	processNumberFilter,
@@ -32,8 +32,8 @@ export const useDataStoreColumnFilters = ({
 		const updated = colDefs.value.map((def) => {
 			const colId = def.colId ?? def.field;
 			if (!colId) return def;
-			if (SPECIAL_COLUMNS.includes(colId as (typeof SPECIAL_COLUMNS)[number])) {
-				return { ...def, filter: false } as ColDef;
+			if (isSpecialColumn(colId)) {
+				return { ...def, filter: false };
 			}
 			return def;
 		});

@@ -1,4 +1,4 @@
-export type BackendFilterCondition = 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+export type BackendFilterCondition = 'eq' | 'neq' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 
 export type BackendFilterRecord = {
 	columnName: string;
@@ -32,7 +32,7 @@ export type FilterOperation =
 
 export type FilterModel = {
 	[colId: string]: {
-		filterType: 'text' | 'number' | 'date';
+		filterType?: 'text' | 'number' | 'date';
 		filter?: string | number;
 		filterTo?: string | number;
 		type: FilterOperation;

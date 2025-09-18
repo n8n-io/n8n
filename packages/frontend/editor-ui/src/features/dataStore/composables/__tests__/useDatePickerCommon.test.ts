@@ -14,23 +14,23 @@ vi.mock('vue', async () => {
 });
 
 const setupWrapperRef = (wrapperRef: unknown, inputValue: string) => {
+	const wrapperElement = document.createElement('div');
 	const mockInput = document.createElement('input');
 	mockInput.value = inputValue;
+	wrapperElement.appendChild(mockInput);
 	// @ts-expect-error - wrapperRef is unknown
-	wrapperRef.value = { querySelector: vi.fn().mockReturnValue(mockInput) };
+	wrapperRef.value = wrapperElement;
 	return mockInput;
 };
 
 const setupPickerRef = (pickerRef: unknown, throwError = false) => {
 	const focus = vi.fn();
-	// @ts-expect-error - pickerRef is unknown
-	pickerRef.value = {
-		focus: throwError
-			? () => {
-					throw new Error('Focus failed');
-				}
-			: focus,
-	};
+	if (!throwError) {
+		const pickerElement = document.createElement('div');
+		pickerElement.focus = focus;
+		// @ts-expect-error - pickerRef is unknown
+		pickerRef.value = pickerElement;
+	}
 	return focus;
 };
 

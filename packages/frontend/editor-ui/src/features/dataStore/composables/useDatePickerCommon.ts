@@ -14,8 +14,8 @@ export const useDatePickerCommon = (callbacks: DatePickerCallbacks = {}) => {
 	const initialValue = ref<Date | null>(null);
 
 	const getInnerInput = (): HTMLInputElement | null => {
-		const wrapper = wrapperRef.value as HTMLElement;
-		return wrapper.querySelector('input') ?? null;
+		if (!(wrapperRef.value instanceof HTMLElement)) return null;
+		return wrapperRef.value.querySelector('input') ?? null;
 	};
 
 	const commitIfParsedFromInput = (target?: EventTarget | null): boolean => {
@@ -58,9 +58,8 @@ export const useDatePickerCommon = (callbacks: DatePickerCallbacks = {}) => {
 
 	const focusPicker = async () => {
 		await nextTick();
-		try {
-			(pickerRef.value as { focus?: () => void })?.focus?.();
-		} catch {}
+		if (!(pickerRef.value instanceof HTMLElement)) return;
+		pickerRef.value.focus();
 	};
 
 	const getDate = (): Date | null => {

@@ -106,7 +106,7 @@ const onHeaderClick = () => {
 const onShowFilter = (e: MouseEvent) => {
 	e.stopPropagation();
 	isFilterOpen.value = true;
-	props.params.showFilter(e.target as HTMLElement);
+	props.params.showFilter(e.currentTarget as HTMLElement);
 };
 
 const onFilterClosed = () => {

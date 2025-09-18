@@ -44,7 +44,7 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 			onDelete: onDeleteMock,
 			allowMenuActions: true,
 			api: {
-				getFilterModel: () => vi.fn().mockReturnValue({}),
+				getFilterModel: vi.fn().mockReturnValue({}),
 				addEventListener: vi.fn(),
 				removeEventListener: vi.fn(),
 			},
