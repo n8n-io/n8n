@@ -708,6 +708,7 @@ onBeforeUnmount(() => {
 
 		<dialog
 			ref="dialogRef"
+			id="ndv"
 			open
 			aria-modal="true"
 			data-test-id="ndv"

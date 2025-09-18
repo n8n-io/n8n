@@ -80,7 +80,7 @@ watch(
 	bottom: calc(var(--logs-panel-height, 0px) + var(--spacing-s));
 
 	/* When NDV is opened, bring to the bottom */
-	body:has(dialog[open]) & {
+	body:has(#ndv) & {
 		bottom: var(--spacing-s);
 	}
 }

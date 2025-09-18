@@ -294,7 +294,7 @@
 	);
 
 	/* When NDV is opened, only account for AI assistant height */
-	body:has(dialog[open]) & {
+	body:has(#ndv) & {
 		margin-bottom: var(--ask-assistant-floating-button-height, 0);
 	}
 }
