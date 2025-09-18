@@ -1726,9 +1726,6 @@ importers:
       yargs-parser:
         specifier: 21.1.1
         version: 21.1.1
-      ytdl-core:
-        specifier: ^4.11.5
-        version: 4.11.5
       zod:
         specifier: 'catalog:'
         version: 3.25.67
@@ -12491,10 +12488,6 @@ packages:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
 
-  m3u8stream@0.8.6:
-    resolution: {integrity: sha512-LZj8kIVf9KCphiHmH7sbFQTVe4tOemb202fWwvJwR9W5ENW/1hxJN6ksAWGhQgSBSa3jyWhnjKU1Fw1GaOdbyA==}
-    engines: {node: '>=12'}
-
   madge@8.0.0:
     resolution: {integrity: sha512-9sSsi3TBPhmkTCIpVQF0SPiChj1L7Rq9kU2KDG1o6v2XH9cCw086MopjVCD+vuoL5v8S77DTbVopTO8OUiQpIw==}
     engines: {node: '>=18'}
@@ -12689,10 +12682,6 @@ packages:
 
   minifaker@1.34.1:
     resolution: {integrity: sha512-O9+c6GaUETgtKe65bJkpDTJxGcAALiUPqJtDv97dT3o0uP2HmyUVEguEGm6PLKuoSzZUmHqSTZ4cS7m8xKFEAg==}
-
-  miniget@4.2.3:
-    resolution: {integrity: sha512-SjbDPDICJ1zT+ZvQwK0hUcRY4wxlhhNpHL9nJOB2MEAXRGagTljsO8MEDzQMTFf0Q8g4QNi8P9lEm/g7e+qgzA==}
-    engines: {node: '>=12'}
 
   minimalistic-assert@1.0.1:
     resolution: {integrity: sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==}
@@ -16684,10 +16673,6 @@ packages:
   yoctocolors@2.1.1:
     resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
     engines: {node: '>=18'}
-
-  ytdl-core@4.11.5:
-    resolution: {integrity: sha512-27LwsW4n4nyNviRCO1hmr8Wr5J1wLLMawHCQvH8Fk0hiRqrxuIu028WzbJetiYH28K8XDbeinYW4/wcHQD1EXA==}
-    engines: {node: '>=12'}
 
   yup@0.32.11:
     resolution: {integrity: sha512-Z2Fe1bn+eLstG8DRR6FTavGD+MeAwyfmouhHsIUgaADz8jvFKbO/fXc2trJKZg+5EBjh4gGm3iU/t3onKlXHIg==}
@@ -28541,11 +28526,6 @@ snapshots:
 
   lz-string@1.5.0: {}
 
-  m3u8stream@0.8.6:
-    dependencies:
-      miniget: 4.2.3
-      sax: 1.2.4
-
   madge@8.0.0(typescript@5.9.2):
     dependencies:
       chalk: 4.1.2
@@ -28756,8 +28736,6 @@ snapshots:
       '@types/uuid': 8.3.4
       nanoid: 3.3.11
       uuid: 8.3.2
-
-  miniget@4.2.3: {}
 
   minimalistic-assert@1.0.1: {}
 
@@ -33579,12 +33557,6 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yoctocolors@2.1.1: {}
-
-  ytdl-core@4.11.5:
-    dependencies:
-      m3u8stream: 0.8.6
-      miniget: 4.2.3
-      sax: 1.2.4
 
   yup@0.32.11:
     dependencies:
