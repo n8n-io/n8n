@@ -1,0 +1,101 @@
+name: 'Release: Standalone Package'
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to release'
+        required: true
+        type: choice
+        options:
+          - '@n8n/node-cli'
+          - '@n8n/create-node'
+          - '@n8n/scan-community-package'
+
+env:
+  BUILD_CACHE_KEY: ${{ github.sha }}-${{ github.event.inputs.package }}-build
+
+concurrency:
+  group: release-package-${{ github.event.inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch
+        run: |
+          if [[ "${{ github.ref }}" != "refs/heads/master" ]]; then
+            echo "❌ This workflow can only be run from the master branch"
+            echo "Current branch: ${{ github.ref }}"
+            exit 1
+          fi
+          echo "✅ Running from master branch"
+
+  build:
+    needs: validate
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          build-command: 'pnpm --filter "${{ github.event.inputs.package }}" run --if-present build'
+
+      - name: Cache build artifacts
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ env.BUILD_CACHE_KEY }}
+
+  publish:
+    name: Publish to NPM
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore build artifacts
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          fail-on-cache-miss: true
+          path: ./packages/**/dist
+          key: ${{ env.BUILD_CACHE_KEY }}
+
+      - name: Pre publishing changes
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          node .github/scripts/ensure-provenance-fields.mjs
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter "${{ github.event.inputs.package }}" publish --access public --no-git-checks --publish-branch master
