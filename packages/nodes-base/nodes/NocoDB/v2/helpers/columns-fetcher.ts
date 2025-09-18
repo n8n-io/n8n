@@ -93,6 +93,7 @@ const makeUidtMapper = (version: number) => {
 		},
 	};
 	uidtMapper['Decimal'] = uidtMapper['Number'];
+	uidtMapper['Duration'] = uidtMapper['Number'];
 	uidtMapper['Percent'] = uidtMapper['Number'];
 	uidtMapper['Currency'] = uidtMapper['Number'];
 	uidtMapper['Rating'] = uidtMapper['Number'];
