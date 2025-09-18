@@ -4,7 +4,7 @@ import InlineExpressionEditorOutput from './InlineExpressionEditorOutput.vue';
 
 describe('InlineExpressionEditorOutput.vue', () => {
 	test('should render duplicate segments correctly', async () => {
-		const { getByTestId } = renderComponent(InlineExpressionEditorOutput, {
+		const rendered = renderComponent(InlineExpressionEditorOutput, {
 			pinia: createTestingPinia(),
 			props: {
 				visible: true,
@@ -48,11 +48,13 @@ describe('InlineExpressionEditorOutput.vue', () => {
 				],
 			},
 		});
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent('[1,2]');
+		const body = await rendered.findByTestId('inline-expression-editor-output');
+
+		expect(body).toHaveTextContent('[1,2]');
 	});
 
-	test('should render segments with resolved expressions', () => {
-		const { getByTestId } = renderComponent(InlineExpressionEditorOutput, {
+	test('should render segments with resolved expressions', async () => {
+		const rendered = renderComponent(InlineExpressionEditorOutput, {
 			pinia: createTestingPinia(),
 			props: {
 				visible: true,
@@ -93,8 +95,8 @@ describe('InlineExpressionEditorOutput.vue', () => {
 				],
 			},
 		});
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent(
-			'before> [Object: "2024-04-18T09:03:26.651-04:00"] <after',
-		);
+		const body = await rendered.findByTestId('inline-expression-editor-output');
+
+		expect(body).toHaveTextContent('before> [Object: "2024-04-18T09:03:26.651-04:00"] <after');
 	});
 });

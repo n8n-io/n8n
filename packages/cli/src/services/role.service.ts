@@ -15,7 +15,12 @@ import {
 	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope, Role as RoleDTO, AssignableProjectRole } from '@n8n/permissions';
+import type {
+	Scope,
+	Role as RoleDTO,
+	AssignableProjectRole,
+	RoleNamespace,
+} from '@n8n/permissions';
 import {
 	combineScopes,
 	getAuthPrincipalScopes,
@@ -29,6 +34,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {
@@ -36,25 +42,40 @@ export class RoleService {
 		private readonly license: LicenseState,
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
+		private readonly roleCacheService: RoleCacheService,
 	) {}
 
-	private dbRoleToRoleDTO(role: Role): RoleDTO {
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
 			licensed: this.isRoleLicensed(role.slug),
+			usedByUsers,
 		};
 	}
 
-	async getAllRoles(): Promise<RoleDTO[]> {
+	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
 		const roles = await this.roleRepository.findAll();
-		return roles.map((r) => this.dbRoleToRoleDTO(r));
+
+		if (!withCount) {
+			return roles.map((r) => this.dbRoleToRoleDTO(r));
+		}
+
+		const roleCounts = await this.roleRepository.findAllRoleCounts();
+
+		return roles.map((role) => {
+			const usedByUsers = roleCounts[role.slug] ?? 0;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
+		});
 	}
 
-	async getRole(slug: string): Promise<RoleDTO> {
+	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (role) {
-			return this.dbRoleToRoleDTO(role);
+			const usedByUsers = withCount
+				? await this.roleRepository.countUsersWithRole(role)
+				: undefined;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
 		}
 		throw new NotFoundError('Role not found');
 	}
@@ -68,6 +89,10 @@ export class RoleService {
 			throw new BadRequestError('Cannot delete system roles');
 		}
 		await this.roleRepository.removeBySlug(slug);
+
+		// Invalidate cache after role deletion
+		await this.roleCacheService.invalidateCache();
+
 		return this.dbRoleToRoleDTO(role);
 	}
 
@@ -99,6 +124,9 @@ export class RoleService {
 				scopes: await this.resolveScopes(scopeSlugs),
 			});
 
+			// Invalidate cache after role update
+			await this.roleCacheService.invalidateCache();
+
 			return this.dbRoleToRoleDTO(updatedRole);
 		} catch (error) {
 			if (error instanceof UserError && error.message === 'Role not found') {
@@ -125,6 +153,10 @@ export class RoleService {
 		role.roleType = newRole.roleType;
 		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`;
 		const createdRole = await this.roleRepository.save(role);
+
+		// Invalidate cache after role creation
+		await this.roleCacheService.invalidateCache();
+
 		return this.dbRoleToRoleDTO(createdRole);
 	}
 
@@ -230,6 +262,18 @@ export class RoleService {
 			mergedScopes.forEach((s) => scopesSet.add(s));
 		}
 		return [...scopesSet].sort();
+	}
+
+	/**
+	 * Enhanced rolesWithScope function that combines static roles with database roles
+	 * This replaces the original rolesWithScope function from @n8n/permissions
+	 */
+	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+		if (!Array.isArray(scopes)) {
+			scopes = [scopes];
+		}
+		// Get database roles from cache
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {

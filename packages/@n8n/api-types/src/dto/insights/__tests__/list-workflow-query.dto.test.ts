@@ -77,6 +77,15 @@ describe('ListInsightsWorkflowQueryDto', () => {
 					sortBy: 'total:asc',
 				},
 			},
+			{
+				name: 'valid projectId',
+				request: {
+					projectId: '2gQLpmP5V4wOY627',
+				},
+				parsedResult: {
+					projectId: '2gQLpmP5V4wOY627',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = ListInsightsWorkflowQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -110,6 +119,13 @@ describe('ListInsightsWorkflowQueryDto', () => {
 					sortBy: 'invalid-value',
 				},
 				expectedErrorPath: ['sortBy'],
+			},
+			{
+				name: 'invalid projectId value',
+				request: {
+					projectId: 10,
+				},
+				expectedErrorPath: ['projectId'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = ListInsightsWorkflowQueryDto.safeParse(request);

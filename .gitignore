@@ -42,3 +42,4 @@ packages/testing/**/.cursor/rules/
 __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
+packages/cli/src/commands/export/outputs

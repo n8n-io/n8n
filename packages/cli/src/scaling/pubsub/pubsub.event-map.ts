@@ -12,6 +12,13 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region SSO
+
+	'reload-oidc-config': never;
+	'reload-saml-config': never;
+
+	// #endregion
+
 	// #region Community packages
 
 	'community-package-install': {

@@ -21,7 +21,7 @@ describe('nodeExecuteAfterData', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: 1,
+				itemCountByConnectionType: { main: [1] },
 				data: {
 					executionTime: 0,
 					startTime: 0,
