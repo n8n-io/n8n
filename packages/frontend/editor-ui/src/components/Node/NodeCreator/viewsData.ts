@@ -430,7 +430,7 @@ export function TriggerView() {
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
 					iconData: {
 						type: 'file',
-						fileBuffer: '/static/webhook-icon.svg',
+						fileBuffer: `${window.BASE_PATH}static/webhook-icon.svg`,
 					},
 				},
 			},
@@ -445,7 +445,7 @@ export function TriggerView() {
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
 					iconData: {
 						type: 'file',
-						fileBuffer: '/static/form-grey.svg',
+						fileBuffer: `${window.BASE_PATH}static/webhook-icon.svg`,
 					},
 				},
 			},
