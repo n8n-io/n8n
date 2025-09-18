@@ -1,5 +1,6 @@
 import { ref, nextTick, useTemplateRef } from 'vue';
 import { parseLooseDateInput } from '@/features/dataStore/utils/typeUtils';
+import { isFocusableEl } from '@/utils/typesUtils';
 
 export interface DatePickerCallbacks {
 	onCommit?: () => void;
@@ -58,8 +59,9 @@ export const useDatePickerCommon = (callbacks: DatePickerCallbacks = {}) => {
 
 	const focusPicker = async () => {
 		await nextTick();
-		if (!(pickerRef.value instanceof HTMLElement)) return;
-		pickerRef.value.focus();
+		if (isFocusableEl(pickerRef.value)) {
+			pickerRef.value.focus();
+		}
 	};
 
 	const getDate = (): Date | null => {
