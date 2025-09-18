@@ -259,6 +259,60 @@ describe('dataStore filters', () => {
 				]);
 			});
 
+			it("retrieves rows with 'not equals' filter including NULL values", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [{ name: 'field', type: 'string' }],
+				});
+
+				const rows = [{ field: 'foo' }, { field: 'bar' }, { field: null }];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'field', value: 'foo', condition: 'neq' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(2);
+				expect(result.data).toEqual([
+					expect.objectContaining({ field: 'bar' }),
+					expect.objectContaining({ field: null }),
+				]);
+			});
+
+			it("retrieves only non-null rows when 'not equals null'", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [{ name: 'field', type: 'string' }],
+				});
+
+				const rows = [{ field: 'foo' }, { field: 'bar' }, { field: null }];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'field', value: null, condition: 'neq' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(2);
+				expect(result.data).toEqual([
+					expect.objectContaining({ field: 'foo' }),
+					expect.objectContaining({ field: 'bar' }),
+				]);
+			});
+
 			it('supports filter by null', async () => {
 				// ARRANGE
 				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
