@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`WhatsNewModal > should render with update button disabled 1`] = `
+exports[`WhatsNewModal > should not render update button when no version updates available 1`] = `
 <div
   class="article"
   data-test-id="whats-new-item-1"

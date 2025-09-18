@@ -50,10 +50,9 @@ describe('Instance owner', () => {
 			await authOwnerAgent
 				.patch('/me')
 				.send({
-					email: randomEmail(),
+					email: owner.email,
 					firstName: randomName(),
 					lastName: randomName(),
-					password: randomValidPassword(),
 				})
 				.expect(200);
 		});

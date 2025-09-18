@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { PubSubMetadata } from '@n8n/decorators';
+import { PubSubEventName, PubSubMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -16,8 +16,20 @@ export class PubSubRegistry {
 		this.logger = this.logger.scoped('pubsub');
 	}
 
+	private eventHandlers: Array<{
+		eventName: PubSubEventName;
+		handler: Parameters<PubSubEventBus['on']>[1];
+	}> = [];
+
 	init() {
 		const { instanceSettings, pubSubMetadata } = this;
+		// We clear the event handlers before registering new ones
+		for (const { eventName, handler } of this.eventHandlers) {
+			this.pubsubEventBus.off(eventName, handler);
+		}
+		this.eventHandlers = [];
+
+		// Register all event handlers that match the current instance type and role
 		const handlers = pubSubMetadata.getHandlers();
 		for (const { eventHandlerClass, methodName, eventName, filter } of handlers) {
 			const handlerClass = Container.get(eventHandlerClass);
@@ -25,14 +37,16 @@ export class PubSubRegistry {
 				this.logger.debug(
 					`Registered a "${eventName}" event handler on ${eventHandlerClass.name}#${methodName}`,
 				);
-				this.pubsubEventBus.on(eventName, async (...args: unknown[]) => {
+				const eventHandler = async (...args: unknown[]) => {
 					// Since the instance role can change, this check needs to be in the event listener
 					const shouldTrigger =
 						filter?.instanceType !== 'main' ||
 						!filter.instanceRole ||
 						filter.instanceRole === instanceSettings.instanceRole;
 					if (shouldTrigger) await handlerClass[methodName].call(handlerClass, ...args);
-				});
+				};
+				this.pubsubEventBus.on(eventName, eventHandler);
+				this.eventHandlers.push({ eventName, handler: eventHandler });
 			}
 		}
 	}
