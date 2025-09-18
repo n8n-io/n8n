@@ -13,7 +13,7 @@ on:
           - '@n8n/scan-community-package'
 
 env:
-  BUILD_DIST_NAME: build-dist-${{ github.sha }}
+  BUILD_DIST_NAME: ${{ github.sha }}-${{ github.event.inputs.package }}-build
 
 concurrency:
   group: release-package-${{ github.event.inputs.package }}
