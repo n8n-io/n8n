@@ -99,4 +99,5 @@ jobs:
       - name: Publish package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm --filter "${{ github.event.inputs.package }}" publish --access public --no-git-checks --publish-branch master
+          PACKAGE: ${{ github.event.inputs.package }}
+        run: pnpm --filter "$PACKAGE" publish --access public --no-git-checks --publish-branch master
