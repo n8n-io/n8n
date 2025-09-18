@@ -1,5 +1,5 @@
-import { Service } from '@n8n/di';
 import { SettingsRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 
 const KEY = 'mcp.access.enabled';
 
