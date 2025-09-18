@@ -228,13 +228,47 @@ export class CanvasPage extends BasePage {
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
-			this.clickByText('Import from File...'),
+			this.clickByTestId('workflow-menu-item-import-from-file'),
 		]);
 		await fileChooser.setFiles(resolveFromRoot('workflows', fixtureKey));
 
 		await this.clickByTestId('inline-edit-preview');
 		await this.fillByTestId('inline-edit-input', workflowName);
 		await this.page.getByTestId('inline-edit-input').press('Enter');
+	}
+
+	// Import workflow locators
+	getImportURLInput(): Locator {
+		return this.page.getByTestId('workflow-url-import-input');
+	}
+
+	// Import workflow actions
+	async clickWorkflowMenu(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+	}
+
+	async clickImportFromURL(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import-from-url');
+	}
+
+	async clickImportFromFile(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import-from-file');
+	}
+
+	async fillImportURLInput(url: string): Promise<void> {
+		await this.getImportURLInput().fill(url);
+	}
+
+	async clickConfirmImportURL(): Promise<void> {
+		await this.clickByTestId('confirm-workflow-import-url-button');
+	}
+
+	async clickCancelImportURL(): Promise<void> {
+		await this.clickByTestId('cancel-workflow-import-url-button');
+	}
+
+	async clickOutsideModal(): Promise<void> {
+		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
 	getWorkflowTags() {
@@ -660,7 +694,46 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
 
+	async clickZoomInButton(): Promise<void> {
+		await this.clickByTestId('zoom-in-button');
+	}
+
+	async clickZoomOutButton(): Promise<void> {
+		await this.clickByTestId('zoom-out-button');
+	}
+
+	/**
+	 * Get the current zoom level of the canvas
+	 * @returns The current zoom/scale factor as a number
+	 */
+	async getCanvasZoomLevel(): Promise<number> {
+		return await this.page.evaluate(() => {
+			const canvasViewport = document.querySelector('.vue-flow__viewport');
+			if (canvasViewport) {
+				const transform = window.getComputedStyle(canvasViewport).transform;
+				if (transform && transform !== 'none') {
+					const matrix = transform.match(/matrix\(([^)]+)\)/);
+					if (matrix) {
+						const values = matrix[1].split(',').map((v) => v.trim());
+						return parseFloat(values[0]); // First value is scaleX
+					}
+				}
+			}
+
+			// Fallback: return default zoom level
+			return 1.0;
+		});
+	}
+
 	waitingForTriggerEvent() {
 		return this.getExecuteWorkflowButton().getByText('Waiting for trigger event');
+	}
+
+	getNodeSuccessStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-success');
+	}
+
+	getNodeWarningStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
 	}
 }

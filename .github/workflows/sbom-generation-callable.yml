@@ -56,14 +56,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate CycloneDX SBOM for source code
-        uses: anchore/sbom-action@b9a8bc8d2c19e9396f663e53c7b55848e98cf17c # v0.17.6
+        uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
         with:
           path: ./
           format: cyclonedx-json
           output-file: sbom-source.cdx.json
 
       - name: Attest build provenance for source release
-        uses: actions/attest-build-provenance@977bb37082e0bfde04bb18e63b0632b7b5a1c4a3 # v3.0.0
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a0 # v3.0.0
         with:
           subject-path: './package.json'
 
@@ -74,7 +74,7 @@ jobs:
           sbom-path: 'sbom-source.cdx.json'
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # v3.7.0
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
 
       - name: Sign SBOM (keyless)
         run: |

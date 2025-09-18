@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	ITaskData,
 	ITaskStartedData,
+	NodeConnectionType,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -61,8 +62,15 @@ export type NodeExecuteAfter = {
 	data: {
 		executionId: string;
 		nodeName: string;
-		data: Omit<ITaskData, 'data'>;
-		itemCount: number;
+		/**
+		 * The data field for task data in `NodeExecuteAfter` is always trimmed (undefined).
+		 */
+		data: ITaskData;
+		/**
+		 * The number of items per output connection type. This is needed so that the frontend
+		 * can know how many items to expect when receiving the `NodeExecuteAfterData` message.
+		 */
+		itemCountByConnectionType: Partial<Record<NodeConnectionType, number[]>>;
 	};
 };
 
@@ -81,7 +89,7 @@ export type NodeExecuteAfterData = {
 		 * Later we fetch the entire execution data and fill in any placeholders.
 		 */
 		data: ITaskData;
-		itemCount: number;
+		itemCountByConnectionType: NodeExecuteAfter['data']['itemCountByConnectionType'];
 	};
 };
 
