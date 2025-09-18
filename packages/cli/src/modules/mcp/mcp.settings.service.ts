@@ -9,7 +9,8 @@ export class McpSettingsService {
 
 	async getEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(KEY);
-		if (!row) return false;
+		// Enabled by default
+		if (!row) return true;
 		// Values are stored as strings in the settings table
 		return row.value === 'true';
 	}
