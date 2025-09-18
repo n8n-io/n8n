@@ -7,7 +7,6 @@ import { computed, createApp, onMounted, onUnmounted, useTemplateRef, watch, ref
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRouter } from 'vue-router';
@@ -35,7 +34,6 @@ const emit = defineEmits<{
 const locale = useI18n();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
-const workflowHelpers = useWorkflowHelpers();
 const rootStore = useRootStore();
 const { runWorkflow } = useRunWorkflow({ router });
 const chatContainer = useTemplateRef<HTMLElement>('chatContainer');
