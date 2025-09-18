@@ -171,7 +171,7 @@ describe('Test Evaluation', () => {
 					},
 				]);
 
-				const data = await new Evaluation().execute.call(mockExecuteFunctions);
+				await new Evaluation().execute.call(mockExecuteFunctions);
 
 				expect(mockDataTable.getColumns).toHaveBeenCalled();
 				expect(mockDataTable.addColumn).toHaveBeenCalledWith({
