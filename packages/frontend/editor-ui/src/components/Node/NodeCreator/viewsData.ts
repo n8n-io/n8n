@@ -445,7 +445,7 @@ export function TriggerView() {
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
 					iconData: {
 						type: 'file',
-						fileBuffer: `${window.BASE_PATH}static/webhook-icon.svg`,
+						fileBuffer: `${window.BASE_PATH}static/form-grey.svg`,
 					},
 				},
 			},
