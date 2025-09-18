@@ -57,11 +57,15 @@ const checkSortStatus = () => {
 	currentSort.value = props.params.column.getSort() ?? null;
 };
 
-const areButtonsVisible = computed(() => {
+const isMenuButtonVisible = computed(() => {
 	return (
 		props.params.allowMenuActions &&
 		(isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value)
 	);
+});
+
+const isFilterButtonVisible = computed(() => {
+	return isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value;
 });
 
 const typeIcon = computed(() => {
@@ -154,7 +158,7 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
-			v-show="areButtonsVisible"
+			v-show="isFilterButtonVisible"
 			icon="funnel"
 			type="tertiary"
 			text
@@ -163,7 +167,7 @@ onUnmounted(() => {
 		/>
 
 		<N8nActionDropdown
-			v-show="areButtonsVisible"
+			v-show="isMenuButtonVisible"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"

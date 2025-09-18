@@ -153,6 +153,41 @@ const createBetweenFilterOption = (i18n: I18nClass) => ({
 	numberOfInputs: 2,
 });
 
+const createGreaterThanFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'greaterThan',
+	displayName: i18n.baseText('dataStore.filters.greaterThan'),
+	predicate: () => true,
+	numberOfInputs: 1,
+});
+
+const createGreaterThanOrEqualFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'greaterThanOrEqual',
+	displayName: i18n.baseText('dataStore.filters.greaterThanOrEqual'),
+	predicate: () => true,
+	numberOfInputs: 1,
+});
+
+const createLessThanFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'lessThan',
+	displayName: i18n.baseText('dataStore.filters.lessThan'),
+	predicate: () => true,
+	numberOfInputs: 1,
+});
+
+const createLessThanOrEqualFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'lessThanOrEqual',
+	displayName: i18n.baseText('dataStore.filters.lessThanOrEqual'),
+	predicate: () => true,
+	numberOfInputs: 1,
+});
+
+const createInRangeFilterOption = (i18n: I18nClass) => ({
+	displayKey: 'inRange',
+	displayName: i18n.baseText('dataStore.filters.between'),
+	predicate: () => true,
+	numberOfInputs: 2,
+});
+
 export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
@@ -166,11 +201,11 @@ export const getStringColumnFilterOptions = (i18n: I18nClass) => [
 export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
-	'lessThan',
-	'lessThanOrEqual',
-	'greaterThan',
-	'greaterThanOrEqual',
-	'inRange',
+	createLessThanFilterOption(i18n),
+	createLessThanOrEqualFilterOption(i18n),
+	createGreaterThanFilterOption(i18n),
+	createGreaterThanOrEqualFilterOption(i18n),
+	createInRangeFilterOption(i18n),
 	createNullFilterOption(i18n),
 	createNotNullFilterOption(i18n),
 ];
@@ -178,10 +213,10 @@ export const getDateColumnFilterOptions = (i18n: I18nClass) => [
 export const getNumberColumnFilterOptions = (i18n: I18nClass) => [
 	'equals',
 	'notEqual',
-	'lessThan',
-	'lessThanOrEqual',
-	'greaterThan',
-	'greaterThanOrEqual',
+	createLessThanFilterOption(i18n),
+	createLessThanOrEqualFilterOption(i18n),
+	createGreaterThanFilterOption(i18n),
+	createGreaterThanOrEqualFilterOption(i18n),
 	createBetweenFilterOption(i18n),
 	createNullFilterOption(i18n),
 	createNotNullFilterOption(i18n),
