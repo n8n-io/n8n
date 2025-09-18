@@ -173,7 +173,7 @@ const v4Options: INodeProperties = {
 					displayName: 'Items',
 					values: [
 						{
-							displayName: 'Field',
+							displayName: 'Field Name or ID',
 							name: 'field',
 							type: 'resourceLocator',
 							description: 'Name of the field to select on',
@@ -219,11 +219,31 @@ const v4Options: INodeProperties = {
 					displayName: 'Property',
 					values: [
 						{
-							displayName: 'Field',
+							displayName: 'Field Name or ID',
 							name: 'field',
-							type: 'string',
-							default: '',
-							description: 'Name of the field to sort on',
+							type: 'resourceLocator',
+							description: 'Name of the field to select on',
+							default: { mode: 'list', value: '' },
+							typeOptions: {
+								loadOptionsDependsOn: ['table.value'],
+							},
+							modes: [
+								{
+									displayName: 'From List',
+									name: 'list',
+									type: 'list',
+									typeOptions: {
+										searchListMethod: 'getFields',
+										searchable: true,
+									},
+								},
+								{
+									displayName: 'ID',
+									name: 'id',
+									type: 'string',
+									placeholder: 'c9xxmrtn2wfe39l',
+								},
+							],
 						},
 						{
 							displayName: 'Direction',
@@ -345,13 +365,30 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			endPoint = `/api/v3/data/${baseId}/${table}/records`;
 
 			if (qs.sort) {
-				const properties = (qs.sort as IDataObject).property as Array<{
-					field: string;
-					direction: string;
-				}>;
-				qs.sort = properties
-					.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
-					.join(',');
+				if (version === 3) {
+					const properties = (qs.sort as IDataObject).property as Array<{
+						field: string;
+						direction: string;
+					}>;
+					qs.sort = properties
+						.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
+						.join(',');
+				} else {
+					const properties = (qs.sort as IDataObject).property as Array<{
+						field: {
+							value: string;
+						};
+						direction: string;
+					}>;
+					qs.sort = JSON.stringify(
+						properties.map((prop) => {
+							return {
+								field: prop.field.value,
+								direction: prop.direction,
+							};
+						}),
+					);
+				}
 			}
 			if (qs.fields) {
 				if (version === 3) {
