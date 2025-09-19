@@ -1,35 +1,25 @@
 <script setup lang="ts">
-import type { IUser, UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
-import { DATA_STORE_DETAILS } from '../constants';
+import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed, useTemplateRef } from 'vue';
+import { computed } from 'vue';
+import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 type Props = {
 	dataStore: DataStoreResource;
-	actions?: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
 
 const i18n = useI18n();
+const dataStoreStore = useDataStoreStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: false,
 	showOwnershipBadge: false,
 });
-
-const emit = defineEmits<{
-	action: [
-		value: {
-			dataStore: DataStoreResource;
-			action: string;
-		},
-	];
-}>();
-
-const renameInput = useTemplateRef('renameInput');
 
 const dataStoreRoute = computed(() => {
 	return {
@@ -41,32 +31,10 @@ const dataStoreRoute = computed(() => {
 	};
 });
 
-const onCardAction = (action: string) => {
-	// Focus rename input if the action is rename
-	// We need this timeout to ensure action toggle is closed before focusing
-	if (action === 'rename') {
-		if (renameInput.value?.forceFocus) {
-			setTimeout(() => {
-				renameInput.value?.forceFocus();
-			}, 100);
-		}
-		return;
-	}
-	// Otherwise, emit the action directly
-	emit('action', {
-		dataStore: props.dataStore,
-		action,
-	});
-};
-
-const onNameSubmit = (name: string) => {
-	if (props.dataStore.name === name) return;
-
-	emit('action', {
-		dataStore: { ...props.dataStore, name },
-		action: 'rename',
-	});
-};
+const getDataStoreSize = computed(() => {
+	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
+	return size;
+});
 </script>
 <template>
 	<div data-test-id="data-store-card">
@@ -82,18 +50,10 @@ const onNameSubmit = (name: string) => {
 					/>
 				</template>
 				<template #header>
-					<div :class="$style['card-header']" @click.prevent>
-						<N8nInlineTextEdit
-							ref="renameInput"
-							data-test-id="datastore-name-input"
-							:placeholder="i18n.baseText('dataStore.add.input.name.label')"
-							:class="$style['card-name']"
-							:model-value="props.dataStore.name"
-							:max-length="50"
-							:read-only="props.readOnly"
-							:disabled="props.readOnly"
-							@update:model-value="onNameSubmit"
-						/>
+					<div :class="$style['card-header']">
+						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
+							{{ props.dataStore.name }}
+						</n8n-text>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
@@ -104,12 +64,12 @@ const onNameSubmit = (name: string) => {
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--record-count']]"
-							data-test-id="data-store-card-record-count"
+							:class="[$style['info-cell'], $style['info-cell--size']]"
+							data-test-id="data-store-card-size"
 						>
 							{{
-								i18n.baseText('dataStore.card.row.count', {
-									interpolate: { count: props.dataStore.recordCount ?? 0 },
+								i18n.baseText('dataStore.card.size', {
+									interpolate: { size: getDataStoreSize },
 								})
 							}}
 						</N8nText>
@@ -121,7 +81,7 @@ const onNameSubmit = (name: string) => {
 						>
 							{{
 								i18n.baseText('dataStore.card.column.count', {
-									interpolate: { count: props.dataStore.columns.length },
+									interpolate: { count: props.dataStore.columns.length + 1 },
 								})
 							}}
 						</N8nText>
@@ -147,12 +107,10 @@ const onNameSubmit = (name: string) => {
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
-						<N8nActionToggle
-							v-if="props.actions.length"
-							:actions="props.actions"
-							theme="dark"
-							data-test-id="data-store-card-actions"
-							@action="onCardAction"
+						<DataStoreActions
+							:data-store="props.dataStore"
+							:is-read-only="props.readOnly"
+							location="card"
 						/>
 					</div>
 				</template>
@@ -169,12 +127,6 @@ const onNameSubmit = (name: string) => {
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
-}
-
-.card-name {
-	color: $custom-font-dark;
-	font-size: var(--font-size-m);
-	margin-bottom: var(--spacing-5xs);
 }
 
 .card-icon {
@@ -210,8 +162,8 @@ const onNameSubmit = (name: string) => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--record-count,
-	.info-cell--column-count {
+	.info-cell--column-count,
+	.info-cell--size {
 		display: none;
 	}
 }

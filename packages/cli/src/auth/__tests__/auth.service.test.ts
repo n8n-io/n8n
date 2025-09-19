@@ -11,15 +11,12 @@ import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
-	config.set('userManagement.jwtSecret', 'random-secret');
-
 	const browserId = 'test-browser-id';
 	const userData = {
 		id: '123',
@@ -29,8 +26,11 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const user = mock<User>(userData);
-	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
-	const jwtService = new JwtService(mock());
+	const globalConfig = mock<GlobalConfig>({
+		auth: { cookie: { secure: true, samesite: 'lax' } },
+		userManagement: { jwtSecret: 'random-secret' },
+	});
+	const jwtService = new JwtService(mock(), globalConfig);
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
@@ -58,8 +58,8 @@ describe('AuthService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		jest.setSystemTime(now);
-		config.set('userManagement.jwtSessionDurationHours', 168);
-		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+		globalConfig.userManagement.jwtSessionDurationHours = 168;
+		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 	});
 
@@ -253,7 +253,7 @@ describe('AuthService', () => {
 			const testDurationSeconds = testDurationHours * Time.hours.toSeconds;
 
 			it('should apply it to tokens', () => {
-				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
+				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
 				const token = authService.issueJWT(user, false, browserId);
 
 				const decodedToken = jwtService.verify(token);
@@ -376,7 +376,7 @@ describe('AuthService', () => {
 		});
 
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
-			config.set('userManagement.jwtRefreshTimeoutHours', -1);
+			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 
 			userRepository.findOne.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([

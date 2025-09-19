@@ -15,13 +15,14 @@ export function applyOperations(
 	let result: SimpleWorkflow = {
 		nodes: [...workflow.nodes],
 		connections: { ...workflow.connections },
+		name: workflow.name || '',
 	};
 
 	// Apply each operation in sequence
 	for (const operation of operations) {
 		switch (operation.type) {
 			case 'clear':
-				result = { nodes: [], connections: {} };
+				result = { nodes: [], connections: {}, name: '' };
 				break;
 
 			case 'removeNode': {

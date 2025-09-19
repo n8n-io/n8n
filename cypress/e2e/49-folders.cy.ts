@@ -50,6 +50,7 @@ import {
 	renameFolderFromCardActions,
 	renameFolderFromListActions,
 } from '../composables/folders';
+import { expandSidebar } from '../composables/sidebar';
 import { visitWorkflowsPage } from '../composables/workflowsPage';
 import { successToast } from '../pages/notifications';
 
@@ -215,6 +216,7 @@ describe('Folders', () => {
 
 		it('should show folders only in projects', () => {
 			// No folder cards should be shown in the overview page
+			expandSidebar();
 			getOverviewMenuItem().click();
 			getFolderCards().should('not.exist');
 			// Option to create folders should not be available in the dropdown
@@ -236,11 +238,13 @@ describe('Folders', () => {
 
 	describe('Empty State', () => {
 		it('should show project empty state when no folders exist', () => {
+			expandSidebar();
 			createNewProject('Test empty project', { openAfterCreate: true });
 			getProjectEmptyState().should('exist');
 		});
 
 		it('should toggle folder empty state correctly', () => {
+			expandSidebar();
 			createNewProject('Test empty folder', { openAfterCreate: true });
 			createFolderFromProjectHeader('My Folder');
 			getProjectEmptyState().should('not.exist');
@@ -515,6 +519,7 @@ describe('Folders', () => {
 
 	describe('Card breadcrumbs', () => {
 		it('should correctly show workflow card breadcrumbs in overview page', () => {
+			expandSidebar();
 			createNewProject('Test card breadcrumbs', { openAfterCreate: true });
 			createFolderFromProjectHeader('Parent Folder');
 			createFolderInsideFolder('Child Folder', 'Parent Folder');
@@ -536,6 +541,7 @@ describe('Folders', () => {
 		});
 
 		it('should correctly toggle folder and workflow card breadcrumbs in projects and folders', () => {
+			expandSidebar();
 			createNewProject('Test nested search', { openAfterCreate: true });
 			createFolderFromProjectHeader('Parent Folder');
 			getFolderCard('Parent Folder').click();
@@ -593,6 +599,7 @@ describe('Folders', () => {
 		});
 
 		it('should duplicate workflow within a folder from overview', () => {
+			expandSidebar();
 			goToPersonalProject();
 			getFolderCard('Parent folder for duplication').click();
 			createWorkflowFromProjectHeader(
@@ -631,6 +638,7 @@ describe('Folders', () => {
 			const TARGET_NAME = 'Drag me';
 			const DESTINATION_NAME = 'Folder Destination';
 
+			expandSidebar();
 			createNewProject(PROJECT_NAME, { openAfterCreate: true });
 			createFolderFromProjectHeader(TARGET_NAME);
 			createFolderFromProjectHeader(DESTINATION_NAME);
@@ -649,6 +657,7 @@ describe('Folders', () => {
 			const TARGET_NAME = 'To Project root';
 			const PARENT_NAME = 'Parent Folder';
 
+			expandSidebar();
 			createNewProject(PROJECT_NAME, { openAfterCreate: true });
 			createFolderFromProjectHeader(PARENT_NAME);
 			createFolderInsideFolder(TARGET_NAME, PARENT_NAME);
@@ -668,6 +677,7 @@ describe('Folders', () => {
 			const TARGET_NAME = 'Drag me - WF';
 			const DESTINATION_NAME = 'Workflow Destination';
 
+			expandSidebar();
 			createNewProject(PROJECT_NAME, { openAfterCreate: true });
 			createFolderFromProjectHeader(DESTINATION_NAME);
 			createWorkflowFromProjectHeader(undefined, TARGET_NAME);

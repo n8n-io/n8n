@@ -21,6 +21,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: OptionsRequestDto,
 	): Promise<INodePropertyOptions[]> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			credentials,
 			currentNodeParameters,
@@ -28,9 +30,11 @@ export class DynamicNodeParametersController {
 			path,
 			methodName,
 			loadOptions,
+			projectId,
 		} = payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
 			return await this.service.getOptionsViaMethodName(
@@ -62,6 +66,8 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceLocatorRequestDto,
 	) {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
 		const {
 			path,
 			methodName,
@@ -70,9 +76,11 @@ export class DynamicNodeParametersController {
 			credentials,
 			currentNodeParameters,
 			nodeTypeAndVersion,
+			projectId,
 		} = payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceLocatorResults(
 			methodName,
@@ -92,9 +100,13 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = payload;
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
+		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
+			payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		additionalData.dataTableProjectId = projectId;
 
 		return await this.service.getResourceMappingFields(
 			methodName,

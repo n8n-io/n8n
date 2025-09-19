@@ -56,6 +56,8 @@ describe('DismissBannerRequestDto', () => {
 				'TRIAL',
 				'NON_PRODUCTION_LICENSE',
 				'EMAIL_CONFIRMATION',
+				'DATA_STORE_STORAGE_LIMIT_WARNING',
+				'DATA_STORE_STORAGE_LIMIT_ERROR',
 			];
 
 			expect(bannerNameSchema.options).toEqual(expectedBanners);

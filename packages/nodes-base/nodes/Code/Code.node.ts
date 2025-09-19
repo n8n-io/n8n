@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
@@ -12,11 +13,15 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
+
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
+import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
 import { PythonSandbox } from './PythonSandbox';
+import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
@@ -79,10 +84,17 @@ export class Code implements INodeType {
 					{
 						name: 'JavaScript',
 						value: 'javaScript',
+						action: 'Code in JavaScript',
 					},
 					{
 						name: 'Python (Beta)',
 						value: 'python',
+						action: 'Code in Python (Beta)',
+					},
+					{
+						name: 'Python (Native) (Beta)',
+						value: 'pythonNative',
+						action: 'Code in Python (Native) (Beta)',
 					},
 				],
 				default: 'javaScript',
@@ -106,22 +118,27 @@ export class Code implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const node = this.getNode();
-		const language: CodeNodeEditorLanguage =
+		const language: CodeNodeLanguageOption =
 			node.typeVersion === 2
-				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
+				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
 				: 'javaScript';
 
-		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
-			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+		const isJsLang = language === 'javaScript';
+		const isPyLang = language === 'python' || language === 'pythonNative';
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isJsRunner = runnersConfig.enabled;
+		const isPyRunner = runnersConfig.isNativePythonRunnerEnabled;
+
+		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
 			throw new PythonDisabledError();
 		}
 
-		const runnersConfig = Container.get(TaskRunnersConfig);
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
-		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
+		const codeParameterName =
+			language === 'python' || language === 'pythonNative' ? 'pythonCode' : 'jsCode';
 
-		if (runnersConfig.enabled && language === 'javaScript') {
+		if (isJsLang && isJsRunner) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
@@ -129,6 +146,19 @@ export class Code implements INodeType {
 			return nodeMode === 'runOnceForAllItems'
 				? [await sandbox.runCodeAllItems()]
 				: [await sandbox.runCodeForEachItem(numInputItems)];
+		}
+
+		if (language === 'pythonNative' && !isPyRunner) {
+			throw new NativePythonWithoutRunnerError();
+		}
+
+		if (isPyLang && isPyRunner) {
+			// When the native Python runner is enabled, both `python` and `pythonNative` are
+			// sent to the runner, to ensure there is no path to run Pyodide in this scenario.
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+
+			return [await sandbox.runUsingIncomingItems()];
 		}
 
 		const getSandbox = (index = 0) => {

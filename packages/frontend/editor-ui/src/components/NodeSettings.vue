@@ -15,7 +15,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
+import { BASE_NODE_SURVEY_URL } from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -50,7 +50,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { usePostHog } from '@/stores/posthog.store';
+import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -73,12 +73,22 @@ const props = withDefaults(
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		subTitle?: string;
+		extraTabsClassName?: string;
+		extraParameterWrapperClassName?: string;
+		isNdvV2?: boolean;
+		hideExecute?: boolean;
+		hideDocs?: boolean;
+		hideSubConnections?: boolean;
 	}>(),
 	{
 		inputSize: 0,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
+		isNdvV2: false,
+		hideExecute: false,
+		hideDocs: true,
+		hideSubConnections: false,
 	},
 );
 
@@ -94,6 +104,7 @@ const emit = defineEmits<{
 	activate: [];
 	execute: [];
 	captureWheelBody: [WheelEvent];
+	dblclickHeader: [MouseEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -105,7 +116,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
-const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -248,13 +258,6 @@ const credentialOwnerName = computed(() => {
 
 	return credentialsStore.getCredentialOwnerName(credential);
 });
-
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
 
 const featureRequestUrl = computed(() => {
 	if (!nodeType.value) {
@@ -596,17 +599,19 @@ function handleSelectAction(params: INodeParameters) {
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
+			:extra-tabs-class-name="extraTabsClassName"
 			:include-action="parametersByTab.action.length > 0"
 			:include-credential="isDisplayingCredentials"
 			:has-credential-issue="!areAllCredentialsSet"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
+			@dblclick-title="emit('dblclickHeader', $event)"
 		>
 			<template #actions>
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNDVV2" :class="$style.header">
+		<div v-else-if="!isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -643,9 +648,10 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
+			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
@@ -661,7 +667,8 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNDVV2 },
+				{ 'ndv-v2': isNdvV2 },
+				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
@@ -675,6 +682,7 @@ function handleSelectAction(params: INodeParameters) {
 				"
 			/>
 			<FreeAiCreditsCallout />
+			<NodeStorageLimitCallout />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -776,7 +784,7 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNDVV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
@@ -786,7 +794,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.isEmbeddedInCanvas"
+			v-if="node && !hideSubConnections"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"
@@ -816,7 +824,7 @@ function handleSelectAction(params: INodeParameters) {
 		gap: var(--spacing-4xs);
 		margin-top: var(--spacing-xl);
 
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-light);
 	}

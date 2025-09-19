@@ -87,6 +87,12 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 			}),
 	);
 
+	const resolvedParameter = computed(() =>
+		focusedNodeParameters.value[0] && isRichParameter(focusedNodeParameters.value[0])
+			? focusedNodeParameters.value[0]
+			: undefined,
+	);
+
 	function _setOptions({
 		parameters,
 		isActive,
@@ -147,6 +153,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: false });
 	}
 
+	function unsetParameters() {
+		_setOptions({ parameters: [] });
+	}
+
 	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
@@ -187,11 +197,13 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusedNodeParametersInTelemetryFormat,
 		lastFocusTimestamp,
 		focusPanelWidth,
+		resolvedParameter,
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,
 		updateWidth,
+		unsetParameters,
 	};
 });

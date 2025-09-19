@@ -8,18 +8,18 @@ import {
 	ROLE,
 	type UsersListFilterDto,
 } from '@n8n/api-types';
-import type { UpdateGlobalRolePayload } from '@/api/users';
-import * as usersApi from '@/api/users';
+import type { UpdateGlobalRolePayload } from '@n8n/rest-api-client/api/users';
+import * as usersApi from '@n8n/rest-api-client/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { STORES } from '@n8n/stores';
+import type { InvitableRoleName } from '@/Interface';
+import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 import type {
-	IPersonalizationLatestVersion,
 	IUser,
-	IUserResponse,
 	CurrentUserResponse,
-	InvitableRoleName,
-} from '@/Interface';
+	IPersonalizationLatestVersion,
+} from '@n8n/rest-api-client/api/users';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -37,7 +37,7 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 
-type LoginHook = (user: CurrentUserResponse) => void;
+export type LoginHook = (user: CurrentUserResponse) => void;
 type LogoutHook = () => void;
 
 export const useUsersStore = defineStore(STORES.USERS, () => {
@@ -78,6 +78,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isEasyAIWorkflowOnboardingDone = computed(() =>
 		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
 	);
+
+	const canUserUpdateVersion = computed(() => {
+		return isInstanceOwner.value;
+	});
 
 	const setEasyAIWorkflowOnboardingDone = () => {
 		if (currentUser.value?.settings) {
@@ -446,6 +450,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
+		canUserUpdateVersion,
 		usersLimitNotReached,
 		addUsers,
 		loginWithCookie,

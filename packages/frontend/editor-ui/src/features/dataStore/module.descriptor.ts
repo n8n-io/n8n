@@ -11,9 +11,11 @@ const i18n = useI18n();
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const DataStoreView = async () => await import('@/features/dataStore/DataStoreView.vue');
+const DataStoreDetailsView = async () =>
+	await import('@/features/dataStore/DataStoreDetailsView.vue');
 
 export const DataStoreModule: FrontendModuleDescription = {
-	id: 'data-store',
+	id: 'data-table',
 	name: 'Data Store',
 	description: 'Manage and store data efficiently with the Data Store module.',
 	icon: 'database',
@@ -27,7 +29,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 	routes: [
 		{
 			name: DATA_STORE_VIEW,
-			path: '/home/datastores',
+			path: '/home/datatables',
 			components: {
 				default: DataStoreView,
 				sidebar: MainSidebar,
@@ -38,7 +40,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datastores',
+			path: 'datatables/:new(new)?',
 			props: true,
 			components: {
 				default: DataStoreView,
@@ -51,10 +53,10 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: DATA_STORE_DETAILS,
-			path: 'datastores/:id',
+			path: 'datatables/:id',
 			props: true,
 			components: {
-				default: DataStoreView,
+				default: DataStoreDetailsView,
 				sidebar: MainSidebar,
 			},
 			meta: {
@@ -66,8 +68,9 @@ export const DataStoreModule: FrontendModuleDescription = {
 	projectTabs: {
 		overview: [
 			{
-				label: i18n.baseText('dataStore.tab.label'),
+				label: i18n.baseText('dataStore.dataStores'),
 				value: DATA_STORE_VIEW,
+				tag: i18n.baseText('generic.betaProper'),
 				to: {
 					name: DATA_STORE_VIEW,
 				},
@@ -75,8 +78,9 @@ export const DataStoreModule: FrontendModuleDescription = {
 		],
 		project: [
 			{
-				label: i18n.baseText('dataStore.tab.label'),
+				label: i18n.baseText('dataStore.dataStores'),
 				value: PROJECT_DATA_STORES,
+				tag: i18n.baseText('generic.betaProper'),
 				dynamicRoute: {
 					name: PROJECT_DATA_STORES,
 					includeProjectId: true,

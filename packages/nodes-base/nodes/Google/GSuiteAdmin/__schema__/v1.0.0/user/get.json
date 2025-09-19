@@ -91,15 +91,46 @@
                 }
             }
         },
+        "organizations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customType": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "orgUnitPath": {
             "type": "string"
         },
         "primaryEmail": {
             "type": "string"
         },
+        "relations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "suspended": {
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 3
 }

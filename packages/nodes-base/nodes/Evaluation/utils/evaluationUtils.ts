@@ -240,10 +240,13 @@ export function getOutputConnectionTypes(parameters: INodeParameters) {
 	return [{ type: 'main' }];
 }
 
-export function getInputConnectionTypes(parameters: INodeParameters) {
+export function getInputConnectionTypes(
+	parameters: INodeParameters,
+	metricRequiresModelConnectionFn: (metric: string) => boolean,
+) {
 	if (
 		parameters.operation === 'setMetrics' &&
-		['correctness', 'helpfulness'].includes(parameters.metric as string)
+		metricRequiresModelConnectionFn(parameters.metric as string)
 	) {
 		return [
 			{ type: 'main' },

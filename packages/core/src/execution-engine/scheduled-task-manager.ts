@@ -3,113 +3,160 @@ import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
-import type { Cron, Workflow } from 'n8n-workflow';
+import type { CronContext, Workflow } from 'n8n-workflow';
 
+import { ErrorReporter } from '@/errors';
 import { InstanceSettings } from '@/instance-settings';
+
+type CronKey = string; // see `ScheduledTaskManager.toCronKey`
+type Cron = { job: CronJob; summary: string; ctx: CronContext };
+type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
 
 @Service()
 export class ScheduledTaskManager {
-	readonly cronMap = new Map<string, Array<{ job: CronJob; displayableCron: string }>>();
+	readonly cronsByWorkflow: CronsByWorkflow = new Map();
 
-	private readonly logInterval?: NodeJS.Timeout;
+	private logInterval?: NodeJS.Timeout;
+
+	/** Crons currently active instance-wide, to display in logs. */
+	private get loggableCrons() {
+		const loggableCrons: Record<string, string[]> = {};
+
+		for (const [workflowId, crons] of this.cronsByWorkflow) {
+			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
+				({ summary }) => summary,
+			);
+		}
+
+		return loggableCrons;
+	}
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
-		private readonly config: CronLoggingConfig,
+		{ activeInterval }: CronLoggingConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('cron');
 
-		if (this.config.activeInterval === 0) return;
+		if (activeInterval === 0) return;
 
-		this.logInterval = setInterval(
-			() => this.logActiveCrons(),
-			this.config.activeInterval * Time.minutes.toMilliseconds,
-		);
+		this.logInterval = setInterval(() => {
+			if (Object.keys(this.loggableCrons).length === 0) return;
+			this.logger.debug('Currently active crons', { active: this.loggableCrons });
+		}, activeInterval * Time.minutes.toMilliseconds);
 	}
 
-	private logActiveCrons() {
-		const activeCrons: Record<string, string[]> = {};
-		for (const [workflowId, cronJobs] of this.cronMap) {
-			activeCrons[`workflow-${workflowId}`] = cronJobs.map(
-				({ displayableCron }) => displayableCron,
-			);
+	registerCron(ctx: CronContext, onTick: () => void) {
+		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
+
+		const summary = recurrence?.activated
+			? `${expression} (every ${recurrence.intervalSize} ${recurrence.typeInterval})`
+			: expression;
+
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		const key = this.toCronKey({ workflowId, nodeId, expression, timezone, recurrence });
+
+		if (workflowCrons?.has(key)) {
+			this.errorReporter.error('Skipped registration for already registered cron', {
+				tags: { cron: 'duplicate' },
+				extra: {
+					workflowId,
+					timezone,
+					nodeId,
+					expression,
+					recurrence,
+					instanceRole: this.instanceSettings.instanceRole,
+				},
+			});
+			return;
 		}
 
-		if (Object.keys(activeCrons).length === 0) return;
-
-		this.logger.debug('Currently active crons', { activeCrons });
-	}
-
-	registerCron(workflow: Workflow, { expression, recurrence }: Cron, onTick: () => void) {
-		const recurrenceStr = recurrence?.activated
-			? `every ${recurrence.intervalSize} ${recurrence.typeInterval}`
-			: undefined;
-
-		const displayableCron = recurrenceStr ? `${expression} (${recurrenceStr})` : expression;
-
-		const cronJob = new CronJob(
+		const job = new CronJob(
 			expression,
 			() => {
-				if (this.instanceSettings.isLeader) {
-					this.logger.debug('Executing cron for workflow', {
-						workflowId: workflow.id,
-						cron: displayableCron,
-						instanceRole: this.instanceSettings.instanceRole,
-					});
-					onTick();
-				}
+				if (!this.instanceSettings.isLeader) return;
+
+				this.logger.debug('Executing cron for workflow', {
+					workflowId,
+					nodeId,
+					cron: summary,
+					instanceRole: this.instanceSettings.instanceRole,
+				});
+
+				onTick();
 			},
 			undefined,
 			true,
-			workflow.timezone,
+			timezone,
 		);
 
-		const workflowCronEntries = this.cronMap.get(workflow.id);
-		const cronEntry = { job: cronJob, displayableCron };
+		const cron: Cron = { job, summary, ctx };
 
-		if (workflowCronEntries) {
-			workflowCronEntries.push(cronEntry);
+		if (!workflowCrons) {
+			this.cronsByWorkflow.set(workflowId, new Map([[key, cron]]));
 		} else {
-			this.cronMap.set(workflow.id, [cronEntry]);
+			workflowCrons.set(key, cron);
 		}
 
 		this.logger.debug('Registered cron for workflow', {
-			workflowId: workflow.id,
-			cron: displayableCron,
+			workflowId,
+			cron: summary,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
 
 	deregisterCrons(workflowId: string) {
-		const cronJobs = this.cronMap.get(workflowId) ?? [];
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 
-		if (cronJobs.length === 0) return;
+		if (!workflowCrons || workflowCrons.size === 0) return;
 
-		const crons: string[] = [];
+		const summaries: string[] = [];
 
-		while (cronJobs.length) {
-			const cronEntry = cronJobs.pop();
-			if (cronEntry) {
-				crons.push(cronEntry.displayableCron);
-				cronEntry.job.stop();
-			}
+		for (const cron of workflowCrons.values()) {
+			summaries.push(cron.summary);
+			cron.job.stop();
 		}
 
-		this.cronMap.delete(workflowId);
+		this.cronsByWorkflow.delete(workflowId);
 
 		this.logger.info('Deregistered all crons for workflow', {
 			workflowId,
-			crons,
+			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
 
 	deregisterAllCrons() {
-		for (const workflowId of this.cronMap.keys()) {
+		for (const workflowId of this.cronsByWorkflow.keys()) {
 			this.deregisterCrons(workflowId);
 		}
 
-		if (this.logInterval) clearInterval(this.logInterval);
+		clearInterval(this.logInterval);
+		this.logInterval = undefined;
+	}
+
+	private toCronKey(ctx: CronContext): CronKey {
+		const { recurrence, ...rest } = ctx;
+		const flattened: Record<string, unknown> = !recurrence
+			? rest
+			: {
+					...rest,
+					recurrenceActivated: recurrence.activated,
+					...(recurrence.activated && {
+						recurrenceIndex: recurrence.index,
+						recurrenceIntervalSize: recurrence.intervalSize,
+						recurrenceTypeInterval: recurrence.typeInterval,
+					}),
+				};
+
+		const sorted = Object.keys(flattened)
+			.sort()
+			.reduce<Record<string, unknown>>((result, key) => {
+				result[key] = flattened[key];
+				return result;
+			}, {});
+
+		return JSON.stringify(sorted);
 	}
 }

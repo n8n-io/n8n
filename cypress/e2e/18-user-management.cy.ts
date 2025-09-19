@@ -1,3 +1,4 @@
+import { expandSidebar } from '../composables/sidebar';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
 import { errorToast, successToast } from '../pages/notifications';
@@ -40,6 +41,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
+		expandSidebar();
 		mainSidebar.actions.goToSettings();
 		settingsSidebar.getters.users().should('be.visible');
 
@@ -236,7 +238,10 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
-		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);
+		personalSettingsPage.actions.updateEmail(
+			updatedPersonalData.newEmail,
+			updatedPersonalData.newPassword,
+		);
 		successToast().should('contain', 'Personal details updated');
 		personalSettingsPage.actions.loginWithNewData(
 			updatedPersonalData.newEmail,

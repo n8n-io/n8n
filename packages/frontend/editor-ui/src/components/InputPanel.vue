@@ -49,6 +49,7 @@ export type Props = {
 	disableDisplayModeSelection?: boolean;
 	focusedMappableInput: string;
 	isMappingOnboarded: boolean;
+	nodeNotRunMessageVariant?: 'default' | 'simple';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -57,6 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 	isProductionExecutionPreview: false,
 	isPaneActive: false,
+	nodeNotRunMessageVariant: 'default',
 });
 
 const emit = defineEmits<{
@@ -103,7 +105,23 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	// Find the first child that has a main input connection to account for nested subnodes
+	const findRootWithMainConnection = (nodeName: string): string | null => {
+		const children = props.workflowObject.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			// Check if this child has main input connections
+			const parentNodes = props.workflowObject.getParentNodes(childName, NodeConnectionTypes.Main);
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	};
+
+	return findRootWithMainConnection(activeNode.value.name);
 });
 
 const hasRootNodeRun = computed(() => {
@@ -247,6 +265,10 @@ const isNDVV2 = computed(() =>
 		NDV_UI_OVERHAUL_EXPERIMENT.name,
 		NDV_UI_OVERHAUL_EXPERIMENT.variant,
 	),
+);
+
+const nodeNameToExecute = computed(
+	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
 );
 
 watch(
@@ -455,7 +477,25 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<template v-if="isNDVV2">
+				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
+					<template #description>
+						<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+							<template #link>
+								<NodeExecuteButton
+									:class="$style.executeButton"
+									size="large"
+									:node-name="nodeNameToExecute"
+									:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+									text
+									telemetry-source="inputs"
+									hide-icon
+								/>
+							</template>
+						</I18nT>
+					</template>
+				</NDVEmptyState>
+
+				<template v-else-if="isNDVV2">
 					<NDVEmptyState
 						v-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
@@ -470,7 +510,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 										hide-icon
 										transparent
 										type="secondary"
-										:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+										:node-name="nodeNameToExecute"
 										:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
 										:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
 										tooltip-placement="bottom"
@@ -537,7 +577,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						type="secondary"
 						hide-icon
 						:transparent="true"
-						:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+						:node-name="nodeNameToExecute"
 						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 						class="mt-m"
 						telemetry-source="inputs"
@@ -706,5 +746,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 .titleV2 {
 	letter-spacing: 2px;
 	font-size: var(--font-size-xs);
+}
+
+.executeButton {
+	padding: 0;
 }
 </style>

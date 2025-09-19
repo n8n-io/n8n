@@ -55,6 +55,14 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.NDV]: {
 					activeNodeName: 'Test Node',
+					hasInputData: true,
+					isInputPanelEmpty: false,
+					isOutputPanelEmpty: false,
+					ndvInputDataWithPinnedData: [],
+					getHoveringItem: undefined,
+					expressionOutputItemIndex: 0,
+					isTableHoverOnboarded: false,
+					setHighlightDraggables: vi.fn(),
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
@@ -185,6 +193,7 @@ describe('SqlEditor.vue', () => {
 		// Does not hide output when clicking inside the output
 		await focusEditor(container);
 		await userEvent.click(getByTestId(EXPRESSION_OUTPUT_TEST_ID));
+
 		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).toBeInTheDocument());
 
 		// Does hide output when clicking outside the container

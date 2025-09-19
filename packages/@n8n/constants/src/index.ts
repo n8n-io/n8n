@@ -35,6 +35,8 @@ export const LICENSE_FEATURES = {
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
+	WORKFLOW_DIFFS: 'feat:workflowDiffs',
+	CUSTOM_ROLES: 'feat:customRoles',
 } as const;
 
 export const LICENSE_QUOTAS = {

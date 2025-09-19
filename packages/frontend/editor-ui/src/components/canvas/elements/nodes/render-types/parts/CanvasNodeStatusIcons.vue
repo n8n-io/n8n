@@ -8,9 +8,14 @@ import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useCanvas } from '@/composables/useCanvas';
 
-const { size = 'large', spinnerScrim = false } = defineProps<{
+const {
+	size = 'large',
+	spinnerScrim = false,
+	spinnerLayout = 'absolute',
+} = defineProps<{
 	size?: 'small' | 'medium' | 'large';
 	spinnerScrim?: boolean;
+	spinnerLayout?: 'absolute' | 'static';
 }>();
 
 const nodeHelpers = useNodeHelpers();
@@ -19,8 +24,10 @@ const $style = useCssModule();
 
 const {
 	hasPinnedData,
-	issues,
-	hasIssues,
+	executionErrors,
+	validationErrors,
+	hasExecutionErrors,
+	hasValidationErrors,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
@@ -44,7 +51,11 @@ const isNodeExecuting = computed(() => {
 		executionRunning.value || executionWaitingForNext.value || executionStatus.value === 'running' // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
 	);
 });
-const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinnerScrim : '']);
+const commonClasses = computed(() => [
+	$style.status,
+	spinnerScrim ? $style.spinnerScrim : '',
+	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
+]);
 </script>
 
 <template>
@@ -56,9 +67,6 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 				</template>
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
-		</div>
-		<div :class="[...commonClasses, $style['node-waiting-spinner']]">
-			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
 	<div
@@ -72,15 +80,27 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
-		v-else-if="hasIssues && !hideNodeIssues"
+		v-else-if="hasExecutionErrors && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="executionErrors" />
 			</template>
-			<N8nIcon icon="node-error" :size="size" />
+			<N8nIcon icon="node-execution-error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="hasValidationErrors && !hideNodeIssues"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-issues"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="validationErrors" />
+			</template>
+			<N8nIcon icon="node-validation-error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -111,7 +131,7 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 		</N8nTooltip>
 	</div>
 	<div
-		v-else-if="hasRunData"
+		v-else-if="hasRunData && executionStatus === 'success'"
 		data-test-id="canvas-node-status-success"
 		:class="[...commonClasses, $style.runData]"
 	>
@@ -140,19 +160,22 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 	color: var(--color-secondary);
 }
 
-.node-waiting-spinner,
 .running {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 3.75em;
-	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
-	position: absolute;
-	left: 0;
-	top: 0;
-	padding: var(--canvas-node--status-icons-offset);
+	color: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
+
+	&.absoluteSpinner {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 3.75em;
+		color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+		position: absolute;
+		left: 0;
+		top: 0;
+		padding: var(--canvas-node--status-icons-offset);
+	}
 
 	&.spinnerScrim {
 		z-index: 10;

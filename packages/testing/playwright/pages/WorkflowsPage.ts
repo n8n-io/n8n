@@ -3,10 +3,6 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowsPage extends BasePage {
-	async clickNewWorkflowCard() {
-		await this.clickByTestId('new-workflow-card');
-	}
-
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
 	}
@@ -15,8 +11,18 @@ export class WorkflowsPage extends BasePage {
 		await this.clickByTestId('project-plus-button');
 	}
 
+	/**
+	 * This is the add workflow button on the workflows page, visible when there are already workflows.
+	 */
 	async clickAddWorkflowButton() {
 		await this.clickByTestId('add-resource-workflow');
+	}
+
+	/**
+	 * This is the new workflow button on the workflows page, visible when there are no workflows.
+	 */
+	async clickNewWorkflowCard() {
+		await this.clickByTestId('new-workflow-card');
 	}
 
 	getNewWorkflowCard() {
@@ -26,6 +32,10 @@ export class WorkflowsPage extends BasePage {
 	async clearSearch() {
 		await this.clickByTestId('resources-list-search');
 		await this.page.getByTestId('resources-list-search').clear();
+	}
+
+	getProjectName() {
+		return this.page.getByTestId('project-name');
 	}
 
 	getSearchBar() {
@@ -75,7 +85,7 @@ export class WorkflowsPage extends BasePage {
 	async shareWorkflow(workflowName: string) {
 		const workflow = this.getWorkflowByName(workflowName);
 		await workflow.getByTestId('workflow-card-actions').click();
-		await this.page.getByRole('menuitem', { name: 'Share' }).click();
+		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}
 
 	getArchiveMenuItem() {

@@ -14,7 +14,6 @@ import {
 	type RelatedExecution,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
-import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
@@ -193,24 +192,7 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	return subTree[subTree.length - 1];
 }
 
-export function createLogTree(
-	workflow: Workflow,
-	response: IExecutionResponse,
-	workflows: Record<string, Workflow> = {},
-	subWorkflowData: Record<string, IRunExecutionData> = {},
-) {
-	return createLogTreeRec({
-		parent: undefined,
-		ancestorRunIndexes: [],
-		executionId: response.id,
-		workflow,
-		workflows,
-		data: response.data ?? { resultData: { runData: {} } },
-		subWorkflowData,
-	});
-}
-
-function createLogTreeRec(context: LogTreeCreationContext) {
+function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
 	return Object.entries(runData)
@@ -257,6 +239,23 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
+}
+
+export function createLogTree(
+	workflow: Workflow,
+	response: IExecutionResponse,
+	workflows: Record<string, Workflow> = {},
+	subWorkflowData: Record<string, IRunExecutionData> = {},
+): LogEntry[] {
+	return createLogTreeRec({
+		parent: undefined,
+		ancestorRunIndexes: [],
+		executionId: response.id,
+		workflow,
+		workflows,
+		data: response.data ?? { resultData: { runData: {} } },
+		subWorkflowData,
+	});
 }
 
 export function findLogEntryRec(
@@ -310,44 +309,6 @@ export function findSelectedLogEntry(
 			return found;
 		}
 	}
-}
-
-export function deepToRaw<T>(sourceObj: T): T {
-	const seen = new WeakMap();
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const objectIterator = (input: any): any => {
-		if (seen.has(input)) {
-			return input;
-		}
-
-		if (input !== null && typeof input === 'object') {
-			seen.set(input, true);
-		}
-
-		if (Array.isArray(input)) {
-			return input.map((item) => objectIterator(item));
-		}
-
-		if (isRef(input) || isReactive(input) || isProxy(input)) {
-			return objectIterator(toRaw(input));
-		}
-
-		if (
-			input !== null &&
-			typeof input === 'object' &&
-			Object.getPrototypeOf(input) === Object.prototype
-		) {
-			return Object.keys(input).reduce((acc, key) => {
-				acc[key as keyof typeof acc] = objectIterator(input[key]);
-				return acc;
-			}, {} as T);
-		}
-
-		return input;
-	};
-
-	return objectIterator(sourceObj);
 }
 
 export function flattenLogEntries(

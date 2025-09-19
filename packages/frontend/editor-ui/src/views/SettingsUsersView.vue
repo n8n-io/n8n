@@ -15,7 +15,8 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
-import type { InvitableRoleName, IUser } from '@/Interface';
+import type { InvitableRoleName } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -78,6 +79,13 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			value: 'reinvite',
 			guard: (user) =>
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.delete'),
+			value: 'delete',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+				user.id !== usersStore.currentUserId,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),

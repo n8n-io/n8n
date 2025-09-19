@@ -8,6 +8,8 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
 	NodeConnectionTypes,
+	metricRequiresModelConnection,
+	DEFAULT_EVALUATION_METRIC,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -102,6 +104,16 @@ export class TestRunnerService {
 	 * Checks if the Evaluation Set Metrics nodes are present in the workflow
 	 * and are configured correctly.
 	 */
+	private hasModelNodeConnected(workflow: IWorkflowBase, targetNodeName: string): boolean {
+		// Check if there's a node connected to the target node via ai_languageModel connection type
+		return Object.keys(workflow.connections).some((sourceNodeName) => {
+			const connections = workflow.connections[sourceNodeName];
+			return connections?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.some(
+				(connection) => connection.node === targetNodeName,
+			);
+		});
+	}
+
 	private validateSetMetricsNodes(workflow: IWorkflowBase) {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		if (metricsNodes.length === 0) {
@@ -110,11 +122,6 @@ export class TestRunnerService {
 
 		const unconfiguredMetricsNode = metricsNodes.find((node) => {
 			if (node.disabled === true || !node.parameters) {
-				return true;
-			}
-
-			// For versions 4.7+, check if metric parameter is missing
-			if (node.typeVersion >= 4.7 && !node.parameters.metric) {
 				return true;
 			}
 
@@ -132,6 +139,17 @@ export class TestRunnerService {
 						(assignment) => !assignment.name || assignment.value === null,
 					)
 				);
+			}
+
+			// For version 4.7+, check if AI-based metrics require model connection
+			if (node.typeVersion >= 4.7) {
+				const metric = (node.parameters.metric ?? DEFAULT_EVALUATION_METRIC) as string;
+				if (
+					metricRequiresModelConnection(metric) && // See packages/workflow/src/evaluation-helpers.ts
+					!this.hasModelNodeConnected(workflow, node.name)
+				) {
+					return true;
+				}
 			}
 
 			return false;

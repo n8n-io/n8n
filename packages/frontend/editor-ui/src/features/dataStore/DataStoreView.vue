@@ -1,57 +1,46 @@
 <script setup lang="ts">
-import ProjectHeader, { type CustomAction } from '@/components/Projects/ProjectHeader.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { ProjectTypes } from '@/types/projects.types';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
+import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
-	DATA_STORE_CARD_ACTIONS,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
+	PROJECT_DATA_STORES,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
 
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
-const message = useMessage();
 
 const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const uiStore = useUIStore();
 
 const loading = ref(true);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
-
-const customProjectActions = computed<CustomAction[]>(() => [
-	{
-		id: 'add-data-store',
-		label: i18n.baseText('dataStore.add.button.label'),
-		disabled: loading.value || projectPages.isOverviewSubPage,
-	},
-]);
 
 const dataStoreResources = computed<DataStoreResource[]>(() =>
 	dataStoreStore.dataStores.map((ds) => {
@@ -64,50 +53,20 @@ const dataStoreResources = computed<DataStoreResource[]>(() =>
 
 const totalCount = computed(() => dataStoreStore.totalCount);
 
-const currentProject = computed(() => projectsStore.currentProject);
-
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
+const currentProject = computed(() => {
+	if (projectPages.isOverviewSubPage) {
+		return projectsStore.personalProject;
 	}
-	return currentProject.value?.name;
-});
-
-const emptyCalloutDescription = computed(() => {
-	return projectPages.isOverviewSubPage ? i18n.baseText('dataStore.empty.description') : '';
-});
-
-const emptyCalloutButtonText = computed(() => {
-	if (projectPages.isOverviewSubPage || !projectName.value) {
-		return '';
-	}
-	return i18n.baseText('dataStore.empty.button.label', {
-		interpolate: { projectName: projectName.value },
-	});
+	return projectsStore.currentProject;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const cardActions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: readOnlyEnv.value,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: readOnlyEnv.value,
-	},
-]);
-
 const initialize = async () => {
 	loading.value = true;
-	const projectId = Array.isArray(route.params.projectId)
-		? route.params.projectId[0]
-		: route.params.projectId;
+	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectId, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectIdFilter ?? '', currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -128,70 +87,27 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 };
 
 const onAddModalClick = () => {
-	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
-};
-
-const onCardAction = async (payload: { action: string; dataStore: DataStoreResource }) => {
-	switch (payload.action) {
-		case DATA_STORE_CARD_ACTIONS.DELETE: {
-			const promptResponse = await message.confirm(
-				i18n.baseText('dataStore.delete.confirm.message', {
-					interpolate: { name: payload.dataStore.name },
-				}),
-				i18n.baseText('dataStore.delete.confirm.title'),
-				{
-					confirmButtonText: i18n.baseText('generic.delete'),
-					cancelButtonText: i18n.baseText('generic.cancel'),
-				},
-			);
-			if (promptResponse === MODAL_CONFIRM) {
-				try {
-					const deleted = await dataStoreStore.deleteDataStore(
-						payload.dataStore.id,
-						payload.dataStore.projectId,
-					);
-					if (!deleted) {
-						toast.showError(
-							new Error(i18n.baseText('generic.unknownError')),
-							i18n.baseText('dataStore.delete.error'),
-						);
-					}
-				} catch (error) {
-					toast.showError(error, i18n.baseText('dataStore.delete.error'));
-				}
-			}
-			break;
-		}
-		case DATA_STORE_CARD_ACTIONS.RENAME: {
-			try {
-				const updated = await dataStoreStore.updateDataStore(
-					payload.dataStore.id,
-					payload.dataStore.name,
-					payload.dataStore.projectId,
-				);
-				if (!updated) {
-					toast.showError(
-						new Error(i18n.baseText('generic.unknownError')),
-						i18n.baseText('dataStore.rename.error'),
-					);
-				}
-			} catch (error) {
-				toast.showError(error, i18n.baseText('dataStore.rename.error'));
-			}
-			break;
-		}
-	}
-};
-
-const onProjectHeaderAction = (action: string) => {
-	if (action === 'add-data-store') {
-		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
-	}
+	void router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: currentProject.value?.id, new: 'new' },
+	});
 };
 
 onMounted(() => {
-	documentTitle.set(i18n.baseText('dataStore.tab.label'));
+	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 });
+
+watch(
+	() => route.params.new,
+	() => {
+		if (route.params.new === 'new') {
+			uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
+		} else {
+			uiStore.closeModal(ADD_DATA_STORE_MODAL_KEY);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 <template>
 	<ResourcesListLayout
@@ -213,10 +129,7 @@ onMounted(() => {
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader
-				:custom-actions="customProjectActions"
-				@custom-action-selected="onProjectHeaderAction"
-			>
+			<ProjectHeader>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -229,8 +142,8 @@ onMounted(() => {
 			<n8n-action-box
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
-				:description="emptyCalloutDescription"
-				:button-text="emptyCalloutButtonText"
+				:description="i18n.baseText('dataStore.empty.description')"
+				:button-text="i18n.baseText('dataStore.add.button.label')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>
@@ -240,9 +153,7 @@ onMounted(() => {
 				class="mb-2xs"
 				:data-store="data as DataStoreResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
-				:actions="cardActions"
 				:read-only="readOnlyEnv"
-				@action="onCardAction"
 			/>
 		</template>
 	</ResourcesListLayout>

@@ -28,6 +28,8 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { inject } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
 type Props = {
 	parameter: INodeProperties;
@@ -57,6 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
+	hover: [hovered: boolean];
 }>();
 
 const i18n = useI18n();
@@ -66,11 +69,21 @@ const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
+const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const activeNode = computed(() => {
+	const ctx = expressionLocalResolveCtx?.value;
+
+	if (ctx) {
+		return ctx.workflow.getNode(ctx.nodeName);
+	}
+
+	return ndvStore.activeNode;
+});
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {
@@ -137,6 +150,14 @@ function onBlur() {
 
 function onMenuExpanded(expanded: boolean) {
 	menuExpanded.value = expanded;
+}
+
+function onWrapperMouseEnter() {
+	wrapperHovered.value = true;
+}
+
+function onWrapperMouseLeave() {
+	wrapperHovered.value = false;
 }
 
 function optionSelected(command: string) {
@@ -249,6 +270,10 @@ watch(
 	},
 );
 
+watch(wrapperHovered, (hovered) => {
+	emit('hover', hovered);
+});
+
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
@@ -304,7 +329,10 @@ function removeOverride(clearField = false) {
 		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
+		:input-name="parameter.name"
 		color="text-dark"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
 	>
 		<template
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"

@@ -110,7 +110,7 @@ const i18n = useI18n();
 	}
 
 	.link:hover {
-		color: var(--prim-color-primary);
+		color: var(--color-primary);
 		text-decoration: none;
 	}
 }

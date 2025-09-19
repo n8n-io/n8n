@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="T extends string">
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
@@ -19,7 +19,7 @@ import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: ActionDropdownItem[];
+	items: Array<ActionDropdownItem<T>>;
 	placement?: Placement;
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
@@ -28,6 +28,7 @@ interface ActionDropdownProps {
 	hideArrow?: boolean;
 	teleported?: boolean;
 	disabled?: boolean;
+	extraPopperClass?: string;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -45,7 +46,7 @@ const attrs = useAttrs();
 const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -55,22 +56,23 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 };
 
 const emit = defineEmits<{
-	select: [action: string];
+	select: [action: T];
 	visibleChange: [open: boolean];
 }>();
 
 defineSlots<{
 	activator: {};
-	menuItem: (props: ActionDropdownItem) => void;
+	menuItem: (props: ActionDropdownItem<T>) => void;
 }>();
 
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
-	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+	() =>
+		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
 );
 
-const onSelect = (action: string) => emit('select', action);
+const onSelect = (action: T) => emit('select', action);
 const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
@@ -127,7 +129,12 @@ defineExpose({ open, close });
 									{{ item.label }}
 								</slot>
 							</span>
-							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
+							<N8nIcon
+								v-if="item.checked"
+								:class="$style.checkIcon"
+								icon="check"
+								:size="iconSize"
+							/>
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}
@@ -192,12 +199,18 @@ defineExpose({ open, close });
 }
 
 .icon {
+	display: flex;
 	text-align: center;
 	margin-right: var(--spacing-2xs);
 
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.checkIcon {
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 
 .shortcut {

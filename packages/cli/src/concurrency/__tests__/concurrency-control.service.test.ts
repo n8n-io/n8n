@@ -22,11 +22,18 @@ describe('ConcurrencyControlService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
-	const globalConfig = mock<GlobalConfig>();
+	const globalConfig = mock<GlobalConfig>({
+		executions: {
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
+		},
+	});
 
 	afterEach(() => {
-		config.set('executions.concurrency.productionLimit', -1);
-		config.set('executions.concurrency.evaluationLimit', -1);
+		globalConfig.executions.concurrency.productionLimit = -1;
+		globalConfig.executions.concurrency.evaluationLimit = -1;
 		config.set('executions.mode', 'integrated');
 
 		jest.clearAllMocks();
@@ -39,7 +46,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set(`executions.concurrency.${type}Limit`, 1);
+				// @ts-expect-error Testing
+				globalConfig.executions.concurrency[type + 'Limit'] = 1;
 
 				/**
 				 * Act
@@ -70,7 +78,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set(`executions.concurrency.${type}Limit`, 0);
+				// @ts-expect-error Testing
+				globalConfig.executions.concurrency[type + 'Limit'] = 0;
 
 				try {
 					/**
@@ -96,8 +105,8 @@ describe('ConcurrencyControlService', () => {
 			/**
 			 * Arrange
 			 */
-			config.set('executions.concurrency.productionLimit', -1);
-			config.set('executions.concurrency.evaluationLimit', -1);
+			globalConfig.executions.concurrency.productionLimit = -1;
+			globalConfig.executions.concurrency.evaluationLimit = -1;
 
 			/**
 			 * Act
@@ -123,7 +132,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set(`executions.concurrency.${type}Limit`, -2);
+				// @ts-expect-error Testing
+				globalConfig.executions.concurrency[type + 'Limit'] = -2;
 
 				/**
 				 * Act
@@ -149,7 +159,7 @@ describe('ConcurrencyControlService', () => {
 			 * Arrange
 			 */
 			config.set('executions.mode', 'queue');
-			config.set('executions.concurrency.productionLimit', 2);
+			globalConfig.executions.concurrency.productionLimit = 2;
 
 			/**
 			 * Act
@@ -182,7 +192,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', 1);
+					globalConfig.executions.concurrency.productionLimit = 1;
 
 					const service = new ConcurrencyControlService(
 						logger,
@@ -209,7 +219,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', 1);
+				globalConfig.executions.concurrency.productionLimit = 1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -235,7 +245,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
+				globalConfig.executions.concurrency.evaluationLimit = 1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -265,7 +275,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', 1);
+					globalConfig.executions.concurrency.evaluationLimit = 1;
 
 					const service = new ConcurrencyControlService(
 						logger,
@@ -292,7 +302,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', 1);
+				globalConfig.executions.concurrency.productionLimit = 1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -318,7 +328,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
+				globalConfig.executions.concurrency.evaluationLimit = 1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -348,7 +358,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', 1);
+					globalConfig.executions.concurrency.productionLimit = 1;
 
 					const service = new ConcurrencyControlService(
 						logger,
@@ -377,7 +387,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', 1);
+					globalConfig.executions.concurrency.productionLimit = 1;
 
 					const service = new ConcurrencyControlService(
 						logger,
@@ -404,7 +414,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', 1);
+				globalConfig.executions.concurrency.evaluationLimit = 1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -434,7 +444,8 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set(`executions.concurrency.${type}Limit`, 2);
+					// @ts-expect-error Testing
+					globalConfig.executions.concurrency[type + 'Limit'] = 2;
 
 					const service = new ConcurrencyControlService(
 						logger,
@@ -470,8 +481,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', 2);
-				config.set('executions.concurrency.evaluationLimit', 2);
+				globalConfig.executions.concurrency.productionLimit = 2;
+				globalConfig.executions.concurrency.evaluationLimit = 2;
 
 				/**
 				 * Act
@@ -497,8 +508,8 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', 2);
-				config.set('executions.concurrency.evaluationLimit', 2);
+				globalConfig.executions.concurrency.productionLimit = 2;
+				globalConfig.executions.concurrency.evaluationLimit = 2;
 
 				/**
 				 * Act
@@ -532,7 +543,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', -1);
+				globalConfig.executions.concurrency.productionLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -559,7 +570,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
+				globalConfig.executions.concurrency.evaluationLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -588,7 +599,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', -1);
+				globalConfig.executions.concurrency.evaluationLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -614,7 +625,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
+				globalConfig.executions.concurrency.evaluationLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -642,7 +653,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.productionLimit', -1);
+				globalConfig.executions.concurrency.productionLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -668,7 +679,7 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('executions.concurrency.evaluationLimit', -1);
+				globalConfig.executions.concurrency.evaluationLimit = -1;
 
 				const service = new ConcurrencyControlService(
 					logger,
@@ -704,7 +715,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					globalConfig.executions.concurrency.productionLimit = CLOUD_TEMP_PRODUCTION_LIMIT;
 					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,
@@ -738,7 +749,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					globalConfig.executions.concurrency.productionLimit = CLOUD_TEMP_PRODUCTION_LIMIT;
 					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,
@@ -771,7 +782,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.concurrency.productionLimit', CLOUD_TEMP_PRODUCTION_LIMIT);
+					globalConfig.executions.concurrency.productionLimit = CLOUD_TEMP_PRODUCTION_LIMIT;
 					globalConfig.deployment.type = 'cloud';
 					const service = new ConcurrencyControlService(
 						logger,

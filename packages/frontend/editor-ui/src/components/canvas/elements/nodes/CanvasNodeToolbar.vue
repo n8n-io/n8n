@@ -7,6 +7,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 
 const emit = defineEmits<{
 	delete: [];
@@ -19,6 +20,8 @@ const emit = defineEmits<{
 
 const props = defineProps<{
 	readOnly?: boolean;
+	showStatusIcons: boolean;
+	itemsClass: string;
 }>();
 
 const $style = useCssModule();
@@ -63,12 +66,7 @@ const isDisableNodeVisible = computed(() => {
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
-const isFocusNodeVisible = computed(
-	() =>
-		experimentalNdvStore.isEnabled &&
-		node.value !== null &&
-		experimentalNdvStore.collapsedNodes[node.value.id] !== false,
-);
+const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
@@ -117,8 +115,10 @@ function onFocusNode() {
 		:class="classes"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
+		@mousedown.stop
+		@click.stop
 	>
-		<div :class="$style.canvasNodeToolbarItems">
+		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"
@@ -133,7 +133,7 @@ function onFocusNode() {
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
 					:title="i18n.baseText('node.testStep')"
-					@click="executeNode"
+					@click.stop="executeNode"
 				/>
 			</N8nTooltip>
 			<N8nIconButton
@@ -144,7 +144,7 @@ function onFocusNode() {
 				size="small"
 				icon="node-power"
 				:title="nodeDisabledTitle"
-				@click="onToggleNode"
+				@click.stop="onToggleNode"
 			/>
 			<N8nIconButton
 				v-if="isDeleteNodeVisible"
@@ -154,7 +154,7 @@ function onFocusNode() {
 				text
 				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
-				@click="onDeleteNode"
+				@click.stop="onDeleteNode"
 			/>
 			<N8nIconButton
 				v-if="isFocusNodeVisible"
@@ -162,7 +162,7 @@ function onFocusNode() {
 				size="small"
 				text
 				icon="crosshair"
-				@click="onFocusNode"
+				@click.stop="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
 				v-if="isStickyNoteChangeColorVisible"
@@ -175,9 +175,14 @@ function onFocusNode() {
 				size="small"
 				text
 				icon="node-ellipsis"
-				@click="onOpenContextMenu"
+				@click.stop="onOpenContextMenu"
 			/>
 		</div>
+		<CanvasNodeStatusIcons
+			v-if="showStatusIcons"
+			:class="$style.statusIcons"
+			spinner-layout="static"
+		/>
 	</div>
 </template>
 
@@ -187,10 +192,14 @@ function onFocusNode() {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	cursor: default;
 
 	&.isExperimentalNdvActive {
-		justify-content: center;
+		justify-content: space-between;
+		align-items: center;
 		padding-bottom: var(--spacing-3xs);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 
@@ -208,5 +217,9 @@ function onFocusNode() {
 
 .forceVisible {
 	opacity: 1 !important;
+}
+
+.statusIcons {
+	margin-inline-end: var(--spacing-3xs);
 }
 </style>

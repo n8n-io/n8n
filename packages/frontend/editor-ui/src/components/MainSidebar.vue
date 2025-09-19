@@ -6,7 +6,13 @@ import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import {
+	ABOUT_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	RELEASE_NOTES_URL,
+	VIEWS,
+	WHATS_NEW_MODAL_KEY,
+} from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -29,6 +35,9 @@ import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { useKeybindings } from '@/composables/useKeybindings';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -40,6 +49,7 @@ const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -49,7 +59,11 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
+const calloutHelpers = useCalloutHelpers();
 
+useKeybindings({
+	ctrl_alt_o: () => handleSelect('about'),
+});
 useUserHelpers(router, route);
 
 // Template refs
@@ -86,12 +100,39 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled
+		// Link to in-app pre-built agent templates, available experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
+		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
+	},
+	{
+		// Link to templateRecoV2 modal, available when experiment is enabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			personalizedTemplatesV2Store.isFeatureEnabled(),
+	},
+	{
+		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			templatesStore.hasCustomTemplatesHost &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -100,7 +141,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!templatesStore.hasCustomTemplatesHost &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -219,7 +264,12 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				id: 'version-upgrade-cta',
 				component: VersionUpdateCTA,
 				available: versionsStore.hasVersionUpdates,
-				props: {},
+				props: {
+					disabled: !usersStore.canUserUpdateVersion,
+					tooltipText: !usersStore.canUserUpdateVersion
+						? i18n.baseText('whatsNew.updateNudgeTooltip')
+						: undefined,
+				},
 			},
 		],
 	},
@@ -289,7 +339,13 @@ const toggleCollapse = () => {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
+			if (personalizedTemplatesV2Store.isFeatureEnabled()) {
+				uiStore.openModalWithData({
+					name: EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+					data: {},
+				});
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			} else if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
 				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			}
 			break;
@@ -335,7 +391,7 @@ function onResize() {
 }
 
 async function onResizeEnd() {
-	if (window.outerWidth < 900) {
+	if (window.innerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
 	} else {
 		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;

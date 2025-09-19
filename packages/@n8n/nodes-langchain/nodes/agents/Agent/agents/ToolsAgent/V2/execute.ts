@@ -104,7 +104,9 @@ async function processEventStream(
 					let chunkText = '';
 					if (Array.isArray(chunkContent)) {
 						for (const message of chunkContent) {
-							chunkText += (message as MessageContentText)?.text;
+							if (message?.type === 'text') {
+								chunkText += (message as MessageContentText)?.text;
+							}
 						}
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
@@ -263,7 +265,13 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				const chatHistory = await memory?.chatHistory.getMessages();
+				// Get chat history respecting the context window length configured in memory
+				let chatHistory;
+				if (memory) {
+					// Load memory variables to respect context window length
+					const memoryVariables = await memory.loadMemoryVariables({});
+					chatHistory = memoryVariables['chat_history'];
+				}
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,

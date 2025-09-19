@@ -14,6 +14,7 @@ export interface Props {
 	title: string;
 	showActionArrow?: boolean;
 	isOfficial?: boolean;
+	hideNodeIcon?: boolean;
 }
 
 defineProps<Props>();
@@ -35,7 +36,7 @@ const { t } = useI18n();
 		}"
 		v-bind="$attrs"
 	>
-		<div :class="$style.nodeIcon">
+		<div v-if="!hideNodeIcon" :class="$style.nodeIcon">
 			<slot name="icon" />
 		</div>
 		<div>

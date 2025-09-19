@@ -52,6 +52,8 @@ export class InstanceSettings {
 	 */
 	readonly instanceId: string;
 
+	readonly hmacSignatureSecret: string;
+
 	readonly instanceType: InstanceType;
 
 	constructor(
@@ -64,6 +66,7 @@ export class InstanceSettings {
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
 		this.instanceId = this.generateInstanceId();
+		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
 	}
 
 	/**
@@ -223,6 +226,14 @@ export class InstanceSettings {
 		return createHash('sha256')
 			.update(encryptionKey.slice(Math.round(encryptionKey.length / 2)))
 			.digest('hex');
+	}
+
+	private getOrGenerateHmacSignatureSecret() {
+		const hmacSignatureSecretFromEnv = process.env.N8N_HMAC_SIGNATURE_SECRET;
+		if (hmacSignatureSecretFromEnv) return hmacSignatureSecretFromEnv;
+
+		const { encryptionKey } = this;
+		return createHash('sha256').update(`hmac-signature:${encryptionKey}`).digest('hex');
 	}
 
 	private save(settings: Settings) {

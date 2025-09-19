@@ -24,6 +24,7 @@ import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { useToast } from '@/composables/useToast';
 
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -69,6 +70,7 @@ const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
+const toast = useToast();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
@@ -88,14 +90,15 @@ const { onDocumentVisible } = useDocumentVisibility();
 const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
-	filteredResources,
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
+	applyDefaultExecuteWorkflowNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
-	reloadWorkflows,
+	workflowDbToResourceMapper,
 	getWorkflowUrl,
+	workflowsResources,
 } = useWorkflowResourcesLocator(router);
 
 const currentProjectName = computed(() => {
@@ -160,6 +163,7 @@ function onInputChange(workflowId: NodeParameterValue): void {
 		__rl: true,
 		value: workflowId,
 		mode: selectedMode.value,
+		cachedResultUrl: getWorkflowUrl(workflowId),
 	};
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(workflowId);
@@ -174,6 +178,10 @@ function onListItemSelected(value: NodeParameterValue) {
 	telemetry.track('User chose sub-workflow', {});
 	onInputChange(value);
 	hideDropdown();
+	// we rename defaults here to allow selecting the same workflow to
+	// update the name, as we don't eagerly update a changed workflow name
+	// but rather only react on changed id elsewhere
+	applyDefaultExecuteWorkflowNodeName(value);
 }
 
 function onInputFocus(): void {
@@ -239,39 +247,62 @@ watch(
 	},
 );
 
+watch(
+	() => props.modelValue,
+	(val, old) => {
+		// We update the name only if the actual ID changed
+		// Because eagerly renaming the node when the target sub-workflow
+		// changed name means the workflow becomes unsaved and changed just by
+		// opening the ExecuteWorkflow node referencing the renamed workflow
+		if (old.value !== val.value) {
+			applyDefaultExecuteWorkflowNodeName(val.value);
+		}
+	},
+);
+
 onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
 
 const onAddResourceClicked = async () => {
-	const projectId = projectStore.currentProjectId;
-	const sampleWorkflow = props.sampleWorkflow;
-	const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
-	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
-		(w) => w.name && new RegExp(workflowName).test(w.name),
-	);
+	try {
+		const projectId = projectStore.currentProjectId;
+		const sampleWorkflow = props.sampleWorkflow;
+		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
+		const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+			(w) => w.name && new RegExp(workflowName).test(w.name),
+		);
 
-	const workflow: WorkflowDataCreate = {
-		...sampleWorkflow,
-		name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
-	};
-	if (projectId) {
-		workflow.projectId = projectId;
+		const workflow: WorkflowDataCreate = {
+			...sampleWorkflow,
+			name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
+		};
+		if (projectId) {
+			workflow.projectId = projectId;
+		}
+		telemetry.track('User clicked create new sub-workflow button', {});
+
+		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+		});
+		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
+		emit('update:modelValue', {
+			__rl: true,
+			value: newWorkflow.id,
+			mode: selectedMode.value,
+			cachedResultName: newWorkflow.name,
+			cachedResultUrl: getWorkflowUrl(newWorkflow.id),
+		});
+		hideDropdown();
+
+		window.open(href, '_blank');
+
+		emit('workflowCreated', newWorkflow.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error.subworkflowCreationFailed'));
 	}
-	telemetry.track('User clicked create new sub-workflow button', {});
-
-	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
-	const { href } = router.resolve({
-		name: VIEWS.WORKFLOW,
-		params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
-	});
-	await reloadWorkflows();
-	onInputChange(newWorkflow.id);
-	hideDropdown();
-
-	window.open(href, '_blank');
-
-	emit('workflowCreated', newWorkflow.id);
 };
 </script>
 <template>
@@ -285,7 +316,7 @@ const onAddResourceClicked = async () => {
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="filteredResources"
+			:resources="workflowsResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
@@ -295,7 +326,7 @@ const onAddResourceClicked = async () => {
 			}"
 			:width="width"
 			:event-bus="eventBus"
-			:model-value="modelValue.value"
+			:model-value="modelValue"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"

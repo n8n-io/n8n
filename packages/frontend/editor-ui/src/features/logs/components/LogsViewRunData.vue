@@ -8,8 +8,9 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PiPWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
+import RunDataItemCount from '@/components/RunDataItemCount.vue';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
@@ -25,7 +26,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 
-const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(
@@ -62,7 +63,7 @@ const isExecuting = computed(
 );
 
 function handleClickOpenNdv() {
-	ndvStore.setActiveNodeName(logEntry.node.name);
+	ndvStore.setActiveNodeName(logEntry.node.name, 'logs_view');
 }
 
 function handleChangeDisplayMode(value: IRunDataDisplayMode) {
@@ -74,7 +75,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
-		:key="`run-data${pipWindow ? '-pip' : ''}`"
+		:key="`run-data${popOutWindow ? '-pop-out' : ''}`"
 		:class="$style.component"
 		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
@@ -84,6 +85,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:pane-type="paneType"
 		:disable-run-index-selection="true"
 		:compact="true"
+		:show-actions-on-hover="true"
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
@@ -100,6 +102,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">
 				{{ title }}
 			</N8nText>
+		</template>
+
+		<template #header-end="itemCountProps">
+			<RunDataItemCount v-bind="itemCountProps" />
 		</template>
 
 		<template #no-output-data>

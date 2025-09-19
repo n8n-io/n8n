@@ -78,7 +78,14 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:delete',
 	'insights:list',
 	'folder:move',
+	'folder:read',
+	'folder:update',
+	'folder:delete',
+	'folder:create',
+	'folder:list',
 	'oidc:manage',
+	'dataStore:list',
+	'role:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -98,4 +105,5 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'user:list',
 	'variable:list',
 	'variable:read',
+	'dataStore:list',
 ];

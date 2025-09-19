@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { DEFAULT_EVALUATION_METRIC } from 'n8n-workflow';
 
 import {
 	CORRECTNESS_PROMPT,
@@ -386,7 +387,7 @@ export const setMetricsProperties: INodeProperties[] = [
 				description: 'Define your own metric(s)',
 			},
 		],
-		default: 'correctness',
+		default: DEFAULT_EVALUATION_METRIC,
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],

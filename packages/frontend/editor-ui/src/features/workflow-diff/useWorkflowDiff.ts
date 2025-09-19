@@ -1,6 +1,6 @@
 import _pick from 'lodash-es/pick';
 import _isEqual from 'lodash-es/isEqual';
-import type { CanvasConnection } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -52,7 +52,7 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 	const diff: WorkflowDiff<T> = new Map();
 
-	baseNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of baseNodes.entries()) {
 		if (!targetNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Deleted, node });
 		} else if (!nodesEqual(baseNodes.get(id), targetNodes.get(id))) {
@@ -60,13 +60,13 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 		} else {
 			diff.set(id, { status: NodeDiffStatus.Eq, node });
 		}
-	});
+	}
 
-	targetNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of targetNodes.entries()) {
 		if (!baseNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Added, node });
 		}
-	});
+	}
 
 	return diff;
 }
@@ -134,15 +134,17 @@ function createWorkflowDiff(
 
 		return {
 			workflow: workflowRef,
-			nodes: nodes.value.map((node) => {
+			nodes: nodes.value.map((node: CanvasNode) => {
 				node.draggable = false;
 				node.selectable = false;
 				node.focusable = false;
 				return node;
 			}),
-			connections: connections.value.map((connection) => {
+			connections: connections.value.map((connection: CanvasConnection) => {
 				connection.selectable = false;
 				connection.focusable = false;
+				// Remove execution data from connection labels in diff context
+				connection.label = '';
 				return connection;
 			}),
 		};
@@ -174,15 +176,16 @@ export const useWorkflowDiff = (
 	);
 
 	const nodesDiff = computed(() => {
-		// Don't compute diff until both workflows are loaded to prevent initial flashing
-		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+		// Handle case where one or both workflows don't exist
+		const sourceNodes = source.value?.workflow?.value?.nodes ?? [];
+		const targetNodes = target.value?.workflow?.value?.nodes ?? [];
+
+		// If neither workflow exists, return empty diff
+		if (sourceNodes.length === 0 && targetNodes.length === 0) {
 			return new Map<string, NodeDiff<INodeUi>>();
 		}
 
-		return compareWorkflowsNodes(
-			source.value.workflow?.value?.nodes ?? [],
-			target.value.workflow?.value?.nodes ?? [],
-		);
+		return compareWorkflowsNodes(sourceNodes, targetNodes);
 	});
 
 	type Connection = {
@@ -222,27 +225,28 @@ export const useWorkflowDiff = (
 	}
 
 	const connectionsDiff = computed(() => {
-		// Don't compute diff until both workflows are loaded to prevent initial flashing
-		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
-			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
-		}
-
+		// Handle case where one or both workflows don't exist
 		const sourceConnections = mapConnections(source.value?.connections ?? []);
 		const targetConnections = mapConnections(target.value?.connections ?? []);
+
+		// If neither workflow has connections, return empty diff
+		if (sourceConnections.set.size === 0 && targetConnections.set.size === 0) {
+			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+		}
 
 		const added = targetConnections.set.difference(sourceConnections.set);
 		const removed = sourceConnections.set.difference(targetConnections.set);
 
 		const acc = new Map<string, { status: NodeDiffStatus; connection: Connection }>();
 
-		added
-			.values()
-			.forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Added, targetConnections.map, acc));
-		removed
-			.values()
-			.forEach((id) =>
-				formatConnectionDiff(id, NodeDiffStatus.Deleted, sourceConnections.map, acc),
-			);
+		for (const id of added.values()) {
+			formatConnectionDiff(id, NodeDiffStatus.Added, targetConnections.map, acc);
+		}
+
+		for (const id of removed.values()) {
+			formatConnectionDiff(id, NodeDiffStatus.Deleted, sourceConnections.map, acc);
+		}
+
 		return acc;
 	});
 

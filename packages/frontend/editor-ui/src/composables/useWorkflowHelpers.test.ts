@@ -8,16 +8,18 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
+	createTestExpressionLocalResolveContext,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
+import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -308,8 +310,9 @@ describe('useWorkflowHelpers', () => {
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -330,10 +333,77 @@ describe('useWorkflowHelpers', () => {
 				},
 				trigger: {
 					parameters: {
-						method: 'GET',
+						httpMethod: 'GET',
 						path: 'test-path',
 					},
 					type: 'n8n-nodes-base.webhook',
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: SLACK_TRIGGER_NODE_TYPE,
+						webhookId: '1',
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'POST',
+				webhookPath: '1/webhook',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'POST',
+					node: 'Webhook 1',
+					webhookPath: '1/webhook',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {},
+					type: SLACK_TRIGGER_NODE_TYPE,
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return conflicting webhook data and workflow id is different in chat', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: CHAT_TRIGGER_NODE_TYPE,
+						webhookId: '1',
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'POST',
+				webhookPath: '1/chat',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'POST',
+					node: 'Webhook 1',
+					webhookPath: '1/chat',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {},
+					type: CHAT_TRIGGER_NODE_TYPE,
+					webhookId: '1',
 				},
 			});
 		});
@@ -345,8 +415,9 @@ describe('useWorkflowHelpers', () => {
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 					},
@@ -464,7 +535,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: 'test-path',
 						},
 						webhookId: 'test-webhook-id',
@@ -489,7 +560,7 @@ describe('useWorkflowHelpers', () => {
 					{
 						type: WEBHOOK_NODE_TYPE,
 						parameters: {
-							method: 'GET',
+							httpMethod: 'GET',
 							path: '',
 						},
 						webhookId: 'test-webhook-id',
@@ -504,6 +575,116 @@ describe('useWorkflowHelpers', () => {
 				path: 'test-webhook-id',
 			});
 			findWebhookSpy.mockRestore();
+		});
+
+		it('should find conflicting webhook data with multiple methods', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							httpMethod: ['PUT', 'PATCH'],
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'PATCH',
+				webhookPath: 'test-path',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'PATCH',
+					node: 'Webhook 1',
+					webhookPath: 'test-path',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {
+						httpMethod: ['PUT', 'PATCH'],
+						path: 'test-path',
+						multipleMethods: true,
+					},
+					type: 'n8n-nodes-base.webhook',
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return null if no conflicts with multiple methods', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							httpMethod: ['PUT', 'PATCH'],
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
+		});
+
+		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							path: 'test-path',
+							multipleMethods: true,
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			await workflowHelpers.checkConflictingWebhooks('123');
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-path',
+			});
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'POST',
+				path: 'test-path',
+			});
+		});
+
+		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
+						parameters: {
+							path: 'test-path',
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			await workflowHelpers.checkConflictingWebhooks('123');
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'test-path',
+			});
 		});
 	});
 
@@ -784,7 +965,6 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.pinnedWorkflowData = {
 				ParentNode: [{ json: { key: 'value' } }],
 			};
-			workflowsStore.shouldReplaceInputDataWithPinData = true;
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
@@ -801,7 +981,6 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = {
 				ParentNode: [
 					{
@@ -842,7 +1021,6 @@ describe('useWorkflowHelpers', () => {
 			const parentRunIndex = 1;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = {
 				ParentNode: [
 					{ data: {} } as never,
@@ -885,7 +1063,6 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 
 			workflowsStore.pinnedWorkflowData = undefined;
-			workflowsStore.shouldReplaceInputDataWithPinData = false;
 			workflowsStore.getWorkflowRunData = null;
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
@@ -940,10 +1117,7 @@ describe(resolveParameter, () => {
 					f0: '={{ $json }}',
 					f1: '={{ $("n0").item.json }}',
 				},
-				{
-					localResolve: true,
-					envVars: {},
-					additionalKeys: {},
+				createTestExpressionLocalResolveContext({
 					workflow: createTestWorkflowObject(workflowData),
 					execution: createTestWorkflowExecutionResponse({
 						workflowData,
@@ -961,7 +1135,7 @@ describe(resolveParameter, () => {
 					}),
 					nodeName: 'n1',
 					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
-				},
+				}),
 			);
 
 			expect(result).toEqual({

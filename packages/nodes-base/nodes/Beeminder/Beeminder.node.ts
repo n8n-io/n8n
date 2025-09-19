@@ -10,6 +10,10 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
+	assertParamIsString,
+	validateNodeParameters,
+	assertParamIsNumber,
+	assertParamIsArray,
 } from 'n8n-workflow';
 
 import type { Datapoint } from './Beeminder.node.functions';
@@ -34,12 +38,6 @@ import {
 	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
-import {
-	assertIsString,
-	assertIsNodeParameters,
-	assertIsNumber,
-	assertIsArray,
-} from '../../utils/types';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -1042,7 +1040,7 @@ export class Beeminder implements INodeType {
 
 				if (resource === 'datapoint') {
 					const goalName = this.getNodeParameter('goalName', i);
-					assertIsString('goalName', goalName);
+					assertParamIsString('goalName', goalName, this.getNode());
 					results = await executeDatapointOperations(this, operation, goalName, i, timezone);
 				} else if (resource === 'charge') {
 					results = await executeChargeOperations(this, operation, i);
@@ -1091,22 +1089,22 @@ async function executeDatapointCreate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const value = context.getNodeParameter('value', itemIndex);
-	assertIsNumber('value', value);
+	assertParamIsNumber('value', value, context.getNode());
 
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if (options.timestamp) {
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
-		comment?: string;
-		timestamp?: number;
-		requestid?: string;
-	}>(options, {
-		comment: { type: 'string', optional: true },
-		timestamp: { type: 'number', optional: true },
-		requestid: { type: 'string', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			comment: { type: 'string' },
+			timestamp: { type: 'number' },
+			requestid: { type: 'string' },
+		},
+		context.getNode(),
+	);
 
 	const data = {
 		value,
@@ -1124,15 +1122,15 @@ async function executeDatapointGetAll(
 ): Promise<JsonObject[]> {
 	const returnAll = context.getNodeParameter('returnAll', itemIndex);
 	const options = context.getNodeParameter('options', itemIndex);
-	assertIsNodeParameters<{
-		sort?: string;
-		page?: number;
-		per?: number;
-	}>(options, {
-		sort: { type: 'string', optional: true },
-		page: { type: 'number', optional: true },
-		per: { type: 'number', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			sort: { type: 'string' },
+			page: { type: 'number' },
+			per: { type: 'number' },
+		},
+		context.getNode(),
+	);
 
 	const data = {
 		goalName,
@@ -1150,21 +1148,21 @@ async function executeDatapointUpdate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId, context.getNode());
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if (options.timestamp) {
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
-		value?: number;
-		comment?: string;
-		timestamp?: number;
-	}>(options, {
-		value: { type: 'number', optional: true },
-		comment: { type: 'string', optional: true },
-		timestamp: { type: 'number', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			value: { type: 'number' },
+			comment: { type: 'string' },
+			timestamp: { type: 'number' },
+		},
+		context.getNode(),
+	);
 
 	const data = {
 		goalName,
@@ -1181,7 +1179,7 @@ async function executeDatapointDelete(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId, context.getNode());
 	const data = {
 		goalName,
 		datapointId,
@@ -1196,10 +1194,11 @@ async function executeDatapointCreateAll(
 ): Promise<JsonObject[]> {
 	const datapoints = context.getNodeParameter('datapoints', itemIndex);
 	const parsedDatapoints = typeof datapoints === 'string' ? jsonParse(datapoints) : datapoints;
-	assertIsArray<Datapoint>(
+	assertParamIsArray<Datapoint>(
 		'datapoints',
 		parsedDatapoints,
 		(val): val is Datapoint => typeof val === 'object' && val !== null && 'value' in val,
+		context.getNode(),
 	);
 
 	const data = {
@@ -1215,7 +1214,7 @@ async function executeDatapointGet(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId, context.getNode());
 	const data = {
 		goalName,
 		datapointId,
@@ -1255,15 +1254,16 @@ async function executeChargeOperations(
 ): Promise<JsonObject[]> {
 	if (operation === 'create') {
 		const amount = context.getNodeParameter('amount', itemIndex);
-		assertIsNumber('amount', amount);
+		assertParamIsNumber('amount', amount, context.getNode());
 		const options = context.getNodeParameter('additionalFields', itemIndex);
-		assertIsNodeParameters<{
-			note?: string;
-			dryrun?: boolean;
-		}>(options, {
-			note: { type: 'string', optional: true },
-			dryrun: { type: 'boolean', optional: true },
-		});
+		validateNodeParameters(
+			options,
+			{
+				note: { type: 'string' },
+				dryrun: { type: 'boolean' },
+			},
+			context.getNode(),
+		);
 		const data = {
 			amount,
 			...options,
@@ -1280,13 +1280,13 @@ async function executeGoalCreate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const slug = context.getNodeParameter('slug', itemIndex);
-	assertIsString('slug', slug);
+	assertParamIsString('slug', slug, context.getNode());
 	const title = context.getNodeParameter('title', itemIndex);
-	assertIsString('title', title);
+	assertParamIsString('title', title, context.getNode());
 	const goalType = context.getNodeParameter('goal_type', itemIndex);
-	assertIsString('goalType', goalType);
+	assertParamIsString('goalType', goalType, context.getNode());
 	const gunits = context.getNodeParameter('gunits', itemIndex);
-	assertIsString('gunits', gunits);
+	assertParamIsString('gunits', gunits, context.getNode());
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if ('tags' in options && typeof options.tags === 'string') {
 		options.tags = jsonParse(options.tags);
@@ -1295,27 +1295,21 @@ async function executeGoalCreate(
 		options.goaldate = moment.tz(options.goaldate, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
-		goaldate?: number;
-		goalval?: number;
-		rate?: number;
-		initval?: number;
-		secret?: boolean;
-		datapublic?: boolean;
-		datasource?: string;
-		dryrun?: boolean;
-		tags?: string[];
-	}>(options, {
-		goaldate: { type: 'number', optional: true },
-		goalval: { type: 'number', optional: true },
-		rate: { type: 'number', optional: true },
-		initval: { type: 'number', optional: true },
-		secret: { type: 'boolean', optional: true },
-		datapublic: { type: 'boolean', optional: true },
-		datasource: { type: 'string', optional: true },
-		dryrun: { type: 'boolean', optional: true },
-		tags: { type: 'string[]', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			goaldate: { type: 'number' },
+			goalval: { type: 'number' },
+			rate: { type: 'number' },
+			initval: { type: 'number' },
+			secret: { type: 'boolean' },
+			datapublic: { type: 'boolean' },
+			datasource: { type: 'string' },
+			dryrun: { type: 'boolean' },
+			tags: { type: 'string[]' },
+		},
+		context.getNode(),
+	);
 
 	const data = {
 		slug,
@@ -1333,15 +1327,16 @@ async function executeGoalGet(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
-		datapoints?: boolean;
-		emaciated?: boolean;
-	}>(options, {
-		datapoints: { type: 'boolean', optional: true },
-		emaciated: { type: 'boolean', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			datapoints: { type: 'boolean' },
+			emaciated: { type: 'boolean' },
+		},
+		context.getNode(),
+	);
 	const data = {
 		goalName,
 		...options,
@@ -1355,11 +1350,13 @@ async function executeGoalGetAll(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
-		emaciated?: boolean;
-	}>(options, {
-		emaciated: { type: 'boolean', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			emaciated: { type: 'boolean' },
+		},
+		context.getNode(),
+	);
 	const data = { ...options };
 
 	return await getAllGoals.call(context, data);
@@ -1370,11 +1367,13 @@ async function executeGoalGetArchived(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
-		emaciated?: boolean;
-	}>(options, {
-		emaciated: { type: 'boolean', optional: true },
-	});
+	validateNodeParameters(
+		options,
+		{
+			emaciated: { type: 'boolean' },
+		},
+		context.getNode(),
+	);
 	const data = { ...options };
 
 	return await getArchivedGoals.call(context, data);
@@ -1386,7 +1385,7 @@ async function executeGoalUpdate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if ('tags' in options && typeof options.tags === 'string') {
 		options.tags = jsonParse(options.tags);
@@ -1394,37 +1393,29 @@ async function executeGoalUpdate(
 	if ('roadall' in options && typeof options.roadall === 'string') {
 		options.roadall = jsonParse(options.roadall);
 	}
-	console.log('roadall', typeof options.roadall, options.roadall);
-	assertIsNodeParameters<{
-		title?: string;
-		yaxis?: string;
-		tmin?: string;
-		tmax?: string;
-		goaldate?: number;
-		secret?: boolean;
-		datapublic?: boolean;
-		roadall?: object;
-		datasource?: string;
-		tags?: string[];
-	}>(options, {
-		title: { type: 'string', optional: true },
-		yaxis: { type: 'string', optional: true },
-		tmin: { type: 'string', optional: true },
-		tmax: { type: 'string', optional: true },
-		secret: { type: 'boolean', optional: true },
-		datapublic: { type: 'boolean', optional: true },
-		roadall: { type: 'object', optional: true },
-		datasource: { type: 'string', optional: true },
-		tags: { type: 'string[]', optional: true },
-	});
+	if ('goaldate' in options && options.goaldate) {
+		options.goaldate = moment.tz(options.goaldate, timezone).unix();
+	}
+	validateNodeParameters(
+		options,
+		{
+			title: { type: 'string' },
+			yaxis: { type: 'string' },
+			tmin: { type: 'string' },
+			tmax: { type: 'string' },
+			goaldate: { type: 'number' },
+			secret: { type: 'boolean' },
+			datapublic: { type: 'boolean' },
+			roadall: { type: 'object' },
+			datasource: { type: 'string' },
+			tags: { type: 'string[]' },
+		},
+		context.getNode(),
+	);
 	const data = {
 		goalName,
 		...options,
 	};
-
-	if (data.goaldate) {
-		data.goaldate = moment.tz(data.goaldate, timezone).unix();
-	}
 	return await updateGoal.call(context, data);
 }
 
@@ -1433,7 +1424,7 @@ async function executeGoalRefresh(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 	const data = {
 		goalName,
 	};
@@ -1445,7 +1436,7 @@ async function executeGoalShortCircuit(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 
 	const data = {
 		goalName,
@@ -1458,7 +1449,7 @@ async function executeGoalStepDown(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 
 	const data = {
 		goalName,
@@ -1471,7 +1462,7 @@ async function executeGoalCancelStepDown(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 	const data = {
 		goalName,
 	};
@@ -1483,7 +1474,7 @@ async function executeGoalUncle(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName, context.getNode());
 	const data = {
 		goalName,
 	};
@@ -1534,19 +1525,17 @@ async function executeUserOperations(
 		if (options.diff_since) {
 			options.diff_since = moment.tz(options.diff_since, timezone).unix();
 		}
-		assertIsNodeParameters<{
-			associations?: boolean;
-			diff_since?: number;
-			skinny?: boolean;
-			emaciated?: boolean;
-			datapoints_count?: number;
-		}>(options, {
-			associations: { type: 'boolean', optional: true },
-			diff_since: { type: 'number', optional: true },
-			skinny: { type: 'boolean', optional: true },
-			emaciated: { type: 'boolean', optional: true },
-			datapoints_count: { type: 'number', optional: true },
-		});
+		validateNodeParameters(
+			options,
+			{
+				associations: { type: 'boolean' },
+				diff_since: { type: 'number' },
+				skinny: { type: 'boolean' },
+				emaciated: { type: 'boolean' },
+				datapoints_count: { type: 'number' },
+			},
+			context.getNode(),
+		);
 		const data = { ...options };
 
 		return await getUser.call(context, data);
