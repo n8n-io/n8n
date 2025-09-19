@@ -1,5 +1,5 @@
-import { WorkflowPage, NDV, CredentialsModal } from '../pages';
-import { getVisiblePopper } from '../utils';
+import { WorkflowPage, NDV, CredentialsModal } from '../../pages';
+import { getVisiblePopper } from '../../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();

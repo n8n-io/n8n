@@ -1,9 +1,9 @@
-import { expandSidebar } from '../composables/sidebar';
-import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
-import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
-import { errorToast, successToast } from '../pages/notifications';
-import { PersonalSettingsPage } from '../pages/settings-personal';
-import { getVisiblePopper } from '../utils';
+import { expandSidebar } from '../../composables/sidebar';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../../constants';
+import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../../pages';
+import { errorToast, successToast } from '../../pages/notifications';
+import { PersonalSettingsPage } from '../../pages/settings-personal';
+import { getVisiblePopper } from '../../utils';
 
 /**
  * User A - Instance owner

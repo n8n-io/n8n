@@ -17,7 +17,7 @@ import {
 	assertNodeOutputErrorMessageExists,
 	checkParameterCheckboxInputByName,
 	uncheckParameterCheckboxInputByName,
-} from '../composables/ndv';
+} from '../../composables/ndv';
 import {
 	clickExecuteWorkflowButton,
 	clickZoomToFit,
@@ -25,11 +25,11 @@ import {
 	openNode,
 	pasteWorkflow,
 	saveWorkflowOnButtonClick,
-} from '../composables/workflow';
-import { visitWorkflowsPage } from '../composables/workflowsPage';
-import SUB_WORKFLOW_INPUTS from '../fixtures/Test_Subworkflow-Inputs.json';
-import { errorToast, successToast } from '../pages/notifications';
-import { getVisiblePopper } from '../utils';
+} from '../../composables/workflow';
+import { visitWorkflowsPage } from '../../composables/workflowsPage';
+import SUB_WORKFLOW_INPUTS from '../../fixtures/Test_Subworkflow-Inputs.json';
+import { errorToast, successToast } from '../../pages/notifications';
+import { getVisiblePopper } from '../../utils';
 
 const DEFAULT_WORKFLOW_NAME = 'My workflow';
 const DEFAULT_SUBWORKFLOW_NAME_1 = 'My Sub-Workflow 1';

@@ -1,9 +1,9 @@
-import OnboardingWorkflow from '../fixtures/Onboarding_workflow.json';
-import WorkflowTemplate from '../fixtures/Workflow_template_write_http_query.json';
-import { MainSidebar } from '../pages/sidebar/main-sidebar';
-import { TemplatesPage } from '../pages/templates';
-import { WorkflowPage } from '../pages/workflow';
-import { WorkflowsPage } from '../pages/workflows';
+import OnboardingWorkflow from '../../fixtures/Onboarding_workflow.json';
+import WorkflowTemplate from '../../fixtures/Workflow_template_write_http_query.json';
+import { MainSidebar } from '../../pages/sidebar/main-sidebar';
+import { TemplatesPage } from '../../pages/templates';
+import { WorkflowPage } from '../../pages/workflow';
+import { WorkflowsPage } from '../../pages/workflows';
 
 const templatesPage = new TemplatesPage();
 const workflowPage = new WorkflowPage();
