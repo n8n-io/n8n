@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
 import random
-from src.errors import TaskCancelledError, TaskRuntimeError
+from src.errors import TaskCancelledError
 
 
 from src.config.task_runner_config import TaskRunnerConfig
