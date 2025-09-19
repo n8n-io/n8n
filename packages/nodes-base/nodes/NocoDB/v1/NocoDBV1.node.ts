@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -17,12 +18,19 @@ export class NocoDBV1 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
+			displayName: 'NocoDB',
+			name: 'nocoDb',
+			icon: 'file:nocodb.svg',
+			group: ['input'],
+			version: [1, 2, 3],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Read, update, write and delete data from NocoDB',
 			defaults: {
 				name: 'NocoDB',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
-			version: [1, 2, 3],
+			usableAsTool: true,
 			credentials: [
 				{
 					name: 'nocoDb',
@@ -78,12 +86,65 @@ export class NocoDBV1 implements INodeType {
 							name: 'v0.200.0 Onwards',
 							value: 3,
 						},
+					],
+					displayOptions: {
+						show: {
+							'@version': [1],
+						},
+					},
+					default: 1,
+				},
+				{
+					displayName: 'API Version',
+					name: 'version',
+					type: 'options',
+					isNodeSetting: true,
+					options: [
 						{
-							name: 'v0.240.0 Onwards',
-							value: 4,
+							name: 'Before v0.90.0',
+							value: 1,
+						},
+						{
+							name: 'v0.90.0 Onwards',
+							value: 2,
+						},
+						{
+							name: 'v0.200.0 Onwards',
+							value: 3,
 						},
 					],
-					default: 4,
+					displayOptions: {
+						show: {
+							'@version': [2],
+						},
+					},
+					default: 2,
+				},
+				{
+					displayName: 'API Version',
+					name: 'version',
+					type: 'options',
+					isNodeSetting: true,
+					options: [
+						{
+							name: 'Before v0.90.0',
+							value: 1,
+						},
+						{
+							name: 'v0.90.0 Onwards',
+							value: 2,
+						},
+						{
+							name: 'v0.200.0 Onwards',
+							value: 3,
+						},
+					],
+					displayOptions: {
+						show: {
+							'@version': [3],
+						},
+					},
+					default: 3,
 				},
 				{
 					displayName: 'Resource',
