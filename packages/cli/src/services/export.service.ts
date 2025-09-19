@@ -3,7 +3,7 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
-import { type DataSource } from '@n8n/db';
+import { DataSource } from '@n8n/typeorm';
 
 @Service()
 export class ExportService {
@@ -36,8 +36,6 @@ export class ExportService {
 
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
-
-		console.log(this);
 
 		// Get DataSource from Container and fetch all repositories
 		const entityMetadatas = this.dataSource.entityMetadatas;
