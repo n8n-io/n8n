@@ -25,13 +25,14 @@ jobs:
               - 'packages/frontend/@n8n/design-system/**'
               - '.github/workflows/storybook.yml'
     outputs:
-      has_changes: ${{ steps.changed.outputs.design_system }}
+      has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
 
   chromatic:
     needs: [changeset]
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
+        github.event_name == 'pull_request_review' &&
         needs.changeset.outputs.has_changes == 'true' &&
         github.event.review.state == 'approved' &&
         !contains(github.event.pull_request.labels.*.name, 'community')
