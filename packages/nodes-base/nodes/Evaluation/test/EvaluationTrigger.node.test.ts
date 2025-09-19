@@ -14,7 +14,7 @@ describe('Evaluation Trigger Node', () => {
 		getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
 	});
 
-	let mockDataTable: { getManyRowsAndCount: jest.Mock };
+	let mockDataTable: { getManyRowsAndCount: jest.Mock; getColumns: jest.Mock };
 
 	describe('execute', () => {
 		describe('without filters', () => {
@@ -329,6 +329,10 @@ describe('Evaluation Trigger Node', () => {
 							{ id: 2, field1: 'value3', field2: 'value4' },
 						],
 					}),
+					getColumns: jest.fn().mockResolvedValue([
+						{ name: 'field1', type: 'string' },
+						{ name: 'field2', type: 'string' },
+					]),
 				};
 
 				mockExecuteFunctions = mockDeep<IExecuteFunctions>({
