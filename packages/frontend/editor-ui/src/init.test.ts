@@ -299,7 +299,7 @@ describe('Init', () => {
 
 				// Mock localStorage to simulate first visit
 				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
-				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
 
@@ -323,7 +323,7 @@ describe('Init', () => {
 
 				// Mock localStorage to simulate return visit
 				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('1');
-				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
 
