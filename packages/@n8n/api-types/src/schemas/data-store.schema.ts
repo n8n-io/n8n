@@ -9,16 +9,16 @@ export const dataStoreIdSchema = z.string().max(36);
 
 // Postgres does not allow leading numbers or -
 export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+export const DATA_STORE_COLUMN_MAX_LENGTH = 63; // Postgres has a maximum of 63 characters
+export const DATA_STORE_COLUMN_ERROR_MESSAGE =
+	'Only alphabetical characters and non-leading numbers and underscores are allowed for column names, and the maximum length is 63 characters.';
 
 export const dataStoreColumnNameSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(63) // Postgres has a maximum of 63 characters
-	.regex(
-		DATA_STORE_COLUMN_REGEX,
-		'Only alphabetical characters and non-leading numbers and underscores are allowed for column names',
-	);
+	.max(DATA_STORE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
+	.regex(DATA_STORE_COLUMN_REGEX, DATA_STORE_COLUMN_ERROR_MESSAGE);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 export const dataStoreCreateColumnSchema = z.object({

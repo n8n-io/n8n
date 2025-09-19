@@ -1,13 +1,13 @@
-import { getCanvasNodes } from '../composables/workflow';
+import { getCanvasNodes } from '../../composables/workflow';
 import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	CODE_NODE_DISPLAY_NAME,
-} from '../constants';
-import { NDV } from '../pages/ndv';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+} from '../../constants';
+import { NDV } from '../../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();

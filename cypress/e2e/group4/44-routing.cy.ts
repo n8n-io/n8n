@@ -2,18 +2,18 @@ import {
 	getCancelSaveChangesButton,
 	getCloseSaveChangesButton,
 	getSaveChangesModal,
-} from '../composables/modals/save-changes-modal';
-import { getNdvContainer } from '../composables/ndv';
-import { getHomeButton } from '../composables/projects';
-import { addNodeToCanvas, saveWorkflowOnButtonClick } from '../composables/workflow';
+} from '../../composables/modals/save-changes-modal';
+import { getNdvContainer } from '../../composables/ndv';
+import { getHomeButton } from '../../composables/projects';
+import { addNodeToCanvas, saveWorkflowOnButtonClick } from '../../composables/workflow';
 import {
 	getCreateWorkflowButton,
 	getNewWorkflowCardButton,
 	getWorkflowsPageUrl,
 	visitWorkflowsPage,
-} from '../composables/workflowsPage';
-import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
-import { warningToast } from '../pages/notifications';
+} from '../../composables/workflowsPage';
+import { EDIT_FIELDS_SET_NODE_NAME } from '../../constants';
+import { warningToast } from '../../pages/notifications';
 
 describe('Workflows', () => {
 	beforeEach(() => {

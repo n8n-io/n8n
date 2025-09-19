@@ -1,5 +1,5 @@
-import { WorkflowPage } from '../pages';
-import { getVisibleSelect } from '../utils';
+import { WorkflowPage } from '../../pages';
+import { getVisibleSelect } from '../../utils';
 
 const wf = new WorkflowPage();
 
