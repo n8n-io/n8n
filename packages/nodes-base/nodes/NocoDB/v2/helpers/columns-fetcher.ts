@@ -137,9 +137,9 @@ const makeUidtMapper = (version: number) => {
 	// readonly
 	uidtMapper['Barcode'] = uidtMapper['QrCode'];
 	uidtMapper['ForeignKey'] = uidtMapper['QrCode'];
-	uidtMapper['CreatedAt'] = uidtMapper['QrCode'];
+	uidtMapper['CreatedBy'] = uidtMapper['QrCode'];
 	uidtMapper['CreatedTime'] = uidtMapper['QrCode'];
-	uidtMapper['LastModifiedAt'] = uidtMapper['QrCode'];
+	uidtMapper['LastModifiedBy'] = uidtMapper['QrCode'];
 	uidtMapper['LastModifiedTime'] = uidtMapper['QrCode'];
 	uidtMapper['Lookup'] = uidtMapper['QrCode'];
 	uidtMapper['Formula'] = uidtMapper['QrCode'];
