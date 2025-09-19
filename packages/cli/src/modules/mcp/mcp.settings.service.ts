@@ -16,7 +16,6 @@ export class McpSettingsService {
 
 	async setEnabled(enabled: boolean): Promise<void> {
 		const value = enabled ? 'true' : 'false';
-		// Use an atomic upsert to avoid a race on first write
 		await this.settingsRepository.upsert({ key: KEY, value, loadOnStartup: true }, ['key']);
 	}
 }
