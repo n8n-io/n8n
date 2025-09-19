@@ -15,7 +15,10 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	async clickSaveButton() {
-		await this.clickButtonByName('Save');
+		await Promise.all([
+			this.waitForRestResponse(/\/rest\/projects\/[^/]+$/, 'PATCH'),
+			this.clickButtonByName('Save'),
+		]);
 	}
 
 	async clickCancelButton() {
@@ -75,5 +78,9 @@ export class ProjectSettingsPage extends BasePage {
 	async expectMembersSelectIsVisible() {
 		const select = this.page.getByTestId('project-members-select');
 		await expect(select).toBeVisible();
+	}
+
+	async waitForProjectSettingsRestResponse() {
+		await this.waitForRestResponse(/\/rest\/projects\/[^/]+$/, 'GET');
 	}
 }
