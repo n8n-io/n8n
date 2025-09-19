@@ -145,7 +145,7 @@ export class ImportService {
 		try {
 			const result = await this.dataSource
 				.createQueryBuilder()
-				.select('COUNT(*)')
+				.select('COUNT(*)', 'count')
 				.from(tableName, tableName)
 				.getRawOne<{ count: string }>();
 
