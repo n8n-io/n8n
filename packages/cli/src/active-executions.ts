@@ -35,7 +35,6 @@ export class ActiveExecutions {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
-		// private readonly taskRequester: TaskRequester,
 		private readonly eventService: EventService,
 	) {}
 
