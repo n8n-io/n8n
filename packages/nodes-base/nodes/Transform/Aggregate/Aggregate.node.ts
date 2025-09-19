@@ -55,7 +55,7 @@ export class Aggregate implements INodeType {
 					multipleValues: true,
 				},
 				placeholder: 'Add Field To Aggregate',
-				default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
+				default: { fieldToAggregate: [] },
 				displayOptions: {
 					show: {
 						aggregate: ['aggregateIndividualFields'],
@@ -63,19 +63,19 @@ export class Aggregate implements INodeType {
 				},
 				options: [
 					{
-						displayName: '',
+						displayName: 'Field',
 						name: 'fieldToAggregate',
 						values: [
 							{
 								displayName: 'Input Field Name',
-								name: 'fieldToAggregate',
+								name: 'inputFieldName',
 								type: 'string',
 								default: '',
 								description: 'The name of a field in the input items to aggregate together',
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: 'single',
+								noDataExpression: true,
 							},
 							{
 								displayName: 'Rename Field',
@@ -97,6 +97,7 @@ export class Aggregate implements INodeType {
 								description:
 									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
 								requiresDataPath: 'single',
+								noDataExpression: true,
 							},
 						],
 					},
@@ -252,14 +253,20 @@ export class Aggregate implements INodeType {
 				false,
 			) as boolean;
 			const mergeLists = this.getNodeParameter('options.mergeLists', 0, false) as boolean;
-			const fieldsToAggregate = this.getNodeParameter(
-				'fieldsToAggregate.fieldToAggregate',
-				0,
-				[],
-			) as [{ fieldToAggregate: string; renameField: boolean; outputFieldName: string }];
+			
+			type Row = { inputFieldName: string; renameField: boolean; outputFieldName: string };
+
+			const rows = this.getNodeParameter('fieldsToAggregate.fieldToAggregate', 0, []) as Row[];
+
+			if (!rows.length) {
+				throw new NodeOperationError(this.getNode(), 'No fields specified', {
+					description: 'Please add a field to aggregate',
+				});
+			}
+			
 			const keepMissing = this.getNodeParameter('options.keepMissing', 0, false) as boolean;
 
-			if (!fieldsToAggregate.length) {
+			if (!rows.length) {
 				throw new NodeOperationError(this.getNode(), 'No fields specified', {
 					description: 'Please add a field to aggregate',
 				});
@@ -277,7 +284,8 @@ export class Aggregate implements INodeType {
 			const values: { [key: string]: any } = {};
 			const outputFields: string[] = [];
 
-			for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
+			for (const { inputFieldName, outputFieldName, renameField } of rows) {
+				const fieldToAggregate = (inputFieldName || '').trim();
 				const field = renameField ? outputFieldName : fieldToAggregate;
 
 				if (outputFields.includes(field)) {
