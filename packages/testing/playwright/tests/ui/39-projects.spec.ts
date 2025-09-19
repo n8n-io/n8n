@@ -83,6 +83,7 @@ test.describe('Projects', () => {
 		await subn8n.canvas.saveWorkflow();
 
 		await subn8n.page.goto('/home/workflows');
+		await subn8n.sideBar.expand();
 		await subn8n.sideBar.clickProjectMenuItem(projectName);
 		await subn8n.page.getByRole('link', { name: 'Workflows' }).click();
 
