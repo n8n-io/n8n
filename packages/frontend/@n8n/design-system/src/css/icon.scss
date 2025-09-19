@@ -754,10 +754,6 @@
 	content: '\e6ce';
 }
 
-.el-icon-loading:before {
-	content: '\e6cf';
-}
-
 .el-icon-rank:before {
 	content: '\e6d1';
 }
@@ -1166,7 +1162,7 @@
 	content: '\e7ca';
 }
 
-.el-icon-loading {
+.el-icon.is-loading {
 	animation: rotating 2s linear infinite;
 }
 

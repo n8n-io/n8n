@@ -234,18 +234,14 @@ watch(
 				</div>
 			</template>
 			<el-switch
-				v-loading="workflowActivate.updatingWorkflowActivation.value"
 				:model-value="workflowActive"
 				:title="
 					workflowActive
 						? i18n.baseText('workflowActivator.deactivateWorkflow')
 						: i18n.baseText('workflowActivator.activateWorkflow')
 				"
-				:disabled="
-					disabled ||
-					workflowActivate.updatingWorkflowActivation.value ||
-					(!isNewWorkflow && !workflowPermissions.update)
-				"
+				:disabled="disabled || (!isNewWorkflow && !workflowPermissions.update)"
+				:loading="workflowActivate.updatingWorkflowActivation.value"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				data-test-id="workflow-activate-switch"
