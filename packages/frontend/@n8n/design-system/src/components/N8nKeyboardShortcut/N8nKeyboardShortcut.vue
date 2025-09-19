@@ -5,17 +5,13 @@ import { computed } from 'vue';
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
 
 const props = defineProps<KeyboardShortcut>();
-const { isMacOs } = useDeviceSupport();
+const { isMacOs, controlKeyText } = useDeviceSupport();
 
 const keys = computed(() => {
 	const allKeys = props.keys.map((key) => key.charAt(0).toUpperCase() + key.slice(1));
 
-	if (props.metaKey && isMacOs) {
-		allKeys.unshift('⌘');
-	}
-
-	if (props.metaKey && !isMacOs) {
-		allKeys.unshift('Ctrl');
+	if (props.metaKey) {
+		allKeys.unshift(controlKeyText.value);
 	}
 
 	if (props.altKey) {

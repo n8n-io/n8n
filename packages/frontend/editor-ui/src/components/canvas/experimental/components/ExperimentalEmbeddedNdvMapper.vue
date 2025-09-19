@@ -75,7 +75,15 @@ watch(isHovered, (hovered) => {
 watch(
 	state,
 	(value) => {
-		experimentalNdvStore.setMapperOpen(value.isOpen && !value.closeOnMouseLeave);
+		if (value.isOpen) {
+			if (value.closeOnMouseLeave) {
+				return; // Skip sync if the mapper is "ephemeral"
+			}
+
+			experimentalNdvStore.setMapperOpen(true);
+		} else {
+			experimentalNdvStore.setMapperOpen(false);
+		}
 	},
 	{ immediate: true },
 );
@@ -120,6 +128,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
 				:truncate-limit="60"
+				search-shortcut="ctrl+f"
 			/>
 		</template>
 	</N8nPopoverReka>

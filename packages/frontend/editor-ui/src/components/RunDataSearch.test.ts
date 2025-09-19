@@ -12,33 +12,53 @@ describe('RunDataSearch', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should not be focused on keyboard shortcut when area is not active', async () => {
+	it.each([
+		{ prop: '/', typed: '/' },
+		{ prop: 'ctrl+f', typed: '{Control>}f' },
+	])(
+		'should be focused on keyboard event $typed when shortcut prop is $prop',
+		async ({ prop, typed }) => {
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					modelValue: '',
+					shortcut: prop,
+				},
+			});
+
+			await userEvent.keyboard(typed);
+			expect(emitted().focus).toBeDefined();
+		},
+	);
+
+	it.each([
+		{ prop: undefined, typed: '/', description: 'shortcut prop is undefined' },
+		{ prop: '/', typed: '{Control>}f', description: 'shortcut prop is / but key event is Ctrl+F' },
+		{ prop: 'ctrl+f', typed: '/', description: 'shortcut prop is ctrl+f but key event is /' },
+	])('should not be focused on keyboard shortcut when $description', async ({ prop, typed }) => {
 		const { emitted } = renderComponent({
 			pinia,
 			props: {
 				modelValue: '',
+				shortcut: prop,
 			},
 		});
 
-		await userEvent.keyboard('/');
+		await userEvent.keyboard(typed);
 		expect(emitted().focus).not.toBeDefined();
 	});
 
-	it('should be focused on click regardless of active area and keyboard shortcut should work after', async () => {
-		const { getByRole, emitted, rerender } = renderComponent({
+	it('should be focused on click regardless of shortcut prop', async () => {
+		const { getByRole, emitted } = renderComponent({
 			pinia,
 			props: {
 				modelValue: '',
+				shortcut: undefined,
 			},
 		});
 
 		await userEvent.click(getByRole('textbox'));
 		expect(emitted().focus).toHaveLength(1);
-		await userEvent.click(document.body);
-
-		await rerender({ isAreaActive: true });
-		await userEvent.keyboard('/');
-		expect(emitted().focus).toHaveLength(2);
 	});
 
 	it('should be focused twice if area is already active', async () => {
@@ -46,7 +66,7 @@ describe('RunDataSearch', () => {
 			pinia,
 			props: {
 				modelValue: '',
-				isAreaActive: true,
+				shortcut: '/',
 			},
 		});
 
@@ -63,7 +83,6 @@ describe('RunDataSearch', () => {
 			pinia,
 			props: {
 				modelValue: '',
-				isAreaActive: true,
 			},
 		});
 
@@ -94,7 +113,7 @@ describe('RunDataSearch', () => {
 					<div data-test-id="mock-contenteditable" contenteditable="true"></div>
 					<RunDataSearch
 						v-model="modelValue"
-						:isAreaActive="isAreaActive"
+						shortcut="/"
 					/>
 				</div>
 			`,
@@ -102,10 +121,6 @@ describe('RunDataSearch', () => {
 				modelValue: {
 					type: String,
 					default: '',
-				},
-				isAreaActive: {
-					type: Boolean,
-					default: true,
 				},
 			},
 		})({
@@ -119,5 +134,57 @@ describe('RunDataSearch', () => {
 		await user.type(contentEditableElement, '/');
 		expect(contentEditableElement.textContent).toBe('/');
 		expect(getByTestId('ndv-search')).not.toHaveFocus();
+	});
+
+	it('should blur input when ESC key is pressed while search is focused', async () => {
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				modelValue: 'test search',
+				shortcut: '/',
+			},
+		});
+
+		const input = getByRole<HTMLInputElement>('textbox');
+
+		await userEvent.click(input);
+		expect(input).toHaveFocus();
+
+		await userEvent.keyboard('{Escape}');
+
+		expect(input).not.toHaveFocus();
+	});
+
+	it('should restore focus to previously focused element after ESC key', async () => {
+		const { getByTestId } = createComponentRenderer({
+			components: {
+				RunDataSearch,
+			},
+			template: `
+				<div>
+					<button data-test-id="previous-button">Previous Element</button>
+					<RunDataSearch
+						v-model="modelValue"
+						shortcut="/"
+					/>
+				</div>
+			`,
+		})({
+			pinia,
+		});
+
+		const previousButton = getByTestId('previous-button');
+		const searchInput = getByTestId('ndv-search');
+
+		await userEvent.click(previousButton);
+		expect(previousButton).toHaveFocus();
+
+		await userEvent.keyboard('/');
+		expect(searchInput).toHaveFocus();
+
+		await userEvent.keyboard('{Escape}');
+
+		expect(previousButton).toHaveFocus();
+		expect(searchInput).not.toHaveFocus();
 	});
 });

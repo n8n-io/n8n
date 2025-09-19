@@ -11,12 +11,14 @@ import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import { type SearchShortcut } from '@/types';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
 	collapsingTableColumnName: string | null;
+	searchShortcut?: SearchShortcut;
 }>();
 
 const emit = defineEmits<{
@@ -95,6 +97,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:is-executing="isExecuting"
 		table-header-bg-color="light"
 		:collapsing-table-column-name="collapsingTableColumnName"
+		:search-shortcut="searchShortcut"
 		@display-mode-change="handleChangeDisplayMode"
 		@collapsing-table-column-changed="emit('collapsingTableColumnChanged', $event)"
 	>
