@@ -101,6 +101,22 @@ const makeUidtMapper = (version: number) => {
 				readOnly: false,
 			} as ResourceMapperField;
 		},
+		Links: (field: any) => {
+			const relationType = field.options?.relationType ?? 'hm';
+			let type = 'array';
+			if (['bt', 'oo'].includes(relationType)) {
+				type = 'string';
+			}
+
+			return {
+				id: field.title,
+				displayName: field.title,
+				type,
+				display: true,
+				readOnly: false,
+				options: {},
+			} as ResourceMapperField;
+		},
 	};
 	uidtMapper['Decimal'] = uidtMapper['Number'];
 	uidtMapper['Duration'] = uidtMapper['Number'];
@@ -109,10 +125,10 @@ const makeUidtMapper = (version: number) => {
 	uidtMapper['Rating'] = uidtMapper['Number'];
 	uidtMapper['Year'] = uidtMapper['Number'];
 	uidtMapper['Date'] = uidtMapper['DateTime'];
+	uidtMapper['LinkToAnotherRecord'] = uidtMapper['Links'];
+
 	// readonly
 	uidtMapper['Barcode'] = uidtMapper['QrCode'];
-	uidtMapper['Links'] = uidtMapper['QrCode'];
-	uidtMapper['LinkToAnotherRecord'] = uidtMapper['QrCode'];
 	uidtMapper['ForeignKey'] = uidtMapper['QrCode'];
 	uidtMapper['CreatedAt'] = uidtMapper['QrCode'];
 	uidtMapper['CreatedTime'] = uidtMapper['QrCode'];
