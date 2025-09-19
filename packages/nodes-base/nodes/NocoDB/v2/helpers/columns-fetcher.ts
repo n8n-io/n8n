@@ -35,6 +35,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type: 'string',
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -44,6 +45,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type: 'number',
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -69,8 +71,9 @@ const makeUidtMapper = (version: number) => {
 				id: field.title,
 				displayName: field.title,
 				type: 'options',
-				options,
+				options: options ?? [],
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -80,6 +83,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type: version === 3 ? 'string' : 'array',
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -89,6 +93,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type: 'dateTime',
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -98,6 +103,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type: 'url',
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 			} as ResourceMapperField;
 		},
@@ -113,6 +119,7 @@ const makeUidtMapper = (version: number) => {
 				displayName: field.title,
 				type,
 				display: true,
+				defaultMatch: false,
 				readOnly: false,
 				options: {},
 			} as ResourceMapperField;
