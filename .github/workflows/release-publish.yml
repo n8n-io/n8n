@@ -8,29 +8,9 @@ on:
       - 'release/*'
 
 env:
-  BUILD_DIST_NAME: build-dist-${{ github.sha }}
+  BUILD_DIST_NAME: ${{ github.sha }}-release:build
+
 jobs:
-  build-amd64:
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    if: github.event.pull_request.merged == true
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ env.BUILD_DIST_NAME }}
-          path: ./packages/**/dist
-          if-no-files-found: error
-          retention-days: 7
-
   build-arm64:
     runs-on: blacksmith-4vcpu-ubuntu-2204-arm
     if: github.event.pull_request.merged == true
@@ -38,16 +18,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
+
       - name: Setup and Build ARM64
         uses: ./.github/actions/setup-nodejs-blacksmith
 
   publish-to-npm:
     name: Publish to NPM
-    needs: build-amd64
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       id-token: write
     env:
@@ -56,29 +34,20 @@ jobs:
       release: ${{ steps.set-release.outputs.release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-github
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ env.BUILD_DIST_NAME }}
-          path: .
+          path: ./packages/**/dist
+          retention-days: 7
 
       - name: Dry-run publishing
         run: |
@@ -151,7 +120,7 @@ jobs:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download build artifacts
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
