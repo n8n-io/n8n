@@ -125,8 +125,8 @@ export class AuthService {
 			return;
 		}
 
-		// Remove 'Bearer ' prefix if present
-		const apiKeyMatch = apiKey.match(/^Bearer\s+(.+)$/);
+		// Remove 'Bearer ' prefix if present (case-insensitive)
+		const apiKeyMatch = apiKey.match(/^Bearer\s+(.+)$/i);
 		if (apiKeyMatch) {
 			apiKey = apiKeyMatch[1];
 		}
