@@ -11,6 +11,7 @@ import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	path: string;
@@ -22,9 +23,6 @@ interface Props {
 	index?: number;
 }
 
-const BINARY_DATA_TOOLTIP =
-	'Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $("Target Node").item.binary.data }}';
-
 const props = defineProps<Props>();
 
 const assignment = ref<AssignmentValue>(props.modelValue);
@@ -35,6 +33,7 @@ const emit = defineEmits<{
 	remove: [];
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
 
@@ -173,7 +172,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 				<template v-if="!hideType" #middle>
 					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
 						<template #content>
-							{{ BINARY_DATA_TOOLTIP }}
+							{{ i18n.baseText('assignment.binaryDataTooltip') }}
 						</template>
 						<TypeSelect
 							:class="$style.select"

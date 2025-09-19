@@ -1422,6 +1422,7 @@ export interface INodePropertyTypeOptions {
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
 	calloutAction?: CalloutAction; // Supported by: callout
+	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
 }
 
