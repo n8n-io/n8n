@@ -1341,6 +1341,33 @@ describe('dataStore', () => {
 
 				expect(data).toEqual([{ id: 1, createdAt: expect.any(Date), updatedAt: expect.any(Date) }]);
 			});
+
+			it('bulk insert should work with multiple empty rows', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore',
+					columns: [],
+				});
+
+				// ACT
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}]);
+
+				// ASSERT
+				expect(result).toEqual({ success: true, insertedRows: 2 });
+
+				const { count, data } = await dataStoreService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+
+				expect(count).toEqual(2);
+				expect(data).toEqual([
+					{ id: expect.any(Number), createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+					{ id: expect.any(Number), createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+				]);
+			});
+
 			it('handles multi-batch bulk correctly in bulk mode', async () => {
 				// ARRANGE
 				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1864,6 +1891,51 @@ describe('dataStore', () => {
 					'Filter is required for delete operations to prevent accidental deletion of all data',
 				),
 			);
+		});
+
+		it('should delete empty rows containing only system columns', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+
+			// Insert empty rows
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}]);
+
+			// Verify rows exist with only system columns
+			const { count: initialCount, data: initialData } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+			expect(initialCount).toEqual(2);
+			expect(initialData).toEqual([
+				{ id: 1, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+				{ id: 2, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+			]);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+				},
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			// Verify only one row remains
+			const { count: finalCount, data: finalData } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+			expect(finalCount).toEqual(1);
+			expect(finalData).toEqual([
+				{ id: 2, createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+			]);
 		});
 	});
 
