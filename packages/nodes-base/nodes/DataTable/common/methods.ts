@@ -1,4 +1,5 @@
 import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 	type INodePropertyOptions,
@@ -6,7 +7,6 @@ import {
 	type ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { SYSTEM_COLUMNS } from './constants';
 import { getDataTableAggregateProxy, getDataTableProxyLoadOptions } from './utils';
 
 // @ADO-3904: Pagination here does not work until a filter is entered or removed, suspected bug in ResourceLocator
@@ -43,10 +43,12 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	const returnData: Array<INodePropertyOptions & { type: string }> = SYSTEM_COLUMNS.map((col) => ({
-		name: `${col.name} (${col.type})`,
-		value: col.name,
-		type: col.type,
+	const returnData: Array<INodePropertyOptions & { type: string }> = Object.entries(
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	).map(([name, type]) => ({
+		name: `${name} (${type})`,
+		value: name,
+		type,
 	}));
 
 	const proxy = await getDataTableProxyLoadOptions(this);
@@ -113,28 +115,28 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	}
 
 	// Get column type to determine available conditions
-	const column =
-		SYSTEM_COLUMNS.find((col) => col.name === keyName) ??
-		(await proxy.getColumns()).find((col) => col.name === keyName);
+	const type =
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[keyName] ??
+		(await proxy.getColumns()).find((col) => col.name === keyName)?.type;
 
-	if (!column) {
+	if (!type) {
 		return [...equalsConditions, ...nullConditions];
 	}
 
 	const conditions: INodePropertyOptions[] = [];
 
-	if (column.type === 'boolean') {
+	if (type === 'boolean') {
 		conditions.push.apply(conditions, booleanConditions);
 	}
 
 	// String columns get LIKE operators
-	if (column.type === 'string') {
+	if (type === 'string') {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, stringConditions);
 		conditions.push.apply(conditions, comparableConditions);
 	}
 
-	if (['number', 'date'].includes(column.type)) {
+	if (['number', 'date'].includes(type)) {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, comparableConditions);
 	}

@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMNS, NodeOperationError } from 'n8n-workflow';
 import type {
 	DataTableFilter,
 	DataStoreRowReturn,
@@ -8,13 +8,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	ALL_CONDITIONS,
-	ANY_CONDITION,
-	ROWS_LIMIT_DEFAULT,
-	SYSTEM_COLUMN_NAMES,
-	type FilterType,
-} from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType, getDataTableProxyExecute } from './utils';
 
@@ -121,7 +115,7 @@ export async function getSelectFilter(
 		const dataStoreProxy = await getDataTableProxyExecute(ctx, index);
 		const availableColumns = await dataStoreProxy.getColumns();
 		const allColumns = new Set([
-			...SYSTEM_COLUMN_NAMES,
+			...DATA_TABLE_SYSTEM_COLUMNS,
 			...availableColumns.map((col) => col.name),
 		]);
 
