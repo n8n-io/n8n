@@ -1341,6 +1341,33 @@ describe('dataStore', () => {
 
 				expect(data).toEqual([{ id: 1, createdAt: expect.any(Date), updatedAt: expect.any(Date) }]);
 			});
+
+			it('bulk insert should work with multiple empty rows', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore',
+					columns: [],
+				});
+
+				// ACT
+				const result = await dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}]);
+
+				// ASSERT
+				expect(result).toEqual({ success: true, insertedRows: 2 });
+
+				const { count, data } = await dataStoreService.getManyRowsAndCount(
+					dataStoreId,
+					project1.id,
+					{},
+				);
+
+				expect(count).toEqual(2);
+				expect(data).toEqual([
+					{ id: expect.any(Number), createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+					{ id: expect.any(Number), createdAt: expect.any(Date), updatedAt: expect.any(Date) },
+				]);
+			});
+
 			it('handles multi-batch bulk correctly in bulk mode', async () => {
 				// ARRANGE
 				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1874,7 +1901,7 @@ describe('dataStore', () => {
 			});
 
 			// Insert empty rows
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}], 'id');
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}]);
 
 			// Verify rows exist with only system columns
 			const { count: initialCount, data: initialData } = await dataStoreService.getManyRowsAndCount(
