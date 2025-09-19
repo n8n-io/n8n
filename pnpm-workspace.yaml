@@ -6,6 +6,8 @@ packages:
   - cypress
   - packages/testing/**
 
+minimumReleaseAge: 10080 # 7 days
+
 catalog:
   '@n8n/typeorm': 0.3.20-12
   '@n8n_io/ai-assistant-sdk': 1.15.0
