@@ -42,6 +42,7 @@ export function getSanitizedCustomCss(customCss: string): string {
 
 export function createPage({
 	instanceId,
+	instanceBaseUrl,
 	webhookUrl,
 	showWelcomeScreen,
 	loadPreviousSession,
@@ -54,6 +55,7 @@ export function createPage({
 	enableStreaming,
 }: {
 	instanceId: string;
+	instanceBaseUrl?: string;
 	webhookUrl?: string;
 	showWelcomeScreen?: boolean;
 	loadPreviousSession?: LoadPreviousSessionChatOption;
@@ -123,7 +125,7 @@ export function createPage({
 					let metadata;
 					if (authentication === 'n8nUserAuth') {
 						try {
-							const response = await fetch('/rest/login', {
+							const response = await fetch('${instanceBaseUrl}rest/login', {
 									method: 'GET',
 									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
@@ -142,7 +144,7 @@ export function createPage({
 								},
 							};
 						} catch (error) {
-							window.location.href = '/signin?redirect=' + window.location.href;
+							window.location.href = '${instanceBaseUrl}signin?redirect=' + encodeURIComponent(window.location.href);
 							return;
 						}
 					}
