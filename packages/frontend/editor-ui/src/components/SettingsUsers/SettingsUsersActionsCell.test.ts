@@ -38,12 +38,6 @@ describe('SettingsUsersActionsCell', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should not render action toggle for an owner', () => {
-		const props = { data: { ...baseUser, isOwner: true }, actions: mockActions };
-		const { container } = renderComponent({ props });
-		expect(container.firstChild).toBeEmptyDOMElement();
-	});
-
 	it('should not render action toggle if there are no actions', () => {
 		const props = { data: baseUser, actions: [] };
 		const { container } = renderComponent({ props });

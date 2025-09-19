@@ -26,8 +26,10 @@ import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/component
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
 import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
@@ -124,6 +126,7 @@ const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
 const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
@@ -437,6 +440,19 @@ const showPersonalizedTemplates = computed(
 	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
 );
 
+const shouldUseSimplifiedLayout = computed(() => {
+	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
+});
+
+const hasActiveCallouts = computed(() => {
+	return (
+		showPrebuiltAgentsCallout.value ||
+		showAIStarterCollectionCallout.value ||
+		showPersonalizedTemplates.value ||
+		showReadyToRunWorkflowsCallout.value
+	);
+});
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -451,7 +467,13 @@ watch(
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
 		saveFiltersOnQueryString();
-		await fetchWorkflows();
+		await Promise.all([
+			fetchWorkflows(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
 	},
 );
 
@@ -463,7 +485,10 @@ sourceControlStore.$onAction(({ name, after }) => {
 const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 };
 
@@ -474,11 +499,17 @@ const onFolderDeleted = async (payload: {
 }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
-	// If the deleted folder is the current folder, navigate to the parent folder
+
+	const nextFolderId =
+		currentFolderId.value === payload.folderId
+			? (folderInfo?.parentFolder ?? null)
+			: currentFolderId.value;
 	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
 		route.params.projectId as string | undefined,
+		nextFolderId ?? undefined,
 	);
 
+	// If the deleted folder is the current folder, navigate to the parent folder
 	if (currentFolderId.value === payload.folderId) {
 		void router.push({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -548,7 +579,10 @@ const initialize = async () => {
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -1713,7 +1747,10 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+
 	<ResourcesListLayout
+		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
@@ -1735,7 +1772,10 @@ const onNameSubmit = async (name: string) => {
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent">
+			<ProjectHeader
+				:has-active-callouts="hasActiveCallouts"
+				@create-folder="createFolderInCurrent"
+			>
 				<InsightsSummary
 					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"

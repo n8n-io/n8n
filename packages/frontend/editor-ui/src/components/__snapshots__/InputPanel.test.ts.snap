@@ -158,7 +158,8 @@ exports[`InputPanel > should render 1`] = `
           </button>
         </div>
       </div>
-      <!--v-if-->
+      
+      
     </div>
     <div
       data-v-2e5cd75c=""

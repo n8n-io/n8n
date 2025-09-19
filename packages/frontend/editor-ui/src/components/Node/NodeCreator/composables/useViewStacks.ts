@@ -61,6 +61,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 
+import nodePopularity from 'virtual:node-popularity-data';
+
 export interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -87,6 +89,13 @@ export interface ViewStack {
 	sections?: string[] | NodeViewItemSection[];
 	communityNodeDetails?: CommunityNodeDetails;
 }
+
+const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
+	return {
+		...acc,
+		[node.id]: node.popularity * 100, // Scale the popularity score
+	};
+}, {});
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -121,7 +130,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				searchBase = filterOutAiNodes(searchBase);
 			}
 
-			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
+			const searchResults = extendItemsWithUUID(
+				searchNodes(stack.search || '', searchBase, {
+					popularity: nodePopularityMap,
+				}),
+			);
 
 			const groupedNodes = groupIfAiNodes(searchResults, stack.title, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
@@ -181,8 +194,11 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
 		let globalSearchResult: INodeCreateElement[] = extendItemsWithUUID(
-			searchNodes(stack.search || '', filteredNodes),
+			searchNodes(stack.search || '', filteredNodes, {
+				popularity: nodePopularityMap,
+			}),
 		);
+
 		if (isAiRootView(stack)) {
 			globalSearchResult = groupIfAiNodes(globalSearchResult, stack.title, false);
 		}

@@ -54,16 +54,11 @@ const executionListRef = ref<HTMLElement | null>(null);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
-/**
- * Calculate the number of executions counted towards the production executions concurrency limit.
- * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
- */
-const runningExecutionsCount = computed(() => {
-	return props.executions.filter(
-		(execution) =>
-			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-	).length;
-});
+// In 'queue' mode concurrency control is applied per worker and returning a global count
+// of concurrent executions would not be meaningful/helpful.
+const showConcurrencyHeader = computed(
+	() => settingsStore.isConcurrencyEnabled && !settingsStore.isQueueModeEnabled,
+);
 
 watch(
 	() => route,
@@ -196,8 +191,8 @@ const goToUpgrade = () => {
 			</n8n-heading>
 
 			<ConcurrentExecutionsHeader
-				v-if="settingsStore.isConcurrencyEnabled"
-				:running-executions-count="runningExecutionsCount"
+				v-if="showConcurrencyHeader"
+				:running-executions-count="executionsStore.concurrentExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"

@@ -59,6 +59,7 @@ export interface FrontendSettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
 	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
