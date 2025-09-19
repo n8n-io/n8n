@@ -32,8 +32,6 @@ import type {
 } from 'n8n-workflow';
 import { validateFieldType } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreSizeValidator } from './data-store-size-validator.service';
@@ -46,6 +44,9 @@ import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { RoleService } from '@/services/role.service';
+
 @Service()
 export class DataStoreService {
 	constructor(
@@ -55,6 +56,7 @@ export class DataStoreService {
 		private readonly logger: Logger,
 		private readonly dataStoreSizeValidator: DataStoreSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -503,36 +505,21 @@ export class DataStoreService {
 			async () => await this.dataStoreRepository.findDataTablesSize(),
 		);
 
-		// Check permissions and filter the data
-		const canAccessDataTables = await userHasScopes(user, ['dataStore:list'], false, {});
+		const roles = await this.roleService.rolesWithScope('project', ['dataStore:listProject']);
 
-		if (!canAccessDataTables) {
-			return {
-				totalBytes: allSizeData.totalBytes,
-				quotaStatus: this.dataStoreSizeValidator.sizeToState(allSizeData.totalBytes),
-				dataTables: {},
-			};
-		}
-
-		// DB query will filter projects where the user actually has these roles
-		const roles = [
-			PROJECT_OWNER_ROLE_SLUG,
-			PROJECT_ADMIN_ROLE_SLUG,
-			PROJECT_EDITOR_ROLE_SLUG,
-			PROJECT_VIEWER_ROLE_SLUG,
-		];
 		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,
 			roles,
 		);
 
+		const accessibleProjectIdsSet = new Set(accessibleProjectIds);
+
 		// Filter the cached data based on user's accessible projects
-		const accessibleDataTables: DataTableInfoById = {};
-		for (const [dataTableId, dataTableInfo] of Object.entries(allSizeData.dataTables)) {
-			if (accessibleProjectIds.includes(dataTableInfo.projectId)) {
-				accessibleDataTables[dataTableId] = dataTableInfo;
-			}
-		}
+		const accessibleDataTables: DataTableInfoById = Object.fromEntries(
+			Object.entries(allSizeData.dataTables).filter(([, dataTableInfo]) =>
+				accessibleProjectIdsSet.has(dataTableInfo.projectId),
+			),
+		);
 
 		return {
 			totalBytes: allSizeData.totalBytes,
