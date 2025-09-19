@@ -11,20 +11,12 @@ export class McpSettingsService {
 		const row = await this.settingsRepository.findByKey(KEY);
 		// Enabled by default
 		if (!row) return true;
-		// Values are stored as strings in the settings table
 		return row.value === 'true';
 	}
 
 	async setEnabled(enabled: boolean): Promise<void> {
 		const value = enabled ? 'true' : 'false';
-		const existing = await this.settingsRepository.findByKey(KEY);
-		if (existing) {
-			await this.settingsRepository.update({ key: KEY }, { value, loadOnStartup: true });
-		} else {
-			await this.settingsRepository.save(
-				{ key: KEY, value, loadOnStartup: true },
-				{ transaction: false },
-			);
-		}
+		// Use an atomic upsert to avoid a race on first write
+		await this.settingsRepository.upsert({ key: KEY, value, loadOnStartup: true }, ['key']);
 	}
 }
