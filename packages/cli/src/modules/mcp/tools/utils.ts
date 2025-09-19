@@ -99,11 +99,15 @@ const getJWTAuthDetails = async (
 ): Promise<string | null> => {
 	const id = node.credentials?.jwtAuth?.id;
 	if (!id) return null;
-	const creds = await credentialsService.getOne(user, id, true);
-	if (hasJwtSecretDecryptedData(creds)) {
-		return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
-	} else if (hasJwtPemKeyDecryptedData(creds)) {
-		return '\n\t - This webhook requires JWT private and public keys that should be provided by the user.';
+	try {
+		const creds = await credentialsService.getOne(user, id, true);
+		if (hasJwtSecretDecryptedData(creds)) {
+			return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
+		} else if (hasJwtPemKeyDecryptedData(creds)) {
+			return '\n\t - This webhook requires JWT private and public keys that should be provided by the user.';
+		}
+	} catch {
+		return null;
 	}
 	return null;
 };
