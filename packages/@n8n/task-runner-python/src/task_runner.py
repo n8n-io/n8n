@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any, Callable, Awaitable
 from urllib.parse import urlparse
 import websockets
 import random
-from src.errors.task_runtime_error import TaskRuntimeError
+from src.errors import TaskCancelledError, TaskRuntimeError
 
 
 from src.config.task_runner_config import TaskRunnerConfig
@@ -327,10 +327,12 @@ class TaskRunner:
                 )
             )
 
-        except TaskRuntimeError as e:
-            if str(e) != "Task was cancelled":
-                self.logger.error(f"Task {task_id} failed", exc_info=True)
+        except TaskCancelledError as e:
+            response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
+            await self._send_message(response)
 
+        except TaskRuntimeError as e:
+            self.logger.error(f"Task {task_id} failed", exc_info=True)
             error = {
                 "message": str(e),
                 "description": getattr(e, "description", ""),

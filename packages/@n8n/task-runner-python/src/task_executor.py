@@ -9,6 +9,7 @@ import tempfile
 import logging
 
 from src.errors import (
+    TaskCancelledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
@@ -96,17 +97,11 @@ class TaskExecutor:
                 TaskExecutor.stop_process(process)
                 raise TaskTimeoutError(task_timeout)
 
+            if process.exitcode == SIGTERM_EXIT_CODE:
+                raise TaskCancelledError()
+
             if process.exitcode != 0:
                 assert process.exitcode is not None
-
-                if process.exitcode == SIGTERM_EXIT_CODE:
-                    if continue_on_fail:
-                        return [{"json": {"error": "Task was cancelled"}}], print_args
-                    else:
-                        raise TaskRuntimeError(
-                            {"message": "Task was cancelled", "stack": ""}
-                        )
-
                 raise TaskProcessExitError(process.exitcode)
 
             try:
