@@ -1,0 +1,82 @@
+{
+	"createdAt": "2025-08-25T07:40:46.331Z",
+	"updatedAt": "2025-08-28T15:55:44.000Z",
+	"id": "0ntXdsmmrZOGRxjL",
+	"name": "Mindee V2",
+	"active": false,
+	"isArchived": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [272, 272],
+			"id": "2afeaf1e-5ba6-43cc-8a33-82d0a352f7c1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 4,
+			"position": [896, 272],
+			"id": "f2ad9974-7016-4266-9cc1-c8691a50d8aa",
+			"name": "Mindee V2",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "MNzaDBYtrc44WNYc",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/ReceiptSwiss.jpg",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [576, 272],
+			"id": "2a3128a6-ebb8-4ea1-abd4-f457f57a5b7f",
+			"name": "HTTP Request"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Mindee V2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "cb43f723-f704-4161-a4a2-85c61e243987",
+	"triggerCount": 0,
+	"tags": []
+}
