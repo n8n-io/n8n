@@ -18,13 +18,12 @@ jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 const createReq = (overrides: Partial<AuthenticatedRequest> = {}): AuthenticatedRequest =>
 	({ user: { id: 'user-1' }, body: {}, ...overrides }) as unknown as AuthenticatedRequest;
 
-const createRes = (): FlushableResponse =>
-	({
-		status: jest.fn().mockReturnThis(),
-		json: jest.fn().mockReturnThis(),
-		on: jest.fn(),
-		flush: jest.fn(),
-	}) as any;
+const createRes = (): FlushableResponse => {
+	const res = mock<FlushableResponse>();
+	res.status.mockReturnThis();
+	res.json.mockReturnThis();
+	return res;
+};
 
 describe('McpController', () => {
 	let controller: McpController;
