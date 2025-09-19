@@ -87,12 +87,22 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		if (
-			!triggerNode.credentials ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.documentId) ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.sheetName)
-		) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
+		const { parameters, credentials, name, typeVersion } = triggerNode;
+		const source = parameters?.source
+			? (parameters.source as string)
+			: typeVersion >= 4.7
+				? 'dataTable'
+				: 'googleSheets';
+
+		const isConfigured =
+			source === 'dataTable'
+				? checkNodeParameterNotEmpty(parameters?.dataTableId)
+				: !!credentials &&
+					checkNodeParameterNotEmpty(parameters?.documentId) &&
+					checkNodeParameterNotEmpty(parameters?.sheetName);
+
+		if (!isConfigured) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
 		}
 
 		if (triggerNode?.disabled) {
