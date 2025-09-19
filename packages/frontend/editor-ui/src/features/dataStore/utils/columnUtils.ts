@@ -189,9 +189,9 @@ const createInRangeFilterOption = (i18n: I18nClass) => ({
 });
 
 export const getStringColumnFilterOptions = (i18n: I18nClass) => [
+	'contains',
 	'equals',
 	'notEqual',
-	'contains',
 	createIsEmptyFilterOption(i18n),
 	createIsNotEmptyFilterOption(i18n),
 	createNullFilterOption(i18n),
