@@ -4,6 +4,7 @@ import {
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
@@ -11,6 +12,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { toTableName } from './utils/sql-utils';
 
 @Service()
@@ -87,6 +89,42 @@ export class DataStoreRepository extends Repository<DataTable> {
 			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
 
 			return true;
+		});
+	}
+
+	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
+
+			let transferred = false;
+			for (const existing of existingTables) {
+				let name = existing.name;
+				const hasNameClash = await em.existsBy(DataTable, {
+					name,
+					projectId: toProjectId,
+				});
+
+				if (hasNameClash) {
+					const project = await em.findOneByOrFail(Project, { id: fromProjectId });
+					name = `${existing.name} (${project.name})`;
+
+					const stillHasNameClash = await em.existsBy(DataTable, {
+						name,
+						projectId: toProjectId,
+					});
+
+					if (stillHasNameClash) {
+						throw new DataStoreNameConflictError(
+							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data store with the same name already exists in the target project.`,
+						);
+					}
+				}
+
+				await em.update(DataTable, { id: existing.id }, { name, projectId: toProjectId });
+				transferred = true;
+			}
+
+			return transferred;
 		});
 	}
 

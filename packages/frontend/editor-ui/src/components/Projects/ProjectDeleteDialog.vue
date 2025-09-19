@@ -23,7 +23,11 @@ const selectedProject = ref<ProjectSharingData | null>(null);
 const operation = ref<'transfer' | 'wipe' | null>(null);
 const wipeConfirmText = ref('');
 const hasMovableResources = computed(
-	() => props.resourceCounts.credentials + props.resourceCounts.workflows > 0,
+	() =>
+		props.resourceCounts.credentials +
+			props.resourceCounts.workflows +
+			props.resourceCounts.dataTables >
+		0,
 );
 const isValid = computed(() => {
 	const expectedWipeConfirmation = locale.baseText(
@@ -31,8 +35,7 @@ const isValid = computed(() => {
 	);
 
 	return (
-		hasMovableResources.value ||
-		props.resourceCounts?.dataTables > 0 ||
+		!hasMovableResources.value ||
 		(operation.value === 'transfer' && !!selectedProject.value) ||
 		(operation.value === 'wipe' && wipeConfirmText.value === expectedWipeConfirmation)
 	);
@@ -58,13 +61,11 @@ const onDelete = () => {
 				interpolate: { projectName: props.currentProject?.name ?? '' },
 			})
 		"
-		width="500"
+		width="650"
 	>
-		<n8n-text
-			v-if="!hasMovableResources && props.resourceCounts.dataTables === 0"
-			color="text-base"
-			>{{ locale.baseText('projects.settings.delete.message.empty') }}</n8n-text
-		>
+		<n8n-text v-if="!hasMovableResources" color="text-base">{{
+			locale.baseText('projects.settings.delete.message.empty')
+		}}</n8n-text>
 		<div v-else-if="hasMovableResources">
 			<n8n-text color="text-base">{{
 				locale.baseText('projects.settings.delete.message')
@@ -113,11 +114,6 @@ const onDelete = () => {
 				</div>
 			</div>
 		</div>
-		<n8n-text v-if="resourceCounts.dataTables > 0">{{
-			locale.baseText('projects.settings.delete.dataTableDisclaimer', {
-				adjustToNumber: resourceCounts.dataTables,
-			})
-		}}</n8n-text>
 		<template #footer>
 			<N8nButton
 				type="danger"

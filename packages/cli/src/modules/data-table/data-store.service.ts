@@ -66,6 +66,10 @@ export class DataStoreService {
 		return true;
 	}
 
+	async transferDataStoresByProjectId(fromProjectId: string, toProjectId: string) {
+		return await this.dataStoreRepository.transferDataStoreByProjectId(fromProjectId, toProjectId);
+	}
+
 	async deleteDataStoreByProjectId(projectId: string) {
 		return await this.dataStoreRepository.deleteDataStoreByProjectId(projectId);
 	}

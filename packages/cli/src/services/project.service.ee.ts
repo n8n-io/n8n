@@ -123,11 +123,12 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
+				'dataStore:create',
 			]);
 
 			if (!targetProject) {
 				throw new NotFoundError(
-					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow and credentials in the target project.`,
+					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow, credentials or data tables in the target project.`,
 				);
 			}
 		}
@@ -184,10 +185,15 @@ export class ProjectService {
 		// 5. delete shared workflows into this project
 		// Cascading deletes take care of this.
 
-		// 6. delete associated data tables
+		// 6. delete or migrate associated data tables
 		if (this.moduleRegistry.isActive('data-table')) {
 			const dataTableService = await this.dataTableService;
-			await dataTableService.deleteDataStoreByProjectId(project.id);
+
+			if (targetProject) {
+				await dataTableService.transferDataStoresByProjectId(project.id, targetProject.id);
+			} else {
+				await dataTableService.deleteDataStoreByProjectId(project.id);
+			}
 		}
 
 		// 7. delete project
