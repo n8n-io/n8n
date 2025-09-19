@@ -169,7 +169,7 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	if (isRespondToWebhookConnected && !['responseNode', 'streaming'].includes(responseMode)) {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error('Extra Respond to Webhook node found in the workflow'),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',

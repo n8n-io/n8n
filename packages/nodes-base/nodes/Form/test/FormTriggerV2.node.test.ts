@@ -209,7 +209,7 @@ describe('FormTrigger', () => {
 			).rejects.toEqual(
 				new NodeOperationError(
 					mock<INode>(),
-					'Extra Respond to Webhook node found in the workflow',
+					'Unused Respond to Webhook node found in the workflow',
 				),
 			);
 		});

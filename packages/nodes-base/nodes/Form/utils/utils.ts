@@ -275,7 +275,7 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error('Extra Respond to Webhook node found in the workflow'),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',

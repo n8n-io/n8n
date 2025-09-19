@@ -283,7 +283,7 @@ describe('Webhook Utils', () => {
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
-			}).toThrowError('Extra Respond to Webhook node found in the workflow');
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
 		});
 	});
 

@@ -1703,7 +1703,7 @@ describe('validateResponseModeConfiguration', () => {
 		]);
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
-			'Extra Respond to Webhook node found in the workflow',
+			'Unused Respond to Webhook node found in the workflow',
 		);
 	});
 
