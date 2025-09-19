@@ -298,7 +298,7 @@ describe('Init', () => {
 				cloudPlanStore.trialExpired = false;
 
 				// Mock localStorage to simulate first visit
-				vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
 				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
@@ -308,6 +308,9 @@ describe('Init', () => {
 				expect(cloudStoreSpy).toHaveBeenCalled();
 				expect(setItemSpy).toHaveBeenCalledWith('n8n-trial-visit-count', '1');
 				expect(uiStore.pushBannerToStack).not.toHaveBeenCalledWith('TRIAL');
+
+				getItemSpy.mockRestore();
+				setItemSpy.mockRestore();
 			});
 
 			it('should push TRIAL banner if trial is active and user is returning', async () => {
@@ -319,7 +322,7 @@ describe('Init', () => {
 				cloudPlanStore.trialExpired = false;
 
 				// Mock localStorage to simulate return visit
-				vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('1');
+				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('1');
 				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
 
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
@@ -329,6 +332,9 @@ describe('Init', () => {
 				expect(cloudStoreSpy).toHaveBeenCalled();
 				expect(setItemSpy).toHaveBeenCalledWith('n8n-trial-visit-count', '2');
 				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+
+				getItemSpy.mockRestore();
+				setItemSpy.mockRestore();
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {
