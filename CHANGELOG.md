@@ -1,3 +1,12 @@
+## [1.110.2](https://github.com/n8n-io/n8n/compare/n8n@1.110.1...n8n@1.110.2) (2025-09-19)
+
+
+### Bug Fixes
+
+* **core:** Credential export for personal projects ([#19720](https://github.com/n8n-io/n8n/issues/19720)) ([62e1797](https://github.com/n8n-io/n8n/commit/62e1797a2486e84396dee7f2f2248ce181fd85e5))
+
+
+
 ## [1.110.1](https://github.com/n8n-io/n8n/compare/n8n@1.110.0...n8n@1.110.1) (2025-09-03)
 
 
