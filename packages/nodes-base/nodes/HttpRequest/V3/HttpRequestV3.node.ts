@@ -384,6 +384,25 @@ export class HttpRequestV3 implements INodeType {
 					});
 				}
 
+				const parametersToKeyValueQuery = async (
+					accumulator: { [key: string]: any },
+					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+				) => {
+					const key = cur.name;
+					const isArray = key.endsWith('[]');
+					const normalizedKey = isArray ? key.slice(0, -2) : key;
+					if (accumulator[normalizedKey] === undefined) {
+						accumulator[normalizedKey] = isArray ? [cur.value] : cur.value;
+					} else {
+						if (Array.isArray(accumulator[normalizedKey])) {
+							accumulator[normalizedKey].push(cur.value);
+						} else {
+							accumulator[normalizedKey] = [accumulator[normalizedKey], cur.value];
+						}
+					}
+					return accumulator;
+				};
+
 				const parametersToKeyValue = async (
 					accumulator: { [key: string]: any },
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
@@ -487,7 +506,7 @@ export class HttpRequestV3 implements INodeType {
 				// Get parameters defined in the UI
 				if (sendQuery && queryParameters) {
 					if (specifyQuery === 'keypair') {
-						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
+						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValueQuery);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
 						try {
