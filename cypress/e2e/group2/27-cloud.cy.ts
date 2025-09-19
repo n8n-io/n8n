@@ -1,4 +1,5 @@
 import { overrideFeatureFlag } from '../../composables/featureFlags';
+import { expandSidebar } from '../../composables/sidebar';
 import planData from '../../fixtures/Plan_data_opt_in_trial.json';
 import {
 	MainSidebar,

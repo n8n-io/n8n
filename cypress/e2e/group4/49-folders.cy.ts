@@ -50,6 +50,7 @@ import {
 	renameFolderFromCardActions,
 	renameFolderFromListActions,
 } from '../../composables/folders';
+import { expandSidebar } from '../../composables/sidebar';
 import { visitWorkflowsPage } from '../../composables/workflowsPage';
 import { successToast } from '../../pages/notifications';
 
