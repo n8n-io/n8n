@@ -77,6 +77,12 @@ function generateEvaluationSummary(result: EvaluationResult): string {
 	if (result.expressions.score >= 0.8) strengths.push('correct expression syntax');
 	else if (result.expressions.score < 0.5) weaknesses.push('expression errors');
 
+	if (result.nodeConfiguration.score >= 0.8) strengths.push('well-configured nodes');
+	else if (result.nodeConfiguration.score < 0.5) weaknesses.push('node configuration issues');
+
+	if (result.dataFlow.score >= 0.8) strengths.push('proper data flow');
+	else if (result.dataFlow.score < 0.5) weaknesses.push('data flow problems');
+
 	// Analyze new metrics
 	if (result.efficiency.score >= 0.8) strengths.push('efficient design');
 	else if (result.efficiency.score < 0.5) weaknesses.push('inefficiencies');
