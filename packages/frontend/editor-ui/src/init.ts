@@ -191,10 +191,10 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		const { sizeState } = await dataStoreStore.fetchDataStoreSize();
-		if (sizeState === 'error') {
+		const { quotaStatus } = await dataStoreStore.fetchDataStoreSize();
+		if (quotaStatus === 'error') {
 			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
-		} else if (sizeState === 'warn') {
+		} else if (quotaStatus === 'warn') {
 			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
 		}
 	}
