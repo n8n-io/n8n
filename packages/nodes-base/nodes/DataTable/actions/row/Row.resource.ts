@@ -69,6 +69,10 @@ export const description: INodeProperties[] = [
 				typeOptions: {
 					searchListMethod: 'tableSearch',
 					searchable: true,
+					allowNewResource: {
+						label: 'resourceLocator.dataTable.createNew',
+						url: '/projects/{{$projectId}}/datatables/new',
+					},
 				},
 			},
 			{
