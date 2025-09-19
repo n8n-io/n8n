@@ -136,6 +136,307 @@ describe('RoleService', () => {
 		});
 	});
 
+	describe('getAllRoles with usage counting', () => {
+		it('should return roles without usage counts when withCount=false', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const customRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope],
+				{
+					displayName: 'Custom Test Role',
+					description: 'A custom role for testing',
+				},
+			);
+			const systemRole = await createSystemRole({
+				displayName: 'System Test Role',
+			});
+
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+
+			//
+			// ACT
+			//
+			const roles = await roleService.getAllRoles(false);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeDefined();
+			expect(Array.isArray(roles)).toBe(true);
+
+			// Find our test roles
+			const returnedCustomRole = roles.find((r) => r.slug === customRole.slug);
+			const returnedSystemRole = roles.find((r) => r.slug === systemRole.slug);
+
+			expect(returnedCustomRole).toBeDefined();
+			expect(returnedSystemRole).toBeDefined();
+
+			// Verify usedByUsers is undefined when withCount=false
+			expect(returnedCustomRole?.usedByUsers).toBeUndefined();
+			expect(returnedSystemRole?.usedByUsers).toBeUndefined();
+
+			expect(mockfindAllRoleCounts).not.toHaveBeenCalled();
+			mockfindAllRoleCounts.mockRestore();
+
+			// Verify other properties are correct
+			expect(returnedCustomRole).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				description: customRole.description,
+				systemRole: false,
+				roleType: customRole.roleType,
+				scopes: expect.any(Array),
+				licensed: expect.any(Boolean),
+			});
+		});
+
+		it('should return roles with usage counts when withCount=true', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const customRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope],
+				{
+					displayName: 'Custom Role With Usage',
+					description: 'A custom role for usage testing',
+				},
+			);
+			const systemRole = await createSystemRole({
+				displayName: 'System Role With Usage',
+			});
+
+			// Mock roleRepository.findAllRoleCounts to return predictable usage counts
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			mockfindAllRoleCounts.mockResolvedValue({
+				[customRole.slug]: 3,
+				[systemRole.slug]: 1,
+			});
+
+			//
+			// ACT
+			//
+			const roles = await roleService.getAllRoles(true);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeDefined();
+			expect(Array.isArray(roles)).toBe(true);
+
+			// Find our test roles
+			const returnedCustomRole = roles.find((r) => r.slug === customRole.slug);
+			const returnedSystemRole = roles.find((r) => r.slug === systemRole.slug);
+
+			expect(returnedCustomRole).toBeDefined();
+			expect(returnedSystemRole).toBeDefined();
+
+			// Verify usedByUsers is included when withCount=true
+			expect(returnedCustomRole?.usedByUsers).toBe(3);
+			expect(returnedSystemRole?.usedByUsers).toBe(1);
+
+			// Verify other properties are preserved
+			expect(returnedCustomRole).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				description: customRole.description,
+				systemRole: false,
+				roleType: customRole.roleType,
+				scopes: expect.any(Array),
+				licensed: expect.any(Boolean),
+			});
+
+			// Verify findAllRoleCounts was called only once
+			expect(mockfindAllRoleCounts).toBeCalledTimes(1);
+
+			mockfindAllRoleCounts.mockRestore();
+		});
+
+		it('should return roles with zero usage count', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const unusedRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Unused Role',
+				description: 'A role with no users',
+			});
+
+			// Mock roleRepository.findAllRoleCounts to return 0 for all roles
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			mockfindAllRoleCounts.mockResolvedValue({ [unusedRole.slug]: 0 });
+
+			//
+			// ACT
+			//
+			const roles = await roleService.getAllRoles(true);
+
+			//
+			// ASSERT
+			//
+			const returnedRole = roles.find((r) => r.slug === unusedRole.slug);
+
+			expect(returnedRole).toBeDefined();
+			expect(returnedRole?.usedByUsers).toBe(0);
+
+			mockfindAllRoleCounts.mockRestore();
+		});
+
+		it('should handle mixed system and custom roles with different usage counts', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const customRole1 = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Custom Role 1',
+			});
+			const customRole2 = await createCustomRoleWithScopes([testScopes.writeScope], {
+				displayName: 'Custom Role 2',
+			});
+			const systemRole = await createSystemRole({
+				displayName: 'System Role',
+			});
+
+			// Mock different usage counts for each role
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			mockfindAllRoleCounts.mockResolvedValue({
+				[customRole1.slug]: 5,
+				[customRole2.slug]: 2,
+				[systemRole.slug]: 10,
+			});
+
+			//
+			// ACT
+			//
+			const roles = await roleService.getAllRoles(true);
+
+			//
+			// ASSERT
+			//
+			const returnedCustomRole1 = roles.find((r) => r.slug === customRole1.slug);
+			const returnedCustomRole2 = roles.find((r) => r.slug === customRole2.slug);
+			const returnedSystemRole = roles.find((r) => r.slug === systemRole.slug);
+
+			expect(returnedCustomRole1?.usedByUsers).toBe(5);
+			expect(returnedCustomRole2?.usedByUsers).toBe(2);
+			expect(returnedSystemRole?.usedByUsers).toBe(10);
+
+			// Verify role types are preserved
+			expect(returnedCustomRole1?.systemRole).toBe(false);
+			expect(returnedCustomRole2?.systemRole).toBe(false);
+			expect(returnedSystemRole?.systemRole).toBe(true);
+
+			expect(mockfindAllRoleCounts).toHaveBeenCalledTimes(1);
+			mockfindAllRoleCounts.mockRestore();
+		});
+
+		it('should preserve complete role structure when adding usage counts', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const fullRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope, testScopes.deleteScope],
+				{
+					displayName: 'Complete Role',
+					description: 'A role with full properties',
+				},
+			);
+
+			// Mock usage count
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			mockfindAllRoleCounts.mockResolvedValue({
+				[fullRole.slug]: 7,
+			});
+
+			//
+			// ACT
+			//
+			const roles = await roleService.getAllRoles(true);
+
+			//
+			// ASSERT
+			//
+			const returnedRole = roles.find((r) => r.slug === fullRole.slug);
+
+			expect(returnedRole).toBeDefined();
+			expect(returnedRole).toMatchObject({
+				slug: fullRole.slug,
+				displayName: fullRole.displayName,
+				description: fullRole.description,
+				systemRole: false,
+				roleType: fullRole.roleType,
+				scopes: expect.arrayContaining([
+					testScopes.readScope.slug,
+					testScopes.writeScope.slug,
+					testScopes.deleteScope.slug,
+				]),
+				licensed: expect.any(Boolean),
+				usedByUsers: 7,
+				createdAt: expect.any(Date),
+				updatedAt: expect.any(Date),
+			});
+
+			// Verify all scopes are correctly converted to slugs
+			expect(returnedRole?.scopes).toHaveLength(3);
+
+			mockfindAllRoleCounts.mockRestore();
+		});
+
+		it('should verify repository findAllRoleCounts is called correctly', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const role1 = await createCustomRoleWithScopes([testScopes.readScope]);
+			const role2 = await createSystemRole();
+
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			mockfindAllRoleCounts.mockResolvedValue({
+				[role1.slug]: 4,
+				[role2.slug]: 6,
+			});
+
+			//
+			// ACT
+			//
+			await roleService.getAllRoles(true);
+
+			//
+			// ASSERT
+			//
+			// Verify findAllRoleCounts was called only once
+			expect(mockfindAllRoleCounts).toHaveBeenCalledTimes(1);
+
+			mockfindAllRoleCounts.mockRestore();
+		});
+
+		it('should not call findAllRoleCounts when withCount=false', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			await createCustomRoleWithScopes([testScopes.readScope]);
+
+			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+
+			//
+			// ACT
+			//
+			await roleService.getAllRoles(false);
+
+			//
+			// ASSERT
+			//
+			// Verify findAllRoleCounts was never called
+			expect(mockfindAllRoleCounts).not.toHaveBeenCalled();
+
+			mockfindAllRoleCounts.mockRestore();
+		});
+	});
+
 	describe('getRole', () => {
 		it('should return role with licensing information when role exists', async () => {
 			//
@@ -177,6 +478,297 @@ describe('RoleService', () => {
 			//
 			await expect(roleService.getRole(nonExistentSlug)).rejects.toThrow(NotFoundError);
 			await expect(roleService.getRole(nonExistentSlug)).rejects.toThrow('Role not found');
+		});
+	});
+
+	describe('getRole with usage counting', () => {
+		it('should return role without usage count when withCount=false', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const customRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope],
+				{
+					displayName: 'Custom Test Role',
+					description: 'A custom role for testing without usage count',
+				},
+			);
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRole(customRole.slug, false);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				description: customRole.description,
+				systemRole: false,
+				roleType: customRole.roleType,
+				scopes: expect.arrayContaining([testScopes.readScope.slug, testScopes.writeScope.slug]),
+				licensed: expect.any(Boolean),
+			});
+
+			// Verify usedByUsers is undefined when withCount=false
+			expect(result.usedByUsers).toBeUndefined();
+		});
+
+		it('should return role with accurate usage count when withCount=true', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const customRole = await createCustomRoleWithScopes([testScopes.adminScope], {
+				displayName: 'Role With Usage Count',
+				description: 'A custom role for usage counting testing',
+			});
+
+			// Mock roleRepository.countUsersWithRole to return predictable count
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockResolvedValue(5);
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRole(customRole.slug, true);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				description: customRole.description,
+				systemRole: false,
+				roleType: customRole.roleType,
+				scopes: expect.arrayContaining([testScopes.adminScope.slug]),
+				licensed: expect.any(Boolean),
+				usedByUsers: 5,
+			});
+
+			// Verify countUsersWithRole was called with the correct role
+			expect(mockCountUsersWithRole).toHaveBeenCalledWith(
+				expect.objectContaining({ slug: customRole.slug }),
+			);
+
+			mockCountUsersWithRole.mockRestore();
+		});
+
+		it('should throw NotFoundError regardless of withCount parameter', async () => {
+			//
+			// ARRANGE
+			//
+			const nonExistentSlug = 'non-existent-role-for-usage-test';
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRole(nonExistentSlug, false)).rejects.toThrow(NotFoundError);
+			await expect(roleService.getRole(nonExistentSlug, false)).rejects.toThrow('Role not found');
+
+			await expect(roleService.getRole(nonExistentSlug, true)).rejects.toThrow(NotFoundError);
+			await expect(roleService.getRole(nonExistentSlug, true)).rejects.toThrow('Role not found');
+		});
+
+		it('should work with system roles and usage counting', async () => {
+			//
+			// ARRANGE
+			//
+			const systemRole = await createSystemRole({
+				displayName: 'System Role With Usage',
+				description: 'A system role for usage testing',
+			});
+
+			// Mock higher usage count for system role
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockResolvedValue(12);
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRole(systemRole.slug, true);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: systemRole.slug,
+				displayName: systemRole.displayName,
+				description: systemRole.description,
+				systemRole: true,
+				roleType: systemRole.roleType,
+				scopes: expect.any(Array),
+				licensed: expect.any(Boolean),
+				usedByUsers: 12,
+			});
+
+			// Verify system role properties are preserved
+			expect(result.systemRole).toBe(true);
+
+			mockCountUsersWithRole.mockRestore();
+		});
+
+		it('should return role with zero usage count', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const unusedRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Unused Role',
+				description: 'A role with no assigned users',
+			});
+
+			// Mock countUsersWithRole to return 0
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockResolvedValue(0);
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRole(unusedRole.slug, true);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: unusedRole.slug,
+				displayName: unusedRole.displayName,
+				description: unusedRole.description,
+				systemRole: false,
+				roleType: unusedRole.roleType,
+				scopes: expect.arrayContaining([testScopes.readScope.slug]),
+				licensed: expect.any(Boolean),
+				usedByUsers: 0,
+			});
+
+			mockCountUsersWithRole.mockRestore();
+		});
+
+		it('should preserve complete role structure with usage count', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const fullRole = await createCustomRoleWithScopes(
+				[testScopes.readScope, testScopes.writeScope, testScopes.deleteScope],
+				{
+					displayName: 'Complete Role Structure',
+					description: 'A role with full properties for structure verification',
+				},
+			);
+
+			// Mock usage count
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockResolvedValue(8);
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRole(fullRole.slug, true);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: fullRole.slug,
+				displayName: fullRole.displayName,
+				description: fullRole.description,
+				systemRole: false,
+				roleType: fullRole.roleType,
+				scopes: expect.arrayContaining([
+					testScopes.readScope.slug,
+					testScopes.writeScope.slug,
+					testScopes.deleteScope.slug,
+				]),
+				licensed: expect.any(Boolean),
+				usedByUsers: 8,
+				createdAt: expect.any(Date),
+				updatedAt: expect.any(Date),
+			});
+
+			// Verify all scopes are included
+			expect(result.scopes).toHaveLength(3);
+
+			mockCountUsersWithRole.mockRestore();
+		});
+
+		it('should verify countUsersWithRole is called only when withCount=true', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const testRole = await createCustomRoleWithScopes([testScopes.readScope]);
+
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockResolvedValue(3);
+
+			//
+			// ACT
+			//
+			// Test with withCount=false
+			await roleService.getRole(testRole.slug, false);
+
+			// Test with withCount=true
+			await roleService.getRole(testRole.slug, true);
+
+			//
+			// ASSERT
+			//
+			// Verify countUsersWithRole was called only once (for withCount=true)
+			expect(mockCountUsersWithRole).toHaveBeenCalledTimes(1);
+			expect(mockCountUsersWithRole).toHaveBeenCalledWith(
+				expect.objectContaining({ slug: testRole.slug }),
+			);
+
+			mockCountUsersWithRole.mockRestore();
+		});
+
+		it('should verify repository integration with different usage counts', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const role1 = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role One',
+			});
+			const role2 = await createCustomRoleWithScopes([testScopes.writeScope], {
+				displayName: 'Role Two',
+			});
+
+			// Mock different usage counts for different roles
+			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			mockCountUsersWithRole.mockImplementation(async (role) => {
+				if (role.slug === role1.slug) return 15;
+				if (role.slug === role2.slug) return 3;
+				return 0;
+			});
+
+			//
+			// ACT
+			//
+			const result1 = await roleService.getRole(role1.slug, true);
+			const result2 = await roleService.getRole(role2.slug, true);
+
+			//
+			// ASSERT
+			//
+			expect(result1.usedByUsers).toBe(15);
+			expect(result2.usedByUsers).toBe(3);
+
+			// Verify each role was queried correctly
+			expect(mockCountUsersWithRole).toHaveBeenCalledTimes(2);
+			expect(mockCountUsersWithRole).toHaveBeenCalledWith(
+				expect.objectContaining({ slug: role1.slug }),
+			);
+			expect(mockCountUsersWithRole).toHaveBeenCalledWith(
+				expect.objectContaining({ slug: role2.slug }),
+			);
+
+			mockCountUsersWithRole.mockRestore();
 		});
 	});
 

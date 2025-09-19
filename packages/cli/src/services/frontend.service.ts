@@ -129,6 +129,7 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
+			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			isNativePythonRunnerEnabled:

@@ -18,7 +18,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -118,24 +117,22 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return newProject;
 	};
 
-	const updateProject = async (
-		id: Project['id'],
-		projectData: Required<UpdateProjectDto>,
-	): Promise<void> => {
+	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon, description } = projectData;
+		const { name, icon, description, relations } = projectData;
 		if (projectIndex !== -1) {
-			myProjects.value[projectIndex].name = name;
-			myProjects.value[projectIndex].icon = icon as IconOrEmoji;
-			myProjects.value[projectIndex].description = description;
+			if (typeof name !== 'undefined') myProjects.value[projectIndex].name = name;
+			if (typeof icon !== 'undefined') myProjects.value[projectIndex].icon = icon;
+			if (typeof description !== 'undefined')
+				myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
-			currentProject.value.name = name;
-			currentProject.value.icon = icon as IconOrEmoji;
-			currentProject.value.description = description;
+			if (typeof name !== 'undefined') currentProject.value.name = name;
+			if (typeof icon !== 'undefined') currentProject.value.icon = icon;
+			if (typeof description !== 'undefined') currentProject.value.description = description;
 		}
-		if (projectData.relations) {
+		if (relations) {
 			await getProject(id);
 		}
 	};

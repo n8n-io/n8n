@@ -38,4 +38,5 @@ export class ListInsightsWorkflowQueryDto extends Z.class({
 	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
 	dateRange: InsightsDateFilterDto.shape.dateRange,
 	sortBy: sortByValidator,
+	projectId: z.string().optional(),
 }) {}

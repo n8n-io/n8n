@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import sys
+import platform
 from typing import Optional
 
+from src.constants import ERROR_WINDOWS_NOT_SUPPORTED
 from src.config.health_check_config import HealthCheckConfig
 from src.config.sentry_config import SentryConfig
 from src.config.task_runner_config import TaskRunnerConfig
@@ -63,4 +65,8 @@ async def main():
 
 
 if __name__ == "__main__":
+    if platform.system() == "Windows":
+        print(ERROR_WINDOWS_NOT_SUPPORTED, file=sys.stderr)
+        sys.exit(1)
+
     asyncio.run(main())
