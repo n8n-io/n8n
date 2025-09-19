@@ -132,6 +132,21 @@ export class AuthService {
 		}
 
 		try {
+			// If API key looks like a JWT, verify it to ensure it's not expired
+			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
+			const decoded = this.jwtService.decode(apiKey);
+			if (decoded) {
+				try {
+					this.jwtService.verify(apiKey);
+				} catch (e) {
+					console.log(e);
+					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
+						response.status(401).json({ status: 'error', message: 'Invalid API key' });
+						return;
+					}
+					throw e;
+				}
+			}
 			const user = await this.getUserForApiKey(apiKey);
 			if (user.disabled) {
 				response.status(403).json({ status: 'error', message: 'User is disabled' });
