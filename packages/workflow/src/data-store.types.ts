@@ -80,7 +80,13 @@ export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 
 export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
-export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'] as const;
+export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataStoreColumnType> = {
+	id: 'number',
+	createdAt: 'date',
+	updatedAt: 'date',
+};
+
+export const DATA_TABLE_SYSTEM_COLUMNS = Object.keys(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP);
 
 export type DataStoreRowReturnBase = {
 	id: number;
