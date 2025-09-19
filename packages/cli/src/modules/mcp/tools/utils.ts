@@ -103,7 +103,7 @@ const getJWTAuthDetails = async (
 	if (hasJwtSecretDecryptedData(creds)) {
 		return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
 	} else if (hasJwtPemKeyDecryptedData(creds)) {
-		return '\n\t - This webhook requires a JWT private and public keys that should be provided by the user.';
+		return '\n\t - This webhook requires JWT private and public keys that should be provided by the user.';
 	}
 	return null;
 };
@@ -116,7 +116,7 @@ const getResponseModeDescription = (node: INode): string => {
 	if (responseMode === 'responseNode') {
 		responseModeInfo = 'Webhook is configured to respond using "Respond to Webhook" node.';
 	} else if (responseMode === 'lastNode') {
-		// [undefined = firstEntryJSOn], allEntries, firstEntryBinary, noData
+		// [undefined = firstEntryJSON], allEntries, firstEntryBinary, noData
 		const responseData =
 			typeof node.parameters.responseData === 'string' ? node.parameters.responseData : undefined;
 		responseModeInfo = 'Webhook is configured to respond when the last node is executed. ';

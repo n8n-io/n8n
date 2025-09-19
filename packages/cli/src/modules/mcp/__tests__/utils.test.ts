@@ -152,7 +152,7 @@ describe('getWebhookDetails', () => {
 			return { keyType: 'pemKey', privateKey: 'priv', publicKey: 'pub' };
 		});
 		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
-		expect(res).toContain('requires a JWT private and public keys');
+		expect(res).toContain('requires JWT private and public keys');
 	});
 
 	it('describes responseNode response mode', async () => {

@@ -37,7 +37,7 @@ describe('get-workflow-details MCP tool', () => {
 		});
 	});
 
-	describe('hadnler tests', () => {
+	describe('handler tests', () => {
 		test('returns sanitized workflow and trigger info (active)', async () => {
 			const workflow = createWorkflow({ active: true });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
