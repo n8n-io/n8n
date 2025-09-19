@@ -13,6 +13,7 @@ import {
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	DataSource,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -39,7 +40,7 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository);
+		importService = new ImportService(mock(), credentialsRepository, tagRepository, mock());
 	});
 
 	afterEach(async () => {
