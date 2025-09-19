@@ -72,7 +72,6 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 	}
 
 	catch(error: Error) {
-		console.log(error);
 		this.logger.error('❌ Error importing entities. See log messages for details. \n');
 		this.logger.error('Error details:');
 		this.logger.error('\n====================================\n');
