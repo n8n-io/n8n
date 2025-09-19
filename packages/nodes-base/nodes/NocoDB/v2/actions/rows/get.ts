@@ -47,7 +47,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			default: '',
 			description:
-				'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Name of the fields of type \'attachment\' that should be downloaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 	],
 );
