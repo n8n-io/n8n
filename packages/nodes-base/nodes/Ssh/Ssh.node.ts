@@ -284,6 +284,7 @@ export class Ssh implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 				const ssh = new NodeSSH();
+				let isDisposing = false;
 				try {
 					if (!credentials.privateKey) {
 						await ssh.connect({
@@ -306,6 +307,15 @@ export class Ssh implements INodeType {
 
 						await ssh.connect(options);
 					}
+
+					ssh.connection?.on('error', () => {
+						if (isDisposing) {
+							return;
+						}
+
+						isDisposing = true;
+						ssh.dispose();
+					});
 				} catch (error) {
 					const message = `SSH connection failed: ${error.message}`;
 					return {
@@ -313,6 +323,7 @@ export class Ssh implements INodeType {
 						message,
 					};
 				} finally {
+					isDisposing = true;
 					ssh.dispose();
 				}
 				return {
@@ -333,6 +344,7 @@ export class Ssh implements INodeType {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
 		const ssh = new NodeSSH();
+		let isDisposing = false;
 
 		try {
 			if (authentication === 'password') {
@@ -359,6 +371,15 @@ export class Ssh implements INodeType {
 
 				await ssh.connect(options);
 			}
+
+			ssh.connection?.on('error', () => {
+				if (isDisposing) {
+					return;
+				}
+
+				isDisposing = true;
+				ssh.dispose();
+			});
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -488,6 +509,7 @@ export class Ssh implements INodeType {
 				}
 			}
 		} finally {
+			isDisposing = true;
 			ssh.dispose();
 		}
 
