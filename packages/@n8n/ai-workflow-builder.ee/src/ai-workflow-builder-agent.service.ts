@@ -256,6 +256,9 @@ export class AiWorkflowBuilderService {
 				? new LangChainTracer({ client: this.tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
+			// onGenerationSuccess: () => {
+			// 	void this.client?.markBuilderSuccess()
+			// },
 		});
 
 		return this.agent;

@@ -47,6 +47,7 @@ export interface WorkflowBuilderAgentConfig {
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
+	onGenerationSuccess?: () => void;
 }
 
 export interface ChatPayload {
@@ -68,6 +69,7 @@ export class WorkflowBuilderAgent {
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
+	private onGenerationSuccess?: () => void;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -79,6 +81,7 @@ export class WorkflowBuilderAgent {
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
+		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
@@ -188,6 +191,9 @@ export class WorkflowBuilderAgent {
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
 			}
+
+			// Call success callback when agent finishes without tool calls (successful generation)
+			this.onGenerationSuccess?.();
 			return END;
 		};
 
