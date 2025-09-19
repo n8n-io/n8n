@@ -3,6 +3,7 @@ import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Get, Patch, RestController } from '@n8n/decorators';
 
 import { McpSettingsService } from './mcp.settings.service';
+import { BadRequestError } from '../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
 
 @RestController('/mcp')
@@ -24,10 +25,12 @@ export class McpSettingsController {
 		if (req.user.role?.slug !== GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Only the instance owner can update MCP settings');
 		}
-		const body = req.body as Partial<{ mcpAccessEnabled: boolean }>;
-		const enabled = body.mcpAccessEnabled === true;
+		const body = req.body as Partial<{ mcpAccessEnabled: unknown }>;
+		if (typeof body.mcpAccessEnabled !== 'boolean') {
+			throw new BadRequestError('`mcpAccessEnabled` (boolean) is required');
+		}
+		const enabled = body.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
-		// Keep module settings in sync so /module-settings reflects the latest without restart
 		try {
 			this.moduleRegistry.settings.set('mcp', { mcpAccessEnabled: enabled });
 		} catch (error) {
