@@ -1,13 +1,13 @@
-import { createResource } from '../composables/create';
-import { transferWorkflow } from '../composables/folders';
-import { setCredentialValues } from '../composables/modals/credential-modal';
+import { createResource } from '../../composables/create';
+import { transferWorkflow } from '../../composables/folders';
+import { setCredentialValues } from '../../composables/modals/credential-modal';
 import {
 	clickCreateNewCredential,
 	getNdvContainer,
 	selectResourceLocatorAddResourceItem,
 	clickGetBackToCanvas,
-} from '../composables/ndv';
-import * as projects from '../composables/projects';
+} from '../../composables/ndv';
+import * as projects from '../../composables/projects';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_ADMIN,
@@ -15,7 +15,7 @@ import {
 	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
 	NOTION_NODE_NAME,
-} from '../constants';
+} from '../../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
@@ -23,9 +23,9 @@ import {
 	CredentialsPage,
 	NDV,
 	MainSidebar,
-} from '../pages';
-import { clearNotifications, successToast } from '../pages/notifications';
-import { getVisibleSelect } from '../utils';
+} from '../../pages';
+import { clearNotifications, successToast } from '../../pages/notifications';
+import { getVisibleSelect } from '../../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();

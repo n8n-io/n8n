@@ -7,7 +7,7 @@ import {
 	SWITCH_NODE_NAME,
 	MERGE_NODE_NAME,
 	CODE_NODE_DISPLAY_NAME,
-} from './../constants';
+} from './../../constants';
 import {
 	clickContextMenuAction,
 	getCanvasNodeByName,
@@ -16,10 +16,10 @@ import {
 	getConnectionLabelBySourceAndTarget,
 	getOutputPlusHandle,
 	openContextMenu,
-} from '../composables/workflow';
-import { NDV, WorkflowExecutionsTab } from '../pages';
-import { clearNotifications, successToast } from '../pages/notifications';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+} from '../../composables/workflow';
+import { NDV, WorkflowExecutionsTab } from '../../pages';
+import { clearNotifications, successToast } from '../../pages/notifications';
+import { WorkflowPage as WorkflowPageClass } from '../../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();

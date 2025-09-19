@@ -1,11 +1,11 @@
 /* eslint-disable n8n-local-rules/no-skipped-tests */
 import { type ICredentialType } from 'n8n-workflow';
 
-import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
-import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
-import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
-import { AIAssistant } from '../pages/features/ai-assistant';
-import { NodeCreator } from '../pages/features/node-creator';
+import { clickCreateNewCredential, openCredentialSelect } from '../../composables/ndv';
+import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../../constants';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../../pages';
+import { AIAssistant } from '../../pages/features/ai-assistant';
+import { NodeCreator } from '../../pages/features/node-creator';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();

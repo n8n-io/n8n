@@ -1,9 +1,9 @@
 import type { RouteHandler } from 'cypress/types/net-stubbing';
 
-import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
-import { WorkflowPage } from '../pages';
-import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
-import { getVisibleSelect } from '../utils';
+import executionOutOfMemoryServerResponse from '../../fixtures/responses/execution-out-of-memory-server-response.json';
+import { WorkflowPage } from '../../pages';
+import { WorkflowExecutionsTab } from '../../pages/workflow-executions-tab';
+import { getVisibleSelect } from '../../utils';
 
 const workflowPage = new WorkflowPage();
 const executionsTab = new WorkflowExecutionsTab();

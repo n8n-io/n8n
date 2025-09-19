@@ -1,16 +1,16 @@
-import { clickGetBackToCanvas } from '../composables/ndv';
+import { clickGetBackToCanvas } from '../../composables/ndv';
 import {
 	addNodeToCanvas,
 	addRetrieverNodeToParent,
 	addVectorStoreNodeToParent,
 	addVectorStoreToolToParent,
 	getNodeCreatorItems,
-} from '../composables/workflow';
-import { AGENT_NODE_NAME, IF_NODE_NAME, MANUAL_CHAT_TRIGGER_NODE_NAME } from '../constants';
-import { NodeCreator } from '../pages/features/node-creator';
-import { NDV } from '../pages/ndv';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { getVisibleSelect } from '../utils';
+} from '../../composables/workflow';
+import { AGENT_NODE_NAME, IF_NODE_NAME, MANUAL_CHAT_TRIGGER_NODE_NAME } from '../../constants';
+import { NodeCreator } from '../../pages/features/node-creator';
+import { NDV } from '../../pages/ndv';
+import { WorkflowPage as WorkflowPageClass } from '../../pages/workflow';
+import { getVisibleSelect } from '../../utils';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
