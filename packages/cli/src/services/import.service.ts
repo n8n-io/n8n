@@ -350,7 +350,7 @@ export class ImportService {
 				this.logger.info(`      Found ${entities.length} entities`);
 
 				if (entities.length > 0) {
-					this.dataSource.createQueryBuilder().insert().into(tableName).values(entities);
+					this.dataSource.createQueryBuilder().insert().into(tableName).values(entities).execute();
 					entityCount += entities.length;
 				}
 			}
