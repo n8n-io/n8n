@@ -395,6 +395,7 @@ const handleAddResourceClick = async () => {
 			);
 		}
 
+		hideResourceDropdown();
 		openResource(resolvedUrl);
 		return;
 	}
