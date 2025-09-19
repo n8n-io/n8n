@@ -373,7 +373,7 @@ defineExpose({
 	line-height: 1.4;
 	color: var(--color-text-dark);
 	padding: var(--spacing-3xs) var(--spacing-2xs);
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-2xs);
 	box-sizing: border-box;
 	display: block;
 	overflow-y: hidden; // Changed dynamically via style binding
