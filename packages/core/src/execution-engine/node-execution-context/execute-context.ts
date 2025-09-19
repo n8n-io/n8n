@@ -17,6 +17,7 @@ import type {
 	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
+	EngineResponse,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -65,6 +66,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
+		public subNodeExecutionResults?: EngineResponse,
 	) {
 		super(
 			workflow,

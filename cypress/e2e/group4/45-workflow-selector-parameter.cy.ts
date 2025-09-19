@@ -1,6 +1,6 @@
-import { EXECUTE_WORKFLOW_NODE_NAME } from '../constants';
-import { WorkflowPage as WorkflowPageClass, NDV } from '../pages';
-import { getVisiblePopper } from '../utils';
+import { EXECUTE_WORKFLOW_NODE_NAME } from '../../constants';
+import { WorkflowPage as WorkflowPageClass, NDV } from '../../pages';
+import { getVisiblePopper } from '../../utils';
 
 const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();

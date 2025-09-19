@@ -1,14 +1,14 @@
-import { clickGetBackToCanvas, getNdvContainer, getOutputTableRow } from '../composables/ndv';
+import { clickGetBackToCanvas, getNdvContainer, getOutputTableRow } from '../../composables/ndv';
 import {
 	clickExecuteWorkflowButton,
 	getExecuteWorkflowButton,
 	getNodeByName,
 	getZoomToFitButton,
 	openNode,
-} from '../composables/workflow';
-import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
-import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
-import { clearNotifications, errorToast, successToast } from '../pages/notifications';
+} from '../../composables/workflow';
+import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../../constants';
+import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../../pages';
+import { clearNotifications, errorToast, successToast } from '../../pages/notifications';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();

@@ -1,4 +1,4 @@
-import { WorkflowPage, NDV } from '../pages';
+import { WorkflowPage, NDV } from '../../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();

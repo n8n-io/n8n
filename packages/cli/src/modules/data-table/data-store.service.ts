@@ -20,8 +20,9 @@ import type {
 	DataStoreRows,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
+	DataStoreColumnType,
 } from 'n8n-workflow';
-import { validateFieldType } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -64,6 +65,10 @@ export class DataStoreService {
 		await this.dataStoreRepository.update({ id: dataStoreId }, { name: dto.name });
 
 		return true;
+	}
+
+	async transferDataStoresByProjectId(fromProjectId: string, toProjectId: string) {
+		return await this.dataStoreRepository.transferDataStoreByProjectId(fromProjectId, toProjectId);
 	}
 
 	async deleteDataStoreByProjectId(projectId: string) {
@@ -282,11 +287,6 @@ export class DataStoreService {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		if (columns.length === 0) {
-			throw new DataStoreValidationError(
-				'No columns found for this data table or data table not found',
-			);
-		}
 
 		if (!dto.filter?.filters || dto.filter.filters.length === 0) {
 			throw new DataStoreValidationError(
@@ -307,15 +307,16 @@ export class DataStoreService {
 
 	private validateRowsWithColumns(
 		rows: DataStoreRows,
-		columns: Array<{ name: string; type: string }>,
+		columns: Array<{ name: string; type: DataStoreColumnType }>,
 		includeSystemColumns = false,
 	): void {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
 			? [
-					{ name: 'id', type: 'number' },
-					{ name: 'createdAt', type: 'date' },
-					{ name: 'updatedAt', type: 'date' },
+					...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP).map(([name, type]) => ({
+						name,
+						type,
+					})),
 					...columns,
 				]
 			: columns;
