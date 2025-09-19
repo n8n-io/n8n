@@ -14,7 +14,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
-			relations: { credentials: true, project: { projectRelations: { user: true } } },
+			relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
 			where: {
 				credentialsId: In(credentialIds),
 				role,
