@@ -16,6 +16,7 @@ import {
 	validateEntry,
 	composeReturnItem,
 	resolveRawData,
+	prepareReturnItem,
 } from './helpers/utils';
 import { updateDisplayOptions } from '../../../utils/utilities';
 
@@ -233,22 +234,8 @@ export async function execute(
 			'assignments',
 			i,
 		) as AssignmentCollectionValue;
-		const newData = Object.fromEntries(
-			(assignmentCollection?.assignments ?? []).map((assignment) => {
-				const { name, value } = validateEntry(
-					assignment.name,
-					assignment.type as FieldType,
-					assignment.value,
-					node,
-					i,
-					options.ignoreConversionErrors,
-					node.typeVersion,
-				);
 
-				return [name, value];
-			}),
-		);
-		return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
+		return prepareReturnItem(this, assignmentCollection, i, item, node, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message, pairedItem: { item: i } } };

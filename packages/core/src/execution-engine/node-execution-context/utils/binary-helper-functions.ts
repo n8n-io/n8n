@@ -50,18 +50,36 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 	return await Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
+function isBinaryData(obj: unknown): obj is IBinaryData {
+	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
+}
+
 export function assertBinaryData(
 	inputData: ITaskDataConnections,
 	node: INode,
 	itemIndex: number,
-	propertyName: string,
+	parameterData: string | IBinaryData,
 	inputIndex: number,
 ): IBinaryData {
+	if (isBinaryData(parameterData)) {
+		return parameterData;
+	}
+	if (typeof parameterData !== 'string') {
+		throw new NodeOperationError(
+			node,
+			'Provided parameter is not a string or binary data object.',
+			{
+				itemIndex,
+				description:
+					'Specify the property name of the binary data in input item or use an expression to access the binary data in previous nodes, e.g. "{{ $(_target_node_).item.binary[_binary_property_name_] }}"',
+			},
+		);
+	}
 	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
 			node,
-			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
 			{
 				itemIndex,
 				description: 'Make sure that the previous node outputs a binary file',
@@ -69,11 +87,11 @@ export function assertBinaryData(
 		);
 	}
 
-	const binaryPropertyData = binaryKeyData[propertyName];
+	const binaryPropertyData = binaryKeyData[parameterData];
 	if (binaryPropertyData === undefined) {
 		throw new NodeOperationError(
 			node,
-			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
 			{
 				itemIndex,
 				description:

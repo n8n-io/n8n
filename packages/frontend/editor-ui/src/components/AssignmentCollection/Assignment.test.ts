@@ -86,4 +86,32 @@ describe('Assignment.vue', () => {
 
 		expect(previewValue).toHaveClass('optionsPadding');
 	});
+
+	it('should show binary data tooltip when assignment type is binary', async () => {
+		const { getByTestId, getByRole } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				modelValue: {
+					name: 'binaryField',
+					type: 'binary',
+					value: 'data',
+				},
+			},
+		});
+
+		const typeSelect = getByTestId('assignment-type-select');
+
+		// Hover over the type select to trigger tooltip
+		await fireEvent.mouseEnter(typeSelect);
+		await nextTick();
+
+		// Check if tooltip with binary data information is displayed
+		await waitFor(() => {
+			const tooltip = getByRole('tooltip');
+			expect(tooltip).toBeInTheDocument();
+			expect(tooltip).toHaveTextContent(
+				'Specify the property name of the binary data in the input item',
+			);
+		});
+	});
 });
