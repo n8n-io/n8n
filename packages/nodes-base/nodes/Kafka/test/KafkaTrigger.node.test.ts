@@ -132,7 +132,6 @@ describe('KafkaTrigger Node', () => {
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
 	});
 
-
 	it('should handle SSL when CA is provided', async () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
