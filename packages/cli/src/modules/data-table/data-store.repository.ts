@@ -4,6 +4,7 @@ import {
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
@@ -12,6 +13,7 @@ import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
@@ -77,9 +79,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return createdDataStore;
 	}
 
-	async deleteDataStore(dataStoreId: string, entityManager?: EntityManager) {
-		const executor = entityManager ?? this.manager;
-		return await executor.transaction(async (em) => {
+	async deleteDataStore(dataStoreId: string, tx?: EntityManager) {
+		const run = async (em: EntityManager) => {
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -87,8 +88,51 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			await em.delete(DataTable, { id: dataStoreId });
 			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
-
 			return true;
+		};
+
+		if (tx) {
+			return await run(tx);
+		}
+
+		return await this.manager.transaction(run);
+	}
+
+	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
+		if (fromProjectId === toProjectId) return false;
+
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
+
+			let transferred = false;
+			for (const existing of existingTables) {
+				let name = existing.name;
+				const hasNameClash = await em.existsBy(DataTable, {
+					name,
+					projectId: toProjectId,
+				});
+
+				if (hasNameClash) {
+					const project = await em.findOneByOrFail(Project, { id: fromProjectId });
+					name = `${existing.name} (${project.name})`;
+
+					const stillHasNameClash = await em.existsBy(DataTable, {
+						name,
+						projectId: toProjectId,
+					});
+
+					if (stillHasNameClash) {
+						throw new DataStoreNameConflictError(
+							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
+						);
+					}
+				}
+
+				await em.update(DataTable, { id: existing.id }, { name, projectId: toProjectId });
+				transferred = true;
+			}
+
+			return transferred;
 		});
 	}
 

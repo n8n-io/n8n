@@ -264,7 +264,11 @@ describe('ProjectSettings', () => {
 
 	it('deletes project with transfer or wipe based on modal selection', async () => {
 		projectsStore.deleteProject.mockResolvedValue();
-		projectsStore.isProjectEmpty.mockResolvedValue(false);
+		projectsStore.getResourceCounts.mockResolvedValue({
+			credentials: 0,
+			workflows: 1,
+			dataTables: 0,
+		});
 
 		const r1 = renderComponent();
 		const deleteButton = r1.getByTestId('project-settings-delete-button');
@@ -290,7 +294,12 @@ describe('ProjectSettings', () => {
 
 		// Case 2: Empty project, wiping directly (no transfer)
 		projectsStore.deleteProject.mockClear();
-		projectsStore.isProjectEmpty.mockResolvedValue(true);
+		projectsStore.getResourceCounts.mockResolvedValue({
+			credentials: 0,
+			workflows: 0,
+			dataTables: 0,
+		});
+
 		// unmount previous instance and re-render to reset dialog internal state
 		r1.unmount();
 		const r2 = renderComponent();
