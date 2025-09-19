@@ -23,7 +23,7 @@ export class MfaLoginPage extends BasePage {
 	}
 
 	getSubmitButton(): Locator {
-		return this.page.getByRole('button', { name: 'Verify' });
+		return this.page.getByRole('button', { name: /^(Continue|Verify)$/ });
 	}
 
 	async goToMfaLogin(): Promise<void> {

@@ -105,7 +105,7 @@ export class SettingsPage extends BasePage {
 	}
 
 	async clickDisableMfa(): Promise<void> {
-		await this.clickByTestId('disable-mfa-button');
+		await this.getDisableMfaButton().click();
 	}
 
 	/**
@@ -122,6 +122,6 @@ export class SettingsPage extends BasePage {
 	 */
 	async fillMfaCodeAndSave(code: string): Promise<void> {
 		await this.getMfaCodeOrRecoveryCodeInput().fill(code);
-		await this.clickByTestId('mfa-save-button');
+		await this.getMfaSaveButton().click();
 	}
 }
