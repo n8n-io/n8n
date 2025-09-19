@@ -3,6 +3,7 @@ import { MainSidebar } from './sidebar/main-sidebar';
 import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
+import { expandSidebar } from '../composables/sidebar';
 
 const workflowPage = new WorkflowPage();
 const workflowsPage = new WorkflowsPage();
@@ -49,6 +50,7 @@ export class SettingsUsersPage extends BasePage {
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
 			cy.signin({ email, password });
 			workflowPage.actions.visit();
+			expandSidebar();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
 				settingsSidebar.getters.users().click();
