@@ -54,6 +54,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						operationResult = await rows.upsert.execute.call(this);
 						break;
 					}
+					case 'upload': {
+						operationResult = await rows.upload.execute.call(this);
+						break;
+					}
 					case 'delete': {
 						operationResult = await rows.delete.execute.call(this);
 						break;

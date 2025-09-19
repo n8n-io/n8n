@@ -8,6 +8,7 @@ export * as create from './create';
 export * as delete from './delete';
 export * as update from './update';
 export * as upsert from './upsert';
+export * as upload from './upload';
 
 import * as countAction from './count';
 import * as createAction from './create';
@@ -15,6 +16,7 @@ import * as deleteAction from './delete';
 import * as getAction from './get';
 import * as getAllAction from './getAll';
 import * as updateAction from './update';
+import * as uploadAction from './upload';
 import * as upsertAction from './upsert';
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -77,6 +79,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'update',
 					description: 'Update a row',
 					action: 'Update a row',
+				},
+				{
+					name: 'Upload Attachment',
+					value: 'upload',
+					description: 'Upload attachment to row',
+					action: 'Upload attachment to row',
 				},
 			],
 			default: 'get',
@@ -220,5 +228,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...deleteAction.description,
 		...updateAction.description,
 		...upsertAction.description,
+		...uploadAction.description,
 	],
 );
