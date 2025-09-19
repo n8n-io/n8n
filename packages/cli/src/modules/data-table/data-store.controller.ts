@@ -334,7 +334,7 @@ export class DataStoreController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataTableId') dataTableId: string,
-		@Body dto: DeleteDataTableRowsDto,
+		@Query dto: DeleteDataTableRowsDto,
 	) {
 		try {
 			return await this.dataStoreService.deleteRows(

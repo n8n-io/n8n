@@ -50,6 +50,10 @@ export async function execute(
 
 	const filter = getSelectFilter(this, index);
 
+	if (filter.filters.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
+	}
+
 	if (dryRun) {
 		const { data: rowsToDelete } = await dataStoreProxy.getManyRowsAndCount({ filter });
 		return rowsToDelete.map((json) => ({ json }));
