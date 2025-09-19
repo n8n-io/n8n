@@ -17,7 +17,7 @@ export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	jwtToken: string,
+	authHeader: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -25,7 +25,7 @@ export async function baserowApiRequest(
 
 	const options: IRequestOptions = {
 		headers: {
-			Authorization: `JWT ${jwtToken}`,
+			Authorization: authHeader,
 		},
 		method,
 		body,
@@ -71,7 +71,7 @@ export async function baserowApiRequestAllItems(
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData.push.apply(returnData, responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -86,25 +86,29 @@ export async function baserowApiRequestAllItems(
 /**
  * Get a JWT token based on Baserow account username and password.
  */
-export async function getJwtToken(
+export async function getAuthorizationHeader(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	{ username, password, host }: BaserowCredentials,
+	{ username, password, authType, token, host }: BaserowCredentials,
 ) {
-	const options: IRequestOptions = {
-		method: 'POST',
-		body: {
-			username,
-			password,
-		},
-		uri: `${host}/api/user/token-auth/`,
-		json: true,
-	};
+	if (authType === 'basic') {
+		const options: IRequestOptions = {
+			method: 'POST',
+			body: {
+				username,
+				password,
+			},
+			uri: `${host}/api/user/token-auth/`,
+			json: true,
+		};
 
-	try {
-		const { token } = (await this.helpers.request(options)) as { token: string };
-		return token;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		try {
+			const { token } = (await this.helpers.request(options)) as { token: string };
+			return `JWT ${token}`;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error as JsonObject);
+		}
+	} else {
+		return `Token ${token}`;
 	}
 }
 
