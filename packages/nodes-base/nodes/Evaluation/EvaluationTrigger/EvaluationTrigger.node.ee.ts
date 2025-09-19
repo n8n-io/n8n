@@ -207,7 +207,7 @@ export class EvaluationTrigger implements INodeType {
 			}) as string;
 			const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
 
-			const filter = getDataTableFilter(this, 0);
+			const filter = await getDataTableFilter(this, 0);
 
 			const { data, count } = await dataTableProxy.getManyRowsAndCount({
 				skip: currentIndex,
@@ -330,7 +330,7 @@ export class EvaluationTrigger implements INodeType {
 						}) as string;
 						const dataTableProxy = await this.helpers.getDataStoreProxy(dataTableId);
 
-						const filter = getDataTableFilter(this, 0);
+						const filter = await getDataTableFilter(this, 0);
 						const { data } = await dataTableProxy.getManyRowsAndCount({
 							skip: 0,
 							take: maxRows,
