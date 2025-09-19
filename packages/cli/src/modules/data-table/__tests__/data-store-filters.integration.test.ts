@@ -329,6 +329,45 @@ describe('dataStore filters', () => {
 				]);
 			});
 
+			it('includes null values when using neq with specific value', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'category', type: 'string' },
+					],
+				});
+
+				const rows = [
+					{ name: 'John', category: 'A' },
+					{ name: 'Mary', category: 'B' },
+					{ name: 'Jack', category: null },
+					{ name: 'Alice', category: 'A' },
+					{ name: 'Bob', category: null },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'category', condition: 'neq', value: 'A' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(3);
+				expect(result.data).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ name: 'Mary', category: 'B' }),
+						expect.objectContaining({ name: 'Jack', category: null }),
+						expect.objectContaining({ name: 'Bob', category: null }),
+					]),
+				);
+			});
+
 			it('should accept a valid numeric string', async () => {
 				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
 					name: 'dataStore',
