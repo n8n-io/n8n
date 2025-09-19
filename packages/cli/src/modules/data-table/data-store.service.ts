@@ -282,11 +282,6 @@ export class DataStoreService {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		if (columns.length === 0) {
-			throw new DataStoreValidationError(
-				'No columns found for this data table or data table not found',
-			);
-		}
 
 		if (!dto.filter?.filters || dto.filter.filters.length === 0) {
 			throw new DataStoreValidationError(
