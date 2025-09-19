@@ -137,6 +137,10 @@ export class AuthService {
 				response.status(403).json({ status: 'error', message: 'User is disabled' });
 				return;
 			}
+			if (user.isPending) {
+				response.status(403).json({ status: 'error', message: 'User is pending' });
+				return;
+			}
 			req.user = user;
 			next();
 		} catch (error) {
