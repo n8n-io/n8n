@@ -36,12 +36,11 @@ export class MfaSetupModal extends BasePage {
 	}
 
 	async clickDownloadRecoveryCodes(): Promise<void> {
-		await expect(this.getDownloadRecoveryCodesButton()).toBeVisible();
 		await this.clickByTestId('mfa-recovery-codes-button');
 	}
 
 	async clickSave(): Promise<void> {
-		await this.clickByTestId('mfa-save-button');
+		await this.getModalContainer().getByTestId('mfa-save-button').click();
 	}
 
 	async isVisible(): Promise<boolean> {

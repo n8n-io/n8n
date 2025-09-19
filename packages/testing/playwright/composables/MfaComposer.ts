@@ -14,12 +14,12 @@ export class MfaComposer {
 	 */
 	async enableMfa(email: string, password: string, mfaSecret: string): Promise<void> {
 		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
-		await this.n8n.personalSettings.goToPersonalSettings();
+		await this.n8n.settings.goToPersonalSettings();
 
 		const mfaQrResponsePromise = this.n8n.page.waitForResponse(
 			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
 		);
-		await this.n8n.personalSettings.clickEnableMfa();
+		await this.n8n.settings.clickEnableMfa();
 		await mfaQrResponsePromise;
 
 		await this.n8n.mfaSetupModal.getModalContainer().waitFor({ state: 'visible' });
@@ -28,6 +28,7 @@ export class MfaComposer {
 
 		const token = authenticator.generate(mfaSecret);
 		await this.n8n.mfaSetupModal.fillToken(token);
+		await expect(this.n8n.mfaSetupModal.getDownloadRecoveryCodesButton()).toBeVisible();
 		await this.n8n.mfaSetupModal.clickDownloadRecoveryCodes();
 		await this.n8n.mfaSetupModal.clickSave();
 		await this.n8n.mfaSetupModal.waitForHidden();

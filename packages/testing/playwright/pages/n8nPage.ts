@@ -14,7 +14,6 @@ import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
-import { PersonalSettingsPage } from './PersonalSettingsPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPage } from './SettingsPage';
@@ -53,7 +52,6 @@ export class n8nPage {
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
-	readonly personalSettings: PersonalSettingsPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -100,7 +98,6 @@ export class n8nPage {
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
-		this.personalSettings = new PersonalSettingsPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);

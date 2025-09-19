@@ -11,11 +11,11 @@ export class MfaLoginPage extends BasePage {
 	}
 
 	getMfaCodeField(): Locator {
-		return this.page.getByTestId('mfaCode').locator('input');
+		return this.getForm().locator('input[name="mfaCode"]');
 	}
 
 	getMfaRecoveryCodeField(): Locator {
-		return this.page.getByTestId('mfaRecoveryCode').locator('input');
+		return this.getForm().locator('input[name="mfaRecoveryCode"]');
 	}
 
 	getEnterRecoveryCodeButton(): Locator {
