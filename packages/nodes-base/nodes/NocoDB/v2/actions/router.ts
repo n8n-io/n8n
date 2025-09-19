@@ -30,6 +30,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 			case 'row': {
 				switch (operation) {
+					case 'count': {
+						operationResult = await rows.count.execute.call(this);
+						break;
+					}
 					case 'get': {
 						operationResult = await rows.get.execute.call(this);
 						break;
