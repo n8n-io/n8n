@@ -82,7 +82,6 @@ function getConditionAndParams(
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
 		eq: '=',
-		neq: '!=',
 		gt: '>',
 		gte: '>=',
 		lt: '<',
@@ -91,6 +90,11 @@ function getConditionAndParams(
 
 	if (operators[filter.condition]) {
 		return [`${columnRef} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
+	}
+
+	// Special handling for neq to include NULL values (only if value is not null!)
+	if (filter.condition === 'neq') {
+		return [`(${columnRef} != :${paramName} OR ${columnRef} IS NULL)`, { [paramName]: value }];
 	}
 
 	switch (filter.condition) {
