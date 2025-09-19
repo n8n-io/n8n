@@ -22,7 +22,24 @@ describe(useCssVarWithCleanup, () => {
 		});
 		const rendered = render(Component);
 
+		expect(document.documentElement.style.getPropertyValue('--test-var')).toBe('1234px');
 		rendered.unmount();
 		expect(document.documentElement.style.getPropertyValue('--test-var')).toBe('');
+	});
+
+	it('should restore CSS variable before mount when component is unmounted', () => {
+		const Component = defineComponent(() => {
+			const variable = useCssVarWithCleanup('--test-var');
+			variable.value = '1234px';
+			return () => h('div');
+		});
+
+		document.documentElement.style.setProperty('--test-var', '3px');
+
+		const rendered = render(Component);
+
+		expect(document.documentElement.style.getPropertyValue('--test-var')).toBe('1234px');
+		rendered.unmount();
+		expect(document.documentElement.style.getPropertyValue('--test-var')).toBe('3px');
 	});
 });
