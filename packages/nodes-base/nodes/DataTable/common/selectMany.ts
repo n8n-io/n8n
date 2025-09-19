@@ -115,6 +115,7 @@ export async function executeSelectMany(
 	index: number,
 	dataStoreProxy: IDataStoreProjectService,
 	rejectEmpty = false,
+	limit?: number,
 ): Promise<Array<{ json: DataStoreRowReturn }>> {
 	const filter = getSelectFilter(ctx, index);
 
@@ -126,7 +127,7 @@ export async function executeSelectMany(
 	const result: Array<{ json: DataStoreRowReturn }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
-	const limit = !returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0;
+	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
 
 	let expectedTotal: number | undefined;
 	let skip = 0;
