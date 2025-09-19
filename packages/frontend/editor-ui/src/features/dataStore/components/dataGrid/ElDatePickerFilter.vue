@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import type { ICellEditorParams } from 'ag-grid-community';
+import { onMounted } from 'vue';
+import type { IDateParams } from 'ag-grid-community';
 import { useDatePickerCommon } from '@/features/dataStore/composables/useDatePickerCommon';
 
 const props = defineProps<{
-	params: ICellEditorParams;
+	params: IDateParams;
 }>();
-
-const inputWidth = ref(props.params.column.getActualWidth() - 4); // -4 for the border
 
 const {
 	pickerRef,
@@ -18,36 +16,37 @@ const {
 	onDateChange,
 	focusPicker,
 	getDate,
-	initializeValue,
+	setDate,
 } = useDatePickerCommon({
-	onCommit: () => props.params.stopEditing(),
-	onCancel: () => props.params.stopEditing(),
-	onChange: () => props.params.stopEditing(),
+	onCommit: () => props.params.onDateChanged(),
+	onCancel: () => {
+		dateValue.value = null;
+		props.params.onDateChanged();
+	},
+	onChange: () => props.params.onDateChanged(),
 });
 
 onMounted(async () => {
-	initializeValue(props.params.value as unknown);
 	await focusPicker();
 });
 
 defineExpose({
-	getValue: getDate,
-	isPopup: () => true,
+	getDate,
+	setDate,
 });
 </script>
 
 <template>
-	<div ref="wrapperRef" class="datastore-datepicker-wrapper">
+	<div ref="wrapperRef" class="datastore-date-filter-wrapper">
 		<el-date-picker
-			id="datastore-datepicker"
 			ref="pickerRef"
 			v-model="dateValue"
 			type="datetime"
-			:style="{ width: `${inputWidth}px` }"
 			:clearable="true"
 			:editable="true"
-			:teleported="false"
-			popper-class="ag-custom-component-popup datastore-datepicker-popper"
+			:teleported="true"
+			placement="bottom"
+			popper-class="ag-custom-component-popup datastore-date-filter-popper"
 			placeholder="YYYY-MM-DD (HH:mm:ss)"
 			size="small"
 			@change="onDateChange"
@@ -58,7 +57,8 @@ defineExpose({
 </template>
 
 <style lang="scss">
-.datastore-datepicker-wrapper {
+.datastore-date-filter-wrapper {
+	border: var(--ag-picker-button-border);
 	border-radius: var(--border-radius-base);
 
 	.el-input__prefix {
@@ -79,12 +79,11 @@ defineExpose({
 
 	&:where(:focus-within, :active) {
 		box-shadow: none;
-		border: var(--grid-cell-editing-border);
+		border: var(--ag-picker-button-focus-border);
 	}
 }
 
-.datastore-datepicker-popper {
-	// Hide the date input in the popper
+.datastore-date-filter-popper {
 	.el-date-picker__time-header .el-date-picker__editor-wrap:first-child {
 		display: none;
 	}
