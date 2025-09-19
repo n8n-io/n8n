@@ -43,7 +43,7 @@ const textareaHeight = ref<number>(24);
 const isMultiline = ref(false);
 
 // Constants
-const LINE_HEIGHT = 20;
+const LINE_HEIGHT = 18;
 const SINGLE_LINE_HEIGHT = 24;
 const MAX_LINES_BEFORE_SCROLL = 6;
 const TEXTAREA_MAX_HEIGHT = MAX_LINES_BEFORE_SCROLL * LINE_HEIGHT;
@@ -315,10 +315,10 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-s);
-	line-height: 1.4;
+	font-size: var(--font-size-2xs);
+	line-height: 24px;
 	color: var(--color-text-dark);
-	padding: 2px var(--spacing-2xs);
+	padding: 0 var(--spacing-2xs);
 	height: 24px;
 	overflow: hidden;
 	box-sizing: border-box;
@@ -343,11 +343,11 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size-s);
-	line-height: 1.4;
+	font-size: var(--font-size-2xs);
+	line-height: 18px;
 	color: var(--color-text-dark);
 	padding: var(--spacing-3xs) var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
 	overflow-y: hidden; // Changed dynamically via style binding
@@ -379,7 +379,8 @@ defineExpose({
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing-3xs);
-	padding: 0 0 var(--spacing-2xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-2xs);
+	margin-top: auto;
 }
 
 // Common styles
