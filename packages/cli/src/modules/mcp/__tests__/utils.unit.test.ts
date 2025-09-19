@@ -1,0 +1,214 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { User } from '@n8n/db';
+import type { SharedCredentials } from '@n8n/db';
+import type {
+	INode,
+	INodeCredentials,
+	INodeParameters,
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
+
+import { getWebhookDetails } from '../tools/utils';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+
+const mockCredentialsService = (
+	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,
+): CredentialsService =>
+	mockInstance(CredentialsService, {
+		async getOne(_user: User, id: string, _includeDecryptedData: boolean) {
+			const data = await impl(id);
+			return {
+				name: 'MockCredentialsService',
+				type: 'mock',
+				shared: [] as SharedCredentials[],
+				isManaged: false,
+				id,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				data,
+			};
+		},
+	});
+
+const createWebhookNode = (
+	overrides: Partial<INode> & { parameters?: INodeParameters; credentials?: INodeCredentials } = {},
+): INode => {
+	const base: INode = {
+		id: '1',
+		name: 'Webhook',
+		type: 'n8n-nodes-base.webhook',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+	return { ...base, ...overrides };
+};
+
+const createUser = (overrides: Partial<User> = {}): User => {
+	const u = new User();
+	u.id = 'user-id';
+	Object.assign(u, overrides);
+	return u;
+};
+
+describe('getWebhookDetails', () => {
+	const NO_WEBHOOKS_MESSAGE =
+		'This workflow does not have a trigger node that can be executed via MCP.';
+	const user = createUser();
+	const baseUrl = 'https://example.com';
+
+	it('handles no webhook nodes', async () => {
+		const res = await getWebhookDetails(
+			user,
+			[],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(res).toEqual(NO_WEBHOOKS_MESSAGE);
+	});
+
+	it('describes a basic webhook without auth', async () => {
+		const node = createWebhookNode({
+			name: 'My Webhook',
+			parameters: { path: 'hook', httpMethod: 'POST' },
+		});
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(res).toContain('Node name: My Webhook');
+		expect(res).toContain('Base URL: https://example.com');
+		expect(res).toContain('PATH: /webhook/hook');
+		expect(res).toContain('HTTP Method: POST');
+		expect(res).toContain('respond immediately');
+		expect(res).toContain('No credentials required');
+	});
+
+	it('uses test url when workflow is inactive', async () => {
+		const node = createWebhookNode({ parameters: { path: 'test' } });
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			false,
+			mockCredentialsService(() => ({})),
+		);
+		expect(res).toContain('PATH: /webhook-test/test');
+	});
+
+	it('describes basicAuth requirement', async () => {
+		const node = createWebhookNode({ parameters: { authentication: 'basicAuth', path: 'a' } });
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(res).toContain('basic authentication');
+	});
+
+	it('describes headerAuth with header name', async () => {
+		const node = createWebhookNode({
+			parameters: { authentication: 'headerAuth', path: 'a' },
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
+		});
+		const credsService = mockCredentialsService((id) => {
+			expect(id).toBe('cred-1');
+			return { name: 'X-API-Key', value: 'secret' };
+		});
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		expect(res).toContain('requires a header with name "X-API-Key"');
+	});
+
+	it('describes jwtAuth with shared secret', async () => {
+		const node = createWebhookNode({
+			parameters: { authentication: 'jwtAuth', path: 'a' },
+			credentials: { jwtAuth: { id: 'cred-2', name: 'JwtAuth' } },
+		});
+		const credsService = mockCredentialsService((id) => {
+			expect(id).toBe('cred-2');
+			return { secret: 'super-secret', keyType: 'passphrase' };
+		});
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		expect(res).toContain('requires a JWT secret');
+	});
+
+	it('describes jwtAuth with PEM keys', async () => {
+		const node = createWebhookNode({
+			parameters: { authentication: 'jwtAuth', path: 'a' },
+			credentials: { jwtAuth: { id: 'cred-3', name: 'JwtAuth' } },
+		});
+		const credsService = mockCredentialsService((id) => {
+			expect(id).toBe('cred-3');
+			return { keyType: 'pemKey', privateKey: 'priv', publicKey: 'pub' };
+		});
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		expect(res).toContain('requires a JWT private and public keys');
+	});
+
+	it('describes responseNode response mode', async () => {
+		const node = createWebhookNode({ parameters: { responseMode: 'responseNode' } });
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(res).toContain('respond using "Respond to Webhook" node');
+	});
+
+	it('describes lastNode response mode variants', async () => {
+		const nodeAll = createWebhookNode({
+			parameters: { responseMode: 'lastNode', responseData: 'allEntries' },
+		});
+		const resAll = await getWebhookDetails(
+			user,
+			[nodeAll],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(resAll).toContain('Returns all the entries of the last node');
+
+		const nodeBin = createWebhookNode({
+			parameters: { responseMode: 'lastNode', responseData: 'firstEntryBinary' },
+		});
+		const resBin = await getWebhookDetails(
+			user,
+			[nodeBin],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(resBin).toContain('Returns the binary data of the first entry of the last node');
+
+		const nodeNo = createWebhookNode({
+			parameters: { responseMode: 'lastNode', responseData: 'noData' },
+		});
+		const resNo = await getWebhookDetails(
+			user,
+			[nodeNo],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(resNo).toContain('Returns without a body');
+
+		const nodeDefault = createWebhookNode({ parameters: { responseMode: 'lastNode' } });
+		const resDefault = await getWebhookDetails(
+			user,
+			[nodeDefault],
+			baseUrl,
+			true,
+			mockCredentialsService(() => ({})),
+		);
+		expect(resDefault).toContain('Returns the JSON data of the first entry of the last node');
+	});
+});
