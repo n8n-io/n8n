@@ -1,4 +1,5 @@
 import { overrideFeatureFlag } from '../composables/featureFlags';
+import { expandSidebar } from '../composables/sidebar';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import {
 	MainSidebar,
@@ -44,8 +45,23 @@ describe('Cloud', () => {
 	}
 
 	describe('BannerStack', () => {
-		it('should render trial banner for opt-in cloud user', () => {
+		it('should not render trial banner on first visit', () => {
+			// Clear localStorage to simulate first visit
+			cy.clearLocalStorage();
+
 			visitWorkflowPage();
+
+			cy.getByTestId('banner-stack').should('not.be.visible');
+		});
+
+		it('should render trial banner on subsequent visits', () => {
+			// Set visit count to simulate returning user
+			cy.window().then((win) => {
+				win.localStorage.setItem('n8n-trial-visit-count', '1');
+			});
+
+			visitWorkflowPage();
+			expandSidebar();
 
 			cy.getByTestId('banner-stack').should('be.visible');
 
@@ -58,6 +74,7 @@ describe('Cloud', () => {
 	describe('Admin Home', () => {
 		it('Should show admin button', () => {
 			visitWorkflowPage();
+			expandSidebar();
 
 			mainSidebar.getters.adminPanel().should('be.visible');
 		});

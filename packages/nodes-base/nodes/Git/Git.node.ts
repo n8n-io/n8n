@@ -20,6 +20,8 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
+import { Container } from '@n8n/di';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -291,8 +293,18 @@ export class Git implements INodeType {
 					}
 				}
 
+				const gitConfig: string[] = [];
+				const deploymentConfig = Container.get(DeploymentConfig);
+				const isCloud = deploymentConfig.type === 'cloud';
+				const securityConfig = Container.get(SecurityConfig);
+				const disableBareRepos = securityConfig.disableBareRepos;
+				if (isCloud || disableBareRepos) {
+					gitConfig.push('safe.bareRepository=explicit');
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: repositoryPath,
+					config: gitConfig,
 				};
 
 				const git: SimpleGit = simpleGit(gitOptions)
