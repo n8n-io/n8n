@@ -23,7 +23,7 @@ interface MindeeV2UIParams {
 	polygon: string;
 	confidence: string;
 	rawText: string;
-	maxDelayCount: number;
+	pollingTimeoutCount: number;
 	binaryPropertyName?: string;
 }
 
@@ -32,6 +32,8 @@ interface MindeeV2UIParams {
  * @param method - HTTP method.
  * @param url - The Mindee API's (complete) URL.
  * @param body - The request body data.
+ * @param q - The query param
+ * @param headers
  * @param option - Additional request options (default: empty object)
  * @returns The API response data
  * @throws NodeApiError when the API request fails
@@ -41,12 +43,12 @@ export async function mindeeApiRequest(
 	method: IHttpRequestMethods,
 	url: string,
 	body: IDataObject | FormData = {},
+	q: IDataObject = {},
+	headers = {} as IDataObject,
 	option = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
-		headers: {
-			'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
-		},
+		headers,
 		method,
 		url,
 		body,
@@ -68,31 +70,42 @@ export async function mindeeApiRequest(
 }
 
 /**
+ * Checks response and extracts the polling URL.
+ * @param funcRef The execution function reference.
+ * @param serverResponse The server response.
+ * @throws NodeApiError when the job id is not found in the response.
+ */
+export function extractPollingUrl(funcRef: IExecuteFunctions, serverResponse: IDataObject): string {
+	const pollingUrl = (serverResponse?.job as { polling_url?: string })?.polling_url;
+	if (!pollingUrl || pollingUrl.length === 0) {
+		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
+			message: 'Mindee POST response does not contain a valid polling URL.',
+		});
+	}
+	return pollingUrl;
+}
+
+/**
  * Polls the Mindee API for the result of a job.
  * Automatically follows the redirect on the last poll attempt.
  * @param funcRef The execution function reference.
- * @param initialResponse Initial POST request response from the API.
- * @param maxDelayCounter Maximum number of attempts to poll the API.
+ * @param pollUrl URL for the polling.
+ * @param pollingTimeoutCounter Maximum number of attempts to poll the API.
  */
 export async function pollMindee(
 	funcRef: IExecuteFunctions,
-	initialResponse: IDataObject,
-	maxDelayCounter: number,
+	pollUrl: string,
+	pollingTimeoutCounter: number,
 ): Promise<IDataObject[]> {
 	const result: IDataObject[] = [];
-	let serverResponse = initialResponse;
-	const jobId: string | undefined = (serverResponse?.job as IDataObject)?.id as string;
-	if (!jobId || jobId.length === 0) {
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: 'Mindee POST response does not contain a job id.',
-		});
+	await setTimeout(INITIAL_DELAY_MS);
+	let serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
+	if ('inference' in serverResponse) {
+		return [serverResponse as IDataObject];
 	}
 	let jobStatus: string = (serverResponse.job as IDataObject).status as string;
-	const pollUrl = (serverResponse.job as IDataObject).polling_url as string;
 
-	await setTimeout(INITIAL_DELAY_MS);
-
-	for (let i = 0; i < maxDelayCounter; i++) {
+	for (let i = 0; i < pollingTimeoutCounter; i++) {
 		if (
 			serverResponse.error ||
 			(serverResponse?.job as IDataObject).error ||
@@ -114,7 +127,7 @@ export async function pollMindee(
 
 	if (!('inference' in (serverResponse as JsonObject)))
 		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: `Server polling timed out after ${maxDelayCounter} seconds. Status: ${jobStatus}.`,
+			message: `Server polling timed out after ${pollingTimeoutCounter} seconds. Status: ${jobStatus}.`,
 		});
 	result.push(serverResponse);
 	return result;
@@ -126,24 +139,31 @@ export async function pollMindee(
  * @param index Index of the parameter.
  */
 export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIParams {
-	const modelId = ctx.getNodeParameter('modelId', index);
-	const alias = ctx.getNodeParameter('alias', index);
-	const rag = ctx.getNodeParameter('rag', index);
-	const polygon = ctx.getNodeParameter('polygon', index);
-	const confidence = ctx.getNodeParameter('confidence', index);
-	const rawText = ctx.getNodeParameter('rawText', index);
-	const maxDelayCount = ctx.getNodeParameter('maxDelayCount', index);
+	const rawModel = ctx.getNodeParameter('modelId', index, '') as string | { value?: string };
+	const modelId =
+		typeof rawModel === 'string'
+			? rawModel
+			: typeof rawModel?.value === 'string'
+				? rawModel.value
+				: '';
+	const pollingTimeoutCount = ctx.getNodeParameter('pollingTimeoutCount', index, 120) as number;
 	const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', index, '');
+	const options = ctx.getNodeParameter('options', index, {});
 
+	const alias = (options.alias as string) ?? '';
+	const rag = (options.rag as string) ?? 'default';
+	const polygon = (options.polygon as string) ?? 'default';
+	const confidence = (options.confidence as string) ?? 'default';
+	const rawText = (options.rawText as string) ?? 'default';
 	return {
-		modelId: typeof modelId === 'string' ? modelId : '',
-		alias: typeof alias === 'string' ? alias : '',
-		rag: typeof rag === 'string' ? rag : 'default',
-		polygon: typeof polygon === 'string' ? polygon : 'default',
-		confidence: typeof confidence === 'string' ? confidence : 'default',
-		rawText: typeof rawText === 'string' ? rawText : 'default',
-		maxDelayCount: typeof maxDelayCount === 'number' ? maxDelayCount : 120,
-		binaryPropertyName: typeof binaryPropertyName === 'string' ? binaryPropertyName : '',
+		modelId,
+		alias,
+		rag,
+		polygon,
+		confidence,
+		rawText,
+		pollingTimeoutCount,
+		binaryPropertyName,
 	};
 }
 
@@ -160,13 +180,17 @@ export async function buildRequestBody(
 	uiParams: MindeeV2UIParams,
 	form: FormData,
 ) {
-	const name = uiParams.binaryPropertyName ?? 'data';
-	const bin = ctx.helpers.assertBinaryData(index, name);
-	const buf = await ctx.helpers.getBinaryDataBuffer(index, name);
-	form.append('file', buf, { filename: bin.fileName });
+	const name = uiParams.binaryPropertyName;
+	if (name) {
+		const bin = ctx.helpers.assertBinaryData(index, name);
+		const buf = await ctx.helpers.getBinaryDataBuffer(index, name);
+		form.append('file', buf, { filename: bin.fileName });
+	}
 
 	form.append('model_id', uiParams.modelId);
-	form.append('alias', uiParams.alias ?? '');
+	if (uiParams.alias && uiParams.alias.length > 0) {
+		form.append('alias', uiParams.alias);
+	}
 	if (uiParams.rag !== 'default') form.append('rag', uiParams.rag);
 	if (uiParams.polygon !== 'default') form.append('polygon', uiParams.polygon);
 	if (uiParams.confidence !== 'default') form.append('confidence', uiParams.confidence);
