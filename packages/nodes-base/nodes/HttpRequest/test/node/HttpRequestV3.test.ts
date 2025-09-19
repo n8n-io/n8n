@@ -71,6 +71,46 @@ describe('HttpRequestV3', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
+	it('should accumulate duplicate query parameter names into arrays', async () => {
+		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'GET';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendQuery':
+					return true;
+				case 'queryParameters.parameters':
+					return [
+						{ name: 'q_organization_keyword_tags[]', value: 'financial' },
+						{ name: 'q_organization_keyword_tags[]', value: 'investment' },
+					];
+				case 'specifyQuery':
+					return 'keypair';
+				case 'options':
+					return { ...options, queryParameterArrays: 'repeat' };
+				default:
+					return undefined;
+			}
+		});
+
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as jest.Mock).mockImplementation(async (opts: any) => {
+			// Ensure qs object has array values for repeated keys
+			expect(opts.qs['q_organization_keyword_tags']).toEqual(['financial', 'investment']);
+			return response;
+		});
+
+		const result = await node.execute.call(executeFunctions);
+		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+	});
+
 	it('should make a GET request', async () => {
 		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
