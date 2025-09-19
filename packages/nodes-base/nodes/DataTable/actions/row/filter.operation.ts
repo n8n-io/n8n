@@ -25,6 +25,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to return matching items, rather than missing items',
 		type: 'boolean',
 		default: false,
+		...displayOptions,
 	},
 ];
 
