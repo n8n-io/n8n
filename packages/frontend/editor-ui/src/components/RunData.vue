@@ -1727,27 +1727,28 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
-				<N8nText bold color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.title') }}
-				</N8nText>
-				<N8nText>
-					{{ i18n.baseText('runData.trimmedData.message') }}
-				</N8nText>
-			</div>
+			<NDVEmptyState
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="$style.center"
+				:title="i18n.baseText('runData.trimmedData.title')"
+			>
+				{{ i18n.baseText('runData.trimmedData.message') }}
+			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
-					{{
+				<NDVEmptyState
+					v-if="isPaneTypeInput"
+					:class="$style.center"
+					:title="
 						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
 							interpolate: { nodeName: node?.name ?? '' },
 						})
-					}}
-				</N8nText>
+					"
+				/>
 				<div v-else-if="$slots['content']">
 					<NodeErrorView
 						v-if="workflowRunErrorAsNodeError"
@@ -1776,15 +1777,13 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 			>
 				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
-					<template #description>
-						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</I18nT>
-					</template>
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+						<template #link>
+							<a href="#" @click.prevent="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</I18nT>
 				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
@@ -1803,16 +1802,15 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
-				<N8nText align="center" tag="div"
-					><span
+				<NDVEmptyState :title="tooMuchDataTitle">
+					<span
 						v-n8n-html="
 							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
-					></span
-				></N8nText>
+					/>
+				</NDVEmptyState>
 
 				<N8nButton
 					outline
@@ -1853,15 +1851,13 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 				:title="i18n.baseText('ndv.search.noMatch.title')"
 			>
-				<template #description>
-					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-						<template #link>
-							<a href="#" @click="onSearchClear">
-								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-							</a>
-						</template>
-					</I18nT>
-				</template>
+				<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+					<template #link>
+						<a href="#" @click="onSearchClear">
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</I18nT>
 			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
