@@ -484,7 +484,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
 					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
 						<template #link>
-							<a href="#" @click="runWorkflow({ destinationNode: activeNodeName })">
+							<a href="#" @click.prevent="runWorkflow({ destinationNode: activeNodeName })">
 								{{ i18n.baseText('ndv.input.noOutputData.embeddedNdv.link') }}
 							</a>
 						</template>

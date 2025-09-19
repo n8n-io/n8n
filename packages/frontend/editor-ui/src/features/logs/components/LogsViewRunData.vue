@@ -11,6 +11,7 @@ import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;

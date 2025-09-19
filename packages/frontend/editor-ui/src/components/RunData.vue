@@ -1779,7 +1779,7 @@ defineExpose({ enterEditMode });
 				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
-							<a href="#" @click="onSearchClear">
+							<a href="#" @click.prevent="onSearchClear">
 								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 							</a>
 						</template>
