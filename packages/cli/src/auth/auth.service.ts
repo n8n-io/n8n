@@ -133,7 +133,10 @@ export class AuthService {
 
 		try {
 			const user = await this.getUserForApiKey(apiKey);
-			// TODO: Make sure deleted users can't use their API keys
+			if (user.disabled) {
+				response.status(403).json({ status: 'error', message: 'User is disabled' });
+				return;
+			}
 			req.user = user;
 			next();
 		} catch (error) {
