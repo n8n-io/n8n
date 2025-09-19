@@ -388,6 +388,7 @@ export class HttpRequestV3 implements INodeType {
 					accumulator: { [key: string]: any },
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 				) => {
+					const name = cur.name.endsWith('[]') ? cur.name.slice(0, -2) : cur.name;
 					if (cur.parameterType === 'formBinaryData') {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
@@ -399,7 +400,7 @@ export class HttpRequestV3 implements INodeType {
 							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 						}
 
-						accumulator[cur.name] = {
+						accumulator[name] = {
 							value: uploadData,
 							options: {
 								filename: binaryData.fileName,
@@ -408,7 +409,13 @@ export class HttpRequestV3 implements INodeType {
 						};
 						return accumulator;
 					}
-					accumulator[cur.name] = cur.value;
+					if (Array.isArray(accumulator[name])) {
+						accumulator[name].push(cur.value);
+						return accumulator;
+					}
+					accumulator[name]
+						? (accumulator[name] = [accumulator[name], cur.value])
+						: (accumulator[name] = cur.value);
 					return accumulator;
 				};
 
