@@ -1105,6 +1105,8 @@ export class ChatTrigger extends Node {
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
 				}
 
+				const instanceBaseUrl = ctx.getInstanceBaseUrl();
+
 				const page = createPage({
 					i18n: {
 						en: i18nConfig,
@@ -1113,6 +1115,7 @@ export class ChatTrigger extends Node {
 					loadPreviousSession,
 					initialMessages: initialMessagesRaw,
 					webhookUrl,
+					instanceBaseUrl,
 					mode,
 					instanceId,
 					authentication,
