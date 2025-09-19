@@ -1,18 +1,17 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ExecuteContext } from 'n8n-core';
+import { ExecuteContext, isEngineRequest } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { Workflow, BINARY_ENCODING } from 'n8n-workflow';
+import { Workflow, BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
@@ -130,10 +129,15 @@ export class ChatExecutionManager {
 	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {
 		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
 
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main = (await this.runNode(
-			execution,
-			message,
-		)) ?? [[{ json: message }]];
+		const result = await this.runNode(execution, message);
+
+		if (isEngineRequest(result)) {
+			throw new UnexpectedError("Can't handle actions inside the chat trigger.");
+		}
+
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main = result ?? [
+			[{ json: message }],
+		];
 
 		let project: Project | undefined = undefined;
 		try {

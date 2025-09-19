@@ -10,9 +10,9 @@ import {
 	pasteWorkflow,
 	saveWorkflowOnButtonClick,
 	selectRight,
-} from '../composables/workflow';
-import SubworkflowExtractionFixture from '../fixtures/Subworkflow-extraction-workflow.json';
-import { clearAnyNotifications, successToast } from '../pages/notifications';
+} from '../../composables/workflow';
+import SubworkflowExtractionFixture from '../../fixtures/Subworkflow-extraction-workflow.json';
+import { clearAnyNotifications, successToast } from '../../pages/notifications';
 
 const EDIT_FIELDS_NAMES = [
 	'Edit Fields0',

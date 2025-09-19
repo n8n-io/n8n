@@ -49,10 +49,10 @@ import {
 	moveWorkflowToFolder,
 	renameFolderFromCardActions,
 	renameFolderFromListActions,
-} from '../composables/folders';
-import { expandSidebar } from '../composables/sidebar';
-import { visitWorkflowsPage } from '../composables/workflowsPage';
-import { successToast } from '../pages/notifications';
+} from '../../composables/folders';
+import { expandSidebar } from '../../composables/sidebar';
+import { visitWorkflowsPage } from '../../composables/workflowsPage';
+import { successToast } from '../../pages/notifications';
 
 describe('Folders', () => {
 	before(() => {
