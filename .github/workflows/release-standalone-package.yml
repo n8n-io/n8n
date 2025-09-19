@@ -16,58 +16,12 @@ concurrency:
   group: release-package-${{ github.event.inputs.package }}
   cancel-in-progress: false
 
+env:
+  CACHE_KEY: ${{ github.sha }}-${{ github.event.inputs.package }}-build
+
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate branch
-        run: |
-          if [[ "${{ github.ref }}" != "refs/heads/master" ]]; then
-            echo "❌ This workflow can only be run from the master branch"
-            echo "Current branch: ${{ github.ref }}"
-            exit 1
-          fi
-          echo "✅ Running from master branch"
-
-  build:
-    needs: validate
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 15
-    outputs:
-      artifact-name: ${{ steps.sanitize.outputs.result }}
-
-    steps:
-      - name: Create sanitized artifact name
-        id: sanitize
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          result-encoding: string
-          script: |
-            const packageName = '${{ github.event.inputs.package }}';
-            const sanitizedName = packageName.replace(/[/:@"]/g, '-');
-            return `${{ github.sha }}-${sanitizedName}-build`;
-
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs-blacksmith
-        with:
-          build-command: 'pnpm --filter "...${{ github.event.inputs.package }}" run --if-present build'
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ steps.sanitize.outputs.result }}
-          path: ./packages/**/dist
-          if-no-files-found: error
-          retention-days: 7
-
-  publish:
+  publish-to-npm:
     name: Publish to NPM
-    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -76,29 +30,19 @@ jobs:
       NPM_CONFIG_PROVENANCE: true
 
     steps:
+      - name: Check branch
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::This workflow can only be run from the master branch"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs-github
         with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          name: ${{ needs.build.outputs.artifact-name }}
-          path: .
+          build-command: 'pnpm turbo build --filter "...${{ github.event.inputs.package }}"'
 
       - name: Pre publishing changes
         run: |
