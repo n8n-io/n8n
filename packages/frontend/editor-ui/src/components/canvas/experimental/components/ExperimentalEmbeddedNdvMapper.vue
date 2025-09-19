@@ -38,7 +38,7 @@ const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const contentElRef = computed(() => contentRef.value?.$el ?? null);
+const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
 const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
 const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, hoverOptions);
@@ -54,7 +54,7 @@ function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
 	if (
 		!(event.target instanceof Node && reference?.contains(event.target)) &&
 		!(event.target instanceof Node && contentElRef.value?.contains(event.target)) &&
-		!(event.relatedTarget instanceof Node && contentElRef.value?.$el.contains(event.relatedTarget))
+		!(event.relatedTarget instanceof Node && contentElRef.value?.contains(event.relatedTarget))
 	) {
 		state.value = { isOpen: false };
 	}

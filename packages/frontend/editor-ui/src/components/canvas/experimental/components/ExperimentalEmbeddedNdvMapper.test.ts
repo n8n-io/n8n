@@ -57,7 +57,7 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 
 	it('should not open the popover if a mapper is already opened elsewhere', async () => {
 		const pinia = createTestingPinia({ stubActions: false });
-		const store = useExperimentalNdvStore();
+		const store = useExperimentalNdvStore(pinia);
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
 			global: { plugins: [pinia] },

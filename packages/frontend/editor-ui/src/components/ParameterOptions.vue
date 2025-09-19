@@ -47,9 +47,7 @@ const ndvStore = useNDVStore();
 const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(
-	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
-);
+const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
@@ -62,14 +60,12 @@ const canBeOpenedInFocusPanel = computed(() => {
 	}
 
 	if (!activeNode.value && !isInEmbeddedNdv.value) {
-		return false; // Already in focus panel
+		// The current parameter is focused parameter in focus panel
+		return false;
 	}
 
 	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
-		return (
-			(props.parameter.typeOptions?.rows ?? 1) > 1 ||
-			props.parameter.typeOptions?.editor !== undefined
-		);
+		return (props.parameter.typeOptions?.rows ?? 1) > 1 || editor.value !== undefined;
 	}
 
 	return props.parameter.type === 'string' || props.parameter.type === 'json';
@@ -112,7 +108,7 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
-	if (isHtmlEditor.value && !isValueAnExpression.value) {
+	if (editor.value === 'htmlEditor' && !isValueAnExpression.value) {
 		return [
 			{
 				label: i18n.baseText('parameterInput.formatHtml'),
