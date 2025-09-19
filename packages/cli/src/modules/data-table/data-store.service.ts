@@ -20,8 +20,9 @@ import type {
 	DataStoreRows,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
+	DataStoreColumnType,
 } from 'n8n-workflow';
-import { validateFieldType } from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -302,15 +303,16 @@ export class DataStoreService {
 
 	private validateRowsWithColumns(
 		rows: DataStoreRows,
-		columns: Array<{ name: string; type: string }>,
+		columns: Array<{ name: string; type: DataStoreColumnType }>,
 		includeSystemColumns = false,
 	): void {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
 			? [
-					{ name: 'id', type: 'number' },
-					{ name: 'createdAt', type: 'date' },
-					{ name: 'updatedAt', type: 'date' },
+					...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP).map(([name, type]) => ({
+						name,
+						type,
+					})),
 					...columns,
 				]
 			: columns;
