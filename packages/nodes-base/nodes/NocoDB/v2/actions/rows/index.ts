@@ -2,12 +2,14 @@ import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
 export * as get from './get';
+export * as count from './count';
 export * as getAll from './getAll';
 export * as create from './create';
 export * as delete from './delete';
 export * as update from './update';
 export * as upsert from './upsert';
 
+import * as countAction from './count';
 import * as createAction from './create';
 import * as deleteAction from './delete';
 import * as getAction from './get';
@@ -33,6 +35,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				},
 			},
 			options: [
+				{
+					name: 'Count',
+					value: 'count',
+					description: 'Count number of records in table',
+					action: 'Get table count',
+				},
 				{
 					name: 'Create',
 					value: 'create',
@@ -205,6 +213,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 
+		...countAction.description,
 		...getAction.description,
 		...getAllAction.description,
 		...createAction.description,
