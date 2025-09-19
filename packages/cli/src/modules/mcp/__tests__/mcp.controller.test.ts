@@ -26,7 +26,7 @@ const createRes = (): FlushableResponse =>
 		flush: jest.fn(),
 	}) as any;
 
-describe('McpController (simplified)', () => {
+describe('McpController', () => {
 	let controller: McpController;
 	const logger = mock<Logger>();
 	const mcpService = { getServer: jest.fn() } as unknown as McpService;
