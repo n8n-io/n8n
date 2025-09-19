@@ -148,7 +148,6 @@ export const TEST_PARAMETER_URL_REDIRECT: INodeProperties = {
 				searchable: true,
 				allowNewResource: {
 					label: 'resourceLocator.dataTable.createNew',
-					defaultName: 'New Data Table',
 					url: '/projects/{{$projectId}}/datatables/new',
 				},
 			},
