@@ -1,7 +1,12 @@
 import * as credentialsComposables from '../../composables/credentialsComposables';
 import { saveCredential } from '../../composables/modals/credential-modal';
 import * as projects from '../../composables/projects';
-import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN, NOTION_NODE_NAME } from '../../constants';
+import {
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	INSTANCE_ADMIN,
+	NOTION_NODE_NAME,
+} from '../../constants';
 import {
 	CredentialsModal,
 	CredentialsPage,
