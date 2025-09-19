@@ -92,6 +92,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	flex-direction: column;
 	gap: var(--spacing-xs);
 	font-size: var(--font-size-2xs);
+	line-height: 1.6;
 	word-break: break-word;
 }
 
@@ -161,6 +162,10 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	ul,
 	ol {
 		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
+
+		li {
+			margin-bottom: var(--spacing-5xs);
+		}
 
 		ul,
 		ol {

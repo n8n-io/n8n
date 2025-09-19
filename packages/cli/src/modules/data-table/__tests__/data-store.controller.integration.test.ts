@@ -42,12 +42,7 @@ let dataStoreColumnRepository: DataStoreColumnRepository;
 let dataStoreRowsRepository: DataStoreRowsRepository;
 
 beforeAll(async () => {
-	await testDb.init();
 	mockDataStoreSizeValidator();
-});
-
-beforeEach(async () => {
-	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
 	dataStoreRepository = Container.get(DataStoreRepository);
@@ -66,8 +61,8 @@ beforeEach(async () => {
 	memberProject = await getPersonalProject(member);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
+beforeEach(async () => {
+	await testDb.truncate(['DataTable', 'DataTableColumn']);
 });
 
 describe('POST /projects/:projectId/data-tables', () => {

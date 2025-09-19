@@ -1,3 +1,4 @@
+import { expandSidebar } from '../../composables/sidebar';
 import { BasePage } from '../base';
 import { WorkflowsPage } from '../workflows';
 
@@ -43,6 +44,7 @@ export class MainSidebar extends BasePage {
 		signout: () => {
 			const workflowsPage = new WorkflowsPage();
 			cy.visit(workflowsPage.url);
+			expandSidebar();
 			this.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 			cy.wrap(Cypress.session.clearAllSavedSessions());
