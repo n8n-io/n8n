@@ -47,10 +47,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 // Mock window.open
-Object.defineProperty(window, 'open', {
-	value: vi.fn(),
-	writable: true,
-});
+vi.spyOn(window, 'open').mockImplementation(() => null);
 
 let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;

@@ -387,7 +387,6 @@ const handleAddResourceClick = async () => {
 	if (redirectUrl) {
 		let resolvedUrl = redirectUrl;
 
-		// Replace placeholders in URL
 		if (resolvedUrl.includes('{{$projectId}}')) {
 			resolvedUrl = resolvedUrl.replace(
 				/\{\{\$projectId\}\}/g,
@@ -400,7 +399,6 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	// Handle backend method call (existing functionality)
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
