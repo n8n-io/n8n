@@ -1,5 +1,5 @@
 import {
-	DATA_STORE_COLUMN_REGEX,
+	DATA_STORE_COLUMN_ERROR_MESSAGE,
 	type DataStoreCreateColumnSchema,
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
@@ -14,7 +14,8 @@ import { DataStoreUserTableName, DataTablesSizeData } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
-import { toTableId, toTableName } from './utils/sql-utils';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -27,8 +28,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 	}
 
 	async createDataStore(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
-		if (columns.some((c) => !DATA_STORE_COLUMN_REGEX.test(c.name))) {
-			throw new UnexpectedError('bad column name');
+		if (columns.some((c) => !isValidColumnName(c.name))) {
+			throw new DataStoreValidationError(DATA_STORE_COLUMN_ERROR_MESSAGE);
 		}
 
 		let dataTableId: string | undefined;
