@@ -21,6 +21,7 @@ import * as utils from '@test-integration/utils';
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
+import { mockDataStoreSizeValidator } from './test-helpers';
 
 let owner: User;
 let member: User;
@@ -41,11 +42,7 @@ let dataStoreColumnRepository: DataStoreColumnRepository;
 let dataStoreRowsRepository: DataStoreRowsRepository;
 
 beforeAll(async () => {
-	await testDb.init();
-});
-
-beforeEach(async () => {
-	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
+	mockDataStoreSizeValidator();
 
 	projectRepository = Container.get(ProjectRepository);
 	dataStoreRepository = Container.get(DataStoreRepository);
@@ -64,11 +61,19 @@ beforeEach(async () => {
 	memberProject = await getPersonalProject(member);
 });
 
+beforeEach(async () => {
+	await testDb.truncate(['DataTable', 'DataTableColumn']);
+});
+
 afterAll(async () => {
 	await testDb.terminate();
 });
 
 describe('POST /projects/:projectId/data-tables', () => {
+	beforeEach(async () => {
+		await testDb.truncate(['DataTable', 'DataTableColumn']);
+	});
+
 	test('should not create data store when project does not exist', async () => {
 		const payload = {
 			name: 'Test Data Store',
@@ -2505,6 +2510,12 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not delete rows when project does not exist', async () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-store-id/rows')
+			.query({
+				filter: JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
+				}),
+			})
 			.expect(403);
 	});
 
@@ -2513,7 +2524,51 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-tables/non-existing-id/rows`)
+			.query({
+				filter: JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
+				}),
+			})
 			.expect(404);
+	});
+
+	test('should not delete rows when no filter is provided', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+			],
+		});
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
+			.expect(400);
+	});
+
+	test('should not delete rows when filter has empty filters array', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+			],
+		});
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
+			.query({
+				filter: {
+					type: 'and',
+					filters: [],
+				},
+			})
+			.expect(400);
 	});
 
 	test("should not delete rows in another user's personal project data store", async () => {
@@ -2538,6 +2593,12 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/rows`)
+			.query({
+				filter: JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
+				}),
+			})
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2568,6 +2629,12 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
+			.query({
+				filter: JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
+				}),
+			})
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -2607,14 +2674,14 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'or',
 					filters: [
 						{ columnName: 'first', condition: 'eq', value: 'test value 1' },
 						{ columnName: 'first', condition: 'eq', value: 'test value 3' },
 					],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2655,11 +2722,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authAdminAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2699,11 +2766,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2742,11 +2809,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 2' }],
-				},
+				}),
 			})
 			.expect(200);
 
@@ -2785,11 +2852,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 
 		const result = await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
-			.send({
-				filter: {
+			.query({
+				filter: JSON.stringify({
 					type: 'and',
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value 3' }],
-				},
+				}),
 				returnData: true,
 			});
 

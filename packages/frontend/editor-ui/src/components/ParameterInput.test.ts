@@ -4,7 +4,7 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -15,6 +15,7 @@ import {
 	createMockEnterpriseSettings,
 	createTestNode,
 	createTestWorkflowObject,
+	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
@@ -680,10 +681,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: { displayName: 'Name', name: 'name', type: 'string' },
+					parameter: createTestNodeProperties(),
 					modelValue: '',
 				},
 			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -693,15 +696,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: {
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						typeOptions: { editor: 'sqlEditor' },
-					},
+					parameter: createTestNodeProperties({ typeOptions: { editor: 'sqlEditor' } }),
 					modelValue: 'SELECT 1;',
 				},
 			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -711,10 +711,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: { displayName: 'Name', name: 'name', type: 'string' },
+					parameter: createTestNodeProperties(),
 					modelValue: '={{$today}}',
 				},
 			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
 		});
@@ -724,10 +726,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: { displayName: 'Name', name: 'name', type: 'string', isNodeSetting: true },
+					parameter: createTestNodeProperties({ isNodeSetting: true }),
 					modelValue: '',
 				},
 			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
 		});
@@ -737,10 +741,12 @@ describe('ParameterInput.vue', () => {
 				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
 				props: {
 					path: 'name',
-					parameter: { displayName: 'Name', name: 'name', type: 'dateTime' },
+					parameter: createTestNodeProperties({ type: 'dateTime' }),
 					modelValue: '',
 				},
 			});
+
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
 		});

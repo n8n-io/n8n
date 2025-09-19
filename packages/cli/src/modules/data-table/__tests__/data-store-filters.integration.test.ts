@@ -4,12 +4,14 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { mockDataStoreSizeValidator } from './test-helpers';
 import { DataStoreService } from '../data-store.service';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	mockDataStoreSizeValidator();
 });
 
 beforeEach(async () => {
@@ -325,6 +327,45 @@ describe('dataStore filters', () => {
 					expect.objectContaining({ c1: 'Marco', c2: true }),
 					expect.objectContaining({ c1: 'Polo', c2: false }),
 				]);
+			});
+
+			it('includes null values when using neq with specific value', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'category', type: 'string' },
+					],
+				});
+
+				const rows = [
+					{ name: 'John', category: 'A' },
+					{ name: 'Mary', category: 'B' },
+					{ name: 'Jack', category: null },
+					{ name: 'Alice', category: 'A' },
+					{ name: 'Bob', category: null },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'category', condition: 'neq', value: 'A' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(3);
+				expect(result.data).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ name: 'Mary', category: 'B' }),
+						expect.objectContaining({ name: 'Jack', category: null }),
+						expect.objectContaining({ name: 'Bob', category: null }),
+					]),
+				);
 			});
 
 			it('should accept a valid numeric string', async () => {

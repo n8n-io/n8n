@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataStoreRow } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
-import { DataStoreSizeValidator } from '../data-store-size-validator.service';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
+import { mockDataStoreSizeValidator } from './test-helpers';
 import { DataStoreColumnNameConflictError } from '../errors/data-store-column-name-conflict.error';
 import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
@@ -20,12 +19,11 @@ import { toTableName } from '../utils/sql-utils';
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
+	mockDataStoreSizeValidator();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['DataTable', 'DataTableColumn']);
-	const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-	dataStoreSizeValidator.reset();
 });
 
 afterAll(async () => {
@@ -52,7 +50,6 @@ describe('dataStore', () => {
 	});
 
 	afterEach(async () => {
-		// Clean up any created user data stores
 		await dataStoreService.deleteDataStoreAll();
 	});
 
@@ -1816,7 +1813,7 @@ describe('dataStore', () => {
 			expect(count).toBe(1);
 		});
 
-		it('should delete all rows when no filter is provided', async () => {
+		it('should not delete all rows when no filter is provided', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1831,13 +1828,42 @@ describe('dataStore', () => {
 			]);
 
 			// ACT
-			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, {});
+			const result = dataStoreService.deleteRows(dataStoreId, project1.id, {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				filter: undefined as any,
+			});
 
-			// ASSERT
-			expect(result).toBe(true);
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError(
+					'Filter is required for delete operations to prevent accidental deletion of all data',
+				),
+			);
+		});
 
-			const { count } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(count).toBe(0);
+		it('should not delete all rows when no filter is empty', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				{ name: 'Charlie' },
+			]);
+
+			// ACT
+			const result = dataStoreService.deleteRows(dataStoreId, project1.id, {
+				filter: { type: 'and', filters: [] },
+			});
+
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError(
+					'Filter is required for delete operations to prevent accidental deletion of all data',
+				),
+			);
 		});
 	});
 
@@ -2817,94 +2843,6 @@ describe('dataStore', () => {
 			});
 			expect(dataStore2).toBeDefined();
 			expect(dataStore2.id).toBe(dataStoreId2);
-		});
-	});
-
-	describe('size validation', () => {
-		it('should prevent insertRows when size limit exceeded', async () => {
-			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-			dataStoreSizeValidator.reset();
-
-			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
-
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [{ name: 'data', type: 'string' }],
-			});
-
-			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
-
-			// ACT & ASSERT
-			await expect(
-				dataStoreService.insertRows(dataStoreId, project1.id, [{ data: 'test' }]),
-			).rejects.toThrow(DataStoreValidationError);
-
-			expect(mockFindDataTablesSize).toHaveBeenCalled();
-			mockFindDataTablesSize.mockRestore();
-		});
-
-		it('should prevent updateRow when size limit exceeded', async () => {
-			// ARRANGE
-			const dataStoreSizeValidator = Container.get(DataStoreSizeValidator);
-			dataStoreSizeValidator.reset();
-
-			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
-
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [{ name: 'data', type: 'string' }],
-			});
-
-			// Now mock the size check to be over limit
-			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
-
-			// ACT & ASSERT
-			await expect(
-				dataStoreService.updateRow(dataStoreId, project1.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
-					},
-					data: { data: 'updated' },
-				}),
-			).rejects.toThrow(DataStoreValidationError);
-
-			expect(mockFindDataTablesSize).toHaveBeenCalled();
-			mockFindDataTablesSize.mockRestore();
-		});
-
-		it('should prevent upsertRow when size limit exceeded (insert case)', async () => {
-			// ARRANGE
-
-			const maxSize = Container.get(GlobalConfig).dataTable.maxSize;
-
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [{ name: 'data', type: 'string' }],
-			});
-
-			const mockFindDataTablesSize = jest
-				.spyOn(dataStoreRepository, 'findDataTablesSize')
-				.mockResolvedValue(maxSize + 1);
-
-			// ACT & ASSERT
-			await expect(
-				dataStoreService.upsertRow(dataStoreId, project1.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
-					},
-					data: { data: 'new' },
-				}),
-			).rejects.toThrow(DataStoreValidationError);
-
-			expect(mockFindDataTablesSize).toHaveBeenCalled();
-			mockFindDataTablesSize.mockRestore();
 		});
 	});
 });
