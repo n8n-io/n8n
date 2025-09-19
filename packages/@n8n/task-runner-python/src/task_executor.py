@@ -12,6 +12,7 @@ from src.errors import (
     TaskResultMissingError,
     TaskTimeoutError,
     TaskProcessExitError,
+    TaskRuntimeError,
 )
 
 from src.message_types.broker import NodeMode, Items
@@ -101,8 +102,6 @@ class TaskExecutor:
                     if continue_on_fail:
                         return [{"json": {"error": "Task was cancelled"}}], print_args
                     else:
-                        from src.errors.task_runtime_error import TaskRuntimeError
-
                         raise TaskRuntimeError(
                             {"message": "Task was cancelled", "stack": ""}
                         )
