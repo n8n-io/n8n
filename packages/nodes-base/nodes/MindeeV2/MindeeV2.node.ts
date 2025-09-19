@@ -131,7 +131,7 @@ export class MindeeV2 implements INodeType {
 					},
 					{
 						name: 'Enabled',
-						value: true,
+						value: 'true',
 					},
 					{
 						name: 'Disabled',
@@ -150,7 +150,7 @@ export class MindeeV2 implements INodeType {
 					minValue: 5,
 					numberStepSize: 1,
 				},
-				default: 120,
+				default: 180,
 				description:
 					'How long the polling will last for after the document has been sent tot he server',
 			},
