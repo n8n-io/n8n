@@ -16,11 +16,7 @@ export class MfaComposer {
 		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
 		await this.n8n.settings.goToPersonalSettings();
 
-		const mfaQrResponsePromise = this.n8n.page.waitForResponse(
-			(response) => response.url().includes('/rest/mfa/qr') && response.status() === 200,
-		);
 		await this.n8n.settings.clickEnableMfa();
-		await mfaQrResponsePromise;
 
 		await this.n8n.mfaSetupModal.getModalContainer().waitFor({ state: 'visible' });
 

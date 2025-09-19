@@ -43,10 +43,6 @@ export class MfaSetupModal extends BasePage {
 		await this.getModalContainer().getByTestId('mfa-save-button').click();
 	}
 
-	async isVisible(): Promise<boolean> {
-		return await this.getModalContainer().isVisible();
-	}
-
 	/**
 	 * Wait for the MFA setup modal to be hidden from view
 	 */
