@@ -146,25 +146,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			}
 		};
 
-		const openAiWorkflow = async (source: 'card' | 'button', parentFolderId?: string) => {
-			const variant = getCurrentVariant();
-			telemetry.track('User opened ready to run AI workflow', {
-				source,
-				variant,
-			});
-
-			const workflow =
-				variant === READY_TO_RUN_V2_EXPERIMENT.variant2
-					? READY_TO_RUN_WORKFLOW_V2
-					: READY_TO_RUN_WORKFLOW_V1;
-
-			await router.push({
-				name: VIEWS.TEMPLATE_IMPORT,
-				params: { id: workflow.meta?.templateId },
-				query: { fromJson: 'true', parentFolderId },
-			});
-		};
-
 		const claimCreditsAndOpenWorkflow = async (
 			source: 'card' | 'button',
 			parentFolderId?: string,
@@ -215,7 +196,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			userCanClaimOpenAiCredits,
 			claimFreeAiCredits,
 			createAndOpenAiWorkflow,
-			openAiWorkflow,
 			claimCreditsAndOpenWorkflow,
 			getCardVisibility,
 			getButtonVisibility,
