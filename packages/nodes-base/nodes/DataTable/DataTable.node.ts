@@ -31,11 +31,12 @@ export class DataTable implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		hints: [
 			{
-				message: 'The selected Data Table has no columns.',
-				displayCondition: '={{ $parameter.columns?.schema?.length === 0 }}',
-				whenToDisplay: 'always',
+				message: 'The selected data table has no columns.',
+				displayCondition:
+					'={{ $parameter.dataTableId !== "" && $parameter?.columns?.mappingMode === "defineBelow" && !$parameter?.columns?.schema?.length }}',
+				whenToDisplay: 'beforeExecution',
 				location: 'ndv',
-				type: 'warning',
+				type: 'info',
 			},
 		],
 		properties: [
