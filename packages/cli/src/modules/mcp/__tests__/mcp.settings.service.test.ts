@@ -6,16 +6,14 @@ import { McpSettingsService } from '../mcp.settings.service';
 describe('McpSettingsService', () => {
 	let service: McpSettingsService;
 	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
-	let update: jest.Mock;
-	let save: jest.Mock;
+	let upsert: jest.Mock;
 	let settingsRepository: SettingsRepository;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		findByKey = jest.fn<Promise<Settings | null>, [string]>();
-		update = jest.fn();
-		save = jest.fn();
-		settingsRepository = { findByKey, update, save } as unknown as SettingsRepository;
+		upsert = jest.fn();
+		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
 		service = new McpSettingsService(settingsRepository);
 	});
 
@@ -45,56 +43,22 @@ describe('McpSettingsService', () => {
 	});
 
 	describe('setEnabled', () => {
-		test('updates existing setting with "true"', async () => {
-			findByKey.mockResolvedValue(
-				mock<Settings>({ key: 'mcp.access.enabled', value: 'false', loadOnStartup: true }),
-			);
-
+		test('upserts setting with "true"', async () => {
 			await service.setEnabled(true);
 
-			expect(update).toHaveBeenCalledWith(
-				{ key: 'mcp.access.enabled' },
-				{ value: 'true', loadOnStartup: true },
-			);
-			expect(save).not.toHaveBeenCalled();
-		});
-
-		test('updates existing setting with "false"', async () => {
-			findByKey.mockResolvedValue(
-				mock<Settings>({ key: 'mcp.access.enabled', value: 'true', loadOnStartup: true }),
-			);
-
-			await service.setEnabled(false);
-
-			expect(update).toHaveBeenCalledWith(
-				{ key: 'mcp.access.enabled' },
-				{ value: 'false', loadOnStartup: true },
-			);
-			expect(save).not.toHaveBeenCalled();
-		});
-
-		test('creates new setting when not existing (enabled)', async () => {
-			findByKey.mockResolvedValue(null);
-
-			await service.setEnabled(true);
-
-			expect(save).toHaveBeenCalledWith(
+			expect(upsert).toHaveBeenCalledWith(
 				{ key: 'mcp.access.enabled', value: 'true', loadOnStartup: true },
-				{ transaction: false },
+				['key'],
 			);
-			expect(update).not.toHaveBeenCalled();
 		});
 
-		test('creates new setting when not existing (disabled)', async () => {
-			findByKey.mockResolvedValue(null);
-
+		test('upserts setting with "false"', async () => {
 			await service.setEnabled(false);
 
-			expect(save).toHaveBeenCalledWith(
+			expect(upsert).toHaveBeenCalledWith(
 				{ key: 'mcp.access.enabled', value: 'false', loadOnStartup: true },
-				{ transaction: false },
+				['key'],
 			);
-			expect(update).not.toHaveBeenCalled();
 		});
 	});
 });
