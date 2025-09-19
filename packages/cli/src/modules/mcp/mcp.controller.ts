@@ -1,4 +1,5 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -11,6 +12,7 @@ export type FlushableResponse = Response & { flush: () => void };
 @RestController('/mcp-control')
 export class McpController {
 	constructor(
+		private readonly logger: Logger,
 		private readonly mcpService: McpService,
 		private readonly mcpSettingsService: McpSettingsService,
 	) {}
@@ -38,7 +40,7 @@ export class McpController {
 			await server?.connect(transport);
 			await transport.handleRequest(req, res, req.body);
 		} catch (error) {
-			console.error('Error handling MCP request:', error);
+			this.logger.error('Error handling MCP request', { error });
 			if (!res.headersSent) {
 				res.status(500).json({
 					jsonrpc: '2.0',
