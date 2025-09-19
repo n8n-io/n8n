@@ -330,7 +330,7 @@ describe('LogsPanel', () => {
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',
 			executionId: '567',
-			itemCount: 1,
+			itemCountByConnectionType: { ai_agent: [1] },
 			data: {
 				executionIndex: 0,
 				startTime: Date.parse('2025-04-20T12:34:51.000Z'),

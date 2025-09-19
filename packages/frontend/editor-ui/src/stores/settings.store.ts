@@ -68,6 +68,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
+	const nodeEnv = computed(() => settings.value.nodeEnv);
+
 	const concurrency = computed(() => settings.value.concurrency);
 
 	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
@@ -331,6 +333,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		pruning,
 		security,
 		nodeJsVersion,
+		nodeEnv,
 		concurrency,
 		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,

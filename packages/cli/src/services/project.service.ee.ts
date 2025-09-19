@@ -14,7 +14,6 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	hasGlobalScope,
-	rolesWithScope,
 	type Scope,
 	type ProjectRole,
 	AssignableProjectRole,
@@ -445,7 +444,7 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = rolesWithScope('project', scopes);
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
 
 			where = {
 				...where,

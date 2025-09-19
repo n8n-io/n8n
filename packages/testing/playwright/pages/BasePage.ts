@@ -18,4 +18,21 @@ export abstract class BasePage {
 	protected async clickButtonByName(name: string) {
 		await this.page.getByRole('button', { name }).click();
 	}
+
+	protected async waitForRestResponse(
+		url: string | RegExp,
+		method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+	) {
+		if (typeof url === 'string') {
+			return await this.page.waitForResponse((res) => {
+				const matches = res.url().includes(url);
+				return matches && (method ? res.request().method() === method : true);
+			});
+		}
+
+		return await this.page.waitForResponse((res) => {
+			const matches = url.test(res.url());
+			return matches && (method ? res.request().method() === method : true);
+		});
+	}
 }

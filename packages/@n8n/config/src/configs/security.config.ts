@@ -45,4 +45,10 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
+
+	/**
+	 * Whether to disable bare repositories support in the Git node.
+	 */
+	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
+	disableBareRepos: boolean = false;
 }
