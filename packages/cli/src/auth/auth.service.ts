@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { ApiKey, GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -72,8 +72,14 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean) {
+	createAuthMiddleware(allowSkipMFA: boolean, apiKeyAuth: boolean = false) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
+			if (apiKeyAuth) {
+				await this.checkAPIKey(req, res, next);
+				return;
+			}
+
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
 				try {
@@ -110,6 +116,56 @@ export class AuthService {
 			if (req.user) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
+		let apiKey = req.headers['authorization'] ?? req.headers['Authorization'];
+		if (!apiKey || typeof apiKey !== 'string') {
+			response.status(401).json({ status: 'error', message: 'API key is required' });
+			return;
+		}
+
+		// Remove 'Bearer ' prefix if present
+		const apiKeyMatch = apiKey.match(/^Bearer\s+(.+)$/);
+		if (apiKeyMatch) {
+			apiKey = apiKeyMatch[1];
+		}
+
+		try {
+			const user = await this.getUserForApiKey(apiKey);
+			if (user.disabled) {
+				response.status(403).json({ status: 'error', message: 'User is disabled' });
+				return;
+			}
+			if (user.isPending) {
+				response.status(403).json({ status: 'error', message: 'User is pending' });
+				return;
+			}
+			req.user = user;
+			next();
+		} catch (error) {
+			if (error instanceof AuthError) {
+				response.status(401).json({ status: 'error', message: 'Invalid API key' });
+			} else {
+				response.status(500).json({ status: 'error', message: 'Internal server error' });
+			}
+		}
+	}
+
+	private async getUserForApiKey(apiKey: string) {
+		const keyOwner = await this.userRepository
+			.createQueryBuilder('user')
+			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
+			.leftJoinAndSelect('user.role', 'role')
+			.leftJoinAndSelect('role.scopes', 'scopes')
+			.where('apiKey.apiKey = :apiKey', { apiKey })
+			.select(['user', 'role', 'scopes'])
+			.getOne();
+
+		if (!keyOwner) {
+			throw new AuthError('Unauthorized');
+		}
+		return keyOwner;
 	}
 
 	clearCookie(res: Response) {
