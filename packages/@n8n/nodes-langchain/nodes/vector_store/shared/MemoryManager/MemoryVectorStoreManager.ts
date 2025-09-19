@@ -37,7 +37,7 @@ export class MemoryVectorStoreManager {
 	protected ttlCleanupIntervalId: NodeJS.Timeout | null = null;
 
 	protected constructor(
-		protected embeddings: Embeddings,
+		protected embeddings: Pick<Embeddings, 'embedDocuments' | 'embedQuery'>,
 		protected logger: Logger,
 	) {
 		// Initialize storage
@@ -65,7 +65,10 @@ export class MemoryVectorStoreManager {
 	/**
 	 * Get singleton instance
 	 */
-	static getInstance(embeddings: Embeddings, logger: Logger): MemoryVectorStoreManager {
+	static getInstance(
+		embeddings: Pick<Embeddings, 'embedDocuments' | 'embedQuery'>,
+		logger: Logger,
+	): MemoryVectorStoreManager {
 		if (!MemoryVectorStoreManager.instance) {
 			MemoryVectorStoreManager.instance = new MemoryVectorStoreManager(embeddings, logger);
 		} else {

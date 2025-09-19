@@ -109,7 +109,7 @@ export function logWrapper<
 		| BaseChatMessageHistory
 		| BaseRetriever
 		| BaseDocumentCompressor
-		| Embeddings
+		| Pick<Embeddings, 'embedDocuments' | 'embedQuery'>
 		| Document[]
 		| Document
 		| BaseDocumentLoader
