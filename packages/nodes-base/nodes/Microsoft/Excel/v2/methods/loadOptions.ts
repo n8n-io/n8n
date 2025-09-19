@@ -13,7 +13,7 @@ export async function getWorksheetColumnRow(
 		extractValue: true,
 	}) as string;
 
-	let range = this.getNodeParameter('range', '') as string;
+	const range = this.getNodeParameter('range', '') as string;
 	let columns: string[] = [];
 
 	if (range === '') {
@@ -27,12 +27,6 @@ export async function getWorksheetColumnRow(
 
 		columns = worksheetData.values[0] as string[];
 	} else {
-		const [rangeFrom, rangeTo] = range.split(':');
-		const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-		const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-
-		range = `${rangeFrom}:${cellDataTo[1]}${cellDataFrom[2]}`;
-
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'PATCH',
