@@ -60,7 +60,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				extractValue: true,
 			}) as string;
 			requestMethod = 'GET';
-			endPoint = `/api/v3/meta/workspaces/${workspaceId}/bases`; // Endpoint for getting all bases (NocoDB API v2)
+			if (workspaceId && workspaceId !== 'none') {
+				endPoint = `/api/v3/meta/workspaces/${workspaceId}/bases`; // Endpoint for getting all bases (NocoDB API v3)
+			} else {
+				endPoint = '/api/v2/meta/bases/'; // Endpoint for getting all bases without workspace (NocoDB API v2)
+			}
 
 			responseData = await apiMetaRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 			returnData.push.apply(returnData, responseData as IDataObject[]);
