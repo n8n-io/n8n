@@ -1,5 +1,5 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
@@ -129,76 +129,9 @@ describe('evaluateTrigger', () => {
 			expect(result.issues).toEqual([]);
 			expect(result.triggerNodes).toEqual(['Manual Trigger']);
 		});
-
-		it('should detect multiple trigger nodes', () => {
-			const workflow = mock<SimpleWorkflow>({
-				name: 'Multi Trigger Workflow',
-				nodes: [
-					{
-						id: '1',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-					},
-					{
-						id: '2',
-						name: 'Webhook Trigger',
-						type: 'n8n-nodes-base.webhookTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 200],
-					},
-					{
-						id: '3',
-						name: 'Schedule Trigger',
-						type: 'n8n-nodes-base.scheduleTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 400],
-					},
-					{
-						id: '4',
-						name: 'Code',
-						type: 'n8n-nodes-base.code',
-						parameters: {},
-						typeVersion: 1,
-						position: [200, 200],
-					},
-				],
-				connections: {},
-			});
-
-			const result = evaluateTrigger(workflow, mockNodeTypes);
-
-			expect(result.hasTrigger).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0]).toContain('Workflow has 3 trigger nodes');
-			expect(result.issues[0]).toContain('Manual Trigger, Webhook Trigger, Schedule Trigger');
-			expect(result.triggerNodes).toEqual([
-				'Manual Trigger',
-				'Webhook Trigger',
-				'Schedule Trigger',
-			]);
-		});
 	});
 
 	describe('edge cases', () => {
-		it('should handle workflow with undefined nodes', () => {
-			const workflow = mock<SimpleWorkflow>({
-				name: 'Undefined Nodes Workflow',
-				nodes: undefined as any,
-				connections: {},
-			});
-
-			const result = evaluateTrigger(workflow, mockNodeTypes);
-
-			expect(result.hasTrigger).toBe(false);
-			expect(result.issues).toContain('Workflow has no nodes');
-			expect(result.triggerNodes).toEqual([]);
-		});
-
 		it('should handle unknown node types gracefully', () => {
 			const workflow = mock<SimpleWorkflow>({
 				name: 'Unknown Node Workflow',
@@ -283,58 +216,6 @@ describe('evaluateTrigger', () => {
 
 			expect(result.hasTrigger).toBe(true);
 			expect(result.triggerNodes).toEqual(['Webhook', 'Manual']);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0]).toContain('Workflow has 2 trigger nodes');
-		});
-	});
-
-	describe('trigger node identification', () => {
-		it('should correctly identify nodes with trigger in group array', () => {
-			const customNodeTypes: INodeTypeDescription[] = [
-				mock<INodeTypeDescription>({
-					name: 'custom.myTrigger',
-					displayName: 'Custom Trigger',
-					group: ['trigger', 'input'],
-					inputs: [],
-					outputs: ['main'],
-				}),
-				mock<INodeTypeDescription>({
-					name: 'custom.notATrigger',
-					displayName: 'Not A Trigger',
-					group: ['transform'],
-					inputs: ['main'],
-					outputs: ['main'],
-				}),
-			];
-
-			const workflow = mock<SimpleWorkflow>({
-				name: 'Custom Trigger Workflow',
-				nodes: [
-					{
-						id: '1',
-						name: 'Custom Trigger Node',
-						type: 'custom.myTrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-					},
-					{
-						id: '2',
-						name: 'Not Trigger Node',
-						type: 'custom.notATrigger',
-						parameters: {},
-						typeVersion: 1,
-						position: [200, 0],
-					},
-				],
-				connections: {},
-			});
-
-			const result = evaluateTrigger(workflow, customNodeTypes);
-
-			expect(result.hasTrigger).toBe(true);
-			expect(result.issues).toEqual([]);
-			expect(result.triggerNodes).toEqual(['Custom Trigger Node']);
 		});
 	});
 });

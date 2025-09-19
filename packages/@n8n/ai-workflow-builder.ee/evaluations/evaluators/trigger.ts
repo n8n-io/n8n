@@ -44,14 +44,6 @@ export function evaluateTrigger(
 		issues.push('Workflow must have at least one trigger node to start execution');
 	}
 
-	// Additional checks for trigger nodes
-	if (triggerNodes.length > 1) {
-		// Multiple triggers might be valid but worth noting
-		issues.push(
-			`Workflow has ${triggerNodes.length} trigger nodes: ${triggerNodes.join(', ')}. Ensure this is intentional.`,
-		);
-	}
-
 	return {
 		hasTrigger,
 		issues,
