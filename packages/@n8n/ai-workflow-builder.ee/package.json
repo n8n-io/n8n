@@ -1,0 +1,64 @@
+{
+  "name": "@n8n/ai-workflow-builder",
+  "version": "0.22.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
+    "deps:graph": "madge src/index.ts --image deps-graph.svg",
+    "deps:graph:service": "madge src/ai-workflow-builder-agent.service.ts --image deps-service.svg",
+    "deps:graph:tools": "madge src/tools/index.ts --image deps-tools.svg",
+    "deps:circular": "madge src/index.ts --circular",
+    "deps:report": "madge src/index.ts --json > deps-report.json && echo 'Dependency report saved to deps-report.json'",
+    "deps:orphans": "madge src/index.ts --orphans",
+    "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
+    "eval": "tsx evaluations",
+    "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@langchain/anthropic": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/langgraph": "0.2.74",
+    "@langchain/openai": "catalog:",
+    "@n8n/backend-common": "workspace:^",
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n_io/ai-assistant-sdk": "catalog:",
+    "langsmith": "^0.3.45",
+    "lodash": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "picocolors": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/cli-progress": "^3.11.5",
+    "cli-progress": "^3.12.0",
+    "cli-table3": "^0.6.3",
+    "jest-mock-extended": "^3.0.4",
+    "madge": "^8.0.0",
+    "p-limit": "^3.1.0"
+  }
+}

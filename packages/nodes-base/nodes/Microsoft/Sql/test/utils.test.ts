@@ -1,15 +1,19 @@
 import { Request } from 'mssql';
+import type { IResult } from 'mssql';
+import type mssql from 'mssql';
 import type { IDataObject } from 'n8n-workflow';
+
 import {
 	configurePool,
 	deleteOperation,
+	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	mssqlChunk,
 	updateOperation,
 } from '../GenericFunctions';
 
 describe('MSSQL tests', () => {
-	let querySpy: jest.SpyInstance<void, Parameters<Request['query']>>;
+	let querySpy: jest.SpyInstance;
 	let request: Request;
 
 	const assertParameters = (parameters: unknown[][] | IDataObject) => {
@@ -34,18 +38,12 @@ describe('MSSQL tests', () => {
 		) {
 			// eslint-disable-next-line @typescript-eslint/no-this-alias
 			request = this;
-			return [
-				[
-					[
-						{
-							recordsets: [],
-							recordset: undefined,
-							output: {},
-							rowsAffected: [0],
-						},
-					],
-				],
-			];
+			return {
+				recordsets: [],
+				recordset: [],
+				output: {},
+				rowsAffected: [0],
+			} as unknown as IResult<unknown>;
 		});
 	});
 
@@ -152,6 +150,96 @@ describe('MSSQL tests', () => {
 					.map((_, index) => ({ id: index, name: 'John Doe', verified: true })),
 			);
 			expect(chunks.map((chunk) => chunk.length)).toEqual([699, 699, 699, 699, 204]);
+		});
+	});
+
+	describe('executeSqlQueryAndPrepareResults', () => {
+		it('should handle SELECT query with single record', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1, name: 'Test' }]] as any,
+				recordset: [{ id: 1, name: 'Test', columns: [{ name: 'id' }, { name: 'name' }] }],
+				rowsAffected: [1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0);
+
+			expect(result).toEqual([
+				{
+					json: { id: 1, name: 'Test' },
+					pairedItem: [{ item: 0 }],
+				},
+			]);
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
+
+		it('should handle SELECT query with multiple records', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [[{ id: 1 }], [{ name: 'Test' }]] as unknown,
+				rowsAffected: [1, 1],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults(pool, 'SELECT id; SELECT name', 1);
+
+			expect(result).toEqual([
+				{ json: { id: 1 }, pairedItem: [{ item: 1 }] },
+				{ json: { name: 'Test' }, pairedItem: [{ item: 1 }] },
+			]);
+		});
+
+		it('should handle non-SELECT query', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [],
+				recordset: [],
+				rowsAffected: [5],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults(pool, 'UPDATE users SET active = 1', 2);
+
+			expect(result).toEqual([
+				{
+					json: { message: 'Query 1 executed successfully', rowsAffected: 5 },
+					pairedItem: [{ item: 2 }],
+				},
+			]);
+		});
+
+		it('should handle query with no affected rows', async () => {
+			querySpy.mockResolvedValueOnce({
+				recordsets: [],
+				recordset: [],
+				rowsAffected: [],
+				output: {},
+			} as unknown as IResult<unknown>);
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			const result = await executeSqlQueryAndPrepareResults(
+				pool,
+				'DELETE FROM users WHERE id = 999',
+				3,
+			);
+
+			expect(result).toEqual([
+				{
+					json: { message: 'Query executed successfully, but no rows were affected' },
+					pairedItem: [{ item: 3 }],
+				},
+			]);
+		});
+
+		it('should throw an error when query fails', async () => {
+			const errorMessage = 'Database error';
+			querySpy.mockRejectedValueOnce(new Error(errorMessage));
+
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await expect(executeSqlQueryAndPrepareResults(pool, 'INVALID SQL', 4)).rejects.toThrow(
+				errorMessage,
+			);
 		});
 	});
 });

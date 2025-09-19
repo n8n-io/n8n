@@ -2,7 +2,7 @@ import type { AxiosError, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 
 export class N8nApiClient {
-	constructor(public readonly apiBaseUrl: string) {}
+	constructor(readonly apiBaseUrl: string) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
 		const HEALTH_ENDPOINT = 'healthz';

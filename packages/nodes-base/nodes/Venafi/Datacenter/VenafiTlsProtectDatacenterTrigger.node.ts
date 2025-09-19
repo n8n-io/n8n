@@ -1,13 +1,12 @@
+import moment from 'moment-timezone';
 import {
 	type IPollFunctions,
 	type IDataObject,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 
 import { venafiApiRequest } from './GenericFunctions';
 
@@ -31,7 +30,7 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',

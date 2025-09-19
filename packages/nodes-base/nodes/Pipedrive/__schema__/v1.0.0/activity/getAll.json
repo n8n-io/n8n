@@ -1,0 +1,108 @@
+{
+    "type": "object",
+    "properties": {
+        "active_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "assigned_to_user_id": {
+            "type": "integer"
+        },
+        "busy_flag": {
+            "type": "boolean"
+        },
+        "company_id": {
+            "type": "integer"
+        },
+        "created_by_user_id": {
+            "type": "integer"
+        },
+        "done": {
+            "type": "boolean"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "due_time": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_recurring": {
+            "type": "null"
+        },
+        "last_notification_time": {
+            "type": "null"
+        },
+        "last_notification_user_id": {
+            "type": "null"
+        },
+        "location_admin_area_level_1": {
+            "type": "null"
+        },
+        "location_admin_area_level_2": {
+            "type": "null"
+        },
+        "location_country": {
+            "type": "null"
+        },
+        "location_formatted_address": {
+            "type": "null"
+        },
+        "location_locality": {
+            "type": "null"
+        },
+        "location_postal_code": {
+            "type": "null"
+        },
+        "location_route": {
+            "type": "null"
+        },
+        "location_street_number": {
+            "type": "null"
+        },
+        "location_sublocality": {
+            "type": "null"
+        },
+        "location_subpremise": {
+            "type": "null"
+        },
+        "notification_language_id": {
+            "type": "null"
+        },
+        "original_start_time": {
+            "type": "null"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "reference_id": {
+            "type": "null"
+        },
+        "series": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,24 @@
+[
+	{
+		"attributes": {
+			"type": "Opportunity",
+			"url": "/services/data/v59.0/sobjects/Opportunity/id1"
+		},
+		"Id": "id1",
+		"AccountId": "accountid1",
+		"Amount": 15000,
+		"Probability": 10,
+		"Type": "New Customer"
+	},
+	{
+		"attributes": {
+			"type": "Opportunity",
+			"url": "/services/data/v59.0/sobjects/Opportunity/id2"
+		},
+		"Id": "id2",
+		"AccountId": "accountid2",
+		"Amount": 125000,
+		"Probability": 90,
+		"Type": "Existing Customer - Upgrade"
+	}
+]

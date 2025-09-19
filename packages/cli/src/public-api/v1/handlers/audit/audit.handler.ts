@@ -1,12 +1,13 @@
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import Container from 'typedi';
 
 import type { AuditRequest } from '@/public-api/types';
-import { globalScope } from '@/public-api/v1/shared/middlewares/global.middleware';
+
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 export = {
 	generateAudit: [
-		globalScope('securityAudit:generate'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'securityAudit:generate' }),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
 				const { SecurityAuditService } = await import('@/security-audit/security-audit.service');

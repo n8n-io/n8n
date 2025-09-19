@@ -1,0 +1,161 @@
+name: Sync Public API Schema to Docs Repo
+
+on:
+  # Triggers for the master branch if relevant Public API files have changed
+  push:
+    branches:
+      - master
+    paths:
+      # Trigger if:
+      # - any of the public API files change
+      - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
+      # - the build script or dependencies change
+      - 'packages/cli/package.json'
+      # - any main dependencies change
+      - 'pnpm-lock.yaml'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  sync-public-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # Needed for `gh` to read the workflow history
+
+    steps:
+      - name: Checkout Main n8n Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # Fetch all history for git log
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+        shell: bash
+
+      - name: Build Public API Schema
+        run: pnpm run build:data
+        working-directory: ./packages/cli
+
+      - name: Verify OpenAPI schema exists
+        id: verify_file
+        run: |
+          if [[ -f "packages/cli/dist/public-api/v1/openapi.yml" ]]; then
+            echo "OpenAPI file found: packages/cli/dist/public-api/v1/openapi.yml"
+            echo "file_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ERROR: OpenAPI file not found at packages/cli/dist/public-api/v1/openapi.yml after build."
+            echo "file_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate GitHub App Token
+        if: steps.verify_file.outputs.file_exists == 'true'
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: n8n-docs
+
+      - name: Checkout Docs Repository
+        if: steps.verify_file.outputs.file_exists == 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: n8n-io/n8n-docs
+          token: ${{ steps.generate_token.outputs.token }}
+          path: public-docs
+
+      - name: Copy OpenAPI file to Docs Repo
+        if: steps.verify_file.outputs.file_exists == 'true'
+        run: |
+          # Destination path within the 'public-docs' checkout directory
+          DOCS_TARGET_PATH="public-docs/docs/api/v1/openapi.yml"
+
+          echo "Copying 'packages/cli/dist/public-api/v1/openapi.yml' to '${DOCS_TARGET_PATH}'"
+          cp packages/cli/dist/public-api/v1/openapi.yml "${DOCS_TARGET_PATH}"
+
+      - name: Find Relevant Source Commits
+        id: find_source_commits
+        if: steps.verify_file.outputs.file_exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Finding last successful workflow run..."
+          LAST_SUCCESS_SHA=$(gh run list \
+            --workflow "${{ github.workflow }}" \
+            --branch "${{ github.ref_name }}" \
+            --status "success" \
+            --json "headSha" \
+            --jq '.[0].headSha // empty' \
+            -L 1)
+
+          RELEVANT_COMMITS=""
+          if [[ -n "$LAST_SUCCESS_SHA" ]]; then
+            echo "Last successful commit: $LAST_SUCCESS_SHA"
+            echo "Current commit: ${{ github.sha }}"
+
+            # Find all commits between the last success and now that touched the relevant files
+            # NOTE: The pathspecs here mirror the workflow's 'paths' trigger for precision
+            RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" $LAST_SUCCESS_SHA..${{ github.sha }} -- \
+              'packages/cli/src/public-api/**/*.css' \
+              'packages/cli/src/public-api/**/*.yaml' \
+              'packages/cli/src/public-api/**/*.yml')
+          fi
+
+          if [[ -z "$RELEVANT_COMMITS" ]]; then
+            if [[ -z "$LAST_SUCCESS_SHA" ]]; then
+              echo "No previous successful run found. Using current commit as source."
+            else
+              echo "No commits touching source files found. Linking to trigger commit (likely a dependency update)."
+            fi
+            FULL_SHA="${{ github.sha }}"
+            SHORT_SHA="${FULL_SHA:0:7}"
+            SOURCE_LINK="Source commit: [$SHORT_SHA](https://github.com/${{ github.repository }}/commit/$FULL_SHA)"
+          else
+            echo "Found relevant source commits:"
+            echo "$RELEVANT_COMMITS"
+            # Build the string manually to avoid heredoc capturing leading whitespace from YAML
+            SOURCE_LINK="Source commit(s):"$'\n'"$RELEVANT_COMMITS"
+          fi
+
+          echo "source_link<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SOURCE_LINK" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create PR in Docs Repo
+        if: steps.verify_file.outputs.file_exists == 'true'
+
+        # Pin v7.0.8
+        uses: peter-evans/create-pull-request@18e469570b1cf0dfc11d60ec121099f8ff3e617a
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+
+          path: public-docs
+          commit-message: 'feat(public-api): Update Public API schema'
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          signoff: false
+
+          # Create a single branch for multiple PRs
+          branch: 'chore/sync-public-api-schema'
+          delete-branch: false
+
+          title: 'chore: Update Public API schema'
+          body: |
+            Automated update of the Public API OpenAPI YAML schema.
+
+            This PR was generated by a GitHub Action in the [${{ github.repository }} repository](https://github.com/${{ github.repository }}).
+            ${{ steps.find_source_commits.outputs.source_link }}
+
+            Please review the changes and merge if appropriate.

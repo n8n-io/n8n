@@ -1,73 +1,55 @@
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
 import { json as generateJsonSchema } from 'generate-schema';
 import type { SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import type { z } from 'zod';
 
-const vmResolver = makeResolverFromLegacyOptions({
-	external: {
-		modules: ['json-schema-to-zod', 'zod'],
-		transitive: false,
-	},
-	resolve(moduleName, parentDirname) {
-		if (moduleName === 'json-schema-to-zod') {
-			return require.resolve(
-				'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
-				{
-					paths: [parentDirname],
-				},
-			);
-		}
-		if (moduleName === 'zod') {
-			return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
-				paths: [parentDirname],
-			});
-		}
-		return;
-	},
-	builtin: [],
-});
-
-export function getSandboxWithZod(ctx: IExecuteFunctions, schema: JSONSchema7, itemIndex: number) {
-	const context = getSandboxContext.call(ctx, itemIndex);
-	let itemSchema: JSONSchema7 = schema;
-	try {
-		// If the root type is not defined, we assume it's an object
-		if (itemSchema.type === undefined) {
-			itemSchema = {
-				type: 'object',
-				properties: itemSchema.properties ?? (itemSchema as { [key: string]: JSONSchema7 }),
-			};
-		}
-	} catch (error) {
-		throw new NodeOperationError(ctx.getNode(), 'Error during parsing of JSON Schema.');
+function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
+	function isPropertySchema(property: unknown): property is JSONSchema7 {
+		return typeof property === 'object' && property !== null && 'type' in property;
 	}
 
-	// Make sure to remove the description from root schema
-	const { description, ...restOfSchema } = itemSchema;
-	const sandboxedSchema = new JavaScriptSandbox(
-		context,
-		`
-			const { z } = require('zod');
-			const { parseSchema } = require('json-schema-to-zod');
-			const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
-			const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
-			return itemSchema
-		`,
-		itemIndex,
-		ctx.helpers,
-		{ resolver: vmResolver },
-	);
-	return sandboxedSchema;
+	// Handle object properties
+	if (schema.type === 'object' && schema.properties) {
+		const properties = Object.keys(schema.properties);
+		if (properties.length > 0) {
+			schema.required = properties;
+		}
+
+		for (const key of properties) {
+			if (isPropertySchema(schema.properties[key])) {
+				makeAllPropertiesRequired(schema.properties[key]);
+			}
+		}
+	}
+
+	// Handle arrays
+	if (schema.type === 'array' && schema.items && isPropertySchema(schema.items)) {
+		schema.items = makeAllPropertiesRequired(schema.items);
+	}
+
+	return schema;
 }
 
-export function generateSchema(schemaString: string): JSONSchema7 {
-	const parsedSchema = jsonParse<SchemaObject>(schemaString);
+export function generateSchemaFromExample(
+	exampleJsonString: string,
+	allFieldsRequired = false,
+): JSONSchema7 {
+	const parsedExample = jsonParse<SchemaObject>(exampleJsonString);
 
-	return generateJsonSchema(parsedSchema) as JSONSchema7;
+	const schema = generateJsonSchema(parsedExample) as JSONSchema7;
+
+	if (allFieldsRequired) {
+		return makeAllPropertiesRequired(schema);
+	}
+
+	return schema;
+}
+
+export function convertJsonSchemaToZod<T extends z.ZodTypeAny = z.ZodTypeAny>(schema: JSONSchema7) {
+	return jsonSchemaToZod<T>(schema);
 }
 
 export function throwIfToolSchema(ctx: IExecuteFunctions, error: Error) {

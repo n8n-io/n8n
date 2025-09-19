@@ -1,166 +1,189 @@
-import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
-import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
-
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
-import type {
-	CredentialSharingRole,
+import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import {
+	CredentialsEntity,
 	SharedCredentials,
-} from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { GlobalRole, User } from '@/databases/entities/user';
-import { License } from '@/license';
+	SharedWorkflow,
+	User,
+	ListQueryDb,
+	ScopesField,
+	ProjectRelation,
+	RoleRepository,
+	Role,
+	Scope as DBScope,
+	ScopeRepository,
+	GLOBAL_ADMIN_ROLE,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+import type {
+	Scope,
+	Role as RoleDTO,
+	AssignableProjectRole,
+	RoleNamespace,
+} from '@n8n/permissions';
 import {
-	GLOBAL_ADMIN_SCOPES,
-	GLOBAL_MEMBER_SCOPES,
-	GLOBAL_OWNER_SCOPES,
-} from '@/permissions/global-roles';
-import {
-	PERSONAL_PROJECT_OWNER_SCOPES,
-	PROJECT_EDITOR_SCOPES,
-	PROJECT_VIEWER_SCOPES,
-	REGULAR_PROJECT_ADMIN_SCOPES,
-} from '@/permissions/project-roles';
-import {
-	CREDENTIALS_SHARING_OWNER_SCOPES,
-	CREDENTIALS_SHARING_USER_SCOPES,
-	WORKFLOW_SHARING_EDITOR_SCOPES,
-	WORKFLOW_SHARING_OWNER_SCOPES,
-} from '@/permissions/resource-roles';
-import type { ListQuery } from '@/requests';
+	combineScopes,
+	getAuthPrincipalScopes,
+	getRoleScopes,
+	isBuiltInRole,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+} from '@n8n/permissions';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
-export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
-
-const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': GLOBAL_OWNER_SCOPES,
-	'global:admin': GLOBAL_ADMIN_SCOPES,
-	'global:member': GLOBAL_MEMBER_SCOPES,
-};
-
-const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
-	'project:admin': REGULAR_PROJECT_ADMIN_SCOPES,
-	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
-	'project:editor': PROJECT_EDITOR_SCOPES,
-	'project:viewer': PROJECT_VIEWER_SCOPES,
-};
-
-const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {
-	'credential:owner': CREDENTIALS_SHARING_OWNER_SCOPES,
-	'credential:user': CREDENTIALS_SHARING_USER_SCOPES,
-};
-
-const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = {
-	'workflow:owner': WORKFLOW_SHARING_OWNER_SCOPES,
-	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
-};
-
-interface AllMaps {
-	global: Record<GlobalRole, Scope[]>;
-	project: Record<ProjectRole, Scope[]>;
-	credential: Record<CredentialSharingRole, Scope[]>;
-	workflow: Record<WorkflowSharingRole, Scope[]>;
-}
-
-const ALL_MAPS: AllMaps = {
-	global: GLOBAL_SCOPE_MAP,
-	project: PROJECT_SCOPE_MAP,
-	credential: CREDENTIALS_SHARING_SCOPE_MAP,
-	workflow: WORKFLOW_SHARING_SCOPE_MAP,
-} as const;
-
-const COMBINED_MAP = Object.fromEntries(
-	Object.values(ALL_MAPS).flatMap((o: Record<string, Scope[]>) => Object.entries(o)),
-) as Record<GlobalRole | ProjectRole | CredentialSharingRole | WorkflowSharingRole, Scope[]>;
-
-export interface RoleMap {
-	global: GlobalRole[];
-	project: ProjectRole[];
-	credential: CredentialSharingRole[];
-	workflow: WorkflowSharingRole[];
-}
-export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
-
-const ROLE_NAMES: Record<
-	GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
-	string
-> = {
-	'global:owner': 'Owner',
-	'global:admin': 'Admin',
-	'global:member': 'Member',
-	'project:personalOwner': 'Project Owner',
-	'project:admin': 'Project Admin',
-	'project:editor': 'Project Editor',
-	'project:viewer': 'Project Viewer',
-	'credential:user': 'Credential User',
-	'credential:owner': 'Credential Owner',
-	'workflow:owner': 'Workflow Owner',
-	'workflow:editor': 'Workflow Editor',
-};
-
-export type ScopesField = { scopes: Scope[] };
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {
-	constructor(private readonly license: License) {}
+	constructor(
+		private readonly license: LicenseState,
+		private readonly roleRepository: RoleRepository,
+		private readonly scopeRepository: ScopeRepository,
+		private readonly roleCacheService: RoleCacheService,
+	) {}
 
-	rolesWithScope(namespace: 'global', scopes: Scope | Scope[]): GlobalRole[];
-	rolesWithScope(namespace: 'project', scopes: Scope | Scope[]): ProjectRole[];
-	rolesWithScope(namespace: 'credential', scopes: Scope | Scope[]): CredentialSharingRole[];
-	rolesWithScope(namespace: 'workflow', scopes: Scope | Scope[]): WorkflowSharingRole[];
-	rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]) {
-		if (!Array.isArray(scopes)) {
-			scopes = [scopes];
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
+		return {
+			...role,
+			scopes: role.scopes.map((s) => s.slug),
+			licensed: this.isRoleLicensed(role.slug),
+			usedByUsers,
+		};
+	}
+
+	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
+		const roles = await this.roleRepository.findAll();
+
+		if (!withCount) {
+			return roles.map((r) => this.dbRoleToRoleDTO(r));
 		}
 
-		return Object.keys(ALL_MAPS[namespace]).filter((k) => {
-			return scopes.every((s) =>
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-				((ALL_MAPS[namespace] as any)[k] as Scope[]).includes(s),
-			);
+		const roleCounts = await this.roleRepository.findAllRoleCounts();
+
+		return roles.map((role) => {
+			const usedByUsers = roleCounts[role.slug] ?? 0;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
 		});
 	}
 
-	getRoles(): RoleMap {
-		return Object.fromEntries(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			Object.entries(ALL_MAPS).map((e) => [e[0], Object.keys(e[1])]),
-		) as unknown as RoleMap;
-	}
-
-	getRoleName(role: AllRoleTypes): string {
-		return ROLE_NAMES[role];
-	}
-
-	getRoleScopes(
-		role: GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
-		filters?: Resource[],
-	): Scope[] {
-		let scopes = COMBINED_MAP[role];
-		if (filters) {
-			scopes = scopes.filter((s) => filters.includes(s.split(':')[0] as Resource));
+	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (role) {
+			const usedByUsers = withCount
+				? await this.roleRepository.countUsersWithRole(role)
+				: undefined;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
 		}
+		throw new NotFoundError('Role not found');
+	}
+
+	async removeCustomRole(slug: string) {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+		if (role.systemRole) {
+			throw new BadRequestError('Cannot delete system roles');
+		}
+		await this.roleRepository.removeBySlug(slug);
+
+		// Invalidate cache after role deletion
+		await this.roleCacheService.invalidateCache();
+
+		return this.dbRoleToRoleDTO(role);
+	}
+
+	private async resolveScopes(scopeSlugs: string[] | undefined): Promise<DBScope[] | undefined> {
+		if (!scopeSlugs) {
+			return undefined;
+		}
+
+		if (scopeSlugs.length === 0) {
+			return [];
+		}
+
+		const scopes = await this.scopeRepository.findByList(scopeSlugs);
+		if (scopes.length !== scopeSlugs.length) {
+			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
+			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
+		}
+
 		return scopes;
 	}
 
-	/**
-	 * Find all distinct scopes in a set of project roles.
-	 */
-	getScopesBy(projectRoles: Set<ProjectRole>) {
-		return [...projectRoles].reduce<Set<Scope>>((acc, projectRole) => {
-			for (const scope of PROJECT_SCOPE_MAP[projectRole] ?? []) {
-				acc.add(scope);
+	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
+		const { displayName, description, scopes: scopeSlugs } = newData;
+
+		try {
+			const updatedRole = await this.roleRepository.updateRole(slug, {
+				displayName,
+				description,
+				scopes: await this.resolveScopes(scopeSlugs),
+			});
+
+			// Invalidate cache after role update
+			await this.roleCacheService.invalidateCache();
+
+			return this.dbRoleToRoleDTO(updatedRole);
+		} catch (error) {
+			if (error instanceof UserError && error.message === 'Role not found') {
+				throw new NotFoundError('Role not found');
 			}
 
-			return acc;
-		}, new Set());
+			if (error instanceof UserError && error.message === 'Cannot update system roles') {
+				throw new BadRequestError('Cannot update system roles');
+			}
+			throw error;
+		}
+	}
+
+	async createCustomRole(newRole: CreateRoleDto) {
+		const role = new Role();
+		role.displayName = newRole.displayName;
+		if (newRole.description) {
+			role.description = newRole.description;
+		}
+		const scopes = await this.resolveScopes(newRole.scopes);
+		if (scopes === undefined) throw new BadRequestError('Scopes are required');
+		role.scopes = scopes;
+		role.systemRole = false;
+		role.roleType = newRole.roleType;
+		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`;
+		const createdRole = await this.roleRepository.save(role);
+
+		// Invalidate cache after role creation
+		await this.roleCacheService.invalidateCache();
+
+		return this.dbRoleToRoleDTO(createdRole);
+	}
+
+	async checkRolesExist(
+		roleSlugs: string[],
+		roleType: 'global' | 'project' | 'workflow' | 'credential',
+	) {
+		const uniqueRoleSlugs = new Set(roleSlugs);
+		const roles = await this.roleRepository.findBySlugs(Array.from(uniqueRoleSlugs), roleType);
+
+		if (roles.length < uniqueRoleSlugs.size) {
+			const nonExistentRoles = Array.from(uniqueRoleSlugs).filter(
+				(slug) => !roles.find((role) => role.slug === slug),
+			);
+			throw new BadRequestError(
+				nonExistentRoles.length === 1
+					? `Role ${nonExistentRoles[0]} does not exist`
+					: `Roles ${nonExistentRoles.join(', ')} do not exist`,
+			);
+		}
 	}
 
 	addScopes(
-		rawWorkflow: ListQuery.Workflow.WithSharing | ListQuery.Workflow.WithOwnedByAndSharedWith,
+		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Workflow.WithScopes;
+	): ListQueryDb.Workflow.WithScopes;
 	addScopes(
 		rawCredential: CredentialsEntity,
 		user: User,
@@ -168,37 +191,38 @@ export class RoleService {
 	): CredentialsEntity & ScopesField;
 	addScopes(
 		rawCredential:
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith,
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Credentials.WithScopes;
+	): ListQueryDb.Credentials.WithScopes;
 	addScopes(
 		rawEntity:
 			| CredentialsEntity
-			| ListQuery.Workflow.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Workflow.WithOwnedByAndSharedWith,
+			| ListQueryDb.Workflow.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
 	):
 		| (CredentialsEntity & ScopesField)
-		| ListQuery.Workflow.WithScopes
-		| ListQuery.Credentials.WithScopes {
+		| ListQueryDb.Workflow.WithScopes
+		| ListQueryDb.Credentials.WithScopes {
 		const shared = rawEntity.shared;
-		const entity = rawEntity as ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes;
+		const entity = rawEntity as
+			| (CredentialsEntity & ScopesField)
+			| ListQueryDb.Workflow.WithScopes
+			| ListQueryDb.Credentials.WithScopes;
 
-		Object.assign(entity, {
-			scopes: [],
-		});
+		entity.scopes = [];
 
 		if (shared === undefined) {
 			return entity;
 		}
 
 		if (!('active' in entity) && !('type' in entity)) {
-			throw new ApplicationError('Cannot detect if entity is a workflow or credential.');
+			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
 		entity.scopes = this.combineResourceScopes(
@@ -217,7 +241,7 @@ export class RoleService {
 		shared: SharedCredentials[] | SharedWorkflow[],
 		userProjectRelations: ProjectRelation[],
 	): Scope[] {
-		const globalScopes = this.getRoleScopes(user.role, [type]);
+		const globalScopes = getAuthPrincipalScopes(user, [type]);
 		const scopesSet: Set<Scope> = new Set(globalScopes);
 		for (const sharedEntity of shared) {
 			const pr = userProjectRelations.find(
@@ -225,9 +249,9 @@ export class RoleService {
 			);
 			let projectScopes: Scope[] = [];
 			if (pr) {
-				projectScopes = this.getRoleScopes(pr.role);
+				projectScopes = pr.role.scopes.map((s) => s.slug);
 			}
-			const resourceMask = this.getRoleScopes(sharedEntity.role);
+			const resourceMask = getRoleScopes(sharedEntity.role);
 			const mergedScopes = combineScopes(
 				{
 					global: globalScopes,
@@ -240,17 +264,38 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	isRoleLicensed(role: AllRoleTypes) {
+	/**
+	 * Enhanced rolesWithScope function that combines static roles with database roles
+	 * This replaces the original rolesWithScope function from @n8n/permissions
+	 */
+	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+		if (!Array.isArray(scopes)) {
+			scopes = [scopes];
+		}
+		// Get database roles from cache
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+	}
+
+	isRoleLicensed(role: AssignableProjectRole) {
+		// TODO: move this info into FrontendSettings
+
+		if (!isBuiltInRole(role)) {
+			// This is a custom role, there for we need to check if
+			// custom roles are licensed
+			return this.license.isCustomRolesLicensed();
+		}
+
 		switch (role) {
-			case 'project:admin':
+			case PROJECT_ADMIN_ROLE_SLUG:
 				return this.license.isProjectRoleAdminLicensed();
-			case 'project:editor':
+			case PROJECT_EDITOR_ROLE_SLUG:
 				return this.license.isProjectRoleEditorLicensed();
-			case 'project:viewer':
+			case PROJECT_VIEWER_ROLE_SLUG:
 				return this.license.isProjectRoleViewerLicensed();
-			case 'global:admin':
+			case GLOBAL_ADMIN_ROLE.slug:
 				return this.license.isAdvancedPermissionsLicensed();
 			default:
+				// TODO: handle custom roles licensing
 				return true;
 		}
 	}

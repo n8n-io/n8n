@@ -17,7 +17,7 @@ export const ollamaModel: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
 	type: 'options',
-	default: 'llama2',
+	default: 'llama3.2',
 	description:
 		'The model which will generate the completion. To download models, visit <a href="https://ollama.ai/library">Ollama Models Library</a>.',
 	typeOptions: {

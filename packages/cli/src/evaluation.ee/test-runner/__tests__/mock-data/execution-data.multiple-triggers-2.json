@@ -1,0 +1,95 @@
+{
+	"startData": {},
+	"resultData": {
+		"runData": {
+			"When chat message received": [
+				{
+					"startTime": 1732882447976,
+					"executionTime": 0,
+					"executionStatus": "success",
+					"data": {
+						"main": [
+							[
+								{
+									"json": {
+										"sessionId": "192c5b3c0b0642d68eab1a747a59cb6e",
+										"action": "sendMessage",
+										"chatInput": "hey"
+									}
+								}
+							]
+						]
+					},
+					"source": [null]
+				}
+			],
+			"NoOp": [
+				{
+					"hints": [],
+					"startTime": 1732882448034,
+					"executionTime": 0,
+					"source": [
+						{
+							"previousNode": "When clicking ‘Execute workflow’"
+						}
+					],
+					"executionStatus": "success",
+					"data": {
+						"main": [
+							[
+								{
+									"json": {
+										"sessionId": "192c5b3c0b0642d68eab1a747a59cb6e",
+										"action": "sendMessage",
+										"chatInput": "hey"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								}
+							]
+						]
+					}
+				}
+			],
+			"NoOp2": [
+				{
+					"hints": [],
+					"startTime": 1732882448037,
+					"executionTime": 0,
+					"source": [
+						{
+							"previousNode": "NoOp"
+						}
+					],
+					"executionStatus": "success",
+					"data": {
+						"main": [
+							[
+								{
+									"json": {
+										"sessionId": "192c5b3c0b0642d68eab1a747a59cb6e",
+										"action": "sendMessage",
+										"chatInput": "hey"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								}
+							]
+						]
+					}
+				}
+			]
+		},
+		"pinData": {},
+		"lastNodeExecuted": "NoOp2"
+	},
+	"executionData": {
+		"contextData": {},
+		"nodeExecutionStack": [],
+		"metadata": {},
+		"waitingExecution": {},
+		"waitingExecutionSource": {}
+	}
+}

@@ -1,8 +1,9 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { GoogleSheet } from '../helpers/GoogleSheet';
-import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
+import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;

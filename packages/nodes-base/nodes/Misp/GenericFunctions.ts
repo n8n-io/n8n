@@ -1,4 +1,3 @@
-import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,6 +7,8 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { URL } from 'url';
+
 import type { MispCredentials } from './types';
 
 export async function mispApiRequest(
@@ -17,9 +18,7 @@ export async function mispApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
-		'mispApi',
-	)) as MispCredentials;
+	const { baseUrl, allowUnauthorizedCerts } = await this.getCredentials<MispCredentials>('mispApi');
 
 	const options: IRequestOptions = {
 		method,

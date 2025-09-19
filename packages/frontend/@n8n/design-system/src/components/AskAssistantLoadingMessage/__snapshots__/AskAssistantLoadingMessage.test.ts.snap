@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
+<div>
+  <div
+    class="container"
+    data-v-4e90e01e=""
+  >
+    <div
+      class="message-container"
+      data-v-4e90e01e=""
+    >
+      <transition-stub
+        appear="false"
+        css="true"
+        data-v-4e90e01e=""
+        mode="out-in"
+        name="slide-vertical"
+        persisted="false"
+      >
+        <n8n-text-stub
+          bold="false"
+          class="message"
+          compact="false"
+          data-v-4e90e01e=""
+          shimmer="true"
+          size="medium"
+          tag="span"
+        />
+      </transition-stub>
+    </div>
+  </div>
+</div>
+`;

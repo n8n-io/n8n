@@ -1,55 +1,39 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from 'langchain/agents';
-
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-import { OpenAI as OpenAIClient } from 'openai';
-
-import {
-	ApplicationError,
-	NodeConnectionType,
-	NodeOperationError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import type { BufferWindowMemory } from 'langchain/memory';
+import omit from 'lodash/omit';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
+import { OpenAI as OpenAIClient } from 'openai';
 
-import type { BufferWindowMemory } from 'langchain/memory';
-import omit from 'lodash/omit';
-import type { BaseMessage } from '@langchain/core/messages';
-import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { promptTypeOptions } from '@utils/descriptions';
+import { getConnectedTools } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
+
+import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-
-import { getConnectedTools } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
-		displayName: 'Prompt',
+		...promptTypeOptions,
 		name: 'prompt',
-		type: 'options',
-		options: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Take from previous node automatically',
-				value: 'auto',
-				description: 'Looks for an input field called chatInput',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Define below',
-				value: 'define',
-				description: 'Use an expression to reference data in previous nodes or enter static text',
-			},
-		],
-		default: 'auto',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Prompt (User Message)',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -60,6 +44,45 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				prompt: ['define'],
+			},
+		},
+	},
+	{
+		displayName: 'Memory',
+		name: 'memory',
+		type: 'options',
+		options: [
+			{
+				name: 'Use memory connector',
+				value: 'connector',
+				description: 'Connect one of the supported memory nodes',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Use thread ID',
+				value: 'threadId',
+				description: 'Specify the ID of the thread to continue',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.6 } }],
+			},
+		},
+		default: 'connector',
+	},
+	{
+		displayName: 'Thread ID',
+		name: 'threadId',
+		type: 'string',
+		default: '',
+		placeholder: '',
+		description: 'The ID of the thread to continue, a new thread will be created if not specified',
+		hint: 'If the thread ID is empty or undefined a new thread will be created and included in the response',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.6 } }],
+				memory: ['threadId'],
 			},
 		},
 	},
@@ -83,6 +106,11 @@ const properties: INodeProperties[] = [
 				default: 'https://api.openai.com/v1',
 				description: 'Override the default base URL for the API',
 				type: 'string',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.8 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Max Retries',
@@ -159,11 +187,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		preserveOriginalTools?: boolean;
 	};
 
+	const baseURL = (options.baseURL ?? credentials.url) as string;
+
 	const client = new OpenAIClient({
 		apiKey: credentials.apiKey as string,
 		maxRetries: options.maxRetries ?? 2,
 		timeout: options.timeout ?? 10000,
-		baseURL: options.baseURL,
+		baseURL,
+		fetchOptions: {
+			dispatcher: getProxyAgent(baseURL),
+		},
 	});
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
@@ -201,9 +234,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BufferWindowMemory
-		| undefined;
+	const useMemoryConnector =
+		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
+	const memory =
+		useMemoryConnector || nodeVersion < 1.6
+			? ((await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+					| BufferWindowMemory
+					| undefined)
+			: undefined;
+
+	const threadId =
+		nodeVersion >= 1.6 && !useMemoryConnector
+			? (this.getNodeParameter('threadId', i) as string)
+			: undefined;
 
 	const chainValues: IDataObject = {
 		content: input,
@@ -212,7 +255,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 	let thread: OpenAIClient.Beta.Threads.Thread;
 	if (memory) {
-		const chatMessages = await memory.chatHistory.getMessages();
+		const chatMessages = await getChatMessages(memory);
 
 		// Construct a new thread from the chat history to map the memory
 		if (chatMessages.length) {
@@ -231,6 +274,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 			chainValues.threadId = thread.id;
 		}
+	} else if (threadId) {
+		chainValues.threadId = threadId;
 	}
 
 	let filteredResponse: IDataObject = {};
@@ -240,10 +285,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			await memory.saveContext({ input }, { output: response.output });
 
 			if (response.threadId && response.runId) {
-				const threadRun = await client.beta.threads.runs.retrieve(
-					response.threadId,
-					response.runId,
-				);
+				const threadRun = await client.beta.threads.runs.retrieve(response.runId, {
+					thread_id: response.threadId,
+				});
 				response.usage = threadRun.usage;
 			}
 		}
@@ -257,7 +301,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				tools: assistantTools,
 			});
 		}
-		filteredResponse = omit(response, ['signal', 'timeout']) as IDataObject;
+		// Remove configuration properties and runId added by Langchain that are not relevant to the user
+		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
 		if (!(error instanceof ApplicationError)) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });

@@ -1,0 +1,1027 @@
+{
+	"createdAt": "2021-03-19T11:16:17.356Z",
+	"updatedAt": "2021-05-21T10:01:38.488Z",
+	"id": "142",
+	"name": "MicrosoftOutlook:Folder:create get getAll getChildren delete:Message send getAll get getMime update delete:FolderMessage:getAll:Draft:create update get delete send:MessageAttachment:add getAll get download",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "c8853916-a370-410c-8c96-fec280e24502"
+		},
+		{
+			"parameters": {
+				"subject": "=Subject {{Date.now()}}",
+				"bodyContent": "=Test {{(new Date).toUTCString()}}",
+				"toRecipients": "node8qa@gmail.com",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "75eee31d-df00-4fe7-8c29-0dca953fcec5"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook1",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "7b0b82c4-5e02-4819-a2af-748eee795377"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"messageId": "={{$node[\"Microsoft Outlook1\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook2",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "e11bc3e4-d5fc-496a-b601-939ea3edf709"
+		},
+		{
+			"parameters": {
+				"operation": "getMime",
+				"messageId": "={{$node[\"Microsoft Outlook1\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook3",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1200, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "4d18fe05-dc23-47f9-b0bf-776ea266ad94"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"messageId": "={{$node[\"Microsoft Outlook2\"].json[\"id\"]}}",
+				"updateFields": {
+					"bodyContent": "=Updated{{$node[\"Microsoft Outlook2\"].json[\"body\"][\"content\"]}}"
+				}
+			},
+			"name": "Microsoft Outlook4",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1350, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "eba271aa-7a39-45c4-b74c-79be4d600f5e"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"messageId": "={{$node[\"Microsoft Outlook1\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook5",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1800, 300],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "631bf979-dfac-4acc-b038-c2efbbc4eb61"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"subject": "=Draft{{Date.now()}}",
+				"bodyContent": "=draft test{{(new Date).toUTCString()}}",
+				"additionalFields": {
+					"toRecipients": " node8qa@gmail.com "
+				}
+			},
+			"name": "Microsoft Outlook6",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [450, 500],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "d52c068a-caec-4b41-8f2b-6ecb09eeff45"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"operation": "update",
+				"messageId": "={{$node[\"Microsoft Outlook6\"].json[\"id\"]}}",
+				"updateFields": {
+					"bodyContent": "=Updated{{$node[\"Microsoft Outlook6\"].json[\"body\"][\"content\"]}}"
+				}
+			},
+			"name": "Microsoft Outlook7",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [600, 500],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "d9f97b7a-cd2d-476a-bc98-65c622adafae"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"operation": "get",
+				"messageId": "={{$node[\"Microsoft Outlook6\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook8",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [900, 500],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "d8668bc3-43db-4ba9-ab40-a5bd7fd0ea32"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"operation": "delete",
+				"messageId": "={{$node[\"Microsoft Outlook6\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook9",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1050, 500],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "5c319460-5c69-4622-953a-7bcaee892d07"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"subject": "=Draft{{Date.now()}}",
+				"bodyContent": "=draft test{{Date.now()}}",
+				"additionalFields": {
+					"toRecipients": " node8qa@gmail.com "
+				}
+			},
+			"name": "Microsoft Outlook10",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1350, 500],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "4fefb565-502a-4a8d-a9a4-db2b208d7b12"
+		},
+		{
+			"parameters": {
+				"resource": "draft",
+				"operation": "send",
+				"messageId": "={{$node[\"Microsoft Outlook10\"].json[\"id\"]}}",
+				"additionalFields": {
+					"recipients": "node8qa@gmail.com"
+				}
+			},
+			"name": "Microsoft Outlook11",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2650, 550],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "c1d8d7e4-8d6d-4ca4-9e05-e0ad702a586d"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"messageId": "={{$node[\"Microsoft Outlook13\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook12",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [3100, 550],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "0e1e8c29-065e-43e2-9751-46b580640c73"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook13",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2950, 550],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "c4ba0930-587d-47a4-8a4b-a3b3ba7ed3f2"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"displayName": "=Folder{{(new Date).toUTCString()}}"
+			},
+			"name": "Microsoft Outlook14",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [450, 140],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "3b783dbb-0e38-4cdb-8931-a83c2e542a9e"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "get",
+				"folderId": "={{$node[\"Microsoft Outlook14\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook15",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [750, 140],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "c829334b-0ac4-4440-b3bd-537f659608f7"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "getAll",
+				"limit": 1,
+				"additionalFields": {
+					"filter": "startsWith(displayName,'Folder')"
+				}
+			},
+			"name": "Microsoft Outlook16",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [900, 140],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "d446756b-e052-4869-9d2d-7d4af3c155f3"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "getChildren",
+				"folderId": "={{$node[\"Microsoft Outlook14\"].json[\"id\"]}}",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook17",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1200, 140],
+			"alwaysOutputData": true,
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "8f732179-076b-4375-96ef-396c41ec4f22"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"folderId": "={{$node[\"Microsoft Outlook14\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook18",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1350, 140],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "a4b7d61c-74c1-4595-9698-6b1fa7a73842"
+		},
+		{
+			"parameters": {
+				"resource": "folderMessage",
+				"operation": "getAll",
+				"folderId": "AQMkADAwATNiZmYAZC0zODgAZC1jYjlmLTAwAi0wMAoALgAAA7ObUbW4UV9AtQb9CKQozz8BAIHMmBimhDVHlaNbe8JltA4AAAIBCQAAAA==",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook19",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1650, 350],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "891fb969-79f6-4832-a3d0-b2d938fe757a"
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"messageId": "={{$node[\"Microsoft Outlook10\"].json[\"id\"]}}",
+				"additionalFields": {
+					"fileName": "test"
+				}
+			},
+			"name": "Microsoft Outlook20",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [1750, 650],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "d7131b8a-1656-4ad0-baa0-860456471bb1"
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"options": {
+					"keepSource": false
+				}
+			},
+			"name": "Move Binary Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [1600, 650],
+			"id": "9f86213f-ce39-4b3e-a9e9-7327d421f7cb"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "dGVzdCBmb3IgbWljcm9zb2Z0IG91dGxvb2s="
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1450, 650],
+			"id": "b909a6f3-09d4-450f-be31-6c771fa96f08"
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "getAll",
+				"messageId": "={{$node[\"Microsoft Outlook10\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook21",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2050, 650],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "3b59dfb0-2204-4073-81fb-9629e95969bb"
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "get",
+				"messageId": "={{$node[\"Microsoft Outlook10\"].json[\"id\"]}}",
+				"attachmentId": "={{$node[\"Microsoft Outlook21\"].json[\"id\"]}}",
+				"additionalFields": {}
+			},
+			"name": "Microsoft Outlook22",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2200, 650],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "20c4215c-8ab5-4621-872e-1799140f546d"
+		},
+		{
+			"parameters": {
+				"resource": "messageAttachment",
+				"operation": "download",
+				"messageId": "={{$node[\"Microsoft Outlook10\"].json[\"id\"]}}",
+				"attachmentId": "={{$node[\"Microsoft Outlook21\"].json[\"id\"]}}"
+			},
+			"name": "Microsoft Outlook23",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 1,
+			"position": [2490, 650],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "72",
+					"name": "Microsoft Outlook OAuth2 creds"
+				}
+			},
+			"id": "5118f8c3-c5e5-417e-8d38-0970f7f56414"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second",
+			"type": "n8n-nodes-base.function",
+			"position": [1050, 140],
+			"typeVersion": 1,
+			"id": "94e105e3-0637-4064-8514-af332eb2827f"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second1",
+			"type": "n8n-nodes-base.function",
+			"position": [610, 140],
+			"typeVersion": 1,
+			"id": "18598ace-99d1-4b66-91c7-e644a87016c5"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second2",
+			"type": "n8n-nodes-base.function",
+			"position": [600, 300],
+			"typeVersion": 1,
+			"id": "ba10706c-633c-4cad-968a-f3f18e9c9920"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second3",
+			"type": "n8n-nodes-base.function",
+			"position": [1050, 300],
+			"typeVersion": 1,
+			"id": "b0f039ce-0731-4f9a-ba87-bc15d53769b8"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second4",
+			"type": "n8n-nodes-base.function",
+			"position": [1500, 350],
+			"typeVersion": 1,
+			"id": "418bceb9-6a77-464f-a4e1-8e1f9405e334"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second5",
+			"type": "n8n-nodes-base.function",
+			"position": [2800, 550],
+			"typeVersion": 1,
+			"id": "340d3c0c-faf5-4743-8c1b-f00c6541d8ca"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second6",
+			"type": "n8n-nodes-base.function",
+			"position": [2350, 650],
+			"typeVersion": 1,
+			"id": "e46a32dd-2110-4e2d-9c6e-d871edba8fe2"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second7",
+			"type": "n8n-nodes-base.function",
+			"position": [1900, 650],
+			"typeVersion": 1,
+			"id": "67a411cf-4505-4c21-aa92-1936ccdb0149"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second8",
+			"type": "n8n-nodes-base.function",
+			"position": [1940, 300],
+			"typeVersion": 1,
+			"id": "26cac095-afb7-41c7-85a9-44dbdf916e9f"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second9",
+			"type": "n8n-nodes-base.function",
+			"position": [750, 500],
+			"typeVersion": 1,
+			"id": "e1fe7a57-75ee-4154-a288-6a4a740b7375"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 0.8 second10",
+			"type": "n8n-nodes-base.function",
+			"position": [1200, 500],
+			"typeVersion": 1,
+			"id": "571afdbd-30e6-45d6-9848-d9c6d71b5ba4"
+		}
+	],
+	"connections": {
+		"Microsoft Outlook": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook1": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook2": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook3": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook4": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook5": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Microsoft Outlook14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook6": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook7": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook8": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook10": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook11": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook13": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook9": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook14": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook15": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook16": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook17": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook18",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook19": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Move Binary Data": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook20",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Move Binary Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook20": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook21": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook22",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook22": {
+			"main": [
+				[
+					{
+						"node": "Sleep 0.8 second6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Outlook23": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook17",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second1": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second2": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second3": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second4": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook19",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second5": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second6": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook23",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second7": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook21",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second8": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second9": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 0.8 second10": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

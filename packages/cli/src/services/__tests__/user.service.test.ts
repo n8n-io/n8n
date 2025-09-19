@@ -1,28 +1,48 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
-import { mockInstance } from '@test/mocking';
+
+import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		host: 'localhost',
 		path: '/',
 		port: 5678,
-		listen_address: '0.0.0.0',
+		listen_address: '::',
 		protocol: 'http',
+		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
-	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
+	const userRepository = mockInstance(UserRepository, {
+		manager: mock<EntityManager>({
+			transaction: async (cb) =>
+				typeof cb === 'function' ? await cb(mock<EntityManager>()) : await Promise.resolve(),
+		}),
+	});
+	const roleService = mock<RoleService>();
+	const userService = new UserService(
+		mock(),
+		userRepository,
+		mock(),
+		urlService,
+		mock(),
+		mock(),
+		roleService,
+	);
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
 		password: 'passwordHash',
+		role: GLOBAL_MEMBER_ROLE,
 	});
 
 	describe('toPublic', () => {
@@ -35,10 +55,11 @@ describe('UserService', () => {
 				mfaRecoveryCodes: ['test'],
 				updatedAt: new Date(),
 				authIdentities: [],
+				role: GLOBAL_MEMBER_ROLE,
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
+				Pick<User, 'password' | 'updatedAt' | 'authIdentities' | 'mfaSecret' | 'mfaRecoveryCodes'>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -47,19 +68,25 @@ describe('UserService', () => {
 			expect(publicUser.password).toBeUndefined();
 			expect(publicUser.updatedAt).toBeUndefined();
 			expect(publicUser.authIdentities).toBeUndefined();
+			expect(publicUser.mfaSecret).toBeUndefined();
+			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 		});
 
 		it('should add scopes if requested', async () => {
 			const scoped = await userService.toPublic(commonMockUser, { withScopes: true });
 			const unscoped = await userService.toPublic(commonMockUser);
 
-			expect(scoped.globalScopes).toEqual([]);
+			expect(scoped.globalScopes).toEqual(GLOBAL_MEMBER_ROLE.scopes.map((s) => s.slug));
 			expect(unscoped.globalScopes).toBeUndefined();
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid() });
-			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
+			const secondUser = Object.assign(new User(), {
+				id: uuid(),
+				role: GLOBAL_MEMBER_ROLE,
+				isPending: true,
+			});
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {
@@ -78,7 +105,7 @@ describe('UserService', () => {
 
 	describe('update', () => {
 		// We need to use `save` so that that the subscriber in
-		// packages/cli/src/databases/entities/Project.ts receives the full user.
+		// packages/@n8n/db/src/entities/Project.ts receives the full user.
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		it('should use `save` instead of `update`', async () => {
@@ -97,6 +124,44 @@ describe('UserService', () => {
 
 			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
 			expect(userRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('inviteUsers', () => {
+		it('should invite users', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [
+				{ email: 'test1@example.com', role: GLOBAL_ADMIN_ROLE.slug },
+				{ email: 'test2@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+				{ email: 'test3@example.com', role: 'custom:role' },
+			];
+
+			roleService.checkRolesExist.mockResolvedValue();
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await userService.inviteUsers(owner, invitations);
+
+			expect(userRepository.createUserWithProject).toHaveBeenCalledTimes(3);
+		});
+
+		it('should fail if role do not exist', async () => {
+			const owner = Object.assign(new User(), { id: uuid() });
+			const invitations = [{ email: 'test1@example.com', role: 'nonexistent:role' }];
+
+			roleService.checkRolesExist.mockRejectedValue(
+				new BadRequestError('Role nonexistent:role does not exist'),
+			);
+			userRepository.findManyByEmail.mockResolvedValue([]);
+			userRepository.createUserWithProject.mockImplementation(async (userData) => {
+				return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+			});
+
+			await expect(userService.inviteUsers(owner, invitations)).rejects.toThrowError(
+				'Role nonexistent:role does not exist',
+			);
 		});
 	});
 });

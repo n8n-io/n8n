@@ -1,12 +1,10 @@
-import { Container } from 'typedi';
-
-import type { User } from '@/databases/entities/user';
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import { testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { createTag } from '../shared/db/tags';
-import { createUser } from '../shared/db/users';
-import { randomApiKey } from '../shared/random';
-import * as testDb from '../shared/test-db';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -18,19 +16,12 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
-
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	owner = await createOwnerWithApiKey();
+	member = await createMemberWithApiKey();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Tag']);
+	await testDb.truncate(['TagEntity']);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);

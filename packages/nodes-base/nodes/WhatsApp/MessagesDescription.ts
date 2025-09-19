@@ -1,5 +1,6 @@
 import countryCodes from 'currency-codes';
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+
 import {
 	cleanPhoneNumber,
 	componentsRequest,
@@ -30,6 +31,11 @@ export const messageFields: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				action: 'Send message',
+			},
+			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				action: 'Send message and wait for response',
 			},
 			{
 				name: 'Send Template',

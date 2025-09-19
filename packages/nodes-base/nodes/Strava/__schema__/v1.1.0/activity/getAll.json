@@ -1,0 +1,133 @@
+{
+    "type": "object",
+    "properties": {
+        "achievement_count": {
+            "type": "integer"
+        },
+        "athlete": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "resource_state": {
+                    "type": "integer"
+                }
+            }
+        },
+        "athlete_count": {
+            "type": "integer"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "commute": {
+            "type": "boolean"
+        },
+        "device_watts": {
+            "type": "boolean"
+        },
+        "display_hide_heartrate_option": {
+            "type": "boolean"
+        },
+        "elapsed_time": {
+            "type": "integer"
+        },
+        "flagged": {
+            "type": "boolean"
+        },
+        "from_accepted_tag": {
+            "type": "boolean"
+        },
+        "has_heartrate": {
+            "type": "boolean"
+        },
+        "has_kudoed": {
+            "type": "boolean"
+        },
+        "heartrate_opt_out": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "kudos_count": {
+            "type": "integer"
+        },
+        "location_city": {
+            "type": "null"
+        },
+        "location_state": {
+            "type": "null"
+        },
+        "manual": {
+            "type": "boolean"
+        },
+        "map": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "resource_state": {
+                    "type": "integer"
+                },
+                "summary_polyline": {
+                    "type": "string"
+                }
+            }
+        },
+        "max_heartrate": {
+            "type": "integer"
+        },
+        "moving_time": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "photo_count": {
+            "type": "integer"
+        },
+        "pr_count": {
+            "type": "integer"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "resource_state": {
+            "type": "integer"
+        },
+        "sport_type": {
+            "type": "string"
+        },
+        "start_date": {
+            "type": "string"
+        },
+        "start_date_local": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "total_photo_count": {
+            "type": "integer"
+        },
+        "trainer": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "string"
+        },
+        "upload_id_str": {
+            "type": "string"
+        },
+        "utc_offset": {
+            "type": "integer"
+        },
+        "visibility": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

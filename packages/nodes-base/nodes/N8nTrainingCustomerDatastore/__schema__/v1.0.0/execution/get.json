@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "deletedAt": {
+            "type": "null"
+        },
+        "finished": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "startedAt": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "workflowId": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

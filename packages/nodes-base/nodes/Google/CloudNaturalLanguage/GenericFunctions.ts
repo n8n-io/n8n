@@ -36,7 +36,6 @@ export async function googleApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(
 			this,
 			'googleCloudNaturalLanguageOAuth2Api',

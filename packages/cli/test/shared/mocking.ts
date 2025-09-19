@@ -1,17 +1,7 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { Class } from 'n8n-core';
-import type { DeepPartial } from 'ts-essentials';
-import { Container } from 'typedi';
-
-export const mockInstance = <T>(
-	serviceClass: Class<T>,
-	data: DeepPartial<T> | undefined = undefined,
-) => {
-	const instance = mock<T>(data);
-	Container.set(serviceClass, instance);
-	return instance;
-};
+import type { Cipher, Class } from 'n8n-core';
 
 export const mockEntityManager = (entityClass: Class) => {
 	const entityManager = mockInstance(EntityManager);
@@ -22,3 +12,9 @@ export const mockEntityManager = (entityClass: Class) => {
 	Object.assign(entityManager, { connection: dataSource });
 	return entityManager;
 };
+
+export const mockCipher = () =>
+	mock<Cipher>({
+		encrypt: (data) => (typeof data === 'string' ? data : JSON.stringify(data)),
+		decrypt: (data) => data,
+	});

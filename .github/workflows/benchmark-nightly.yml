@@ -42,23 +42,26 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: '1.8.5'
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
-          cache: pnpm
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Azure login
-        uses: azure/login@v2.1.1
+        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -89,7 +92,7 @@ jobs:
         # We need to login again because the access token expires
       - name: Azure login
         if: always()
-        uses: azure/login@v2.1.1
+        uses: azure/login@6c251865b4e6290e7b78be643ea2d005bc51f69a # v2.1.1
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}

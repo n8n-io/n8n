@@ -1,0 +1,161 @@
+{
+	"name": "HTTP Request Node: Continue using error output not working",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6707decf-7ae3-46f1-8603-b0fe4844f240",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [16, 560]
+		},
+		{
+			"parameters": {},
+			"id": "09b63a84-789d-4a31-b546-849ba47ed689",
+			"name": "Success path",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [464, 272]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://dummyjson.com/todos/1",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "{\n  \"q\": \"abc\",\n}",
+				"options": {}
+			},
+			"id": "c6841eb1-7913-4c8d-8c9d-b88a908125ed",
+			"name": "Invalid JSON Body",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [240, 368],
+			"alwaysOutputData": false,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"id": "21750b7e-c18a-43a5-a068-f8aa85d1cadf",
+			"name": "Success path1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [464, 656]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/html",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "ae2891f0-1968-4f57-a1a0-87d6f6dab57d",
+			"name": "Invalid JSON Response",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [240, 752],
+			"alwaysOutputData": false,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"id": "baa75f00-e0dd-40b2-b718-1e8311549a05",
+			"name": "Request body error",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [464, 464]
+		},
+		{
+			"parameters": {},
+			"id": "4733c47f-38c8-44a8-9d77-d9e733777cbf",
+			"name": "Response body error",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [464, 848]
+		}
+	],
+	"pinData": {
+		"Request body error": [
+			{
+				"json": {
+					"error": "JSON parameter needs to be valid JSON"
+				}
+			}
+		],
+		"Response body error": [
+			{
+				"json": {
+					"error": "Response body is not valid JSON. Change \"Response Format\" to \"Text\""
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Invalid JSON Body",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invalid JSON Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Invalid JSON Body": {
+			"main": [
+				[
+					{
+						"node": "Success path",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Request body error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Invalid JSON Response": {
+			"main": [
+				[
+					{
+						"node": "Success path1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Response body error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c7026310-8c4f-4889-a45b-befebacc7dde",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "2Zd3If2j9PglrHri",
+	"tags": []
+}

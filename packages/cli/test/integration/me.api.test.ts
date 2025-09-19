@@ -1,18 +1,19 @@
+import {
+	randomEmail,
+	randomName,
+	randomValidPassword,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { IsNull } from '@n8n/typeorm';
+import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
-import { Container } from 'typedi';
 import validator from 'validator';
 
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { mockInstance } from '@test/mocking';
-
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
-import * as testDb from './shared/test-db';
+import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -20,40 +21,21 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
-});
-
-describe('When public API is disabled', () => {
-	let owner: User;
-	let authAgent: SuperAgentTest;
-
-	beforeEach(async () => {
-		owner = await createOwner();
-		await addApiKey(owner);
-		authAgent = testServer.authAgentFor(owner);
-		mockInstance(GlobalConfig, { publicApi: { disabled: true } });
-	});
-
-	test('POST /me/api-key should 404', async () => {
-		await authAgent.post('/me/api-key').expect(404);
-	});
-
-	test('GET /me/api-key should 404', async () => {
-		await authAgent.get('/me/api-key').expect(404);
-	});
-
-	test('DELETE /me/api-key should 404', async () => {
-		await authAgent.delete('/me/api-key').expect(404);
+	mockInstance(GlobalConfig, {
+		publicApi: { disabled: false },
+		sso: { saml: { loginEnabled: true } },
 	});
 });
+
+const ownerPassword = randomValidPassword();
+const memberPassword = randomValidPassword();
 
 describe('Owner shell', () => {
 	let ownerShell: User;
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell('global:owner');
-		await addApiKey(ownerShell);
+		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
@@ -63,17 +45,8 @@ describe('Owner shell', () => {
 
 			expect(response.statusCode).toBe(200);
 
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				role,
-				password,
-				isPending,
-				apiKey,
-			} = response.body.data;
+			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
+				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(validPayload.email.toLowerCase());
@@ -83,7 +56,6 @@ describe('Owner shell', () => {
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(role).toBe('global:owner');
-			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
 
@@ -160,72 +132,27 @@ describe('Owner shell', () => {
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
 		}
 	});
-
-	test('POST /me/api-key should create an api key', async () => {
-		const response = await authOwnerShellAgent.post('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toBeDefined();
-		expect(response.body.data.apiKey).not.toBeNull();
-
-		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-			where: { email: IsNull() },
-		});
-
-		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
-	});
-
-	test('GET /me/api-key should fetch the api key redacted', async () => {
-		const response = await authOwnerShellAgent.get('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).not.toEqual(ownerShell.apiKey);
-	});
-
-	test('DELETE /me/api-key should delete the api key', async () => {
-		const response = await authOwnerShellAgent.delete('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-
-		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-			where: { email: IsNull() },
-		});
-
-		expect(storedShellOwner.apiKey).toBeNull();
-	});
 });
 
 describe('Member', () => {
-	const memberPassword = randomValidPassword();
 	let member: User;
 	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			role: 'global:member',
-			apiKey: randomApiKey(),
+			role: { slug: 'global:member' },
 		});
 		authMemberAgent = testServer.authAgentFor(member);
-
 		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+		for (const validPayload of getValidPatchMePayloads('member')) {
 			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				role,
-				password,
-				isPending,
-				apiKey,
-			} = response.body.data;
+			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
+				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(validPayload.email.toLowerCase());
@@ -235,7 +162,6 @@ describe('Member', () => {
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(role).toBe('global:member');
-			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
 
@@ -251,7 +177,7 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
+		for (const invalidPayload of getInvalidPatchMePayloads('member')) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
@@ -268,6 +194,39 @@ describe('Member', () => {
 		}
 	});
 
+	test('PATCH /me should fail when changing email without currentPassword', async () => {
+		const payloadWithoutPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithoutPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Current password is required to change email');
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
+	});
+
+	test('PATCH /me should fail when changing email with wrong currentPassword', async () => {
+		const payloadWithWrongPassword = {
+			email: randomEmail(),
+			firstName: randomName(),
+			lastName: randomName(),
+			currentPassword: 'WrongPassword123',
+		};
+
+		const response = await authMemberAgent.patch('/me').send(payloadWithWrongPassword);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'Unable to update profile. Please check your credentials and try again.',
+		);
+
+		const storedMember = await Container.get(UserRepository).findOneByOrFail({});
+		expect(storedMember.email).toBe(member.email);
+	});
+
 	test('PATCH /me/password should succeed with valid inputs', async () => {
 		const validPayload = {
 			currentPassword: memberPassword,
@@ -275,6 +234,7 @@ describe('Member', () => {
 		};
 
 		const response = await authMemberAgent.patch('/me/password').send(validPayload);
+
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
@@ -314,43 +274,17 @@ describe('Member', () => {
 			expect(storedAnswers).toEqual(validPayload);
 		}
 	});
-
-	test('POST /me/api-key should create an api key', async () => {
-		const response = await testServer.authAgentFor(member).post('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toBeDefined();
-		expect(response.body.data.apiKey).not.toBeNull();
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
-
-		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
-	});
-
-	test('GET /me/api-key should fetch the api key redacted', async () => {
-		const response = await testServer.authAgentFor(member).get('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).not.toEqual(member.apiKey);
-	});
-
-	test('DELETE /me/api-key should delete the api key', async () => {
-		const response = await testServer.authAgentFor(member).delete('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
-
-		expect(storedMember.apiKey).toBeNull();
-	});
 });
 
 describe('Owner', () => {
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await createUser({ role: 'global:owner' });
+		const owner = await createUser({
+			role: GLOBAL_OWNER_ROLE,
+			password: ownerPassword,
+		});
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
-		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
+		for (const validPayload of getValidPatchMePayloads('owner')) {
 			const response = await authOwnerAgent.patch('/me').send(validPayload);
 
 			expect(response.statusCode).toBe(200);
@@ -417,6 +351,24 @@ const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
 	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
 	personalization_survey_n8n_version: '1.0.0',
 };
+
+function getValidPatchMePayloads(userType: 'owner' | 'member') {
+	return VALID_PATCH_ME_PAYLOADS.map((payload) => {
+		if (userType === 'owner') {
+			return { ...payload, currentPassword: ownerPassword };
+		}
+		return { ...payload, currentPassword: memberPassword };
+	});
+}
+
+function getInvalidPatchMePayloads(userType: 'owner' | 'member') {
+	return INVALID_PATCH_ME_PAYLOADS.map((payload) => {
+		if (userType === 'owner') {
+			return { ...payload, currentPassword: ownerPassword };
+		}
+		return { ...payload, currentPassword: memberPassword };
+	});
+}
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{

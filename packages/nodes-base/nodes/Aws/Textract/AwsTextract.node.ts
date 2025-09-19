@@ -1,5 +1,6 @@
 import {
-	NodeConnectionType,
+	BINARY_ENCODING,
+	NodeConnectionTypes,
 	type ICredentialDataDecryptedObject,
 	type ICredentialsDecrypted,
 	type ICredentialTestFunctions,
@@ -26,8 +27,9 @@ export class AwsTextract implements INodeType {
 		defaults: {
 			name: 'AWS Textract',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -116,11 +118,13 @@ export class AwsTextract implements INodeType {
 				if (operation === 'analyzeExpense') {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					// Convert the binary buffer to a base64 string
+					const binaryData = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
 
 					const body: IDataObject = {
 						Document: {
-							Bytes: binaryData.data,
+							Bytes: binaryData,
 						},
 					};
 

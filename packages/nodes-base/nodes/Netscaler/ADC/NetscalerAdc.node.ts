@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -9,11 +9,9 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { netscalerADCApiRequest } from './GenericFunctions';
-
-import { fileDescription } from './FileDescription';
-
 import { certificateDescription } from './CertificateDescription';
+import { fileDescription } from './FileDescription';
+import { netscalerADCApiRequest } from './GenericFunctions';
 
 export class NetscalerAdc implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +32,8 @@ export class NetscalerAdc implements INodeType {
 				required: true,
 			},
 		],
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Resource',

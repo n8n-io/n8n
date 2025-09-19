@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "path": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

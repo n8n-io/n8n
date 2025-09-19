@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { WebflowType } from './node.type';
 
 import * as item from './Item/Item.resource';
+import type { WebflowType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -16,19 +16,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as WebflowType;
 
-	try {
-		switch (webflowNodeData.resource) {
-			case 'item':
-				returnData = await item[webflowNodeData.operation].execute.call(this, items);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
-		}
-	} catch (error) {
-		throw error;
+	switch (webflowNodeData.resource) {
+		case 'item':
+			returnData = await item[webflowNodeData.operation].execute.call(this, items);
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 	}
 
 	return [returnData];

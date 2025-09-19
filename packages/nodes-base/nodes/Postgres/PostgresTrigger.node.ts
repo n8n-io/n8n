@@ -5,8 +5,9 @@ import {
 	type INodeTypeDescription,
 	type ITriggerFunctions,
 	type ITriggerResponse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
+
 import {
 	pgTriggerFunction,
 	initDB,
@@ -31,15 +32,15 @@ export class PostgresTrigger implements INodeType {
 			header: '',
 			executionsHelp: {
 				inactive:
-					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"<b>While building your workflow</b>, click the 'execute step' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 				active:
-					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"<b>While building your workflow</b>, click the 'execute step' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			},
 			activationHint:
 				"Once you've finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won't see those executions here).",
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'postgres',
@@ -290,7 +291,7 @@ export class PostgresTrigger implements INodeType {
 					await connection.query('SELECT 1');
 				} catch {
 					// connection already closed. Can't perform cleanup
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+
 					throw new TriggerCloseError(this.getNode(), { level: 'warning' });
 				}
 
@@ -316,12 +317,10 @@ export class PostgresTrigger implements INodeType {
 						]);
 					}
 				} catch (error) {
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'error' });
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
-				if (!db.$pool.ending) await db.$pool.end();
 			}
 		};
 

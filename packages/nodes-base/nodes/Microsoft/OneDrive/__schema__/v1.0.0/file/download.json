@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "createdDateTime": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 5
+}

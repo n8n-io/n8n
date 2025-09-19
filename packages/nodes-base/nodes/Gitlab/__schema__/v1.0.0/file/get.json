@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "blob_id": {
+            "type": "string"
+        },
+        "commit_id": {
+            "type": "string"
+        },
+        "content": {
+            "type": "string"
+        },
+        "content_sha256": {
+            "type": "string"
+        },
+        "encoding": {
+            "type": "string"
+        },
+        "execute_filemode": {
+            "type": "boolean"
+        },
+        "file_name": {
+            "type": "string"
+        },
+        "file_path": {
+            "type": "string"
+        },
+        "last_commit_id": {
+            "type": "string"
+        },
+        "ref": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        }
+    },
+    "version": 3
+}

@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "createTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

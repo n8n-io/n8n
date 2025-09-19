@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
-import { ApplicationError, jsonStringify } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
+import { jsonStringify, UserError } from 'n8n-workflow';
 
 import config from '@/config';
-import { TIME } from '@/constants';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
@@ -39,10 +39,13 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			const { RedisClientService } = await import('../redis-client.service');
 			const redisClientService = Container.get(RedisClientService);
 
-			const prefixBase = config.getEnv('redis.prefix');
-			const prefix = redisClientService.toValidPrefix(
-				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
-			);
+			const prefixBase = this.globalConfig.redis.prefix;
+			const cachePrefix = this.globalConfig.cache.redis.prefix;
+
+			// For cluster mode, we need to ensure proper hash tagging: {n8n:cache}:
+			// instead of {n8n:cache:} to keep the colon outside the hash tag
+			const hashTagPart = `${prefixBase}:${cachePrefix}`;
+			const prefix = redisClientService.toValidPrefix(hashTagPart) + ':';
 
 			const redisClient = redisClientService.createClient({
 				type: 'cache(n8n)',
@@ -89,6 +92,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	//             storing
 	// ----------------------------------
 
+	/**
+	 * @param ttl Time to live in milliseconds
+	 */
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
@@ -152,12 +158,10 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		if (!key?.length) return;
 
 		if (this.cache.kind === 'memory') {
-			throw new ApplicationError('Method `expire` not yet implemented for in-memory cache', {
-				level: 'warning',
-			});
+			throw new UserError('Method `expire` not yet implemented for in-memory cache');
 		}
 
-		await this.cache.store.expire(key, ttlMs / TIME.SECOND);
+		await this.cache.store.expire(key, ttlMs * Time.milliseconds.toSeconds);
 	}
 
 	// ----------------------------------

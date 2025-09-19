@@ -1,0 +1,69 @@
+{
+  "name": "@n8n/json-schema-to-zod",
+  "version": "1.5.0",
+  "description": "Converts JSON schema objects into Zod schemas",
+  "types": "./dist/types/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    "import": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/esm/index.js"
+    },
+    "require": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/cjs/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc -w",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",
+    "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
+    "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
+    "dry": "pnpm run build && pnpm pub --dry-run",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "zod",
+    "json",
+    "schema",
+    "converter",
+    "cli"
+  ],
+  "author": "Stefan Terdell",
+  "contributors": [
+    "Chen (https://github.com/werifu)",
+    "Nuno Carduso (https://github.com/ncardoso-barracuda)",
+    "Lars Strojny (https://github.com/lstrojny)",
+    "Navtoj Chahal (https://github.com/navtoj)",
+    "Ben McCann (https://github.com/benmccann)",
+    "Dmitry Zakharov (https://github.com/DZakh)",
+    "Michel Turpin (https://github.com/grimly)",
+    "David Barratt (https://github.com/davidbarratt)",
+    "pevisscher (https://github.com/pevisscher)",
+    "Aidin Abedi (https://github.com/aidinabedi)",
+    "Brett Zamir (https://github.com/brettz9)",
+    "n8n (https://github.com/n8n-io)"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n"
+  },
+  "peerDependencies": {
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/json-schema": "^7.0.15",
+    "zod": "catalog:"
+  }
+}

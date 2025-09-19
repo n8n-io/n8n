@@ -1,6 +1,7 @@
 import type { INode } from 'n8n-workflow';
-import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
 
+import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
+import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
 	wrapData,
@@ -26,6 +27,7 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 	it('should transform query and values', () => {
 		const preparedQuery = prepareQueryAndReplacements(
 			'SELECT * FROM $1:name WHERE id = $2 AND name = $4 AND $3:name = 28',
+			2.5,
 			['table', 15, 'age', 'Name'],
 		);
 		expect(preparedQuery).toBeDefined();
@@ -35,6 +37,136 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		expect(preparedQuery.values.length).toEqual(2);
 		expect(preparedQuery.values[0]).toEqual(15);
 		expect(preparedQuery.values[1]).toEqual('Name');
+	});
+
+	it('should not replace dollar amounts inside quoted strings', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('This is for testing $60')",
+			2.5,
+			[],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('This is for testing $60')",
+		);
+		expect(preparedQuery.values.length).toEqual(0);
+	});
+
+	it('should handle mixed parameters and dollar amounts in quotes', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO $1:name(content, price) VALUES('Product costs $60', $2)",
+			2.5,
+			['products', 59.99],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO `products`(content, price) VALUES('Product costs $60', ?)",
+		);
+		expect(preparedQuery.values.length).toEqual(1);
+		expect(preparedQuery.values[0]).toEqual(59.99);
+	});
+
+	it('should handle parameters in double quotes', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			'INSERT INTO test_table(content) VALUES("Price is $100 and $200")',
+			2.5,
+			[],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			'INSERT INTO test_table(content) VALUES("Price is $100 and $200")',
+		);
+		expect(preparedQuery.values.length).toEqual(0);
+	});
+
+	it('should process parameters in correct order despite reverse processing', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			'SELECT * FROM table WHERE col1 = $1 AND col2 = $2 AND col3 = $3 AND col4 = $4 AND col5 = $5',
+			2.5,
+			['value1', 'value2', 'value3', 'value4', 'value5'],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			'SELECT * FROM table WHERE col1 = ? AND col2 = ? AND col3 = ? AND col4 = ? AND col5 = ?',
+		);
+		expect(preparedQuery.values.length).toEqual(5);
+		expect(preparedQuery.values[0]).toEqual('value1');
+		expect(preparedQuery.values[1]).toEqual('value2');
+		expect(preparedQuery.values[2]).toEqual('value3');
+		expect(preparedQuery.values[3]).toEqual('value4');
+		expect(preparedQuery.values[4]).toEqual('value5');
+	});
+
+	it('should handle escaped single quotes correctly', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('Don''t replace $1 here')",
+			2.5,
+			['should_not_appear', 123],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('Don''t replace $1 here')",
+		);
+	});
+
+	it('should handle escaped double quotes correctly', () => {
+		const preparedQuery = prepareQueryAndReplacements(
+			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			2.5,
+			['should_not_appear', 123],
+		);
+		expect(preparedQuery).toBeDefined();
+		expect(preparedQuery.query).toEqual(
+			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+		);
+	});
+
+	it('should use legacy processing for versions < 2.5', () => {
+		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
+
+		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.4, ['users', 123]);
+
+		expect(legacySpy).toHaveBeenCalledWith('SELECT * FROM $1:name WHERE id = $2', ['users', 123]);
+
+		legacySpy.mockRestore();
+	});
+
+	it('should use new processing for versions >= 2.5', () => {
+		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
+
+		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.5, ['users', 123]);
+
+		expect(legacySpy).not.toHaveBeenCalled();
+	});
+
+	it('should throw error when parameter is referenced but no replacement value provided', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $4',
+				2.5,
+				['value1', 'value2'], // Only 2 values but query references $4
+			);
+		}).toThrow('Parameter $4 referenced in query but no replacement value provided at index 4');
+	});
+
+	it('should throw error when multiple parameters are missing replacement values', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $3 AND name = $5',
+				2.5,
+				['value1'], // Only 1 value but query references $3 and $5
+			);
+		}).toThrow('Parameter $3 referenced in query but no replacement value provided at index 3');
+	});
+
+	it('should not throw error when all referenced parameters have replacement values', () => {
+		expect(() => {
+			prepareQueryAndReplacements(
+				'SELECT * FROM users WHERE id = $1 AND name = $2',
+				2.5,
+				['123', 'John'], // Correct number of values
+			);
+		}).not.toThrow();
 	});
 });
 

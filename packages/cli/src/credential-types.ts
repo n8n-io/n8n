@@ -1,13 +1,6 @@
-import { loadClassInIsolation } from 'n8n-core';
-import {
-	ApplicationError,
-	type ICredentialType,
-	type ICredentialTypes,
-	type LoadedClass,
-} from 'n8n-workflow';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import type { ICredentialType, ICredentialTypes } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @Service()
@@ -20,7 +13,7 @@ export class CredentialTypes implements ICredentialTypes {
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		return this.getCredential(credentialType).type;
+		return this.loadNodesAndCredentials.getCredential(credentialType).type;
 	}
 
 	getSupportedNodes(type: string): string[] {
@@ -32,28 +25,15 @@ export class CredentialTypes implements ICredentialTypes {
 	 */
 	getParentTypes(typeName: string): string[] {
 		const extendsArr = this.loadNodesAndCredentials.knownCredentials[typeName]?.extends ?? [];
-		if (extendsArr.length) {
-			extendsArr.forEach((type) => {
-				extendsArr.push(...this.getParentTypes(type));
-			});
-		}
-		return extendsArr;
-	}
 
-	private getCredential(type: string): LoadedClass<ICredentialType> {
-		const { loadedCredentials, knownCredentials } = this.loadNodesAndCredentials;
-		if (type in loadedCredentials) {
-			return loadedCredentials[type];
+		if (extendsArr.length === 0) return [];
+
+		const extendsArrCopy = [...extendsArr];
+
+		for (const type of extendsArrCopy) {
+			extendsArrCopy.push(...this.getParentTypes(type));
 		}
 
-		if (type in knownCredentials) {
-			const { className, sourcePath } = knownCredentials[type];
-			const loaded: ICredentialType = loadClassInIsolation(sourcePath, className);
-			loadedCredentials[type] = { sourcePath, type: loaded };
-			return loadedCredentials[type];
-		}
-		throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL, {
-			tags: { credentialType: type },
-		});
+		return extendsArrCopy;
 	}
 }

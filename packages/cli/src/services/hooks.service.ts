@@ -1,23 +1,25 @@
+import type {
+	AuthenticatedRequest,
+	Settings,
+	CredentialsEntity,
+	User,
+	WorkflowEntity,
+} from '@n8n/db';
+import {
+	CredentialsRepository,
+	WorkflowRepository,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
 import type { NextFunction, Response } from 'express';
-import { Service } from 'typedi';
 
 import { AuthService } from '@/auth/auth.service';
-import type { AuthUser } from '@/databases/entities/auth-user';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { Invitation } from '@/interfaces';
-import type { AuthenticatedRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 
 /**
@@ -26,6 +28,12 @@ import { UserService } from '@/services/user.service';
  */
 @Service()
 export class HooksService {
+	private innerAuthMiddleware: (
+		req: AuthenticatedRequest,
+		res: Response,
+		next: NextFunction,
+	) => Promise<void>;
+
 	constructor(
 		private readonly userService: UserService,
 		private readonly authService: AuthService,
@@ -33,8 +41,9 @@ export class HooksService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly authUserRepository: AuthUserRepository,
-	) {}
+	) {
+		this.innerAuthMiddleware = authService.createAuthMiddleware(false);
+	}
 
 	/**
 	 * Invite users to instance during signup
@@ -47,8 +56,11 @@ export class HooksService {
 	 * Set the n8n-auth cookie in the response to auto-login
 	 * the user after instance is provisioned
 	 */
-	issueCookie(res: Response, user: AuthUser) {
-		return this.authService.issueCookie(res, user);
+	issueCookie(res: Response, user: User) {
+		// TODO: The information on user has mfa enabled here, is missing!!
+		// This could be a security problem!!
+		// This is in just for the hackmation!!
+		return this.authService.issueCookie(res, user, user.mfaEnabled);
 	}
 
 	/**
@@ -56,8 +68,8 @@ export class HooksService {
 	 * 1. To know whether the instance owner is already setup
 	 * 2. To know when to update the user's profile also in cloud
 	 */
-	async findOneUser(filter: FindOneOptions<AuthUser>) {
-		return await this.authUserRepository.findOne(filter);
+	async findOneUser(filter: FindOneOptions<User>) {
+		return await this.userRepository.findOne(filter);
 	}
 
 	/**
@@ -104,7 +116,7 @@ export class HooksService {
 	 * 1. To authenticate the /proxy routes in the hooks
 	 */
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-		return await this.authService.authMiddleware(req, res, next);
+		return await this.innerAuthMiddleware(req, res, next);
 	}
 
 	getRudderStackClient(key: string, options: constructorOptions): RudderStack {

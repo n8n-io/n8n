@@ -1,3 +1,6 @@
+import FormData from 'form-data';
+import isEmpty from 'lodash/isEmpty';
+import { extension } from 'mime-types';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -5,12 +8,11 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import { isEmpty } from 'lodash';
-import FormData from 'form-data';
-import { extension } from 'mime-types';
-import { capitalize } from '../../../../utils/utilities';
-import { discordApiRequest } from '../transport';
+import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { getSendAndWaitConfig } from '../../../../utils/sendAndWait/utils';
+import { capitalize, createUtmCampaignLink } from '../../../../utils/utilities';
+import { discordApiMultiPartRequest, discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =
 	(includedFields: string[]) =>
@@ -283,4 +285,142 @@ export async function setupChannelGetter(this: IExecuteFunctions, userGuilds: ID
 
 		return channelId;
 	};
+}
+
+export async function sendDiscordMessage(
+	this: IExecuteFunctions,
+	{
+		guildId,
+		userGuilds,
+		isOAuth2,
+		body,
+		items,
+		files = [],
+		itemIndex = 0,
+	}: {
+		guildId: string;
+		userGuilds: IDataObject[];
+		isOAuth2: boolean;
+		body: IDataObject;
+		items: INodeExecutionData[];
+		files?: IDataObject[];
+		itemIndex?: number;
+	},
+) {
+	const sendTo = this.getNodeParameter('sendTo', itemIndex) as string;
+
+	let channelId = '';
+
+	if (sendTo === 'user') {
+		const userId = this.getNodeParameter('userId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+
+		if (isOAuth2) {
+			try {
+				await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+			} catch (error) {
+				if (error instanceof NodeApiError && error.httpCode === '404') {
+					throw new NodeOperationError(
+						this.getNode(),
+						`User with the id ${userId} is not a member of the selected guild`,
+						{
+							itemIndex,
+						},
+					);
+				}
+
+				throw new NodeOperationError(this.getNode(), error, {
+					itemIndex,
+				});
+			}
+		}
+
+		channelId = (
+			(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
+				recipient_id: userId,
+			})) as IDataObject
+		).id as string;
+
+		if (!channelId) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Could not create a channel to send direct message to',
+				{ itemIndex },
+			);
+		}
+	}
+
+	if (sendTo === 'channel') {
+		channelId = this.getNodeParameter('channelId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	}
+
+	if (isOAuth2 && sendTo !== 'user') {
+		await checkAccessToChannel.call(this, channelId, userGuilds, itemIndex);
+	}
+
+	if (!channelId) {
+		throw new NodeOperationError(this.getNode(), 'Channel ID is required', {
+			itemIndex,
+		});
+	}
+
+	let response: IDataObject[] = [];
+
+	if (files?.length) {
+		const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, itemIndex);
+
+		response = await discordApiMultiPartRequest.call(
+			this,
+			'POST',
+			`/channels/${channelId}/messages`,
+			multiPartBody,
+		);
+	} else {
+		response = await discordApiRequest.call(this, 'POST', `/channels/${channelId}/messages`, body);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(response),
+		{ itemData: { item: itemIndex } },
+	);
+
+	return executionData;
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+	const config = getSendAndWaitConfig(context);
+	let description = config.message;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.discord', instanceId);
+		description = `${config.message}\n\n_${attributionText}_[n8n](${link})`;
+	}
+
+	const body = {
+		embeds: [
+			{
+				description,
+				color: 5814783,
+			},
+		],
+		components: [
+			{
+				type: 1,
+				components: config.options.map((option) => {
+					return {
+						type: 2,
+						style: 5,
+						label: option.label,
+						url: option.url,
+					};
+				}),
+			},
+		],
+	};
+
+	return body;
 }

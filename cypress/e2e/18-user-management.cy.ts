@@ -1,8 +1,9 @@
+import { expandSidebar } from '../composables/sidebar';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
 import { errorToast, successToast } from '../pages/notifications';
 import { PersonalSettingsPage } from '../pages/settings-personal';
-import { getVisibleSelect } from '../utils';
+import { getVisiblePopper } from '../utils';
 
 /**
  * User A - Instance owner
@@ -36,10 +37,11 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it('should login and logout', () => {
 		cy.visit('/');
-		cy.get('input[name="email"]').type(INSTANCE_OWNER.email);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_OWNER.email);
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
+		expandSidebar();
 		mainSidebar.actions.goToSettings();
 		settingsSidebar.getters.users().should('be.visible');
 
@@ -47,7 +49,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.openUserMenu();
 		cy.getByTestId('user-menu-item-logout').click();
 
-		cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 		cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
@@ -74,8 +76,8 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		// List item for current user should have the `Owner` badge
 		usersSettingsPage.getters
 			.userItem(INSTANCE_OWNER.email)
-			.find('.n8n-badge:contains("Owner")')
-			.should('exist');
+			.find('td:contains("Owner")')
+			.should('be.visible');
 		// Other users list items should contain action pop-up list
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[0].email).should('exist');
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
@@ -90,14 +92,14 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		// Change role from Member to Admin
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_MEMBERS[0].email)
-			.find('input')
-			.should('contain.value', 'Member');
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
-		getVisibleSelect().find('li').contains('Admin').click();
+			.find('button:contains("Member")')
+			.should('be.visible')
+			.click();
+		getVisiblePopper().find('label').contains('Admin').click();
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_MEMBERS[0].email)
-			.find('input')
-			.should('contain.value', 'Admin');
+			.find('button:contains("Admin")')
+			.should('be.visible');
 
 		usersSettingsPage.actions.loginAndVisit(
 			INSTANCE_MEMBERS[0].email,
@@ -108,15 +110,14 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		// Change role from Admin to Member, then back to Admin
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_ADMIN.email)
-			.find('input')
-			.should('contain.value', 'Admin');
-
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
-		getVisibleSelect().find('li').contains('Member').click();
+			.find('button:contains("Admin")')
+			.should('be.visible')
+			.click();
+		getVisiblePopper().find('label').contains('Member').click();
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_ADMIN.email)
-			.find('input')
-			.should('contain.value', 'Member');
+			.find('button:contains("Member")')
+			.should('be.visible');
 
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, false);
 		usersSettingsPage.actions.loginAndVisit(
@@ -125,20 +126,28 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			true,
 		);
 
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_ADMIN.email).click();
-		getVisibleSelect().find('li').contains('Admin').click();
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_ADMIN.email)
-			.find('input')
-			.should('contain.value', 'Admin');
+			.find('button:contains("Member")')
+			.should('be.visible')
+			.click();
+		getVisiblePopper().find('label').contains('Admin').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_ADMIN.email)
+			.find('button:contains("Admin")')
+			.should('be.visible');
 
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_ADMIN.email, INSTANCE_ADMIN.password, true);
-		usersSettingsPage.getters.userRoleSelect(INSTANCE_MEMBERS[0].email).click();
-		getVisibleSelect().find('li').contains('Member').click();
 		usersSettingsPage.getters
 			.userRoleSelect(INSTANCE_MEMBERS[0].email)
-			.find('input')
-			.should('contain.value', 'Member');
+			.find('button:contains("Admin")')
+			.should('be.visible')
+			.click();
+		getVisiblePopper().find('label').contains('Member').click();
+		usersSettingsPage.getters
+			.userRoleSelect(INSTANCE_MEMBERS[0].email)
+			.find('button:contains("Member")')
+			.should('be.visible');
 
 		cy.disableFeature('advancedPermissions');
 	});
@@ -148,24 +157,9 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 		personalSettingsPage.actions.changeTheme('Dark');
 		cy.get('body').should('have.attr', 'data-theme', 'dark');
-		settingsSidebar.actions.back();
-		mainSidebar.getters
-			.logo()
-			.should('have.attr', 'src')
-			.then((src) => {
-				expect(src).to.include('/static/logo/channel/dev-dark.svg');
-			});
 
-		cy.visit(personalSettingsPage.url);
 		personalSettingsPage.actions.changeTheme('Light');
 		cy.get('body').should('have.attr', 'data-theme', 'light');
-		settingsSidebar.actions.back();
-		mainSidebar.getters
-			.logo()
-			.should('have.attr', 'src')
-			.then((src) => {
-				expect(src).to.include('/static/logo/channel/dev.svg');
-			});
 	});
 
 	it('should delete user and their data', () => {
@@ -244,7 +238,10 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
-		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);
+		personalSettingsPage.actions.updateEmail(
+			updatedPersonalData.newEmail,
+			updatedPersonalData.newPassword,
+		);
 		successToast().should('contain', 'Personal details updated');
 		personalSettingsPage.actions.loginWithNewData(
 			updatedPersonalData.newEmail,

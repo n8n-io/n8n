@@ -1,14 +1,13 @@
-import type { IWebhookData } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import type { IWebhookData, IWorkflowBase } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
-import type { IWorkflowDb } from '@/interfaces';
 import { CacheService } from '@/services/cache/cache.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 export type TestWebhookRegistration = {
 	pushRef?: string;
-	workflowEntity: IWorkflowDb;
+	workflowEntity: IWorkflowBase;
 	destinationNode?: string;
 	webhook: IWebhookData;
 };
@@ -17,7 +16,7 @@ export type TestWebhookRegistration = {
 export class TestWebhookRegistrationsService {
 	constructor(
 		private readonly cacheService: CacheService,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private readonly cacheKey = 'test-webhooks';
@@ -27,7 +26,7 @@ export class TestWebhookRegistrationsService {
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
 
-		if (!this.orchestrationService.isMultiMainSetupEnabled) return;
+		if (this.instanceSettings.isSingleMain) return;
 
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
@@ -70,6 +69,10 @@ export class TestWebhookRegistrationsService {
 		if (!hash) return [];
 
 		return Object.values(hash);
+	}
+
+	async getRegistrationsHash() {
+		return await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
 	}
 
 	async deregisterAll() {

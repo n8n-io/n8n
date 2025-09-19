@@ -105,9 +105,8 @@ async function main() {
 		console.error(error.message);
 		console.error('');
 		await printContainerStatus(dockerComposeClient);
-		console.error('');
-		await dumpLogs(dockerComposeClient);
 	} finally {
+		await dumpLogs(dockerComposeClient);
 		await dockerComposeClient.$('down');
 	}
 }
@@ -118,7 +117,7 @@ async function printContainerStatus(dockerComposeClient) {
 }
 
 async function dumpLogs(dockerComposeClient) {
-	console.error('Container logs:');
+	console.info('Container logs:');
 	await dockerComposeClient.$('logs');
 }
 

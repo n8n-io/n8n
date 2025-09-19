@@ -1,0 +1,127 @@
+{
+	"name": "slack tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "get",
+				"channelId": {
+					"__rl": true,
+					"value": "C085WNEHP4Y",
+					"mode": "list",
+					"cachedResultName": "test-003"
+				},
+				"options": {
+					"includeNumMembers": true
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1040, 360],
+			"webhookId": "04c5e584-45f4-48d0-bcd2-0ecacecb0f53",
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "C085WNEHP4Y",
+					"name": "test-003",
+					"is_channel": true,
+					"is_group": false,
+					"is_im": false,
+					"is_mpim": false,
+					"is_private": false,
+					"created": 1734325731,
+					"is_archived": false,
+					"is_general": false,
+					"unlinked": 0,
+					"name_normalized": "test-003",
+					"is_shared": false,
+					"is_org_shared": false,
+					"is_pending_ext_shared": false,
+					"pending_shared": [],
+					"context_team_id": "T0364MSFHV2",
+					"updated": 1734325731240,
+					"parent_conversation": null,
+					"creator": "U0362BXQYJW",
+					"is_ext_shared": false,
+					"shared_team_ids": ["T0364MSFHV2"],
+					"pending_connected_team_ids": [],
+					"is_member": true,
+					"last_read": "0000000000.000000",
+					"topic": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					},
+					"purpose": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					},
+					"previous_names": []
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "753332eb-25d1-443a-acef-92993e89751a",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "qJdEfiBgYLdfYOTs",
+	"tags": []
+}

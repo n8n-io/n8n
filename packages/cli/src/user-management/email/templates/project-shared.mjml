@@ -1,0 +1,21 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-include path="./_logo.mjml" />
+		<mj-section>
+			<mj-column>
+				<mj-text font-size="24px"
+					>You have been added to the {{ projectName }} project as {{ role }}</mj-text
+				>
+			</mj-column>
+		</mj-section>
+		<mj-section>
+			<mj-column>
+				<mj-text
+					>This gives you access to all the workflows and credentials in that project</mj-text
+				>
+				<mj-button href="{{projectUrl}}">View project</mj-button>
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

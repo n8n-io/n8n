@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -5,9 +6,8 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import moment from 'moment-timezone';
 
 interface PollData {
 	lastItemDate?: string;
@@ -30,7 +30,7 @@ export class RssFeedReadTrigger implements INodeType {
 		},
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Feed URL',
@@ -78,14 +78,15 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) > dateToCheck) {
+				if (item.isoDate && Date.parse(item.isoDate) > dateToCheck) {
 					returnData.push(item);
 				}
 			});
 
 			if (feed.items.length) {
-				const maxIsoDate = Math.max(...feed.items.map(({ isoDate }) => Date.parse(isoDate!)));
-				pollData.lastItemDate = new Date(maxIsoDate).toISOString();
+				pollData.lastItemDate = feed.items.reduce((a, b) =>
+					new Date(a.isoDate!) > new Date(b.isoDate!) ? a : b,
+				).isoDate;
 			}
 		}
 

@@ -1,15 +1,14 @@
+import { testDb } from '@n8n/backend-test-utils';
+import type { CredentialsEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
-import { Container } from 'typedi';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
 import { saveCredential } from '@test-integration/db/credentials';
-import { createOwner } from '@test-integration/db/users';
-import * as testDb from '@test-integration/test-db';
+import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -17,6 +16,7 @@ describe('OAuth2 API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['oauth2'] });
 
 	let owner: User;
+	let anotherUser: User;
 	let ownerAgent: SuperAgentTest;
 	let credential: CredentialsEntity;
 	const credentialData = {
@@ -27,16 +27,17 @@ describe('OAuth2 API', () => {
 		authQueryParameters: 'access_type=offline',
 	};
 
-	CredentialsHelper.prototype.applyDefaultsAndOverwrites = (_, decryptedDataOriginal) =>
+	CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
 		decryptedDataOriginal;
 
 	beforeAll(async () => {
 		owner = await createOwner();
+		anotherUser = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['SharedCredentials', 'Credentials']);
+		await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 		credential = await saveCredential(
 			{
 				name: 'Test',
@@ -74,6 +75,28 @@ describe('OAuth2 API', () => {
 		});
 	});
 
+	it('should fail on auth when callback is called as another user', async () => {
+		const controller = Container.get(OAuth2CredentialController);
+		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
+		const renderSpy = (Response.render = jest.fn(function () {
+			this.end();
+		}));
+
+		await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+
+		const [_, state] = csrfSpy.mock.results[0].value;
+
+		await testServer
+			.authAgentFor(anotherUser)
+			.get('/oauth2-credential/callback')
+			.query({ code: 'auth_code', state })
+			.expect(200);
+
+		expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+			error: { message: 'Unauthorized' },
+		});
+	});
+
 	it('should handle a valid callback without auth', async () => {
 		const controller = Container.get(OAuth2CredentialController);
 		const csrfSpy = jest.spyOn(controller, 'createCsrfState').mockClear();
@@ -87,7 +110,7 @@ describe('OAuth2 API', () => {
 
 		nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'updated_token' });
 
-		await testServer.authlessAgent
+		await ownerAgent
 			.get('/oauth2-credential/callback')
 			.query({ code: 'auth_code', state })
 			.expect(200);

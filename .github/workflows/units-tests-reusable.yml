@@ -12,12 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 20.x
-      cacheKey:
-        description: Cache key for modules and build artifacts.
-        required: false
-        default: ''
-        type: string
+        default: 22.x
       collectCoverage:
         required: false
         default: false
@@ -27,53 +22,35 @@ on:
         description: 'Codecov upload token.'
         required: false
 
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
 jobs:
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ inputs.ref }}
 
-      - run: corepack enable
-      - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v4.0.2
+      - name: Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm test:ci
 
-      - name: Setup build cache
-        if: inputs.collectCoverage != true
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Build
-        if: ${{ inputs.cacheKey == '' }}
-        run: pnpm build
-
-      - name: Restore cached build artifacts
-        if: ${{ inputs.cacheKey != '' }}
-        uses: actions/cache/restore@v4.0.0
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
         with:
-          path: ./packages/**/dist
-          key: ${{ inputs.cacheKey }}
-
-      - name: Test Backend
-        run: pnpm test:backend
-
-      - name: Test Nodes
-        run: pnpm test:nodes
-
-      - name: Test Frontend
-        run: pnpm test:frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage to Codecov
-        if: inputs.collectCoverage
-        uses: codecov/codecov-action@v4.5.0
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

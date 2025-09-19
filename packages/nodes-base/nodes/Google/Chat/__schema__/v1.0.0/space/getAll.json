@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "createTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "lastActiveTime": {
+            "type": "string"
+        },
+        "membershipCount": {
+            "type": "object",
+            "properties": {
+                "joinedDirectHumanUserCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "spaceHistoryState": {
+            "type": "string"
+        },
+        "spaceThreadingState": {
+            "type": "string"
+        },
+        "spaceType": {
+            "type": "string"
+        },
+        "spaceUri": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

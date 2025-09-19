@@ -1,9 +1,17 @@
-import type { IRequestOptions } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	INodeExecutionData,
+	INodeProperties,
+	IRequestOptions,
+} from 'n8n-workflow';
+
 import {
 	REDACTED,
 	prepareRequestBody,
 	sanitizeUiMessage,
 	setAgentOptions,
+	replaceNullValues,
+	getSecrets,
 } from '../../GenericFunctions';
 import type { BodyParameter, BodyParametersReducer } from '../../GenericFunctions';
 
@@ -208,6 +216,115 @@ describe('HTTP Node Utils', () => {
 			const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
 
 			expect(sanitizedRequest.headers).toBeUndefined();
+		});
+	});
+
+	describe('replaceNullValues', () => {
+		it('should replace null json with an empty object', () => {
+			const item: INodeExecutionData = {
+				json: {},
+			};
+			const result = replaceNullValues(item);
+			expect(result.json).toEqual({});
+		});
+
+		it('should not modify json if it is already an object', () => {
+			const jsonObject = { key: 'value' };
+			const item: INodeExecutionData = { json: jsonObject };
+			const result = replaceNullValues(item);
+			expect(result.json).toBe(jsonObject);
+		});
+	});
+
+	describe('getSecrets', () => {
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should return secrets for sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Api Key',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+				{
+					displayName: 'Username',
+					name: 'username',
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sensitive-api-key',
+				username: 'user123',
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual(['sensitive-api-key']);
+		});
+
+		it('should not return non-sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Username',
+					name: 'username',
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				username: 'user123',
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should not include non-string values in sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'ApiKey',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 12345,
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should return an empty array if properties and credentials are empty', () => {
+			const properties: INodeProperties[] = [];
+			const credentials: ICredentialDataDecryptedObject = {};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should not include null or undefined values in sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'ApiKey',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: {},
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
 		});
 	});
 });

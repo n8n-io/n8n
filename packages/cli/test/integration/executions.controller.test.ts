@@ -1,14 +1,23 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { User } from '@/databases/entities/user';
 import { WaitTracker } from '@/wait-tracker';
 
-import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
+import {
+	createSuccessfulExecution,
+	createWaitingExecution,
+	getAllExecutions,
+} from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {
@@ -26,8 +35,13 @@ const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	return await createSuccessfulExecution(workflow);
 };
 
+const saveWaitingExecution = async ({ belongingTo }: { belongingTo: User }) => {
+	const workflow = await createWorkflow({}, belongingTo);
+	return await createWaitingExecution(workflow);
+};
+
 beforeEach(async () => {
-	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
 	owner = await createOwner();
 	member = await createMember();
@@ -114,5 +128,23 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+});
+
+describe('POST /executions/stop', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveExecution({ belongingTo: owner });
+		const incorrectExecutionId = '1234';
+
+		await testServer
+			.authAgentFor(owner)
+			.post(`/executions/${incorrectExecutionId}/stop`)
+			.expect(500);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		const execution = await saveWaitingExecution({ belongingTo: owner });
+
+		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });

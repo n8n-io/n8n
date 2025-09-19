@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "finished": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "workflowId": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

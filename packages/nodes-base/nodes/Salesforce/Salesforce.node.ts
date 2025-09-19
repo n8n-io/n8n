@@ -9,56 +9,35 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { accountFields, accountOperations } from './AccountDescription';
-
 import type { IAccount } from './AccountInterface';
-
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
-
 import type { IAttachment } from './AttachmentInterface';
-
 import type { ICampaignMember } from './CampaignMemberInterface';
-
 import { caseFields, caseOperations } from './CaseDescription';
-
 import type { ICase, ICaseComment } from './CaseInterface';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
 import type { IContact } from './ContactInterface';
-
 import { customObjectFields, customObjectOperations } from './CustomObjectDescription';
-
+import { documentFields, documentOperations } from './DocumentDescription';
 import { flowFields, flowOperations } from './FlowDescription';
-
 import {
 	getQuery,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
 } from './GenericFunctions';
-
 import { leadFields, leadOperations } from './LeadDescription';
-
 import type { ILead } from './LeadInterface';
-
 import type { INote } from './NoteInterface';
-
 import { opportunityFields, opportunityOperations } from './OpportunityDescription';
-
 import type { IOpportunity } from './OpportunityInterface';
-
 import { searchFields, searchOperations } from './SearchDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
-
 import type { ITask } from './TaskInterface';
-
 import { userFields, userOperations } from './UserDescription';
-
-import { documentFields, documentOperations } from './DocumentDescription';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,8 +51,9 @@ export class Salesforce implements INodeType {
 		defaults: {
 			name: 'Salesforce',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'salesforceOAuth2Api',
@@ -1039,7 +1019,7 @@ export class Salesforce implements INodeType {
 			// async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	const returnData: INodePropertyOptions[] = [];
 			// 	const fields = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/sobjects/folder/describe');
-			// 	console.log(JSON.stringify(fields, undefined, 2))
+			// 	this.logger.debug(JSON.stringify(fields, undefined, 2))
 			// 	const qs = {
 			// 		//ContentFolderItem ContentWorkspace ContentFolder
 			// 		q: `SELECT Id, Title FROM ContentVersion`,

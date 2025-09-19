@@ -1,37 +1,59 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	SupplyData,
-	ExecutionError,
-	IDataObject,
-} from 'n8n-workflow';
-
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
+import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+import type {
+	ExecutionError,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
+} from 'n8n-workflow';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import {
-	inputSchemaField,
-	jsonSchemaExampleField,
+	jsonParse,
+	NodeConnectionTypes,
+	nodeNameToToolName,
+	NodeOperationError,
+} from 'n8n-workflow';
+import {
+	buildInputSchemaField,
+	buildJsonSchemaExampleField,
+	buildJsonSchemaExampleNotice,
 	schemaTypeField,
-} from '../../../utils/descriptions';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
-import type { JSONSchema7 } from 'json-schema';
+} from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import type { DynamicZodObject } from '../../../types/zod.types';
+
+const jsonSchemaExampleField = buildJsonSchemaExampleField({
+	showExtraProps: { specifyInputSchema: [true] },
+});
+
+const jsonSchemaExampleNotice = buildJsonSchemaExampleNotice({
+	showExtraProps: {
+		specifyInputSchema: [true],
+		'@version': [{ _cnd: { gte: 1.3 } }],
+	},
+});
+
+const jsonSchemaField = buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } });
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Write a tool in JS or Python',
 		defaults: {
 			name: 'Code Tool',
@@ -50,13 +72,13 @@ export class ToolCode implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'See an example of a conversational agent with custom tool written in JavaScript <a href="/templates/1963" target="_blank">here</a>.',
@@ -87,7 +109,7 @@ export class ToolCode implements INodeType {
 					'The name of the function to be called, could contain letters, numbers, and underscores only',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [1.1],
 					},
 				},
 			},
@@ -172,15 +194,24 @@ export class ToolCode implements INodeType {
 			},
 			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
 			jsonSchemaExampleField,
-			inputSchemaField,
+			jsonSchemaExampleNotice,
+			jsonSchemaField,
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
-		const name = this.getNodeParameter('name', itemIndex) as string;
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isRunnerEnabled = runnersConfig.enabled;
+
+		const { typeVersion } = node;
+		const name =
+			typeVersion <= 1.1
+				? (this.getNodeParameter('name', itemIndex) as string)
+				: nodeNameToToolName(node);
+
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
 		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
@@ -193,15 +224,16 @@ export class ToolCode implements INodeType {
 			code = this.getNodeParameter('pythonCode', itemIndex) as string;
 		}
 
+		// @deprecated - TODO: Remove this after a new python runner is implemented
 		const getSandbox = (query: string | IDataObject, index = 0) => {
 			const context = getSandboxContext.call(this, index);
 			context.query = query;
 
 			let sandbox: Sandbox;
 			if (language === 'javaScript') {
-				sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
+				sandbox = new JavaScriptSandbox(context, code, this.helpers);
 			} else {
-				sandbox = new PythonSandbox(context, code, index, this.helpers);
+				sandbox = new PythonSandbox(context, code, this.helpers);
 			}
 
 			sandbox.on(
@@ -214,15 +246,31 @@ export class ToolCode implements INodeType {
 			return sandbox;
 		};
 
-		const runFunction = async (query: string | IDataObject): Promise<string> => {
-			const sandbox = getSandbox(query, itemIndex);
-			return await (sandbox.runCode() as Promise<string>);
+		const runFunction = async (query: string | IDataObject): Promise<unknown> => {
+			if (language === 'javaScript' && isRunnerEnabled) {
+				const sandbox = new JsTaskRunnerSandbox(
+					code,
+					'runOnceForAllItems',
+					workflowMode,
+					this,
+					undefined,
+					{
+						query,
+					},
+				);
+				const executionData = await sandbox.runCodeForTool();
+				return executionData;
+			} else {
+				// use old vm2-based sandbox for python or when without runner enabled
+				const sandbox = getSandbox(query, itemIndex);
+				return await sandbox.runCode<string>();
+			}
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
-			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
-			let response: string = '';
+			let response: any = '';
 			let executionError: ExecutionError | undefined;
 			try {
 				response = await runFunction(query);
@@ -244,9 +292,9 @@ export class ToolCode implements INodeType {
 			}
 
 			if (executionError) {
-				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, executionError);
 			} else {
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 			}
 
 			return response;
@@ -268,15 +316,15 @@ export class ToolCode implements INodeType {
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 
 				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+
 				const jsonSchema =
 					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
+						? generateSchemaFromExample(jsonExample, this.getNode().typeVersion >= 1.3)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...commonToolOptions,
 				});

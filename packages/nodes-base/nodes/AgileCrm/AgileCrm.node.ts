@@ -5,16 +5,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
-
-import { contactFields, contactOperations } from './ContactDescription';
+import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
+import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact, IContactUpdate } from './ContactInterface';
-
+import { dealFields, dealOperations } from './DealDescription';
+import type { IDeal } from './DealInterface';
+import type { IFilter, ISearchConditions } from './FilterInterface';
 import {
 	agileCrmApiRequest,
 	agileCrmApiRequestAllItems,
@@ -23,10 +21,6 @@ import {
 	simplifyResponse,
 	validateJSON,
 } from './GenericFunctions';
-
-import type { IDeal } from './DealInterface';
-
-import type { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,8 +35,9 @@ export class AgileCrm implements INodeType {
 		defaults: {
 			name: 'Agile CRM',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'agileCrmApi',

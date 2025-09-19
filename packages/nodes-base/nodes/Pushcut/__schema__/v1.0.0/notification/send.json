@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        },
+        "notificationId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

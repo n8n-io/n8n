@@ -1,3 +1,6 @@
+import jwt from 'jsonwebtoken';
+import moment from 'moment-timezone';
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -9,10 +12,6 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
 
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -114,14 +113,13 @@ export async function salesforceApiRequest(
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			Object.assign(options, option);
-			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
-			const credentials = (await this.getCredentials(credentialsType)) as {
+			const credentials = await this.getCredentials<{
 				oauthTokenData: { instance_url: string };
-			};
+			}>(credentialsType);
 			const options = getOptions.call(
 				this,
 				method,
@@ -244,4 +242,45 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 	}
 
 	return query;
+}
+
+/**
+ * Calculates the polling start date with safety margin to account for Salesforce indexing delays
+ */
+export function getPollStartDate(lastTimeChecked: string | undefined): string {
+	if (!lastTimeChecked) {
+		return DateTime.now().toISO();
+	}
+	const safetyMarginMinutes = 15;
+	return DateTime.fromISO(lastTimeChecked).minus({ minutes: safetyMarginMinutes }).toISO();
+}
+
+/**
+ * Filters out already processed items and manages the processed IDs list
+ */
+export function filterAndManageProcessedItems(
+	responseData: IDataObject[],
+	processedIds: string[],
+): { newItems: IDataObject[]; updatedProcessedIds: string[] } {
+	const processedIdsSet = new Set(processedIds);
+
+	const newItems: IDataObject[] = [];
+	const newItemIds: string[] = [];
+
+	for (const item of responseData) {
+		if (typeof item.Id !== 'string') continue;
+
+		const itemId = item.Id;
+		if (!processedIdsSet.has(itemId)) {
+			newItems.push(item);
+			newItemIds.push(itemId);
+		} else {
+			processedIdsSet.delete(itemId);
+		}
+	}
+
+	const remainingProcessedIds = Array.from(processedIdsSet);
+	const updatedProcessedIds = remainingProcessedIds.concat(newItemIds);
+
+	return { newItems, updatedProcessedIds };
 }

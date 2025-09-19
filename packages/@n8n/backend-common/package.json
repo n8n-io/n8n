@@ -1,0 +1,40 @@
+{
+  "name": "@n8n/backend-common",
+  "version": "0.22.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/config": "workspace:^",
+    "@n8n/constants": "workspace:^",
+    "@n8n/decorators": "workspace:^",
+    "@n8n/di": "workspace:^",
+    "callsites": "catalog:",
+    "n8n-workflow": "workspace:^",
+    "picocolors": "catalog:",
+    "reflect-metadata": "catalog:",
+    "winston": "3.14.2",
+    "yargs-parser": "21.1.1"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/yargs-parser": "21.0.0",
+    "zod": "catalog:"
+  }
+}

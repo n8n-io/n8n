@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "canUploadPhoto": {
+            "type": "integer"
+        },
+        "department": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "jobTitle": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
+        },
+        "pronouns": {
+            "type": "null"
+        },
+        "supervisor": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

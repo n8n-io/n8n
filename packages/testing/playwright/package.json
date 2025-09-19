@@ -1,0 +1,43 @@
+{
+  "name": "n8n-playwright",
+  "private": true,
+  "scripts": {
+    "test:all": "playwright test",
+    "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui --project=ui:isolated",
+    "test:ui": "playwright test --project=*ui*",
+    "test:performance": "playwright test --project=performance",
+    "test:chaos": "playwright test --project='*:chaos'",
+    "test:container:standard": "playwright test --project='standard:*'",
+    "test:container:postgres": "playwright test --project='postgres:*'",
+    "test:container:queue": "playwright test --project='queue:*'",
+    "test:container:multi-main": "playwright test --project='multi-main:*'",
+    "test:container:trial": "playwright test --project='trial:*'",
+    "test:workflows:setup": "tsx ./tests/cli-workflows/setup-workflow-tests.ts",
+    "test:workflows": "playwright test --project=cli-workflows",
+    "test:workflows:schema": "SCHEMA=true playwright test --project=cli-workflows",
+    "test:workflows:update": "playwright test --project=cli-workflows --update-snapshots",
+    "install-browsers:local": "playwright install chromium --with-deps",
+    "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps",
+    "browsers:uninstall": "playwright uninstall --all",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@currents/playwright": "^1.15.3",
+    "@n8n/api-types": "workspace:^",
+    "@playwright/test": "1.54.2",
+    "@types/lodash": "catalog:",
+    "eslint-plugin-playwright": "2.2.2",
+    "generate-schema": "2.6.0",
+    "n8n": "workspace:*",
+    "n8n-containers": "workspace:*",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "flatted": "catalog:",
+    "nanoid": "catalog:",
+    "tsx": "catalog:",
+    "mockserver-client": "^5.15.0",
+    "zod": "catalog:"
+  }
+}

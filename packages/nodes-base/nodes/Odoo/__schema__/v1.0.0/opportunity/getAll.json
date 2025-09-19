@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "tag_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "version": 7
+}

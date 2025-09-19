@@ -1,3 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import partialRight from 'lodash/partialRight';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -6,33 +9,26 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
-import partialRight from 'lodash/partialRight';
+import type { CollectionUpdateFields } from './descriptions/CollectionDescription';
+import { collectionFields, collectionOperations } from './descriptions/CollectionDescription';
+import { eventFields, eventOperations } from './descriptions/EventDescription';
+import type {
+	GroupCreationAdditionalFields,
+	GroupUpdateFields,
+} from './descriptions/GroupDescription';
+import { groupFields, groupOperations } from './descriptions/GroupDescription';
+import type {
+	MemberCreationAdditionalFields,
+	MemberUpdateFields,
+} from './descriptions/MemberDescription';
+import { memberFields, memberOperations } from './descriptions/MemberDescription';
 import {
 	bitwardenApiRequest as tokenlessBitwardenApiRequest,
 	getAccessToken,
 	handleGetAll as tokenlessHandleGetAll,
 	loadResource,
 } from './GenericFunctions';
-
-import type { CollectionUpdateFields } from './descriptions/CollectionDescription';
-import { collectionFields, collectionOperations } from './descriptions/CollectionDescription';
-
-import { eventFields, eventOperations } from './descriptions/EventDescription';
-
-import type {
-	GroupCreationAdditionalFields,
-	GroupUpdateFields,
-} from './descriptions/GroupDescription';
-import { groupFields, groupOperations } from './descriptions/GroupDescription';
-
-import type {
-	MemberCreationAdditionalFields,
-	MemberUpdateFields,
-} from './descriptions/MemberDescription';
-import { memberFields, memberOperations } from './descriptions/MemberDescription';
 
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,8 +42,9 @@ export class Bitwarden implements INodeType {
 		defaults: {
 			name: 'Bitwarden',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bitwardenApi',

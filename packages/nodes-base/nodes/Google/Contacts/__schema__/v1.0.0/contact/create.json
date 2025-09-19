@@ -1,0 +1,195 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "contactGroupMembership": {
+                        "type": "object",
+                        "properties": {
+                            "contactGroupId": {
+                                "type": "string"
+                            },
+                            "contactGroupResourceName": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "objectType": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "etag": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "updateTime": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "names": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "displayNameLastFirst": {
+                        "type": "string"
+                    },
+                    "familyName": {
+                        "type": "string"
+                    },
+                    "givenName": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "sourcePrimary": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "unstructuredName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "phoneNumbers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "canonicalForm": {
+                        "type": "string"
+                    },
+                    "formattedType": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "photos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "default": {
+                        "type": "boolean"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resourceName": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

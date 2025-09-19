@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/backend-test-utils",
+  "version": "0.15.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "echo \"WARNING: no test specified\" && exit 0",
+    "test:dev": "echo \"WARNING: no test specified\" && exit 0"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/backend-common": "workspace:^",
+    "@n8n/config": "workspace:^",
+    "@n8n/constants": "workspace:^",
+    "@n8n/db": "workspace:^",
+    "@n8n/di": "workspace:^",
+    "@n8n/permissions": "workspace:^",
+    "@n8n/typeorm": "catalog:",
+    "jest-mock-extended": "^3.0.4",
+    "n8n-workflow": "workspace:^",
+    "reflect-metadata": "catalog:",
+    "uuid": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
+}

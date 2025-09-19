@@ -1,0 +1,51 @@
+{
+	"type": "object",
+	"properties": {
+		"account": {
+			"type": "object",
+			"properties": {
+				"accountUrl": {
+					"type": "string"
+				},
+				"createdTimestamp": {
+					"type": "string"
+				},
+				"updatedTimestamp": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"links": {
+					"type": "object",
+					"properties": {
+						"accountContacts": {
+							"type": "string"
+						},
+						"accountCustomFieldData": {
+							"type": "string"
+						},
+						"contactEmails": {
+							"type": "string"
+						},
+						"emailActivities": {
+							"type": "string"
+						},
+						"notes": {
+							"type": "string"
+						},
+						"owner": {
+							"type": "string"
+						}
+					}
+				},
+				"name": {
+					"type": "string"
+				},
+				"owner": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

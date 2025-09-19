@@ -1,20 +1,26 @@
+import type { LicenseState } from '@n8n/backend-common';
+import type { WorkflowRepository } from '@n8n/db';
 import type { TEntitlement } from '@n8n_io/license-sdk';
+import axios, { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { LicenseErrors, LicenseService } from '@/license/license.service';
 
+jest.mock('axios');
+
 describe('LicenseService', () => {
 	const license = mock<License>();
+	const licenseState = mock<LicenseState>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const entitlement = mock<TEntitlement>({ productId: '123' });
 	const eventService = mock<EventService>();
 	const licenseService = new LicenseService(
 		mock(),
 		license,
+		licenseState,
 		workflowRepository,
 		mock(),
 		eventService,
@@ -23,7 +29,9 @@ describe('LicenseService', () => {
 	license.getMainPlan.mockReturnValue(entitlement);
 	license.getTriggerLimit.mockReturnValue(400);
 	license.getPlanName.mockReturnValue('Test Plan');
+	licenseState.getMaxWorkflowsWithEvaluations.mockReturnValue(2);
 	workflowRepository.getActiveTriggerCount.mockResolvedValue(7);
+	workflowRepository.getWorkflowsWithEvaluationCount.mockResolvedValue(1);
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -38,10 +46,14 @@ describe('LicenseService', () => {
 			const data = await licenseService.getLicenseData();
 			expect(data).toEqual({
 				usage: {
-					executions: {
+					activeWorkflowTriggers: {
 						limit: 400,
 						value: 7,
 						warningThreshold: 0.8,
+					},
+					workflowsHavingEvaluations: {
+						limit: 2,
+						value: 1,
 					},
 				},
 				license: {
@@ -64,6 +76,15 @@ describe('LicenseService', () => {
 	});
 
 	describe('renewLicense', () => {
+		test('should skip renewal for unlicensed user (Community plan)', async () => {
+			license.getPlanName.mockReturnValueOnce('Community');
+
+			await licenseService.renewLicense();
+
+			expect(license.renew).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		test('on success', async () => {
 			license.renew.mockResolvedValueOnce();
 			await licenseService.renewLicense();
@@ -82,6 +103,42 @@ describe('LicenseService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
 				success: false,
 			});
+		});
+	});
+
+	describe('registerCommunityEdition', () => {
+		test('on success', async () => {
+			jest
+				.spyOn(axios, 'post')
+				.mockResolvedValueOnce({ data: { title: 'Title', text: 'Text', licenseKey: 'abc-123' } });
+			const data = await licenseService.registerCommunityEdition({
+				userId: '123',
+				email: 'test@ema.il',
+				instanceId: '123',
+				instanceUrl: 'http://localhost',
+				licenseType: 'community-registered',
+			});
+
+			expect(data).toEqual({ title: 'Title', text: 'Text' });
+			expect(eventService.emit).toHaveBeenCalledWith('license-community-plus-registered', {
+				userId: '123',
+				email: 'test@ema.il',
+				licenseKey: 'abc-123',
+			});
+		});
+
+		test('on failure', async () => {
+			jest.spyOn(axios, 'post').mockRejectedValueOnce(new AxiosError('Failed'));
+			await expect(
+				licenseService.registerCommunityEdition({
+					userId: '123',
+					email: 'test@ema.il',
+					instanceId: '123',
+					instanceUrl: 'http://localhost',
+					licenseType: 'community-registered',
+				}),
+			).rejects.toThrowError('Failed');
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

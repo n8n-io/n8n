@@ -1,3 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import map from 'lodash/map';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,12 +11,8 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import map from 'lodash/map';
-import isEmpty from 'lodash/isEmpty';
 import {
 	getGoogleAnalyticsDomainsArray,
 	getTags,
@@ -106,8 +105,9 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mandrillApi',
@@ -766,8 +766,8 @@ export class Mandrill implements INodeType {
 						message.from_name = options.fromName;
 					}
 
-					if (options.subaccount) {
-						message.subaccount = options.subaccount;
+					if (options.subAccount) {
+						message.subaccount = options.subAccount.toString();
 					}
 
 					const body: Body = {
@@ -838,7 +838,6 @@ export class Mandrill implements INodeType {
 								// @ts-ignore
 								attachmentsValues = map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
 									const aux: IDataObject = {};
-									// @ts-ignore
 									aux.name = o.name;
 									aux.content = o.content;
 									aux.type = o.type;

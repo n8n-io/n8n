@@ -1,0 +1,30 @@
+{
+  "name": "n8n-containers",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "stack": "tsx ./n8n-start-stack.ts",
+    "stack:help": "tsx ./n8n-start-stack.ts --help",
+    "stack:sqlite": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack",
+    "stack:postgres": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --postgres",
+    "stack:queue": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --queue",
+    "stack:multi-main": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --mains 2 --workers 1",
+    "stack:starter": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --plan starter",
+    "stack:clean:containers": "docker ps -aq --filter 'name=n8n-stack-*' | xargs -r docker rm -f 2>/dev/null",
+    "stack:clean:networks": "docker network ls --filter 'label=org.testcontainers=true' -q | xargs -r docker network rm 2>/dev/null",
+    "stack:clean:all": "pnpm run stack:clean:containers && pnpm run stack:clean:networks",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.0.3",
+    "@testcontainers/redis": "^11.0.3",
+    "get-port": "^7.1.0",
+    "testcontainers": "^11.0.3"
+  }
+}

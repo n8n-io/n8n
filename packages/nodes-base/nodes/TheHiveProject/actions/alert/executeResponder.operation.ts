@@ -4,9 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
 import { alertRLC, responderOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 const properties: INodeProperties[] = [{ ...alertRLC, name: 'id' }, responderOptions];
 

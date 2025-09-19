@@ -1,0 +1,88 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ebfced75-2ce1-4c41-a971-6c3b83522c4d",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        360,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "This is an error message"
+      },
+      "id": "f2e60459-401a-49d5-acfc-7b2b31cfdcf7",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaa;\n}\n\nreturn $input.all();"
+      },
+      "id": "b54d4db9-b257-41a8-862f-26d293115bad",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "053ada73-f7db-4e6a-8cc8-85756cc6ca4e",
+              "name": "age",
+              "value": "={{ 32sad }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5fd89612-a871-4679-b7b0-d659e09c6a0e",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

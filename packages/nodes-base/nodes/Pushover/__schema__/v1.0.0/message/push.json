@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "request": {
+            "type": "string"
+        },
+        "status": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

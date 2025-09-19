@@ -1,0 +1,250 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "archived_directly": {
+            "type": "boolean"
+        },
+        "cache_ttl": {
+            "type": "null"
+        },
+        "can_delete": {
+            "type": "boolean"
+        },
+        "can_manage_db": {
+            "type": "boolean"
+        },
+        "can_restore": {
+            "type": "boolean"
+        },
+        "can_run_adhoc_query": {
+            "type": "boolean"
+        },
+        "can_write": {
+            "type": "boolean"
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "archived": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "is_personal": {
+                    "type": "boolean"
+                },
+                "is_sample": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "null"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "null"
+                }
+            }
+        },
+        "collection_preview": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "common_name": {
+                    "type": "string"
+                },
+                "date_joined": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_qbnewb": {
+                    "type": "boolean"
+                },
+                "is_superuser": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "dashboard_count": {
+            "type": "integer"
+        },
+        "database_id": {
+            "type": "integer"
+        },
+        "dataset_query": {
+            "type": "object",
+            "properties": {
+                "database": {
+                    "type": "integer"
+                },
+                "native": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "display": {
+            "type": "string"
+        },
+        "embedding_params": {
+            "type": "null"
+        },
+        "enable_embedding": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "initially_published_at": {
+            "type": "null"
+        },
+        "last-edit-info": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "moderation_reviews": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_id": {
+                        "type": "integer"
+                    },
+                    "moderated_item_type": {
+                        "type": "string"
+                    },
+                    "moderator_id": {
+                        "type": "integer"
+                    },
+                    "most_recent": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "text": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "common_name": {
+                                "type": "string"
+                            },
+                            "date_joined": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "first_name": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "is_qbnewb": {
+                                "type": "boolean"
+                            },
+                            "is_superuser": {
+                                "type": "boolean"
+                            },
+                            "last_login": {
+                                "type": "string"
+                            },
+                            "last_name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "parameter_usage_count": {
+            "type": "integer"
+        },
+        "query_type": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "view_count": {
+            "type": "integer"
+        },
+        "visualization_settings": {
+            "type": "object",
+            "properties": {
+                "table.cell_column": {
+                    "type": "string"
+                },
+                "table.pivot_column": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 2
+}

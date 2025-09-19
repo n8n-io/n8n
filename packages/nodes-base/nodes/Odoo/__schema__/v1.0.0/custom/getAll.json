@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "datas_fname": {
+            "type": "string"
+        },
+        "db_datas": {
+            "type": "boolean"
+        },
+        "display_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "index_content": {
+            "type": "string"
+        },
+        "res_id": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

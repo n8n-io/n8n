@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "SendEmailResponse": {
+            "type": "object",
+            "properties": {
+                "$": {
+                    "type": "object",
+                    "properties": {
+                        "xmlns": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "ResponseMetadata": {
+                    "type": "object",
+                    "properties": {
+                        "RequestId": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "SendEmailResult": {
+                    "type": "object",
+                    "properties": {
+                        "MessageId": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

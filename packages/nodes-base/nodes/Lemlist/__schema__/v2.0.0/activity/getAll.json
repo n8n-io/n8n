@@ -1,0 +1,125 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "bot": {
+            "type": "boolean"
+        },
+        "campaignId": {
+            "type": "string"
+        },
+        "campaignName": {
+            "type": "string"
+        },
+        "companyName": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailTemplateId": {
+            "type": "string"
+        },
+        "emailTemplateName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "isFirst": {
+            "type": "boolean"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "leadCompanyName": {
+            "type": "string"
+        },
+        "leadEmail": {
+            "type": "string"
+        },
+        "leadFirstName": {
+            "type": "string"
+        },
+        "leadId": {
+            "type": "string"
+        },
+        "leadLastName": {
+            "type": "string"
+        },
+        "leadPhone": {
+            "type": "string"
+        },
+        "linkedinUrl": {
+            "type": "string"
+        },
+        "metaData": {
+            "type": "object",
+            "properties": {
+                "campaignId": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "leadId": {
+                    "type": "string"
+                },
+                "taskId": {
+                    "type": "string"
+                },
+                "teamId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "relatedSentAt": {
+            "type": "string"
+        },
+        "sendUserName": {
+            "type": "string"
+        },
+        "sequenceId": {
+            "type": "string"
+        },
+        "sequenceStep": {
+            "type": "integer"
+        },
+        "sequenceTested": {
+            "type": "string"
+        },
+        "stopped": {
+            "type": "boolean"
+        },
+        "teamId": {
+            "type": "string"
+        },
+        "totalSequenceStep": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

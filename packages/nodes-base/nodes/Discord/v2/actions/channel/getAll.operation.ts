@@ -4,10 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
-import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	...returnAllOrLimit,

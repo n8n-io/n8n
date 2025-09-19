@@ -1,0 +1,151 @@
+{
+	"createdAt": "2021-04-19T13:01:49.487Z",
+	"updatedAt": "2021-06-08T09:29:29.798Z",
+	"id": "172",
+	"name": "Paypal:Payout:create get:PayoutItem:get",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "c685e7cb-90e2-42d3-87d4-c8f8143c5a8c"
+		},
+		{
+			"parameters": {
+				"senderBatchId": "={{Date.now()}}",
+				"itemsUi": {
+					"itemsValues": [
+						{
+							"receiverValue": "sb-0ci8p5941871@business.example.com",
+							"amount": "20"
+						}
+					]
+				},
+				"additionalFields": {}
+			},
+			"name": "PayPal",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [450, 200],
+			"credentials": {
+				"payPalApi": {
+					"id": "141",
+					"name": "PayPal API creds"
+				}
+			},
+			"id": "31bf4a9b-bc38-4b63-9990-4f08db26a285"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"payoutBatchId": "={{$node[\"PayPal\"].json[\"batch_header\"][\"payout_batch_id\"]}}",
+				"limit": 1
+			},
+			"name": "PayPal1",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [600, 200],
+			"credentials": {
+				"payPalApi": {
+					"id": "141",
+					"name": "PayPal API creds"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=errors",
+			"id": "d2fdb861-6f84-4ee1-86a4-a5b8c81b0656"
+		},
+		{
+			"parameters": {
+				"resource": "payoutItem",
+				"payoutItemId": "={{$node[\"PayPal1\"].json[\"payout_item_id\"]}}"
+			},
+			"name": "PayPal2",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [750, 250],
+			"credentials": {
+				"payPalApi": {
+					"id": "141",
+					"name": "PayPal API creds"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=errors",
+			"id": "0ef6ac4c-4aa1-4cb1-a4f7-3feb6a17208e"
+		},
+		{
+			"parameters": {
+				"resource": "payoutItem",
+				"operation": "cancel",
+				"payoutItemId": "={{$node[\"PayPal1\"].json[\"payout_item_id\"]}}"
+			},
+			"name": "PayPal3",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [900, 250],
+			"credentials": {
+				"payPalApi": {
+					"id": "141",
+					"name": "PayPal API creds"
+				}
+			},
+			"disabled": true,
+			"id": "bec01033-9ce1-4789-9115-7f07991ac6b1"
+		}
+	],
+	"connections": {
+		"PayPal": {
+			"main": [
+				[
+					{
+						"node": "PayPal1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"PayPal1": {
+			"main": [
+				[
+					{
+						"node": "PayPal2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"PayPal2": {
+			"main": [
+				[
+					{
+						"node": "PayPal3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "PayPal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

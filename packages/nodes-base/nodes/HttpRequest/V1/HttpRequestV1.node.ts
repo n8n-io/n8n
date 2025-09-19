@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -10,14 +8,17 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
 	NodeOperationError,
 	sleep,
 	removeCircularRefs,
-	NodeConnectionType,
+	NodeConnectionTypes,
+	isDomainAllowed,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
@@ -43,8 +44,8 @@ export class HttpRequestV1 implements INodeType {
 				name: 'HTTP Request',
 				color: '#2200DD',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				// ----------------------------------
 				//            v1 creds
@@ -196,7 +197,7 @@ export class HttpRequestV1 implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
@@ -677,6 +678,51 @@ export class HttpRequestV1 implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			const checkDomainRestrictions = async (
+				credentialData: ICredentialDataDecryptedObject,
+				url: string,
+				credentialType?: string,
+			) => {
+				if (credentialData.allowedHttpRequestDomains === 'domains') {
+					const allowedDomains = credentialData.allowedDomains as string;
+
+					if (!allowedDomains || allowedDomains.trim() === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No allowed domains specified. Configure allowed domains or change restriction setting.',
+						);
+					}
+
+					if (!isDomainAllowed(url, { allowedDomains })) {
+						const credentialInfo = credentialType ? ` (${credentialType})` : '';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
+								`Only the following domains are allowed: ${allowedDomains}`,
+						);
+					}
+				} else if (credentialData.allowedHttpRequestDomains === 'none') {
+					throw new NodeOperationError(
+						this.getNode(),
+						'This credential is configured to prevent use within an HTTP Request node',
+					);
+				}
+			};
+
+			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
+			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
+			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
+			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
+			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
+			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
+
 			if (
 				itemIndex > 0 &&
 				(options.batchSize as number) >= 0 &&
@@ -701,7 +747,6 @@ export class HttpRequestV1 implements INodeType {
 			} satisfies IRequestOptions;
 
 			if (fullResponse) {
-				// @ts-ignore
 				requestOptions.resolveWithFullResponse = true;
 			}
 
@@ -714,7 +759,6 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			if (options.ignoreResponseCode === true) {
-				// @ts-ignore
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
@@ -976,12 +1020,10 @@ export class HttpRequestV1 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
@@ -1117,7 +1159,6 @@ export class HttpRequestV1 implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "properties": {
+        "Bcc": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "Cc": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "CustomID": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "To": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Email": {
+                        "type": "string"
+                    },
+                    "MessageHref": {
+                        "type": "string"
+                    },
+                    "MessageID": {
+                        "type": "integer"
+                    },
+                    "MessageUUID": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

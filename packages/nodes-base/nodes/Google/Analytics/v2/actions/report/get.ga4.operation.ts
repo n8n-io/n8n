@@ -4,6 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import {
+	dimensionDropdown,
+	dimensionFilterField,
+	metricDropdown,
+	metricsFilterField,
+} from './FiltersDescription';
 import {
 	checkDuplicates,
 	defaultEndDate,
@@ -13,12 +20,6 @@ import {
 	simplifyGA4,
 } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
-import {
-	dimensionDropdown,
-	dimensionFilterField,
-	metricDropdown,
-	metricsFilterField,
-} from './FiltersDescription';
 
 export const description: INodeProperties[] = [
 	{

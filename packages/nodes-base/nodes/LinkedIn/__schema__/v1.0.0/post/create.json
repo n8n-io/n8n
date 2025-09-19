@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "urn": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

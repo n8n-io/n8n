@@ -15,7 +15,21 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'openid offline_access User.ReadWrite.All Group.ReadWrite.All Chat.ReadWrite',
+			default:
+				'openid offline_access User.ReadWrite.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All',
+		},
+		{
+			displayName: `
+      Microsoft Teams Trigger requires the following permissions:
+      <br><code>ChannelMessage.Read.All</code>
+      <br><code>Chat.Read.All</code>
+      <br><code>Team.ReadBasic.All</code>
+      <br><code>Subscription.ReadWrite.All</code>
+      <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
+    `,
+			name: 'notice',
+			type: 'notice',
+			default: '',
 		},
 	];
 }

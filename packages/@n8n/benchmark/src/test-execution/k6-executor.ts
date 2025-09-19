@@ -13,6 +13,7 @@ export type K6ExecutorOpts = {
 	vus: number;
 	/** Test duration, e.g. 1m or 30s */
 	duration: string;
+	k6Out?: string;
 	k6ApiToken?: string;
 	n8nApiBaseUrl: string;
 	tags?: K6Tag[];
@@ -64,7 +65,9 @@ export function handleSummary(data) {
 			['--vus', this.opts.vus],
 		];
 
-		if (!this.opts.resultsWebhook && this.opts.k6ApiToken) {
+		if (this.opts.k6Out) {
+			flags.push(['--out', this.opts.k6Out]);
+		} else if (!this.opts.resultsWebhook && this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
 		}
 

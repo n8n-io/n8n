@@ -7,13 +7,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import type { IMessage } from './GenericFunctions';
-import { mailjetApiRequest, validateJSON } from './GenericFunctions';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { emailFields, emailOperations } from './EmailDescription';
-
+import type { IMessage } from './GenericFunctions';
+import { mailjetApiRequest, validateJSON } from './GenericFunctions';
 import { smsFields, smsOperations } from './SmsDescription';
 export class Mailjet implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,8 +25,9 @@ export class Mailjet implements INodeType {
 		defaults: {
 			name: 'Mailjet',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mailjetEmailApi',

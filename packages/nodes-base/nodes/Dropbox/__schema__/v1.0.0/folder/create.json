@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent_shared_folder_id": {
+                    "type": "string"
+                },
+                "path_display": {
+                    "type": "string"
+                },
+                "path_lower": {
+                    "type": "string"
+                },
+                "sharing_info": {
+                    "type": "object",
+                    "properties": {
+                        "no_access": {
+                            "type": "boolean"
+                        },
+                        "parent_shared_folder_id": {
+                            "type": "string"
+                        },
+                        "read_only": {
+                            "type": "boolean"
+                        },
+                        "traverse_only": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 2
+}

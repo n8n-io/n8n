@@ -1,0 +1,173 @@
+{
+	"name": "[Test] OpenWeatherMap",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "862c8413-520e-41bd-8cca-b340d537700e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"cityName": "berlin,de",
+				"language": "en"
+			},
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "db67aa22-5bde-4beb-a7f9-2fe74d65528d",
+			"name": "OpenWeatherMap",
+			"credentials": {
+				"openWeatherMapApi": {
+					"id": "202",
+					"name": "OpenWeatherMap account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "cd149629-a752-4a59-9916-785c764ae449",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"cityName": "invalid",
+				"language": "en"
+			},
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "34663e6d-cf4c-4db8-b175-768d3ae97ca0",
+			"name": "OpenWeatherMap - Error",
+			"credentials": {
+				"openWeatherMapApi": {
+					"id": "202",
+					"name": "OpenWeatherMap account"
+				}
+			},
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [500, 220],
+			"id": "d0b80f33-3718-47a3-8be1-f7053281465b",
+			"name": "No Operation, do nothing1"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"coord": {
+						"lon": 13.4105,
+						"lat": 52.5244
+					},
+					"weather": [
+						{
+							"id": 804,
+							"main": "Clouds",
+							"description": "overcast clouds",
+							"icon": "04n"
+						}
+					],
+					"base": "stations",
+					"main": {
+						"temp": 4.85,
+						"feels_like": 3.42,
+						"temp_min": 3.9,
+						"temp_max": 5.5,
+						"pressure": 1034,
+						"humidity": 85,
+						"sea_level": 1034,
+						"grnd_level": 1028
+					},
+					"visibility": 10000,
+					"wind": {
+						"speed": 1.79,
+						"deg": 270
+					},
+					"clouds": {
+						"all": 100
+					},
+					"dt": 1732901176,
+					"sys": {
+						"type": 2,
+						"id": 2011538,
+						"country": "DE",
+						"sunrise": 1732863129,
+						"sunset": 1732892267
+					},
+					"timezone": 3600,
+					"id": 2950159,
+					"name": "Berlin",
+					"cod": 200
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"error": "The resource you are requesting could not be found"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "OpenWeatherMap",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "OpenWeatherMap - Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenWeatherMap": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenWeatherMap - Error": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "e7733656-9648-41e3-aea4-e2fcf15fb187",
+	"meta": {
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "dWewBVG7jz2iI020",
+	"tags": []
+}

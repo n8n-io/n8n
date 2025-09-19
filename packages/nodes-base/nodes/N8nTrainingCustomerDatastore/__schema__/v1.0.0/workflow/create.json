@@ -1,0 +1,59 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "meta": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "pinData": {
+            "type": "null"
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

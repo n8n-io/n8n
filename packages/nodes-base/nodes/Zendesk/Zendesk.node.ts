@@ -8,19 +8,14 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
-
-import { ticketFields, ticketOperations } from './TicketDescription';
-
-import { ticketFieldFields, ticketFieldOperations } from './TicketFieldDescription';
-
-import { userFields, userOperations } from './UserDescription';
-
 import { organizationFields, organizationOperations } from './OrganizationDescription';
-
+import { ticketFields, ticketOperations } from './TicketDescription';
+import { ticketFieldFields, ticketFieldOperations } from './TicketFieldDescription';
 import type { IComment, ITicket } from './TicketInterface';
+import { userFields, userOperations } from './UserDescription';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +29,9 @@ export class Zendesk implements INodeType {
 		defaults: {
 			name: 'Zendesk',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'zendeskApi',

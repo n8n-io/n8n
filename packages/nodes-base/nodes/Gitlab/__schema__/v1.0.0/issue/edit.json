@@ -1,0 +1,213 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "award_emoji": {
+                    "type": "string"
+                },
+                "closed_as_duplicate_of": {
+                    "type": "null"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "project": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "avatar_url": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "locked": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "web_url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "web_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "blocking_issues_count": {
+            "type": "integer"
+        },
+        "confidential": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "downvotes": {
+            "type": "integer"
+        },
+        "epic": {
+            "type": "null"
+        },
+        "epic_iid": {
+            "type": "null"
+        },
+        "has_tasks": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "iid": {
+            "type": "integer"
+        },
+        "issue_type": {
+            "type": "string"
+        },
+        "iteration": {
+            "type": "null"
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "merge_requests_count": {
+            "type": "integer"
+        },
+        "milestone": {
+            "type": "null"
+        },
+        "moved_to_id": {
+            "type": "null"
+        },
+        "project_id": {
+            "type": "integer"
+        },
+        "references": {
+            "type": "object",
+            "properties": {
+                "full": {
+                    "type": "string"
+                },
+                "relative": {
+                    "type": "string"
+                },
+                "short": {
+                    "type": "string"
+                }
+            }
+        },
+        "service_desk_reply_to": {
+            "type": "null"
+        },
+        "severity": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "task_completion_status": {
+            "type": "object",
+            "properties": {
+                "completed_count": {
+                    "type": "integer"
+                },
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "task_status": {
+            "type": "string"
+        },
+        "time_stats": {
+            "type": "object",
+            "properties": {
+                "human_time_estimate": {
+                    "type": "null"
+                },
+                "human_total_time_spent": {
+                    "type": "null"
+                },
+                "time_estimate": {
+                    "type": "integer"
+                },
+                "total_time_spent": {
+                    "type": "integer"
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "upvotes": {
+            "type": "integer"
+        },
+        "user_notes_count": {
+            "type": "integer"
+        },
+        "web_url": {
+            "type": "string"
+        },
+        "weight": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

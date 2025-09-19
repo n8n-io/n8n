@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+
 import { facebookFormList, facebookPageList } from '../GenericFunctions';
 
 const filterMatches = (name: string, filter?: string): boolean =>
@@ -18,7 +19,7 @@ export async function pageList(
 				value: page.id,
 				url: `https://facebook.com/${page.id}`,
 			})),
-		paginationToken: paging?.cursors?.after,
+		paginationToken: paging?.next ? paging?.cursors?.after : undefined,
 	};
 }
 
@@ -37,6 +38,6 @@ export async function formList(
 				name: form.name,
 				value: form.id,
 			})),
-		paginationToken: paging?.cursors?.after,
+		paginationToken: paging?.next ? paging?.cursors?.after : undefined,
 	};
 }

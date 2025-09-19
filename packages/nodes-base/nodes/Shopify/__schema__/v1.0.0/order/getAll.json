@@ -1,0 +1,215 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "line_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "admin_graphql_api_id": {
+                        "type": "string"
+                    },
+                    "current_quantity": {
+                        "type": "integer"
+                    },
+                    "discount_allocations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "amount": {
+                                    "type": "string"
+                                },
+                                "amount_set": {
+                                    "type": "object",
+                                    "properties": {
+                                        "presentment_money": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "string"
+                                                },
+                                                "currency_code": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "shop_money": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "string"
+                                                },
+                                                "currency_code": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "discount_application_index": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "fulfillable_quantity": {
+                        "type": "integer"
+                    },
+                    "fulfillment_service": {
+                        "type": "string"
+                    },
+                    "gift_card": {
+                        "type": "boolean"
+                    },
+                    "grams": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "type": "string"
+                    },
+                    "price_set": {
+                        "type": "object",
+                        "properties": {
+                            "presentment_money": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "string"
+                                    },
+                                    "currency_code": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "shop_money": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "string"
+                                    },
+                                    "currency_code": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "product_exists": {
+                        "type": "boolean"
+                    },
+                    "properties": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "requires_shipping": {
+                        "type": "boolean"
+                    },
+                    "tax_lines": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "channel_liable": {
+                                    "type": "boolean"
+                                },
+                                "price": {
+                                    "type": "string"
+                                },
+                                "price_set": {
+                                    "type": "object",
+                                    "properties": {
+                                        "presentment_money": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "string"
+                                                },
+                                                "currency_code": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "shop_money": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "string"
+                                                },
+                                                "currency_code": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "title": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "taxable": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "total_discount": {
+                        "type": "string"
+                    },
+                    "total_discount_set": {
+                        "type": "object",
+                        "properties": {
+                            "presentment_money": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "string"
+                                    },
+                                    "currency_code": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "shop_money": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "string"
+                                    },
+                                    "currency_code": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 5
+}

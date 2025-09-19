@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "adminCreated": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "directMembersCount": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nonEditableAliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "version": 2
+}

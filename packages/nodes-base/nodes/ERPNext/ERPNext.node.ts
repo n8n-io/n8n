@@ -8,12 +8,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-
 import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
-
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
@@ -29,8 +27,9 @@ export class ERPNext implements INodeType {
 		defaults: {
 			name: 'ERPNext',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'erpNextApi',

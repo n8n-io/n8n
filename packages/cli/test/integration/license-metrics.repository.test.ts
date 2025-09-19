@@ -1,13 +1,9 @@
-import Container from 'typedi';
-
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import { createManyWorkflows, testDb } from '@n8n/backend-test-utils';
+import { StatisticsNames, LicenseMetricsRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { createManyCredentials } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
-import { createManyWorkflows } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 
 describe('LicenseMetricsRepository', () => {
 	let licenseMetricsRepository: LicenseMetricsRepository;
@@ -22,7 +18,13 @@ describe('LicenseMetricsRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User', 'Credentials', 'Workflow', 'Execution', 'WorkflowStatistics']);
+		await testDb.truncate([
+			'User',
+			'CredentialsEntity',
+			'WorkflowEntity',
+			'ExecutionEntity',
+			'WorkflowStatistics',
+		]);
 	});
 
 	afterAll(async () => {
@@ -60,6 +62,11 @@ describe('LicenseMetricsRepository', () => {
 					StatisticsNames.manualError,
 					secondWorkflow.id,
 				),
+				workflowStatisticsRepository.upsertWorkflowStatistics(
+					StatisticsNames.productionSuccess,
+					secondWorkflow.id,
+					true,
+				),
 			]);
 
 			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
@@ -70,8 +77,10 @@ describe('LicenseMetricsRepository', () => {
 				totalCredentials: 2,
 				totalWorkflows: 5,
 				activeWorkflows: 3,
-				productionExecutions: 2,
+				productionExecutions: 3,
+				productionRootExecutions: 3,
 				manualExecutions: 2,
+				evaluations: 0,
 			});
 		});
 
@@ -87,7 +96,9 @@ describe('LicenseMetricsRepository', () => {
 				totalWorkflows: 3,
 				activeWorkflows: 3,
 				productionExecutions: 0, // not NaN
+				productionRootExecutions: 0, // not NaN
 				manualExecutions: 0, // not NaN
+				evaluations: 0,
 			});
 		});
 	});

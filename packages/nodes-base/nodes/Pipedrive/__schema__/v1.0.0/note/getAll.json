@@ -1,0 +1,64 @@
+{
+    "type": "object",
+    "properties": {
+        "active_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "content": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "pinned_to_deal_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_lead_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_organization_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_person_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_project_flag": {
+            "type": "boolean"
+        },
+        "project_id": {
+            "type": "null"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "is_you": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "user_id": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
-import { apiRequest } from '../transport';
+
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -21,6 +21,7 @@ import type {
 	ValueRenderOption,
 } from './GoogleSheets.types';
 import { getSheetId, removeEmptyColumns } from './GoogleSheets.utils';
+import { apiRequest } from '../transport';
 
 export class GoogleSheet {
 	id: string;
@@ -316,21 +317,27 @@ export class GoogleSheet {
 	 * Returns the given sheet data in a structured way
 	 */
 	convertSheetDataArrayToObjectArray(
-		data: SheetRangeData,
+		sheet: SheetRangeData,
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const returnData = [];
 
-		for (let rowIndex = startRow; rowIndex < data.length; rowIndex++) {
+		for (let rowIndex = startRow; rowIndex < sheet.length; rowIndex++) {
 			const item: IDataObject = {};
-			for (let columnIndex = 0; columnIndex < data[rowIndex].length; columnIndex++) {
+
+			const rowCount = sheet[rowIndex].length;
+			const columnCount = includeHeadersWithEmptyCells ? columnKeys.length : rowCount;
+
+			for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
 				const key = columnKeys[columnIndex];
 				if (key) {
-					item[key] = data[rowIndex][columnIndex];
+					item[key] = sheet[rowIndex][columnIndex] ?? '';
 				}
 			}
+
 			if (Object.keys(item).length || addEmpty === true) {
 				returnData.push(item);
 			}
@@ -347,6 +354,7 @@ export class GoogleSheet {
 		inputData: string[][],
 		keyRow: number,
 		dataStartRow: number,
+		includeHeadersWithEmptyCells?: boolean,
 	): IDataObject[] {
 		const keys: string[] = [];
 
@@ -360,7 +368,13 @@ export class GoogleSheet {
 			keys.push(inputData[keyRow][columnIndex] || `col_${columnIndex}`);
 		}
 
-		return this.convertSheetDataArrayToObjectArray(inputData, dataStartRow, keys);
+		return this.convertSheetDataArrayToObjectArray(
+			inputData,
+			dataStartRow,
+			keys,
+			false,
+			includeHeadersWithEmptyCells,
+		);
 	}
 
 	testFilter(inputData: string[][], keyRow: number, dataStartRow: number): string[] {
@@ -650,12 +664,14 @@ export class GoogleSheet {
 		dataStartRowIndex,
 		lookupValues,
 		returnAllMatches,
+		nodeVersion,
 		combineFilters = 'OR',
 	}: {
 		inputData: string[][];
 		keyRowIndex: number;
 		dataStartRowIndex: number;
 		lookupValues: ILookupValues[];
+		nodeVersion: number;
 		returnAllMatches?: boolean;
 		combineFilters?: 'AND' | 'OR';
 	}): Promise<IDataObject[]> {
@@ -671,7 +687,7 @@ export class GoogleSheet {
 			keys.push(inputData[keyRowIndex][columnIndex] || `col_${columnIndex}`);
 		}
 
-		// Standardise values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
+		// Standardize values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
 		for (let rowIndex = 0; rowIndex < inputData?.length; rowIndex++) {
 			if (inputData[rowIndex].length === 0) {
 				for (let i = 0; i < keys.length; i++) {
@@ -717,6 +733,9 @@ export class GoogleSheet {
 						}
 
 						if (returnAllMatches !== true) {
+							if (nodeVersion >= 4.6) {
+								break lookupLoop;
+							}
 							continue lookupLoop;
 						}
 					}

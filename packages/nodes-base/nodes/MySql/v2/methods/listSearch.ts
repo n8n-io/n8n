@@ -1,6 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { createPool } from '../transport';
+
 import type { MysqlNodeCredentials } from '../helpers/interfaces';
+import { createPool } from '../transport';
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<MysqlNodeCredentials>('mySql');

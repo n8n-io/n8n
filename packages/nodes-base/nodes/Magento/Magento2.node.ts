@@ -1,3 +1,4 @@
+import { capitalCase } from 'change-case';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,9 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
-import { capitalCase } from 'change-case';
+import { customerFields, customerOperations } from './CustomerDescription';
 import {
 	adjustAddresses,
 	getFilterQuery,
@@ -20,15 +21,9 @@ import {
 	sort,
 	validateJSON,
 } from './GenericFunctions';
-
-import { customerFields, customerOperations } from './CustomerDescription';
-
-import { orderFields, orderOperations } from './OrderDescription';
-
-import { productFields, productOperations } from './ProductDescription';
-
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
+import { orderFields, orderOperations } from './OrderDescription';
+import { productFields, productOperations } from './ProductDescription';
 import type {
 	CustomAttribute,
 	CustomerAttributeMetadata,
@@ -50,8 +45,9 @@ export class Magento2 implements INodeType {
 		defaults: {
 			name: 'Magento 2',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'magento2Api',
@@ -173,6 +169,7 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === false && attribute.frontend_label !== '') {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -193,6 +190,7 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === true && attribute.frontend_label !== null) {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -350,7 +348,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = [
 							'amazon_id',
@@ -494,7 +492,7 @@ export class Magento2 implements INodeType {
 
 						body.customer!.addresses = adjustAddresses(addresses?.address || []);
 
-						body.customer!.custom_attributes = customAttributes?.customAttribute || {};
+						body.customer!.custom_attributes = customAttributes?.customAttribute || [];
 
 						body.customer!.extension_attributes = [
 							'amazon_id',
@@ -665,7 +663,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product!, rest);
 
@@ -780,7 +778,7 @@ export class Magento2 implements INodeType {
 							},
 						};
 
-						body.product!.custom_attributes = customAttributes?.customAttribute || {};
+						body.product!.custom_attributes = customAttributes?.customAttribute || [];
 
 						Object.assign(body.product!, rest);
 

@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"target": "es2020",
+		"module": "es2020",
+		"moduleResolution": "node",
+		"outDir": "dist/esm",
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true
+	},
+	"include": ["src"]
+}

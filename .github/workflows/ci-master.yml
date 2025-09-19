@@ -4,59 +4,28 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - packages/@n8n/task-runner-python/**
 
 jobs:
-  install-and-build:
-    runs-on: ubuntu-latest
-
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v4.1.1
-
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
-        with:
-          node-version: 20.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
-
-      - name: Build
-        run: pnpm build
-
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:build
-
   unit-test:
     name: Unit tests
     uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.4]
+        node-version: [20.x, 22.x, 24.3.x]
     with:
-      ref: ${{ inputs.branch }}
+      ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      cacheKey: ${{ github.sha }}-base:build
-      collectCoverage: ${{ matrix.node-version == '20.x' }}
+      collectCoverage: ${{ matrix.node-version == '22.x' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Lint
     uses: ./.github/workflows/linting-reusable.yml
-    needs: install-and-build
     with:
-      ref: ${{ inputs.branch }}
-      cacheKey: ${{ github.sha }}-base:build
+      ref: ${{ github.sha }}
 
   notify-on-failure:
     name: Notify Slack on failure
@@ -64,7 +33,7 @@ jobs:
     needs: [unit-test, lint]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

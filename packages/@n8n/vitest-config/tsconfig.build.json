@@ -1,0 +1,11 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"compilerOptions": {
+		"composite": true,
+		"rootDir": ".",
+		"outDir": "dist",
+		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["dist", "**/*.test.ts"]
+}

@@ -1,0 +1,81 @@
+name: Playwright Tests - Reusable
+
+on:
+  workflow_call:
+    inputs:
+      test-mode:
+        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        required: false
+        default: 'local'
+        type: string
+      test-command:
+        description: 'Test command to run'
+        required: false
+        default: 'pnpm --filter=n8n-playwright test:local'
+        type: string
+      shards:
+        description: 'Shards for parallel execution'
+        required: false
+        default: '[1, 2, 3, 4]'
+        type: string
+      docker-image:
+        description: 'Docker image to use (for docker-pull mode)'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
+
+    secrets:
+      CURRENTS_RECORD_KEY:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_URL:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_USER:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
+        required: true
+
+env:
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+  NODE_OPTIONS: --max-old-space-size=3072
+  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
+  TESTCONTAINERS_RYUK_DISABLED: true
+  PLAYWRIGHT_WORKERS: 3 # We have 2 CPUs on this runner but we can use more workers since it's low CPU intensive
+
+jobs:
+  test:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4]') }}
+    name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
+          enable-docker-cache: ${{ inputs.test-mode != 'local' }}
+        env:
+          INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
+
+      - name: Install Browsers
+        if: inputs.test-mode == 'docker-build'
+        run: pnpm turbo install-browsers:ci
+
+      - name: Run Tests
+        run: |
+          ${{ inputs.test-command }} \
+            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
+            --workers=${{ env.PLAYWRIGHT_WORKERS }}
+        env:
+          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}

@@ -1,0 +1,159 @@
+{
+    "type": "object",
+    "properties": {
+        "admin_graphql_api_id": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "handle": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "images": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "admin_graphql_api_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "variant_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "product_type": {
+            "type": "string"
+        },
+        "published_scope": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "variants": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "admin_graphql_api_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "fulfillment_service": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "inventory_item_id": {
+                        "type": "integer"
+                    },
+                    "inventory_policy": {
+                        "type": "string"
+                    },
+                    "inventory_quantity": {
+                        "type": "integer"
+                    },
+                    "old_inventory_quantity": {
+                        "type": "integer"
+                    },
+                    "option1": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "price": {
+                        "type": "string"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "requires_shipping": {
+                        "type": "boolean"
+                    },
+                    "taxable": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "weight_unit": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "vendor": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

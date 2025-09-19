@@ -6,17 +6,18 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeProperties,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../utils/utilities';
+import type { SetField, SetNodeOptions } from './helpers/interfaces';
 import {
 	parseJsonParameter,
 	validateEntry,
 	composeReturnItem,
 	resolveRawData,
 } from './helpers/utils';
-import type { SetField, SetNodeOptions } from './helpers/interfaces';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -185,7 +186,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,

@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -13,9 +14,16 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
+import { dealFields, dealOperations } from './DealDescription';
+import type { IAssociation, IDeal } from './DealInterface';
+import { engagementFields, engagementOperations } from './EngagementDescription';
+import { formFields, formOperations } from './FormDescription';
+import type { IForm } from './FormInterface';
 import {
 	clean,
 	getAssociations,
@@ -27,24 +35,7 @@ import {
 	hubspotApiRequestAllItems,
 	validateCredentials,
 } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
-import { engagementFields, engagementOperations } from './EngagementDescription';
-
-import { formFields, formOperations } from './FormDescription';
-
 import { ticketFields, ticketOperations } from './TicketDescription';
-
-import type { IForm } from './FormInterface';
-
-import type { IAssociation, IDeal } from './DealInterface';
 
 export class HubspotV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -58,8 +49,8 @@ export class HubspotV1 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',

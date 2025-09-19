@@ -1,0 +1,254 @@
+{
+	"name": "slack new tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "history",
+				"channelId": {
+					"__rl": true,
+					"value": "C08514ZPKB8",
+					"mode": "list",
+					"cachedResultName": "test-002"
+				},
+				"returnAll": true,
+				"filters": {
+					"inclusive": true
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1040, 360],
+			"webhookId": "04c5e584-45f4-48d0-bcd2-0ecacecb0f53",
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"user": "U0362BXQYJW",
+					"type": "message",
+					"ts": "1734322597.935429",
+					"bot_id": "B0382SHFM46",
+					"app_id": "A037UTP0Z39",
+					"text": "test message\n_Automated with this <http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
+					"team": "T0364MSFHV2",
+					"bot_profile": {
+						"id": "B0382SHFM46",
+						"deleted": false,
+						"name": "blocks-test",
+						"updated": 1648028754,
+						"app_id": "A037UTP0Z39",
+						"icons": {
+							"image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
+							"image_48": "https://a.slack-edge.com/80588/img/plugins/app/bot_48.png",
+							"image_72": "https://a.slack-edge.com/80588/img/plugins/app/service_72.png"
+						},
+						"team_id": "T0364MSFHV2"
+					},
+					"blocks": [
+						{
+							"type": "rich_text",
+							"block_id": "piR",
+							"elements": [
+								{
+									"type": "rich_text_section",
+									"elements": [
+										{
+											"type": "text",
+											"text": "test message\n"
+										},
+										{
+											"type": "text",
+											"text": "Automated with this ",
+											"style": {
+												"italic": true
+											}
+										},
+										{
+											"type": "link",
+											"url": "http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
+											"text": "n8n workflow",
+											"style": {
+												"italic": true
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"user": "U0362BXQYJW",
+					"type": "message",
+					"ts": "1734322341.161179",
+					"bot_id": "B0382SHFM46",
+					"app_id": "A037UTP0Z39",
+					"text": "test message\n_Automated with this <http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
+					"team": "T0364MSFHV2",
+					"bot_profile": {
+						"id": "B0382SHFM46",
+						"app_id": "A037UTP0Z39",
+						"name": "blocks-test",
+						"icons": {
+							"image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
+							"image_48": "https://a.slack-edge.com/80588/img/plugins/app/bot_48.png",
+							"image_72": "https://a.slack-edge.com/80588/img/plugins/app/service_72.png"
+						},
+						"deleted": false,
+						"updated": 1648028754,
+						"team_id": "T0364MSFHV2"
+					},
+					"blocks": [
+						{
+							"type": "rich_text",
+							"block_id": "2BN",
+							"elements": [
+								{
+									"type": "rich_text_section",
+									"elements": [
+										{
+											"type": "text",
+											"text": "test message\n"
+										},
+										{
+											"type": "text",
+											"text": "Automated with this ",
+											"style": {
+												"italic": true
+											}
+										},
+										{
+											"type": "link",
+											"url": "http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
+											"text": "n8n workflow",
+											"style": {
+												"italic": true
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"user": "U0362BXQYJW",
+					"type": "message",
+					"ts": "1734321960.507649",
+					"edited": {
+						"user": "B0382SHFM46",
+						"ts": "1734324905.000000"
+					},
+					"bot_id": "B0382SHFM46",
+					"app_id": "A037UTP0Z39",
+					"text": "updated message",
+					"team": "T0364MSFHV2",
+					"bot_profile": {
+						"id": "B0382SHFM46",
+						"app_id": "A037UTP0Z39",
+						"name": "blocks-test",
+						"icons": {
+							"image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
+							"image_48": "https://a.slack-edge.com/80588/img/plugins/app/bot_48.png",
+							"image_72": "https://a.slack-edge.com/80588/img/plugins/app/service_72.png"
+						},
+						"deleted": false,
+						"updated": 1648028754,
+						"team_id": "T0364MSFHV2"
+					},
+					"blocks": [
+						{
+							"type": "rich_text",
+							"block_id": "wR+",
+							"elements": [
+								{
+									"type": "rich_text_section",
+									"elements": [
+										{
+											"type": "text",
+											"text": "updated message"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"subtype": "channel_join",
+					"user": "U0362BXQYJW",
+					"text": "<@U0362BXQYJW> has joined the channel",
+					"type": "message",
+					"ts": "1734321942.689159"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6b7102c7-d3c5-4b88-b67d-4ee6ae51b581",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "qJdEfiBgYLdfYOTs",
+	"tags": []
+}

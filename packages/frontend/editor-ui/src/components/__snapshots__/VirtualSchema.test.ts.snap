@@ -1,0 +1,2926 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`VirtualSchema.vue > renders preview schema when enabled and available 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Set2"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Set2 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <div
+              class="extra-info"
+              data-v-882a318e=""
+            >
+              Preview
+            </div>
+          </div>
+          <div
+            class="notice"
+            data-test-id="schema-preview-warning"
+            data-v-882a318e=""
+          >
+            
+            Usually outputs the following fields. Execute the node to see the actual ones. 
+            
+            <a
+              class="n8n-link"
+              data-v-882a318e=""
+              href="https://docs.n8n.io/data/schema-preview/"
+              target="_blank"
+            >
+              
+              <span
+                class="primary"
+              >
+                <span
+                  class="n8n-text size-small bold"
+                >
+                  
+                  
+                  Learn more
+                  
+                  
+                </span>
+              </span>
+              
+            </a>
+            
+            
+          </div>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="1"
+            data-name="account"
+            data-nest-level="1"
+            data-node-name="Set2"
+            data-node-type="n8n-nodes-base.set"
+            data-path=".account"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.account }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                account
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--preview"
+            data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-node-name="Set2"
+            data-node-type="n8n-nodes-base.set"
+            data-path=".account.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.account.id }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        
+        <n8n-icon-stub
+          class="icon el-tooltip__trigger el-tooltip__trigger"
+          data-v-d00cba9a=""
+          icon="ellipsis"
+          size="small"
+          spin="false"
+        />
+        <!--teleport start-->
+        <!--teleport end-->
+        
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon collapsed"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
+<div
+  class="schema-header"
+  data-test-id="run-data-schema-header"
+  data-v-882a318e=""
+>
+  <div
+    class="toggle"
+    data-v-882a318e=""
+  >
+    <n8n-icon-stub
+      class="collapse-icon"
+      data-v-882a318e=""
+      icon="chevron-down"
+      size="medium"
+      spin="false"
+    />
+  </div>
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
+    data-v-882a318e=""
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="icon"
+      >
+        <img
+          class="nodeIconImage"
+          src="/nodes/test-node/icon.svg"
+        />
+        <!--v-if-->
+      </div>
+      
+    </div>
+  </div>
+  <div
+    class="title"
+    data-v-882a318e=""
+  >
+    If 
+    <!--v-if-->
+  </div>
+  <!--v-if-->
+  <div
+    class="extra-info"
+    data-test-id="run-data-schema-node-item-count"
+    data-v-882a318e=""
+  >
+    2 items
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Manual Trigger"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
+            <n8n-icon-stub
+              class="trigger-icon"
+              data-v-882a318e=""
+              icon="bolt-filled"
+              size="xsmall"
+              spin="false"
+            />
+            <div
+              class="extra-info"
+              data-test-id="run-data-schema-node-item-count"
+              data-v-882a318e=""
+            >
+              1 item
+            </div>
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="empty"
+            data-nest-level="1"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".empty"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.empty }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                empty
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="emptyArray"
+            data-nest-level="1"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".emptyArray"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.emptyArray }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="list"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                emptyArray
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="nested"
+            data-nest-level="1"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".nested"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.nested }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="list"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                nested
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="nested[0]"
+            data-nest-level="2"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".nested[0]"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.nested[0] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                nested[0]
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="empty"
+            data-nest-level="3"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".nested[0].empty"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.nested[0].empty }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                empty
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="emptyArray"
+            data-nest-level="3"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".nested[0].emptyArray"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.nested[0].emptyArray }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="list"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                emptyArray
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon collapsed"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="0"
+            data-name="name"
+            data-nest-level="0"
+            data-path=".name"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ name }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                name
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              John
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="0"
+            data-name="age"
+            data-nest-level="0"
+            data-path=".age"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ age }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="hash"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                age
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              22
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="0"
+            data-name="hobbies"
+            data-nest-level="0"
+            data-path=".hobbies"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ hobbies }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="list"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                hobbies
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="0"
+            data-name="hobbies[0]"
+            data-nest-level="1"
+            data-path=".hobbies[0]"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ hobbies[0] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                hobbies[0]
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              surfing
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="0"
+            data-name="hobbies[1]"
+            data-nest-level="1"
+            data-path=".hobbies[1]"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ hobbies[1] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                hobbies[1]
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              traveling
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Manual Trigger"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
+            <n8n-icon-stub
+              class="trigger-icon"
+              data-v-882a318e=""
+              icon="bolt-filled"
+              size="xsmall"
+              spin="false"
+            />
+            <div
+              class="extra-info"
+              data-test-id="run-data-schema-node-item-count"
+              data-v-882a318e=""
+            >
+              1 item
+            </div>
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="hello world"
+            data-nest-level="1"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path="['hello world']"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json['hello world'] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="list"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                hello world
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="hello world[0]"
+            data-nest-level="2"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path="['hello world'][0]"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json['hello world'][0] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                hello world[0]
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="test"
+            data-nest-level="3"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path="['hello world'][0].test"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json['hello world'][0].test }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                test
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="more to think about"
+            data-nest-level="4"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path="['hello world'][0].test['more to think about']"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json['hello world'][0].test['more to think about'] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="hash"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                more to think about
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              1
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="test.how"
+            data-nest-level="3"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path="['hello world'][0]['test.how']"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json['hello world'][0]['test.how'] }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                test.how
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              ignore
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Set2"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon collapsed"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Set2 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon collapsed"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > renders variables and context section 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Manual Trigger"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon collapsed"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
+            <n8n-icon-stub
+              class="trigger-icon"
+              data-v-882a318e=""
+              icon="bolt-filled"
+              size="xsmall"
+              spin="false"
+            />
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$now"
+            data-nest-level="1"
+            data-path=".$now"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $now }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $now
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              2025-01-01T00:00:00.000+00:00
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$today"
+            data-nest-level="1"
+            data-path=".$today"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $today }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $today
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              2025-01-01T00:00:00.000+00:00
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--locked"
+            data-depth="1"
+            data-name="$vars"
+            data-nest-level="1"
+            data-path=".$vars"
+            data-target="false"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $vars }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $vars
+              </span>
+              
+            </span>
+          </div>
+          
+          <n8n-icon-stub
+            class="locked-icon el-tooltip__trigger el-tooltip__trigger"
+            data-v-0f5e7239=""
+            icon="lock"
+            size="small"
+            spin="false"
+          />
+          <!--teleport start-->
+          <!--teleport end-->
+          
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$execution"
+            data-nest-level="1"
+            data-path=".$execution"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $execution
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-path=".$execution.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution.id }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              [filled at execution time]
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="mode"
+            data-nest-level="2"
+            data-path=".$execution.mode"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution.mode }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                mode
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              test
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="resumeUrl"
+            data-nest-level="2"
+            data-path=".$execution.resumeUrl"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution.resumeUrl }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                resumeUrl
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              The URL for resuming a 'Wait' node
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                icon="chevron-down"
+                spin="false"
+              />
+            </div>
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$workflow"
+            data-nest-level="1"
+            data-path=".$workflow"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="box"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $workflow
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-path=".$workflow.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.id }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="name"
+            data-nest-level="2"
+            data-path=".$workflow.name"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.name }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                name
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              Test Workflow
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="active"
+            data-nest-level="2"
+            data-path=".$workflow.active"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.active }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="square-check"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                active
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              true
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
+<div>
+  <div
+    class="run-data-schema full-height"
+    data-v-d00cba9a=""
+  >
+    <!--v-if-->
+    <div
+      class="full-height"
+      data-test-id="draggable"
+      data-v-d00cba9a=""
+    >
+      
+      <div
+        class="full-height scroller"
+        data-v-d00cba9a=""
+        min-item-size="38"
+      >
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Manual Trigger"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon icon-trigger nodeIcon icon icon-trigger"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Manual Trigger 
+              <!--v-if-->
+            </div>
+            <n8n-icon-stub
+              class="trigger-icon"
+              data-v-882a318e=""
+              icon="bolt-filled"
+              size="xsmall"
+              spin="false"
+            />
+            <div
+              class="extra-info"
+              data-test-id="run-data-schema-node-item-count"
+              data-v-882a318e=""
+            >
+              1 item
+            </div>
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="name"
+            data-nest-level="1"
+            data-node-name="Manual Trigger"
+            data-node-type="n8n-nodes-base.manualTrigger"
+            data-path=".name"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $json.name }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="title"
+              data-v-0f5e7239=""
+            >
+              
+              
+              <span>
+                name
+              </span>
+              
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            
+            <mark>
+              John
+            </mark>
+            
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="Set2"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <n8n-icon-stub
+                class="collapse-icon"
+                data-v-882a318e=""
+                icon="chevron-down"
+                size="medium"
+                spin="false"
+              />
+            </div>
+            <div
+              class="n8n-node-icon nodeIcon icon nodeIcon icon"
+              data-v-882a318e=""
+            >
+              <div
+                class="nodeIconWrapper"
+                style="width: 12px; height: 12px; font-size: 12px; line-height: 12px;"
+              >
+                <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                
+                <div
+                  class="icon"
+                >
+                  <img
+                    class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
+                  />
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Set2 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <div
+              class="extra-info"
+              data-test-id="run-data-schema-node-item-count"
+              data-v-882a318e=""
+            >
+              1 item
+            </div>
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="2"
+            data-name="name"
+            data-nest-level="1"
+            data-node-name="Set2"
+            data-node-type="n8n-nodes-base.set"
+            data-path=".name"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $('Set2').item.json.name }}"
+          >
+            <n8n-icon-stub
+              class="type-icon"
+              data-v-0f5e7239=""
+              icon="case-upper"
+              size="small"
+              spin="false"
+            />
+            <span
+              class="title"
+              data-v-0f5e7239=""
+            >
+              
+              
+              <span>
+                name
+              </span>
+              
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            
+            <mark>
+              John
+            </mark>
+            
+            
+          </span>
+        </div>
+        
+        
+        
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
