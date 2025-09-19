@@ -54,12 +54,6 @@ export class DataTable implements INodeType {
 				default: 'row',
 			},
 			...row.description,
-			{
-				displayName: 'Test',
-				name: 'test',
-				type: 'string',
-				default: '',
-			},
 		],
 	};
 
