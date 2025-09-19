@@ -9,3 +9,26 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	};
 	handler: ToolCallback<InputArgs>;
 };
+
+// Shared MCP tool types
+export type SearchWorkflowsParams = {
+	limit?: number;
+	active?: boolean;
+	name?: string;
+	projectId?: string;
+};
+
+export type SearchWorkflowsItem = {
+	id: string;
+	name: string | null;
+	active: boolean | null;
+	createdAt: string | null;
+	updatedAt: string | null;
+	triggerCount: number | null;
+	nodes: Array<{ name: string; type: string }>;
+};
+
+export type SearchWorkflowsResult = {
+	data: SearchWorkflowsItem[];
+	count: number;
+};
