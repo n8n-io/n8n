@@ -64,7 +64,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			}
 
 			// Import entities from the specified directory
-			await importService.importEntities(inputDir);
+			await importService.importEntitiesFromFiles(inputDir);
 			this.logger.info('✅ Task completed successfully!');
 		} finally {
 			await importService.enableForeignKeyConstraints();

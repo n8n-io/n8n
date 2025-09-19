@@ -366,21 +366,6 @@ export class ImportService {
 	}
 
 	/**
-	 * Disable and re-enable foreign key constraints for entity import operations
-	 * @param inputDir - Directory containing exported entity files
-	 * @returns Promise that resolves when foreign key constraints are disabled and re-enabled
-	 */
-	async importEntities(inputDir: string): Promise<void> {
-		this.logger.info(
-			`Disabling foreign key constraints for database type: ${this.dataSource.options.type}`,
-		);
-
-		this.logger.info('Foreign key constraints disabled');
-
-		await this.importEntitiesFromFiles(inputDir);
-	}
-
-	/**
 	 * Convert a node's credentials from old format `{ <nodeType>: <credentialName> }`
 	 * to new format: `{ <nodeType>: { id: string | null, name: <credentialName> } }`
 	 */

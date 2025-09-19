@@ -529,29 +529,6 @@ describe('ImportService', () => {
 		});
 	});
 
-	describe('importEntities', () => {
-		it('should call importEntitiesFromFiles', async () => {
-			const mockQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
-			};
-
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
-			// @ts-expect-error Protected property
-			mockDataSource.options = { type: 'sqlite' };
-			(readdir as jest.Mock).mockResolvedValue([]);
-
-			await importService.importEntities('/test/input');
-
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Disabling foreign key constraints for database type: sqlite',
-			);
-			expect(mockLogger.info).toHaveBeenCalledWith('Foreign key constraints disabled');
-		});
-	});
-
 	describe('disableForeignKeyConstraints', () => {
 		it('should disable foreign key constraints for SQLite', async () => {
 			// @ts-expect-error Protected property
