@@ -12,12 +12,6 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	PROJECT_ADMIN_ROLE_SLUG,
-	PROJECT_EDITOR_ROLE_SLUG,
-	PROJECT_OWNER_ROLE_SLUG,
-	PROJECT_VIEWER_ROLE_SLUG,
-} from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import type {
 	DataStoreColumnJsType,
@@ -44,7 +38,6 @@ import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
 @Service()
