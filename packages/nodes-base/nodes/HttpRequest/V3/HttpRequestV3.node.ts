@@ -412,6 +412,25 @@ export class HttpRequestV3 implements INodeType {
 					return accumulator;
 				};
 
+				// When building query parameters, allow multiple entries with the same name
+				// by accumulating values into arrays. This preserves repeated keys like
+				// q_organization_keyword_tags[]=financial&q_organization_keyword_tags[]=investment
+				// instead of overwriting earlier values.
+				const parametersToKeyValueForQuery = async (
+					accumulator: { [key: string]: any },
+					cur: { name: string; value: string },
+				) => {
+					const existing = accumulator[cur.name];
+					if (existing === undefined) {
+						accumulator[cur.name] = cur.value;
+					} else if (Array.isArray(existing)) {
+						existing.push(cur.value);
+					} else {
+						accumulator[cur.name] = [existing, cur.value];
+					}
+					return accumulator;
+				};
+
 				// Get parameters defined in the UI
 				if (sendBody && bodyParameters) {
 					if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
@@ -487,7 +506,7 @@ export class HttpRequestV3 implements INodeType {
 				// Get parameters defined in the UI
 				if (sendQuery && queryParameters) {
 					if (specifyQuery === 'keypair') {
-						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
+						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValueForQuery);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
 						try {
