@@ -61,5 +61,5 @@ sudo usermod -aG docker "$CURRENT_USER"
 
 # Install zx and websockets
 npm install zx
-pip3 install websockets
+pip3 install 'websockets==15.0.1'
 
