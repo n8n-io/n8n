@@ -13,7 +13,6 @@ import type {
 	CodeExecutionMode,
 	EditorType,
 	IDataObject,
-	ILoadOptions,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
@@ -223,8 +222,8 @@ const shortPath = computed<string>(() => {
 	return short.join('.');
 });
 
-function getTypeOption<T>(optionName: string): T {
-	return getParameterTypeOption<T>(props.parameter, optionName);
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
+	return getParameterTypeOption(props.parameter, optionName);
 }
 
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
@@ -273,13 +272,13 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 		: props.modelValue;
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
-	return getTypeOption<EditorType>('editor');
+	return getTypeOption('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
-	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
+	return getTypeOption('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
@@ -287,7 +286,7 @@ const editorLanguage = computed<CodeNodeLanguageOption>(() => {
 
 	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
 
-	return getTypeOption<CodeNodeLanguageOption>('editorLanguage') ?? 'javaScript';
+	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
@@ -387,7 +386,7 @@ const expressionDisplayValue = computed(() => {
 });
 
 const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = getTypeOption<string[] | undefined>('loadOptionsDependsOn');
+	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -697,8 +696,8 @@ async function loadRemoteParameterOptions() {
 			props.parameter,
 			currentNodeParameters,
 		) as INodeParameters;
-		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
-		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
+		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
+		const loadOptions = getTypeOption('loadOptions');
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {

@@ -21,6 +21,7 @@ import {
 	type CodeNodeEditorLanguage,
 	type EditorType,
 	HTML_NODE_TYPE,
+	type INodeProperties,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -146,9 +147,9 @@ const hasNodeRun = computed(() => {
 	);
 });
 
-function getTypeOption<T>(optionName: string): T | undefined {
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
 	return resolvedParameter.value
-		? getParameterTypeOption<T>(resolvedParameter.value.parameter, optionName)
+		? getParameterTypeOption(resolvedParameter.value.parameter, optionName)
 		: undefined;
 }
 
@@ -167,7 +168,7 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
 const isToolNode = computed(() =>
 	resolvedParameter.value ? nodeTypesStore.isToolNode(resolvedParameter.value?.node.type) : false,
