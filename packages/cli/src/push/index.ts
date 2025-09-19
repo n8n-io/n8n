@@ -67,11 +67,11 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the main express app to upgrade websocket connections */
-	setupPushServer(restEndpoint: string, server: Server, app: Application) {
+	setupPushServer(basePath: string, restEndpoint: string, server: Server, app: Application) {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				if (parseUrl(request.url).pathname === `${basePath}/${restEndpoint}/push`) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 
@@ -91,9 +91,9 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the push endpoint that the frontend connects to. */
-	setupPushHandler(restEndpoint: string, app: Application) {
+	setupPushHandler(basePath: string, restEndpoint: string, app: Application) {
 		app.use(
-			`/${restEndpoint}/push`,
+			`${basePath}/${restEndpoint}/push`,
 
 			this.authService.createAuthMiddleware(false),
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>

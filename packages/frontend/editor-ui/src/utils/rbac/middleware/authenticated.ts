@@ -13,7 +13,22 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	// to avoid infinite redirect loops
 	const url = new URL(window.location.href);
 	url.searchParams.delete('redirect');
-	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname}${url.search}`);
+	// Safely get the base path, defaulting to '/' if undefined
+	const basePath = window.BASE_PATH ?? '/';
+	
+	// Remove the base path from the current pathname if it exists
+	let pathname = url.pathname;
+	if (basePath !== '/' && (pathname === basePath || pathname.indexOf(basePath + '/') === 0)) {
+		pathname = pathname.substring(basePath.length);
+		// Normalize empty pathname to '/' and ensure the resulting path starts with '/' if it's not empty
+		if (!pathname || pathname === '') {
+			pathname = '/';
+		} else if (pathname.indexOf('/') !== 0) {
+			pathname = '/' + pathname;
+		}
+	}
+	
+	const redirect = to.query.redirect ?? encodeURIComponent(`${pathname}${url.search}`);
 
 	const valid = isAuthenticated(options);
 	if (!valid) {
