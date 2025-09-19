@@ -6,10 +6,12 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
@@ -31,6 +33,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const settingsStore = useSettingsStore();
 		const posthogStore = usePostHog();
 		const cloudPlanStore = useCloudPlanStore();
+		const workflowsStore = useWorkflowsStore();
 
 		const isFeatureEnabled = computed(() => {
 			const variant = posthogStore.getVariant(READY_TO_RUN_V2_EXPERIMENT.name);
@@ -109,6 +112,40 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			}
 		};
 
+		const createAndOpenAiWorkflow = async (source: 'card' | 'button', parentFolderId?: string) => {
+			const variant = getCurrentVariant();
+			telemetry.track('User opened ready to run AI workflow', {
+				source,
+				variant,
+			});
+
+			const workflowTemplate =
+				variant === READY_TO_RUN_V2_EXPERIMENT.variant2
+					? READY_TO_RUN_WORKFLOW_V2
+					: READY_TO_RUN_WORKFLOW_V1;
+
+			try {
+				// Create the workflow with parentFolderId if provided
+				const workflowToCreate: WorkflowDataCreate = {
+					...workflowTemplate,
+					parentFolderId,
+				};
+
+				const createdWorkflow = await workflowsStore.createNewWorkflow(workflowToCreate);
+
+				// Navigate to the created workflow
+				await router.push({
+					name: VIEWS.WORKFLOW,
+					params: { name: createdWorkflow.id },
+				});
+
+				return createdWorkflow;
+			} catch (error) {
+				toast.showError(error, i18n.baseText('generic.error'));
+				throw error;
+			}
+		};
+
 		const openAiWorkflow = async (source: 'card' | 'button', parentFolderId?: string) => {
 			const variant = getCurrentVariant();
 			telemetry.track('User opened ready to run AI workflow', {
@@ -134,7 +171,8 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			projectId?: string,
 		) => {
 			await claimFreeAiCredits(projectId);
-			await openAiWorkflow(source, parentFolderId);
+			// Use the new createAndOpenAiWorkflow method to create and save the workflow
+			await createAndOpenAiWorkflow(source, parentFolderId);
 		};
 
 		const getCardVisibility = (
@@ -176,6 +214,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			claimingCredits,
 			userCanClaimOpenAiCredits,
 			claimFreeAiCredits,
+			createAndOpenAiWorkflow,
 			openAiWorkflow,
 			claimCreditsAndOpenWorkflow,
 			getCardVisibility,
