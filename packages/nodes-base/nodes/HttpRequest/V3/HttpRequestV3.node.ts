@@ -413,7 +413,7 @@ export class HttpRequestV3 implements INodeType {
 						accumulator[name].push(cur.value);
 						return accumulator;
 					}
-					accumulator[name]
+					accumulator[name] !== undefined
 						? (accumulator[name] = [accumulator[name], cur.value])
 						: (accumulator[name] = cur.value);
 					return accumulator;
