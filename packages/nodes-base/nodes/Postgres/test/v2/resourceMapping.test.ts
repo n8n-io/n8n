@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { ColumnInfo } from '../../v2/helpers/interfaces';
-import { getEnums, getTableSchema } from '../../v2/helpers/utils';
+import { getEnums, getEnumValues, getTableSchema } from '../../v2/helpers/utils';
 import { getMappingColumns } from '../../v2/methods/resourceMapping';
 
 jest.mock('../../transport', () => {
@@ -18,7 +18,7 @@ jest.mock('../../v2/helpers/utils', () => {
 	const originalModule = jest.requireActual('../../v2/helpers/utils');
 	return {
 		...originalModule,
-		getEnums: jest.fn(() => ({})),
+		getEnums: jest.fn(() => new Map()),
 		getEnumValues: jest.fn(),
 		getTableSchema: jest.fn(),
 	};
@@ -116,6 +116,10 @@ describe('Postgres, resourceMapping', () => {
 			expectedRequired: true,
 			expectedDefaultMatch: false,
 			isEnum: true,
+			expectedOptions: [
+				{ name: 'Active', value: 'active' },
+				{ name: 'Inactive', value: 'inactive' },
+			],
 		},
 		{
 			name: 'should map unknown USER-DEFINED type to string by default',
@@ -170,14 +174,25 @@ describe('Postgres, resourceMapping', () => {
 		},
 	])(
 		'$name',
-		async ({ columnData, expectedType, expectedRequired, expectedDefaultMatch, isEnum }) => {
+		async ({
+			columnData,
+			expectedType,
+			expectedRequired,
+			expectedDefaultMatch,
+			isEnum,
+			expectedOptions,
+		}) => {
 			jest.mocked(getTableSchema).mockResolvedValueOnce([columnData]);
 
 			// Mock enum data if this test case represents an enum
 			if (isEnum && columnData.udt_name) {
 				jest
 					.mocked(getEnums)
-					.mockResolvedValueOnce({ [columnData.udt_name]: ['active', 'inactive'] });
+					.mockResolvedValueOnce(new Map([[columnData.udt_name, ['active', 'inactive']]]));
+				jest.mocked(getEnumValues).mockReturnValueOnce([
+					{ name: 'Active', value: 'active' },
+					{ name: 'Inactive', value: 'inactive' },
+				]);
 			}
 
 			const fields = await getMappingColumns.call(loadOptionsFunctions);
@@ -190,7 +205,7 @@ describe('Postgres, resourceMapping', () => {
 						display: true,
 						displayName: columnData.column_name,
 						id: columnData.column_name,
-						options: undefined,
+						options: expectedOptions ?? undefined,
 						required: expectedRequired,
 						type: expectedType,
 					},
