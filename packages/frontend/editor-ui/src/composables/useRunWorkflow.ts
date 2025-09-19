@@ -164,7 +164,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				? workflowsStore.getNodeByName(options.destinationNode)?.type
 				: '';
 
-			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
 			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
@@ -180,7 +179,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodeNames.push(
 					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
-				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
@@ -244,7 +242,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
-			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
 			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
@@ -309,17 +306,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const startRunData: IStartRunData = {
 				workflowData,
-				// With the new partial execution version the backend decides what run
-				// data to use and what to ignore.
 				runData: !isPartialExecution
-					? // if it's a full execution we don't want to send any run data
-						undefined
-					: version === 2
-						? // With the new partial execution version the backend decides
-							//what run data to use and what to ignore.
-							(runData ?? undefined)
-						: // for v0 we send the run data the FE constructed
-							newRunData,
+					? undefined // if it's a full execution we don't want to send any run data
+					: (runData ?? undefined), // For partial execution, backend decides what run data to use and what to ignore.
 				startNodes,
 				triggerToStartFrom,
 			};
@@ -327,7 +316,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflowObject.value.id && nodeId && version === 2) {
+				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
 					if (agentRequest) {

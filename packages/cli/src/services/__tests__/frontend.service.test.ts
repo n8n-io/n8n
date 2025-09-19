@@ -57,7 +57,6 @@ describe('FrontendService', () => {
 				mfa: { enabled: false },
 				deployment: { type: 'default' },
 				workflowHistory: { enabled: false },
-				partialExecutions: { version: 1 },
 				path: '',
 				sso: {
 					ldap: { loginEnabled: false },

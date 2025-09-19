@@ -75,16 +75,6 @@ export class DeprecationService {
 			disableIf: () => this.instanceSettings.instanceType !== 'main',
 		},
 		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			checkValue: (value: string) => value === '1',
-			message:
-				'Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
-		},
-		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			message: 'This environment variable is internal and should not be set.',
-		},
-		{
 			envVar: 'N8N_EXPRESSION_EVALUATOR',
 			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
 		},
