@@ -721,6 +721,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflow.value.name = data.newName;
 
+		// Keep the runtime workflow object in sync so $workflow.name resolves in editor previews
+		workflowObject.value.name = data.newName;
+
 		if (
 			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
 			workflowsById.value[workflow.value.id]
