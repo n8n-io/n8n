@@ -68,6 +68,7 @@ import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
+import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -271,6 +272,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
+	/**
+	 * Settings sidebar items registry per module.
+	 * Modules can register items and SettingsSidebar will render them
+	 * when the corresponding module is active.
+	 */
+	const registeredSettingsSidebarItems = ref<Record<string, IMenuItem[]>>({});
+
 	// Last interacted with - Canvas v2 specific
 	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
@@ -364,6 +372,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
+
+	const settingsSidebarItems = computed<IMenuItem[]>(() => {
+		const items: IMenuItem[] = [];
+		Object.entries(registeredSettingsSidebarItems.value).forEach(([moduleName, moduleItems]) => {
+			if (settingsStore.isModuleActive(moduleName)) {
+				items.push(...moduleItems);
+			}
+		});
+		return items;
+	});
 
 	const isReadOnlyView = computed(() => {
 		return ![
@@ -576,6 +594,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
+	const registerSettingsSidebarItems = (moduleName: string, items: IMenuItem[]) => {
+		registeredSettingsSidebarItems.value[moduleName] = items;
+	};
+
 	/**
 	 * Set whether we are currently in the process of fetching and deserializing
 	 * the full execution data and loading it to the store.
@@ -638,6 +660,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	return {
 		appGridDimensions,
+		settingsSidebarItems,
 		appliedTheme,
 		contextBasedTranslationKeys,
 		isModalActiveById,
@@ -692,6 +715,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		initialize,
 		moduleTabs,
 		registerCustomTabs,
+		registerSettingsSidebarItems,
 		registerModal,
 		unregisterModal,
 		initializeModalsFromRegistry,

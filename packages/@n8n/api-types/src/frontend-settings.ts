@@ -226,6 +226,14 @@ export type FrontendModuleSettings = {
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
 	};
+
+	/**
+	 * Client settings for MCP module.
+	 */
+	mcp?: {
+		/** Whether MCP access is enabled in the instance. */
+		mcpAccessEnabled: boolean;
+	};
 };
 
 export type N8nEnvFeatFlagValue = boolean | string | number | undefined;

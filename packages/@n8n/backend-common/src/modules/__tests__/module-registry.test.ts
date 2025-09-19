@@ -15,8 +15,9 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'data-table' isn't (yet) eligible module by default
-		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-table');
+		// 'data-table' and 'mcp' aren't (yet) eligible module by default
+		const NON_DEFAULT_MODULES = ['data-table', 'mcp'];
+		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 

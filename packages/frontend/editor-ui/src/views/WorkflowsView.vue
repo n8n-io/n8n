@@ -320,6 +320,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
+				settings: resource.settings,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -1019,6 +1020,20 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+};
+
+const onWorkflowMCPAccessToggle = async (data: { id: string; enabled: boolean }) => {
+	const index = workflowsAndFolders.value.findIndex((w) => w.id === data.id);
+	if (index === -1) return;
+
+	try {
+		await workflowsStore.updateWorkflowSetting(data.id, 'availableInMCP', data.enabled);
+		const item = workflowsAndFolders.value[index] as WorkflowListItem;
+		const updated = workflowsStore.workflowsById[data.id];
+		workflowsAndFolders.value.splice(index, 1, { ...item, settings: updated?.settings });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+	}
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2047,6 +2062,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
+					@workflow:toggle-mcp-access="onWorkflowMCPAccessToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
 				/>
