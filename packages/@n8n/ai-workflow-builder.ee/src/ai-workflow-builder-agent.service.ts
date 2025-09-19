@@ -143,6 +143,7 @@ export class AiWorkflowBuilderService {
 						...authHeaders,
 					},
 				});
+
 				this.anthropicClaudeModel = await anthropicClaudeSonnet4({
 					baseUrl: baseUrl + '/anthropic',
 					apiKey: '-',

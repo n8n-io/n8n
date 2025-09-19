@@ -9,7 +9,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.store.test';
-import { WORKFLOW_BUILDER_EXPERIMENT, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
+import { WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
@@ -420,13 +420,17 @@ describe('AI Builder store', () => {
 	// Split into two separate tests to avoid caching issues with computed properties
 	it('should return true when experiment flag is set to variant', () => {
 		const builderStore = useBuilderStore();
-		vi.spyOn(posthogStore, 'getVariant').mockReturnValue(WORKFLOW_BUILDER_EXPERIMENT.variant);
+		vi.spyOn(posthogStore, 'getVariant').mockReturnValue(
+			WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant,
+		);
 		expect(builderStore.isAIBuilderEnabled).toBe(true);
 	});
 
 	it('should return false when experiment flag is set to control', () => {
 		const builderStore = useBuilderStore();
-		vi.spyOn(posthogStore, 'getVariant').mockReturnValue(WORKFLOW_BUILDER_EXPERIMENT.control);
+		vi.spyOn(posthogStore, 'getVariant').mockReturnValue(
+			WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control,
+		);
 		expect(builderStore.isAIBuilderEnabled).toBe(false);
 	});
 
