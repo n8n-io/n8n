@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
-import N8nButton from '../N8nButton/Button.vue';
+import N8nSendStopButton from './N8nSendStopButton.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
@@ -225,24 +225,11 @@ defineExpose({
 						{{ remainingCharacters }}
 					</span>
 				</div>
-				<N8nButton
-					v-if="streaming"
-					:class="$style.stopButton"
-					type="danger"
-					size="small"
-					square
-					icon="square"
-					@click="handleStop"
-				/>
-				<N8nButton
-					v-else
-					:class="$style.sendButton"
-					type="primary"
-					size="small"
-					square
-					icon="arrow-up"
+				<N8nSendStopButton
+					:streaming="streaming"
 					:disabled="sendDisabled"
-					@click="handleSubmit"
+					@send="handleSubmit"
+					@stop="handleStop"
 				/>
 			</div>
 		</div>
@@ -268,24 +255,11 @@ defineExpose({
 						{{ remainingCharacters }}
 					</span>
 				</div>
-				<N8nButton
-					v-if="streaming"
-					:class="$style.stopButton"
-					type="danger"
-					size="small"
-					square
-					icon="square"
-					@click="handleStop"
-				/>
-				<N8nButton
-					v-else
-					:class="$style.sendButton"
-					type="primary"
-					size="small"
-					square
-					icon="arrow-up"
+				<N8nSendStopButton
+					:streaming="streaming"
 					:disabled="sendDisabled"
-					@click="handleSubmit"
+					@send="handleSubmit"
+					@stop="handleStop"
 				/>
 			</div>
 		</template>
@@ -418,27 +392,5 @@ defineExpose({
 		color: var(--color-danger);
 		font-weight: var(--font-weight-bold);
 	}
-}
-
-.sendButton {
-	--button-background-color: var(--color-primary);
-	--button-color: var(--color-text-xlight);
-	--button-border-color: var(--color-primary);
-	min-width: 32px;
-	height: 32px;
-
-	&:hover:not(:disabled) {
-		--button-background-color: var(--color-primary-shade-1);
-		--button-border-color: var(--color-primary-shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-	}
-}
-
-.stopButton {
-	min-width: 32px;
-	height: 32px;
 }
 </style>
