@@ -144,3 +144,7 @@ ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
+ERROR_WINDOWS_NOT_SUPPORTED = (
+    "Error: This task runner is not supported on Windows. "
+    "Please use a Unix-like system (Linux or macOS)."
+)
