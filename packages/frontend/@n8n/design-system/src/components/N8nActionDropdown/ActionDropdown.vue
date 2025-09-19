@@ -96,6 +96,7 @@ defineExpose({ open, close });
 			:popper-class="popperClass"
 			:teleported="teleported"
 			:disabled="disabled"
+			v-bind="attrs"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
