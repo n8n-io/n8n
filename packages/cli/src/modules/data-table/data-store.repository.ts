@@ -78,9 +78,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return createdDataStore;
 	}
 
-	async deleteDataStore(dataStoreId: string, entityManager?: EntityManager) {
-		const executor = entityManager ?? this.manager;
-		return await executor.transaction(async (em) => {
+	async deleteDataStore(dataStoreId: string, tx?: EntityManager) {
+		const run = async (em: EntityManager) => {
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -88,9 +87,14 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			await em.delete(DataTable, { id: dataStoreId });
 			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
-
 			return true;
-		});
+		};
+
+		if (tx) {
+			return await run(tx);
+		}
+
+		return await this.manager.transaction(run);
 	}
 
 	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
