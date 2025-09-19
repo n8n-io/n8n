@@ -1,28 +1,19 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User, type WorkflowEntity } from '@n8n/db';
+import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
+import { createWorkflow } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('search-workflows MCP tool', () => {
-	const makeMockWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
-		id: overrides.id ?? 'wf-1',
-		name: overrides.name ?? 'My workflow',
-		active: overrides.active ?? false,
-		createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
-		updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),
-		triggerCount: overrides.triggerCount ?? 1,
-		nodes: overrides.nodes ?? [],
-	});
-
 	const user = Object.assign(new User(), { id: 'user-1' });
 
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
 			const workflows = [
-				makeMockWorkflow({
+				createWorkflow({
 					id: 'wrap-1',
 					name: 'Wrapper',
 					nodes: [{ name: 'Start', type: 'n8n-nodes-base.start' } as INode],
@@ -46,14 +37,15 @@ describe('search-workflows MCP tool', () => {
 	describe('handler tests', () => {
 		test('formats the output correctly', async () => {
 			const workflows = [
-				makeMockWorkflow({
+				createWorkflow({
 					id: 'a',
 					name: 'Alpha',
 					nodes: [{ name: 'Start', type: 'n8n-nodes-base.start' } as INode],
 				}),
-				makeMockWorkflow({
+				createWorkflow({
 					id: 'b',
 					name: 'Beta',
+					active: true,
 					nodes: [{ name: 'Cron', type: 'n8n-nodes-base.cron' } as INode],
 				}),
 			];
@@ -77,7 +69,7 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'b',
 					name: 'Beta',
-					active: false,
+					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -87,7 +79,7 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('applies provided filters and clamps high limit', async () => {
-			const workflows = [makeMockWorkflow({ id: 'x', active: true })];
+			const workflows = [createWorkflow({ id: 'x', active: true })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
@@ -114,14 +106,14 @@ describe('search-workflows MCP tool', () => {
 				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
-				limit: 0 as any,
+				limit: 0,
 			});
 			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
 			expect(optionsArg.take).toBe(1);
 		});
 
 		test('formats nodes as empty array when missing', async () => {
-			const workflows = [makeMockWorkflow({ id: 'no-nodes', nodes: undefined })];
+			const workflows = [createWorkflow({ id: 'no-nodes', nodes: undefined })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});

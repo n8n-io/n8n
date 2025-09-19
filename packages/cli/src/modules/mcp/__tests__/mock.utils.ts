@@ -3,7 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 	id: 'wf-1',
 	name: 'My wf',
-	nodes: [
+	nodes: overrides.nodes ?? [
 		{
 			id: 'node-1',
 			name: 'Webhook',
@@ -25,8 +25,11 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 			credentials: { httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
 		},
 	],
-	active: overrides.active ?? true,
+	active: overrides.active ?? false,
 	isArchived: overrides.isArchived ?? false,
+	createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
+	updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),
+	triggerCount: overrides.triggerCount ?? 1,
 	settings: overrides.settings ?? { availableInMCP: true },
 	pinData: overrides.pinData ?? { should: 'be-removed' },
 	...overrides,
