@@ -26,6 +26,10 @@ export class CredentialModal {
 		return this.getCredentialName().getByTestId('inline-edit-input');
 	}
 
+	getCredentialInputs(): Locator {
+		return this.root.getByTestId('credential-connection-parameter');
+	}
+
 	async waitForModal(): Promise<void> {
 		await this.root.waitFor({ state: 'visible' });
 	}
@@ -116,5 +120,9 @@ export class CredentialModal {
 
 	getOAuthRedirectUrl() {
 		return this.root.page().getByTestId('oauth-redirect-url');
+	}
+
+	getAuthTypeRadioButtons() {
+		return this.root.page().locator('label.el-radio');
 	}
 }
