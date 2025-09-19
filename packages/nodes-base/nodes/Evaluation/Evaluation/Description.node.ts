@@ -483,9 +483,10 @@ export const sourcePicker: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Data Table',
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: 'Data table',
 			value: 'dataTable',
-			description: 'Load the test dataset from a local Data Table',
+			description: 'Load the test dataset from a local Data table',
 		},
 		{
 			name: 'Google Sheets',
