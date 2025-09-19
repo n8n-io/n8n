@@ -34,9 +34,22 @@ function handleStop() {
 		type="primary"
 		:size="size"
 		square
-		icon="square"
 		@click="handleStop"
-	/>
+	>
+		<div style="display: block">
+			<svg
+				:class="$style.stopIcon"
+				width="10"
+				height="10"
+				viewBox="0 0 10 10"
+				fill="currentColor"
+				overflow="hidden"
+				xmlns="http://www.w3.org/2000/svg"
+			>
+				<rect x="0" y="0" width="10" height="10" rx="2" ry="2" />
+			</svg>
+		</div>
+	</N8nButton>
 	<N8nButton
 		v-else
 		:class="$style.sendButton"
@@ -71,7 +84,12 @@ function handleStop() {
 
 .stopButton {
 	--button-border-radius: var(--border-radius-large);
+	--button-padding-horizontal: 0;
 	min-height: 24px;
 	min-width: 24px;
+}
+
+.stopIcon {
+	display: block;
 }
 </style>
