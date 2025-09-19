@@ -367,10 +367,13 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value
+					? searchFilter.value
+					: (addNewResourceOptions.defaultName ?? ''),
 			},
 		}),
 		method: addNewResourceOptions.method,
+		url: addNewResourceOptions.url,
 	};
 });
 
@@ -379,7 +382,24 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const { method: addNewResourceMethodName, url: redirectUrl } = allowNewResources.value;
+
+	if (redirectUrl) {
+		let resolvedUrl = redirectUrl;
+
+		// Replace placeholders in URL
+		if (resolvedUrl.includes('{{$projectId}}')) {
+			resolvedUrl = resolvedUrl.replace(
+				/\{\{\$projectId\}\}/g,
+				projectsStore.currentProjectId ?? '',
+			);
+		}
+
+		openResource(resolvedUrl);
+		return;
+	}
+
+	// Handle backend method call (existing functionality)
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
@@ -417,7 +437,9 @@ const handleAddResourceClick = async () => {
 };
 
 const onAddResourceClicked = computed(() =>
-	allowNewResources.value ? handleAddResourceClick : undefined,
+	allowNewResources.value && (allowNewResources.value.method || allowNewResources.value.url)
+		? handleAddResourceClick
+		: undefined,
 );
 
 watch(currentQueryError, (curr, prev) => {

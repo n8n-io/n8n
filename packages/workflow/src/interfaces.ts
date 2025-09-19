@@ -1560,8 +1560,9 @@ export interface INodePropertyModeTypeOptions {
 	skipCredentialsCheckInRLC?: boolean;
 	allowNewResource?: {
 		label: string;
-		defaultName: string;
-		method: string;
+		defaultName?: string;
+		method?: string;
+		url?: string;
 	};
 }
 
