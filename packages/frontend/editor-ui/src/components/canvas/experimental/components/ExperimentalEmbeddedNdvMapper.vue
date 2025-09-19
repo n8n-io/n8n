@@ -71,6 +71,7 @@ defineExpose({
 				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
+				search-shortcut="ctrl+f"
 			/>
 		</template>
 	</N8nPopoverReka>

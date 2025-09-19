@@ -308,7 +308,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
+		:search-shortcut="isPaneActive ? '/' : undefined"
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
