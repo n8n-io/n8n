@@ -71,8 +71,9 @@ vi.mock('@/components/Projects/ProjectMembersTable.vue', () => ({
 			data: { type: Object, required: true },
 			currentUserId: { type: String, required: false },
 			projectRoles: { type: Array, required: true },
+			actions: { type: Array, required: false },
 		},
-		emits: ['update:options', 'update:role'],
+		emits: ['update:options', 'update:role', 'action'],
 		setup(_, { emit }) {
 			addEmitter('projectMembersTable', emit as unknown as Emitter);
 			return {};
@@ -491,27 +492,31 @@ describe('ProjectSettings', () => {
 			);
 		});
 
-		it('marks member for removal, filters it out, and saves without it with telemetry', async () => {
+		it('removes member immediately and shows success toast with telemetry', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('1');
 
-			// Mark for removal
-			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'remove' });
+			// Remove member via inline action
+			emitters.projectMembersTable.emit('action', { action: 'remove', userId: '1' });
 			await nextTick();
-			// Pending removal should hide members table container entirely
-			expect(queryByTestId('members-count')).toBeNull();
 
-			await userEvent.click(getByTestId('project-settings-save-button'));
-			await nextTick();
+			// Members list container should now be hidden
+			expect(queryByTestId('members-count')).toBeNull();
 			expect(updateSpy).toHaveBeenCalled();
 			const payload = updateSpy.mock.calls[0][1];
 			expect(payload.relations).toEqual([]);
+			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User removed member from project',
 				expect.objectContaining({ project_id: '123', target_user_id: '1' }),
 			);
+
+			// Save should not re-add removed user
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+			expect(queryByTestId('members-count')).toBeNull();
 		});
 
 		it('prevents saving when invalid role selected', async () => {

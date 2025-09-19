@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import logging
 
 from src.errors import (
     TaskResultMissingError,
@@ -23,9 +24,11 @@ from src.constants import (
 )
 from typing import Any, Set
 
-from multiprocessing.context import SpawnProcess
+from multiprocessing.context import ForkServerProcess
 
-MULTIPROCESSING_CONTEXT = multiprocessing.get_context("fork")
+logger = logging.getLogger(__name__)
+
+MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
@@ -70,7 +73,7 @@ class TaskExecutor:
 
     @staticmethod
     def execute_process(
-        process: SpawnProcess,
+        process: ForkServerProcess,
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
@@ -80,7 +83,12 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
-            process.start()
+            try:
+                process.start()
+            except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
+                logger.error(f"Failed to start child process: {e}")
+                raise TaskProcessExitError(-1)
+
             process.join(timeout=task_timeout)
 
             if process.is_alive():
@@ -95,6 +103,10 @@ class TaskExecutor:
                 returned = queue.get_nowait()
             except Empty:
                 raise TaskResultMissingError()
+            except EOFError as e:
+                logger.error(f"Failed to retrieve results from child process: {e}")
+                raise TaskResultMissingError()
+
             finally:
                 queue.close()
                 queue.join_thread()
@@ -122,17 +134,21 @@ class TaskExecutor:
             raise
 
     @staticmethod
-    def stop_process(process: SpawnProcess | None):
+    def stop_process(process: ForkServerProcess | None):
         """Stop a running subprocess, gracefully else force-killing."""
 
         if process is None or not process.is_alive():
             return
 
-        process.terminate()
-        process.join(timeout=1)  # 1s grace period
+        try:
+            process.terminate()
+            process.join(timeout=1)  # 1s grace period
 
-        if process.is_alive():
-            process.kill()
+            if process.is_alive():
+                process.kill()
+        except (ProcessLookupError, ConnectionError, BrokenPipeError):
+            # subprocess is dead or unreachable
+            pass
 
     @staticmethod
     def _all_items(

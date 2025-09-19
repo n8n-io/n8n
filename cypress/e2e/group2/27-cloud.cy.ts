@@ -46,6 +46,7 @@ describe('Cloud', () => {
 	describe('BannerStack', () => {
 		it('should render trial banner for opt-in cloud user', () => {
 			visitWorkflowPage();
+			expandSidebar();
 
 			cy.getByTestId('banner-stack').should('be.visible');
 
@@ -58,6 +59,7 @@ describe('Cloud', () => {
 	describe('Admin Home', () => {
 		it('Should show admin button', () => {
 			visitWorkflowPage();
+			expandSidebar();
 
 			mainSidebar.getters.adminPanel().should('be.visible');
 		});

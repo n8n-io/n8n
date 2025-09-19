@@ -302,7 +302,8 @@ class TaskRunner:
 
             task_state.process = process
 
-            result, print_args = self.executor.execute_process(
+            result, print_args = await asyncio.to_thread(
+                self.executor.execute_process,
                 process=process,
                 queue=queue,
                 task_timeout=self.config.task_timeout,
