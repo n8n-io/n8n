@@ -18,7 +18,13 @@ export function chatWithBuilder(
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
 		'/ai/build',
-		payload,
+		{
+			payload: {
+				...payload.payload,
+				// todo replace based on experiment
+				useDeprecatedCredentials: false,
+			},
+		},
 		onMessageUpdated,
 		onDone,
 		onError,

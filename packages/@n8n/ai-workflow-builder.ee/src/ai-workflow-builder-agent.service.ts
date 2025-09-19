@@ -1,9 +1,11 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { type ChatAnthropic } from '@langchain/anthropic';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import { ChatOpenAI } from '@langchain/openai';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import assert from 'assert';
 import { Client } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
@@ -16,9 +18,9 @@ import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent
 export class AiWorkflowBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
 
-	private llmSimpleTask: BaseChatModel | undefined;
+	private openAIGptModel: ChatOpenAI | undefined;
 
-	private llmComplexTask: BaseChatModel | undefined;
+	private anthropicClaudeModel: ChatAnthropic | undefined;
 
 	private tracingClient: Client | undefined;
 
@@ -35,34 +37,117 @@ export class AiWorkflowBuilderService {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
 
-	private async setupModels(user?: IUser, useDeprecatedCredentials = false) {
+	private async refreshCredentials(user?: IUser, useDeprecatedCredentials = false) {
+		if (useDeprecatedCredentials || !user || !this.client) {
+			return;
+		}
+
+		const authHeaders = await this.getApiProxyAuthHeaders(user, true, useDeprecatedCredentials);
+
+		// Update auth headers for existing LLM models
+		if (this.openAIGptModel) {
+			this.openAIGptModel.clientConfig.defaultHeaders = {
+				...this.openAIGptModel.clientConfig.defaultHeaders,
+				...authHeaders,
+			};
+		}
+
+		if (this.anthropicClaudeModel) {
+			this.anthropicClaudeModel.clientOptions.defaultHeaders = {
+				...this.anthropicClaudeModel.clientOptions.defaultHeaders,
+				...authHeaders,
+			};
+		}
+
+		// Update auth headers for tracing client
+		if (
+			this.tracingClient &&
+			'fetchOptions' in this.tracingClient &&
+			// @ts-expect-error fetchOptions is private property
+			'headers' in this.tracingClient.fetchOptions
+		) {
+			// @ts-expect-error fetchOptions is private property
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			this.tracingClient.fetchOptions = {
+				// @ts-expect-error fetchOptions is private property
+				...this.tracingClient.fetchOptions,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				headers: {
+					// @ts-expect-error fetchOptions is private property
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					...this.tracingClient.fetchOptions?.headers,
+					...authHeaders,
+				},
+			};
+		}
+	}
+
+	private async getApiProxyAuthHeaders(
+		user: IUser,
+		requiresUpdatedCredentials = false,
+		useDeprecatedCredentials = false,
+	) {
+		if (!requiresUpdatedCredentials) {
+			return {
+				Authorization: '',
+			};
+		}
+
+		assert(this.client);
+
+		let authHeaders: { Authorization: string };
+
+		if (useDeprecatedCredentials) {
+			const authResponse = await this.client.generateApiProxyCredentials(user);
+			authHeaders = { Authorization: authResponse.apiKey };
+		} else {
+			const authResponse = await this.client.getBuilderApiProxyToken(user);
+			authHeaders = {
+				Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+			};
+		}
+
+		return authHeaders;
+	}
+
+	private async setupModels(
+		user?: IUser,
+		requiresUpdatedCredentials = false,
+		useDeprecatedCredentials = false,
+	) {
 		try {
-			if (this.llmSimpleTask && this.llmComplexTask) {
-				// todo refresh credentials if not deprecated
+			if (this.openAIGptModel && this.anthropicClaudeModel) {
+				if (requiresUpdatedCredentials) {
+					await this.refreshCredentials(user, useDeprecatedCredentials);
+				}
+
 				return;
 			}
 
 			// If client is provided, use it for API proxy
 			if (this.client && user) {
-				// @todo use client.getBuilderApiProxyToken
-				// else if some deprecated flag then call this
-				const authHeaders = await this.client.generateApiProxyCredentials(user);
+				const authHeaders = await this.getApiProxyAuthHeaders(
+					user,
+					requiresUpdatedCredentials,
+					useDeprecatedCredentials,
+				);
+
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				this.llmSimpleTask = await gpt41mini({
+				this.openAIGptModel = await gpt41mini({
 					baseUrl: baseUrl + '/openai',
 					// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
 					apiKey: '-',
 					headers: {
-						Authorization: authHeaders.apiKey,
+						...authHeaders,
 					},
 				});
-				this.llmComplexTask = await anthropicClaudeSonnet4({
+				this.anthropicClaudeModel = await anthropicClaudeSonnet4({
 					baseUrl: baseUrl + '/anthropic',
 					apiKey: '-',
 					headers: {
-						Authorization: authHeaders.apiKey,
+						...authHeaders,
 						'anthropic-beta': 'prompt-caching-2024-07-31',
 					},
 				});
@@ -74,25 +159,26 @@ export class AiWorkflowBuilderService {
 					traceBatchConcurrency: 1,
 					fetchOptions: {
 						headers: {
-							Authorization: authHeaders.apiKey,
+							...authHeaders,
 						},
 					},
 				});
 				return;
 			}
 			// If base URL is not set, use environment variables
-			this.llmSimpleTask = await gpt41mini({
+			this.openAIGptModel = await gpt41mini({
 				apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
 			});
 
-			this.llmComplexTask = await anthropicClaudeSonnet4({
+			this.anthropicClaudeModel = await anthropicClaudeSonnet4({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 				headers: {
 					'anthropic-beta': 'prompt-caching-2024-07-31',
 				},
 			});
 		} catch (error) {
-			const llmError = new LLMServiceError('Failed to connect to LLM Provider', {
+			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
+			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
 				cause: error,
 				tags: {
 					hasClient: !!this.client,
@@ -147,20 +233,22 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(user?: IUser, useDeprecatedCredentials = false) {
-		if (!this.llmComplexTask || !this.llmSimpleTask) {
-			await this.setupModels(user, useDeprecatedCredentials);
-		}
+	private async getAgent(
+		user?: IUser,
+		requiresUpdatedCredentials = false,
+		useDeprecatedCredentials = false,
+	) {
+		await this.setupModels(user, requiresUpdatedCredentials, useDeprecatedCredentials);
 
-		if (!this.llmComplexTask || !this.llmSimpleTask) {
+		if (!this.anthropicClaudeModel || !this.openAIGptModel) {
 			throw new LLMServiceError('Failed to initialize LLM models');
 		}
 
 		this.agent ??= new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: this.llmComplexTask,
-			llmComplexTask: this.llmComplexTask,
+			llmSimpleTask: this.anthropicClaudeModel,
+			llmComplexTask: this.anthropicClaudeModel,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
 			tracer: this.tracingClient
@@ -173,19 +261,15 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
+		const agent = await this.getAgent(user, true, payload.useDeprecatedCredentials);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
 		}
 	}
 
-	async getSessions(
-		workflowId: string | undefined,
-		user?: IUser,
-		useDeprecatedCredentials = false,
-	) {
-		const agent = await this.getAgent(user, useDeprecatedCredentials);
+	async getSessions(workflowId: string | undefined, user?: IUser) {
+		const agent = await this.getAgent(user, false);
 		return await agent.getSessions(workflowId, user?.id?.toString());
 	}
 }

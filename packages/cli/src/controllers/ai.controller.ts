@@ -215,11 +215,7 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			const sessions = await this.workflowBuilderService.getSessions(
-				payload.workflowId,
-				req.user,
-				payload.useDeprecatedCredentials,
-			);
+			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);

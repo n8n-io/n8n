@@ -60,13 +60,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(
-		workflowId: string | undefined,
-		user: IUser,
-		useDeprecatedCredentials: boolean,
-	) {
+	async getSessions(workflowId: string | undefined, user: IUser) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user, useDeprecatedCredentials);
+		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
 	}
 }
