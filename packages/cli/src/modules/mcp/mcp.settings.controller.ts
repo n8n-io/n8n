@@ -1,7 +1,6 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Get, Patch, RestController } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 
 import { McpSettingsService } from './mcp.settings.service';
 import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
@@ -11,6 +10,7 @@ export class McpSettingsController {
 	constructor(
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly logger: Logger,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	@Get('/settings')
@@ -29,7 +29,7 @@ export class McpSettingsController {
 		await this.mcpSettingsService.setEnabled(enabled);
 		// Keep module settings in sync so /module-settings reflects the latest without restart
 		try {
-			Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: enabled });
+			this.moduleRegistry.settings.set('mcp', { mcpAccessEnabled: enabled });
 		} catch (error) {
 			this.logger.warn('Failed to sync MCP settings to module registry', {
 				cause: error instanceof Error ? error.message : String(error),
