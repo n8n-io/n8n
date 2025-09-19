@@ -45,7 +45,21 @@ describe('Cloud', () => {
 	}
 
 	describe('BannerStack', () => {
-		it('should render trial banner for opt-in cloud user', () => {
+		it('should not render trial banner on first visit', () => {
+			// Clear localStorage to simulate first visit
+			cy.clearLocalStorage();
+
+			visitWorkflowPage();
+
+			cy.getByTestId('banner-stack').should('not.be.visible');
+		});
+
+		it('should render trial banner on subsequent visits', () => {
+			// Set visit count to simulate returning user
+			cy.window().then((win) => {
+				win.localStorage.setItem('n8n-trial-visit-count', '1');
+			});
+
 			visitWorkflowPage();
 			expandSidebar();
 
