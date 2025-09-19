@@ -53,7 +53,7 @@ export class AiController {
 
 			res.on('close', handleClose);
 
-			const { text, workflowContext } = payload.payload;
+			const { text, workflowContext, useDeprecatedCredentials } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
 					message: text,
@@ -62,6 +62,7 @@ export class AiController {
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
 					},
+					useDeprecatedCredentials,
 				},
 				req.user,
 				signal,
@@ -214,7 +215,11 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			const sessions = await this.workflowBuilderService.getSessions(
+				payload.workflowId,
+				req.user,
+				payload.useDeprecatedCredentials,
+			);
 			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);

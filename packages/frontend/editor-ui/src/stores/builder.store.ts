@@ -4,6 +4,7 @@ import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_EXPERIMENT,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -84,6 +85,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
 	const isAIBuilderEnabled = computed(() => {
+		const releaseExperimentVariant = posthogStore.getVariant(
+			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
+		);
+		if (releaseExperimentVariant === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+			return true;
+		}
+
 		return (
 			posthogStore.getVariant(WORKFLOW_BUILDER_EXPERIMENT.name) ===
 			WORKFLOW_BUILDER_EXPERIMENT.variant

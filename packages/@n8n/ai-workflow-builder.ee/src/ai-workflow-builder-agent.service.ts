@@ -35,14 +35,17 @@ export class AiWorkflowBuilderService {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
 
-	private async setupModels(user?: IUser) {
+	private async setupModels(user?: IUser, useDeprecatedCredentials = false) {
 		try {
 			if (this.llmSimpleTask && this.llmComplexTask) {
+				// todo refresh credentials if not deprecated
 				return;
 			}
 
 			// If client is provided, use it for API proxy
 			if (this.client && user) {
+				// @todo use client.getBuilderApiProxyToken
+				// else if some deprecated flag then call this
 				const authHeaders = await this.client.generateApiProxyCredentials(user);
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
@@ -144,9 +147,9 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(user?: IUser) {
+	private async getAgent(user?: IUser, useDeprecatedCredentials = false) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
-			await this.setupModels(user);
+			await this.setupModels(user, useDeprecatedCredentials);
 		}
 
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
@@ -170,15 +173,19 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user);
+		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
 		}
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser) {
-		const agent = await this.getAgent(user);
+	async getSessions(
+		workflowId: string | undefined,
+		user?: IUser,
+		useDeprecatedCredentials = false,
+	) {
+		const agent = await this.getAgent(user, useDeprecatedCredentials);
 		return await agent.getSessions(workflowId, user?.id?.toString());
 	}
 }

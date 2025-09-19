@@ -416,6 +416,7 @@ describe('AI Builder store', () => {
 		expect(builderStore.canShowAssistantButtonsOnCanvas).toBe(true);
 	});
 
+	// todo add/update tests for new experiment
 	// Split into two separate tests to avoid caching issues with computed properties
 	it('should return true when experiment flag is set to variant', () => {
 		const builderStore = useBuilderStore();

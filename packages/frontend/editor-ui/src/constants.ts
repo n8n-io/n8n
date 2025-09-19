@@ -773,6 +773,12 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
 	control: 'control',
