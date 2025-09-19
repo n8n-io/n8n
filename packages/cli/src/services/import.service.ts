@@ -133,6 +133,127 @@ export class ImportService {
 	}
 
 	/**
+	 * Generate SQL command to truncate (delete all entries from) a table for the specified database type
+	 * @param dbType - Database type ('sqlite' or 'postgres')
+	 * @param tableName - Name of the table to truncate
+	 * @returns SQL command string to truncate the table
+	 */
+	generateTableTruncateCommand(dbType: string, tableName: string): string {
+		switch (dbType.toLowerCase()) {
+			case 'sqlite':
+				return `DELETE FROM ${tableName};`;
+			case 'postgres':
+			case 'postgresql':
+				return `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE;`;
+			default:
+				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
+		}
+	}
+
+	/**
+	 * Check if a table is empty (has no rows)
+	 * @param tableName - Name of the table to check
+	 * @returns Promise that resolves to true if table is empty, false otherwise
+	 */
+	async isTableEmpty(tableName: string): Promise<boolean> {
+		const countQuery = `SELECT COUNT(*) as count FROM ${tableName}`;
+
+		try {
+			const result = await this.dataSource.query(countQuery);
+			const count = result[0]?.count || 0;
+
+			this.logger.debug(`Table ${tableName} has ${count} rows`);
+			return count === 0;
+		} catch (error) {
+			this.logger.error(`Failed to check if table ${tableName} is empty:`, error);
+			throw new Error(`Unable to check table ${tableName}: ${error}`);
+		}
+	}
+
+	/**
+	 * Check if all tables are empty
+	 * @param tableNames - Array of table names to check
+	 * @returns Promise that resolves to true if all tables are empty, false if any have data
+	 */
+	async areAllEntityTablesEmpty(tableNames: string[]): Promise<boolean> {
+		if (tableNames.length === 0) {
+			this.logger.info('No table names provided, considering all tables empty');
+			return true;
+		}
+
+		this.logger.info(`Checking if ${tableNames.length} tables are empty...`);
+
+		const nonEmptyTables: string[] = [];
+
+		for (const tableName of tableNames) {
+			const isEmpty = await this.isTableEmpty(tableName);
+
+			if (!isEmpty) {
+				nonEmptyTables.push(tableName);
+			}
+		}
+
+		if (nonEmptyTables.length > 0) {
+			this.logger.info(
+				`📊 Found ${nonEmptyTables.length} table(s) with existing data: ${nonEmptyTables.join(', ')}`,
+			);
+			return false;
+		}
+
+		this.logger.info('✅ All tables are empty');
+		return true;
+	}
+
+	/**
+	 * Truncate a specific entity table
+	 * @param entityName - Name of the entity to truncate
+	 * @returns Promise that resolves when the table is truncated
+	 */
+	async truncateEntityTable(tableName: string): Promise<void> {
+		this.logger.info(`🗑️  Truncating table: ${tableName}`);
+
+		const dbType = this.dataSource.options.type;
+		const truncateCommand = this.generateTableTruncateCommand(dbType, tableName);
+
+		this.logger.info(`   Executing: ${truncateCommand}`);
+		await this.dataSource.query(truncateCommand);
+		this.logger.info(`   ✅ Table ${tableName} truncated successfully`);
+	}
+
+	/**
+	 * Get list of table names that will be imported from the input directory
+	 * @param inputDir - Directory containing exported entity files
+	 * @returns Array of table names that have corresponding files
+	 */
+	async getTableNamesForImport(inputDir: string): Promise<string[]> {
+		const files = await readdir(inputDir);
+		const entityNames = new Set<string>();
+
+		for (const file of files) {
+			if (file.endsWith('.jsonl')) {
+				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+				entityNames.add(entityName);
+			}
+		}
+
+		// Convert entity names to table names using entity metadata
+		const tableNames: string[] = [];
+		for (const entityName of entityNames) {
+			const entityMetadata = this.dataSource.entityMetadatas.find(
+				(meta) => meta.name.toLowerCase() === entityName,
+			);
+
+			if (entityMetadata) {
+				tableNames.push(entityMetadata.tableName);
+			} else {
+				this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
+			}
+		}
+
+		return tableNames;
+	}
+
+	/**
 	 * Get list of entity files from the input directory
 	 * @param inputDir - Directory containing exported entity files
 	 * @returns Array of entity file paths grouped by entity name
@@ -172,14 +293,10 @@ export class ImportService {
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i].trim();
 
-			// Skip empty lines
-			if (!line) {
-				continue;
-			}
+			if (!line) continue;
 
 			try {
-				const entity = JSON.parse(line);
-				entities.push(entity);
+				entities.push(JSON.parse(line));
 			} catch (error) {
 				// If parsing fails, it might be because the JSON spans multiple lines
 				// This shouldn't happen in proper JSONL, but let's handle it gracefully
@@ -216,11 +333,9 @@ export class ImportService {
 
 		let totalEntitiesImported = 0;
 
-		// Process each entity type
 		for (const [entityName, files] of entityFiles) {
 			this.logger.info(`\n📊 Importing ${entityName} entities...`);
 
-			// Find the corresponding entity metadata
 			const entityMetadata = this.dataSource.entityMetadatas.find(
 				(meta) => meta.name.toLowerCase() === entityName,
 			);
@@ -233,7 +348,6 @@ export class ImportService {
 			const tableName = entityMetadata.tableName;
 			this.logger.info(`   📋 Target table: ${tableName}`);
 
-			// Read all files for this entity
 			let entityCount = 0;
 			for (const filePath of files) {
 				this.logger.info(`   📁 Reading file: ${path.basename(filePath)}`);
@@ -241,7 +355,6 @@ export class ImportService {
 				const entities = await this.readEntityFile(filePath);
 				this.logger.info(`      Found ${entities.length} entities`);
 
-				// Import entities in batches
 				if (entities.length > 0) {
 					await this.importEntityBatch(tableName, entities);
 					entityCount += entities.length;
@@ -266,16 +379,13 @@ export class ImportService {
 	async importEntityBatch(tableName: string, entities: unknown[]): Promise<void> {
 		if (entities.length === 0) return;
 
-		// Get column names from the first entity
 		const firstEntity = entities[0] as Record<string, unknown>;
 		const columns = Object.keys(firstEntity);
 		const columnNames = columns.join(', ');
-		const placeholders = columns.map(() => '?').join(', ');
+		const values = columns.map(() => '?').join(', ');
 
-		// Create batch insert query
-		const query = `INSERT OR REPLACE INTO ${tableName} (${columnNames}) VALUES (${placeholders})`;
+		const query = `INSERT INTO ${tableName} (${columnNames}) VALUES (${values})`;
 
-		// Execute batch insert
 		for (const entity of entities) {
 			const values = columns.map((col) => (entity as Record<string, unknown>)[col]);
 			await this.dataSource.query(query, values);
@@ -290,31 +400,20 @@ export class ImportService {
 	 * @returns Promise that resolves when foreign key constraints are disabled and re-enabled
 	 */
 	async importEntities(inputDir: string): Promise<void> {
-		if (!this.dataSource.isInitialized) {
-			throw new Error('DataSource is not initialized');
-		}
+		this.logger.info(
+			`Disabling foreign key constraints for database type: ${this.dataSource.options.type}`,
+		);
 
-		// Get database type from DataSource
-		const dbType = this.dataSource.options.type;
-		if (!dbType) {
-			throw new Error('Unable to determine database type from DataSource');
-		}
-
-		this.logger.info(`Disabling foreign key constraints for database type: ${dbType}`);
-
-		// Disable foreign key constraints
-		const disableCommand = this.generateForeignKeyDisableCommand(dbType);
+		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
 		this.logger.debug(`Executing: ${disableCommand}`);
 		await this.dataSource.query(disableCommand);
 
 		this.logger.info('Foreign key constraints disabled');
 
 		try {
-			// Import entities from files
 			await this.importEntitiesFromFiles(inputDir);
 		} finally {
-			// Re-enable foreign key constraints
-			const enableCommand = this.generateForeignKeyEnableCommand(dbType);
+			const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
 			this.logger.debug(`Executing: ${enableCommand}`);
 			await this.dataSource.query(enableCommand);
 

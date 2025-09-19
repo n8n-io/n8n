@@ -10,24 +10,58 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Input directory that holds output files for import')
 		.default('./outputs'),
+	truncateTables: z.boolean().describe('Truncate tables before import').default(false),
 });
 
 @Command({
 	name: 'import:entities',
 	description: 'Import database entities from JSON files',
-	examples: ['', '--inputDir=./exports', '--inputDir=/path/to/backup'],
+	examples: [
+		'',
+		'--inputDir=./exports',
+		'--inputDir=/path/to/backup',
+		'--truncateTables',
+		'--inputDir=./exports --truncateTables',
+	],
 	flagsSchema,
 })
 export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const inputDir = this.flags.inputDir;
+		const truncateTables = this.flags.truncateTables;
 
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity import...');
 		this.logger.info(`📁 Input directory: ${inputDir}`);
+		this.logger.info(`🗑️  Truncate tables: ${truncateTables}`);
+
+		const importService = Container.get(ImportService);
+
+		const tableNames = await importService.getTableNamesForImport(inputDir);
+
+		if (truncateTables) {
+			this.logger.info('\n🗑️  Truncating tables before import...');
+
+			this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
+
+			for (const tableName of tableNames) {
+				await importService.truncateEntityTable(tableName);
+			}
+
+			this.logger.info('✅ All tables truncated successfully');
+		}
+
+		if (!truncateTables) {
+			if (!(await importService.areAllEntityTablesEmpty(tableNames))) {
+				this.logger.info(
+					'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
+				);
+				return;
+			}
+		}
 
 		// Import entities from the specified directory
-		await Container.get(ImportService).importEntities(inputDir);
+		await importService.importEntities(inputDir);
 
 		this.logger.info('✅ Task completed successfully! \n');
 	}
