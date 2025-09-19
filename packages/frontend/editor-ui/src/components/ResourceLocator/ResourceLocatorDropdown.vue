@@ -439,10 +439,11 @@ defineExpose({ isWithinDropdown });
 }
 
 .resourceNameContainer {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: inline-block;
 	align-self: center;
 }
 
