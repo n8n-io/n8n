@@ -9,13 +9,15 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
-import { computed, reactive, watch } from 'vue';
+import { computed, inject, reactive, useTemplateRef, watch } from 'vue';
 import DropArea from '../DropArea/DropArea.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
+import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
 interface Props {
 	parameter: INodeProperties;
@@ -38,6 +40,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const dropAreaContainer = useTemplateRef('dropArea');
 
 const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: {
@@ -147,6 +151,16 @@ function optionSelected(action: string) {
 				/>
 			</template>
 		</n8n-input-label>
+
+		<ExperimentalEmbeddedNdvMapper
+			v-if="dropAreaContainer?.$el && node && expressionLocalResolveCtx?.inputNode"
+			:workflow="expressionLocalResolveCtx.workflow"
+			:node="node"
+			:input-node-name="expressionLocalResolveCtx.inputNode.name"
+			:reference="dropAreaContainer?.$el"
+			visible-on-hover
+		/>
+
 		<div :class="$style.content">
 			<div :class="$style.assignments">
 				<Draggable
@@ -178,7 +192,7 @@ function optionSelected(action: string) {
 				data-test-id="assignment-collection-drop-area"
 				@click="addAssignment"
 			>
-				<DropArea :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
+				<DropArea ref="dropArea" :sticky-offset="empty ? [-4, 32] : [92, 0]" @drop="dropAssignment">
 					<template #default="{ active, droppable }">
 						<div :class="{ [$style.active]: active, [$style.droppable]: droppable }">
 							<div v-if="droppable" :class="$style.dropArea">

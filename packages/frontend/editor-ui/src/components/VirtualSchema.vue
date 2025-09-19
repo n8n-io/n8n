@@ -59,6 +59,7 @@ type Props = {
 	search?: string;
 	compact?: boolean;
 	outputIndex?: number;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -71,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	compact: false,
 	outputIndex: undefined,
+	truncateLimit: 600,
 });
 
 const telemetry = useTelemetry();
@@ -210,7 +212,12 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const flatSchema = flattenSchema({
+		schema,
+		depth: 1,
+		isDataEmpty: false,
+		truncateLimit: props.truncateLimit,
+	});
 	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
@@ -334,7 +341,7 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 };
 
 const flattenedNodes = computed(() =>
-	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo),
+	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo, props.truncateLimit),
 );
 
 const flattenNodeSchema = computed(() =>
@@ -344,6 +351,7 @@ const flattenNodeSchema = computed(() =>
 				depth: 0,
 				level: -1,
 				isDataEmpty: props.data.length === 0,
+				truncateLimit: props.truncateLimit,
 			})
 		: [],
 );

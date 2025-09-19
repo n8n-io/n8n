@@ -94,6 +94,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -117,6 +118,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		});
 
 		const inputPanel = within(rendered.getByTestId('log-details-input'));
@@ -133,6 +135,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -150,6 +153,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -178,6 +182,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		});
 
 		expect(
@@ -217,6 +222,7 @@ describe('LogDetailsPanel', () => {
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
 			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
 		};
 
 		const rendered = render({ ...props, logEntry: logB });

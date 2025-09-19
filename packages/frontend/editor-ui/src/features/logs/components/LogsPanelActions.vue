@@ -73,6 +73,7 @@ function handleSelectMenuItem(selected: string) {
 			:items="menuItems"
 			:teleported="false /* for pop-out window */"
 			@select="handleSelectMenuItem"
+			@click.stop
 		/>
 		<KeyboardShortcutTooltip
 			v-if="showToggleButton"

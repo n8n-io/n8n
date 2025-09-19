@@ -3,7 +3,8 @@ import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nInlineTextEdit, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { type INodeProperties } from 'n8n-workflow';
 import { computed } from 'vue';
 
@@ -11,16 +12,19 @@ const { node, parameter, isExecutable } = defineProps<{
 	node: INodeUi;
 	parameter?: INodeProperties;
 	isExecutable: boolean;
+	readOnly: boolean;
 }>();
-
-const nodeTypesStore = useNodeTypesStore();
-const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeVersion));
 
 const emit = defineEmits<{
 	execute: [];
 	openNdv: [];
 	clearParameter: [];
+	renameNode: [newName: string];
 }>();
+
+const nodeTypesStore = useNodeTypesStore();
+const i18n = useI18n();
+const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeVersion));
 </script>
 
 <template>
@@ -34,7 +38,15 @@ const emit = defineEmits<{
 				<N8nText size="small" color="text-light">/</N8nText>
 				{{ parameter.displayName }}
 			</template>
-			<template v-else>{{ node.name }}</template>
+			<N8nInlineTextEdit
+				v-else
+				:model-value="node.name"
+				:min-width="0"
+				:max-width="500"
+				:placeholder="i18n.baseText('ndv.title.rename.placeholder')"
+				:read-only="readOnly"
+				@update:model-value="emit('renameNode', $event)"
+			/>
 		</div>
 		<N8nIconButton
 			v-if="parameter"

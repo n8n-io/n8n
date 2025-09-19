@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { N8nText } from '@n8n/design-system';
 
-const { title } = defineProps<{ title?: string }>();
+const { title, isClickable } = defineProps<{ title?: string; isClickable: boolean }>();
 
 defineSlots<{ actions: {}; title?: {} }>();
 
 const emit = defineEmits<{ click: [] }>();
+
+function handleClick() {
+	if (isClickable) {
+		emit('click');
+	}
+}
 </script>
 
 <template>
-	<header :class="$style.container" @click="emit('click')">
+	<header :class="[$style.container, { [$style.clickable]: isClickable }]" @click="handleClick">
 		<N8nText :class="$style.title" :bold="true" size="small">
 			<slot name="title">{{ title }}</slot>
 		</N8nText>
@@ -32,8 +38,7 @@ const emit = defineEmits<{ click: [] }>();
 	align-items: center;
 	line-height: var(--font-line-height-compact);
 
-	&:last-child {
-		/** Panel collapsed */
+	&.clickable {
 		cursor: pointer;
 	}
 

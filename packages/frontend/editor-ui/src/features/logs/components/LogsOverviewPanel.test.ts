@@ -32,6 +32,7 @@ describe('LogsOverviewPanel', () => {
 			entries: logs,
 			latestNodeInfo: {},
 			execution: aiChatExecutionResponse,
+			isHeaderClickable: true,
 			...props,
 		};
 

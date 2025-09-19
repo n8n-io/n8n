@@ -179,7 +179,7 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 	});
 
-	it('opens collapsed panel when clicked', async () => {
+	it('toggles panel when header is clicked', async () => {
 		workflowsStore.setWorkflow(aiChatWorkflow);
 
 		const rendered = render();
@@ -187,6 +187,12 @@ describe('LogsPanel', () => {
 		await fireEvent.click(await rendered.findByTestId('logs-overview-header'));
 
 		expect(await rendered.findByTestId('logs-overview-empty')).toBeInTheDocument();
+
+		await fireEvent.click(await rendered.findByTestId('logs-overview-header'));
+
+		await waitFor(() =>
+			expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument(),
+		);
 	});
 
 	it('should toggle panel when chevron icon button in the overview panel is clicked', async () => {
