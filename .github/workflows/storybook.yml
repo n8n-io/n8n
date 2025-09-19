@@ -19,7 +19,7 @@ jobs:
     name: Cloudflare Pages
     if: |
       !contains(github.event.pull_request.labels.*.name, 'community')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       contents: read
       deployments: write
