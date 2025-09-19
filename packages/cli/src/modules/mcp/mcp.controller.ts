@@ -15,7 +15,7 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
-	@Post('/mcp', { rateLimit: { limit: 100 }, apiKeyAuth: true })
+	@Post('/http', { rateLimit: { limit: 100 }, apiKeyAuth: true })
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
