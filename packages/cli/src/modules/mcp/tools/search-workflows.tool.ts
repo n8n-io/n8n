@@ -1,4 +1,5 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
+import type { INode } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ToolDefinition } from '../mcp.types';
@@ -43,7 +44,6 @@ export const createSearchWorkflowsTool = (
 					...(name ? { name } : {}),
 					...(projectId ? { projectId } : {}),
 				},
-				// Select a safe subset for preview purposes
 				select: {
 					id: true,
 					name: true,
@@ -64,15 +64,14 @@ export const createSearchWorkflowsTool = (
 			);
 
 			const formattedWorkflows = (workflows as WorkflowEntity[]).map(
-				({ id, name, active, createdAt, updatedAt, triggerCount, nodes, connections }) => ({
+				({ id, name, active, createdAt, updatedAt, triggerCount, nodes }) => ({
 					id,
 					name,
 					active,
 					createdAt,
 					updatedAt,
 					triggerCount,
-					nodes: (nodes ?? []).map((node: any) => ({ name: node.name, type: node.type })),
-					connections,
+					nodes: (nodes ?? []).map((node: INode) => ({ name: node.name, type: node.type })),
 				}),
 			);
 
