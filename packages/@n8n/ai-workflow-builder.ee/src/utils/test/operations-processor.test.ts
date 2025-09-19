@@ -18,6 +18,7 @@ describe('operations-processor', () => {
 			node3 = createNode({ id: 'node3', name: 'Node 3', position: [500, 100] });
 
 			baseWorkflow = {
+				name: 'Test Workflow',
 				nodes: [node1, node2, node3],
 				connections: {
 					node1: {
@@ -386,6 +387,7 @@ describe('operations-processor', () => {
 			workflowOperations,
 			messages: [],
 			workflowContext: {},
+			previousSummary: 'EMPTY',
 		});
 
 		it('should process operations and clear them', () => {

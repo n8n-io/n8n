@@ -20,7 +20,7 @@ describe('sso/saml/samlHelpers', () => {
 			const samlUserAttributes: SamlUserAttributes = {
 				firstName: 'Nathan',
 				lastName: 'Nathaniel',
-				email: 'n@8.n',
+				email: 'nathan@n8n.io',
 				userPrincipalName: 'Huh?',
 			};
 

@@ -13,6 +13,7 @@ export function chatWithBuilder(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
 ): void {
 	void streamRequest<ChatRequest.ResponsePayload>(
 		ctx,
@@ -21,6 +22,8 @@ export function chatWithBuilder(
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 

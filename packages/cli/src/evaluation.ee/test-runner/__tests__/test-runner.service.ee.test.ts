@@ -9,7 +9,11 @@ import { readFileSync } from 'fs';
 import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
@@ -1026,7 +1030,7 @@ describe('TestRunnerService', () => {
 			}
 		});
 
-		it('should throw SET_METRICS_NODE_NOT_CONFIGURED when metrics node is disabled', () => {
+		it('should throw SET_METRICS_NODE_NOT_FOUND when metrics node is disabled', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [
 					{
@@ -1061,8 +1065,8 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).validateSetMetricsNodes(workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
-				expect(error.extra).toEqual({ node_name: 'Set Metrics' });
+				expect(error.code).toBe('SET_METRICS_NODE_NOT_FOUND');
+				expect(error.extra).toEqual({});
 			}
 		});
 
@@ -1225,46 +1229,45 @@ describe('TestRunnerService', () => {
 				}
 			});
 
-			it('should fail for version >= 4.7 with missing metric parameter', () => {
+			it('should pass for version >= 4.7 with missing metric parameter (uses default correctness) when model connected', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
+						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
 						{
 							id: 'node1',
 							name: 'Set Metrics',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.7,
-							position: [0, 0],
+							position: [100, 0],
 							parameters: {
 								operation: 'setMetrics',
-								metrics: {
-									assignments: [
-										{
-											id: '1',
-											name: 'accuracy',
-											value: 0.95,
-										},
-									],
-								},
+								// metric parameter is undefined, which means it uses the default value 'correctness'
+								// This should pass since correctness is valid and has model connected
 							},
 						},
 					],
-					connections: {},
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
 				});
 
-				// Missing metric parameter - this should fail for versions >= 4.7
-				workflow.nodes[0].parameters.metric = undefined;
+				// Missing metric parameter - this should pass for versions >= 4.7 since it defaults to 'correctness' and has model
+				workflow.nodes[1].parameters.metric = undefined;
 
 				expect(() => {
 					(testRunnerService as any).validateSetMetricsNodes(workflow);
-				}).toThrow(TestRunError);
-
-				try {
-					(testRunnerService as any).validateSetMetricsNodes(workflow);
-				} catch (error) {
-					expect(error).toBeInstanceOf(TestRunError);
-					expect(error.code).toBe('SET_METRICS_NODE_NOT_CONFIGURED');
-					expect(error.extra).toEqual({ node_name: 'Set Metrics' });
-				}
+				}).not.toThrow();
 			});
 
 			it('should pass for version >= 4.7 with valid customMetrics configuration', () => {
@@ -1299,7 +1302,7 @@ describe('TestRunnerService', () => {
 				}).not.toThrow();
 			});
 
-			it('should pass for version >= 4.7 with non-customMetrics metric (no metrics validation needed)', () => {
+			it('should pass for version >= 4.7 with non-AI metric (no model connection needed)', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
 						{
@@ -1310,8 +1313,8 @@ describe('TestRunnerService', () => {
 							position: [0, 0],
 							parameters: {
 								operation: 'setMetrics',
-								metric: 'correctness',
-								// No metrics parameter needed for non-customMetrics
+								metric: 'stringSimilarity',
+								// Non-AI metrics don't need model connection
 							},
 						},
 					],
@@ -1361,11 +1364,19 @@ describe('TestRunnerService', () => {
 				const workflow = mock<IWorkflowBase>({
 					nodes: [
 						{
+							id: 'model1',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
 							id: 'node1',
 							name: 'Set Metrics Old',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.6,
-							position: [0, 0],
+							position: [100, 0],
 							parameters: {
 								operation: 'setMetrics',
 								// No metric parameter for old version
@@ -1385,20 +1396,226 @@ describe('TestRunnerService', () => {
 							name: 'Set Metrics New',
 							type: EVALUATION_NODE_TYPE,
 							typeVersion: 4.7,
-							position: [100, 0],
+							position: [200, 0],
 							parameters: {
 								operation: 'setMetrics',
 								metric: 'correctness',
-								// No metrics parameter needed for non-customMetrics
+								// Correctness needs model connection for version 4.7+
 							},
 						},
 					],
-					connections: {},
+					connections: {
+						'OpenAI Model': {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'Set Metrics New', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
 				});
 
 				expect(() => {
 					(testRunnerService as any).validateSetMetricsNodes(workflow);
 				}).not.toThrow();
+			});
+
+			describe('Model connection validation', () => {
+				it('should pass when correctness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when correctness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'correctness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when helpfulness metric has model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'model1',
+								name: 'OpenAI Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [100, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {
+							'OpenAI Model': {
+								[NodeConnectionTypes.AiLanguageModel]: [
+									[{ node: 'Set Metrics', type: 'ai_languageModel', index: 0 }],
+								],
+							},
+						},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should fail when helpfulness metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'helpfulness',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should fail when default correctness metric (undefined) has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: undefined, // explicitly set to undefined to test default behavior
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).toThrow(TestRunError);
+				});
+
+				it('should pass when non-AI metrics (customMetrics) have no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'customMetrics',
+									metrics: {
+										assignments: [
+											{
+												id: '1',
+												name: 'accuracy',
+												value: 0.95,
+											},
+										],
+									},
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
+
+				it('should pass when stringSimilarity metric has no model connected', () => {
+					const workflow = mock<IWorkflowBase>({
+						nodes: [
+							{
+								id: 'metrics1',
+								name: 'Set Metrics',
+								type: EVALUATION_NODE_TYPE,
+								typeVersion: 4.7,
+								position: [0, 0],
+								parameters: {
+									operation: 'setMetrics',
+									metric: 'stringSimilarity',
+								},
+							},
+						],
+						connections: {},
+					});
+
+					expect(() => {
+						(testRunnerService as any).validateSetMetricsNodes(workflow);
+					}).not.toThrow();
+				});
 			});
 		});
 	});

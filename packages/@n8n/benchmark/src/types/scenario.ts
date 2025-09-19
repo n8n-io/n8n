@@ -1,6 +1,8 @@
 export type ScenarioData = {
 	/** Relative paths to the workflow files */
 	workflowFiles?: string[];
+	/** Relative paths to the credential files */
+	credentialFiles?: string[];
 };
 
 /**

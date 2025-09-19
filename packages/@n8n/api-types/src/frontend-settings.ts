@@ -13,6 +13,8 @@ export interface IVersionNotificationSettings {
 export interface ITelemetryClientConfig {
 	url: string;
 	key: string;
+	proxy: string;
+	sourceConfig: string;
 }
 
 export interface ITelemetrySettings {
@@ -57,7 +59,9 @@ export interface FrontendSettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
+	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
 		secure: boolean;
 	};
@@ -77,6 +81,9 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+	};
+	dataTables: {
+		maxSize: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
@@ -151,6 +158,7 @@ export interface FrontendSettings {
 		workerView: boolean;
 		advancedPermissions: boolean;
 		apiKeyScopes: boolean;
+		workflowDiffs: boolean;
 		projects: {
 			team: {
 				limit: number;

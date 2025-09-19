@@ -62,9 +62,11 @@ export class InsightsService {
 
 	async getInsightsSummary({
 		periodLengthInDays,
-	}: { periodLengthInDays: number }): Promise<InsightsSummary> {
+		projectId,
+	}: { periodLengthInDays: number; projectId?: string }): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
 			periodLengthInDays,
+			projectId,
 		});
 
 		// Initialize data structures for both periods
@@ -151,17 +153,20 @@ export class InsightsService {
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
+		projectId,
 	}: {
 		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		projectId?: string;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			maxAgeInDays,
 			skip,
 			take,
 			sortBy,
+			projectId,
 		});
 
 		return {
@@ -175,11 +180,18 @@ export class InsightsService {
 		periodUnit,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes?: TypeUnit[] }) {
+		projectId,
+	}: {
+		maxAgeInDays: number;
+		periodUnit: PeriodUnit;
+		insightTypes?: TypeUnit[];
+		projectId?: string;
+	}) {
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
 			maxAgeInDays,
 			periodUnit,
 			insightTypes,
+			projectId,
 		});
 
 		return rows.map((r) => {

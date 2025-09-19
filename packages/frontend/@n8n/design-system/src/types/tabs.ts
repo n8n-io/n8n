@@ -6,9 +6,12 @@ export interface TabOptions<Value extends string | number> {
 	value: Value;
 	label?: string;
 	icon?: IconName;
+	iconPosition?: 'left' | 'right';
+	variant?: 'default' | 'danger';
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
 	notification?: boolean;
+	tag?: string;
 }

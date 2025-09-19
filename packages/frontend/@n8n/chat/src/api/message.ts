@@ -115,7 +115,7 @@ export async function sendMessageStreaming(
 	sessionId: string,
 	options: ChatOptions,
 	handlers: StreamingEventHandlers,
-): Promise<void> {
+): Promise<{ hasReceivedChunks: boolean }> {
 	// Build request
 	const response = await (files.length > 0
 		? sendWithFiles(message, files, sessionId, options)
@@ -133,6 +133,7 @@ export async function sendMessageStreaming(
 
 	// Process the stream
 	const reader = response.body.pipeThrough(createLineParser()).getReader();
+	let hasReceivedChunks = false;
 
 	try {
 		while (true) {
@@ -147,12 +148,14 @@ export async function sendMessageStreaming(
 					handlers.onBeginMessage(nodeId, runIndex);
 					break;
 				case 'item':
+					hasReceivedChunks = true;
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
 					handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
+					hasReceivedChunks = true;
 					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
 					handlers.onEndMessage(nodeId, runIndex);
 					break;
@@ -161,6 +164,8 @@ export async function sendMessageStreaming(
 	} finally {
 		reader.releaseLock();
 	}
+
+	return { hasReceivedChunks };
 }
 
 // Helper function for file uploads

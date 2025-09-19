@@ -73,7 +73,7 @@ export default defineComponent({
 			<!-- <template #header> -->
 			<Checkbox
 				:model-value="group.selected"
-				:indeterminate="!group.selected && group.indeterminate"
+				:indeterminate="group.indeterminate"
 				:disabled="readonly"
 				@update:model-value="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
@@ -108,15 +108,11 @@ export default defineComponent({
 			</Checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
-				<li
-					v-for="event in group.children"
-					:key="event.name"
-					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
-				>
+				<li v-for="event in group.children" :key="event.name" :class="`${$style.eventListItem}`">
 					<Checkbox
 						:model-value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
-						:disabled="group.selected || readonly"
+						:disabled="readonly"
 						@update:model-value="onInput"
 						@change="onCheckboxChecked(event.name, $event)"
 					>

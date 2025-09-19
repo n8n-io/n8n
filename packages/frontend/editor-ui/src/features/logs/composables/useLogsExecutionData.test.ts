@@ -33,6 +33,8 @@ describe(useLogsExecutionData, () => {
 
 	describe('loadSubExecution', () => {
 		beforeEach(() => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+
 			workflowsStore.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
@@ -59,6 +61,8 @@ describe(useLogsExecutionData, () => {
 					},
 				}),
 			);
+
+			vi.advanceTimersByTime(1000);
 		});
 
 		it('should add runs from sub execution to the entries', async () => {
@@ -78,6 +82,8 @@ describe(useLogsExecutionData, () => {
 			expect(entries.value[1].children).toHaveLength(0);
 
 			await loadSubExecution(entries.value[1]);
+
+			vi.advanceTimersByTime(1000);
 
 			await waitFor(() => {
 				expect(entries.value).toHaveLength(2);
@@ -104,6 +110,9 @@ describe(useLogsExecutionData, () => {
 			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await loadSubExecution(entries.value[1]);
+
+			vi.advanceTimersByTime(1000);
+
 			await waitFor(() => expect(showErrorSpy).toHaveBeenCalled());
 		});
 	});

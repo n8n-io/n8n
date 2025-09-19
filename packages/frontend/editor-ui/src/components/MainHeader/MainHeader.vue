@@ -341,7 +341,7 @@ function hideGithubButton() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--prim-color-primary-shade-100);
+		color: var(--p-color-primary-420);
 	}
 }
 .github-button-container {
@@ -350,5 +350,24 @@ function hideGithubButton() {
 
 .github-button:hover .close-github-button {
 	display: block;
+}
+
+@media (max-width: 1390px) {
+	.github-button {
+		padding: var(--spacing-5xs) var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1340px) {
+	.github-button {
+		border-left: 0;
+		padding-left: 0;
+	}
+}
+
+@media (max-width: 1290px) {
+	.github-button {
+		display: none;
+	}
 }
 </style>

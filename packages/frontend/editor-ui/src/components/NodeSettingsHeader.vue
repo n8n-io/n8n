@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { type Tab, default as NodeSettingsTabs } from './NodeSettingsTabs.vue';
+import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 type Props = {
 	nodeName: string;
 	hideExecute: boolean;
+	hideDocs: boolean;
 	hideTabs: boolean;
 	disableExecute: boolean;
 	executeButtonTooltip: string;
-	selectedTab: Tab;
+	selectedTab: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 };
@@ -21,7 +23,7 @@ const emit = defineEmits<{
 	execute: [];
 	'stop-execution': [];
 	'value-changed': [update: IUpdateInformation];
-	'tab-changed': [tab: Tab];
+	'tab-changed': [tab: NodeSettingsTab];
 }>();
 </script>
 
@@ -29,7 +31,7 @@ const emit = defineEmits<{
 	<div :class="$style.header">
 		<NodeSettingsTabs
 			v-if="!hideTabs"
-			hide-docs
+			:hide-docs="hideDocs"
 			:model-value="selectedTab"
 			:node-type="nodeType"
 			:push-ref="pushRef"
@@ -60,12 +62,19 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	min-height: 40px;
-	padding-right: var(--spacing-s);
 
 	border-bottom: var(--border-base);
 }
 
+.execute {
+	margin-right: var(--spacing-s);
+}
+
 .tabs {
 	align-self: flex-end;
+}
+
+.tabs :global(#communityNode) {
+	padding-right: var(--spacing-2xs);
 }
 </style>

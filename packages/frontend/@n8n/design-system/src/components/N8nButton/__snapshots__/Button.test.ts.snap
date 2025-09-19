@@ -10,6 +10,12 @@ exports[`components > N8nButton > props > square > should render square button 1
 </button>"
 `;
 
+exports[`components > N8nButton > props > type > should render highlight button 1`] = `
+"<button class="button button highlight medium" aria-live="polite">
+  <!--v-if-->Button
+</button>"
+`;
+
 exports[`components > N8nButton > should render correctly 1`] = `
 "<button class="button button primary medium" aria-live="polite">
   <!--v-if-->Button

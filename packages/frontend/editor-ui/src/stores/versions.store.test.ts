@@ -7,6 +7,12 @@ import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-cl
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import { useToast } from '@/composables/useToast';
+import { reactive } from 'vue';
+import { VIEWS } from '@/constants';
+
+vi.mock('vue-router', () => ({
+	useRoute: () => reactive({ name: VIEWS.HOMEPAGE }),
+}));
 
 vi.mock('@/composables/useToast', () => {
 	const showToast = vi.fn();

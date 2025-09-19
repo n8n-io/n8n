@@ -1,10 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, waitForElementToBeRemoved, fireEvent } from '@testing-library/vue';
-import { mock } from 'vitest-mock-extended';
+import { waitFor, fireEvent } from '@testing-library/vue';
 
 import NodeDetailsViewV2 from '@/components/NodeDetailsViewV2.vue';
 import { VIEWS } from '@/constants';
-import type { IWorkflowDb } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -13,8 +11,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import {
+	createTestWorkflow,
+	createTestWorkflowObject,
+	defaultNodeDescriptions,
+	mockNodes,
+} from '@/__tests__/mocks';
 
 vi.mock('vue-router', () => {
 	return {
@@ -24,12 +26,13 @@ vi.mock('vue-router', () => {
 	};
 });
 
-async function createPiniaStore(isActiveNode: boolean) {
-	const node = mockNodes[0];
-	const workflow = mock<IWorkflowDb>({
+async function createPiniaStore(
+	{ activeNodeName }: { activeNodeName: string | null } = { activeNodeName: null },
+) {
+	const workflow = createTestWorkflow({
 		connections: {},
 		active: true,
-		nodes: [node],
+		nodes: mockNodes,
 	});
 
 	const pinia = createPinia();
@@ -41,10 +44,16 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
+	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
+	workflowsStore.nodeMetadata = mockNodes.reduce(
+		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
+		{},
+	);
 
-	if (isActiveNode) {
-		ndvStore.activeNodeName = node.name;
+	if (activeNodeName) {
+		ndvStore.setActiveNodeName(activeNodeName, 'other');
+	} else {
+		ndvStore.unsetActiveNodeName();
 	}
 
 	await useSettingsStore().getSettings();
@@ -52,8 +61,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		currentWorkflow: workflowsStore.getCurrentWorkflow(),
-		nodeName: node.name,
+		workflowObject: workflowsStore.workflowObject,
 	};
 }
 
@@ -65,12 +73,7 @@ describe('NodeDetailsViewV2', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -78,14 +81,14 @@ describe('NodeDetailsViewV2', () => {
 		server.shutdown();
 	});
 
-	it('should render correctly', async () => {
-		const { pinia, currentWorkflow } = await createPiniaStore(true);
+	test('should render correctly', async () => {
+		const { pinia, workflowObject } = await createPiniaStore({ activeNodeName: 'Manual Trigger' });
 
 		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
 				teleported: false,
 				appendToBody: false,
-				workflowObject: currentWorkflow,
+				workflowObject,
 			},
 			global: {
 				mocks: {
@@ -103,63 +106,45 @@ describe('NodeDetailsViewV2', () => {
 		await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 	});
 
-	describe('keyboard listener', () => {
-		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore();
+	test('should not render for stickies', async () => {
+		const { pinia, workflowObject } = await createPiniaStore({ activeNodeName: 'Sticky' });
 
-			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
-				props: {
-					teleported: false,
-					appendToBody: false,
-					workflowObject: currentWorkflow,
-				},
-				global: {
-					mocks: {
-						$route: {
-							name: VIEWS.WORKFLOW,
-						},
+		const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
+			props: {
+				teleported: false,
+				appendToBody: false,
+				workflowObject,
+			},
+			global: {
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
 					},
 				},
-			});
+			},
+		});
 
-			const { getByTestId, queryByTestId } = renderComponent({
-				pinia,
-			});
+		const { queryByTestId } = renderComponent({
+			pinia,
+		});
 
+		expect(queryByTestId('ndv')).not.toBeInTheDocument();
+	});
+
+	describe('keyboard listener', () => {
+		test('should register and unregister keydown listener based on modal open state', async () => {
 			const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 			const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 
-			ndvStore.activeNodeName = nodeName;
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
-			expect(removeEventListenerSpy).not.toHaveBeenCalledWith(
-				'keydown',
-				expect.any(Function),
-				true,
-			);
-
-			ndvStore.activeNodeName = null;
-
-			await waitForElementToBeRemoved(queryByTestId('ndv'));
-
-			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
-
-			addEventListenerSpy.mockRestore();
-			removeEventListenerSpy.mockRestore();
-		});
-
-		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore();
+			const { pinia, workflowObject } = await createPiniaStore({
+				activeNodeName: 'Manual Trigger',
+			});
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -174,7 +159,47 @@ describe('NodeDetailsViewV2', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
+
+			expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+			expect(removeEventListenerSpy).not.toHaveBeenCalledWith(
+				'keydown',
+				expect.any(Function),
+				true,
+			);
+
+			unmount();
+
+			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+
+			addEventListenerSpy.mockRestore();
+			removeEventListenerSpy.mockRestore();
+		});
+
+		test('should unregister keydown listener on unmount', async () => {
+			const { pinia, workflowObject } = await createPiniaStore();
+			const ndvStore = useNDVStore();
+
+			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
+				props: {
+					teleported: false,
+					appendToBody: false,
+					workflowObject,
+				},
+				global: {
+					mocks: {
+						$route: {
+							name: VIEWS.WORKFLOW,
+						},
+					},
+				},
+			});
+
+			const { getByTestId, unmount } = renderComponent({
+				pinia,
+			});
+
+			ndvStore.setActiveNodeName('Manual Trigger', 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 
@@ -193,14 +218,15 @@ describe('NodeDetailsViewV2', () => {
 		});
 
 		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, currentWorkflow, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore();
+			const { pinia, workflowObject } = await createPiniaStore({
+				activeNodeName: 'Manual Trigger',
+			});
 
 			const renderComponent = createComponentRenderer(NodeDetailsViewV2, {
 				props: {
 					teleported: false,
 					appendToBody: false,
-					workflowObject: currentWorkflow,
+					workflowObject,
 				},
 				global: {
 					mocks: {
@@ -214,8 +240,6 @@ describe('NodeDetailsViewV2', () => {
 			const { getByTestId, emitted } = renderComponent({
 				pinia,
 			});
-
-			ndvStore.activeNodeName = nodeName;
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 

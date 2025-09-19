@@ -4,6 +4,7 @@ import type {
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import type {
 	IExecutionResponse,
 	ICredentialsResponse,
@@ -19,6 +20,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 /*
 	Type guards used in editor-ui project
@@ -129,4 +131,29 @@ export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
+}
+
+// Check if i18n key is a valid BaseTextKey
+export function isBaseTextKey(key: string): key is BaseTextKey {
+	const i18n = useI18n();
+	try {
+		// Attempt to access the base text to check if the key is valid
+		i18n.baseText(key as BaseTextKey);
+		return true;
+	} catch {
+		// If an error is thrown, the key is not valid
+		return false;
+	}
+}
+
+// Type guard to check if a string is a valid ProjectRole
+export function isProjectRole(role: string): role is ProjectRole {
+	return ['project:admin', 'project:editor', 'project:viewer', 'project:personalOwner'].includes(
+		role,
+	);
+}
+
+// Type guard to check if a role is a valid TeamProjectRole (ProjectRole excluding personalOwner)
+export function isTeamProjectRole(role: string): role is TeamProjectRole {
+	return isProjectRole(role) && role !== 'project:personalOwner';
 }

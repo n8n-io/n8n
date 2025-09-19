@@ -136,7 +136,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async setConcurrency() {
 		const { flags } = this;
 
-		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const envConcurrency = this.globalConfig.executions.concurrency.productionLimit;
 
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 

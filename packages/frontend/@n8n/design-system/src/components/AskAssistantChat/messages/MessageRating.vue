@@ -25,6 +25,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const showRatingButtons = ref(true);
 const showFeedbackArea = ref(false);
+const feedbackInput = ref<HTMLInputElement | null>(null);
 const showSuccess = ref(false);
 const selectedRating = ref<'up' | 'down' | null>(null);
 const feedback = ref('');
@@ -34,8 +35,13 @@ function onRateButton(rating: 'up' | 'down') {
 	showRatingButtons.value = false;
 
 	emit('feedback', { rating });
-	if (props.showFeedback) {
+	if (props.showFeedback && rating === 'down') {
 		showFeedbackArea.value = true;
+		setTimeout(() => {
+			if (feedbackInput.value) {
+				feedbackInput.value.focus();
+			}
+		}, 0);
 	} else {
 		showSuccess.value = true;
 	}
@@ -100,6 +106,7 @@ function onCancelFeedback() {
 
 		<div v-if="showFeedbackArea" :class="$style.feedbackContainer">
 			<N8nInput
+				ref="feedbackInput"
 				v-model="feedback"
 				:class="$style.feedbackInput"
 				type="textarea"

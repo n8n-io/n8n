@@ -13,7 +13,6 @@ describe('useToast', () => {
 	let toast: ReturnType<typeof useToast>;
 
 	beforeEach(() => {
-		document.body.innerHTML = '<div id="app-grid"></div>';
 		createTestingPinia();
 
 		toast = useToast();

@@ -9,8 +9,10 @@ import {
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
+	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
 import { OwnershipService } from '@/services/ownership.service';
@@ -26,7 +28,6 @@ describe('OwnershipService', () => {
 	const ownershipService = new OwnershipService(
 		cacheService,
 		userRepository,
-		mock(),
 		projectRelationRepository,
 		sharedWorkflowRepository,
 	);
@@ -63,8 +64,9 @@ describe('OwnershipService', () => {
 			// ARRANGE
 			const project = new Project();
 			const owner = new User();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
+			projectRelation.role = PROJECT_OWNER_ROLE;
 			(projectRelation.project = project), (projectRelation.user = owner);
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
@@ -90,8 +92,9 @@ describe('OwnershipService', () => {
 			project.id = uuid();
 			const owner = new User();
 			owner.id = uuid();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
+			projectRelation.role = { slug: PROJECT_OWNER_ROLE_SLUG } as any;
 			(projectRelation.project = project), (projectRelation.user = owner);
 
 			cacheService.getHashValue.mockResolvedValueOnce(owner);
@@ -112,9 +115,10 @@ describe('OwnershipService', () => {
 		test('should retrieve a project owner', async () => {
 			const mockProject = new Project();
 			const mockOwner = new User();
+			mockOwner.role = GLOBAL_OWNER_ROLE;
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
+				role: PROJECT_OWNER_ROLE_SLUG,
 				project: mockProject,
 				user: mockOwner,
 			});
@@ -218,7 +222,7 @@ describe('OwnershipService', () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'global:owner' },
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});
 		});
 	});

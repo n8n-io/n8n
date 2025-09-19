@@ -1,11 +1,11 @@
 import generateOTPToken from 'cypress-otp';
 
+import { MainSidebar } from './../pages/sidebar/main-sidebar';
 import { INSTANCE_OWNER, INSTANCE_ADMIN, BACKEND_BASE_URL } from '../constants';
 import { SigninPage } from '../pages';
 import { MfaLoginPage } from '../pages/mfa-login';
 import { successToast } from '../pages/notifications';
 import { PersonalSettingsPage } from '../pages/settings-personal';
-import { MainSidebar } from './../pages/sidebar/main-sidebar';
 
 const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
 

@@ -26,14 +26,13 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 
 <template>
 	<N8nTooltip placement="bottom">
-		<RouterLink :to="workflowHistoryRoute" :class="$style.workflowHistoryButton">
+		<RouterLink :to="workflowHistoryRoute">
 			<N8nIconButton
 				:disabled="isNewWorkflow || !isFeatureEnabled"
 				data-test-id="workflow-history-button"
-				type="tertiary"
+				type="highlight"
 				icon="history"
 				size="medium"
-				text
 			/>
 		</RouterLink>
 		<template #content>
@@ -53,22 +52,3 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 		</template>
 	</N8nTooltip>
 </template>
-
-<style lang="scss" module>
-.workflowHistoryButton {
-	width: 30px;
-	height: 30px;
-	color: var(--color-text-dark);
-	border-radius: var(--border-radius-base);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-
-	:disabled {
-		background: transparent;
-		border: none;
-		opacity: 0.5;
-	}
-}
-</style>

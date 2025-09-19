@@ -21,6 +21,7 @@ describe('Wordpress > Post Workflows', () => {
 				sticky: true,
 				categories: [1],
 				format: 'standard',
+				date: '2025-03-27T18:30:04',
 			})
 			.reply(200, postCreate);
 		mock
@@ -29,6 +30,7 @@ describe('Wordpress > Post Workflows', () => {
 				title: 'New Title',
 				content: 'Some new content',
 				status: 'publish',
+				date: '2025-03-27T18:05:01',
 			})
 			.reply(200, postUpdate);
 	});

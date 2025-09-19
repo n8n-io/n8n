@@ -1,0 +1,242 @@
+{
+	"createdAt": "2021-04-29T08:02:29.441Z",
+	"updatedAt": "2021-04-29T08:02:29.441Z",
+	"id": "187",
+	"name": "Strapi:Entry:create get getAll update delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "e4175f5f-af4e-4fe5-b5e4-c7a00de9330c"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"contentType": "Tests",
+				"columns": "test,random"
+			},
+			"name": "Strapi",
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [550, 300],
+			"credentials": {
+				"strapiApi": {
+					"id": "150",
+					"name": "Strapi API creds"
+				}
+			},
+			"id": "d3173ece-7c5a-42c5-95d8-cb11b4444741"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "random",
+							"value": "={{Math.round(Math.random()*1000)}}"
+						}
+					],
+					"string": [
+						{
+							"name": "test",
+							"value": "=Entry{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"id": "f4431416-b2cf-49d9-b61f-8629fb40f97b"
+		},
+		{
+			"parameters": {
+				"contentType": "Tests",
+				"entryId": "={{$node[\"Strapi\"].json[\"id\"]}}"
+			},
+			"name": "Strapi1",
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [700, 300],
+			"credentials": {
+				"strapiApi": {
+					"id": "150",
+					"name": "Strapi API creds"
+				}
+			},
+			"id": "2160d0d9-f5f3-45c5-9925-3e6449a71097"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"contentType": "Tests",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Strapi2",
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [850, 300],
+			"credentials": {
+				"strapiApi": {
+					"id": "150",
+					"name": "Strapi API creds"
+				}
+			},
+			"id": "bebbc112-21a2-48f8-9291-89f264057fff"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"contentType": "Tests",
+				"columns": "test"
+			},
+			"name": "Strapi3",
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [1150, 300],
+			"credentials": {
+				"strapiApi": {
+					"id": "150",
+					"name": "Strapi API creds"
+				}
+			},
+			"id": "275f4cc2-4ebb-42fe-9fee-ef709df4df6b"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "id",
+							"value": "={{$node[\"Strapi1\"].json[\"id\"]}}"
+						}
+					],
+					"string": [
+						{
+							"name": "test",
+							"value": "=Updated{{$node[\"Set\"].json[\"test\"]}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1000, 300],
+			"id": "bcff9dc4-914a-4494-b08f-321f541511d2"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"contentType": "Tests",
+				"entryId": "={{$node[\"Strapi\"].json[\"id\"]}}"
+			},
+			"name": "Strapi4",
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [1290, 300],
+			"credentials": {
+				"strapiApi": {
+					"id": "150",
+					"name": "Strapi API creds"
+				}
+			},
+			"id": "f60abebb-e54e-4bf6-805e-7a3c22769dbc"
+		}
+	],
+	"connections": {
+		"Strapi": {
+			"main": [
+				[
+					{
+						"node": "Strapi1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Strapi",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Strapi1": {
+			"main": [
+				[
+					{
+						"node": "Strapi2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Strapi2": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Strapi3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Strapi3": {
+			"main": [
+				[
+					{
+						"node": "Strapi4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

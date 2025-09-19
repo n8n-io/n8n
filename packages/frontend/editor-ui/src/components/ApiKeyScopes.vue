@@ -31,6 +31,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 const checkAll = ref(false);
 const indeterminate = ref(false);
+const popperContainer = ref(null);
 
 const groupedScopes = computed(() => {
 	const groups = {};
@@ -163,7 +164,7 @@ function goToUpgradeApiKeyScopes() {
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap:not(:last-of-type)) {
-	padding: 0px;
+	padding: 0;
 	margin-bottom: var(--spacing-xs);
 }
 

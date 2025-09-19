@@ -30,6 +30,22 @@ import { captureException } from '@sentry/vue';
 import { isPresent } from './typesUtils';
 import type { Ref } from 'vue';
 import { omitKey } from './objectUtils';
+import type { BaseTextKey } from '@n8n/i18n';
+
+export function getNodeSettingsInitialValues(): INodeParameters {
+	return {
+		color: '#ff0000',
+		alwaysOutputData: false,
+		executeOnce: false,
+		notesInFlow: false,
+		onError: 'stopWorkflow',
+		retryOnFail: false,
+		maxTries: 3,
+		waitBetweenTries: 1000,
+		notes: '',
+		parameters: {},
+	};
+}
 
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
@@ -447,4 +463,265 @@ export function shouldSkipParamValidation(
 		(['options', 'multiOptions'].includes(parameter.type) &&
 			Boolean(parameter.allowArbitraryValues))
 	);
+}
+
+export function createCommonNodeSettings(
+	isExecutable: boolean,
+	isTriggerNode: boolean,
+	t: (key: BaseTextKey) => string,
+) {
+	const ret: INodeProperties[] = [];
+
+	if (isExecutable && !isTriggerNode) {
+		ret.push(
+			{
+				displayName: t('nodeSettings.alwaysOutputData.displayName'),
+				name: 'alwaysOutputData',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: t('nodeSettings.alwaysOutputData.description'),
+				isNodeSetting: true,
+			},
+			{
+				displayName: t('nodeSettings.executeOnce.displayName'),
+				name: 'executeOnce',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: t('nodeSettings.executeOnce.description'),
+				isNodeSetting: true,
+			},
+			{
+				displayName: t('nodeSettings.retryOnFail.displayName'),
+				name: 'retryOnFail',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: t('nodeSettings.retryOnFail.description'),
+				isNodeSetting: true,
+			},
+			{
+				displayName: t('nodeSettings.maxTries.displayName'),
+				name: 'maxTries',
+				type: 'number',
+				typeOptions: {
+					minValue: 2,
+					maxValue: 5,
+				},
+				default: 3,
+				displayOptions: {
+					show: {
+						retryOnFail: [true],
+					},
+				},
+				noDataExpression: true,
+				description: t('nodeSettings.maxTries.description'),
+				isNodeSetting: true,
+			},
+			{
+				displayName: t('nodeSettings.waitBetweenTries.displayName'),
+				name: 'waitBetweenTries',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 5000,
+				},
+				default: 1000,
+				displayOptions: {
+					show: {
+						retryOnFail: [true],
+					},
+				},
+				noDataExpression: true,
+				description: t('nodeSettings.waitBetweenTries.description'),
+				isNodeSetting: true,
+			},
+			{
+				displayName: t('nodeSettings.onError.displayName'),
+				name: 'onError',
+				type: 'options',
+				options: [
+					{
+						name: t('nodeSettings.onError.options.stopWorkflow.displayName'),
+						value: 'stopWorkflow',
+						description: t('nodeSettings.onError.options.stopWorkflow.description'),
+					},
+					{
+						name: t('nodeSettings.onError.options.continueRegularOutput.displayName'),
+						value: 'continueRegularOutput',
+						description: t('nodeSettings.onError.options.continueRegularOutput.description'),
+					},
+					{
+						name: t('nodeSettings.onError.options.continueErrorOutput.displayName'),
+						value: 'continueErrorOutput',
+						description: t('nodeSettings.onError.options.continueErrorOutput.description'),
+					},
+				],
+				default: 'stopWorkflow',
+				description: t('nodeSettings.onError.description'),
+				noDataExpression: true,
+				isNodeSetting: true,
+			},
+		);
+	}
+
+	ret.push(
+		{
+			displayName: t('nodeSettings.notes.displayName'),
+			name: 'notes',
+			type: 'string',
+			typeOptions: {
+				rows: 5,
+			},
+			default: '',
+			noDataExpression: true,
+			description: t('nodeSettings.notes.description'),
+			isNodeSetting: true,
+		},
+		{
+			displayName: t('nodeSettings.notesInFlow.displayName'),
+			name: 'notesInFlow',
+			type: 'boolean',
+			default: false,
+			noDataExpression: true,
+			description: t('nodeSettings.notesInFlow.description'),
+			isNodeSetting: true,
+		},
+	);
+
+	return ret;
+}
+
+export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]): INodeParameters {
+	let ret = getNodeSettingsInitialValues();
+
+	const foundNodeSettings = [];
+
+	if (node.color) {
+		foundNodeSettings.push('color');
+		ret = {
+			...ret,
+			color: node.color,
+		};
+	}
+
+	if (node.notes) {
+		foundNodeSettings.push('notes');
+		ret = {
+			...ret,
+			notes: node.notes,
+		};
+	}
+
+	if (node.alwaysOutputData) {
+		foundNodeSettings.push('alwaysOutputData');
+		ret = {
+			...ret,
+			alwaysOutputData: node.alwaysOutputData,
+		};
+	}
+
+	if (node.executeOnce) {
+		foundNodeSettings.push('executeOnce');
+		ret = {
+			...ret,
+			executeOnce: node.executeOnce,
+		};
+	}
+
+	if (node.continueOnFail) {
+		foundNodeSettings.push('onError');
+		ret = {
+			...ret,
+			onError: 'continueRegularOutput',
+		};
+	}
+
+	if (node.onError) {
+		foundNodeSettings.push('onError');
+		ret = {
+			...ret,
+			onError: node.onError,
+		};
+	}
+
+	if (node.notesInFlow) {
+		foundNodeSettings.push('notesInFlow');
+		ret = {
+			...ret,
+			notesInFlow: node.notesInFlow,
+		};
+	}
+
+	if (node.retryOnFail) {
+		foundNodeSettings.push('retryOnFail');
+		ret = {
+			...ret,
+			retryOnFail: node.retryOnFail,
+		};
+	}
+
+	if (node.maxTries) {
+		foundNodeSettings.push('maxTries');
+		ret = {
+			...ret,
+			maxTries: node.maxTries,
+		};
+	}
+
+	if (node.waitBetweenTries) {
+		foundNodeSettings.push('waitBetweenTries');
+		ret = {
+			...ret,
+			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	// Set default node settings
+	for (const nodeSetting of nodeSettings) {
+		if (!foundNodeSettings.includes(nodeSetting.name)) {
+			// Set default value
+			ret = {
+				...ret,
+				[nodeSetting.name]: nodeSetting.default,
+			};
+		}
+	}
+
+	ret = {
+		...ret,
+		parameters: deepCopy(node.parameters),
+	};
+
+	return ret;
+}
+
+export function collectParametersByTab(parameters: INodeProperties[], isEmbeddedInCanvas: boolean) {
+	const ret: Record<'settings' | 'action' | 'params', INodeProperties[]> = {
+		settings: [],
+		action: [],
+		params: [],
+	};
+
+	for (const item of parameters) {
+		if (item.isNodeSetting) {
+			ret.settings.push(item);
+			continue;
+		}
+
+		if (!isEmbeddedInCanvas) {
+			ret.params.push(item);
+			continue;
+		}
+
+		if (item.name === 'resource' || item.name === 'operation') {
+			ret.action.push(item);
+			continue;
+		}
+
+		ret.params.push(item);
+	}
+
+	return ret;
 }

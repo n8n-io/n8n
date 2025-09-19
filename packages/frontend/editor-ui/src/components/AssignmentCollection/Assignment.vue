@@ -25,6 +25,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const assignment = ref<AssignmentValue>(props.modelValue);
+const valueInputHovered = ref(false);
 
 const emit = defineEmits<{
 	'update:model-value': [value: AssignmentValue];
@@ -113,6 +114,10 @@ const onRemove = (): void => {
 const onBlur = (): void => {
 	emit('update:model-value', assignment.value);
 };
+
+const onValueInputHoverChange = (hovered: boolean): void => {
+	valueInputHovered.value = hovered;
+};
 </script>
 
 <template>
@@ -186,11 +191,16 @@ const onBlur = (): void => {
 							data-test-id="assignment-value"
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
+							@hover="onValueInputHoverChange"
 						/>
 						<ParameterInputHint
 							v-if="resolvedExpressionString"
 							data-test-id="parameter-expression-preview-value"
-							:class="$style.hint"
+							:class="{
+								[$style.hint]: true,
+								[$style.optionsPadding]:
+									breakpoint !== 'default' && !isReadOnly && valueInputHovered,
+							}"
 							:highlight="highlightHint"
 							:hint="hint"
 							single-line
@@ -247,6 +257,10 @@ const onBlur = (): void => {
 		bottom: calc(var(--spacing-s) * -1);
 		left: 0;
 		right: 0;
+	}
+
+	.optionsPadding {
+		width: calc(100% - 140px);
 	}
 }
 

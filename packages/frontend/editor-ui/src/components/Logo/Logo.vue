@@ -80,16 +80,16 @@ onMounted(() => {
 .authView {
 	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
-}
 
-.logo,
-.logoText {
-	transform: scale(1.3) translateY(-2px);
-}
+	.logo,
+	.logoText {
+		transform: scale(1.3) translateY(-2px);
+	}
 
-.logoText {
-	margin-left: var(--spacing-xs);
-	margin-right: var(--spacing-3xs);
+	.logoText {
+		margin-left: var(--spacing-xs);
+		margin-right: var(--spacing-3xs);
+	}
 }
 
 .sidebarExpanded .logo {

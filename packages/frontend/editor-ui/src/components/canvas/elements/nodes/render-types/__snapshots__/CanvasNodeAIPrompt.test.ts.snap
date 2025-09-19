@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
+"<article class="container" data-test-id="canvas-ai-prompt">
+  <header>
+    <h2 class="title">What would you like to automate?</h2>
+  </header><!-- Prompt input section -->
+  <section class="promptContainer">
+    <form class="form">
+      <div class="el-textarea el-input--large n8n-input formTextarea formTextarea">
+        <!-- input -->
+        <!-- textarea --><textarea class="el-textarea__inner" name="aiBuilderPrompt" rows="15" title="" maxlength="1000" read-only="false" tabindex="0" autocomplete="off" placeholder="Ask n8n to build..."></textarea>
+        <!--v-if-->
+      </div>
+      <footer class="formFooter"><button class="button button primary medium disabled" disabled="" aria-disabled="true" aria-live="polite" type="submit">
+          <!--v-if-->Create workflow
+        </button></footer>
+    </form>
+  </section><!-- Suggestion pills section -->
+  <section class="pillsContainer" role="group" aria-label="Workflow suggestions"><button class="suggestionPill" type="button">Invoice processing pipeline</button><button class="suggestionPill" type="button">Daily AI news digest</button><button class="suggestionPill" type="button">RAG knowledge assistant</button><button class="suggestionPill" type="button">Summarize emails with AI</button><button class="suggestionPill" type="button">YouTube video chapters</button><button class="suggestionPill" type="button">Pizza delivery chatbot</button><button class="suggestionPill" type="button">Lead qualification and call scheduling</button><button class="suggestionPill" type="button">Multi-agent research workflow</button></section><!-- Divider -->
+  <div class="orDivider" role="separator"><span class="orText">or</span></div><!-- Manual node creation section -->
+  <section class="startManually"><button class="addButton" type="button" aria-label="Add node manually"><svg viewBox="0 0 24 24" width="40px" height="40px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="plus">
+        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7v14"></path>
+      </svg></button>
+    <div class="startManuallyLabel"><strong class="startManuallyText">Start manually</strong><span class="startManuallySubtitle">Add the first node</span></div>
+  </section>
+</article>"
+`;

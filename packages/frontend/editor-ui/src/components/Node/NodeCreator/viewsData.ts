@@ -57,6 +57,7 @@ import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	TEMPLATE_CATEGORY_AI,
 } from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -68,6 +69,9 @@ import type { BaseTextKey } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from './utils';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+
 export interface NodeViewItemSection {
 	key: string;
 	title: string;
@@ -78,6 +82,7 @@ export interface NodeViewItem {
 	key: string;
 	type: string;
 	properties: {
+		key?: string;
 		name?: string;
 		title?: string;
 		icon?: Themed<string>;
@@ -93,7 +98,7 @@ export interface NodeViewItem {
 		description?: string;
 		displayName?: string;
 		tag?: {
-			type: string;
+			type?: string;
 			text: string;
 		};
 		forceIncludeNodes?: string[];
@@ -167,6 +172,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
+	const calloutHelpers = useCalloutHelpers();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
@@ -176,33 +182,25 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
-	const websiteCategoryURL =
-		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
+	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
+		websiteCategoryURLParams,
+		TEMPLATE_CATEGORY_AI,
+	);
 
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
 	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
+
+	const callouts: NodeViewItem[] = !calloutHelpers.isPreBuiltAgentsCalloutVisible.value
+		? [getAiTemplatesCallout(aiTemplatesURL)]
+		: [getPreBuiltAgentsCalloutWithDivider()];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
-			{
-				key: 'ai_templates_root',
-				type: 'link',
-				properties: {
-					title: i18n.baseText('nodeCreator.aiPanel.linkItem.title'),
-					icon: 'box-open',
-					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
-					name: 'ai_templates_root',
-					url: websiteCategoryURL,
-					tag: {
-						type: 'info',
-						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
-					},
-				},
-			},
+			...callouts,
 			...agentNodes,
 			...chainNodes,
 			...transformNode,

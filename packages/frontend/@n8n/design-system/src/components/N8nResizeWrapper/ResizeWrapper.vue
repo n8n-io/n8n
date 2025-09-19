@@ -185,7 +185,7 @@ const resizerMove = (event: MouseEvent) => {
 
 <style lang="scss" module>
 .resize {
-	--resizer--size: 12px;
+	--resizer--size: 4px;
 	--resizer--side-offset: -2px;
 	--resizer--corner-offset: -3px;
 

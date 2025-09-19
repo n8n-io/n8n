@@ -8,9 +8,9 @@ import {
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { AI_TRANSFORM_NODE_TYPE, FOCUS_PANEL_EXPERIMENT } from '@/constants';
+import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
 
 interface Props {
 	parameter: INodeProperties;
@@ -22,6 +22,7 @@ interface Props {
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
+	isContentOverridden?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+	isContentOverridden: false,
 });
 
 const emit = defineEmits<{
@@ -40,7 +42,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const posthogStore = usePostHog();
 
 const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
@@ -51,16 +52,14 @@ const isHtmlEditor = computed(
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+const isInEmbeddedNdv = useIsInExperimentalNdv();
 
-const isFocusPanelFeatureEnabled = computed(() => {
-	return posthogStore.getVariant(FOCUS_PANEL_EXPERIMENT.name) === FOCUS_PANEL_EXPERIMENT.variant;
-});
 const canBeOpenedInFocusPanel = computed(
 	() =>
-		isFocusPanelFeatureEnabled.value &&
 		!props.parameter.isNodeSetting &&
 		!props.isReadOnly &&
-		activeNode.value && // checking that it's inside ndv
+		!props.isContentOverridden &&
+		(activeNode.value || isInEmbeddedNdv.value) && // checking that it's inside ndv
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),
 );
 
@@ -226,14 +225,15 @@ $container-height: 22px;
 }
 
 .noExpressionSelector {
-	margin-bottom: var(--spacing-4xs);
-
 	span {
 		padding-right: 0 !important;
 	}
 }
 
 .focusButton {
+	outline: none;
+	color: var(--color-text-light);
+
 	&:hover {
 		cursor: pointer;
 		color: var(--color-primary);

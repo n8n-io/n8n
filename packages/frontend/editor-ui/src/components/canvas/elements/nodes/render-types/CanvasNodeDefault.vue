@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
 
@@ -33,7 +35,7 @@ const {
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasIssues,
+	hasExecutionErrors,
 	render,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
@@ -43,6 +45,7 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 		connections,
 	});
 
+const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const classes = computed(() => {
@@ -50,8 +53,8 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
-		[$style.success]: hasRunData.value,
-		[$style.error]: hasIssues.value,
+		[$style.success]: hasRunData.value && executionStatus.value === 'success',
+		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
@@ -71,6 +74,7 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
+		isExperimentalNdvActive.value,
 	),
 );
 
@@ -152,6 +156,13 @@ function onActivate(event: MouseEvent) {
 			:shrink="false"
 			:disabled="isDisabled"
 			:class="$style.icon"
+		/>
+		<CanvasNodeSettingsIcons
+			v-if="
+				!renderOptions.configuration &&
+				!isDisabled &&
+				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+			"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">

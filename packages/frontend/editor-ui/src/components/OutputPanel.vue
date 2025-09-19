@@ -37,7 +37,7 @@ type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
-	workflow: Workflow;
+	workflowObject: Workflow;
 	runIndex: number;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
@@ -119,7 +119,7 @@ const hasAiMetadata = computed(() => {
 	}
 
 	if (node.value) {
-		const connectedSubNodes = props.workflow.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
 		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
@@ -215,7 +215,7 @@ const allToolsWereUnusedNotice = computed(() => {
 	// as it likely ends up unactionable noise to the user
 	if (pinnedData.hasData.value) return undefined;
 
-	const toolsAvailable = props.workflow.getParentNodes(
+	const toolsAvailable = props.workflowObject.getParentNodes(
 		node.value.name,
 		NodeConnectionTypes.AiTool,
 		1,
@@ -306,9 +306,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <template>
 	<RunData
 		ref="runDataRef"
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="node"
-		:workflow="workflow"
+		:workflow-object="workflowObject"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
@@ -460,7 +460,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template v-if="outputMode === 'logs' && node" #content>
-			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
+			<RunDataAi :node="node" :run-index="runIndex" :workflow-object="workflowObject" />
 		</template>
 
 		<template #recovered-artificial-output-data>
@@ -489,6 +489,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 }
 .runData {
 	background-color: var(--color-run-data-background);
+}
+
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);

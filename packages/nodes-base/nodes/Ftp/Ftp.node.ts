@@ -289,7 +289,50 @@ export class Ftp implements INodeType {
 				hint: 'The name of the output binary field to put the file in',
 				required: true,
 			},
-
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['download'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Enable Concurrent Reads',
+						name: 'enableConcurrentReads',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to enable concurrent reads for downloading files',
+					},
+					{
+						displayName: 'Max Concurrent Reads',
+						name: 'maxConcurrentReads',
+						type: 'number',
+						default: 5,
+						displayOptions: {
+							show: {
+								enableConcurrentReads: [true],
+							},
+						},
+					},
+					{
+						displayName: 'Chunk Size',
+						name: 'chunkSize',
+						type: 'number',
+						default: 64,
+						description: 'Size of each chunk in KB to download, Not all servers support this',
+						displayOptions: {
+							show: {
+								enableConcurrentReads: [true],
+							},
+						},
+					},
+				],
+			},
 			// ----------------------------------
 			//         rename
 			// ----------------------------------
@@ -530,6 +573,10 @@ export class Ftp implements INodeType {
 							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
+							readyTimeout: 10000,
+							algorithms: {
+								compress: ['zlib@openssh.com', 'zlib', 'none'],
+							},
 						});
 					} else {
 						await sftp.connect({
@@ -537,6 +584,10 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: credentials.password as string,
+							readyTimeout: 10000,
+							algorithms: {
+								compress: ['zlib@openssh.com', 'zlib', 'none'],
+							},
 						});
 					}
 				} else {
@@ -632,9 +683,21 @@ export class Ftp implements INodeType {
 
 						if (operation === 'download') {
 							const path = this.getNodeParameter('path', i) as string;
+							const options = this.getNodeParameter('options', i);
 							const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
 							try {
-								await sftp!.get(path, createWriteStream(binaryFile.path));
+								if (!options.enableConcurrentReads) {
+									await sftp!.get(path, createWriteStream(binaryFile.path));
+								} else {
+									await sftp!.fastGet(path, binaryFile.path, {
+										concurrency:
+											options.maxConcurrentReads === undefined
+												? 5
+												: Number(options.maxConcurrentReads),
+										chunkSize:
+											(options.chunkSize === undefined ? 64 : Number(options.chunkSize)) * 1024,
+									});
+								}
 
 								const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 								const remoteFilePath = this.getNodeParameter('path', i) as string;

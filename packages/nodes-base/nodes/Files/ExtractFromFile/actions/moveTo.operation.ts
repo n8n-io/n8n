@@ -161,7 +161,7 @@ export async function execute(
 			returnData.push(newItem);
 		} catch (error) {
 			let errorDescription;
-			if (error.message.includes('Unexpected token')) {
+			if (typeof error.message === 'string' && error.message.includes('Unexpected token')) {
 				error.message = "The file selected in 'Input Binary Field' is not in JSON format";
 				errorDescription =
 					"Try to change the operation or select a JSON file in 'Input Binary Field'";

@@ -28,6 +28,7 @@ import {
 	userInInstanceRanOutOfFreeAiCredits,
 } from '../src/telemetry-helpers';
 import { randomInt } from '../src/utils';
+import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -1414,6 +1415,136 @@ describe('generateNodesGraph', () => {
 				},
 				notes: {},
 			},
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with undefined metrics - uses default predefined metric', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						// metrics is undefined - should fall back to default metric
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: [DEFAULT_EVALUATION_METRIC], // Default metric
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with custom metric parameter', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metric: 'helpfulness',
+						// metrics is undefined but metric parameter is set
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['helpfulness'], // Custom metric from parameter
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle Evaluation node with valid metrics assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'setMetrics',
+						metrics: {
+							assignments: [
+								{ name: 'accuracy', value: 0.95 },
+								{ name: 'precision', value: 0.87 },
+								{ name: 'recall', value: 0.92 },
+							],
+						},
+					},
+					id: 'eval-node-id',
+					name: 'Evaluation Node',
+					type: 'n8n-nodes-base.evaluation',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+			nodeGraph: {
+				node_types: ['n8n-nodes-base.evaluation'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'eval-node-id',
+						type: 'n8n-nodes-base.evaluation',
+						version: 1,
+						position: [100, 100],
+						metric_names: ['accuracy', 'precision', 'recall'],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Evaluation Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
 		});

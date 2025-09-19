@@ -6,7 +6,7 @@ import { ROLE, type UsersList } from '@n8n/api-types';
 import { type UserAction } from '@n8n/design-system';
 import SettingsUsersActionsCell from '@/components/SettingsUsers/SettingsUsersActionsCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const baseUser: UsersList['items'][number] = {
 	id: '1',
@@ -36,12 +36,6 @@ describe('SettingsUsersActionsCell', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	it('should not render action toggle for an owner', () => {
-		const props = { data: { ...baseUser, isOwner: true }, actions: mockActions };
-		const { container } = renderComponent({ props });
-		expect(container.firstChild).toBeEmptyDOMElement();
 	});
 
 	it('should not render action toggle if there are no actions', () => {

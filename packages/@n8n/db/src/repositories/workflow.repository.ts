@@ -19,7 +19,9 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
+import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -371,6 +373,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	@TimedQuery()
 	async getMany(workflowIds: string[], options: ListQuery.Options = {}) {
 		if (workflowIds.length === 0) {
 			return [];
@@ -432,6 +435,30 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
+		this.applyAvailableInMCPFilter(qb, filter);
+	}
+
+	private applyAvailableInMCPFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.availableInMCP === 'boolean') {
+			const dbType = this.globalConfig.database.type;
+
+			if (['postgresdb'].includes(dbType)) {
+				qb.andWhere("workflow.settings ->> 'availableInMCP' = :availableInMCP", {
+					availableInMCP: filter.availableInMCP.toString(),
+				});
+			} else if (['mysqldb', 'mariadb'].includes(dbType)) {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP,
+				});
+			} else if (dbType === 'sqlite') {
+				qb.andWhere("JSON_EXTRACT(workflow.settings, '$.availableInMCP') = :availableInMCP", {
+					availableInMCP: filter.availableInMCP ? 1 : 0, // SQLite stores booleans as 0/1
+				});
+			}
+		}
 	}
 
 	private applyNameFilter(
@@ -709,5 +736,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			{ id: In(workflowIds) },
 			{ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } },
 		);
+	}
+
+	async findWorkflowsWithNodeType(nodeTypes: string[]) {
+		if (!nodeTypes?.length) return [];
+
+		const qb = this.createQueryBuilder('workflow');
+
+		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
+			nodeTypes,
+			this.globalConfig.database.type,
+		);
+
+		const workflows: Array<{ id: string; name: string; active: boolean }> = await qb
+			.select(['workflow.id', 'workflow.name', 'workflow.active'])
+			.where(whereClause, parameters)
+			.getMany();
+
+		return workflows;
 	}
 }

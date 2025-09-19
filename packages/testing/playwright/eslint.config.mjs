@@ -1,16 +1,14 @@
-import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
-export default defineConfig(
-	{
-		ignores: ['**/playwright-report/**'],
-	},
-	baseConfig,
+export default [
+	...baseConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
+		ignores: ['playwright-report/**/*', 'ms-playwright-cache/**/*'],
+	},
+	{
 		rules: {
-			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',
@@ -24,6 +22,43 @@ export default defineConfig(
 			'playwright/max-nested-describe': 'warn',
 			'playwright/no-conditional-in-test': 'error',
 			'playwright/no-skipped-test': 'warn',
+			// Allow any naming convention for TestRequirements object properties
+			// This is specifically for workflow filenames and intercept keys that may not follow camelCase
+			'@typescript-eslint/naming-convention': [
+				'error',
+				{
+					selector: 'default',
+					format: ['camelCase'],
+					leadingUnderscore: 'allow',
+					trailingUnderscore: 'allow',
+				},
+				{
+					selector: 'variable',
+					format: ['camelCase', 'UPPER_CASE'],
+				},
+				{
+					selector: 'typeLike',
+					format: ['PascalCase'],
+				},
+				{
+					selector: 'property',
+					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+					filter: {
+						// Allow any format for properties in TestRequirements objects (workflow files, intercept keys, etc.)
+						regex: '^(workflow|intercepts|storage|config)$',
+						match: false,
+					},
+				},
+				{
+					selector: 'objectLiteralProperty',
+					format: null, // Allow any format for object literal properties in TestRequirements
+					filter: {
+						// This allows workflow filenames and intercept keys to use any naming convention
+						regex: '\\.(json|spec\\.ts)$|[a-zA-Z0-9_-]+',
+						match: true,
+					},
+				},
+			],
 			'import-x/no-extraneous-dependencies': [
 				'error',
 				{
@@ -33,4 +68,4 @@ export default defineConfig(
 			],
 		},
 	},
-);
+];

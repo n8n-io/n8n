@@ -126,7 +126,7 @@ export function useNodeSettingsParameters() {
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections, true);
+			workflowsStore.setConnections(updatedConnections);
 		}
 
 		workflowsStore.setNodeParameters(updateInformation);
@@ -156,7 +156,7 @@ export function useNodeSettingsParameters() {
 		});
 
 		if (ndvStore.activeNode) {
-			ndvStore.setActiveNodeName(null);
+			ndvStore.unsetActiveNodeName();
 			ndvStore.resetNDVPushRef();
 		}
 	}

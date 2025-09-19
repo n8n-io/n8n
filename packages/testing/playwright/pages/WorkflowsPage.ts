@@ -1,11 +1,8 @@
+import type { Locator } from '@playwright/test';
+
 import { BasePage } from './BasePage';
-import { resolveFromRoot } from '../utils/path-helper';
 
 export class WorkflowsPage extends BasePage {
-	async clickNewWorkflowCard() {
-		await this.clickByTestId('new-workflow-card');
-	}
-
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
 	}
@@ -14,33 +11,149 @@ export class WorkflowsPage extends BasePage {
 		await this.clickByTestId('project-plus-button');
 	}
 
-	async clickAddWorklowButton() {
+	/**
+	 * This is the add workflow button on the workflows page, visible when there are already workflows.
+	 */
+	async clickAddWorkflowButton() {
 		await this.clickByTestId('add-resource-workflow');
 	}
 
 	/**
-	 * Import a workflow from a fixture file
-	 * @param fixtureKey - The key of the fixture file to import
-	 * @param workflowName - The name of the workflow to import
-	 * Naming the file causes the workflow to save so we don't need to click save
+	 * This is the new workflow button on the workflows page, visible when there are no workflows.
 	 */
-	async importWorkflow(fixtureKey: string, workflowName: string) {
-		await this.clickByTestId('workflow-menu');
-
-		const [fileChooser] = await Promise.all([
-			this.page.waitForEvent('filechooser'),
-			this.clickByText('Import from File...'),
-		]);
-		await fileChooser.setFiles(resolveFromRoot('workflows', fixtureKey));
-		// eslint-disable-next-line playwright/no-wait-for-timeout
-		await this.page.waitForTimeout(250);
-
-		await this.clickByTestId('inline-edit-preview');
-		await this.fillByTestId('inline-edit-input', workflowName);
-		await this.page.getByTestId('inline-edit-input').press('Enter');
+	async clickNewWorkflowCard() {
+		await this.clickByTestId('new-workflow-card');
 	}
 
-	workflowTags() {
-		return this.page.getByTestId('workflow-tags').locator('.el-tag');
+	getNewWorkflowCard() {
+		return this.page.getByTestId('new-workflow-card');
+	}
+
+	async clearSearch() {
+		await this.clickByTestId('resources-list-search');
+		await this.page.getByTestId('resources-list-search').clear();
+	}
+
+	getProjectName() {
+		return this.page.getByTestId('project-name');
+	}
+
+	getSearchBar() {
+		return this.page.getByTestId('resources-list-search');
+	}
+
+	getWorkflowFilterButton() {
+		return this.page.getByTestId('workflow-filter-button');
+	}
+
+	getWorkflowTagsDropdown() {
+		return this.page.getByTestId('workflow-tags-dropdown');
+	}
+
+	getWorkflowTagItem(tagName: string) {
+		return this.page.getByTestId('workflow-tag-item').filter({ hasText: tagName });
+	}
+
+	getWorkflowArchivedCheckbox() {
+		return this.page.getByTestId('workflow-archived-checkbox');
+	}
+
+	async unarchiveWorkflow(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.page.getByRole('menuitem', { name: 'Unarchive' }).click();
+	}
+
+	async deleteWorkflow(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.page.getByRole('menuitem', { name: 'Delete' }).click();
+		await this.page.getByRole('button', { name: 'delete' }).click();
+	}
+
+	async searchWorkflows(searchTerm: string) {
+		await this.clickByTestId('resources-list-search');
+		await this.fillByTestId('resources-list-search', searchTerm);
+	}
+
+	getWorkflowItems() {
+		return this.page.getByTestId('resources-list-item-workflow');
+	}
+
+	getWorkflowByName(name: string) {
+		return this.getWorkflowItems().filter({ hasText: name });
+	}
+
+	async shareWorkflow(workflowName: string) {
+		const workflow = this.getWorkflowByName(workflowName);
+		await workflow.getByTestId('workflow-card-actions').click();
+		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
+	}
+
+	getArchiveMenuItem() {
+		return this.page.getByRole('menuitem', { name: 'Archive' });
+	}
+
+	async archiveWorkflow(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.getArchiveMenuItem().click();
+	}
+
+	getFiltersButton() {
+		return this.page.getByTestId('resources-list-filters-trigger');
+	}
+
+	async openFilters() {
+		await this.clickByTestId('resources-list-filters-trigger');
+	}
+
+	async closeFilters() {
+		await this.clickByTestId('resources-list-filters-trigger');
+	}
+
+	getShowArchivedCheckbox() {
+		return this.page.getByTestId('show-archived-checkbox');
+	}
+
+	async toggleShowArchived() {
+		await this.openFilters();
+		await this.getShowArchivedCheckbox().locator('span').nth(1).click();
+		await this.closeFilters();
+	}
+
+	getStatusDropdown() {
+		return this.page.getByTestId('status-dropdown');
+	}
+
+	/**
+	 * Select a status filter (for active/deactivated workflows)
+	 * @param status - 'All', 'Active', or 'Deactivated'
+	 */
+	async selectStatusFilter(status: 'All' | 'Active' | 'Deactivated') {
+		await this.openFilters();
+		await this.getStatusDropdown().getByRole('combobox', { name: 'Select' }).click();
+		if (status === 'All') {
+			await this.page.getByRole('option', { name: 'All' }).click();
+		} else {
+			await this.page.getByText(status, { exact: true }).click();
+		}
+		await this.closeFilters();
+	}
+
+	getTagsDropdown() {
+		return this.page.getByTestId('tags-dropdown');
+	}
+
+	async filterByTags(tags: string[]) {
+		await this.openFilters();
+		await this.clickByTestId('tags-dropdown');
+
+		for (const tag of tags) {
+			await this.page.getByRole('option', { name: tag }).locator('span').click();
+		}
+
+		await this.closeFilters();
+	}
+
+	async filterByTag(tag: string) {
+		await this.filterByTags([tag]);
 	}
 }

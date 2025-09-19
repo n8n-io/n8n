@@ -88,7 +88,7 @@ const i18n = useI18n();
 }
 
 .description {
-	padding: 0px 30px;
+	padding: 0 30px;
 	margin-block-start: 16px;
 	margin-block-end: 30px;
 
@@ -97,7 +97,7 @@ const i18n = useI18n();
 		line-height: 22px;
 		color: $updates-panel-description-text-color;
 		font-weight: var(--font-weight-regular);
-		margin: 0 0 16px 0;
+		margin: 0 0 16px;
 	}
 
 	div {
@@ -105,12 +105,12 @@ const i18n = useI18n();
 	}
 
 	.link {
-		padding-left: 0px;
+		padding-left: 0;
 		display: flex;
 	}
 
 	.link:hover {
-		color: var(--prim-color-primary);
+		color: var(--color-primary);
 		text-decoration: none;
 	}
 }

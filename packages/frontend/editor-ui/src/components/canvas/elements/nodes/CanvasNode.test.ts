@@ -111,8 +111,8 @@ describe('CanvasNode', () => {
 			const inputHandles = getAllByTestId('canvas-node-input-handle');
 
 			expect(inputHandles[1]).toHaveStyle('left: 40px');
-			expect(inputHandles[2]).toHaveStyle('left: 168px');
-			expect(inputHandles[3]).toHaveStyle('left: 232px');
+			expect(inputHandles[2]).toHaveStyle('left: 136px');
+			expect(inputHandles[3]).toHaveStyle('left: 184px');
 		});
 	});
 

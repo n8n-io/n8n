@@ -21,7 +21,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{
-	execution: ExecutionSummary;
+	execution?: ExecutionSummary;
 }>();
 
 const emit = defineEmits<{
@@ -109,7 +109,9 @@ async function onDeleteExecution(): Promise<void> {
 }
 
 function handleRetryClick(command: string) {
-	emit('retryExecution', { execution: props.execution, command });
+	if (props.execution) {
+		emit('retryExecution', { execution: props.execution, command });
+	}
 }
 
 function handleStopClick() {

@@ -303,7 +303,7 @@ onMounted(async () => {
 }
 .textContainer {
 	text-align: left;
-	margin: 0px;
+	margin: 0;
 	margin-bottom: 5px;
 }
 
@@ -315,7 +315,7 @@ onMounted(async () => {
 	text-align: center;
 
 	canvas {
-		border: 4px solid var(--prim-gray-10);
+		border: 4px solid var(--color-qr-code-border);
 	}
 }
 

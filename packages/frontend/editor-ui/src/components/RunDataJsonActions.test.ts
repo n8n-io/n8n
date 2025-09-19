@@ -115,7 +115,7 @@ async function createPiniaWithActiveNode() {
 		},
 	};
 
-	ndvStore.activeNodeName = node.name;
+	ndvStore.setActiveNodeName(node.name, 'other');
 
 	return {
 		pinia,
@@ -129,7 +129,6 @@ describe('RunDataJsonActions', () => {
 	beforeEach(cleanup);
 
 	beforeAll(() => {
-		document.body.innerHTML = '<div id="app-grid"></div>';
 		server = setupServer();
 	});
 

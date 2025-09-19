@@ -2,7 +2,8 @@
 import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
@@ -12,14 +13,23 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -27,12 +37,15 @@ const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-const { selectedDetailId, onNodeClick } = useProvideViewportSync();
+const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
+const telemetry = useTelemetry();
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -81,8 +94,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -115,6 +128,17 @@ const settingsDiff = computed(() => {
 		}
 		return acc;
 	}, []);
+
+	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name;
+	const targetName = targetWorkFlow.value.state.value?.workflow?.name;
+
+	if (sourceName && targetName && sourceName !== targetName) {
+		settings.unshift({
+			name: 'name',
+			before: sourceName,
+			after: targetName,
+		});
+	}
 
 	const sourceTags = (sourceWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
 		typeof tag === 'string' ? tag : tag.name,
@@ -155,6 +179,10 @@ const nodeChanges = computed(() => {
 });
 
 function nextNodeChange() {
+	telemetry.track('User iterated over changes', {
+		workflow_id: props.data.workflowId,
+		context: 'next',
+	});
 	const currentIndex = nodeChanges.value.findIndex(
 		(change) => change.node.id === selectedDetailId.value,
 	);
@@ -164,6 +192,10 @@ function nextNodeChange() {
 }
 
 function previousNodeChange() {
+	telemetry.track('User iterated over changes', {
+		workflow_id: props.data.workflowId,
+		context: 'previous',
+	});
 	const currentIndex = nodeChanges.value.findIndex(
 		(change) => change.node.id === selectedDetailId.value,
 	);
@@ -177,24 +209,24 @@ const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
 const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
-		label: 'Nodes',
-		disabled: nodeChanges.value.length === 0,
+		label: i18n.baseText('workflowDiff.nodes'),
+		disabled: false,
 		data: {
 			count: nodeChanges.value.length,
 		},
 	},
 	{
 		value: 'connectors' as const,
-		label: 'Connectors',
-		disabled: connectionsDiff.value.size === 0,
+		label: i18n.baseText('workflowDiff.connectors'),
+		disabled: false,
 		data: {
 			count: connectionsDiff.value.size,
 		},
 	},
 	{
 		value: 'settings' as const,
-		label: 'Settings',
-		disabled: settingsDiff.value.length === 0,
+		label: i18n.baseText('workflowDiff.settings'),
+		disabled: false,
 		data: {
 			count: settingsDiff.value.length,
 		},
@@ -207,8 +239,17 @@ function setActiveTab(active: boolean) {
 		return;
 	}
 
-	const value = tabs.value.find((tab) => !tab.disabled)?.value ?? 'nodes';
-	activeTab.value = value;
+	telemetry.track('User clicked workflow diff changes button', {
+		workflow_id: props.data.workflowId,
+	});
+	activeTab.value = 'nodes';
+}
+
+function trackTabChange(value: 'nodes' | 'connectors' | 'settings') {
+	telemetry.track('User clicked changes tabs', {
+		workflow_id: props.data.workflowId,
+		context: `${value}_tab`,
+	});
 }
 
 const selectedNode = computed(() => {
@@ -233,27 +274,117 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
+	// Custom replacer to exclude certain properties and format others
+	function replacer(key: string, value: unknown, nodeType?: string) {
+		if (key === 'position') {
+			return undefined; // exclude this property
+		}
+
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
+		}
+
+		return value;
+	}
+
+	const withNodeType = (type?: string) => (key: string, value: unknown) =>
+		replacer(key, value, type);
+
 	return {
-		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
-		newString: JSON.stringify(targetNode, null, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
+		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
 	};
 });
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
+
+	// Check if we have history to go back to avoid empty navigation issues
+	if (window.history.length > 1) {
+		// Use router.back() to maintain proper navigation flow when possible
+		router.back();
+	} else {
+		// Fallback to query parameter manipulation when no navigation history
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
 }
+
+// Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', handleEscapeKey, true);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', handleEscapeKey, true);
+});
 
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
 );
 
-onNodeClick((nodeId) => {
-	const status = nodesDiff.value.get(nodeId)?.status;
+const isSourceWorkflowNew = computed(() => {
+	const sourceExists = !!sourceWorkFlow.value.state.value?.workflow;
+	const targetExists = !!targetWorkFlow.value.state.value?.workflow;
 
-	if (status && status !== NodeDiffStatus.Eq) {
+	// Source is "new" only when it doesn't exist but target does AND
+	// we're in a context where the target is being pushed/pulled to create the source
+	// Push: remote (source) doesn't exist, local (target) does -> creating new on remote
+	// Pull: local (source) doesn't exist, remote (target) does -> creating new on local
+	return !sourceExists && targetExists;
+});
+
+onNodeClick((nodeId) => {
+	const node = nodesDiff.value.get(nodeId);
+	if (!node) {
+		return;
+	}
+
+	telemetry.track('User clicked to view node changes', {
+		workflow_id: props.data.workflowId,
+		node_type: node.node.type,
+		context: 'canvas',
+	});
+
+	if (node.status !== NodeDiffStatus.Eq) {
 		selectedDetailId.value = nodeId;
 	}
 });
+
+function setSelectedDetailId(
+	nodeId: string | undefined,
+	context: 'nodes' | 'connectors' | 'settings',
+) {
+	if (!nodeId) {
+		selectedDetailId.value = undefined;
+		return;
+	}
+
+	selectedDetailId.value = nodeId;
+	const node = nodesDiff.value.get(nodeId);
+	if (!node) {
+		return;
+	}
+
+	telemetry.track('User clicked to view node changes', {
+		workflow_id: props.data.workflowId,
+		node_type: node.node.type,
+		context: `${context}_list`,
+	});
+}
 
 const modifiers = [
 	{
@@ -281,18 +412,20 @@ const modifiers = [
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		:close-on-press-escape="false"
 		@before-close="handleBeforeClose"
 	>
-		<template #header="{ closeDialog }">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
-						class="mr-xs"
-						@click="closeDialog"
+						:class="[$style.backButton, 'mr-xs']"
+						icon-size="large"
+						@click="handleBeforeClose"
 					></N8nIconButton>
-					<N8nHeading tag="h1" size="xlarge">
+					<N8nHeading tag="h4" size="medium">
 						{{
 							sourceWorkFlow.state.value?.workflow?.name ||
 							targetWorkFlow.state.value?.workflow?.name
@@ -300,7 +433,13 @@ const modifiers = [
 					</N8nHeading>
 				</div>
 
-				<div>
+				<div :class="$style.headerRight">
+					<N8nCheckbox
+						v-model="syncIsEnabled"
+						label-size="small"
+						label="Sync views"
+						class="mb-0 mr-s"
+					/>
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -308,14 +447,13 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-xs"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary">
+						<N8nButton type="secondary" style="--button-border-radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
-							Changes
+							{{ i18n.baseText('workflowDiff.changes') }}
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu :hide-on-click="false">
@@ -325,6 +463,7 @@ const modifiers = [
 										:options="tabs"
 										:class="$style.tabs"
 										class="mb-xs"
+										@update:model-value="trackTabChange"
 									>
 										<template #option="{ label, data: optionData }">
 											{{ label }}
@@ -335,64 +474,101 @@ const modifiers = [
 									</N8nRadioButtons>
 									<div>
 										<ul v-if="activeTab === 'nodes'">
-											<ElDropdownItem
-												v-for="change in nodeChanges"
-												:key="change.node.id"
-												:class="{
-													[$style.clickableChange]: true,
-													[$style.clickableChangeActive]: selectedDetailId === change.node.id,
-												}"
-												@click.prevent="selectedDetailId = change.node.id"
-											>
-												<DiffBadge :type="change.status" />
-												<NodeIcon :node-type="change.type" :size="16" />
-												{{ change.node.name }}
-											</ElDropdownItem>
+											<template v-if="nodeChanges.length > 0">
+												<ElDropdownItem
+													v-for="change in nodeChanges"
+													:key="change.node.id"
+													:class="{
+														[$style.clickableChange]: true,
+														[$style.clickableChangeActive]: selectedDetailId === change.node.id,
+													}"
+													@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
+												>
+													<DiffBadge :type="change.status" />
+													<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
+													<span :class="$style.nodeName">{{ change.node.name }}</span>
+												</ElDropdownItem>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
+											</li>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
-											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div>
-													<DiffBadge :type="change[1].status" />
-												</div>
-												<div style="flex: 1">
-													<ul :class="$style.changesNested">
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.source?.id,
-															}"
-															@click.prevent="selectedDetailId = change[1].connection.source?.id"
-														>
-															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
-															{{ change[1].connection.source?.name }}
-														</ElDropdownItem>
-														<div :class="$style.separator"></div>
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.target?.id,
-															}"
-															@click.prevent="selectedDetailId = change[1].connection.target?.id"
-														>
-															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
-															{{ change[1].connection.target?.name }}
-														</ElDropdownItem>
-													</ul>
-												</div>
+											<template v-if="connectionsDiff.size > 0">
+												<li v-for="change in connectionsDiff" :key="change[0]">
+													<div>
+														<DiffBadge :type="change[1].status" />
+													</div>
+													<div style="flex: 1">
+														<ul :class="$style.changesNested">
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.source?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.source?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.sourceType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.source?.name
+																}}</span>
+															</ElDropdownItem>
+															<div :class="$style.separator"></div>
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.target?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.target?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.targetType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.target?.name
+																}}</span>
+															</ElDropdownItem>
+														</ul>
+													</div>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'settings'">
-											<li v-for="setting in settingsDiff" :key="setting.name">
-												<N8nText color="text-dark" size="medium" tag="div" bold>{{
-													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+											<template v-if="settingsDiff.length > 0">
+												<li v-for="setting in settingsDiff" :key="setting.name">
+													<N8nText color="text-dark" size="medium" tag="div" bold>{{
+														i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+													}}</N8nText>
+													<NodeDiff
+														:old-string="setting.before"
+														:new-string="setting.after"
+														:class="$style.noNumberDiff"
+													/>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
 												}}</N8nText>
-												<NodeDiff
-													:old-string="setting.before"
-													:new-string="setting.after"
-													:class="$style.noNumberDiff"
-												/>
 											</li>
 										</ul>
 									</div>
@@ -404,14 +580,16 @@ const modifiers = [
 						icon="chevron-left"
 						type="secondary"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
-					></N8nIconButton>
+					/>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0 4px 4px 0"
 						@click="nextNodeChange"
-					></N8nIconButton>
+					/>
 				</div>
 			</div>
 		</template>
@@ -424,8 +602,10 @@ const modifiers = [
 								<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									sourceWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="sourceWorkFlow.state.value.workflow">
@@ -450,14 +630,21 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
-									</template>
-									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow')
+											: i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.remote')
+											: i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.database')
+											: i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -468,8 +655,10 @@ const modifiers = [
 								<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									targetWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="targetWorkFlow.state.value.workflow">
@@ -494,14 +683,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
-									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -521,7 +711,9 @@ const modifiers = [
 	</Modal>
 </template>
 
-<style module>
+<style module lang="scss">
+/* Diff colors are now centralized in @n8n/design-system tokens */
+
 .workflowDiffModal {
 	margin-bottom: 0;
 	border-radius: 0;
@@ -531,7 +723,6 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-border);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -566,42 +757,71 @@ const modifiers = [
 }
 
 .popper {
-	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
+	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
 }
 
 .changes {
-	list-style: none;
-	margin: 0;
-	padding: 0;
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: 8px;
-		padding: 8px;
+		gap: var(--spacing-2xs);
+		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+
+		> div {
+			min-width: 0;
+		}
+
+		.clickableChange {
+			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			margin-left: -4px;
+		}
 	}
+
+	.changesNested {
+		margin-top: -3px;
+		width: 100%;
+		min-width: 0;
+	}
+}
+
+.clickableChange {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing-2xs);
+	border-radius: 4px;
+	padding: var(--spacing-xs) var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
+	line-height: unset;
+	min-width: 0;
+	transition: background-color 0.2s ease;
+
+	&:hover {
+		background-color: var(--color-background-xlight);
+	}
+}
+
+.clickableChangeActive {
+	background-color: var(--color-background-xlight);
+}
+
+.nodeName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .separator {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color-foreground-xdark);
-	margin: -5px 23px;
+	margin: 0 0 -5px var(--spacing-xs);
 	position: relative;
 	z-index: 1;
-}
-
-.clickableChange {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	border-radius: 4px;
-}
-
-.clickableChangeActive {
-	background-color: var(--color-background-medium);
 }
 
 .deleted,
@@ -610,13 +830,13 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
 		color: var(--color-text-xlight);
-		font-family: var(--font-family-monospace);
-		font-size: 8px;
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
 		font-weight: 700;
 		z-index: 1;
 		width: 16px;
@@ -625,54 +845,49 @@ const modifiers = [
 		justify-content: center;
 		align-items: center;
 	}
-
-	&[data-node-type='n8n-nodes-base.stickyNote'],
-	&[data-node-type='n8n-nodes-base.manualTrigger'] {
-		&::before {
-			left: auto;
-			right: 0px;
-			border-top-right-radius: 0;
-			border-top-left-radius: 2px;
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 6px;
-		}
-	}
 }
 
 .deleted {
-	--canvas-node--background: rgba(234, 31, 48, 0.2);
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(234, 31, 48, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+	--canvas-node--background: var(--diff-del-faint);
+	--canvas-node--border-color: var(--diff-del);
+	--color-sticky-background: var(--diff-del-faint);
+	--color-sticky-border: var(--diff-del);
 	&::before {
 		content: 'D';
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-red);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-del);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-del) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: rgba(14, 171, 84, 0.2);
-	--color-sticky-background: rgba(14, 171, 84, 0.2);
-	--color-sticky-border: var(--color-node-icon-green);
+	--canvas-node--border-color: var(--diff-new);
+	--canvas-node--background: var(--diff-new-faint);
+	--color-sticky-background: var(--diff-new-faint);
+	--color-sticky-border: var(--diff-new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
-	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-new) !important;
 	}
 }
 .equal {
@@ -688,41 +903,38 @@ const modifiers = [
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: rgba(255, 150, 90, 0.2);
-	--color-sticky-background: rgba(255, 150, 90, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
+	--canvas-node--border-color: var(--diff-modified);
+	--canvas-node--background: var(--diff-modified-faint);
+	--color-sticky-background: var(--diff-modified-faint);
+	--color-sticky-border: var(--diff-modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
-	:global(.canvas-node-handle-main-output .source) {
-		--color-foreground-xdark: var(--color-node-icon-orange);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(234, 31, 48, 0.2);
+	--canvas-edge-color: var(--diff-del);
+	--edge-highlight-color: var(--diff-del-light);
 }
 .edge-added {
-	--canvas-edge-color: var(--color-node-icon-green);
-	--edge-highlight-color: rgba(14, 171, 84, 0.2);
+	--canvas-edge-color: var(--diff-new);
+	--edge-highlight-color: var(--diff-new-light);
 }
 .edge-equal {
 	opacity: 0.5;
-}
-
-.noNumberDiff {
-	min-height: 41px;
-	margin-bottom: 10px !important;
-	:global(.blob-num) {
-		display: none;
-	}
 }
 
 .circleBadge {
@@ -732,16 +944,34 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-background-medium);
-	color: var(--color-text-dark);
+	background-color: var(--color-primary);
+	color: var(--color-text-xlight);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
 }
 
 .dropdownContent {
-	min-width: 300px;
-	padding: 2px 12px;
+	min-width: 320px;
+	padding: 0 12px;
+
+	ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		max-height: 400px;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.noNumberDiff {
+		min-height: 41px;
+		margin: 0 12px 10px 0;
+		overflow: hidden;
+		:global(.blob-num) {
+			display: none;
+		}
+	}
 }
 
 .workflowDiffContent {
@@ -759,7 +989,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid #ddd;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {
@@ -774,15 +1004,27 @@ const modifiers = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+
+	.navigationButton {
+		height: 34px;
+		width: 34px;
+	}
+
+	.backButton {
+		border: none;
+	}
 }
 
-.headerLeft {
+.headerLeft,
+.headerRight {
 	display: flex;
 	align-items: center;
 }
 
-.navigationButton {
-	height: 34px !important;
-	width: 34px !important;
+.emptyState {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing-m) var(--spacing-xs);
 }
 </style>

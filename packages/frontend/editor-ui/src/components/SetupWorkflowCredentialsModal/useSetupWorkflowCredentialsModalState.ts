@@ -66,7 +66,6 @@ export const useSetupWorkflowCredentialsModalState = () => {
 			workflowsStore.updateNodeProperties({
 				name: node.name,
 				properties: {
-					position: node.position,
 					credentials: {
 						...node.credentials,
 						[usages.credentialType]: credential,
@@ -101,7 +100,6 @@ export const useSetupWorkflowCredentialsModalState = () => {
 			workflowsStore.updateNodeProperties({
 				name: node.name,
 				properties: {
-					position: node.position,
 					credentials,
 				},
 			});

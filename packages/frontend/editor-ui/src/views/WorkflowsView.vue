@@ -13,6 +13,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -20,6 +21,15 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/components/SuggestedWorkflowCard.vue';
+import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
+import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
+import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
@@ -44,10 +54,9 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
-	isPersonalizedTemplatesExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
@@ -70,7 +79,6 @@ import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -101,6 +109,7 @@ const router = useRouter();
 const message = useMessage();
 const toast = useToast();
 const folderHelpers = useFolders();
+const calloutHelpers = useCalloutHelpers();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
@@ -115,6 +124,10 @@ const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
 const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
+const personalizedTemplatesStore = usePersonalizedTemplatesStore();
+const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -343,6 +356,20 @@ const projectPermissions = computed(() => {
 	);
 });
 
+const showReadyToRunWorkflowsCallout = computed(() => {
+	const isEnabled = readyToRunWorkflowsStore.isFeatureEnabled;
+	const isDismissed = readyToRunWorkflowsStore.isCalloutDismissed;
+
+	return (
+		isEnabled &&
+		!isDismissed &&
+		!loading.value &&
+		!readOnlyEnv.value &&
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
 const emptyListDescription = computed(() => {
 	if (readOnlyEnv.value) {
 		return i18n.baseText('workflows.empty.description.readOnlyEnv');
@@ -362,6 +389,17 @@ const hasFilters = computed(() => {
 	);
 });
 
+// When there are no visible results but the project contains archived workflows,
+// inform the user how to reveal them
+const showArchivedOnlyHint = computed(() => {
+	return (
+		workflowsAndFolders.value.length === 0 &&
+		!hasFilters.value &&
+		!filters.value.showArchived &&
+		foldersStore.totalWorkflowCount > 0
+	);
+});
+
 const isSelfHostedDeployment = computed(() => settingsStore.deploymentType === 'default');
 
 const canUserRegisterCommunityPlus = computed(
@@ -370,10 +408,6 @@ const canUserRegisterCommunityPlus = computed(
 
 const showRegisteredCommunityCTA = computed(
 	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
-);
-
-const experimentalShowSuggestedWorkflows = computed(() =>
-	isPersonalizedTemplatesExperimentEnabled(),
 );
 
 const showAIStarterCollectionCallout = computed(() => {
@@ -386,6 +420,36 @@ const showAIStarterCollectionCallout = computed(() => {
 		// but also on the overview page
 		(projectPages.isOverviewSubPage ||
 			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
+const showPrebuiltAgentsCallout = computed(() => {
+	return (
+		!loading.value &&
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+		!calloutHelpers.isCalloutDismissed('preBuiltAgentsModalCallout') &&
+		!readOnlyEnv.value &&
+		// We want to show the callout only if the user has permissions to create folders and workflows
+		// but also on the overview page
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
+const showPersonalizedTemplates = computed(
+	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
+);
+
+const shouldUseSimplifiedLayout = computed(() => {
+	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
+});
+
+const hasActiveCallouts = computed(() => {
+	return (
+		showPrebuiltAgentsCallout.value ||
+		showAIStarterCollectionCallout.value ||
+		showPersonalizedTemplates.value ||
+		showReadyToRunWorkflowsCallout.value
 	);
 });
 
@@ -403,7 +467,13 @@ watch(
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
 		saveFiltersOnQueryString();
-		await fetchWorkflows();
+		await Promise.all([
+			fetchWorkflows(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
 	},
 );
 
@@ -415,7 +485,10 @@ sourceControlStore.$onAction(({ name, after }) => {
 const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 };
 
@@ -426,11 +499,17 @@ const onFolderDeleted = async (payload: {
 }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
-	// If the deleted folder is the current folder, navigate to the parent folder
+
+	const nextFolderId =
+		currentFolderId.value === payload.folderId
+			? (folderInfo?.parentFolder ?? null)
+			: currentFolderId.value;
 	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
 		route.params.projectId as string | undefined,
+		nextFolderId ?? undefined,
 	);
 
+	// If the deleted folder is the current folder, navigate to the parent folder
 	if (currentFolderId.value === payload.folderId) {
 		void router.push({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -445,6 +524,18 @@ const onFolderDeleted = async (payload: {
 		deleted_sub_workflows: payload.workflowCount,
 	});
 };
+
+const showInsights = computed(() => {
+	return (
+		projectPages.isOverviewSubPage &&
+		insightsStore.isSummaryEnabled &&
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+	);
+});
+
+const showTemplateRecommendationV2 = computed(() => {
+	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
 
 /**
  * LIFE-CYCLE HOOKS
@@ -488,8 +579,10 @@ const initialize = async () => {
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
-		templatesStore.experimentalFetchSuggestedWorkflows(),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -838,6 +931,63 @@ const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
+const openPrebuiltAgentsModal = (source: 'workflowsEmptyState' | 'workflowsList') => {
+	void calloutHelpers.openPreBuiltAgentsModal(source);
+};
+
+const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
+	try {
+		const projectId = projectPages.isOverviewSubPage
+			? personalProject.value?.id
+			: (route.params.projectId as string);
+		if (typeof projectId !== 'string') {
+			toast.showError(new Error(), i18n.baseText('workflows.readyToRunWorkflows.error'));
+			return;
+		}
+		const newFolder = await readyToRunWorkflowsStore.createWorkflows(
+			projectId,
+			currentFolderId.value ?? undefined,
+		);
+		readyToRunWorkflowsStore.trackCreateWorkflows(source);
+
+		// If we are on the overview page, navigate to the new folder
+		if (projectPages.isOverviewSubPage) {
+			await router.push({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId, folderId: newFolder.id },
+			});
+		} else {
+			// If we are in a specific folder, just add the new folder to the list
+			workflowsAndFolders.value.unshift({
+				id: newFolder.id,
+				name: newFolder.name,
+				resource: 'folder',
+				createdAt: newFolder.createdAt,
+				updatedAt: newFolder.updatedAt,
+				subFolderCount: 0,
+				workflowCount: 4,
+				parentFolder: newFolder.parentFolder,
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.readyToRunWorkflows.error'));
+		return;
+	}
+};
+
+const dismissStarterCollectionCallout = () => {
+	aiStarterTemplatesStore.dismissCallout();
+	aiStarterTemplatesStore.trackUserDismissedCallout();
+};
+
+const dismissEasyAICallout = () => {
+	easyAICalloutVisible.value = false;
+};
+
+const dismissPreBuiltAgentsCallout = () => {
+	void calloutHelpers.dismissCallout('preBuiltAgentsModalCallout');
+};
+
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
 	telemetry.track('User clicked test AI workflow', {
@@ -853,13 +1003,14 @@ const openAIWorkflow = async (source: string) => {
 	});
 };
 
-const dismissStarterCollectionCallout = () => {
-	aiStarterTemplatesStore.dismissCallout();
-	aiStarterTemplatesStore.trackUserDismissedCallout();
+const onShowArchived = async () => {
+	filters.value.showArchived = true;
+	await onFiltersUpdated();
 };
 
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
+const handleDismissReadyToRunCallout = () => {
+	readyToRunWorkflowsStore.dismissCallout();
+	readyToRunWorkflowsStore.trackDismissCallout();
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
@@ -1596,7 +1747,10 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+
 	<ResourcesListLayout
+		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
 		type="list-paginated"
@@ -1618,9 +1772,12 @@ const onNameSubmit = async (name: string) => {
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent">
+			<ProjectHeader
+				:has-active-callouts="hasActiveCallouts"
+				@create-folder="createFolderInCurrent"
+			>
 				<InsightsSummary
-					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
@@ -1675,7 +1832,39 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showAIStarterCollectionCallout"
+				v-if="showPrebuiltAgentsCallout"
+				theme="secondary"
+				icon="bot"
+				icon-size="large"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				<N8nText size="small">
+					{{ i18n.baseText('workflows.preBuiltAgents.callout') }}
+					{{ ' ' }}
+					<N8nLink
+						theme="secondary"
+						size="small"
+						:bold="true"
+						:underline="true"
+						@click="openPrebuiltAgentsModal('workflowsEmptyState')"
+					>
+						{{ i18n.baseText('workflows.preBuiltAgents.linkText') }}
+					</N8nLink>
+				</N8nText>
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="dismissPreBuiltAgentsCallout()"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="showAIStarterCollectionCallout"
 				theme="secondary"
 				icon="gift"
 				:class="$style['easy-ai-workflow-callout']"
@@ -1701,36 +1890,9 @@ const onNameSubmit = async (name: string) => {
 					</div>
 				</template>
 			</N8nCallout>
-			<N8nCallout
-				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
-				theme="secondary"
-				icon="bot"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ i18n.baseText('workflows.list.easyAI') }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="openAIWorkflow('callout')"
-						>
-							{{ i18n.baseText('generic.tryNow') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="dismissEasyAICallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<SuggestedWorkflows v-if="experimentalShowSuggestedWorkflows">
+			<SuggestedWorkflows v-else-if="showPersonalizedTemplates">
 				<SuggestedWorkflowCard
-					v-for="workflow in templatesStore.experimentalSuggestedWorkflows"
+					v-for="workflow in personalizedTemplatesStore.suggestedWorkflows"
 					:key="workflow.id"
 					data-test-id="resource-list-item-suggested-workflow"
 					:data="{
@@ -1739,6 +1901,33 @@ const onNameSubmit = async (name: string) => {
 					}"
 				/>
 			</SuggestedWorkflows>
+			<N8nCallout
+				v-if="showReadyToRunWorkflowsCallout"
+				theme="secondary"
+				icon="bolt-filled"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nButton
+							data-test-id="easy-ai-button"
+							size="small"
+							type="secondary"
+							@click="handleCreateReadyToRunWorkflows('callout')"
+						>
+							{{ i18n.baseText('generic.startNow') }}
+						</N8nButton>
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="handleDismissReadyToRunCallout"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
@@ -1907,7 +2096,26 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 					<N8nCard
-						v-if="showAIStarterCollectionCallout"
+						v-if="showPrebuiltAgentsCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="prebuilt-agents-card"
+						@click="openPrebuiltAgentsModal('workflowsList')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="bot"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.preBuiltAgents') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-else-if="showAIStarterCollectionCallout"
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="easy-ai-workflow-card"
@@ -1945,6 +2153,25 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 					<N8nCard
+						v-if="showReadyToRunWorkflowsCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="ready-to-run-workflows-card"
+						@click="handleCreateReadyToRunWorkflows('card')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="package-open"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ readyToRunWorkflowsStore.getCardText() }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
 						v-if="templatesCardEnabled"
 						:class="$style.emptyStateCard"
 						hoverable
@@ -1964,6 +2191,7 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 				</div>
+				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -2021,6 +2249,12 @@ const onNameSubmit = async (name: string) => {
 				:class="$style['empty-folder-container']"
 				data-test-id="empty-folder-container"
 			>
+				<N8nInfoTip v-if="showArchivedOnlyHint" :bold="false">
+					{{ i18n.baseText('workflows.archivedOnly.hint') }}
+					<N8nLink size="small" data-test-id="show-archived-link" @click="onShowArchived">
+						{{ i18n.baseText('workflows.archivedOnly.hint.link') }}
+					</N8nLink>
+				</N8nInfoTip>
 				<EmptySharedSectionActionBox
 					v-if="projectPages.isSharedSubPage && personalProject"
 					:personal-project="personalProject"

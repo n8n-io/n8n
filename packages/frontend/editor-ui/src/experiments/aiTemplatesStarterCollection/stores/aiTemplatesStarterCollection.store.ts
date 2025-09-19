@@ -12,6 +12,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/constants';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const LOCAL_STORAGE_SETTING_KEY = 'N8N_AI_TEMPLATES_STARTER_COLLECTION_CALL_OUT_DISMISSED';
 
@@ -24,14 +25,16 @@ export const useAITemplatesStarterCollectionStore = defineStore(
 		const foldersStore = useFoldersStore();
 		const workflowsStore = useWorkflowsStore();
 		const posthogStore = usePostHog();
+		const settingsStore = useSettingsStore();
 
 		const calloutDismissedRef = useLocalStorage(LOCAL_STORAGE_SETTING_KEY, false);
 		const calloutDismissed = computed(() => calloutDismissedRef.value);
 
 		const isFeatureEnabled = computed(() => {
 			return (
+				settingsStore.isCloudDeployment &&
 				posthogStore.getVariant(TEMPLATE_ONBOARDING_EXPERIMENT.name) ===
-				TEMPLATE_ONBOARDING_EXPERIMENT.variantStarterPack
+					TEMPLATE_ONBOARDING_EXPERIMENT.variantStarterPack
 			);
 		});
 
