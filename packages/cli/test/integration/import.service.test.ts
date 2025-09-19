@@ -13,7 +13,6 @@ import {
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
-	DataSource,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
