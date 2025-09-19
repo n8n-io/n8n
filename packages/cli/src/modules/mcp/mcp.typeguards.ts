@@ -3,6 +3,10 @@
 
 type UnknownRecord = Record<string, unknown>;
 
+function isRecord(value: unknown): value is UnknownRecord {
+	return typeof value === 'object' && value !== null;
+}
+
 export type HttpHeaderAuthDecryptedData = {
 	name: string;
 	value?: unknown;
@@ -18,10 +22,11 @@ export type WithDecryptedData<T> = UnknownRecord & { data: T };
 export function hasHttpHeaderAuthDecryptedData(
 	value: unknown,
 ): value is WithDecryptedData<HttpHeaderAuthDecryptedData> {
-	if (typeof value !== 'object' || value === null) return false;
-	const obj = value as UnknownRecord;
-	if (!('data' in obj) || typeof obj.data !== 'object' || obj.data === null) return false;
-	const data = obj.data as UnknownRecord;
+	if (!isRecord(value)) return false;
+	const obj = value;
+	const dataCandidate = obj['data'];
+	if (!isRecord(dataCandidate)) return false;
+	const data = dataCandidate;
 	return typeof data.name === 'string';
 }
 
@@ -40,20 +45,22 @@ export type JwtPemKeyDecryptedData = {
 export function hasJwtSecretDecryptedData(
 	value: unknown,
 ): value is WithDecryptedData<JwtPassphraseDecryptedData> {
-	if (typeof value !== 'object' || value === null) return false;
-	const obj = value as UnknownRecord;
-	if (!('data' in obj) || typeof obj.data !== 'object' || obj.data === null) return false;
-	const data = obj.data as UnknownRecord;
+	if (!isRecord(value)) return false;
+	const obj = value;
+	const dataCandidate = obj['data'];
+	if (!isRecord(dataCandidate)) return false;
+	const data = dataCandidate;
 	return typeof data.secret === 'string';
 }
 
 export function hasJwtPemKeyDecryptedData(
 	value: unknown,
 ): value is WithDecryptedData<JwtPemKeyDecryptedData> {
-	if (typeof value !== 'object' || value === null) return false;
-	const obj = value as UnknownRecord;
-	if (!('data' in obj) || typeof obj.data !== 'object' || obj.data === null) return false;
-	const data = obj.data as UnknownRecord;
+	if (!isRecord(value)) return false;
+	const obj = value;
+	const dataCandidate = obj['data'];
+	if (!isRecord(dataCandidate)) return false;
+	const data = dataCandidate;
 	if (typeof data.keyType === 'string' && data.keyType === 'pemKey') return true;
 	return typeof data.privateKey === 'string' || typeof data.publicKey === 'string';
 }
