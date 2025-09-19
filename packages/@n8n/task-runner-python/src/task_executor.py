@@ -10,9 +10,9 @@ import logging
 
 from src.errors import (
     TaskResultMissingError,
+    TaskRuntimeError,
     TaskTimeoutError,
     TaskProcessExitError,
-    TaskRuntimeError,
 )
 
 from src.message_types.broker import NodeMode, Items
@@ -21,6 +21,7 @@ from src.constants import (
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    SIGTERM_EXIT_CODE,
 )
 from typing import Any, Set
 
@@ -98,7 +99,7 @@ class TaskExecutor:
             if process.exitcode != 0:
                 assert process.exitcode is not None
 
-                if process.exitcode == -15:  # SIGTERM
+                if process.exitcode == SIGTERM_EXIT_CODE:
                     if continue_on_fail:
                         return [{"json": {"error": "Task was cancelled"}}], print_args
                     else:
