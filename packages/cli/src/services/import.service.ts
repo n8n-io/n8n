@@ -106,6 +106,8 @@ export class ImportService {
 	generateForeignKeyDisableCommand(dbType: string): string {
 		switch (dbType.toLowerCase()) {
 			case 'sqlite':
+			case 'sqlite-pooled':
+			case 'sqlite-memory':
 				return 'PRAGMA foreign_keys = OFF;';
 			case 'postgres':
 			case 'postgresql':
@@ -123,28 +125,12 @@ export class ImportService {
 	generateForeignKeyEnableCommand(dbType: string): string {
 		switch (dbType.toLowerCase()) {
 			case 'sqlite':
+			case 'sqlite-pooled':
+			case 'sqlite-memory':
 				return 'PRAGMA foreign_keys = ON;';
 			case 'postgres':
 			case 'postgresql':
 				return 'SET session_replication_role = DEFAULT;';
-			default:
-				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
-	}
-
-	/**
-	 * Generate SQL command to truncate (delete all entries from) a table for the specified database type
-	 * @param dbType - Database type ('sqlite' or 'postgres')
-	 * @param tableName - Name of the table to truncate
-	 * @returns SQL command string to truncate the table
-	 */
-	generateTableTruncateCommand(dbType: string, tableName: string): string {
-		switch (dbType.toLowerCase()) {
-			case 'sqlite':
-				return `DELETE FROM ${tableName};`;
-			case 'postgres':
-			case 'postgresql':
-				return `TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE;`;
 			default:
 				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
 		}
@@ -156,14 +142,15 @@ export class ImportService {
 	 * @returns Promise that resolves to true if table is empty, false otherwise
 	 */
 	async isTableEmpty(tableName: string): Promise<boolean> {
-		const countQuery = `SELECT COUNT(*) as count FROM ${tableName}`;
-
 		try {
-			const result = await this.dataSource.query(countQuery);
-			const count = result[0]?.count || 0;
+			const result = await this.dataSource
+				.createQueryBuilder()
+				.select('COUNT(*)')
+				.from(tableName, tableName)
+				.getRawOne<{ count: string }>();
 
-			this.logger.debug(`Table ${tableName} has ${count} rows`);
-			return count === 0;
+			this.logger.debug(`Table ${tableName} has ${result?.count} rows`);
+			return result?.count === '0';
 		} catch (error) {
 			this.logger.error(`Failed to check if table ${tableName} is empty:`, error);
 			throw new Error(`Unable to check table ${tableName}: ${error}`);
@@ -213,10 +200,17 @@ export class ImportService {
 		this.logger.info(`🗑️  Truncating table: ${tableName}`);
 
 		const dbType = this.dataSource.options.type;
-		const truncateCommand = this.generateTableTruncateCommand(dbType, tableName);
 
-		this.logger.info(`   Executing: ${truncateCommand}`);
-		await this.dataSource.query(truncateCommand);
+		if (
+			['sqlite', 'sqlite-pooled', 'sqlite-memory', 'postgres', 'postgresql'].includes(
+				dbType.toLowerCase(),
+			)
+		) {
+			await this.dataSource.createQueryBuilder().delete().from(tableName, tableName).execute();
+		} else {
+			throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
+		}
+
 		this.logger.info(`   ✅ Table ${tableName} truncated successfully`);
 	}
 
@@ -356,7 +350,7 @@ export class ImportService {
 				this.logger.info(`      Found ${entities.length} entities`);
 
 				if (entities.length > 0) {
-					await this.importEntityBatch(tableName, entities);
+					this.dataSource.createQueryBuilder().insert().into(tableName).values(entities);
 					entityCount += entities.length;
 				}
 			}
@@ -372,29 +366,6 @@ export class ImportService {
 	}
 
 	/**
-	 * Import a batch of entities into a specific table
-	 * @param tableName - Name of the target table
-	 * @param entities - Array of entity objects to import
-	 */
-	async importEntityBatch(tableName: string, entities: unknown[]): Promise<void> {
-		if (entities.length === 0) return;
-
-		const firstEntity = entities[0] as Record<string, unknown>;
-		const columns = Object.keys(firstEntity);
-		const columnNames = columns.join(', ');
-		const values = columns.map(() => '?').join(', ');
-
-		const query = `INSERT INTO ${tableName} (${columnNames}) VALUES (${values})`;
-
-		for (const entity of entities) {
-			const values = columns.map((col) => (entity as Record<string, unknown>)[col]);
-			await this.dataSource.query(query, values);
-		}
-
-		this.logger.debug(`      Imported ${entities.length} entities into ${tableName}`);
-	}
-
-	/**
 	 * Disable and re-enable foreign key constraints for entity import operations
 	 * @param inputDir - Directory containing exported entity files
 	 * @returns Promise that resolves when foreign key constraints are disabled and re-enabled
@@ -404,21 +375,9 @@ export class ImportService {
 			`Disabling foreign key constraints for database type: ${this.dataSource.options.type}`,
 		);
 
-		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
-		this.logger.debug(`Executing: ${disableCommand}`);
-		await this.dataSource.query(disableCommand);
-
 		this.logger.info('Foreign key constraints disabled');
 
-		try {
-			await this.importEntitiesFromFiles(inputDir);
-		} finally {
-			const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
-			this.logger.debug(`Executing: ${enableCommand}`);
-			await this.dataSource.query(enableCommand);
-
-			this.logger.info('Foreign key constraints re-enabled');
-		}
+		await this.importEntitiesFromFiles(inputDir);
 	}
 
 	/**
@@ -439,5 +398,19 @@ export class ImportService {
 
 			node.credentials[type] = nodeCredential;
 		}
+	}
+
+	async disableForeignKeyConstraints() {
+		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
+		this.logger.debug(`Executing: ${disableCommand}`);
+		await this.dataSource.query(disableCommand);
+		this.logger.info('✅ Foreign key constraints disabled');
+	}
+
+	async enableForeignKeyConstraints() {
+		const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
+		this.logger.debug(`Executing: ${enableCommand}`);
+		await this.dataSource.query(enableCommand);
+		this.logger.info('✅ Foreign key constraints re-enabled');
 	}
 }

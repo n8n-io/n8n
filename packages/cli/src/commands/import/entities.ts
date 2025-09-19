@@ -37,36 +37,42 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 
 		const importService = Container.get(ImportService);
 
-		const tableNames = await importService.getTableNamesForImport(inputDir);
+		await importService.disableForeignKeyConstraints();
 
-		if (truncateTables) {
-			this.logger.info('\n🗑️  Truncating tables before import...');
+		try {
+			const tableNames = await importService.getTableNamesForImport(inputDir);
 
-			this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
+			if (truncateTables) {
+				this.logger.info('\n🗑️  Truncating tables before import...');
 
-			for (const tableName of tableNames) {
-				await importService.truncateEntityTable(tableName);
+				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
+
+				for (const tableName of tableNames) {
+					await importService.truncateEntityTable(tableName);
+				}
+
+				this.logger.info('✅ All tables truncated successfully');
 			}
 
-			this.logger.info('✅ All tables truncated successfully');
-		}
-
-		if (!truncateTables) {
-			if (!(await importService.areAllEntityTablesEmpty(tableNames))) {
-				this.logger.info(
-					'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
-				);
-				return;
+			if (!truncateTables) {
+				if (!(await importService.areAllEntityTablesEmpty(tableNames))) {
+					this.logger.info(
+						'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
+					);
+					return;
+				}
 			}
+
+			// Import entities from the specified directory
+			await importService.importEntities(inputDir);
+			this.logger.info('✅ Task completed successfully!');
+		} finally {
+			await importService.enableForeignKeyConstraints();
 		}
-
-		// Import entities from the specified directory
-		await importService.importEntities(inputDir);
-
-		this.logger.info('✅ Task completed successfully! \n');
 	}
 
 	catch(error: Error) {
+		console.log(error);
 		this.logger.error('❌ Error importing entities. See log messages for details. \n');
 		this.logger.error('Error details:');
 		this.logger.error('\n====================================\n');

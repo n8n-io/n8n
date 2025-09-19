@@ -246,5 +246,165 @@ describe('ExportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('   Output directory: /test/output');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
+
+		it('should handle file splitting at 10,000 entities correctly', async () => {
+			const outputDir = '/test/output';
+			const largePage = Array.from({ length: 500 }, (_, i) => ({
+				id: i + 1,
+				email: `user${i + 1}@test.com`,
+			}));
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue([]);
+			(mkdir as jest.Mock).mockResolvedValue(undefined);
+			(appendFile as jest.Mock).mockResolvedValue(undefined);
+
+			// Mock database queries - simulate 25 pages of 500 entities each (12,500 total)
+			// This should create 2 files: user.jsonl (10,000 entities) and user.2.jsonl (2,500 entities)
+			for (let i = 0; i < 25; i++) {
+				jest.mocked(mockDataSource.query).mockResolvedValueOnce(largePage);
+			}
+			jest.mocked(mockDataSource.query).mockResolvedValue([]); // Final empty result
+
+			await exportService.exportEntities(outputDir);
+
+			// Verify file splitting logic
+			expect(appendFile).toHaveBeenCalledTimes(25);
+
+			// First 20 calls should go to user.jsonl (10,000 entities)
+			for (let i = 0; i < 20; i++) {
+				expect(appendFile).toHaveBeenNthCalledWith(
+					i + 1,
+					'/test/output/user.jsonl',
+					expect.any(String),
+					'utf8',
+				);
+			}
+
+			// Next 5 calls should go to user.2.jsonl (2,500 entities)
+			for (let i = 20; i < 25; i++) {
+				expect(appendFile).toHaveBeenNthCalledWith(
+					i + 1,
+					'/test/output/user.2.jsonl',
+					expect.any(String),
+					'utf8',
+				);
+			}
+		});
+
+		it('should handle database errors gracefully', async () => {
+			const outputDir = '/test/output';
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue([]);
+			(mkdir as jest.Mock).mockResolvedValue(undefined);
+
+			// Mock database query to throw an error
+			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+
+			await expect(exportService.exportEntities(outputDir)).rejects.toThrow(
+				'Database connection failed',
+			);
+		});
+
+		it('should handle file system errors gracefully', async () => {
+			const outputDir = '/test/output';
+
+			// Mock file system operations to throw an error
+			(mkdir as jest.Mock).mockRejectedValue(new Error('Permission denied'));
+
+			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
+		});
+	});
+
+	describe('clearExistingEntityFiles', () => {
+		it('should clear existing entity files successfully', async () => {
+			const outputDir = '/test/output';
+			const entityName = 'user';
+			const existingFiles = [
+				'user.jsonl',
+				'user.1.jsonl',
+				'user.2.jsonl',
+				'other.txt',
+				'workflow.jsonl',
+			];
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue(existingFiles);
+			(rm as jest.Mock).mockResolvedValue(undefined);
+
+			// Access private method for testing
+			// @ts-expect-error Accessing private method for testing
+			await exportService.clearExistingEntityFiles(outputDir, entityName);
+
+			// Verify only entity files are deleted
+			expect(rm).toHaveBeenCalledWith('/test/output/user.jsonl');
+			expect(rm).toHaveBeenCalledWith('/test/output/user.1.jsonl');
+			expect(rm).toHaveBeenCalledWith('/test/output/user.2.jsonl');
+			expect(rm).not.toHaveBeenCalledWith('/test/output/other.txt');
+			expect(rm).not.toHaveBeenCalledWith('/test/output/workflow.jsonl');
+
+			// Verify logging
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'   🗑️  Found 3 existing file(s) for user, deleting...',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith('      Deleted: user.jsonl');
+			expect(mockLogger.info).toHaveBeenCalledWith('      Deleted: user.1.jsonl');
+			expect(mockLogger.info).toHaveBeenCalledWith('      Deleted: user.2.jsonl');
+		});
+
+		it('should handle no existing files gracefully', async () => {
+			const outputDir = '/test/output';
+			const entityName = 'user';
+			const existingFiles = ['other.txt', 'workflow.jsonl'];
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue(existingFiles);
+
+			// Access private method for testing
+			// @ts-expect-error Accessing private method for testing
+			await exportService.clearExistingEntityFiles(outputDir, entityName);
+
+			// Verify no files are deleted
+			expect(rm).not.toHaveBeenCalled();
+
+			// Verify no logging for deletion
+			expect(mockLogger.info).not.toHaveBeenCalledWith(expect.stringContaining('Found'));
+		});
+
+		it('should handle empty directory gracefully', async () => {
+			const outputDir = '/test/output';
+			const entityName = 'user';
+			const existingFiles: string[] = [];
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue(existingFiles);
+
+			// Access private method for testing
+			// @ts-expect-error Accessing private method for testing
+			await exportService.clearExistingEntityFiles(outputDir, entityName);
+
+			// Verify no files are deleted
+			expect(rm).not.toHaveBeenCalled();
+
+			// Verify no logging for deletion
+			expect(mockLogger.info).not.toHaveBeenCalledWith(expect.stringContaining('Found'));
+		});
+
+		it('should handle file deletion errors gracefully', async () => {
+			const outputDir = '/test/output';
+			const entityName = 'user';
+			const existingFiles = ['user.jsonl', 'user.1.jsonl'];
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue(existingFiles);
+			(rm as jest.Mock).mockRejectedValue(new Error('File in use'));
+
+			// Access private method for testing
+			// @ts-expect-error Accessing private method for testing
+			await expect(exportService.clearExistingEntityFiles(outputDir, entityName)).rejects.toThrow(
+				'File in use',
+			);
+		});
 	});
 });
