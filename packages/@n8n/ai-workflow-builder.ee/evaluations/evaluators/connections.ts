@@ -4,7 +4,7 @@ import type {
 	NodeConnectionType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow/src/common/map-connections-by-destination';
+import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
@@ -113,11 +113,13 @@ function resolveNodeInputs(nodeInfo: NodeInfo): {
 
 		for (const input of resolvedInputs) {
 			if (typeof input === 'string') {
-				requiredInputs.push({ type: input, required: false });
+				// All main inputs should be treated as required
+				requiredInputs.push({ type: input, required: input === 'main' });
 			} else if (typeof input === 'object' && 'type' in input) {
 				requiredInputs.push({
 					type: input.type,
-					required: input.required ?? false,
+					// Main inputs are always required, otherwise use the specified required value
+					required: input.type === 'main' ? true : (input.required ?? false),
 				});
 			}
 		}
@@ -164,7 +166,7 @@ function checkMissingRequiredInputs(
 	if (!nodeInfo.resolvedInputs) return issues;
 
 	for (const input of nodeInfo.resolvedInputs) {
-		const providedCount = providedInputTypes.get(input.type) || 0;
+		const providedCount = providedInputTypes.get(input.type) ?? 0;
 
 		if (input.required && providedCount === 0) {
 			issues.push(

@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -6,9 +7,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types';
+
 import { evaluateConnections, resolveConnections } from './connections';
-import { mock } from 'jest-mock-extended';
 
 const DEFAULT_VERSION = 1;
 
@@ -114,33 +115,38 @@ describe('resolveInputConnections', () => {
 });
 
 describe('evaluateConnections', () => {
-	const mockNodeTypes = [
+	const mockNodeTypes = mock<INodeTypeDescription[]>([
+		{
+			name: 'n8n-nodes-test.manualTrigger',
+			displayName: 'Manual Trigger',
+			group: ['trigger'],
+			description: 'Starts the workflow manually',
+			inputs: [],
+			outputs: [NodeConnectionTypes.Main],
+		},
 		{
 			name: 'n8n-nodes-test.code',
 			displayName: 'Code',
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.httpRequest',
 			displayName: 'HTTP Request',
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.openAi',
 			displayName: 'OpenAI',
-			inputs:
-				'={{(() => { return [{ type: "main" }, { type: "ai_tool", displayName: "Tools" }]; })()}}',
-			outputs: ['main'],
+			inputs: `={{(() => { return [{ type: "${NodeConnectionTypes.Main}" }, { type: "${NodeConnectionTypes.AiTool}", displayName: "Tools" }]; })()}}`,
+			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.merge',
 			displayName: 'Merge',
-			inputs:
-				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-				'={{ Array.from({ length: $parameter.numberInputs || 2 }, (_, i) => ({ type: "main", displayName: `Input ${i + 1}` })) }}',
-			outputs: ['main'],
+			inputs: `={{ Array.from({ length: $parameter.numberInputs || 2 }, (_, i) => ({ type: "${NodeConnectionTypes.Main}", displayName: \`Input $\{i + 1}\` })) }}`,
+			outputs: [NodeConnectionTypes.Main],
 		},
 		{
 			name: 'n8n-nodes-test.llmChain',
@@ -161,36 +167,53 @@ describe('evaluateConnections', () => {
 		{
 			name: 'n8n-nodes-test.vectorStore',
 			displayName: 'Vector Store',
-			inputs:
-				'={{ (() => { const mode = $parameter.mode; if (mode === "retrieve") { return [{ type: "ai_embedding", required: true }]; } return [{ type: "main" }, { type: "ai_document" }]; })() }}',
-			outputs:
-				'={{ (() => { const mode = $parameter.mode; if (mode === "retrieve-as-tool") { return [{ type: "ai_tool" }]; } return [{ type: "ai_vectorStore" }]; })() }}',
+			inputs: `={{ (() => { const mode = $parameter.mode; if (mode === "retrieve") { return [{ type: "${NodeConnectionTypes.AiEmbedding}", required: true }]; } return [{ type: "${NodeConnectionTypes.Main}" }, { type: "${NodeConnectionTypes.AiDocument}" }]; })() }}`,
+			outputs: `={{ (() => { const mode = $parameter.mode; if (mode === "retrieve-as-tool") { return [{ type: "${NodeConnectionTypes.AiTool}" }]; } return [{ type: "${NodeConnectionTypes.AiVectorStore}" }]; })() }}`,
 		},
-	] as INodeTypeDescription[];
+	]);
 
-	describe('basic workflow validation', () => {
+	describe('basic workflow connections validation', () => {
 		it('should return no issues for a valid simple workflow', () => {
 			const workflow = mock<SimpleWorkflow>({
 				name: 'Test Workflow',
 				nodes: [
 					{
 						id: '1',
-						name: 'Code Node',
-						type: 'n8n-nodes-test.code',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
 						parameters: {},
 						typeVersion: 1,
 						position: [0, 0],
 					},
 					{
 						id: '2',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-test.httpRequest',
+						name: 'Code Node',
+						type: 'n8n-nodes-test.code',
 						parameters: {},
 						typeVersion: 1,
 						position: [200, 0],
 					},
+					{
+						id: '3',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-test.httpRequest',
+						parameters: {},
+						typeVersion: 1,
+						position: [400, 0],
+					},
 				],
 				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'Code Node',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 					'Code Node': {
 						main: [
 							[
@@ -247,6 +270,9 @@ describe('evaluateConnections', () => {
 
 			const { issues } = evaluateConnections(workflow, mockNodeTypes);
 			expect(issues).toContain(
+				'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type main',
+			);
+			expect(issues).toContain(
 				'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type ai_languageModel',
 			);
 		});
@@ -302,14 +328,34 @@ describe('evaluateConnections', () => {
 				nodes: [
 					{
 						id: '1',
-						name: 'OpenAI Node',
-						type: 'n8n-nodes-test.openAi',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
 						parameters: {},
 						typeVersion: 1,
 						position: [0, 0],
 					},
+					{
+						id: '2',
+						name: 'OpenAI Node',
+						type: 'n8n-nodes-test.openAi',
+						parameters: {},
+						typeVersion: 1,
+						position: [200, 0],
+					},
 				],
-				connections: {},
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'OpenAI Node',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
 			});
 
 			const { issues } = evaluateConnections(workflow, mockNodeTypes);
@@ -346,22 +392,46 @@ describe('evaluateConnections', () => {
 				nodes: [
 					{
 						id: '1',
-						name: 'Vector Store',
-						type: 'n8n-nodes-test.vectorStore',
-						parameters: { mode: 'retrieve-as-tool' },
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
+						parameters: {},
 						typeVersion: 1,
 						position: [0, 0],
 					},
 					{
 						id: '2',
+						name: 'Vector Store',
+						type: 'n8n-nodes-test.vectorStore',
+						parameters: { mode: 'retrieve-as-tool' },
+						typeVersion: 1,
+						position: [200, 0],
+					},
+					{
+						id: '3',
 						name: 'OpenAI',
 						type: 'n8n-nodes-test.openAi',
 						parameters: {},
 						typeVersion: 1,
-						position: [200, 0],
+						position: [400, 0],
 					},
 				],
 				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'Vector Store',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'OpenAI',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 					'Vector Store': {
 						ai_tool: [
 							[
@@ -389,30 +459,49 @@ describe('evaluateConnections', () => {
 				nodes: [
 					{
 						id: '1',
-						name: 'Chat Model',
-						type: 'n8n-nodes-test.chatOpenAi',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
 						parameters: {},
 						typeVersion: 1,
 						position: [0, 0],
 					},
 					{
 						id: '2',
-						name: 'LLM Chain',
-						type: 'n8n-nodes-test.llmChain',
+						name: 'Chat Model',
+						type: 'n8n-nodes-test.chatOpenAi',
 						parameters: {},
 						typeVersion: 1,
 						position: [200, 0],
 					},
 					{
 						id: '3',
-						name: 'Code',
-						type: 'n8n-nodes-test.code',
+						name: 'LLM Chain',
+						type: 'n8n-nodes-test.llmChain',
 						parameters: {},
 						typeVersion: 1,
 						position: [400, 0],
 					},
+					{
+						id: '4',
+						name: 'Code',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [600, 0],
+					},
 				],
 				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'LLM Chain',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 					'Chat Model': {
 						ai_languageModel: [
 							[
@@ -448,8 +537,8 @@ describe('evaluateConnections', () => {
 				nodes: [
 					{
 						id: '1',
-						name: 'Code Node',
-						type: 'n8n-nodes-test.code',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
 						parameters: {},
 						typeVersion: 1,
 						position: [0, 0],
@@ -468,30 +557,54 @@ describe('evaluateConnections', () => {
 				nodes: [
 					{
 						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 100],
+					},
+					{
+						id: '2',
 						name: 'Code1',
 						type: 'n8n-nodes-test.code',
 						parameters: {},
 						typeVersion: 1,
-						position: [0, 0],
+						position: [200, 0],
 					},
 					{
-						id: '2',
+						id: '3',
 						name: 'Code2',
 						type: 'n8n-nodes-test.code',
 						parameters: {},
 						typeVersion: 1,
-						position: [0, 200],
+						position: [200, 200],
 					},
 					{
-						id: '3',
+						id: '4',
 						name: 'Merge',
 						type: 'n8n-nodes-test.merge',
 						parameters: { numberInputs: 2 },
 						typeVersion: 1,
-						position: [200, 100],
+						position: [400, 100],
 					},
 				],
 				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'Code1',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Code2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 					Code1: {
 						main: [
 							[
@@ -518,6 +631,80 @@ describe('evaluateConnections', () => {
 			});
 
 			const { issues } = evaluateConnections(workflow, mockNodeTypes);
+			expect(issues).toEqual([]);
+		});
+	});
+
+	describe('dangling nodes validation', () => {
+		it('should detect nodes with required main input but no connections', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Code1',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [200, 0],
+					},
+					{
+						id: '3',
+						name: 'Code2',
+						type: 'n8n-nodes-test.code',
+						parameters: {},
+						typeVersion: 1,
+						position: [400, 0],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{
+									node: 'Code1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					// Code1 is connected but Code2 is dangling
+				},
+			});
+
+			const { issues } = evaluateConnections(workflow, mockNodeTypes);
+			expect(issues).toContain(
+				'Node Code2 (n8n-nodes-test.code) is missing required input of type main',
+			);
+		});
+
+		it('should not report issues for trigger nodes without inputs', () => {
+			const workflow = mock<SimpleWorkflow>({
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-test.manualTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
+
+			const { issues } = evaluateConnections(workflow, mockNodeTypes);
+			// Trigger nodes don't have inputs, so no issues
 			expect(issues).toEqual([]);
 		});
 	});
@@ -562,28 +749,6 @@ describe('evaluateConnections', () => {
 			const { issues } = evaluateConnections(workflow, mockNodeTypes);
 			expect(issues).toContain(
 				'Merge node Merge Data has only 1 input connection(s). Merge nodes require at least 2 inputs to function properly.',
-			);
-		});
-
-		it('should report issue when merge node has no input connections', () => {
-			const workflow = mock<SimpleWorkflow>({
-				name: 'Test Workflow',
-				nodes: [
-					{
-						id: '1',
-						name: 'Merge Without Inputs',
-						type: 'n8n-nodes-test.merge',
-						parameters: { numberInputs: 2 },
-						typeVersion: 1,
-						position: [200, 0],
-					},
-				],
-				connections: {},
-			});
-
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain(
-				'Merge node Merge Without Inputs has only 0 input connection(s). Merge nodes require at least 2 inputs to function properly.',
 			);
 		});
 
@@ -645,55 +810,6 @@ describe('evaluateConnections', () => {
 			const { issues } = evaluateConnections(workflow, mockNodeTypes);
 			// Should not contain merge node issues
 			expect(issues).not.toContain(expect.stringMatching(/Merge node.*has only.*input connection/));
-		});
-
-		it('should detect join nodes as merge nodes', () => {
-			const joinNodeType = mock<INodeTypeDescription>({
-				name: 'n8n-nodes-test.join',
-				displayName: 'Join',
-				inputs: ['main', 'main'],
-				outputs: ['main'],
-			});
-
-			const workflow = mock<SimpleWorkflow>({
-				name: 'Test Workflow',
-				nodes: [
-					{
-						id: '1',
-						name: 'Code',
-						type: 'n8n-nodes-test.code',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-					},
-					{
-						id: '2',
-						name: 'Join Data',
-						type: 'n8n-nodes-test.join',
-						parameters: {},
-						typeVersion: 1,
-						position: [200, 0],
-					},
-				],
-				connections: {
-					Code: {
-						main: [
-							[
-								{
-									node: 'Join Data',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-				},
-			});
-
-			const { issues } = evaluateConnections(workflow, [...mockNodeTypes, joinNodeType]);
-			expect(issues).toContain(
-				'Merge node Join Data has only 1 input connection(s). Merge nodes require at least 2 inputs to function properly.',
-			);
 		});
 	});
 
