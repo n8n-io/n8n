@@ -2,13 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-
-import { UrlService } from '@/services/url.service';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { UrlService } from '@/services/url.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class McpService {

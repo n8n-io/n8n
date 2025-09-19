@@ -1,12 +1,13 @@
 import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
 
 export const getWebhookDetails = async (
 	user: User,

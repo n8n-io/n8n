@@ -1,10 +1,10 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
+import type { ToolDefinition } from '../mcp.types';
+
 import type { ListQuery } from '@/requests';
 import type { WorkflowService } from '@/workflows/workflow.service';
-
-import type { ToolDefinition } from '../mcp.types';
 
 const inputSchema = {
 	limit: z.number().optional().describe('Limit the number of results'),
