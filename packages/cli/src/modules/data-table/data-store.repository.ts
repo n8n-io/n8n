@@ -98,6 +98,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 	}
 
 	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
+		if (fromProjectId === toProjectId) return false;
+
 		return await this.manager.transaction(async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
@@ -120,7 +122,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 					if (stillHasNameClash) {
 						throw new DataStoreNameConflictError(
-							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data store with the same name already exists in the target project.`,
+							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
 						);
 					}
 				}
