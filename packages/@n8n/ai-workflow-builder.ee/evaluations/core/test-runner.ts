@@ -1,12 +1,15 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
+import { evaluateConnections } from '../evaluators/connections';
 import type { EvaluationInput, EvaluationResult, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';
 import { consumeGenerator, getChatPayload } from '../utils/evaluation-helpers';
+import { evaluateTrigger } from '../evaluators/trigger';
 
 /**
  * Creates an error result for a failed test
@@ -64,6 +67,7 @@ export async function runSingleTest(
 	agent: WorkflowBuilderAgent,
 	llm: BaseChatModel,
 	testCase: TestCase,
+	nodeTypes: INodeTypeDescription[],
 	userId: string = 'test-user',
 ): Promise<TestResult> {
 	try {
@@ -91,10 +95,16 @@ export async function runSingleTest(
 
 		const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 
+		const connectionsEvaluationResult = evaluateConnections(generatedWorkflow, nodeTypes);
+
+		const triggerEvaluationResult = evaluateTrigger(generatedWorkflow, nodeTypes);
+
 		return {
 			testCase,
 			generatedWorkflow,
 			evaluationResult,
+			connectionsEvaluationResult,
+			triggerEvaluationResult,
 			generationTime,
 		};
 	} catch (error) {

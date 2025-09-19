@@ -8,6 +8,12 @@ export interface TestResult {
 	testCase: TestCase;
 	generatedWorkflow: SimpleWorkflow;
 	evaluationResult: EvaluationResult;
+	connectionsEvaluationResult?: {
+		issues: string[];
+	};
+	triggerEvaluationResult?: {
+		issues: string[];
+	};
 	generationTime: number;
 	error?: string;
 }
