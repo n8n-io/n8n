@@ -99,7 +99,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			} else {
 				const fields = this.getNodeParameter('fieldsMapper', i, []) as any;
-				newItem.fields = fields?.value;
+				if (fields?.value) {
+					for (const schema of fields.schema.filter((schema: any) => schema.type === 'array')) {
+						if (!fields.value[schema.id]) {
+							continue;
+						}
+						try {
+							fields.value[schema.id] = JSON.parse(fields.value[schema.id]);
+						} catch {
+							fields.value[schema.id] = JSON.parse(fields.value[schema.id].replace(/'/g, '"'));
+						}
+					}
+					newItem.fields = fields?.value;
+				}
 			}
 			body = [newItem]; // NocoDB v2/v3 create expects an array of objects
 
