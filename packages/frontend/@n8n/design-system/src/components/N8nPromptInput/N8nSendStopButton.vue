@@ -36,9 +36,8 @@ function handleStop() {
 		square
 		@click="handleStop"
 	>
-		<div style="display: block">
+		<div :class="$style.stopIcon">
 			<svg
-				:class="$style.stopIcon"
 				width="10"
 				height="10"
 				viewBox="0 0 10 10"
@@ -90,6 +89,8 @@ function handleStop() {
 }
 
 .stopIcon {
-	display: block;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 </style>
