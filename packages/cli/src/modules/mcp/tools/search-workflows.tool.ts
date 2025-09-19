@@ -6,8 +6,16 @@ import type { ToolDefinition } from '../mcp.types';
 import type { ListQuery } from '@/requests';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+const MAX_RESULTS = 200;
+
 const inputSchema = {
-	limit: z.number().optional().describe('Limit the number of results'),
+	limit: z
+		.number()
+		.int()
+		.positive()
+		.max(MAX_RESULTS)
+		.optional()
+		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
 	active: z.boolean().optional().describe('Filter by active status'),
 	name: z.string().optional().describe('Filter by name'),
 	projectId: z.string().optional(),
@@ -24,9 +32,10 @@ export const createSearchWorkflowsTool = (
 				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 		},
-		handler: async ({ limit = 500, active, name, projectId }) => {
+		handler: async ({ limit = MAX_RESULTS, active, name, projectId }) => {
+			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 			const options: ListQuery.Options = {
-				take: limit,
+				take: safeLimit,
 				filter: {
 					isArchived: false,
 					availableInMCP: true,
