@@ -32,3 +32,7 @@ export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
 };
+
+export type McpSettingsUpdateBody = {
+	mcpAccessEnabled: boolean;
+};

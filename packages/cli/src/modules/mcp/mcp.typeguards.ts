@@ -1,6 +1,8 @@
 // Inferred typing for CredentialsService.getOne() is a bit too broad, so we need custom type guards
 // to ensure that the decrypted data has the expected structure without changing the service code.
 
+import type { McpSettingsUpdateBody } from './mcp.types';
+
 type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -63,4 +65,10 @@ export function hasJwtPemKeyDecryptedData(
 	const data = dataCandidate;
 	if (typeof data.keyType === 'string' && data.keyType === 'pemKey') return true;
 	return typeof data.privateKey === 'string' || typeof data.publicKey === 'string';
+}
+
+export function isMcpSettingsUpdateBody(value: unknown): value is McpSettingsUpdateBody {
+	if (typeof value !== 'object' || value === null) return false;
+	const v = value as { mcpAccessEnabled?: unknown };
+	return typeof v.mcpAccessEnabled === 'boolean';
 }
