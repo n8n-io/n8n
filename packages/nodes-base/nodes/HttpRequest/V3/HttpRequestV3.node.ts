@@ -26,9 +26,8 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { keysToLowercase } from '@utils/utilities';
-
 import { mainProperties } from './Description';
+import { keysToLowercase } from '../../../utils/utilities';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
