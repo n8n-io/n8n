@@ -72,10 +72,23 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 	},
 	methods: {
 		listSearch: {
-			chromaCollectionsSearch: async function () {
+			chromaCollectionsSearch: async function (this: any) {
 				try {
-					// Use default ChromaDB configuration
-					const client = new ChromaClient();
+					// Get the user's configured URL if available
+					const nodeParameters = this.getNodeParameter('options', 0, {}) as {
+						chromaURL?: string;
+					};
+
+					let clientConfig: ChromaClientArgs = {};
+					if (nodeParameters.chromaURL) {
+						const url = new URL(nodeParameters.chromaURL);
+						clientConfig = {
+							host: url.hostname,
+							port: url.port ? parseInt(url.port, 10) : 8000,
+						};
+					}
+
+					const client = new ChromaClient(clientConfig);
 					const collections = await client.listCollections();
 
 					if (Array.isArray(collections)) {
