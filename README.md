@@ -34,7 +34,7 @@ Access the editor at http://localhost:5678
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
-- 🔧 [400+ Integrations](https://n8n.io/integrations)
+- 🔧 [500+ Integrations](https://n8n.io/integrations)
 - 💡 [Example Workflows](https://n8n.io/workflows)
 - 🤖 [AI & LangChain Guide](https://docs.n8n.io/langchain/)
 - 👥 [Community Forum](https://community.n8n.io)
