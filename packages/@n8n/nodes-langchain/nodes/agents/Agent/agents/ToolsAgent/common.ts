@@ -327,8 +327,11 @@ export async function getOptionalMemory(
 export async function getTools(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	outputParser?: N8nOutputParser,
+	itemIndex: number = 0,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
-	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
+	const tools = (await getConnectedTools(ctx, true, false, undefined, itemIndex)) as Array<
+		DynamicStructuredTool | Tool
+	>;
 
 	// If an output parser is available, create a dynamic tool to validate the final output.
 	if (outputParser) {

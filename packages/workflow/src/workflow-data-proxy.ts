@@ -1042,16 +1042,20 @@ export class WorkflowDataProxy {
 			}
 			const inputData =
 				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			// IMPORTANT: We use itemIndex = 0 here, because tools always run with one item on AiTool input.
+			// This is different from external context, where current itemIndex might be > 0.
+			const placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
 					runIndex,
+					// Real itemIndex (from a parent context) to indicate where the error happened
 					itemIndex,
 					type: 'no_execution_data',
 				});
 			}
+
 			return (
 				// TS does not know that the key exists, we need to address this in refactor
 				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??

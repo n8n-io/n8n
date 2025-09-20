@@ -60,6 +60,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		parentNode?: INode,
+		private readonly itemIndexOverride?: number,
 	) {
 		super(
 			workflow,
@@ -111,7 +112,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		) =>
 			this._getNodeParameter(
 				parameterName,
-				itemIndex,
+				this.itemIndexOverride ?? itemIndex,
 				fallbackValue,
 				options,
 			)) as ISupplyDataFunctions['getNodeParameter'];
@@ -156,7 +157,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.mode,
 			this.closeFunctions,
 			connectionType,
-			itemIndex,
+			this.itemIndexOverride ?? itemIndex,
 			this.abortSignal,
 		);
 	}
