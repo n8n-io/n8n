@@ -114,40 +114,6 @@ export async function apiRequestAllItems(
 	return returnData;
 }
 
-/**
- * Make an API request to paginated NocoDB endpoint
- * and return all results
- *
- * @param {(IHookFunctions | IExecuteFunctions)} this
- */
-export async function apiMetaRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
-	method: IHttpRequestMethods,
-	endpoint: string,
-	body: IDataObject,
-	query?: IDataObject,
-): Promise<any> {
-	query = query ?? {};
-	query.limit = 100;
-	query.offset = query?.offset ? (query.offset as number) : 0;
-	const returnData: IDataObject[] = [];
-
-	let responseData: {
-		list: IDataObject[];
-	};
-
-	let continueFetch;
-	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		query.offset += query.limit;
-
-		returnData.push.apply(returnData, responseData.list);
-		continueFetch = responseData.list.length === query.limit;
-	} while (continueFetch);
-
-	return returnData;
-}
-
 export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IDataObject[],
