@@ -4,6 +4,7 @@ import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
+import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
@@ -96,6 +97,18 @@ const plugins: UserConfig['plugins'] = [
 			}),
 		],
 	}),
+	// Add istanbul coverage plugin for E2E tests
+	...(process.env.COVERAGE_ENABLED === 'true'
+		? [
+				istanbul({
+					include: 'src/**/*',
+					exclude: ['node_modules', 'tests/', 'dist/'],
+					extension: ['.js', '.ts', '.vue'],
+					forceBuildInstrument: true,
+					requireEnv: false,
+				}),
+			]
+		: []),
 	viteStaticCopy({
 		targets: [
 			{

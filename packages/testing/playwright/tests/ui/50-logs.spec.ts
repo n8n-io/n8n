@@ -62,7 +62,7 @@ test.describe('Logs', () => {
 
 		await n8n.canvas.logsPanel.getClearExecutionButton().click();
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(0);
-		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).toBeHidden();
+		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).not.toBeVisible();
 	});
 
 	test('should allow to trigger partial execution', async ({ n8n, setupRequirements }) => {

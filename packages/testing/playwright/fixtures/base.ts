@@ -1,3 +1,5 @@
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
@@ -10,15 +12,16 @@ import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
-type TestFixtures = {
+type N8NFixtures = {
 	n8n: n8nPage;
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 	proxyServer: ProxyServer;
+	interceptorsSetup: boolean;
 };
 
-type WorkerFixtures = {
+type N8NWorkerFixtures = {
 	n8nUrl: string;
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
@@ -42,8 +45,14 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	N8NFixtures & CurrentsFixtures,
+	N8NWorkerFixtures & CurrentsWorkerFixtures
+>({
 	// Container configuration from the project use options
+	...fixtures.baseFixtures,
+	...fixtures.coverageFixtures,
+	...fixtures.actionFixtures,
 	containerConfig: [
 		async ({}, use, workerInfo) => {
 			const config =
@@ -130,16 +139,23 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		void browser;
 		void baseURL;
 		void dbSetup;
+
 		await setupDefaultInterceptors(context);
-		await use(context);
+		await use(true);
 	},
 
-	n8n: async ({ context }, use, testInfo) => {
+	page: async ({ context }, use, testInfo) => {
 		const page = await context.newPage();
-		const n8nInstance = new n8nPage(page);
-		await n8nInstance.api.setupFromTags(testInfo.tags);
-		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
-		await n8nInstance.start.withProjectFeatures();
+		const api = new ApiHelpers(context.request);
+
+		await api.setupFromTags(testInfo.tags);
+
+		await use(page);
+		await page.close();
+	},
+
+	n8n: async ({ page, api }, use) => {
+		const n8nInstance = new n8nPage(page, api);
 		await use(n8nInstance);
 	},
 
