@@ -126,12 +126,14 @@ export class SourceControlService {
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
+			const currentProtocol =
+				this.sourceControlPreferencesService.getPreferences().protocol ?? 'ssh';
 			await this.sourceControlPreferencesService.setPreferences({
 				connected: false,
 				branchName: '',
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
-			if (!options.keepKeyPair) {
+			if (currentProtocol === 'ssh' && !options.keepKeyPair) {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 			this.gitService.resetService();

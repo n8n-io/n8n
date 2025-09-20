@@ -35,9 +35,12 @@ export class SourceControlController {
 
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
 	async getPreferences(): Promise<SourceControlPreferences> {
-		// returns the settings with the privateKey property redacted
+		// returns the settings with sensitive fields redacted
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+		return {
+			...this.sourceControlPreferencesService.getPreferencesForResponse(),
+			publicKey,
+		} as SourceControlPreferences;
 	}
 
 	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
@@ -88,7 +91,7 @@ export class SourceControlController {
 				}
 			}
 			await this.sourceControlService.init();
-			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferencesForResponse();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
 			this.eventService.emit('source-control-settings-updated', {
@@ -98,7 +101,7 @@ export class SourceControlController {
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
 			// #endregion
-			return resultingPreferences;
+			return resultingPreferences as SourceControlPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -135,14 +138,14 @@ export class SourceControlController {
 				);
 			}
 			await this.sourceControlService.init();
-			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferencesForResponse();
 			this.eventService.emit('source-control-settings-updated', {
 				branchName: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
-			return resultingPreferences;
+			return resultingPreferences as SourceControlPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

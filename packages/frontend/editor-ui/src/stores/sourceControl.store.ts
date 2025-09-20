@@ -30,6 +30,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		connected: false,
 		publicKey: '',
 		keyGeneratorType: 'ed25519',
+		protocol: 'ssh',
+		username: '',
 	});
 
 	const state = reactive<{
@@ -61,8 +63,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const makePreferencesAction =
 		(action: typeof vcApi.savePreferences) =>
-		async (preferences: Partial<SourceControlPreferences>) => {
-			const data = await action(rootStore.restApiContext, preferences);
+		async (prefs: Partial<SourceControlPreferences> & { personalAccessToken?: string }) => {
+			const data = await action(rootStore.restApiContext, prefs as any);
 			setPreferences(data);
 		};
 
