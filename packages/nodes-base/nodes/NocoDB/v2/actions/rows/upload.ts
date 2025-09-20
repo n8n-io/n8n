@@ -26,19 +26,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: 'The value of the ID field',
 		},
 		{
-			displayName: 'Upload Field Name or ID',
-			name: 'uploadFieldName',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: 'getDownloadFields',
-				loadOptionsDependsOn: ['table.value'],
-			},
-			required: true,
-			default: '',
-			description:
-				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		},
-		{
 			displayName: 'Upload Mode',
 			name: 'uploadMode',
 			type: 'options',
@@ -55,6 +42,74 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 			default: 'base64',
 			description: 'Choose a way to perform the upload',
+		},
+		{
+			displayName: 'Upload Field Name or ID',
+			name: 'uploadFieldName',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			typeOptions: {
+				loadOptionsDependsOn: ['table.value', 'uploadMode'],
+			},
+			displayOptions: {
+				show: {
+					uploadMode: ['base64'],
+				},
+			},
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'getDownloadFieldsId',
+						searchable: true,
+					},
+				},
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					placeholder: 'c4gzwl1scxmj2i5',
+				},
+			],
+			required: true,
+			description:
+				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		},
+		{
+			displayName: 'Upload Field Name or ID',
+			name: 'uploadFieldName',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			typeOptions: {
+				loadOptionsDependsOn: ['table.value', 'uploadMode'],
+			},
+			displayOptions: {
+				show: {
+					uploadMode: ['url'],
+				},
+			},
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'getDownloadFields',
+						searchable: true,
+					},
+				},
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					placeholder: 'c4gzwl1scxmj2i5',
+				},
+			],
+			required: true,
+			description:
+				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Filename',
@@ -138,7 +193,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const id = this.getNodeParameter('id', i, undefined, {
 				extractValue: true,
 			}) as string;
-			const uploadFieldName = this.getNodeParameter('uploadFieldName', i) as string;
+			const uploadFieldName = this.getNodeParameter('uploadFieldName', i, undefined, {
+				extractValue: true,
+			}) as string;
 			const uploadMode = this.getNodeParameter('uploadMode', i) as string;
 
 			if (uploadMode === 'base64') {
@@ -157,7 +214,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					file: base64Data,
 					filename,
 				};
-				responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
+				responseData = await apiRequest.call(this, 'POST', endPoint, body, qs);
 				returnData.push.apply(returnData, [responseData] as IDataObject[]);
 			} else {
 				endPoint = `/api/v3/data/${baseId}/${table}/records/${id}`;

@@ -317,3 +317,41 @@ export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: str
 		});
 	}
 }
+
+export async function getDownloadFields(this: ILoadOptionsFunctions, filter?: string) {
+	const { results } = await getDownloadFieldsId.call(this, filter);
+	return {
+		results: results.map((field: any) => ({ name: field.name, value: field.name })),
+	};
+}
+
+export async function getDownloadFieldsId(this: ILoadOptionsFunctions, filter?: string) {
+	const version = this.getNodeParameter('version', 0) as number;
+
+	try {
+		const fetcher = new ColumnsFetcher(this);
+		const fields = await fetcher.fetchFromDefinedParam();
+		return {
+			results: fields
+				.filter(
+					(field: any) =>
+						(version === 4 ? field.type : field.uidt) === 'Attachment' &&
+						(!filter || field.title.includes(filter)),
+				)
+				.map((field: any) => {
+					return {
+						name: field.title,
+						value: field.id,
+					};
+				}),
+		};
+	} catch (e) {
+		throw new NodeOperationError(
+			this.getNode(),
+			new Error(`Error while fetching fields! ${e.message}`, { cause: e }),
+			{
+				level: 'warning',
+			},
+		);
+	}
+}
