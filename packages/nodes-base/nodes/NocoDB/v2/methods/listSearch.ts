@@ -355,3 +355,34 @@ export async function getDownloadFieldsId(this: ILoadOptionsFunctions, filter?: 
 		);
 	}
 }
+
+export async function getLinkFieldsId(this: ILoadOptionsFunctions, filter?: string) {
+	const version = this.getNodeParameter('version', 0) as number;
+
+	try {
+		const fetcher = new ColumnsFetcher(this);
+		const fields = await fetcher.fetchFromDefinedParam();
+		return {
+			results: fields
+				.filter(
+					(field: any) =>
+						['Link', 'LinkToAnotherRecord'].includes(version === 4 ? field.type : field.uidt) &&
+						(!filter || field.title.includes(filter)),
+				)
+				.map((field: any) => {
+					return {
+						name: field.title,
+						value: field.id,
+					};
+				}),
+		};
+	} catch (e) {
+		throw new NodeOperationError(
+			this.getNode(),
+			new Error(`Error while fetching fields! ${e.message}`, { cause: e }),
+			{
+				level: 'warning',
+			},
+		);
+	}
+}

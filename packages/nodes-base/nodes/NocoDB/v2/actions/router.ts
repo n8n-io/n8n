@@ -46,6 +46,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						operationResult = await rows.create.execute.call(this);
 						break;
 					}
+					case 'link': {
+						operationResult = await rows.link.execute.call(this);
+						break;
+					}
 					case 'update': {
 						operationResult = await rows.update.execute.call(this);
 						break;

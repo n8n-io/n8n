@@ -6,15 +6,17 @@ export * as count from './count';
 export * as getAll from './getAll';
 export * as create from './create';
 export * as delete from './delete';
+export * as link from './link';
 export * as update from './update';
-export * as upsert from './upsert';
 export * as upload from './upload';
+export * as upsert from './upsert';
 
 import * as countAction from './count';
 import * as createAction from './create';
 import * as deleteAction from './delete';
 import * as getAction from './get';
 import * as getAllAction from './getAll';
+import * as linkAction from './link';
 import * as updateAction from './update';
 import * as uploadAction from './upload';
 import * as upsertAction from './upsert';
@@ -73,6 +75,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'getAll',
 					description: 'Retrieve many rows',
 					action: 'Get many rows',
+				},
+				{
+					name: 'Link',
+					value: 'link',
+					description: 'Link a row with another row',
+					action: 'Link a row with another row',
 				},
 				{
 					name: 'Update',
@@ -229,5 +237,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...updateAction.description,
 		...upsertAction.description,
 		...uploadAction.description,
+		...linkAction.description,
 	],
 );
