@@ -5,15 +5,16 @@ import type { TestResult } from '../types/test-result.js';
  * @param results - Array of test results
  * @returns Object with average scores per category
  */
-export function calculateCategoryAverages(
-	results: TestResult[],
-): Record<'functionality' | 'connections' | 'expressions' | 'nodeConfiguration', number> {
+export function calculateCategoryAverages(results: TestResult[]): Record<string, number> {
 	const successfulTests = results.filter((r) => !r.error).length;
-	const categoryAverages = {
+	const categoryAverages: Record<string, number> = {
 		functionality: 0,
 		connections: 0,
 		expressions: 0,
 		nodeConfiguration: 0,
+		efficiency: 0,
+		dataFlow: 0,
+		maintainability: 0,
 	};
 
 	results
@@ -23,10 +24,13 @@ export function calculateCategoryAverages(
 			categoryAverages.connections += r.evaluationResult.connections.score;
 			categoryAverages.expressions += r.evaluationResult.expressions.score;
 			categoryAverages.nodeConfiguration += r.evaluationResult.nodeConfiguration.score;
+			categoryAverages.efficiency += r.evaluationResult.efficiency.score;
+			categoryAverages.dataFlow += r.evaluationResult.dataFlow.score;
+			categoryAverages.maintainability += r.evaluationResult.maintainability.score;
 		});
 
 	Object.keys(categoryAverages).forEach((key) => {
-		categoryAverages[key as keyof typeof categoryAverages] /= successfulTests || 1;
+		categoryAverages[key] /= successfulTests || 1;
 	});
 
 	return categoryAverages;
@@ -53,6 +57,9 @@ export function countViolationsByType(results: TestResult[]): {
 				...r.evaluationResult.connections.violations,
 				...r.evaluationResult.expressions.violations,
 				...r.evaluationResult.nodeConfiguration.violations,
+				...r.evaluationResult.efficiency.violations,
+				...r.evaluationResult.dataFlow.violations,
+				...r.evaluationResult.maintainability.violations,
 			];
 			criticalCount += allViolations.filter((v) => v.type === 'critical').length;
 			majorCount += allViolations.filter((v) => v.type === 'major').length;

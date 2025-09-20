@@ -24,6 +24,18 @@ const structuralSimilaritySchema = z.object({
 		.describe('Whether this category was evaluated (based on reference workflow availability)'),
 });
 
+const efficiencyScoreSchema = categoryScoreSchema.extend({
+	redundancyScore: z.number().min(0).max(1).describe('Score for avoiding redundant operations'),
+	pathOptimization: z.number().min(0).max(1).describe('Score for optimal execution paths'),
+	nodeCountEfficiency: z.number().min(0).max(1).describe('Score for using minimal nodes'),
+});
+
+const maintainabilityScoreSchema = categoryScoreSchema.extend({
+	nodeNamingQuality: z.number().min(0).max(1).describe('Score for descriptive node naming'),
+	workflowOrganization: z.number().min(0).max(1).describe('Score for logical workflow structure'),
+	modularity: z.number().min(0).max(1).describe('Score for reusable and modular components'),
+});
+
 // Main evaluation result schema
 export const evaluationResultSchema = z.object({
 	overallScore: z
@@ -36,6 +48,9 @@ export const evaluationResultSchema = z.object({
 	expressions: categoryScoreSchema,
 	nodeConfiguration: categoryScoreSchema,
 	structuralSimilarity: structuralSimilaritySchema,
+	efficiency: efficiencyScoreSchema,
+	dataFlow: categoryScoreSchema,
+	maintainability: maintainabilityScoreSchema,
 	summary: z.string().describe('2-3 sentences summarizing main strengths and weaknesses'),
 	criticalIssues: z
 		.array(z.string())
@@ -46,6 +61,8 @@ export const evaluationResultSchema = z.object({
 // Type exports
 export type Violation = z.infer<typeof violationSchema>;
 export type CategoryScore = z.infer<typeof categoryScoreSchema>;
+export type EfficiencyScore = z.infer<typeof efficiencyScoreSchema>;
+export type MaintainabilityScore = z.infer<typeof maintainabilityScoreSchema>;
 export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 
 // Test case schema for evaluation

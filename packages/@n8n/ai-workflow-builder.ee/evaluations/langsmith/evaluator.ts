@@ -116,7 +116,7 @@ export function createLangsmithEvaluator(
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
 			const results: LangsmithEvaluationResult[] = [];
 
-			// Add category scores
+			// Add core category scores
 			const categories = [
 				{ key: 'functionality', score: evaluationResult.functionality },
 				{ key: 'connections', score: evaluationResult.connections },
@@ -127,6 +127,37 @@ export function createLangsmithEvaluator(
 			for (const { key, score } of categories) {
 				results.push(categoryToResult(key, score));
 			}
+
+			results.push(categoryToResult('efficiency', evaluationResult.efficiency));
+			// Add sub-metrics
+			results.push({
+				key: 'efficiency.redundancyScore',
+				score: evaluationResult.efficiency.redundancyScore,
+			});
+			results.push({
+				key: 'efficiency.pathOptimization',
+				score: evaluationResult.efficiency.pathOptimization,
+			});
+			results.push({
+				key: 'efficiency.nodeCountEfficiency',
+				score: evaluationResult.efficiency.nodeCountEfficiency,
+			});
+
+			results.push(categoryToResult('dataFlow', evaluationResult.dataFlow));
+
+			results.push(categoryToResult('maintainability', evaluationResult.maintainability));
+			results.push({
+				key: 'maintainability.nodeNamingQuality',
+				score: evaluationResult.maintainability.nodeNamingQuality,
+			});
+			results.push({
+				key: 'maintainability.workflowOrganization',
+				score: evaluationResult.maintainability.workflowOrganization,
+			});
+			results.push({
+				key: 'maintainability.modularity',
+				score: evaluationResult.maintainability.modularity,
+			});
 
 			// Add usage metadata if available
 			const usageMetrics = [
