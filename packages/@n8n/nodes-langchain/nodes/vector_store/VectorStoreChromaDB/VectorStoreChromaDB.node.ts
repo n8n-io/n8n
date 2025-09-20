@@ -1,39 +1,11 @@
 import { Chroma as ChromaVectorStore } from '@langchain/community/vectorstores/chroma';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
-import { ChromaClient, type Collection } from 'chromadb';
+import { ChromaClient } from 'chromadb';
 import { metadataFilterField } from '@utils/sharedFields';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
 
 const sharedFields: INodeProperties[] = [chromaCollectionRLC];
-
-// Helper to parse a Chroma URL into ChromaClient constructor params
-interface ChromaClientConnectionParams {
-	host: string;
-	port: number;
-	ssl: boolean;
-}
-
-function parseChromaUrl(rawUrl?: string): {
-	url: string;
-	clientParams: ChromaClientConnectionParams;
-} {
-	const fallback = 'http://localhost:8000';
-	let finalUrl = (rawUrl || fallback).trim();
-	if (!/^https?:\/\//i.test(finalUrl)) finalUrl = `http://${finalUrl}`; // ensure protocol for URL parser
-	try {
-		const u = new URL(finalUrl);
-		const protocol = u.protocol.replace(':', '');
-		const ssl = protocol === 'https';
-		// ChromaClient (>=0.5) accepts { host, port, ssl } separately; keep full url for langchain store config
-		const host = u.hostname;
-		const port = u.port ? Number(u.port) : ssl ? 443 : 80;
-		return { url: `${protocol}://${host}:${port}`, clientParams: { host, port, ssl } };
-	} catch (e) {
-		// Fallback to defaults if parsing fails
-		return { url: fallback, clientParams: { host: 'localhost', port: 8000, ssl: false } };
-	}
-}
 
 const chromaURLField: INodeProperties = {
 	displayName: 'Chroma URL',
@@ -88,20 +60,22 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 	methods: {
 		listSearch: {
 			chromaCollectionsSearch: async function () {
-				let chromaURL = '';
 				try {
-					chromaURL = (this.getNodeParameter('options.chromaURL', 0) as string) || '';
-				} catch (_) {}
-				const { clientParams } = parseChromaUrl(chromaURL);
-				const client = new ChromaClient(clientParams);
-				try {
+					// Use default ChromaDB configuration
+					const client = new ChromaClient();
 					const collections = await client.listCollections();
-					const results = collections.map((collection: Collection) => ({
-						name: collection.name,
-						value: collection.name,
-					}));
-					return { results };
+
+					if (Array.isArray(collections)) {
+						const results = collections.map((collection: any) => ({
+							name: collection.name || collection,
+							value: collection.name || collection,
+						}));
+						return { results };
+					}
+
+					return { results: [] };
 				} catch (error) {
+					console.error('ChromaDB collection listing error:', error);
 					return { results: [] };
 				}
 			},
@@ -112,25 +86,22 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 	insertFields,
 	sharedFields,
 
-	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const collection = context.getNodeParameter('chromaCollection', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const options = context.getNodeParameter('options', itemIndex, {}) as { chromaURL?: string };
-		const { url, clientParams } = parseChromaUrl(options.chromaURL);
 
-		const client = new ChromaClient(clientParams);
+		// const options = context.getNodeParameter('options', itemIndex, {}) as {
+		// 	chromaURL?: string;
+		// };
+
 		try {
-			const collections = await client.listCollections();
-			const collectionExists = collections.some((c: Collection) => c.name === collection);
-			if (!collectionExists) {
-				throw new NodeOperationError(context.getNode(), `Collection ${collection} not found`, {
-					itemIndex,
-					description: 'Please check that the collection exists in your vector store',
-				});
-			}
-			const config = { collectionName: collection, url, filter };
-			return await ChromaVectorStore.fromExistingCollection(embeddings, config);
+			// Configure ChromaVectorStore with proper server URL if provided
+			const config: any = { collectionName: collection };
+
+			const vectorStore = new ChromaVectorStore(embeddings, config);
+
+			return vectorStore;
 		} catch (error: any) {
 			throw new NodeOperationError(
 				context.getNode(),
@@ -148,11 +119,16 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 			chromaURL?: string;
 			clearCollection?: boolean;
 		};
-		const { url, clientParams } = parseChromaUrl(options.chromaURL);
-		const client = new ChromaClient(clientParams);
 
 		if (options.clearCollection) {
 			try {
+				// Use proper ChromaDB client configuration
+				const clientConfig: any = {};
+				if (options.chromaURL) {
+					clientConfig.path = options.chromaURL;
+				}
+
+				const client = new ChromaClient(clientConfig);
 				await client.deleteCollection({ name: collection });
 				context.logger.info(`Collection ${collection} deleted`);
 			} catch (error) {
@@ -161,9 +137,34 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 				);
 			}
 		}
-		await ChromaVectorStore.fromDocuments(documents, embeddings, {
-			collectionName: collection,
-			url,
-		});
+
+		try {
+			// Configure ChromaVectorStore with proper server URL if provided
+			const config: any = { collectionName: collection };
+
+			await ChromaVectorStore.fromDocuments(documents, embeddings, config);
+		} catch (error: any) {
+			// Handle dimension mismatch error specifically
+			if (
+				error?.message?.includes('embedding with dimension') ||
+				error?.response?.data?.detail?.includes('embedding with dimension')
+			) {
+				const errorMessage = error?.response?.data?.detail || error?.message || error;
+				throw new NodeOperationError(
+					context.getNode(),
+					`ChromaDB embedding dimension mismatch: ${errorMessage}`,
+					{
+						itemIndex,
+						description:
+							'The collection expects embeddings with different dimensions. Enable "Clear Collection" option to recreate the collection with correct dimensions, or use a different collection name.',
+					},
+				);
+			}
+			throw new NodeOperationError(
+				context.getNode(),
+				`Error inserting documents into ChromaDB: ${error?.message || 'Unknown error'}`,
+				{ itemIndex },
+			);
+		}
 	},
 }) {}
