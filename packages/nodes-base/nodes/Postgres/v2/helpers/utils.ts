@@ -486,20 +486,24 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
-	const enumsData = await db.any(
+export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
+	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
 	);
-	return enumsData as EnumInfo[];
+
+	return enums.reduce((map, { typname, enumlabel }) => {
+		const existingValues = map.get(typname) ?? [];
+		map.set(typname, [...existingValues, enumlabel]);
+		return map;
+	}, new Map<string, string[]>());
 }
 
-export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
-	return enumInfo.reduce((acc, current) => {
-		if (current.typname === enumName) {
-			acc.push({ name: current.enumlabel, value: current.enumlabel });
-		}
-		return acc;
-	}, [] as INodePropertyOptions[]);
+export function getEnumValues(
+	enumInfo: Map<string, string[]>,
+	enumName: string,
+): INodePropertyOptions[] {
+	const values = enumInfo.get(enumName) ?? [];
+	return values.map((value) => ({ name: value, value }));
 }
 
 export async function doesRowExist(
