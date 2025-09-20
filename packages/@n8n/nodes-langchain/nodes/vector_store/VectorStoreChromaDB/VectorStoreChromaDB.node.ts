@@ -162,6 +162,15 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 		try {
 			const config: ChromaLibArgs = { collectionName: collection };
 
+			if (options.chromaURL) {
+				config.clientParams = {
+					host: new URL(options.chromaURL).hostname,
+					port: new URL(options.chromaURL).port
+						? parseInt(new URL(options.chromaURL).port, 10)
+						: 8000,
+				};
+			}
+
 			await ExtendedChroma.fromDocuments(documents, embeddings, config);
 		} catch (error) {
 			// Handle dimension mismatch error specifically
