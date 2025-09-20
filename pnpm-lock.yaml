@@ -1061,12 +1061,9 @@ importers:
       '@azure/search-documents':
         specifier: 12.1.0
         version: 12.1.0
-      '@chroma-core/default-embed':
-        specifier: 0.1.8
-        version: 0.1.8
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1093,7 +1090,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(cac83463c1fd7fdf6e86845c8a682047)
+        version: 0.3.50(c93e8b8c4f99b1d91f941dcdcb68d566)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1219,7 +1216,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+        version: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -4528,14 +4525,6 @@ packages:
 
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
-
-  '@chroma-core/ai-embeddings-common@0.1.7':
-    resolution: {integrity: sha512-9ToziKEz0gD+kkFKkZaeAUyGW0gRDVZcKtAmSO0d0xzFIVCkjWChND1VaHjvozRypEKzjjCqN8t1bzA+YxtBxQ==}
-    engines: {node: '>=20'}
-
-  '@chroma-core/default-embed@0.1.8':
-    resolution: {integrity: sha512-9FaSEvGhkO/JHud3SEwHn9BhqHHhcd8jBwI89hW+IBUu3peJ4O8Pq0CtQuuOulqhzhJMHP6Ya1HB4ESXwjEYdw==}
-    engines: {node: '>=20'}
 
   '@chromatic-com/storybook@3.2.5':
     resolution: {integrity: sha512-Y388ft6po5FmGKdkcqz3r2sW6aMF5DSBaatC0jvT5bI/Dh27RJw3gPTmXJcZVNjteNl6tpiP3qxZ9MswAk5luw==}
@@ -17463,7 +17452,7 @@ snapshots:
   '@ampproject/remapping@2.3.0':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
 
   '@antfu/install-pkg@0.1.1':
     dependencies:
@@ -18949,10 +18938,10 @@ snapshots:
 
   '@babel/generator@7.26.10':
     dependencies:
-      '@babel/parser': 7.27.5
-      '@babel/types': 7.27.6
+      '@babel/parser': 7.28.5
+      '@babel/types': 7.28.5
       '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       jsesc: 3.1.0
 
   '@babel/generator@7.28.5':
@@ -19029,7 +19018,7 @@ snapshots:
   '@babel/helper-module-imports@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.5
     transitivePeerDependencies:
       - supports-color
 
@@ -19044,7 +19033,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-module-imports': 7.25.9
-      '@babel/helper-validator-identifier': 7.27.1
+      '@babel/helper-validator-identifier': 7.28.5
       '@babel/traverse': 7.26.10
     transitivePeerDependencies:
       - supports-color
@@ -19108,7 +19097,7 @@ snapshots:
   '@babel/helpers@7.26.10':
     dependencies:
       '@babel/template': 7.26.9
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.5
 
   '@babel/helpers@7.28.4':
     dependencies:
@@ -19755,10 +19744,10 @@ snapshots:
   '@babel/traverse@7.26.10':
     dependencies:
       '@babel/code-frame': 7.27.1
-      '@babel/generator': 7.26.10
-      '@babel/parser': 7.27.5
+      '@babel/generator': 7.28.5
+      '@babel/parser': 7.28.5
       '@babel/template': 7.26.9
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.5
       debug: 4.4.3
       globals: 11.12.0
     transitivePeerDependencies:
@@ -19857,15 +19846,6 @@ snapshots:
       - utf-8-validate
 
   '@cfworker/json-schema@4.1.0': {}
-
-  '@chroma-core/ai-embeddings-common@0.1.7':
-    dependencies:
-      ajv: 8.17.1
-
-  '@chroma-core/default-embed@0.1.8':
-    dependencies:
-      '@chroma-core/ai-embeddings-common': 0.1.7
-      '@huggingface/transformers': 3.7.3
 
   '@chromatic-com/storybook@3.2.5(react@18.2.0)(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.14)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))':
     dependencies:
@@ -20285,7 +20265,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -20294,7 +20274,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
     transitivePeerDependencies:
       - encoding
 
@@ -20402,6 +20382,7 @@ snapshots:
       onnxruntime-node: 1.21.0
       onnxruntime-web: 1.22.0-dev.20250409-89f8206ba4
       sharp: 0.34.4
+    optional: true
 
   '@humanfs/core@0.19.1': {}
 
@@ -20452,7 +20433,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@img/colour@1.0.0': {}
+  '@img/colour@1.0.0':
+    optional: true
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -20657,6 +20639,7 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.2
+    optional: true
 
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
@@ -20751,7 +20734,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-mock: 29.6.2
 
   '@jest/expect-utils@29.6.2':
@@ -20769,7 +20752,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@sinonjs/fake-timers': 10.0.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-message-util: 29.6.2
       jest-mock: 29.6.2
       jest-util: 29.6.2
@@ -20790,7 +20773,7 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       '@types/node': 20.19.14
       chalk: 4.1.2
       collect-v8-coverage: 1.0.1
@@ -20840,7 +20823,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@jest/types': 29.6.1
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       babel-plugin-istanbul: 6.1.1
       chalk: 4.1.2
       convert-source-map: 2.0.0
@@ -20861,7 +20844,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       '@types/yargs': 17.0.19
       chalk: 4.1.2
 
@@ -20957,7 +20940,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(cac83463c1fd7fdf6e86845c8a682047)':
+  '@langchain/community@0.3.50(c93e8b8c4f99b1d91f941dcdcb68d566)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -20969,7 +20952,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -20984,7 +20967,7 @@ snapshots:
       '@azure/search-documents': 12.1.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -23817,7 +23800,7 @@ snapshots:
   '@types/serve-static@1.15.0':
     dependencies:
       '@types/mime': 3.0.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
 
   '@types/shelljs@0.8.11':
     dependencies:
@@ -23877,7 +23860,7 @@ snapshots:
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
 
   '@types/temp@0.9.4':
     dependencies:
@@ -23956,7 +23939,7 @@ snapshots:
       '@typescript-eslint/types': 8.35.0
       '@typescript-eslint/typescript-estree': 8.35.0(typescript@5.9.2)
       '@typescript-eslint/visitor-keys': 8.35.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       eslint: 9.29.0(jiti@2.6.1)
       typescript: 5.9.2
     transitivePeerDependencies:
@@ -24003,7 +23986,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.35.0(typescript@5.9.2)
       '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       eslint: 9.29.0(jiti@2.6.1)
       ts-api-utils: 2.1.0(typescript@5.9.2)
       typescript: 5.9.2
@@ -24035,7 +24018,7 @@ snapshots:
       '@typescript-eslint/tsconfig-utils': 8.35.0(typescript@5.9.2)
       '@typescript-eslint/types': 8.35.0
       '@typescript-eslint/visitor-keys': 8.35.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       fast-glob: 3.3.3
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -24948,6 +24931,14 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  axios@1.12.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   b4a@1.6.7: {}
 
   babel-jest@29.6.2(@babel/core@7.26.10):
@@ -25156,7 +25147,8 @@ snapshots:
 
   boolbase@1.0.0: {}
 
-  boolean@3.2.0: {}
+  boolean@3.2.0:
+    optional: true
 
   bowser@2.11.0: {}
 
@@ -25567,7 +25559,8 @@ snapshots:
 
   chownr@2.0.0: {}
 
-  chownr@3.0.0: {}
+  chownr@3.0.0:
+    optional: true
 
   chromadb-js-bindings-darwin-arm64@1.0.6:
     optional: true
@@ -27271,7 +27264,7 @@ snapshots:
   expect@29.6.2:
     dependencies:
       '@jest/expect-utils': 29.6.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-get-type: 29.4.3
       jest-matcher-utils: 29.6.2
       jest-message-util: 29.6.2
@@ -27546,7 +27539,8 @@ snapshots:
 
   flat@5.0.2: {}
 
-  flatbuffers@25.2.10: {}
+  flatbuffers@25.2.10:
+    optional: true
 
   flatted@3.2.7: {}
 
@@ -27557,6 +27551,10 @@ snapshots:
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
+
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   for-each@0.3.5:
     dependencies:
@@ -27852,6 +27850,7 @@ snapshots:
       roarr: 2.15.4
       semver: 7.7.2
       serialize-error: 7.0.1
+    optional: true
 
   global-modules@2.0.0:
     dependencies:
@@ -27998,7 +27997,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  guid-typescript@1.0.9: {}
+  guid-typescript@1.0.9:
+    optional: true
 
   gzip-size@6.0.0:
     dependencies:
@@ -28255,7 +28255,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.14
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.1)
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -28265,7 +28265,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -28394,7 +28394,7 @@ snapshots:
     dependencies:
       '@ioredis/commands': 1.2.0
       cluster-key-slot: 1.1.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0
@@ -28973,7 +28973,7 @@ snapshots:
   jest-mock@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-util: 29.6.2
 
   jest-pnp-resolver@1.2.2(jest-resolve@29.6.2):
@@ -29082,7 +29082,7 @@ snapshots:
   jest-util@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -29391,7 +29391,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621):
+  langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.16(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -29893,6 +29893,7 @@ snapshots:
   matcher@3.0.0:
     dependencies:
       escape-string-regexp: 4.0.0
+    optional: true
 
   math-intrinsics@1.1.0: {}
 
@@ -30073,6 +30074,7 @@ snapshots:
   minizlib@3.0.2:
     dependencies:
       minipass: 7.1.2
+    optional: true
 
   miragejs@0.1.48:
     dependencies:
@@ -30390,7 +30392,8 @@ snapshots:
 
   mkdirp@2.1.3: {}
 
-  mkdirp@3.0.1: {}
+  mkdirp@3.0.1:
+    optional: true
 
   mlly@1.7.4:
     dependencies:
@@ -30517,7 +30520,7 @@ snapshots:
     dependencies:
       '@tediousjs/connection-string': 0.5.0
       commander: 11.1.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       rfdc: 1.3.0
       tarn: 3.0.2
       tedious: 16.7.1
@@ -31002,15 +31005,18 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  onnxruntime-common@1.21.0: {}
+  onnxruntime-common@1.21.0:
+    optional: true
 
-  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4: {}
+  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4:
+    optional: true
 
   onnxruntime-node@1.21.0:
     dependencies:
       global-agent: 3.0.0
       onnxruntime-common: 1.21.0
       tar: 7.4.3
+    optional: true
 
   onnxruntime-web@1.22.0-dev.20250409-89f8206ba4:
     dependencies:
@@ -31020,6 +31026,7 @@ snapshots:
       onnxruntime-common: 1.22.0-dev.20250409-89f8206ba4
       platform: 1.3.6
       protobufjs: 7.4.0
+    optional: true
 
   ono@7.1.3:
     dependencies:
@@ -31438,7 +31445,8 @@ snapshots:
       exsolve: 1.0.4
       pathe: 2.0.3
 
-  platform@1.3.6: {}
+  platform@1.3.6:
+    optional: true
 
   playwright-core@1.56.0: {}
 
@@ -32262,7 +32270,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
@@ -32330,6 +32338,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       semver-compare: 1.0.0
       sprintf-js: 1.1.3
+    optional: true
 
   rolldown-plugin-dts@0.18.0(rolldown@1.0.0-beta.51)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
@@ -32560,7 +32569,8 @@ snapshots:
     dependencies:
       parseley: 0.12.1
 
-  semver-compare@1.0.0: {}
+  semver-compare@1.0.0:
+    optional: true
 
   semver@7.7.2: {}
 
@@ -32591,6 +32601,7 @@ snapshots:
   serialize-error@7.0.1:
     dependencies:
       type-fest: 0.13.1
+    optional: true
 
   serialize-javascript@6.0.2:
     dependencies:
@@ -32695,6 +32706,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.4
       '@img/sharp-win32-ia32': 0.34.4
       '@img/sharp-win32-x64': 0.34.4
+    optional: true
 
   shebang-command@1.2.0:
     dependencies:
@@ -33544,6 +33556,7 @@ snapshots:
       minizlib: 3.0.2
       mkdirp: 3.0.1
       yallist: 5.0.0
+    optional: true
 
   tarn@3.0.2: {}
 
@@ -34013,7 +34026,8 @@ snapshots:
 
   type-detect@4.0.8: {}
 
-  type-fest@0.13.1: {}
+  type-fest@0.13.1:
+    optional: true
 
   type-fest@0.20.2: {}
 
@@ -34968,7 +34982,8 @@ snapshots:
 
   yallist@4.0.0: {}
 
-  yallist@5.0.0: {}
+  yallist@5.0.0:
+    optional: true
 
   yaml-ast-parser@0.0.43: {}
 
