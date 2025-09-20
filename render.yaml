@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: |
-      echo "Skipping heavy webpack build"
+      echo "Skipping frontend build"
     startCommand: n8n
     envVars:
       - key: N8N_SKIP_WEBPACK_BUILD
@@ -16,4 +16,4 @@ services:
       - key: N8N_BASIC_AUTH_USER
         value: admin
       - key: N8N_BASIC_AUTH_PASSWORD
-        sync: false   # set from dashboard for security
+        sync: false
