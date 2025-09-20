@@ -5,7 +5,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { fetchInstalledPackageInfo, type ExtendedPublicInstalledPackage } from './utils';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 export interface Props {
 	packageName: string;
@@ -16,7 +16,7 @@ const props = defineProps<Props>();
 const router = useRouter();
 
 const bugsUrl = ref<string>(`https://registry.npmjs.org/${props.packageName}`);
-const installedPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
+const { installedPackage } = useInstalledCommunityPackage(props.packageName);
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -51,7 +51,6 @@ async function getBugsUrl(packageName: string) {
 onMounted(async () => {
 	if (props.packageName) {
 		await getBugsUrl(props.packageName);
-		installedPackage.value = await fetchInstalledPackageInfo(props.packageName);
 	}
 });
 </script>

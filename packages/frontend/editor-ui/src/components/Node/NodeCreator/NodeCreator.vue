@@ -18,6 +18,12 @@ import { useBuilderStore } from '@/stores/builder.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
+// elements that should not trigger onClickOutside
+const OUTSIDE_CLICK_WHITELIST = [
+	// different modals
+	'.el-overlay-dialog',
+];
+
 export interface Props {
 	active?: boolean;
 	onNodeTypeSelected?: (value: NodeTypeSelectedPayload[]) => void;
@@ -153,7 +159,13 @@ onBeforeUnmount(() => {
 	unBindOnMouseUpOutside();
 });
 
-onClickOutside(nodeCreator, () => emit('closeNodeCreator'));
+onClickOutside(
+	nodeCreator,
+	() => {
+		emit('closeNodeCreator');
+	},
+	{ ignore: OUTSIDE_CLICK_WHITELIST },
+);
 </script>
 
 <template>

@@ -1,32 +1,27 @@
 <script setup lang="ts">
-import { N8nNotice } from '@n8n/design-system';
-import { i18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
-import { computed } from 'vue';
-const noticeStyles = computed(() => {
-	const isDark = useUIStore().appliedTheme === 'dark';
-	if (isDark) {
-		return {
-			borderColor: 'var(--color-callout-secondary-border)',
-			backgroundColor: 'var(--color-callout-secondary-background)',
-			color: 'var(--color-callout-secondary-font)',
-		};
-	}
-	return {
-		borderColor: 'var(--color-secondary)',
-		backgroundColor: 'var(--color-secondary-tint-3)',
-	};
-});
+import { N8nButton } from '@n8n/design-system';
+import { i18n } from '@n8n/i18n';
+
+interface Props {
+	packageName?: string;
+}
+
+const props = defineProps<Props>();
+
+const { openCommunityPackageUpdateConfirmModal } = useUIStore();
+
+const onUpdate = () => {
+	if (!props.packageName) return;
+	openCommunityPackageUpdateConfirmModal(props.packageName);
+};
 </script>
 
 <template>
-	<N8nNotice
-		theme="info"
-		:style="{
-			marginTop: '0',
-			...noticeStyles,
-		}"
-	>
+	<N8nCallout theme="secondary" :iconless="true" style="margin-bottom: var(--spacing-s)">
 		{{ i18n.baseText('communityNodeUpdateInfo.available') }}
-	</N8nNotice>
+		<template v-if="props.packageName" #trailingContent>
+			<N8nButton type="secondary" @click="onUpdate"> Update </N8nButton>
+		</template>
+	</N8nCallout>
 </template>
