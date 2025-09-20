@@ -15,6 +15,7 @@ describe('Kafka Node', () => {
 	let mockProducerSend: jest.Mock;
 	let mockProducerDisconnect: jest.Mock;
 	let mockRegistryEncode: jest.Mock;
+	let mockRegistryGetLatestSchemaId: jest.Mock;
 
 	beforeAll(() => {
 		mockProducerConnect = jest.fn();
@@ -33,8 +34,10 @@ describe('Kafka Node', () => {
 		});
 
 		mockRegistryEncode = jest.fn((_id, input) => Buffer.from(JSON.stringify(input)));
+		mockRegistryGetLatestSchemaId = jest.fn(() => 1);
 		mockRegistry = mock<SchemaRegistry>({
 			encode: mockRegistryEncode,
+			getLatestSchemaId: mockRegistryGetLatestSchemaId,
 		});
 
 		(apacheKafka as jest.Mock).mockReturnValue(mockKafka);
@@ -44,7 +47,7 @@ describe('Kafka Node', () => {
 	new NodeTestHarness().setupTests();
 
 	test('should publish the correct kafka messages', async () => {
-		expect(mockProducerSend).toHaveBeenCalledTimes(2);
+		expect(mockProducerSend).toHaveBeenCalledTimes(3);
 		expect(mockProducerSend).toHaveBeenCalledWith({
 			acks: 1,
 			compression: 1,
@@ -98,5 +101,46 @@ describe('Kafka Node', () => {
 				},
 			],
 		});
+	});
+
+	test('should instantiate SchemaRegistry with correct options', () => {
+		expect(SchemaRegistry).toHaveBeenCalledTimes(4);
+		expect(SchemaRegistry).toHaveBeenNthCalledWith(1, {
+			host: 'https://test-kafka-registry.local',
+		});
+
+		expect(SchemaRegistry).toHaveBeenNthCalledWith(2, {
+			host: 'https://test-kafka-registry.local',
+		});
+		expect(SchemaRegistry).toHaveBeenNthCalledWith(3, {
+			auth: {
+				username: 'abc',
+				password: 'supersecretkey',
+			},
+			host: 'https://test-kafka-registry.local',
+		});
+		expect(SchemaRegistry).toHaveBeenNthCalledWith(4, {
+			auth: {
+				username: 'abc',
+				password: 'supersecretkey',
+			},
+			host: 'https://test-kafka-registry.local',
+		});
+	});
+
+	test('should get latest schema ID from SchemaRegistry', () => {
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledTimes(4);
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(1, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(2, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(3, 'test-event-name');
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenNthCalledWith(4, 'test-event-name');
+	});
+
+	test('should encode messages with SchemaRegistry', () => {
+		expect(mockRegistryEncode).toHaveBeenCalledTimes(4);
+		expect(mockRegistryEncode).toHaveBeenNthCalledWith(1, 1, { foo: 'bar' });
+		expect(mockRegistryEncode).toHaveBeenNthCalledWith(2, 1, { foo: 'bar' });
+		expect(mockRegistryEncode).toHaveBeenNthCalledWith(3, 1, { foo: 'bar' });
+		expect(mockRegistryEncode).toHaveBeenNthCalledWith(4, 1, { foo: 'bar' });
 	});
 });
