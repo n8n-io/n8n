@@ -2711,6 +2711,7 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	queuePriority?: 'low' | 'medium' | 'high';
 	availableInMCP?: boolean;
 }
 
