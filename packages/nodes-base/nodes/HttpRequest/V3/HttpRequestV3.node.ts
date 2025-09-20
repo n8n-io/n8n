@@ -384,10 +384,27 @@ export class HttpRequestV3 implements INodeType {
 					});
 				}
 
+				const parameterToKeyValidQs = async (
+					accumulator: IDataObject,
+					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+				) => {
+					if (!cur.name) return accumulator;
+					const previousValue = accumulator[cur.name];
+					if (previousValue === undefined) {
+						accumulator[cur.name] = cur.value;
+					} else if (Array.isArray(previousValue)) {
+						(previousValue as string[]).push(cur.value);
+					} else {
+						accumulator[cur.name] = [String(previousValue), cur.value];
+					}
+					return accumulator;
+				};
 				const parametersToKeyValue = async (
 					accumulator: { [key: string]: any },
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 				) => {
+					const isQueryArrayType = cur.name.endsWith('[]');
+					const name = isQueryArrayType ? cur.name.slice(0, -2) : cur.name;
 					if (cur.parameterType === 'formBinaryData') {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
@@ -406,6 +423,12 @@ export class HttpRequestV3 implements INodeType {
 								contentType: binaryData.mimeType,
 							},
 						};
+						return accumulator;
+					}
+					if (isQueryArrayType) {
+						Array.isArray(accumulator[name])
+							? accumulator[name].push(cur.value)
+							: (accumulator[name] = [cur.value]);
 						return accumulator;
 					}
 					accumulator[cur.name] = cur.value;
@@ -487,7 +510,7 @@ export class HttpRequestV3 implements INodeType {
 				// Get parameters defined in the UI
 				if (sendQuery && queryParameters) {
 					if (specifyQuery === 'keypair') {
-						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
+						requestOptions.qs = await reduceAsync(queryParameters, parameterToKeyValidQs);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
 						try {
