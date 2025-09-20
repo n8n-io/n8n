@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 
-import fs from "fs";
-import path from "path";
-import { ESLint } from "eslint";
-import { spawnSync } from "child_process";
-import tmp from "tmp";
-import semver from "semver";
-import axios from "axios";
-import glob from "fast-glob";
-import { fileURLToPath } from "url";
-import { defineConfig } from "eslint/config";
-
-import plugin from "./eslint-plugin.mjs";
+import fs from 'fs';
+import path from 'path';
+import { ESLint } from 'eslint';
+import { spawnSync } from 'child_process';
+import tmp from 'tmp';
+import semver from 'semver';
+import axios from 'axios';
+import glob from 'fast-glob';
+import { fileURLToPath } from 'url';
+import { defineConfig } from 'eslint/config';
 
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
-const registry = "https://registry.npmjs.org/";
+const registry = 'https://registry.npmjs.org/';
 
 export const resolvePackage = (packageSpec) => {
 	// Validate input to prevent command injection
@@ -25,10 +23,10 @@ export const resolvePackage = (packageSpec) => {
 	}
 
 	let packageName, version;
-	if (packageSpec.startsWith("@")) {
-		if (packageSpec.includes("@", 1)) {
+	if (packageSpec.startsWith('@')) {
+		if (packageSpec.includes('@', 1)) {
 			// Handle scoped packages with versions
-			const lastAtIndex = packageSpec.lastIndexOf("@");
+			const lastAtIndex = packageSpec.lastIndexOf('@');
 			return {
 				packageName: packageSpec.substring(0, lastAtIndex),
 				version: packageSpec.substring(lastAtIndex + 1),
@@ -39,34 +37,36 @@ export const resolvePackage = (packageSpec) => {
 		}
 	}
 	// Handle regular packages
-	const parts = packageSpec.split("@");
+	const parts = packageSpec.split('@');
 	return { packageName: parts[0], version: parts[1] || null };
 };
 
 const downloadAndExtractPackage = async (packageName, version) => {
 	try {
 		// Download the tarball using safe arguments
-		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], { 
+		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], {
 			cwd: TEMP_DIR,
-			stdio: 'pipe'
+			stdio: 'pipe',
 		});
 		if (npmResult.status !== 0) {
 			throw new Error(`npm pack failed: ${npmResult.stderr?.toString()}`);
 		}
-		const tarballName = fs
-			.readdirSync(TEMP_DIR)
-			.find((file) => file.endsWith(".tgz"));
+		const tarballName = fs.readdirSync(TEMP_DIR).find((file) => file.endsWith('.tgz'));
 		if (!tarballName) {
-			throw new Error("Tarball not found");
+			throw new Error('Tarball not found');
 		}
 
 		// Unpack the tarball
 		const packageDir = path.join(TEMP_DIR, `${packageName}-${version}`);
 		fs.mkdirSync(packageDir, { recursive: true });
-		const tarResult = spawnSync('tar', ['-xzf', tarballName, '-C', packageDir, '--strip-components=1'], {
-			cwd: TEMP_DIR,
-			stdio: 'pipe'
-		});
+		const tarResult = spawnSync(
+			'tar',
+			['-xzf', tarballName, '-C', packageDir, '--strip-components=1'],
+			{
+				cwd: TEMP_DIR,
+				stdio: 'pipe',
+			},
+		);
 		if (tarResult.status !== 0) {
 			throw new Error(`tar extraction failed: ${tarResult.stderr?.toString()}`);
 		}
@@ -80,50 +80,34 @@ const downloadAndExtractPackage = async (packageName, version) => {
 };
 
 const analyzePackage = async (packageDir) => {
-	const { default: eslintPlugin } = await import("./eslint-plugin.mjs");
+	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig([
-			{
-				plugins: {
-					"n8n-community-packages": plugin,
-				},
-				rules: {
-					"n8n-community-packages/no-restricted-globals": "error",
-					"n8n-community-packages/no-restricted-imports": "error",
-				},
-				languageOptions: {
-					parserOptions: {
-						ecmaVersion: 2022,
-						sourceType: "commonjs",
-					},
-				},
-			},
-		]),
+		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended),
 	});
 
 	try {
-		const jsFiles = glob.sync("**/*.js", {
+		const jsFiles = glob.sync('**/*.js', {
 			cwd: packageDir,
 			absolute: true,
-			ignore: ["node_modules/**"],
+			ignore: ['node_modules/**'],
 		});
 
 		if (jsFiles.length === 0) {
-			return { passed: true, message: "No JavaScript files found to analyze" };
+			return { passed: true, message: 'No JavaScript files found to analyze' };
 		}
 
 		const results = await eslint.lintFiles(jsFiles);
 		const violations = results.filter((result) => result.errorCount > 0);
 
 		if (violations.length > 0) {
-			const formatter = await eslint.loadFormatter("stylish");
+			const formatter = await eslint.loadFormatter('stylish');
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
-				message: "ESLint violations found",
+				message: 'ESLint violations found',
 				details: formattedResults,
 			};
 		}
@@ -157,21 +141,18 @@ export const analyzePackageByName = async (packageName, version) => {
 		// If no version specified, get the latest
 		if (!exactVersion) {
 			const { data } = await axios.get(`${registry}/${packageName}`);
-			exactVersion = data["dist-tags"].latest;
+			exactVersion = data['dist-tags'].latest;
 		}
 
 		const label = `${packageName}@${exactVersion}`;
 
 		stdout.write(`Downloading ${label}...`);
-		const packageDir = await downloadAndExtractPackage(
-			packageName,
-			exactVersion,
-		);
-		if (stdout.TTY){
+		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
+		if (stdout.TTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-			stdout.write(`✅ Downloaded ${label} \n`);
+		stdout.write(`✅ Downloaded ${label} \n`);
 
 		stdout.write(`Analyzing ${label}...`);
 		const analysisResult = await analyzePackage(packageDir);

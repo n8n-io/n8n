@@ -1,0 +1,84 @@
+import { ESLintUtils } from '@typescript-eslint/utils';
+import {
+	isNodeTypeClass,
+	findClassProperty,
+	findObjectProperty,
+	getBooleanLiteralValue,
+} from '../utils/index.js';
+
+export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
+	meta: {
+		type: 'problem',
+		docs: {
+			description: 'Ensure node classes have usableAsTool property set to true',
+		},
+		messages: {
+			missingUsableAsTool: 'Node class should have usableAsTool property set to true',
+		},
+		fixable: 'code',
+		schema: [],
+	},
+	defaultOptions: [],
+	create(context) {
+		return {
+			ClassDeclaration(node) {
+				if (!isNodeTypeClass(node)) {
+					return;
+				}
+
+				const descriptionProperty = findClassProperty(node, 'description');
+				if (!descriptionProperty) {
+					context.report({
+						node,
+						messageId: 'missingUsableAsTool',
+					});
+					return;
+				}
+
+				let usableAsToolProperty = null;
+				let hasUsableAsTool = false;
+				let isUsableAsToolTrue = false;
+
+				const descriptionValue = descriptionProperty.value;
+				if (descriptionValue?.type === 'ObjectExpression') {
+					usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
+					if (usableAsToolProperty) {
+						hasUsableAsTool = true;
+						const value = getBooleanLiteralValue(usableAsToolProperty.value);
+						isUsableAsToolTrue = value === true;
+					}
+				}
+
+				if (!hasUsableAsTool || !isUsableAsToolTrue) {
+					context.report({
+						node,
+						messageId: 'missingUsableAsTool',
+						fix(fixer) {
+							if (hasUsableAsTool && usableAsToolProperty?.value) {
+								return fixer.replaceText(usableAsToolProperty.value, 'true');
+							}
+
+							if (descriptionValue?.type === 'ObjectExpression') {
+								const properties = descriptionValue.properties;
+								if (properties.length === 0) {
+									const openBrace = descriptionValue.range![0] + 1;
+									return fixer.insertTextAfterRange(
+										[openBrace, openBrace],
+										'\n\t\tusableAsTool: true,',
+									);
+								} else {
+									const lastProperty = properties.at(-1);
+									if (lastProperty) {
+										return fixer.insertTextAfter(lastProperty, ',\n\t\tusableAsTool: true');
+									}
+								}
+							}
+
+							return null;
+						},
+					});
+				}
+			},
+		};
+	},
+});
