@@ -1,7 +1,7 @@
-import { Chroma } from '@langchain/community/vectorstores/chroma';
+import { Chroma, ChromaLibArgs } from '@langchain/community/vectorstores/chroma';
 import type { Document } from '@langchain/core/documents';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
-import { ChromaClient } from 'chromadb';
+import { ChromaClient, ChromaClientArgs, type Collection } from 'chromadb';
 import { metadataFilterField } from '@utils/sharedFields';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
@@ -12,7 +12,7 @@ class ExtendedChroma extends Chroma {
 		k: number,
 		filter?: this['FilterType'],
 	): Promise<[Document, number][]> {
-		// The new version of chromadb expects the query embedding to be an array of embeddings.
+		// Important: The new version of chromadb expects the query embedding to be an array of embeddings.
 		// @ts-ignore
 		return await super.similaritySearchVectorWithScore([query], k, filter);
 	}
@@ -79,9 +79,9 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 					const collections = await client.listCollections();
 
 					if (Array.isArray(collections)) {
-						const results = collections.map((collection: any) => ({
-							name: collection.name || collection,
-							value: collection.name || collection,
+						const results = collections.map((collection: Collection) => ({
+							name: collection.name || String(collection),
+							value: collection.name || String(collection),
 						}));
 						return { results };
 					}
@@ -106,20 +106,22 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			chromaURL?: string;
-			metadataFilter?: Record<string, any>;
 		};
 
 		try {
-			// Configure ChromaVectorStore with proper server URL if provided
-			const config: any = { collectionName: collection };
+			const config: ChromaLibArgs = { collectionName: collection };
 
-			// Apply the ChromaDB URL if provided
 			if (options.chromaURL) {
-				config.url = options.chromaURL;
+				config.clientParams = {
+					host: new URL(options.chromaURL).hostname,
+					port: new URL(options.chromaURL).port
+						? parseInt(new URL(options.chromaURL).port, 10)
+						: 8000,
+				};
 			}
 
 			return ExtendedChroma.fromExistingCollection(embeddings, config);
-		} catch (error: any) {
+		} catch (error) {
 			throw new NodeOperationError(
 				context.getNode(),
 				`Error connecting to ChromaDB: ${error?.message || 'Unknown error'}`,
@@ -139,10 +141,12 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 		if (options.clearCollection) {
 			try {
-				// Use proper ChromaDB client configuration
-				const clientConfig: any = {};
+				const clientConfig: ChromaClientArgs = {};
 				if (options.chromaURL) {
-					clientConfig.path = options.chromaURL;
+					//Parse the URL to extract host and port
+					const url = new URL(options.chromaURL);
+					clientConfig.host = url.hostname;
+					clientConfig.port = url.port ? parseInt(url.port, 10) : 8000;
 				}
 
 				const client = new ChromaClient(clientConfig);
@@ -156,11 +160,10 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 		}
 
 		try {
-			// Configure ChromaVectorStore with proper server URL if provided
-			const config: any = { collectionName: collection };
+			const config: ChromaLibArgs = { collectionName: collection };
 
 			await ExtendedChroma.fromDocuments(documents, embeddings, config);
-		} catch (error: any) {
+		} catch (error) {
 			// Handle dimension mismatch error specifically
 			if (
 				error?.message?.includes('embedding with dimension') ||
