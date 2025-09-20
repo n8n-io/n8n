@@ -252,6 +252,8 @@ async function copySessionId() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css';
+
 .chat {
 	--chat--spacing: var(--spacing-xs);
 	--chat--message--padding: var(--spacing-2xs);

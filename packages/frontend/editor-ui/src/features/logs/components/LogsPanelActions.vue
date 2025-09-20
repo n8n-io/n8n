@@ -94,6 +94,8 @@ function handleSelectMenuItem(selected: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css';
+
 .container {
 	display: flex;
 }
