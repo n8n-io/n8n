@@ -23,6 +23,7 @@
   "n8n": {
     "credentials": [
       "dist/credentials/ActionNetworkApi.credentials.js",
+      "dist/credentials/AstraDb.credentials.js",
       "dist/credentials/ActiveCampaignApi.credentials.js",
       "dist/credentials/AcuitySchedulingApi.credentials.js",
       "dist/credentials/AcuitySchedulingOAuth2Api.credentials.js",
@@ -411,6 +412,7 @@
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
+      "dist/nodes/AstraDb/AstraDb.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.js",
@@ -880,6 +882,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@datastax/astra-db-ts": "^2.0.2",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",

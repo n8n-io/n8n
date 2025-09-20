@@ -1,0 +1,40 @@
+{
+	"node": "n8n-nodes-base.astraDb",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/astraDb/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.astraDb/"
+			}
+		],
+		"generic": [
+			{
+				"label": "DataStax Astra DB Documentation",
+				"icon": "🔗",
+				"url": "https://docs.datastax.com/en/astra-db-serverless/"
+			},
+			{
+				"label": "Astra DB TypeScript SDK",
+				"icon": "📚",
+				"url": "https://docs.datastax.com/en/astra-db-serverless/api-reference/typescript-client.html"
+			},
+			{
+				"label": "Vector Search with Astra DB",
+				"icon": "🔍",
+				"url": "https://docs.datastax.com/en/astra-db-serverless/databases/vector-search.html"
+			},
+			{
+				"label": "Building AI Applications with n8n",
+				"icon": "🤖",
+				"url": "https://docs.n8n.io/advanced-ai/"
+			}
+		]
+	}
+}
