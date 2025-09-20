@@ -1,5 +1,6 @@
 import { defineComponent, h, nextTick, ref, toValue } from 'vue';
 import { useResolvedExpression } from './useResolvedExpression';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
 import { setActivePinia } from 'pinia';
@@ -98,4 +99,25 @@ describe('useResolvedExpression', () => {
 		vi.advanceTimersByTime(200);
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(2);
 	});
+
+it('should re-resolve when workflow name changes', async () => {
+    const workflowsStore = useWorkflowsStore();
+    const resolveExpressionSpy = mockResolveExpression();
+    resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
+
+    workflowsStore.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+
+    const { resolvedExpressionString } = await renderTestComponent({
+        expression: '={{ $workflow.name }}',
+    });
+
+    // Initial resolve
+    vi.advanceTimersByTime(200);
+    expect(toValue(resolvedExpressionString)).toBe('Old Name');
+
+    // Update name and expect re-resolution
+    workflowsStore.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+    vi.advanceTimersByTime(200);
+    expect(toValue(resolvedExpressionString)).toBe('New Name');
+});
 });
