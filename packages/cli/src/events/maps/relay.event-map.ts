@@ -370,6 +370,10 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+	};
+
 	// #endregion
 
 	// #region Project

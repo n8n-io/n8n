@@ -9,6 +9,7 @@ import tempfile
 import logging
 
 from src.errors import (
+    TaskCancelledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
@@ -21,6 +22,7 @@ from src.constants import (
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    SIGTERM_EXIT_CODE,
 )
 from typing import Any, Set
 
@@ -94,6 +96,9 @@ class TaskExecutor:
             if process.is_alive():
                 TaskExecutor.stop_process(process)
                 raise TaskTimeoutError(task_timeout)
+
+            if process.exitcode == SIGTERM_EXIT_CODE:
+                raise TaskCancelledError()
 
             if process.exitcode != 0:
                 assert process.exitcode is not None

@@ -66,7 +66,12 @@ describe('ActiveExecutions', () => {
 	};
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
+		activeExecutions = new ActiveExecutions(
+			mock(),
+			executionRepository,
+			concurrencyControl,
+			mock(),
+		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
 
@@ -192,7 +197,12 @@ describe('ActiveExecutions', () => {
 
 		test('Should handle error when closing response', async () => {
 			const logger = mockInstance(Logger);
-			activeExecutions = new ActiveExecutions(logger, executionRepository, concurrencyControl);
+			activeExecutions = new ActiveExecutions(
+				logger,
+				executionRepository,
+				concurrencyControl,
+				mock(),
+			);
 
 			executionData.httpResponse = mock<Response>();
 			jest.mocked(executionData.httpResponse.end).mockImplementation(() => {
