@@ -29,7 +29,7 @@ export const createSimplifyFunction =
 	};
 
 export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex = 0) {
-	let errorData = error.cause.error;
+	let errorData = error?.cause?.error;
 	const errorOptions: IDataObject = { itemIndex };
 
 	if (!errorData && error.description) {

@@ -7,6 +7,7 @@ import {
 	prepareEmbeds,
 	checkAccessToGuild,
 	setupChannelGetter,
+	parseDiscordError,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -152,5 +153,32 @@ describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
 		const getChannel = await setupChannelGetter.call(fakeExecuteFunction('botToken'), userGuilds);
 		const channelId = await getChannel(0);
 		expect(channelId).toBe('42');
+	});
+});
+
+describe('Test Discord > parseDiscordError', () => {
+	const mockExecutionFunctions = {
+		getNode: () => node,
+	} as IExecuteFunctions;
+
+	it('should handle error with undefined cause without crashing', () => {
+		const error = {
+			message: 'Network error',
+		};
+
+		expect(() => {
+			parseDiscordError.call(mockExecutionFunctions, error, 0);
+		}).not.toThrow('Cannot read properties of undefined');
+	});
+
+	it('should handle error with null cause without crashing', () => {
+		const error = {
+			message: 'API error',
+			cause: null,
+		};
+
+		expect(() => {
+			parseDiscordError.call(mockExecutionFunctions, error, 0);
+		}).not.toThrow();
 	});
 });
