@@ -7,6 +7,7 @@ export * as getAll from './getAll';
 export * as create from './create';
 export * as delete from './delete';
 export * as link from './link';
+export * as linklist from './linklist';
 export * as unlink from './unlink';
 export * as update from './update';
 export * as upload from './upload';
@@ -18,6 +19,7 @@ import * as deleteAction from './delete';
 import * as getAction from './get';
 import * as getAllAction from './getAll';
 import * as linkAction from './link';
+import * as linklistAction from './linklist';
 import * as unlinkAction from './unlink';
 import * as updateAction from './update';
 import * as uploadAction from './upload';
@@ -71,6 +73,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'get',
 					description: 'Retrieve a row',
 					action: 'Get a row',
+				},
+				{
+					name: 'Get Linked Records',
+					value: 'linklist',
+					description: 'Retrieve linked records from a row',
+					action: 'Get linked records',
 				},
 				{
 					name: 'Get Many',
@@ -246,6 +254,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...upsertAction.description,
 		...uploadAction.description,
 		...linkAction.description,
+		...linklistAction.description,
 		...unlinkAction.description,
 	],
 );
