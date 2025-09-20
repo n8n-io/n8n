@@ -1,12 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-export * as get from './get';
 export * as count from './count';
+export * as get from './get';
 export * as getAll from './getAll';
 export * as create from './create';
 export * as delete from './delete';
 export * as link from './link';
+export * as unlink from './unlink';
 export * as update from './update';
 export * as upload from './upload';
 export * as upsert from './upsert';
@@ -17,6 +18,7 @@ import * as deleteAction from './delete';
 import * as getAction from './get';
 import * as getAllAction from './getAll';
 import * as linkAction from './link';
+import * as unlinkAction from './unlink';
 import * as updateAction from './update';
 import * as uploadAction from './upload';
 import * as upsertAction from './upsert';
@@ -81,6 +83,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					value: 'link',
 					description: 'Link a row with another row',
 					action: 'Link a row with another row',
+				},
+				{
+					name: 'Unlink',
+					value: 'unlink',
+					description: 'Unlink a row from another row',
+					action: 'Unlink a row from another row',
 				},
 				{
 					name: 'Update',
@@ -238,5 +246,6 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...upsertAction.description,
 		...uploadAction.description,
 		...linkAction.description,
+		...unlinkAction.description,
 	],
 );
