@@ -7,12 +7,11 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	SourceControlPreferences,
 	SourceControlStatus,
-	SshKeyTypes,
+	KeyGeneratorType,
 } from '@/types/sourceControl.types';
 import type { IWorkflowDb } from '@/Interface';
 
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const sourceControlApiRoot = '/source-control';
 
@@ -90,7 +89,7 @@ export const disconnect = async (
 
 export const generateKeyPair = async (
 	context: IRestApiContext,
-	keyGeneratorType?: TupleToUnion<SshKeyTypes>,
+	keyGeneratorType?: KeyGeneratorType,
 ): Promise<string> => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/generate-key-pair`, {
 		keyGeneratorType,
