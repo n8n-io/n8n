@@ -50,6 +50,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						operationResult = await rows.link.execute.call(this);
 						break;
 					}
+					case 'linklist': {
+						operationResult = await rows.linklist.execute.call(this);
+						break;
+					}
 					case 'unlink': {
 						operationResult = await rows.unlink.execute.call(this);
 						break;
