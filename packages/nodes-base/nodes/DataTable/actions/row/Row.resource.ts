@@ -1,13 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as deleteRows from './delete.operation';
+import * as filter from './filter.operation';
 import * as get from './get.operation';
 import * as insert from './insert.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 
-export { insert, get, deleteRows, update, upsert };
+export { insert, get, filter, deleteRows, update, upsert };
 
 export const description: INodeProperties[] = [
 	{
@@ -32,6 +33,12 @@ export const description: INodeProperties[] = [
 				value: get.FIELD,
 				description: 'Get row(s)',
 				action: 'Get row(s)',
+			},
+			{
+				name: 'Filter',
+				value: filter.FIELD,
+				description: 'Exclude input data already present',
+				action: 'Filter input data',
 			},
 			{
 				name: 'Insert',
@@ -82,6 +89,7 @@ export const description: INodeProperties[] = [
 	...deleteRows.description,
 	...insert.description,
 	...get.description,
+	...filter.description,
 	...update.description,
 	...upsert.description,
 ];
