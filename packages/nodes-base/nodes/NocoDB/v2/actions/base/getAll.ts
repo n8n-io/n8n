@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
-import { apiMetaRequestAllItems } from '../../transport';
+import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
@@ -66,7 +66,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				endPoint = '/api/v2/meta/bases/'; // Endpoint for getting all bases without workspace (NocoDB API v2)
 			}
 
-			responseData = await apiMetaRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
+			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} catch (error) {
 			if (this.continueOnFail()) {
