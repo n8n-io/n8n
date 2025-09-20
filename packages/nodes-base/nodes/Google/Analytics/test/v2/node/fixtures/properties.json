@@ -1,0 +1,22 @@
+[
+	{
+		"name": "properties/123456789",
+		"displayName": "Example Website",
+		"propertyType": "PROPERTY_TYPE_ORDINARY",
+		"createTime": "2023-01-01T00:00:00Z",
+		"updateTime": "2023-01-15T12:00:00Z",
+		"parent": "accounts/12345",
+		"currencyCode": "USD",
+		"timeZone": "America/Los_Angeles"
+	},
+	{
+		"name": "properties/987654321",
+		"displayName": "Mobile App Analytics",
+		"propertyType": "PROPERTY_TYPE_SUBPROPERTY",
+		"createTime": "2023-01-01T00:00:00Z",
+		"updateTime": "2023-01-15T12:00:00Z",
+		"parent": "accounts/12345",
+		"currencyCode": "USD",
+		"timeZone": "America/New_York"
+	}
+]

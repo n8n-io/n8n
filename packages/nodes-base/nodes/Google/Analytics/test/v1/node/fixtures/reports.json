@@ -1,0 +1,78 @@
+{
+	"basic_report": {
+		"reports": [
+			{
+				"columnHeader": {
+					"dimensions": ["ga:date"],
+					"metricHeader": {
+						"metricHeaderEntries": [
+							{ "name": "ga:sessions", "type": "INTEGER" },
+							{ "name": "ga:users", "type": "INTEGER" }
+						]
+					}
+				},
+				"data": {
+					"rows": [
+						{
+							"dimensions": ["20230101"],
+							"metrics": [{ "values": ["100", "85"] }]
+						},
+						{
+							"dimensions": ["20230102"],
+							"metrics": [{ "values": ["150", "120"] }]
+						}
+					],
+					"totals": [{ "values": ["250", "205"] }],
+					"rowCount": 2,
+					"minimums": [{ "values": ["100", "85"] }],
+					"maximums": [{ "values": ["150", "120"] }]
+				}
+			}
+		]
+	},
+	"multi_dimension_report": {
+		"reports": [
+			{
+				"columnHeader": {
+					"dimensions": ["ga:date", "ga:deviceCategory"],
+					"metricHeader": {
+						"metricHeaderEntries": [
+							{ "name": "ga:sessions", "type": "INTEGER" },
+							{ "name": "ga:bounceRate", "type": "PERCENT" }
+						]
+					}
+				},
+				"data": {
+					"rows": [
+						{
+							"dimensions": ["20230101", "desktop"],
+							"metrics": [{ "values": ["75", "45.5"] }]
+						},
+						{
+							"dimensions": ["20230101", "mobile"],
+							"metrics": [{ "values": ["25", "52.3"] }]
+						}
+					],
+					"totals": [{ "values": ["100", "48.9"] }],
+					"rowCount": 2
+				}
+			}
+		]
+	},
+	"empty_report": {
+		"reports": [
+			{
+				"columnHeader": {
+					"dimensions": ["ga:date"],
+					"metricHeader": {
+						"metricHeaderEntries": [{ "name": "ga:sessions", "type": "INTEGER" }]
+					}
+				},
+				"data": {
+					"totals": [{ "values": ["0"] }],
+					"rowCount": 0
+				}
+			}
+		]
+	}
+}

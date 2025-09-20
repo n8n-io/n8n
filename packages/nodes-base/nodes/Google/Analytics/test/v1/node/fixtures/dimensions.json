@@ -1,0 +1,29 @@
+[
+	{
+		"id": "ga:date",
+		"attributes": {
+			"type": "DIMENSION",
+			"status": "PUBLIC",
+			"uiName": "Date",
+			"description": "The date of the session formatted as YYYYMMDD."
+		}
+	},
+	{
+		"id": "ga:deviceCategory",
+		"attributes": {
+			"type": "DIMENSION",
+			"status": "PUBLIC",
+			"uiName": "Device Category",
+			"description": "The type of device: desktop, mobile, or tablet."
+		}
+	},
+	{
+		"id": "ga:country",
+		"attributes": {
+			"type": "DIMENSION",
+			"status": "PUBLIC",
+			"uiName": "Country",
+			"description": "Users' country, derived from IP addresses."
+		}
+	}
+]
