@@ -1,9 +1,22 @@
-import { Chroma as ChromaVectorStore } from '@langchain/community/vectorstores/chroma';
+import { Chroma } from '@langchain/community/vectorstores/chroma';
+import type { Document } from '@langchain/core/documents';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import { ChromaClient } from 'chromadb';
 import { metadataFilterField } from '@utils/sharedFields';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
+
+class ExtendedChroma extends Chroma {
+	async similaritySearchVectorWithScore(
+		query: number[],
+		k: number,
+		filter?: this['FilterType'],
+	): Promise<[Document, number][]> {
+		// The new version of chromadb expects the query embedding to be an array of embeddings.
+		// @ts-ignore
+		return await super.similaritySearchVectorWithScore([query], k, filter);
+	}
+}
 
 const sharedFields: INodeProperties[] = [chromaCollectionRLC];
 
@@ -46,7 +59,7 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore>({
+export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 	meta: {
 		displayName: 'Chroma Vector Store',
 		name: 'vectorStoreChromaDB',
@@ -91,17 +104,21 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 			extractValue: true,
 		}) as string;
 
-		// const options = context.getNodeParameter('options', itemIndex, {}) as {
-		// 	chromaURL?: string;
-		// };
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			chromaURL?: string;
+			metadataFilter?: Record<string, any>;
+		};
 
 		try {
 			// Configure ChromaVectorStore with proper server URL if provided
 			const config: any = { collectionName: collection };
 
-			const vectorStore = new ChromaVectorStore(embeddings, config);
+			// Apply the ChromaDB URL if provided
+			if (options.chromaURL) {
+				config.url = options.chromaURL;
+			}
 
-			return vectorStore;
+			return ExtendedChroma.fromExistingCollection(embeddings, config);
 		} catch (error: any) {
 			throw new NodeOperationError(
 				context.getNode(),
@@ -142,7 +159,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ChromaVectorStore
 			// Configure ChromaVectorStore with proper server URL if provided
 			const config: any = { collectionName: collection };
 
-			await ChromaVectorStore.fromDocuments(documents, embeddings, config);
+			await ExtendedChroma.fromDocuments(documents, embeddings, config);
 		} catch (error: any) {
 			// Handle dimension mismatch error specifically
 			if (
