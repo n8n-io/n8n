@@ -234,8 +234,8 @@ describe('Salesforce -> GenericFunctions', () => {
 				{ Id: '001', Name: 'Item 1' },
 				{ Id: '003', Name: 'Item 3' },
 			]);
-			// '002' is removed since it was encountered, only new items remain
-			expect(result.updatedProcessedIds).toEqual(['001', '003']);
+			// All processed IDs are kept, plus new items are added
+			expect(result.updatedProcessedIds).toEqual(['002', '001', '003']);
 		});
 
 		it('should handle empty response data', () => {
@@ -271,8 +271,8 @@ describe('Salesforce -> GenericFunctions', () => {
 			const result = filterAndManageProcessedItems(responseData, processedIds);
 
 			expect(result.newItems).toEqual([]);
-			// Should only keep '003' since '001' and '002' were encountered and removed
-			expect(result.updatedProcessedIds).toEqual(['003']);
+			// All processed IDs are kept since no new items were found
+			expect(result.updatedProcessedIds).toEqual(['001', '002', '003']);
 		});
 
 		it('should handle large numbers of processed IDs efficiently', () => {
@@ -312,6 +312,73 @@ describe('Salesforce -> GenericFunctions', () => {
 			expect(result.newItems).toHaveLength(1005);
 			// Should keep all existing IDs + all new IDs (no artificial limit)
 			expect(result.updatedProcessedIds).toHaveLength(1007);
+
+			// Should keep all existing IDs + all new IDs
+			const expectedIds = processedIds.concat(responseData.map((item) => item.Id as string));
+			expect(result.updatedProcessedIds).toEqual(expectedIds);
+		});
+
+		it('should trim processed IDs to MAX_IDS limit (10000)', () => {
+			// Create 9995 existing processed IDs
+			const processedIds = Array.from({ length: 9995 }, (_, i) => `existing-${i}`);
+
+			// Add 10 new items (total would be 10005)
+			const responseData: IDataObject[] = Array.from({ length: 10 }, (_, i) => ({
+				Id: `new-${i}`,
+				Name: `New Item ${i}`,
+			}));
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toHaveLength(10);
+			// Should be trimmed to exactly 10000 items (MAX_IDS limit)
+			expect(result.updatedProcessedIds).toHaveLength(10000);
+
+			// Should keep the last 10000 items (trimmed from the beginning)
+			const expectedIds = processedIds
+				.slice(-9990)
+				.concat(responseData.map((item) => item.Id as string));
+			expect(result.updatedProcessedIds).toEqual(expectedIds);
+		});
+
+		it('should trim processed IDs when exceeding MAX_IDS with large batch', () => {
+			// Create 5000 existing processed IDs
+			const processedIds = Array.from({ length: 5000 }, (_, i) => `existing-${i}`);
+
+			// Add 6000 new items (total would be 11000, exceeding MAX_IDS)
+			const responseData: IDataObject[] = Array.from({ length: 6000 }, (_, i) => ({
+				Id: `new-${i}`,
+				Name: `New Item ${i}`,
+			}));
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toHaveLength(6000);
+			// Should be trimmed to exactly 10000 items (MAX_IDS limit)
+			expect(result.updatedProcessedIds).toHaveLength(10000);
+
+			// Should keep the last 10000 items (all new items + last 4000 existing)
+			const expectedIds = processedIds
+				.slice(-4000)
+				.concat(responseData.map((item) => item.Id as string));
+			expect(result.updatedProcessedIds).toEqual(expectedIds);
+		});
+
+		it('should not trim when under MAX_IDS limit', () => {
+			// Create 100 existing processed IDs (well under limit)
+			const processedIds = Array.from({ length: 100 }, (_, i) => `existing-${i}`);
+
+			// Add 50 new items
+			const responseData: IDataObject[] = Array.from({ length: 50 }, (_, i) => ({
+				Id: `new-${i}`,
+				Name: `New Item ${i}`,
+			}));
+
+			const result = filterAndManageProcessedItems(responseData, processedIds);
+
+			expect(result.newItems).toHaveLength(50);
+			// Should keep all items since under limit
+			expect(result.updatedProcessedIds).toHaveLength(150);
 
 			// Should keep all existing IDs + all new IDs
 			const expectedIds = processedIds.concat(responseData.map((item) => item.Id as string));
