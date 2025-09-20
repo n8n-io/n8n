@@ -167,7 +167,6 @@
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
-    "@chroma-core/default-embed": "0.1.8",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "2.6.0",

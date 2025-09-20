@@ -18,166 +18,27 @@ catalogs:
     '@langchain/openai':
       specifier: 0.6.7
       version: 0.6.7
-    '@n8n/typeorm':
-      specifier: 0.3.20-12
-      version: 0.3.20-12
-    '@n8n_io/ai-assistant-sdk':
-      specifier: 1.15.0
-      version: 1.15.0
-    '@sentry/node':
-      specifier: ^9.42.1
-      version: 9.42.1
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
-    '@types/express':
-      specifier: ^5.0.1
-      version: 5.0.1
-    '@types/jsonwebtoken':
-      specifier: ^9.0.9
-      version: 9.0.9
-    '@types/lodash':
-      specifier: 4.17.17
-      version: 4.17.17
-    '@types/uuid':
-      specifier: ^10.0.0
-      version: 10.0.0
-    '@types/xml2js':
-      specifier: ^0.4.14
-      version: 0.4.14
-    '@vitest/coverage-v8':
-      specifier: 3.2.4
-      version: 3.2.4
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
-    callsites:
-      specifier: 3.1.0
-      version: 3.1.0
-    eslint:
-      specifier: 9.29.0
-      version: 9.29.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
-    flatted:
-      specifier: 3.2.7
-      version: 3.2.7
-    http-proxy-agent:
-      specifier: 7.0.2
-      version: 7.0.2
     https-proxy-agent:
       specifier: 7.0.6
       version: 7.0.6
-    iconv-lite:
-      specifier: 0.6.3
-      version: 0.6.3
-    js-base64:
-      specifier: 3.7.2
-      version: 3.7.2
-    jsonwebtoken:
-      specifier: 9.0.2
-      version: 9.0.2
     lodash:
       specifier: 4.17.21
       version: 4.17.21
-    luxon:
-      specifier: 3.4.4
-      version: 3.4.4
-    nanoid:
-      specifier: 3.3.8
-      version: 3.3.8
-    picocolors:
-      specifier: 1.0.1
-      version: 1.0.1
-    reflect-metadata:
-      specifier: 0.2.2
-      version: 0.2.2
-    rimraf:
-      specifier: 6.0.1
-      version: 6.0.1
-    simple-git:
-      specifier: 3.28.0
-      version: 3.28.0
     tsup:
       specifier: ^8.5.0
       version: 8.5.0
-    tsx:
-      specifier: ^4.19.3
-      version: 4.19.3
-    uuid:
-      specifier: 10.0.0
-      version: 10.0.0
-    vite:
-      specifier: ^6.3.5
-      version: 6.3.5
-    vitest:
-      specifier: ^3.1.3
-      version: 3.1.3
-    vitest-mock-extended:
-      specifier: ^3.1.0
-      version: 3.1.0
-    xml2js:
-      specifier: 0.6.2
-      version: 0.6.2
-    xss:
-      specifier: 1.0.15
-      version: 1.0.15
     zod:
       specifier: 3.25.67
       version: 3.25.67
-    zod-to-json-schema:
-      specifier: 3.23.3
-      version: 3.23.3
-  frontend:
-    '@sentry/vue':
-      specifier: ^9.42.1
-      version: 9.42.1
-    '@testing-library/jest-dom':
-      specifier: ^6.6.3
-      version: 6.6.3
-    '@testing-library/user-event':
-      specifier: ^14.6.1
-      version: 14.6.1
-    '@testing-library/vue':
-      specifier: ^8.1.0
-      version: 8.1.0
-    '@vitejs/plugin-vue':
-      specifier: ^5.2.4
-      version: 5.2.4
-    '@vue/tsconfig':
-      specifier: ^0.7.0
-      version: 0.7.0
-    '@vueuse/core':
-      specifier: ^10.11.0
-      version: 10.11.0
-    element-plus:
-      specifier: 2.4.3
-      version: 2.4.3
-    highlight.js:
-      specifier: ^11.8.0
-      version: 11.11.1
-    pinia:
-      specifier: ^2.2.4
-      version: 2.2.4
-    unplugin-icons:
-      specifier: ^0.19.0
-      version: 0.19.0
-    unplugin-vue-components:
-      specifier: ^0.27.2
-      version: 0.27.3
-    vue:
-      specifier: ^3.5.13
-      version: 3.5.13
-    vue-i18n:
-      specifier: ^11.1.2
-      version: 11.1.10
-    vue-markdown-render:
-      specifier: ^2.2.1
-      version: 2.2.1
-    vue-router:
-      specifier: ^4.5.0
-      version: 4.5.0
 
 overrides:
   '@azure/identity': ^4.3.0
@@ -1039,12 +900,9 @@ importers:
       '@azure/identity':
         specifier: ^4.3.0
         version: 4.3.0
-      '@chroma-core/default-embed':
-        specifier: 0.1.8
-        version: 0.1.8
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(7a42417dea956926be3e8b241aa2bcbd))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1071,7 +929,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(fc2cda10d17f952e7383cc32c6cde2f5)
+        version: 0.3.50(cb5960b8da99043025648b21f0739a9b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1197,7 +1055,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(7a42417dea956926be3e8b241aa2bcbd)
+        version: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -4303,14 +4161,6 @@ packages:
 
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
-
-  '@chroma-core/ai-embeddings-common@0.1.7':
-    resolution: {integrity: sha512-9ToziKEz0gD+kkFKkZaeAUyGW0gRDVZcKtAmSO0d0xzFIVCkjWChND1VaHjvozRypEKzjjCqN8t1bzA+YxtBxQ==}
-    engines: {node: '>=20'}
-
-  '@chroma-core/default-embed@0.1.8':
-    resolution: {integrity: sha512-9FaSEvGhkO/JHud3SEwHn9BhqHHhcd8jBwI89hW+IBUu3peJ4O8Pq0CtQuuOulqhzhJMHP6Ya1HB4ESXwjEYdw==}
-    engines: {node: '>=20'}
 
   '@chromatic-com/storybook@3.2.5':
     resolution: {integrity: sha512-Y388ft6po5FmGKdkcqz3r2sW6aMF5DSBaatC0jvT5bI/Dh27RJw3gPTmXJcZVNjteNl6tpiP3qxZ9MswAk5luw==}
@@ -16737,7 +16587,7 @@ snapshots:
   '@ampproject/remapping@2.3.0':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
 
   '@antfu/install-pkg@0.1.1':
     dependencies:
@@ -17823,7 +17673,7 @@ snapshots:
       '@babel/traverse': 7.26.10
       '@babel/types': 7.27.6
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.7.2
@@ -17835,7 +17685,7 @@ snapshots:
       '@babel/parser': 7.27.5
       '@babel/types': 7.27.6
       '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       jsesc: 3.1.0
 
   '@babel/helper-annotate-as-pure@7.25.9':
@@ -18501,7 +18351,7 @@ snapshots:
       '@babel/parser': 7.27.5
       '@babel/template': 7.26.9
       '@babel/types': 7.27.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -18582,15 +18432,6 @@ snapshots:
       - utf-8-validate
 
   '@cfworker/json-schema@4.1.0': {}
-
-  '@chroma-core/ai-embeddings-common@0.1.7':
-    dependencies:
-      ajv: 8.17.1
-
-  '@chroma-core/default-embed@0.1.8':
-    dependencies:
-      '@chroma-core/ai-embeddings-common': 0.1.7
-      '@huggingface/transformers': 3.7.3
 
   '@chromatic-com/storybook@3.2.5(react@18.2.0)(storybook@9.1.6(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.14)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)))':
     dependencies:
@@ -19067,7 +18908,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(7a42417dea956926be3e8b241aa2bcbd))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -19076,7 +18917,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(7a42417dea956926be3e8b241aa2bcbd)
+      langchain: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
     transitivePeerDependencies:
       - encoding
 
@@ -19178,6 +19019,7 @@ snapshots:
       onnxruntime-node: 1.21.0
       onnxruntime-web: 1.22.0-dev.20250409-89f8206ba4
       sharp: 0.34.4
+    optional: true
 
   '@humanfs/core@0.19.1': {}
 
@@ -19228,7 +19070,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@img/colour@1.0.0': {}
+  '@img/colour@1.0.0':
+    optional: true
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -19433,6 +19276,7 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.2
+    optional: true
 
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
@@ -19495,14 +19339,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))
+      jest-config: 29.6.2(@types/node@20.19.14)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -19527,7 +19371,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-mock: 29.6.2
 
   '@jest/expect-utils@29.6.2':
@@ -19545,7 +19389,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@sinonjs/fake-timers': 10.0.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-message-util: 29.6.2
       jest-mock: 29.6.2
       jest-util: 29.6.2
@@ -19566,7 +19410,7 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       '@types/node': 20.19.14
       chalk: 4.1.2
       collect-v8-coverage: 1.0.1
@@ -19616,7 +19460,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@jest/types': 29.6.1
-      '@jridgewell/trace-mapping': 0.3.30
+      '@jridgewell/trace-mapping': 0.3.31
       babel-plugin-istanbul: 6.1.1
       chalk: 4.1.2
       convert-source-map: 2.0.0
@@ -19637,7 +19481,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       '@types/yargs': 17.0.19
       chalk: 4.1.2
 
@@ -19728,7 +19572,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(fc2cda10d17f952e7383cc32c6cde2f5)':
+  '@langchain/community@0.3.50(cb5960b8da99043025648b21f0739a9b)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -19740,7 +19584,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.33(7a42417dea956926be3e8b241aa2bcbd)
+      langchain: 0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -19754,7 +19598,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(7a42417dea956926be3e8b241aa2bcbd))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -20132,7 +19976,7 @@ snapshots:
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       dotenv: 16.6.1
       glob: 10.4.5
       mkdirp: 2.1.3
@@ -22297,7 +22141,7 @@ snapshots:
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
 
   '@types/temp@0.9.4':
     dependencies:
@@ -22959,9 +22803,9 @@ snapshots:
       acorn: 8.14.0
       acorn-walk: 8.3.4
 
-  acorn-import-attributes@1.9.5(acorn@8.14.0):
+  acorn-import-attributes@1.9.5(acorn@8.15.0):
     dependencies:
-      acorn: 8.14.0
+      acorn: 8.15.0
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
@@ -22994,7 +22838,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -23376,7 +23220,7 @@ snapshots:
 
   axios@1.12.0(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.1)
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -23538,7 +23382,7 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.1
       http-errors: 2.0.0
       iconv-lite: 0.6.3
       on-finished: 2.4.1
@@ -23550,7 +23394,8 @@ snapshots:
 
   boolbase@1.0.0: {}
 
-  boolean@3.2.0: {}
+  boolean@3.2.0:
+    optional: true
 
   bowser@2.11.0: {}
 
@@ -23952,7 +23797,8 @@ snapshots:
 
   chownr@2.0.0: {}
 
-  chownr@3.0.0: {}
+  chownr@3.0.0:
+    optional: true
 
   chromadb-js-bindings-darwin-arm64@1.0.6:
     optional: true
@@ -24678,6 +24524,10 @@ snapshots:
     dependencies:
       ms: 2.0.0
 
+  debug@3.2.7:
+    dependencies:
+      ms: 2.1.3
+
   debug@3.2.7(supports-color@5.5.0):
     dependencies:
       ms: 2.1.3
@@ -24702,11 +24552,19 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.1:
+    dependencies:
+      ms: 2.1.3
+
   debug@4.4.1(supports-color@8.1.1):
     dependencies:
       ms: 2.1.3
     optionalDependencies:
       supports-color: 8.1.1
+
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
 
   debug@4.4.3(supports-color@8.1.1):
     dependencies:
@@ -25258,7 +25116,8 @@ snapshots:
       esniff: 2.0.1
       next-tick: 1.1.0
 
-  es6-error@4.1.1: {}
+  es6-error@4.1.1:
+    optional: true
 
   es6-iterator@2.0.3:
     dependencies:
@@ -25710,7 +25569,7 @@ snapshots:
   expect@29.6.2:
     dependencies:
       '@jest/expect-utils': 29.6.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-get-type: 29.4.3
       jest-matcher-utils: 29.6.2
       jest-message-util: 29.6.2
@@ -25761,7 +25620,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.1
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -25947,7 +25806,7 @@ snapshots:
 
   finalhandler@2.1.0:
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.1
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -26003,7 +25862,8 @@ snapshots:
 
   flat@5.0.2: {}
 
-  flatbuffers@25.2.10: {}
+  flatbuffers@25.2.10:
+    optional: true
 
   flatted@3.2.7: {}
 
@@ -26018,6 +25878,10 @@ snapshots:
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
+
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   for-each@0.3.5:
     dependencies:
@@ -26326,6 +26190,7 @@ snapshots:
       roarr: 2.15.4
       semver: 7.7.2
       serialize-error: 7.0.1
+    optional: true
 
   global-dirs@3.0.0:
     dependencies:
@@ -26469,7 +26334,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  guid-typescript@1.0.9: {}
+  guid-typescript@1.0.9:
+    optional: true
 
   gzip-size@6.0.0:
     dependencies:
@@ -26638,7 +26504,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -26647,14 +26513,14 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -26697,14 +26563,14 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.6:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -26727,7 +26593,7 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       dotenv: 16.6.1
       extend: 3.0.2
       file-type: 16.5.4
@@ -26735,7 +26601,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -26779,8 +26645,8 @@ snapshots:
 
   import-in-the-middle@1.14.2:
     dependencies:
-      acorn: 8.14.0
-      acorn-import-attributes: 1.9.5(acorn@8.14.0)
+      acorn: 8.15.0
+      acorn-import-attributes: 1.9.5(acorn@8.15.0)
       cjs-module-lexer: 1.2.2
       module-details-from-path: 1.0.3
 
@@ -26862,7 +26728,7 @@ snapshots:
     dependencies:
       '@ioredis/commands': 1.2.0
       cluster-key-slot: 1.1.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0
@@ -27116,7 +26982,7 @@ snapshots:
 
   istanbul-lib-source-maps@4.0.1:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -27250,37 +27116,6 @@ snapshots:
     optionalDependencies:
       '@types/node': 20.19.11
       ts-node: 10.9.2(@types/node@20.19.11)(typescript@5.9.2)
-    transitivePeerDependencies:
-      - babel-plugin-macros
-      - supports-color
-
-  jest-config@29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.19.14)(typescript@5.9.2)):
-    dependencies:
-      '@babel/core': 7.26.10
-      '@jest/test-sequencer': 29.6.2
-      '@jest/types': 29.6.1
-      babel-jest: 29.6.2(@babel/core@7.26.10)
-      chalk: 4.1.2
-      ci-info: 3.8.0
-      deepmerge: 4.3.1
-      glob: 7.2.3
-      graceful-fs: 4.2.11
-      jest-circus: 29.6.2
-      jest-environment-node: 29.6.2
-      jest-get-type: 29.4.3
-      jest-regex-util: 29.4.3
-      jest-resolve: 29.6.2
-      jest-runner: 29.6.2
-      jest-util: 29.6.2
-      jest-validate: 29.6.2
-      micromatch: 4.0.8
-      parse-json: 5.2.0
-      pretty-format: 29.7.0
-      slash: 3.0.0
-      strip-json-comments: 3.1.1
-    optionalDependencies:
-      '@types/node': 20.19.11
-      ts-node: 10.9.2(@types/node@20.19.14)(typescript@5.9.2)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -27425,7 +27260,7 @@ snapshots:
   jest-mock@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       jest-util: 29.6.2
 
   jest-pnp-resolver@1.2.2(jest-resolve@29.6.2):
@@ -27534,7 +27369,7 @@ snapshots:
   jest-util@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.14
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -27855,7 +27690,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(7a42417dea956926be3e8b241aa2bcbd):
+  langchain@0.3.33(26b5bb5978b8557c32fd5d2ea983cfd2):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.7(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -28314,6 +28149,7 @@ snapshots:
   matcher@3.0.0:
     dependencies:
       escape-string-regexp: 4.0.0
+    optional: true
 
   math-intrinsics@1.1.0: {}
 
@@ -28484,6 +28320,7 @@ snapshots:
   minizlib@3.0.2:
     dependencies:
       minipass: 7.1.2
+    optional: true
 
   miragejs@0.1.48:
     dependencies:
@@ -28962,7 +28799,7 @@ snapshots:
     dependencies:
       '@tediousjs/connection-string': 0.5.0
       commander: 11.1.0
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       rfdc: 1.3.0
       tarn: 3.0.2
       tedious: 16.7.1
@@ -29407,15 +29244,18 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  onnxruntime-common@1.21.0: {}
+  onnxruntime-common@1.21.0:
+    optional: true
 
-  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4: {}
+  onnxruntime-common@1.22.0-dev.20250409-89f8206ba4:
+    optional: true
 
   onnxruntime-node@1.21.0:
     dependencies:
       global-agent: 3.0.0
       onnxruntime-common: 1.21.0
       tar: 7.4.3
+    optional: true
 
   onnxruntime-web@1.22.0-dev.20250409-89f8206ba4:
     dependencies:
@@ -29425,6 +29265,7 @@ snapshots:
       onnxruntime-common: 1.22.0-dev.20250409-89f8206ba4
       platform: 1.3.6
       protobufjs: 7.4.0
+    optional: true
 
   ono@7.1.3:
     dependencies:
@@ -29693,7 +29534,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -29836,7 +29677,8 @@ snapshots:
       exsolve: 1.0.4
       pathe: 2.0.3
 
-  platform@1.3.6: {}
+  platform@1.3.6:
+    optional: true
 
   playwright-core@1.54.2: {}
 
@@ -30608,7 +30450,7 @@ snapshots:
 
   require-in-the-middle@7.4.0:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       module-details-from-path: 1.0.3
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -30648,7 +30490,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.3)
 
@@ -30717,6 +30559,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       semver-compare: 1.0.0
       sprintf-js: 1.1.3
+    optional: true
 
   rollup@4.50.2:
     dependencies:
@@ -30749,7 +30592,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.1
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -30873,13 +30716,14 @@ snapshots:
     dependencies:
       parseley: 0.12.1
 
-  semver-compare@1.0.0: {}
+  semver-compare@1.0.0:
+    optional: true
 
   semver@7.7.2: {}
 
   send@1.2.0:
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.1
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -30904,6 +30748,7 @@ snapshots:
   serialize-error@7.0.1:
     dependencies:
       type-fest: 0.13.1
+    optional: true
 
   serialize-javascript@6.0.2:
     dependencies:
@@ -31009,6 +30854,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.4
       '@img/sharp-win32-ia32': 0.34.4
       '@img/sharp-win32-x64': 0.34.4
+    optional: true
 
   shebang-command@1.2.0:
     dependencies:
@@ -31214,7 +31060,7 @@ snapshots:
   socks-proxy-agent@6.2.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
@@ -31868,6 +31714,7 @@ snapshots:
       minizlib: 3.0.2
       mkdirp: 3.0.1
       yallist: 5.0.0
+    optional: true
 
   tarn@3.0.2: {}
 
@@ -32185,7 +32032,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 20.19.14
-      acorn: 8.14.0
+      acorn: 8.15.0
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -32240,7 +32087,7 @@ snapshots:
       cac: 6.7.14
       chokidar: 4.0.3
       consola: 3.4.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       esbuild: 0.25.9
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
@@ -32321,7 +32168,8 @@ snapshots:
 
   type-detect@4.0.8: {}
 
-  type-fest@0.13.1: {}
+  type-fest@0.13.1:
+    optional: true
 
   type-fest@0.20.2: {}
 
@@ -33260,7 +33108,8 @@ snapshots:
 
   yallist@4.0.0: {}
 
-  yallist@5.0.0: {}
+  yallist@5.0.0:
+    optional: true
 
   yaml-ast-parser@0.0.43: {}
 
