@@ -251,6 +251,14 @@ export const whereFixedCollection: INodeProperties = {
 							value: '!=',
 						},
 						{
+							name: 'In',
+							value: 'IN',
+						},
+						{
+							name: 'Not In',
+							value: 'NOT IN',
+						},
+						{
 							name: 'Like',
 							value: 'LIKE',
 						},
