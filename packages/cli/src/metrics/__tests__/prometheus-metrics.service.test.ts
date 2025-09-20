@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -30,6 +30,7 @@ describe('PrometheusMetricsService', () => {
 	let eventService: EventService;
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
+	let licenseMetricsRepository: LicenseMetricsRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -65,6 +66,7 @@ describe('PrometheusMetricsService', () => {
 		eventService = mock<EventService>();
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
+		licenseMetricsRepository = mock<LicenseMetricsRepository>();
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -73,6 +75,7 @@ describe('PrometheusMetricsService', () => {
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			licenseMetricsRepository,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -95,6 +98,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 			);
 

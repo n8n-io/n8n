@@ -65,6 +65,14 @@ class PrometheusMetricsConfig {
 	/** Whether to include a label for workflow name on workflow metrics. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
+
+	/** Whether to include workflow execution statistics as metrics. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
+	includeWorkflowStatistics: boolean = false;
+
+	/** How often (in seconds) to update workflow statistics metrics. */
+	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
+	workflowStatisticsInterval: number = 300;
 }
 
 @Config
