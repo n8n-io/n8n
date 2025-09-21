@@ -21,10 +21,19 @@ type WorkflowImportResult = {
 	webhookId?: string;
 };
 
+export type ImportableWorkflow = Omit<
+	IWorkflowBase,
+	'id' | 'createdAt' | 'updatedAt' | 'isArchived'
+> & {
+	createdAt?: Date;
+	updatedAt?: Date;
+	isArchived?: boolean;
+};
+
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: IWorkflowBase) {
+	async createWorkflow(workflow: ImportableWorkflow) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -52,7 +61,7 @@ export class WorkflowApiHelper {
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
 	private makeWorkflowUnique(
-		workflow: IWorkflowBase,
+		workflow: ImportableWorkflow,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
 		const idLength = options?.idLength ?? 12;
@@ -90,7 +99,7 @@ export class WorkflowApiHelper {
 	 * Returns detailed information about what was created.
 	 */
 	async createWorkflowFromDefinition(
-		workflow: IWorkflowBase,
+		workflow: ImportableWorkflow,
 		options?: { webhookPrefix?: string; idLength?: number },
 	): Promise<WorkflowImportResult> {
 		const { webhookPath, webhookId } = this.makeWorkflowUnique(workflow, options);
@@ -110,14 +119,26 @@ export class WorkflowApiHelper {
 	 * The workflow will be created with its original active state from the JSON file.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
-	async importWorkflow(
+	async importWorkflowFromFile(
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition: IWorkflowBase = JSON.parse(
+		const workflowDefinition: ImportableWorkflow = JSON.parse(
 			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
 		);
 
+		return await this.importWorkflowFromDefinition(workflowDefinition, options);
+	}
+
+	/**
+	 * Import the given workflow definition and make it unique for testing.
+	 * The workflow will be created with its original active state from the definition.
+	 * Returns detailed information about what was imported, including webhook info if present.
+	 */
+	async importWorkflowFromDefinition(
+		workflowDefinition: ImportableWorkflow,
+		options?: { webhookPrefix?: string; idLength?: number },
+	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
 		// Ensure the workflow is in the correct active state as specified in the JSON
