@@ -591,22 +591,32 @@ export class Markdown implements INodeType {
 
 				if (mode === 'markdownToHtml') {
 					let markdown = this.getNodeParameter('markdown', i) as string;
-					// changes 2 space indentation to 4 space for lists and sublists
-					const lines = markdown.split('\n');
+										const lines = markdown.split('\n');
+					let inCodeBlock = false;
+
 					const normalizedLines = lines.map(line => {
-						const match = line.match(/^(\s*)([-*+]|[0-9]+\.)\s+/);
-						if (!match) return line;
+						// Detect fenced code blocks to skip normalization inside them
+						if (/^```/.test(line)) {
+							inCodeBlock = !inCodeBlock;
+							return line;
+						}
+						if (inCodeBlock) return line;
+
+						// Match list items: leading whitespace + marker + at least one space
+						const match = line.match(/^(\s*)([-*+]|[0-9]+[.)])(\s+)(.*)$/);
+						if (!match) return line; // not a list item
 
 						const leadingSpaces = match[1].length;
-						const listMarker = match[2];
+						const marker = match[2];
+						const content = match[4];
 
-						// Calculate nesting level based on 2-space indent
+						// Determine nesting level based on 2-space indent
 						const level = Math.floor(leadingSpaces / 2);
 
 						// Normalize to 4 spaces per level
 						const normalizedIndent = '    '.repeat(level);
 
-						return normalizedIndent + listMarker + line.slice(match[0].length);
+						return normalizedIndent + marker + ' ' + content;
 					});
 
 					const normalizedMarkdown = normalizedLines.join('\n');
