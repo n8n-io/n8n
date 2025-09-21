@@ -7,7 +7,6 @@ import type {
 	IAstraDbCollection,
 	IAstraDbInsertManyOptions,
 	IAstraDbUpdateOptions,
-	IAstraDbVectorDocument,
 	IAstraDbFindAndDoSomethingOptions,
 	IAstraDbInsertResult,
 	IAstraDbUpdateResult,
@@ -73,34 +72,6 @@ export function validateKeyspaceCollectionName(node: INode, name: string): void 
 export function validateQuery(node: INode, query: any): void {
 	if (typeof query !== 'object' || query === null) {
 		throw new NodeOperationError(node, 'Query must be a valid JSON object');
-	}
-}
-
-/**
- * Validate document for vector operations
- */
-export function validateVectorDocument(
-	node: INode,
-	document: IAstraDbVectorDocument,
-	operation: 'vector' | 'vectorize',
-): void {
-	if (operation === 'vector') {
-		if (!document.$vector || !Array.isArray(document.$vector)) {
-			throw new NodeOperationError(
-				node,
-				'Document must include $vector field with array of numbers',
-			);
-		}
-		if (document.$vector.length === 0) {
-			throw new NodeOperationError(node, 'Vector array cannot be empty');
-		}
-	} else if (operation === 'vectorize') {
-		if (!document.$vectorize || typeof document.$vectorize !== 'string') {
-			throw new NodeOperationError(node, 'Document must include $vectorize field with text string');
-		}
-		if (document.$vectorize.trim().length === 0) {
-			throw new NodeOperationError(node, 'Vectorize text cannot be empty');
-		}
 	}
 }
 
@@ -381,7 +352,7 @@ export async function findAndUpdateDocument(
 			projection: options?.projection,
 			timeout: options?.timeout || 60000,
 		});
-		Logger.info(`Found and updated document: ${JSON.stringify(result)}`);
+		Logger.debug(`Found and updated document: ${JSON.stringify(result)}`);
 		return {
 			document: result?.document,
 			matchedCount: result?.matchedCount || 0,
@@ -411,7 +382,7 @@ export async function findAndReplaceDocument(
 			projection: options?.projection,
 			timeout: options?.timeout || 60000,
 		});
-		Logger.info(`Found and replaced document: ${JSON.stringify(result)}`);
+		Logger.debug(`Found and replaced document: ${JSON.stringify(result)}`);
 		return {
 			document: result?.document,
 			matchedCount: result?.matchedCount || 0,
@@ -438,7 +409,7 @@ export async function findAndDeleteDocument(
 			sort: options?.sort,
 			timeout: options?.timeout || 60000,
 		});
-		Logger.info(`Found and deleted document: ${JSON.stringify(result)}`);
+		Logger.debug(`Found and deleted document: ${JSON.stringify(result)}`);
 		return {
 			document: result?.document,
 			matchedCount: result?.matchedCount || 0,

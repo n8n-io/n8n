@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, LoggerProxy as Logger } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	connectAstraClient,
@@ -110,7 +110,6 @@ export class AstraDb implements INodeType {
 			// Create db object with keyspace and token options
 			const db = client.db(validatedCredentials.endpoint, {
 				keyspace: keyspace,
-				token: validatedCredentials.token,
 			});
 
 			// Create collection object
@@ -240,9 +239,6 @@ export class AstraDb implements INodeType {
 			}
 
 			if (operation === 'findMany') {
-				Logger.debug(
-					`Finding documents in keyspace '${keyspace}' and collection '${collection}' with itemsLength: ${itemsLength}`,
-				);
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const filter = JSON.parse(this.getNodeParameter('filter', i) as string);

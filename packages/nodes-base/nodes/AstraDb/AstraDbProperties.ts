@@ -11,69 +11,67 @@ export const nodeProperties: INodeProperties[] = [
 				name: 'Insert One',
 				value: 'insertOne',
 				description:
-					'Insert single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html" target="_blank">documentation</a>',
+					'Insert single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Insert Many',
 				value: 'insertMany',
 				description:
-					'Insert multiple documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html" target="_blank">documentation</a>',
+					'Insert multiple documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
-			//			{ name: 'Insert With Vector Embeddings', value: 'insertWithVectorEmbeddings', description: 'Insert document with pre-generated vector embeddings. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html#insert-a-document-with-vector-embeddings" target="_blank">documentation</a>' },
-			//			{ name: 'Insert With Vectorize', value: 'insertWithVectorize', description: 'Insert document with automatic vector embedding generation. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html#insert-a-document-and-generate-vector-embeddings" target="_blank">documentation</a>' },
 			{
 				name: 'Update Many',
 				value: 'updateMany',
 				description:
-					'Update documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html" target="_blank">documentation</a>',
+					'Update documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description:
-					'Delete documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/delete-many.html" target="_blank">documentation</a>',
+					'Delete documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/delete-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Find',
 				value: 'findMany',
 				description:
-					'Find documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html" target="_blank">documentation</a>',
+					'Find documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Find One',
 				value: 'findOne',
 				description:
-					'Find single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one.html" target="_blank">documentation</a>',
+					'Find single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Find And Update Document',
 				value: 'findAndUpdate',
 				description:
-					'Find and update single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-update.html" target="_blank">documentation</a>',
+					'Find and update single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-update.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Find And Replace Document',
 				value: 'findAndReplace',
 				description:
-					'Find and replace single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-replace.html" target="_blank">documentation</a>',
+					'Find and replace single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-replace.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Find And Delete Document',
 				value: 'findAndDelete',
 				description:
-					'Find and delete single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-delete.html" target="_blank">documentation</a>',
+					'Find and delete single document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-delete.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				name: 'Estimated Document Count',
 				value: 'estimatedDocumentCount',
 				description:
-					'Estimated document count. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/count-estimate.html" target="_blank">documentation</a>',
+					'Estimated document count. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/count-estimate.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 		],
 		default: 'findMany',
 		required: true,
 		description:
-			'Collection operation to perform. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/collections.html" target="_blank">documentation</a>',
+			'Collection operation to perform. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Keyspace field
 	{
@@ -83,7 +81,7 @@ export const nodeProperties: INodeProperties[] = [
 		required: true,
 		default: 'default_keyspace',
 		description:
-			'Astra DB keyspace name. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/databases/manage-keyspaces.html" target="_blank">documentation</a>',
+			'Astra DB keyspace name. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/databases/manage-keyspaces.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Collection field
 	{
@@ -93,7 +91,7 @@ export const nodeProperties: INodeProperties[] = [
 		required: true,
 		default: '',
 		description:
-			'Astra DB collection name. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/collections.html" target="_blank">documentation</a>',
+			'Astra DB collection name. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Insert One fields
 	{
@@ -108,7 +106,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Document to insert. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html" target="_blank">documentation</a>',
+			'Document to insert. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-one.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Insert Many fields
 	{
@@ -123,7 +121,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '[]',
 		required: true,
 		description:
-			'Array of documents to insert. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html" target="_blank">documentation</a>',
+			'Array of documents to insert. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Insert Many options
 	{
@@ -136,7 +134,7 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/insert-many.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		placeholder: 'Add option',
 		default: {},
 		options: [
@@ -170,34 +168,6 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		],
 	},
-	// Insert With Vector Embeddings fields
-	{
-		displayName: 'Document',
-		name: 'document',
-		type: 'json',
-		displayOptions: {
-			show: {
-				operation: ['insertWithVectorEmbeddings'],
-			},
-		},
-		default: '{}',
-		required: true,
-		description: 'Document to insert (must include $vector field with array of numbers)',
-	},
-	// Insert With Vectorize fields
-	{
-		displayName: 'Document',
-		name: 'document',
-		type: 'json',
-		displayOptions: {
-			show: {
-				operation: ['insertWithVectorize'],
-			},
-		},
-		default: '{}',
-		required: true,
-		description: 'Document to insert (must include $vectorize field with text string)',
-	},
 	// Update fields
 	{
 		displayName: 'Filter',
@@ -211,7 +181,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find documents to update. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find documents to update. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Update',
@@ -225,7 +195,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Update operations to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html" target="_blank">documentation</a>',
+			'Update operations to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Options',
@@ -239,7 +209,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add option',
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/update-many.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		options: [
 			{
 				displayName: 'Upsert',
@@ -270,7 +240,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find documents to delete. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find documents to delete. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	// Find fields
 	{
@@ -285,7 +255,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find documents. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Options',
@@ -305,7 +275,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'number',
 				default: 0,
 				description:
-					'Maximum number of documents to return (0 for unlimited). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html#limit-the-number-of-documents-returned" target="_blank">documentation</a>',
+					'Maximum number of documents to return (0 for unlimited). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html#limit-the-number-of-documents-returned" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Skip',
@@ -313,7 +283,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'number',
 				default: 0,
 				description:
-					'Number of documents to skip. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html#skip-documents" target="_blank">documentation</a>',
+					'Number of documents to skip. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-many.html#skip-documents" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Sort',
@@ -321,7 +291,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank">documentation</a>',
+					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Projection',
@@ -329,7 +299,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank">documentation</a>',
+					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 		],
 	},
@@ -346,7 +316,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Options',
@@ -389,7 +359,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Update',
@@ -403,7 +373,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Update operations to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/update-operator-collections.html" target="_blank">documentation</a>',
+			'Update operations to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/update-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Options',
@@ -415,7 +385,7 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-and-update.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-and-update.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		placeholder: 'Add option',
 		default: {},
 		options: [
@@ -450,7 +420,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank">documentation</a>',
+					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 		],
 	},
@@ -467,7 +437,7 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Replacement',
@@ -487,7 +457,7 @@ export const nodeProperties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-replace.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-replace.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		displayOptions: {
 			show: {
 				operation: ['findAndReplace'],
@@ -520,7 +490,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank">documentation</a>',
+					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Projection',
@@ -528,7 +498,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank">documentation</a>',
+					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Timeout (ms)',
@@ -552,14 +522,14 @@ export const nodeProperties: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank">documentation</a>',
+			'Filter criteria to find the document. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/filter-operator-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-delete.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/find-one-and-delete.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		displayOptions: {
 			show: {
 				operation: ['findAndDelete'],
@@ -574,7 +544,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank">documentation</a>',
+					'Sort criteria (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/sort-documents.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Projection',
@@ -582,7 +552,7 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank">documentation</a>',
+					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 			},
 			{
 				displayName: 'Timeout (ms)',
@@ -599,7 +569,7 @@ export const nodeProperties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		description:
-			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/count-estimate.html#ts-options" target="_blank">documentation</a>',
+			'Options to apply. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/document-methods/count-estimate.html#ts-options" target="_blank" rel="noopener noreferrer">documentation</a>',
 		displayOptions: {
 			show: {
 				operation: ['estimatedDocumentCount'],

@@ -9,7 +9,6 @@ import {
 	formatAstraResponse,
 	parseAstraOptions,
 } from '../GenericFunctions';
-import type { IAstraDbVectorDocument } from '../astraDb.types';
 
 // Mock node for testing
 const mockNode = { name: 'Astra DB Test' } as any;
@@ -91,44 +90,6 @@ describe('Astra DB Generic Functions', () => {
 			expect(() => validateQuery(mockNode, 123)).toThrow(NodeOperationError);
 		});
 	});
-
-	/*
-	describe('validateVectorDocument', () => {
-		it('should validate vector documents', () => {
-			const vectorDoc: IAstraDbVectorDocument = {
-				name: 'test',
-				$vector: [0.1, 0.2, 0.3],
-			};
-
-			expect(() => validateVectorDocument(mockNode, vectorDoc, 'vector')).not.toThrow();
-		});
-
-		it('should validate vectorize documents', () => {
-			const vectorizeDoc: IAstraDbVectorDocument = {
-				name: 'test',
-				$vectorize: 'test text',
-			};
-
-			expect(() => validateVectorDocument(mockNode, vectorizeDoc, 'vectorize')).not.toThrow();
-		});
-
-		it('should reject invalid vector documents', () => {
-			const invalidDoc: IAstraDbVectorDocument = {
-				name: 'test',
-			};
-
-			expect(() => validateVectorDocument(mockNode, invalidDoc, 'vector')).toThrow(NodeOperationError);
-		});
-
-		it('should reject invalid vectorize documents', () => {
-			const invalidDoc: IAstraDbVectorDocument = {
-				name: 'test',
-			};
-
-			expect(() => validateVectorDocument(mockNode, invalidDoc, 'vectorize')).toThrow(NodeOperationError);
-		});
-	});
-*/
 
 	describe('handleAstraError', () => {
 		it('should handle authentication errors', () => {

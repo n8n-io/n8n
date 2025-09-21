@@ -1,4 +1,4 @@
-import { Db, Collection } from '@datastax/astra-db-ts';
+import type { Db, Collection } from '@datastax/astra-db-ts';
 
 /**
  * Type alias for Astra DB database object
@@ -67,17 +67,6 @@ export interface IAstraDbInsertManyOptions {
 	generalMethodTimeoutMs?: number;
 	requestTimeoutMs?: number;
 	timeout?: number;
-}
-
-/**
- * Document interface for vector operations
- */
-export interface IAstraDbVectorDocument {
-	[key: string]: any;
-	$vector?: number[];
-	$vectorize?: string;
-	$lexical?: string;
-	$hybrid?: string;
 }
 
 /**

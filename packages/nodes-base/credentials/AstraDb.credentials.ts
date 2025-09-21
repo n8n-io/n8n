@@ -16,7 +16,7 @@ export class AstraDb implements ICredentialType {
 			default: '',
 			placeholder: 'https://your-database-id-region.apps.astra.datastax.com',
 			description:
-				'Your Astra DB endpoint URL. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/administration/manage-application-tokens.html" target="_blank">documentation</a>',
+				'Your Astra DB endpoint URL. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/administration/manage-application-tokens.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 		},
 		{
 			displayName: 'Token',
@@ -26,7 +26,7 @@ export class AstraDb implements ICredentialType {
 			required: true,
 			default: '',
 			description:
-				'Your Astra DB application token. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/administration/manage-application-tokens.html" target="_blank">documentation</a>',
+				'Your Astra DB application token. Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/administration/manage-application-tokens.html" target="_blank" rel="noopener noreferrer">documentation</a>',
 		},
 	];
 }
