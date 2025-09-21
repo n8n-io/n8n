@@ -16,7 +16,7 @@ export async function sendGridApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const region = this.getNodeParameter('region', 'us') as string;
+	const region = this.getNodeParameter('region', 0, 'us') as string;
 	const host = region === 'us' ? 'api.sendgrid.com/v3' : 'api.eu.sendgrid.com/v3';
 
 	const options: IRequestOptions = {
