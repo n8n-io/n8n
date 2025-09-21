@@ -23,7 +23,7 @@ export class SendGrid implements INodeType {
 		name: 'sendGrid',
 		icon: 'file:sendGrid.svg',
 		group: ['transform'],
-		version: 1,
+		version: 2,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		description: 'Consume SendGrid API',
 		defaults: {
@@ -41,6 +41,23 @@ export class SendGrid implements INodeType {
 		properties: [
 			// Node properties which the user gets displayed and
 			// can change on the node.
+			{
+				displayName: 'Region',
+				name: 'region',
+				type: 'options',
+				options: [
+					{
+						name: 'US',
+						value: 'us',
+					},
+					{
+						name: 'EU',
+						value: 'eu',
+					},
+				],
+				default: 'us',
+				description: 'The regional API to use',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
