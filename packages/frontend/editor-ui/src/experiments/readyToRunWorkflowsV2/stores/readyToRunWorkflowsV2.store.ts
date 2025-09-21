@@ -10,7 +10,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';
-import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -125,15 +125,27 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 					: READY_TO_RUN_WORKFLOW_V1;
 
 			try {
-				// Create the workflow with parentFolderId if provided
-				const workflowToCreate: WorkflowDataCreate = {
+				let workflowToCreate: WorkflowDataCreate = {
 					...workflowTemplate,
 					parentFolderId,
 				};
 
+				const credentialId = claimedCredentialIdRef.value;
+				if (credentialId && workflowToCreate.nodes) {
+					const clonedWorkflow = deepCopy(workflowToCreate);
+					const openAiNode = clonedWorkflow.nodes?.find((node) => node.name === 'OpenAI Model');
+					if (openAiNode) {
+						openAiNode.credentials ??= {};
+						openAiNode.credentials[OPEN_AI_API_CREDENTIAL_TYPE] = {
+							id: credentialId,
+							name: '',
+						};
+					}
+					workflowToCreate = clonedWorkflow;
+				}
+
 				const createdWorkflow = await workflowsStore.createNewWorkflow(workflowToCreate);
 
-				// Navigate to the created workflow
 				await router.push({
 					name: VIEWS.WORKFLOW,
 					params: { name: createdWorkflow.id },
@@ -152,7 +164,6 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 			projectId?: string,
 		) => {
 			await claimFreeAiCredits(projectId);
-			// Use the new createAndOpenAiWorkflow method to create and save the workflow
 			await createAndOpenAiWorkflow(source, parentFolderId);
 		};
 
