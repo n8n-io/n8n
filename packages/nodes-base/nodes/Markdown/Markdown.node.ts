@@ -591,8 +591,11 @@ export class Markdown implements INodeType {
 
 				if (mode === 'markdownToHtml') {
 					let markdown = this.getNodeParameter('markdown', i) as string;
-					// fixed markdown indentation to get expected results for lists and sublists
-					markdown = markdown.replaceAll('  ', '    ');
+					// only changes 2 space indentation for lists and sublists for expected results
+					markdown = markdown.replace(/^(\s*)- /gm, (match, leadingSpaces: string) => {
+    				const normalizedSpaces = leadingSpaces.replace(/ {2}/g, '    ');
+    				return normalizedSpaces + '- ';
+					});
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 					const options = this.getNodeParameter('options', i);
 
