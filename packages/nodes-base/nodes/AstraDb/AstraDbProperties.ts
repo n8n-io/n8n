@@ -452,14 +452,6 @@ export const nodeProperties: INodeProperties[] = [
 				description:
 					'Fields to include/exclude (JSON format). Refer to <a href="https://docs.datastax.com/en/astra-db-serverless/api-reference/projections-collections.html" target="_blank">documentation</a>',
 			},
-			{
-				displayName: 'Include Result Metadata',
-				name: 'includeResultMetadata',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to include details about the success of the operation in the response',
-			},
 		],
 	},
 	// Find And Replace fields
@@ -545,14 +537,6 @@ export const nodeProperties: INodeProperties[] = [
 				default: 60000,
 				description: 'Timeout in milliseconds',
 			},
-			{
-				displayName: 'Include Result Metadata',
-				name: 'includeResultMetadata',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to include details about the success of the operation in the response',
-			},
 		],
 	},
 	// Find And Delete fields
@@ -606,14 +590,6 @@ export const nodeProperties: INodeProperties[] = [
 				type: 'number',
 				default: 60000,
 				description: 'Timeout in milliseconds',
-			},
-			{
-				displayName: 'Include Result Metadata',
-				name: 'includeResultMetadata',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to include details about the success of the operation in the response',
 			},
 		],
 	},

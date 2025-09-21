@@ -114,8 +114,10 @@ export async function astraDBCollectionsSearch(this: ILoadOptionsFunctions) {
 
 	const client = await createAstraDBClient(credentials as AstraDBCredential);
 
-	const db = client.db(credentials.endpoint);
-	const collections = await db.listCollections();
+	const db = client.db(credentials.endpoint as string);
+	const collections = await db.listCollections({
+		keyspace: credentials.keyspace as string,
+	});
 
 	const results = collections.map((collection: { name: string }) => ({
 		name: collection.name,

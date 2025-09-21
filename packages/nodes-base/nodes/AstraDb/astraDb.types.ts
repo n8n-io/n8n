@@ -22,7 +22,6 @@ export interface IAstraDbCredentials {
  * Main operation interface for Astra DB operations
  */
 export interface IAstraDbOperation {
-	//| 'insertWithVectorEmbeddings' | 'insertWithVectorize'
 	operation:
 		| 'insertOne'
 		| 'insertMany'
@@ -31,7 +30,9 @@ export interface IAstraDbOperation {
 		| 'findMany'
 		| 'findOne'
 		| 'findAndUpdate'
-		| 'findAndReplace';
+		| 'findAndReplace'
+		| 'findAndDelete'
+		| 'estimatedDocumentCount';
 	collection: string;
 	query?: any;
 	data?: any;

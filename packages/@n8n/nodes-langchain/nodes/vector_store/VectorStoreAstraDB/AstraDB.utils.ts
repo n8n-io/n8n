@@ -26,7 +26,9 @@ export async function getCollection(
 	collectionName: string,
 ) {
 	try {
-		const db = client.db(endpoint);
+		const db = client.db(endpoint, {
+			keyspace: keyspace,
+		});
 		const collection = db.collection(collectionName);
 		return collection;
 	} catch (error) {
@@ -44,7 +46,9 @@ export async function ensureCollectionExists(
 	dimension?: number,
 ) {
 	try {
-		const db = client.db(endpoint);
+		const db = client.db(endpoint, {
+			keyspace: keyspace,
+		});
 
 		// Check if collection exists
 		const collections = await db.listCollections();

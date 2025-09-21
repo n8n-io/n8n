@@ -49,7 +49,6 @@ export function validateAstraCredentials(
 	return {
 		endpoint: credentials.endpoint.trim(),
 		token: credentials.token.trim(),
-		//keyspace: credentials.keyspace ? credentials.keyspace.toString().trim() : undefined,
 	};
 }
 
@@ -186,10 +185,7 @@ export function parseAstraOptions(node: INode, options: any): any {
 		parsedOptions.returnDocument = options.returnDocument;
 	}
 	if (options.timeout !== undefined) {
-		parsedOptions.timeout = parseInt(options.timeout, 60000);
-	}
-	if (options.includeResultMetadata !== undefined) {
-		parsedOptions.includeResultMetadata = Boolean(options.includeResultMetadata);
+		parsedOptions.timeout = parseInt(options.timeout);
 	}
 
 	return parsedOptions;
@@ -384,7 +380,6 @@ export async function findAndUpdateDocument(
 			sort: options?.sort,
 			projection: options?.projection,
 			timeout: options?.timeout || 60000,
-			//includeResultMetadata: options?.includeResultMetadata || false,
 		});
 		Logger.info(`Found and updated document: ${JSON.stringify(result)}`);
 		return {
@@ -415,7 +410,6 @@ export async function findAndReplaceDocument(
 			sort: options?.sort,
 			projection: options?.projection,
 			timeout: options?.timeout || 60000,
-			//includeResultMetadata: options?.includeResultMetadata || false,
 		});
 		Logger.info(`Found and replaced document: ${JSON.stringify(result)}`);
 		return {
@@ -443,7 +437,6 @@ export async function findAndDeleteDocument(
 			projection: options?.projection,
 			sort: options?.sort,
 			timeout: options?.timeout || 60000,
-			//includeResultMetadata: options?.includeResultMetadata || false,
 		});
 		Logger.info(`Found and deleted document: ${JSON.stringify(result)}`);
 		return {

@@ -18,8 +18,6 @@ import {
 	validateQuery,
 	insertOneDocument,
 	insertManyDocuments,
-	// insertWithVectorEmbeddings,
-	// insertWithVectorize,
 	updateDocuments,
 	deleteDocuments,
 	findDocuments,
@@ -72,9 +70,11 @@ export class AstraDb implements INodeType {
 					const client = await connectAstraClient(validatedCredentials);
 
 					// Test connection by getting database info
-					client.db(validatedCredentials.endpoint, {
-						token: validatedCredentials.token,
-					});
+					client
+						.db(validatedCredentials.endpoint, {
+							token: validatedCredentials.token,
+						})
+						.listCollections({ nameOnly: true });
 
 					return {
 						status: 'OK',
@@ -175,52 +175,6 @@ export class AstraDb implements INodeType {
 					}
 				}
 			}
-
-			/*if (operation === 'insertWithVectorEmbeddings') {
-				for (let i = 0; i < itemsLength; i++) {
-					try {
-						const document = JSON.parse(this.getNodeParameter('document', i) as string);
-						const result = await insertWithVectorEmbeddings(this.getNode(), collectionObj, document);
-						
-						returnData.push({
-							json: formatAstraResponse(result, 'insertWithVectorEmbeddings'),
-							pairedItem: fallbackPairedItems[i],
-						});
-					} catch (error) {
-						if (this.continueOnFail()) {
-							returnData.push({
-								json: { error: (error as JsonObject).message },
-								pairedItem: fallbackPairedItems[i],
-							});
-							continue;
-						}
-						throw error;
-					}
-				}
-			}
-
-			if (operation === 'insertWithVectorize') {
-				for (let i = 0; i < itemsLength; i++) {
-					try {
-						const document = JSON.parse(this.getNodeParameter('document', i) as string);
-						const result = await insertWithVectorize(this.getNode(), collectionObj, document);
-						
-						returnData.push({
-							json: formatAstraResponse(result, 'insertWithVectorize'),
-							pairedItem: fallbackPairedItems[i],
-						});
-					} catch (error) {
-						if (this.continueOnFail()) {
-							returnData.push({
-								json: { error: (error as JsonObject).message },
-								pairedItem: fallbackPairedItems[i],
-							});
-							continue;
-						}
-						throw error;
-					}
-				}
-			}*/
 
 			if (operation === 'updateMany') {
 				for (let i = 0; i < itemsLength; i++) {
@@ -356,8 +310,6 @@ export class AstraDb implements INodeType {
 					try {
 						const filter = JSON.parse(this.getNodeParameter('filter', i) as string);
 						const update = JSON.parse(this.getNodeParameter('update', i) as string);
-						// const upsert = this.getNodeParameter('upsert', i, false) as boolean;
-						// const returnDocument = this.getNodeParameter('returnDocument', i, 'after') as 'before' | 'after';
 						const options = parseAstraOptions(
 							this.getNode(),
 							this.getNodeParameter('options', i, {}),
@@ -366,18 +318,12 @@ export class AstraDb implements INodeType {
 						validateQuery(this.getNode(), filter);
 						validateQuery(this.getNode(), update);
 
-						// const findAndUpdateOptions = {
-						// 	upsert,
-						// 	returnDocument,
-						// 	...options,
-						// };
-
 						const result = await findAndUpdateDocument(
 							this.getNode(),
 							collectionObj,
 							filter,
 							update,
-							options /*findAndUpdateOptions*/,
+							options,
 						);
 
 						returnData.push({
@@ -402,8 +348,6 @@ export class AstraDb implements INodeType {
 					try {
 						const filter = JSON.parse(this.getNodeParameter('filter', i) as string);
 						const replacement = JSON.parse(this.getNodeParameter('replacement', i) as string);
-						// const upsert = this.getNodeParameter('upsert', i, false) as boolean;
-						// const returnDocument = this.getNodeParameter('returnDocument', i, 'after') as 'before' | 'after';
 						const options = parseAstraOptions(
 							this.getNode(),
 							this.getNodeParameter('options', i, {}),
@@ -412,18 +356,12 @@ export class AstraDb implements INodeType {
 						validateQuery(this.getNode(), filter);
 						validateQuery(this.getNode(), replacement);
 
-						// const findAndReplaceOptions = {
-						// 	upsert,
-						// 	returnDocument,
-						// 	...options,
-						// };
-
 						const result = await findAndReplaceDocument(
 							this.getNode(),
 							collectionObj,
 							filter,
 							replacement,
-							options /*findAndReplaceOptions*/,
+							options,
 						);
 
 						returnData.push({

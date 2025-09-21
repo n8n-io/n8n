@@ -92,7 +92,8 @@ describe('Astra DB Generic Functions', () => {
 		});
 	});
 
-	/*	describe('validateVectorDocument', () => {
+	/*
+	describe('validateVectorDocument', () => {
 		it('should validate vector documents', () => {
 			const vectorDoc: IAstraDbVectorDocument = {
 				name: 'test',
