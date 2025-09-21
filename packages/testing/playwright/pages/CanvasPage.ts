@@ -389,10 +389,8 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('[data-test-id="edge"]');
 	}
 
-	getConnectionBetweenNodes(_sourceNodeName: string, _targetNodeName: string): Locator {
-		// For now, return a generic connection selector as specific connection detection
-		// between named nodes is complex and not critical for basic functionality tests
-		return this.nodeConnections().first();
+	getConnectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionBetweenNodes(sourceNodeName, targetNodeName);
 	}
 
 	canvasNodePlusEndpointByName(nodeName: string): Locator {
