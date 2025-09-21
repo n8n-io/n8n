@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import type { AllRolesMap } from '@n8n/permissions';
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 
@@ -40,7 +41,7 @@ describe('ProjectSharing', () => {
 							role: 'project:editor',
 							name: 'Editor',
 						},
-					],
+					] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
 				},
 			});
 

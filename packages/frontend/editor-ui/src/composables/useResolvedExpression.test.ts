@@ -15,7 +15,6 @@ async function renderTestComponent(...options: Parameters<typeof useResolvedExpr
 				return () => h('div');
 			},
 		}),
-		{ props: { options } },
 	);
 
 	return { renderResult, ...resolvedExpression };

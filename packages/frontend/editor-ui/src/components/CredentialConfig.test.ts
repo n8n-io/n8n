@@ -6,7 +6,7 @@ import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
 
-const defaultRenderOptions: RenderOptions = {
+const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {

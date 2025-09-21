@@ -9,6 +9,7 @@ import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
+import type { SourceControlledFile } from '@n8n/api-types';
 
 const eventBus = createEventBus();
 
@@ -104,7 +105,7 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 	},
 });
 
-const sampleFiles = [
+const sampleFiles: SourceControlledFile[] = [
 	{
 		id: '014da93897f146d2b880-baa374b9d02d',
 		name: 'vuelfow2',
@@ -192,7 +193,7 @@ describe('SourceControlPullModal', () => {
 	});
 
 	it('should render diff button with file-diff icon for workflow items', () => {
-		const workflowFile = {
+		const workflowFile: SourceControlledFile = {
 			...sampleFiles[0], // workflow file
 			type: 'workflow',
 		};
@@ -212,7 +213,7 @@ describe('SourceControlPullModal', () => {
 	});
 
 	it('should not render diff button for non-workflow items', async () => {
-		const credentialFile = {
+		const credentialFile: SourceControlledFile = {
 			...sampleFiles[1], // credential file
 			type: 'credential',
 		};

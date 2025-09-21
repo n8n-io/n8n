@@ -86,12 +86,13 @@ describe('NodesListPanel', () => {
 		});
 
 		it('should render regular nodes', async () => {
-			const mockedNodes = [...Array(8).keys()].map((n) =>
-				mockSimplifiedNodeType({
-					name: `Node ${n}`,
-					displayName: `Node ${n}`,
-					group: ['input'],
-				}),
+			const mockedNodes = [...Array(8).keys()].map(
+				(n) =>
+					mockSimplifiedNodeType({
+						name: `Node ${n}`,
+						displayName: `Node ${n}`,
+						group: ['input'],
+					}) as INodeTypeDescription,
 			);
 
 			const wrapperComponent = defineComponent({
@@ -153,12 +154,13 @@ describe('NodesListPanel', () => {
 	});
 
 	describe('should search nodes', () => {
-		const mockedNodes = [...Array(8).keys()].map((n) =>
-			mockSimplifiedNodeType({
-				name: `Node ${n}`,
-				displayName: `Node ${n}`,
-				group: ['trigger'],
-			}),
+		const mockedNodes = [...Array(8).keys()].map(
+			(n) =>
+				mockSimplifiedNodeType({
+					name: `Node ${n}`,
+					displayName: `Node ${n}`,
+					group: ['trigger'],
+				}) as INodeTypeDescription,
 		);
 
 		const wrapperComponent = defineComponent({
@@ -216,7 +218,7 @@ describe('NodesListPanel', () => {
 					name: 'Ninth node',
 					displayName: 'Ninth node',
 					group: ['trigger'],
-				}),
+				}) as INodeTypeDescription,
 			);
 
 			await rerender({ nodeTypes: [...mockedNodes] });
