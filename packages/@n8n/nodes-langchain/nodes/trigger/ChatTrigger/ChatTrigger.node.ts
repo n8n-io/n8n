@@ -23,6 +23,7 @@ import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 const allowFileUploadsOption: INodeProperties = {
@@ -586,36 +587,64 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
+		const bodyData = ctx.getBodyData() ?? {};
+
+		// Auto-generate sessionId if not provided (do this early to ensure it's always available)
+		if (!bodyData.sessionId) {
+			bodyData.sessionId = uuidv4();
+		}
+
 		const isPublic = ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
+		// For non-public nodes, we still need to process webhook requests but with limited functionality
 		if (!isPublic) {
-			res.status(404).end();
-			return {
-				noWebhookResponse: true,
-			};
+			// If this is a GET request (setup), return 404 as the hosted chat UI shouldn't be available
+			if (ctx.getWebhookName() === 'setup') {
+				res.status(404).end();
+				return {
+					noWebhookResponse: true,
+				};
+			}
+			// For POST requests, continue processing but skip the public-specific validations
 		}
 
 		const options = ctx.getNodeParameter('options', {});
-		validateNodeParameters(
-			options,
-			{
-				getStarted: { type: 'string' },
-				inputPlaceholder: { type: 'string' },
-				loadPreviousSession: { type: 'string' },
-				showWelcomeScreen: { type: 'boolean' },
-				subtitle: { type: 'string' },
-				title: { type: 'string' },
-				allowFileUploads: { type: 'boolean' },
-				allowedFilesMimeTypes: { type: 'string' },
-				customCss: { type: 'string' },
-				responseMode: { type: 'string' },
-			},
-			ctx.getNode(),
-		);
+		
+		// Only validate public-specific parameters if the node is public
+		if (isPublic) {
+			validateNodeParameters(
+				options,
+				{
+					getStarted: { type: 'string' },
+					inputPlaceholder: { type: 'string' },
+					loadPreviousSession: { type: 'string' },
+					showWelcomeScreen: { type: 'boolean' },
+					subtitle: { type: 'string' },
+					title: { type: 'string' },
+					allowFileUploads: { type: 'boolean' },
+					allowedFilesMimeTypes: { type: 'string' },
+					customCss: { type: 'string' },
+					responseMode: { type: 'string' },
+				},
+				ctx.getNode(),
+			);
+		} else {
+			// For non-public nodes, validate only the essential parameters
+			validateNodeParameters(
+				options,
+				{
+					loadPreviousSession: { type: 'string' },
+					allowFileUploads: { type: 'boolean' },
+					allowedFilesMimeTypes: { type: 'string' },
+					responseMode: { type: 'string' },
+				},
+				ctx.getNode(),
+			);
+		}
 
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
@@ -625,19 +654,21 @@ export class ChatTrigger extends Node {
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
-		const bodyData = ctx.getBodyData() ?? {};
 
-		try {
-			await validateAuth(ctx);
-		} catch (error) {
-			if (error) {
-				res.writeHead((error as IDataObject).responseCode as number, {
-					'www-authenticate': 'Basic realm="Webhook"',
-				});
-				res.end((error as IDataObject).message as string);
-				return { noWebhookResponse: true };
+		// Only validate authentication for public nodes
+		if (isPublic) {
+			try {
+				await validateAuth(ctx);
+			} catch (error) {
+				if (error) {
+					res.writeHead((error as IDataObject).responseCode as number, {
+						'www-authenticate': 'Basic realm="Webhook"',
+					});
+					res.end((error as IDataObject).message as string);
+					return { noWebhookResponse: true };
+				}
+				throw error;
 			}
-			throw error;
 		}
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
