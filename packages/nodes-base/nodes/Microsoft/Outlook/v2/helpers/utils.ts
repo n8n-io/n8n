@@ -128,17 +128,76 @@ export function makeRecipient(email: string) {
 	};
 }
 
+/**
+ * Detects if the provided content contains HTML markup
+ * 
+ * This function performs a comprehensive check for HTML content by looking for:
+ * - Standard HTML tags with opening and closing pairs (e.g., <p></p>, <div></div>)
+ * - Self-closing tags (e.g., <img />, <br />)
+ * - Void/empty HTML elements (e.g., <br>, <hr>, <img>)
+ * 
+ * @param content - The string content to analyze for HTML markup
+ * @returns True if HTML content is detected, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * detectHtmlContent('<p>Hello World</p>'); // returns true
+ * detectHtmlContent('Hello World'); // returns false
+ * detectHtmlContent('Line 1<br>Line 2'); // returns true
+ * ```
+ */
+export function detectHtmlContent(content: string | undefined | null): boolean {
+	// Early return for invalid input
+	if (!content || typeof content !== 'string' || content.trim().length === 0) {
+		return false;
+	}
+
+	// Regex patterns for different types of HTML content
+	const HTML_PATTERNS = {
+		// Standard HTML tags with opening and closing pairs
+		// Matches: <tag>content</tag>, <tag attr="value">content</tag>
+		pairedTags: /<\s*([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>[\s\S]*?<\/\s*\1\s*>/gi,
+		
+		// Self-closing tags with explicit closing slash
+		// Matches: <tag />, <tag attr="value" />
+		selfClosing: /<\s*[a-zA-Z][a-zA-Z0-9]*\b[^>]*\/\s*>/gi,
+		
+		// Void elements (HTML5 elements that don't require closing tags)
+		// Reference: https://developer.mozilla.org/en-US/docs/Glossary/Void_element
+		voidElements: /<\s*(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b[^>]*\/?>/gi,
+	};
+
+	// Test content against all HTML patterns
+	const hasHtml = Object.values(HTML_PATTERNS).some(pattern => {
+		// Reset regex lastIndex to ensure consistent results across multiple tests
+		pattern.lastIndex = 0;
+		return pattern.test(content);
+	});
+
+	return hasHtml;
+}
+
 export function createMessage(fields: IDataObject) {
 	const message: IDataObject = {};
 
-	// Create body object
+	// Create message body with intelligent content type detection
 	if (fields.bodyContent || fields.bodyContentType) {
-		const bodyObject = {
-			content: fields.bodyContent,
-			contentType: fields.bodyContentType,
+		const bodyContent = (fields.bodyContent as string) ?? '';
+		const explicitContentType = fields.bodyContentType as string | undefined;
+		
+		// Determine content type with the following priority:
+		// 1. Explicit user-provided contentType (highest priority)
+		// 2. Auto-detected based on content analysis
+		// 3. Default to 'Text' as fallback
+		const contentType = explicitContentType ?? 
+			(detectHtmlContent(bodyContent) ? 'html' : 'Text');
+		
+		message.body = {
+			content: bodyContent,
+			contentType,
 		};
 
-		message.body = bodyObject;
+		// Clean up processed fields from the input object
 		delete fields.bodyContent;
 		delete fields.bodyContentType;
 	}
