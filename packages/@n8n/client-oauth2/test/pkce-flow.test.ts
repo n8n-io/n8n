@@ -1,9 +1,10 @@
 import nock from 'nock';
 
-import * as config from './config';
 import { ClientOAuth2 } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
 import type { Headers } from '@/types';
+
+import * as config from './config';
 
 describe('PKCE Flow', () => {
 	beforeAll(() => {
@@ -45,7 +46,7 @@ describe('PKCE Flow', () => {
 		});
 
 		describe('#getToken with PKCE', () => {
-			const mockPkceTokenCall = async (
+			const mockPkceTokenCall = (
 				options: {
 					expectClientSecret?: boolean;
 					expectCodeVerifier?: boolean;
@@ -56,7 +57,7 @@ describe('PKCE Flow', () => {
 				return nock(config.baseUrl)
 					.post('/login/oauth/access_token')
 					.once()
-					.reply(200, function (uri, requestBody: string) {
+					.reply(200, function (this: nock.ReplyFnContext, requestBody: string) {
 						// Verify PKCE parameters are included correctly
 						if (expectCodeVerifier) {
 							expect(requestBody).toContain('code_verifier=test_code_verifier');
@@ -82,7 +83,7 @@ describe('PKCE Flow', () => {
 
 			it('should exchange authorization code with PKCE code_verifier for public client (no client_secret)', async () => {
 				const client = createPkceClient(); // No client secret
-				await mockPkceTokenCall({ expectClientSecret: false });
+				mockPkceTokenCall({ expectClientSecret: false });
 
 				const uri = `${config.redirectUri}?code=${config.code}&state=${config.state}`;
 				const token = await client.code.getToken(uri, {
@@ -96,7 +97,7 @@ describe('PKCE Flow', () => {
 
 			it('should exchange authorization code with PKCE code_verifier for confidential client (with client_secret)', async () => {
 				const client = createPkceClient(config.clientSecret);
-				await mockPkceTokenCall({ expectClientSecret: true });
+				mockPkceTokenCall({ expectClientSecret: true });
 
 				const uri = `${config.redirectUri}?code=${config.code}&state=${config.state}`;
 				const token = await client.code.getToken(uri, {
@@ -110,7 +111,7 @@ describe('PKCE Flow', () => {
 		});
 
 		describe('#refresh for PKCE flows', () => {
-			const mockRefreshCall = (
+			const mockRefreshCall = async (
 				options: {
 					expectClientSecret?: boolean;
 				} = {},
@@ -120,7 +121,7 @@ describe('PKCE Flow', () => {
 				const nockScope = nock(config.baseUrl)
 					.post('/login/oauth/access_token')
 					.once()
-					.reply(200, function (uri, requestBody: string) {
+					.reply(200, function (this: nock.ReplyFnContext, requestBody: string) {
 						// Verify refresh token parameters
 						expect(requestBody).toContain(`refresh_token=${config.refreshToken}`);
 						expect(requestBody).toContain('grant_type=refresh_token');
@@ -143,7 +144,7 @@ describe('PKCE Flow', () => {
 						};
 					});
 
-				return new Promise<{ headers: Headers; body: string }>((resolve) => {
+				return await new Promise<{ headers: Headers; body: string }>((resolve) => {
 					nockScope.once('request', (req: { headers: Headers; requestBodyBuffers: Buffer }) => {
 						resolve({
 							headers: req.headers,
