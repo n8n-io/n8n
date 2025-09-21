@@ -591,6 +591,8 @@ export class Markdown implements INodeType {
 
 				if (mode === 'markdownToHtml') {
 					const markdown = this.getNodeParameter('markdown', i) as string;
+					// fixed markdown indentation to get expected results for lists and sublists
+					markdown.replaceAll('  ', '    ');
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 					const options = this.getNodeParameter('options', i);
 
