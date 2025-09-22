@@ -98,6 +98,7 @@ const connectionCode = computed(() => {
 		background: var(--color-background-xlight);
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
+		font-size: var(--font-size-s);
 	}
 }
 
