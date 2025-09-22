@@ -3,7 +3,7 @@ import { updateDisplayOptions } from 'n8n-workflow';
 
 export * as count from './count';
 export * as get from './get';
-export * as getAll from './getAll';
+export * as search from './search';
 export * as create from './create';
 export * as delete from './delete';
 export * as update from './update';
@@ -14,7 +14,7 @@ import * as countAction from './count';
 import * as createAction from './create';
 import * as deleteAction from './delete';
 import * as getAction from './get';
-import * as getAllAction from './getAll';
+import * as searchAction from './search';
 import * as updateAction from './update';
 import * as uploadAction from './upload';
 import * as upsertAction from './upsert';
@@ -41,7 +41,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				{
 					name: 'Create',
 					value: 'create',
-					description: 'Create a row',
+					description: 'Create a new row in a table',
 					action: 'Create a row',
 				},
 				{
@@ -54,38 +54,38 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				{
 					name: 'Update',
 					value: 'update',
-					description: 'Update a row',
+					description: 'Update a row in a table',
 					action: 'Update a row',
 				},
 				{
 					name: 'Delete',
 					value: 'delete',
-					description: 'Delete a row',
+					description: 'Delete a row from a table',
 					action: 'Delete a row',
 				},
 				{
 					name: 'Get',
 					value: 'get',
-					description: 'Retrieve a row',
+					description: 'Retrieve a record from a table',
 					action: 'Get a row',
 				},
 				{
-					name: 'Get Many',
-					value: 'getAll',
-					description: 'Search rows',
+					name: 'Search',
+					value: 'search',
+					description: 'Search for specific records or list all',
 					action: 'Search rows',
 				},
 				{
 					name: 'Count',
 					value: 'count',
-					description: 'Count number of records in table',
-					action: 'Get table count',
+					description: 'Count records in a table',
+					action: 'Count rows',
 				},
 				{
-					name: 'Upload Attachment',
+					name: 'Upload Attachment to Cell',
 					value: 'upload',
-					description: 'Upload attachment to row',
-					action: 'Upload attachment to row',
+					description: 'Upload attachment(s) to an existing cell in a row',
+					action: 'Upload attachment to a row cell',
 				},
 			],
 			default: 'get',
@@ -224,7 +224,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 
 		...countAction.description,
 		...getAction.description,
-		...getAllAction.description,
+		...searchAction.description,
 		...createAction.description,
 		...deleteAction.description,
 		...updateAction.description,
