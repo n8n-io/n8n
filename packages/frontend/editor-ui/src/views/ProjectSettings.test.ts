@@ -429,6 +429,7 @@ describe('ProjectSettings', () => {
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('2');
 			expect(addSpy).toHaveBeenCalledWith('123', expect.objectContaining({ userId: '2' }));
+			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User added member to project',
 				expect.objectContaining({ project_id: '123', target_user_id: '2' }),

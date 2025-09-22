@@ -132,6 +132,10 @@ const onAddMember = async (userId: string) => {
 
 	try {
 		await projectsStore.addMember(projectsStore.currentProject.id, { userId, role });
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.member.added.title'),
+		});
 		telemetry.track('User added member to project', {
 			project_id: projectsStore.currentProject.id,
 			target_user_id: userId,

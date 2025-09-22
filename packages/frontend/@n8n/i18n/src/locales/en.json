@@ -3102,6 +3102,7 @@
 	"projects.settings.memberRole.update.error.title": "An error occurred while updating member role",
 	"projects.settings.member.removed.title": "Member removed successfully",
 	"projects.settings.member.remove.error.title": "An error occurred while removing member",
+	"projects.settings.member.added.title": "Member added successfully",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
 	"projects.sharing.noMatchingUsers": "No matching users or projects",
 	"projects.sharing.select.placeholder": "Select project or user",
