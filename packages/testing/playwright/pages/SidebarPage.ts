@@ -11,6 +11,10 @@ export class SidebarPage {
 		await this.page.getByTestId('project-plus-button').click();
 	}
 
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async universalAdd() {
 		await this.page.getByTestId('universal-add').click();
 	}
@@ -42,6 +46,33 @@ export class SidebarPage {
 
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
+	}
+
+	getUserMenu(): Locator {
+		return this.page.getByTestId('user-menu');
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('user-menu-item-logout');
+	}
+
+	async openUserMenu(): Promise<void> {
+		await this.getUserMenu().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openUserMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
 	}
 
 	async expand() {
