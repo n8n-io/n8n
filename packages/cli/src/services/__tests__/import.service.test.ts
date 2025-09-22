@@ -1,4 +1,5 @@
 import { type Logger } from '@n8n/backend-common';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { type DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
