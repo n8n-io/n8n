@@ -1,5 +1,7 @@
 import { ImportEntitiesCommand } from '../entities';
 
+jest.mock('@services/import.service');
+
 describe('ImportEntitiesCommand', () => {
 	describe('run', () => {
 		it('should import entities', async () => {
