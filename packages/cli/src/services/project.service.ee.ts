@@ -475,6 +475,13 @@ export class ProjectService {
 			throw new ProjectNotFoundError(projectId);
 		}
 
+		// License check: only allow change to roles that are licensed
+		const currentRelation = project.projectRelations.find((r) => r.userId === userId);
+		const currentRole = currentRelation?.role?.slug;
+		if (currentRole !== role && !this.roleService.isRoleLicensed(role)) {
+			throw new UnlicensedProjectRoleError(role);
+		}
+
 		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
 	}
 
