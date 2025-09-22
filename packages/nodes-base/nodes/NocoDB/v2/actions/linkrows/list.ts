@@ -13,7 +13,7 @@ import { apiRequestAllItems } from '../../transport';
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
 		show: {
-			operation: ['getAll'],
+			operation: ['list'],
 		},
 	},
 	[

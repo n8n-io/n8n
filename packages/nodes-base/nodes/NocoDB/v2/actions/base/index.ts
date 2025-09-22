@@ -23,7 +23,8 @@ export const description: INodeProperties[] = updateDisplayOptions(
 				{
 					name: 'Get Many',
 					value: 'getAll',
-					description: 'Retrieve many bases',
+					// eslint-disable-next-line n8n-nodes-base/node-param-operation-option-description-wrong-for-get-many
+					description: 'List all the bases',
 					action: 'Get many bases',
 				},
 				{
