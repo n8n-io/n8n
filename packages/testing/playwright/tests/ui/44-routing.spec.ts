@@ -13,12 +13,12 @@ test.describe('Routing @db:reset', () => {
 
 		await n8n.sideBar.clickHomeButton();
 
-		expect(n8n.page.url()).toContain('/workflow/');
+		await expect(n8n.page).toHaveURL(/workflow/);
 
 		await expect(n8n.canvas.saveChangesModal.getModal()).toBeVisible();
 		await n8n.canvas.saveChangesModal.clickCancel();
 
-		expect(n8n.page.url()).toContain('/home/workflows');
+		await expect(n8n.page).toHaveURL(/home\/workflows/);
 	});
 
 	test('should correct route after cancelling saveChangesModal', async ({ n8n }) => {
@@ -30,12 +30,12 @@ test.describe('Routing @db:reset', () => {
 
 		await n8n.page.goBack();
 
-		expect(n8n.page.url()).toContain('/home/workflows');
+		await expect(n8n.page).toHaveURL(/home\/workflows/);
 
 		await expect(n8n.canvas.saveChangesModal.getModal()).toBeVisible();
 		await n8n.canvas.saveChangesModal.clickClose();
 
-		expect(n8n.page.url()).toContain('/workflow/');
+		await expect(n8n.page).toHaveURL(/workflow/);
 	});
 
 	test('should correct route when opening and closing NDV', async ({ n8n }) => {

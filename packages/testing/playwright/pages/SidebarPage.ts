@@ -61,6 +61,7 @@ export class SidebarPage {
 	}
 
 	async clickSignout(): Promise<void> {
+		await this.expand();
 		await this.openUserMenu();
 		await this.getLogoutMenuItem().click();
 	}
