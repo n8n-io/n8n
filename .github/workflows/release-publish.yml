@@ -8,12 +8,14 @@ on:
       - 'release/*'
 
 env:
-  BUILD_DIST_NAME: ${{ github.sha }}-release:build
+  BUILD_DIST_NAME: ${{ github.sha }}-release-build
 
 jobs:
   build-arm64:
     runs-on: blacksmith-4vcpu-ubuntu-2204-arm
     if: github.event.pull_request.merged == true
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - name: Checkout
