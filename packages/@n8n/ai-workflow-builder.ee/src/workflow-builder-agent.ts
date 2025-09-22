@@ -33,7 +33,7 @@ import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
+import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
 import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
@@ -84,21 +84,33 @@ export class WorkflowBuilderAgent {
 		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
-	private getBuilderTools(): BuilderTool[] {
+	static getTools({
+		parsedNodeTypes,
+		logger,
+		llmComplexTask,
+		instanceUrl,
+	}: Pick<
+		WorkflowBuilderAgentConfig,
+		'parsedNodeTypes' | 'logger' | 'llmComplexTask' | 'instanceUrl'
+	>): BuilderTool[] {
 		return [
-			createNodeSearchTool(this.parsedNodeTypes),
-			createNodeDetailsTool(this.parsedNodeTypes),
-			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes, this.logger),
-			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(
-				this.parsedNodeTypes,
-				this.llmComplexTask,
-				this.logger,
-				this.instanceUrl,
-			),
+			createNodeSearchTool(parsedNodeTypes),
+			createNodeDetailsTool(parsedNodeTypes),
+			createAddNodeTool(parsedNodeTypes),
+			createConnectNodesTool(parsedNodeTypes, logger),
+			createRemoveNodeTool(logger),
+			createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
 			createGetNodeParameterTool(),
 		];
+	}
+
+	private getBuilderTools(): BuilderTool[] {
+		return WorkflowBuilderAgent.getTools({
+			parsedNodeTypes: this.parsedNodeTypes,
+			instanceUrl: this.instanceUrl,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+		});
 	}
 
 	private createWorkflow() {
@@ -488,44 +500,5 @@ export class WorkflowBuilderAgent {
 		}
 
 		return undefined;
-	}
-
-	async getSessions(workflowId: string | undefined, userId?: string) {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently if we want to list all sessions
-		const sessions = [];
-
-		if (workflowId) {
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig: RunnableConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
-
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
-
-				if (checkpoint?.checkpoint) {
-					const messages =
-						(checkpoint.checkpoint.channel_values?.messages as Array<
-							AIMessage | HumanMessage | ToolMessage
-						>) ?? [];
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formatMessages(messages, this.getBuilderTools()),
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
-				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				this.logger?.debug('No session found for workflow:', { workflowId, error });
-			}
-		}
-
-		return { sessions };
 	}
 }

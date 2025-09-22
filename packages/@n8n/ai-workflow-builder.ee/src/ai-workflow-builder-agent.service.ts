@@ -1,4 +1,6 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import { RunnableConfig } from '@langchain/core/runnables';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
@@ -11,6 +13,7 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from './errors';
 import { anthropicClaudeSonnet4 } from './llm-config';
+import { formatMessages } from './utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
 
 @Service()
@@ -28,17 +31,26 @@ export class AiWorkflowBuilderService {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
 
-	private async getApiProxyAuthHeaders(
-		user: IUser,
-		requiresUpdatedCredentials = false,
-		useDeprecatedCredentials = false,
-	) {
-		if (!requiresUpdatedCredentials) {
-			return {
-				Authorization: '',
-			};
-		}
+	static async getAnthropicClaudeModel({
+		baseUrl,
+		authHeaders = {},
+		apiKey = '-',
+	}: {
+		baseUrl?: string;
+		authHeaders?: Record<string, string>;
+		apiKey?: string;
+	} = {}): Promise<ChatAnthropic> {
+		return await anthropicClaudeSonnet4({
+			baseUrl,
+			apiKey,
+			headers: {
+				...authHeaders,
+				'anthropic-beta': 'prompt-caching-2024-07-31',
+			},
+		});
+	}
 
+	private async getApiProxyAuthHeaders(user: IUser, useDeprecatedCredentials = false) {
 		assert(this.client);
 
 		let authHeaders: { Authorization: string };
@@ -58,28 +70,19 @@ export class AiWorkflowBuilderService {
 
 	private async setupModels(
 		user?: IUser,
-		requiresUpdatedCredentials = false,
 		useDeprecatedCredentials = false,
 	): Promise<{ anthropicClaude: ChatAnthropic; tracingClient?: TracingClient }> {
 		try {
 			// If client is provided, use it for API proxy
 			if (this.client && user) {
-				const authHeaders = await this.getApiProxyAuthHeaders(
-					user,
-					requiresUpdatedCredentials,
-					useDeprecatedCredentials,
-				);
+				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
 
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				const chatModel = await anthropicClaudeSonnet4({
+				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
 					baseUrl: baseUrl + '/anthropic',
-					apiKey: '-',
-					headers: {
-						...authHeaders,
-						'anthropic-beta': 'prompt-caching-2024-07-31',
-					},
+					authHeaders,
 				});
 
 				const tracingClient = new TracingClient({
@@ -94,15 +97,12 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				return { tracingClient, anthropicClaude: chatModel };
+				return { tracingClient, anthropicClaude };
 			}
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await anthropicClaudeSonnet4({
+			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-				headers: {
-					'anthropic-beta': 'prompt-caching-2024-07-31',
-				},
 			});
 
 			return { anthropicClaude };
@@ -163,14 +163,9 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(
-		user?: IUser,
-		requiresUpdatedCredentials = false,
-		useDeprecatedCredentials = false,
-	) {
+	private async getAgent(user?: IUser, useDeprecatedCredentials = false) {
 		const { anthropicClaude, tracingClient } = await this.setupModels(
 			user,
-			requiresUpdatedCredentials,
 			useDeprecatedCredentials,
 		);
 
@@ -198,7 +193,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, true, payload.useDeprecatedCredentials);
+		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
@@ -206,7 +201,54 @@ export class AiWorkflowBuilderService {
 	}
 
 	async getSessions(workflowId: string | undefined, user?: IUser) {
-		const agent = await this.getAgent(user, false);
-		return await agent.getSessions(workflowId, user?.id?.toString());
+		const userId = user?.id?.toString();
+
+		// Real credentials not needed here
+		const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel();
+
+		// For now, we'll return the current session if we have a workflowId
+		// MemorySaver doesn't expose a way to list all threads, so we'll need to
+		// track this differently if we want to list all sessions
+		const sessions = [];
+
+		if (workflowId) {
+			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+			const threadConfig: RunnableConfig = {
+				configurable: {
+					thread_id: threadId,
+				},
+			};
+
+			try {
+				// Try to get the checkpoint for this thread
+				const checkpoint = await this.checkpointer.getTuple(threadConfig);
+
+				if (checkpoint?.checkpoint) {
+					const messages =
+						(checkpoint.checkpoint.channel_values?.messages as Array<
+							AIMessage | HumanMessage | ToolMessage
+						>) ?? [];
+
+					sessions.push({
+						sessionId: threadId,
+						messages: formatMessages(
+							messages,
+							WorkflowBuilderAgent.getTools({
+								parsedNodeTypes: this.parsedNodeTypes,
+								llmComplexTask: anthropicClaude,
+								logger: this.logger,
+								instanceUrl: this.instanceUrl,
+							}),
+						),
+						lastUpdated: checkpoint.checkpoint.ts,
+					});
+				}
+			} catch (error) {
+				// Thread doesn't exist yet
+				this.logger?.debug('No session found for workflow:', { workflowId, error });
+			}
+		}
+
+		return { sessions };
 	}
 }
