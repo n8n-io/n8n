@@ -1,9 +1,12 @@
 import { ExportEntitiesCommand } from '../entities';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExportService } from '@/services/export.service';
+import { mock } from 'jest-mock-extended';
 
 jest.mock('fs-extra');
-jest.mock('@/services/export.service');
+jest.mock('@/services/export.service', () => ({
+	ExportService: mock<ExportService>(),
+}));
 
 describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);

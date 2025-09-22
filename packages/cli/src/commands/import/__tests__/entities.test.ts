@@ -1,6 +1,10 @@
+import { ImportService } from '@/services/import.service';
 import { ImportEntitiesCommand } from '../entities';
+import { mock } from 'jest-mock-extended';
 
-jest.mock('@/services/import.service');
+jest.mock('@/services/import.service', () => ({
+	ImportService: mock<ImportService>(),
+}));
 
 describe('ImportEntitiesCommand', () => {
 	describe('run', () => {
