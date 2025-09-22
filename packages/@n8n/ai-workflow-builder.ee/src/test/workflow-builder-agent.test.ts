@@ -170,7 +170,6 @@ describe('WorkflowBuilderAgent', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
 				},
-				useDeprecatedCredentials: false,
 			};
 		});
 
@@ -178,7 +177,6 @@ describe('WorkflowBuilderAgent', () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
 				message: longMessage,
-				useDeprecatedCredentials: false,
 			};
 
 			await expect(async () => {
@@ -196,7 +194,6 @@ describe('WorkflowBuilderAgent', () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
 				message: validMessage,
-				useDeprecatedCredentials: false,
 			};
 
 			// Mock the stream processing to return a proper StreamOutput
