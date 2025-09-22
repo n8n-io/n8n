@@ -118,7 +118,7 @@ describe('CredentialsOverwrites', () => {
 				middleware!(
 					{
 						headers: {
-							Authorization: 'Bearer invalid-token',
+							authorization: 'Bearer invalid-token',
 						},
 					} as any as Request,
 					{
