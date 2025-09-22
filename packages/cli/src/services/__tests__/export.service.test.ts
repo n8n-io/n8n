@@ -71,7 +71,7 @@ describe('ExportService', () => {
 
 			// Verify database queries
 			expect(mockDataSource.query).toHaveBeenCalledWith(
-				'SELECT id, email, name FROM users LIMIT 500 OFFSET 0',
+				'SELECT "id", "email", "name" FROM "users" LIMIT 500 OFFSET 0',
 			);
 
 			// Verify file writing
@@ -109,10 +109,10 @@ describe('ExportService', () => {
 
 			// Verify multiple database queries
 			expect(mockDataSource.query).toHaveBeenCalledWith(
-				'SELECT id, email, name FROM users LIMIT 500 OFFSET 0',
+				'SELECT "id", "email", "name" FROM "users" LIMIT 500 OFFSET 0',
 			);
 			expect(mockDataSource.query).toHaveBeenCalledWith(
-				'SELECT id, email, name FROM users LIMIT 500 OFFSET 500',
+				'SELECT "id", "email", "name" FROM "users" LIMIT 500 OFFSET 500',
 			);
 
 			// Verify multiple file writes

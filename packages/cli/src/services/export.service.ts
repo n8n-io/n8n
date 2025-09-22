@@ -7,6 +7,21 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 
+/**
+ * Format database identifiers (table names or column names) for SQL queries
+ * @param identifiers - Single identifier string or array of identifier strings
+ * @returns Formatted identifier(s) for SQL queries
+ */
+function formatIdentifiersForDb(identifiers: string | string[]): string {
+	// Both PostgreSQL and SQLite support double quotes for identifiers
+	// This ensures compatibility with reserved words and special characters
+	if (Array.isArray(identifiers)) {
+		return identifiers.map((id) => `"${id}"`).join(', ');
+	}
+
+	return `"${identifiers}"`;
+}
+
 @Service()
 export class ExportService {
 	constructor(
@@ -61,8 +76,9 @@ export class ExportService {
 			await this.clearExistingEntityFiles(outputDir, entityName);
 
 			// Get column information for this table
-			const columns = metadata.columns.map((col) => col.databaseName).join(', ');
-			this.logger.info(`   💭 Columns: ${columns}`);
+			const columnNames = metadata.columns.map((col) => col.databaseName);
+			const columns = formatIdentifiersForDb(columnNames);
+			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
 			let offset = 0;
 			let totalEntityCount = 0;
@@ -75,8 +91,9 @@ export class ExportService {
 				 * use raw SQL query to avoid typeorm limitations,
 				 * typeorm repositories do not return joining table entries
 				 */
+				const formattedTableName = formatIdentifiersForDb(tableName);
 				const pageEntities = await this.dataSource.query(
-					`SELECT ${columns} FROM ${tableName} LIMIT ${pageSize} OFFSET ${offset}`,
+					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
 				);
 
 				// If no entities returned, we've reached the end
