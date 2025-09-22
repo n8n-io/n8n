@@ -439,11 +439,16 @@ defineExpose({ isWithinDropdown });
 }
 
 .resourceNameContainer {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size-2xs);
+	min-width: 0;
+	align-self: center;
+}
+
+.resourceNameContainer > :first-child {
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: inline-block;
-	align-self: center;
 }
 
 .searchIcon {
