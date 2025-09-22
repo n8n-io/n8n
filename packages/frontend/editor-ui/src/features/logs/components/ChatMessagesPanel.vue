@@ -3,7 +3,16 @@ import { useI18n } from '@n8n/i18n';
 import Chat from '@n8n/chat/components/Chat.vue';
 import { ChatPlugin } from '@n8n/chat/plugins';
 import type { ChatOptions } from '@n8n/chat/types';
-import { computed, createApp, onMounted, onUnmounted, useTemplateRef, watch, ref } from 'vue';
+import {
+	computed,
+	createApp,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	useTemplateRef,
+	watch,
+	ref,
+} from 'vue';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -29,6 +38,7 @@ const emit = defineEmits<{
 	refreshSession: [];
 	close: [];
 	clickHeader: [];
+	hideChatPanel: [];
 }>();
 
 const locale = useI18n();
@@ -65,6 +75,21 @@ const isStreamingEnabled = computed(() => {
 	}
 
 	return false;
+});
+
+// Check if workflow is ready for chat execution
+const isWorkflowReadyForChat = computed(() => {
+	// Must have a ChatTrigger node
+	if (!chatTriggerNode.value) {
+		return false;
+	}
+
+	// Must have a valid workflow ID (for new workflows, this might not be set until saved)
+	if (!workflowsStore.workflowId && !workflowsStore.isNewWorkflow) {
+		return false;
+	}
+
+	return true;
 });
 
 const webhookUrl = computed(() => {
@@ -146,18 +171,24 @@ async function registerChatWebhook(): Promise<void> {
 }
 
 async function initializeChat() {
-	if (!props.isOpen || !chatTriggerNode.value) {
+	if (!props.isOpen || !isWorkflowReadyForChat.value) {
 		return;
 	}
 
-	if (!chatContainer.value) return;
+	if (!chatContainer.value) {
+		return;
+	}
 
-	await registerChatWebhook();
+	// Don't initialize if already initialized
+	if (chatApp) {
+		return;
+	}
 
 	// Create Vue app instance with chat SDK
 	chatApp = createApp(Chat);
 	chatApp.use(ChatPlugin, chatOptions.value);
 	chatApp.mount(chatContainer.value);
+	console.log('✅ Chat initialized successfully');
 }
 
 function destroyChat() {
@@ -185,20 +216,62 @@ watch(
 	},
 );
 
-// Watch for streaming configuration changes
+// Watch for ChatTrigger node changes
 watch(
-	() => isStreamingEnabled.value,
-	async (newStreaming, oldStreaming) => {
-		if (props.isOpen && chatApp && newStreaming !== oldStreaming) {
-			// Reinitialize chat when streaming configuration changes
+	() => chatTriggerNode.value,
+	async (newChatTrigger, oldChatTrigger) => {
+		if (props.isOpen) {
+			if (newChatTrigger && !oldChatTrigger) {
+				// ChatTrigger was added - initialize chat
+				await nextTick();
+				await initializeChat();
+			} else if (!newChatTrigger && oldChatTrigger) {
+				// ChatTrigger was removed - destroy chat and hide panel
+				destroyChat();
+				emit('hideChatPanel');
+			}
+		}
+	},
+);
+
+// Watch for chatContainer ref becoming available
+watch(
+	() => chatContainer.value,
+	async (newContainer) => {
+		if (newContainer && props.isOpen && isWorkflowReadyForChat.value) {
+			await initializeChat();
+		}
+	},
+);
+
+// Watch for workflow ID changes (important for webhook URL)
+watch(
+	() => workflowsStore.workflowId,
+	async (newWorkflowId, oldWorkflowId) => {
+		if (props.isOpen && isWorkflowReadyForChat.value && newWorkflowId !== oldWorkflowId) {
+			// Workflow ID changed and workflow is ready - reinitialize chat with new webhook URL
 			destroyChat();
 			await initializeChat();
 		}
 	},
 );
 
-onMounted(() => {
+// Watch for streaming configuration changes
+watch(
+	() => isStreamingEnabled.value,
+	async (newStreaming, oldStreaming) => {
+		if (props.isOpen && isWorkflowReadyForChat.value && chatApp && newStreaming !== oldStreaming) {
+			// Reinitialize chat when streaming configuration changes and workflow is ready
+			destroyChat();
+			await initializeChat();
+		}
+	},
+);
+
+onMounted(async () => {
 	if (props.isOpen) {
+		// Wait for next tick to ensure DOM is ready
+		await nextTick();
 		void initializeChat();
 	}
 });
@@ -256,7 +329,11 @@ onUnmounted(() => {
 		</LogsPanelHeader>
 
 		<!-- Chat SDK Container -->
-		<main v-if="isOpen" :class="$style.chatSdkContainer" data-test-id="canvas-chat-body">
+		<main
+			v-if="isOpen && chatTriggerNode"
+			:class="$style.chatSdkContainer"
+			data-test-id="canvas-chat-body"
+		>
 			<div ref="chatContainer" :class="$style.chatContainer" />
 		</main>
 	</div>

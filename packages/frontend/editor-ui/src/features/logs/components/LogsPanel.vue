@@ -139,6 +139,12 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	outputTableColumnCollapsing.value =
 		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
 }
+
+function onHideChatPanel() {
+	// Reset execution data to clear stale ChatTrigger nodes from previous executions
+	// This forces hasChat to re-evaluate based only on current workflow nodes
+	resetExecutionData();
+}
 </script>
 
 <template>
@@ -183,8 +189,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
-							@send-message="sendMessage"
-							@click-header="onToggleOpen"
+							@click-header="onToggleOpen(true)"
+							@hide-chat-panel="onHideChatPanel"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">
