@@ -342,7 +342,7 @@ defineExpose({
 }
 
 .warningCallout {
-	margin: 0 0 var(--spacing-2xs) 0;
+	margin: 0 0 var(--spacing-xs) 0;
 }
 
 // Single line mode
