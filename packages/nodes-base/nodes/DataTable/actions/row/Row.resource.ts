@@ -43,7 +43,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'If Row Does Not Exist',
-				value: rowExists.FIELD,
+				value: rowNotExists.FIELD,
 				description: 'Filter input data by absence',
 				action: 'If Row Does Not Exist',
 			},
