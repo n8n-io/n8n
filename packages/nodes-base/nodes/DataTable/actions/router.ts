@@ -10,7 +10,7 @@ import { DATA_TABLE_ID_FIELD } from '../common/fields';
 import { getDataTableProxyExecute } from '../common/utils';
 
 type DataTableNodeType = AllEntities<{
-	row: 'insert' | 'get' | 'partition' | 'deleteRows' | 'update' | 'upsert';
+	row: 'insert' | 'get' | 'rowExists' | 'rowNotExists' | 'deleteRows' | 'update' | 'upsert';
 }>;
 
 const BULK_OPERATIONS = ['insert'] as const;

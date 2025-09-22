@@ -1,14 +1,15 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as deleteRows from './delete.operation';
-import * as partition from './partition.operation';
+import * as rowExists from './rowExists.operation';
+import * as rowNotExists from './rowNotExists.operation';
 import * as get from './get.operation';
 import * as insert from './insert.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 
-export { insert, get, partition, deleteRows, update, upsert };
+export { insert, get, rowExists, rowNotExists, deleteRows, update, upsert };
 
 export const description: INodeProperties[] = [
 	{
@@ -35,10 +36,16 @@ export const description: INodeProperties[] = [
 				action: 'Get row(s)',
 			},
 			{
-				name: 'Partition',
-				value: partition.FIELD,
+				name: 'If Row Exists',
+				value: rowExists.FIELD,
 				description: 'Filter input data by presence',
-				action: 'Partition input data',
+				action: 'If Row Exists',
+			},
+			{
+				name: 'If Row Does Not Exist',
+				value: rowExists.FIELD,
+				description: 'Filter input data by absence',
+				action: 'If Row Does Not Exist',
 			},
 			{
 				name: 'Insert',
@@ -89,7 +96,8 @@ export const description: INodeProperties[] = [
 	...deleteRows.description,
 	...insert.description,
 	...get.description,
-	...partition.description,
+	...rowExists.description,
+	...rowNotExists.description,
 	...update.description,
 	...upsert.description,
 ];
