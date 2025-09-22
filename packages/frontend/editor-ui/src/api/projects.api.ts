@@ -31,7 +31,9 @@ export const updateProject = async (
 	id: Project['id'],
 	payload: UpdateProjectDto,
 ): Promise<void> => {
-	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, payload);
+	// Only send scalar settings; member updates are handled via dedicated endpoints
+	const { name, icon, description } = payload as Partial<UpdateProjectDto>;
+	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, icon, description });
 };
 
 export const deleteProject = async (
@@ -49,4 +51,29 @@ export const deleteProject = async (
 
 export const getProjectsCount = async (context: IRestApiContext): Promise<ProjectsCount> => {
 	return await makeRestApiRequest(context, 'GET', '/projects/count');
+};
+
+export const addProjectMembers = async (
+	context: IRestApiContext,
+	projectId: string,
+	relations: Array<{ userId: string; role: string }>,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/users`, { relations });
+};
+
+export const updateProjectMemberRole = async (
+	context: IRestApiContext,
+	projectId: string,
+	userId: string,
+	role: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/users/${userId}`, { role });
+};
+
+export const deleteProjectMember = async (
+	context: IRestApiContext,
+	projectId: string,
+	userId: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
 };

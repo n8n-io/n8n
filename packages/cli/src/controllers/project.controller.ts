@@ -1,4 +1,10 @@
-import { CreateProjectDto, DeleteProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import {
+	CreateProjectDto,
+	DeleteProjectDto,
+	UpdateProjectDto,
+	AddUsersToProjectDto,
+	ChangeUserRoleInProject,
+} from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
@@ -210,42 +216,106 @@ export class ProjectController {
 	@Patch('/:projectId')
 	@ProjectScope('project:update')
 	async updateProject(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		const { name, icon, relations, description } = payload;
+		const { name, icon, description } = payload;
+		// Only update scalar settings on this endpoint. Member updates are handled by dedicated endpoints.
 		if (name || icon || description) {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
-		if (relations) {
-			try {
-				const { project, newRelations } = await this.projectsService.syncProjectRelations(
-					projectId,
-					relations,
-				);
+	}
 
-				// Send email notifications to new sharees
+	/** Add one or more users to a project immediately */
+	@Post('/:projectId/users')
+	@ProjectScope('project:update')
+	async addProjectUsers(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('projectId') projectId: string,
+		@Body payload: AddUsersToProjectDto,
+	) {
+		try {
+			const { added, conflicts, project } =
+				await this.projectsService.addUsersWithConflictSemantics(projectId, payload.relations);
+
+			if (added.length > 0) {
 				await this.userManagementMailer.notifyProjectShared({
 					sharer: req.user,
-					newSharees: newRelations,
+					newSharees: added,
 					project: { id: project.id, name: project.name },
 				});
-			} catch (e) {
-				if (e instanceof UnlicensedProjectRoleError) {
-					throw new BadRequestError(e.message);
-				}
-				throw e;
 			}
 
+			const relations = await this.projectsService.getProjectRelations(projectId);
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
 				role: req.user.role.slug,
-				members: relations,
+				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
 				projectId,
 			});
+
+			if (added.length > 0) return res.status(201).send();
+			if (conflicts.length > 0) return res.status(409).json({ conflicts });
+			return res.status(200).send();
+		} catch (e) {
+			if (e instanceof UnlicensedProjectRoleError) {
+				throw new BadRequestError(e.message);
+			}
+			throw e;
 		}
+	}
+
+	/** Change a project member's role immediately */
+	@Patch('/:projectId/users/:userId')
+	@ProjectScope('project:update')
+	async changeProjectUserRole(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('projectId') projectId: string,
+		@Param('userId') userId: string,
+		@Body body: ChangeUserRoleInProject,
+	) {
+		try {
+			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
+			await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
+			const relations = await this.projectsService.getProjectRelations(projectId);
+			this.eventService.emit('team-project-updated', {
+				userId: req.user.id,
+				role: req.user.role.slug,
+				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
+				projectId,
+			});
+			return res.status(204).send();
+		} catch (e) {
+			if (e instanceof UnlicensedProjectRoleError) {
+				throw new BadRequestError(e.message);
+			}
+			throw e;
+		}
+	}
+
+	/** Remove a project member immediately */
+	@Delete('/:projectId/users/:userId')
+	@ProjectScope('project:update')
+	async deleteProjectUser(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('projectId') projectId: string,
+		@Param('userId') userId: string,
+	) {
+		await this.projectsService.deleteUserFromProject(projectId, userId);
+		await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
+		const relations = await this.projectsService.getProjectRelations(projectId);
+		this.eventService.emit('team-project-updated', {
+			userId: req.user.id,
+			role: req.user.role.slug,
+			members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
+			projectId,
+		});
+		return res.status(204).send();
 	}
 
 	@Delete('/:projectId')

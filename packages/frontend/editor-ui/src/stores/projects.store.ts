@@ -118,23 +118,47 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
-		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
+		// Only persist scalar settings here; member updates are handled via dedicated endpoints
+		const { name, icon, description } = projectData as Partial<UpdateProjectDto>;
+		await projectsApi.updateProject(rootStore.restApiContext, id, {
+			name,
+			icon,
+			description,
+		} as UpdateProjectDto);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon, description, relations } = projectData;
+		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {
-			if (typeof name !== 'undefined') myProjects.value[projectIndex].name = name;
-			if (typeof icon !== 'undefined') myProjects.value[projectIndex].icon = icon;
-			if (typeof description !== 'undefined')
-				myProjects.value[projectIndex].description = description;
+			if (typeof nm !== 'undefined') myProjects.value[projectIndex].name = nm;
+			if (typeof ic !== 'undefined') myProjects.value[projectIndex].icon = ic as any;
+			if (typeof desc !== 'undefined') myProjects.value[projectIndex].description = desc as any;
 		}
 		if (currentProject.value) {
-			if (typeof name !== 'undefined') currentProject.value.name = name;
-			if (typeof icon !== 'undefined') currentProject.value.icon = icon;
-			if (typeof description !== 'undefined') currentProject.value.description = description;
+			if (typeof nm !== 'undefined') currentProject.value.name = nm;
+			if (typeof ic !== 'undefined') currentProject.value.icon = ic as any;
+			if (typeof desc !== 'undefined') currentProject.value.description = desc as any;
 		}
-		if (relations) {
-			await getProject(id);
-		}
+	};
+
+	const addMember = async (
+		projectId: string,
+		{ userId, role }: { userId: string; role: string },
+	): Promise<void> => {
+		await projectsApi.addProjectMembers(rootStore.restApiContext, projectId, [{ userId, role }]);
+		await getProject(projectId);
+	};
+
+	const updateMemberRole = async (
+		projectId: string,
+		userId: string,
+		role: string,
+	): Promise<void> => {
+		await projectsApi.updateProjectMemberRole(rootStore.restApiContext, projectId, userId, role);
+		await getProject(projectId);
+	};
+
+	const removeMember = async (projectId: string, userId: string): Promise<void> => {
+		await projectsApi.deleteProjectMember(rootStore.restApiContext, projectId, userId);
+		await getProject(projectId);
 	};
 
 	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
@@ -259,6 +283,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProject,
 		createProject,
 		updateProject,
+		addMember,
+		updateMemberRole,
+		removeMember,
 		deleteProject,
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,

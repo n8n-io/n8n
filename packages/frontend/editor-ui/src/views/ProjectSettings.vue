@@ -113,19 +113,24 @@ const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() 
 	},
 ]);
 
-const onAddMember = (userId: string) => {
-	isDirty.value = true;
+const onAddMember = async (userId: string) => {
+	if (!projectsStore.currentProject) return;
 	const user = usersStore.usersById[userId];
 	if (!user) return;
 
-	const { id, firstName, lastName, email } = user;
-	const relation = { id, firstName, lastName, email } as ProjectRelation;
+	const role = firstLicensedRole.value;
+	if (!role) return;
 
-	if (firstLicensedRole.value) {
-		relation.role = firstLicensedRole.value;
+	try {
+		await projectsStore.addMember(projectsStore.currentProject.id, { userId, role });
+		telemetry.track('User added member to project', {
+			project_id: projectsStore.currentProject.id,
+			target_user_id: userId,
+			role,
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 	}
-
-	formData.value.relations.push(relation);
 };
 
 const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
@@ -145,13 +150,7 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 	formData.value.relations[memberIndex].role = role;
 
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
-		});
-
+		await projectsStore.updateMemberRole(projectsStore.currentProject.id, userId, role);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.memberRole.updated.title'),
@@ -189,11 +188,7 @@ async function onRemoveMember(userId: string) {
 	try {
 		// Prevent next sync from wiping unsaved edits
 		suppressNextSync.value = true;
-		await projectsStore.updateProject(current.id, {
-			relations: current.relations
-				.filter((r) => r.id !== userId)
-				.map((r) => ({ userId: r.id, role: r.role })),
-		});
+		await projectsStore.removeMember(current.id, userId);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.member.removed.title'),

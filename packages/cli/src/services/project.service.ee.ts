@@ -334,6 +334,70 @@ export class ProjectService {
 		);
 	}
 
+	/**
+	 * Add users with conflict semantics:
+	 * - Adds users that are not already members
+	 * - No-ops for users already in the project with the same role
+	 * - Reports conflicts for users already in the project with a different role (no change)
+	 */
+	async addUsersWithConflictSemantics(
+		projectId: string,
+		relations: Array<{ userId: string; role: AssignableProjectRole }>,
+	): Promise<{
+		project: Project;
+		added: Array<{ userId: string; role: AssignableProjectRole }>;
+		conflicts: Array<{
+			userId: string;
+			currentRole: AssignableProjectRole;
+			requestedRole: AssignableProjectRole;
+		}>;
+	}> {
+		const project = await this.getTeamProjectWithRelations(projectId);
+		this.checkRolesLicensed(project, relations);
+
+		// Validate roles exist
+		await this.roleService.checkRolesExist(
+			relations.map((r) => r.role),
+			'project',
+		);
+
+		const existingByUserId = new Map(project.projectRelations.map((r) => [r.userId, r]));
+		const added: Array<{ userId: string; role: AssignableProjectRole }> = [];
+		const conflicts: Array<{
+			userId: string;
+			currentRole: AssignableProjectRole;
+			requestedRole: AssignableProjectRole;
+		}> = [];
+
+		for (const rel of relations) {
+			const existing = existingByUserId.get(rel.userId);
+			if (!existing) continue; // will be inserted below
+			const current = existing.role?.slug as AssignableProjectRole | undefined;
+			if (current && current !== rel.role) {
+				conflicts.push({ userId: rel.userId, currentRole: current, requestedRole: rel.role });
+			}
+		}
+
+		// Insert only non-existing users
+		const toInsert = relations.filter((rel) => !existingByUserId.has(rel.userId));
+		if (toInsert.length > 0) {
+			// Use insert to avoid accidental upsert of different role
+			await this.projectRelationRepository.insert(
+				toInsert.map((v) =>
+					this.projectRelationRepository.create({
+						projectId: project.id,
+						userId: v.userId,
+						role: { slug: v.role },
+					}),
+				),
+			);
+			added.push(...toInsert);
+		}
+
+		await this.clearCredentialCanUseExternalSecretsCache(projectId);
+		return { project, added, conflicts };
+	}
+
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
 			where: { id: projectId, type: 'team' },
