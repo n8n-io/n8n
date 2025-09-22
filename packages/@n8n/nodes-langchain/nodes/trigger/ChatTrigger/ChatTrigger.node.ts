@@ -522,13 +522,33 @@ export class ChatTrigger extends Node {
 		],
 	};
 
+	/**
+	 * Type guard to check if an error has the expected authentication error properties
+	 */
+	private isAuthError(error: unknown): error is { responseCode: number; message: string } {
+		return (
+			typeof error === 'object' &&
+			error !== null &&
+			'responseCode' in error &&
+			'message' in error &&
+			typeof (error as any).responseCode === 'number' &&
+			typeof (error as any).message === 'string'
+		);
+	}
+
 	private async handleFormData(context: IWebhookFunctions) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
+		// Use bodyData from context to ensure sessionId consistency
+		const bodyData = (context.getBodyData() ?? {}) as IDataObject;
+
+		// Merge form data with bodyData, giving priority to bodyData for sessionId
+		const mergedData = { ...data, ...bodyData };
+
 		const returnItem: INodeExecutionData = {
-			json: data,
+			json: mergedData,
 		};
 
 		if (files && Object.keys(files).length) {
@@ -586,21 +606,12 @@ export class ChatTrigger extends Node {
 
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
-
-		const request = ctx.getRequestObject() as MultiPartFormData.Request;
 		const bodyData = (ctx.getBodyData() ?? {}) as IDataObject;
 
 		// Auto-generate sessionId if not provided (do this early to ensure it's always available)
 		if (!bodyData.sessionId) {
 			const sid = uuidv4();
 			bodyData.sessionId = sid;
-			// keep multipart/form-data body in sync
-			if (request?.body && typeof request.body === 'object') {
-				const maybeData = (request as any).body?.data;
-				if (maybeData && typeof maybeData === 'object' && !maybeData.sessionId) {
-					maybeData.sessionId = sid;
-				}
-			}
 		}
 		const isPublic = ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
@@ -668,11 +679,11 @@ export class ChatTrigger extends Node {
 			try {
 				await validateAuth(ctx);
 			} catch (error) {
-				if (error) {
-					res.writeHead((error as IDataObject).responseCode as number, {
+				if (error && this.isAuthError(error)) {
+					res.writeHead(error.responseCode, {
 						'www-authenticate': 'Basic realm="Webhook"',
 					});
-					res.end((error as IDataObject).message as string);
+					res.end(error.message);
 					return { noWebhookResponse: true };
 				}
 				throw error;
