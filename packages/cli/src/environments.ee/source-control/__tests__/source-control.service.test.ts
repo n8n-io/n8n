@@ -6,8 +6,6 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 
-import { GenericResourceHandler } from '../resource-handlers/generic-resource-handler';
-
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
@@ -48,7 +46,6 @@ describe('SourceControlService', () => {
 		sourceControlImportService,
 		sourceControlScopedService,
 		eventService, // event service
-		Container.get(GenericResourceHandler),
 		mockStatusService as any, // status service
 	);
 

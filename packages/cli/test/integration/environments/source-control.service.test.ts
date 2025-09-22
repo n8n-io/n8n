@@ -28,7 +28,6 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from '@/environments.ee/source-control/constants';
-import { GenericResourceHandler } from '@/environments.ee/source-control/resource-handlers/generic-resource-handler';
 import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
 import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
@@ -436,7 +435,6 @@ describe('SourceControlService', () => {
 			Container.get(SourceControlImportService),
 			Container.get(SourceControlScopedService),
 			Container.get(EventService),
-			Container.get(GenericResourceHandler),
 			statusService,
 		);
 

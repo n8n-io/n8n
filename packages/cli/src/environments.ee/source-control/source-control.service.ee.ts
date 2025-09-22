@@ -1,4 +1,3 @@
-import { IWorkflowToImport } from '@/interfaces';
 import type {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -27,10 +26,9 @@ import {
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
-import { GenericResourceHandler } from './resource-handlers/generic-resource-handler';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import { SourceControlStatusService } from './source-control-status.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlStatusService } from './source-control-status.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
@@ -40,6 +38,14 @@ import type { SourceControlPreferences } from './types/source-control-preference
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+
+import {
+	filterByType,
+	getDeletedResources,
+	getNonDeletedResources,
+} from './source-control-resource-helper';
+
+import { IWorkflowToImport } from '@/interfaces';
 
 @Service()
 export class SourceControlService {
@@ -58,7 +64,6 @@ export class SourceControlService {
 		private sourceControlImportService: SourceControlImportService,
 		private sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
-		private readonly resourceHandler: GenericResourceHandler,
 		private readonly sourceControlStatusService: SourceControlStatusService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
@@ -295,16 +300,10 @@ export class SourceControlService {
 
 		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
-		const workflowsToBeExported = this.resourceHandler.getNonDeletedResources(
-			filesToPush,
-			'workflow',
-		);
+		const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 		await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
 
-		const credentialsToBeExported = this.resourceHandler.getNonDeletedResources(
-			filesToPush,
-			'credential',
-		);
+		const credentialsToBeExported = getNonDeletedResources(filesToPush, 'credential');
 		const credentialExportResult =
 			await this.sourceControlExportService.exportCredentialsToWorkFolder(credentialsToBeExported);
 		if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
@@ -320,13 +319,13 @@ export class SourceControlService {
 		filesToBePushed.add(getTagsPath(this.gitFolder));
 		await this.sourceControlExportService.exportTagsToWorkFolder(context);
 
-		const folderChanges = this.resourceHandler.filterByType(filesToPush, 'folders')[0];
+		const folderChanges = filterByType(filesToPush, 'folders')[0];
 		if (folderChanges) {
 			filesToBePushed.add(folderChanges.file);
 			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
 		}
 
-		const variablesChanges = this.resourceHandler.filterByType(filesToPush, 'variables')[0];
+		const variablesChanges = filterByType(filesToPush, 'variables')[0];
 		if (variablesChanges) {
 			filesToBePushed.add(variablesChanges.file);
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
@@ -386,65 +385,47 @@ export class SourceControlService {
 		}
 
 		// Make sure the folders get processed first as the workflows depend on them
-		const foldersToBeImported = this.resourceHandler.getNonDeletedResources(
-			statusResult,
-			'folders',
-		)[0];
+		const foldersToBeImported = getNonDeletedResources(statusResult, 'folders')[0];
 		if (foldersToBeImported) {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
 		}
 
-		const workflowsToBeImported = this.resourceHandler.getNonDeletedResources(
-			statusResult,
-			'workflow',
-		);
+		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
 			user.id,
 		);
-		const workflowsToBeDeleted = this.resourceHandler.getDeletedResources(statusResult, 'workflow');
+		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
 			user,
 			workflowsToBeDeleted,
 		);
-		const credentialsToBeImported = this.resourceHandler.getNonDeletedResources(
-			statusResult,
-			'credential',
-		);
+		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
 			user.id,
 		);
-		const credentialsToBeDeleted = this.resourceHandler.getDeletedResources(
-			statusResult,
-			'credential',
-		);
+		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
 			user,
 			credentialsToBeDeleted,
 		);
 
-		const tagsToBeImported = this.resourceHandler.getNonDeletedResources(statusResult, 'tags')[0];
+		const tagsToBeImported = getNonDeletedResources(statusResult, 'tags')[0];
 		if (tagsToBeImported) {
 			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
 		}
-		const tagsToBeDeleted = this.resourceHandler.getDeletedResources(statusResult, 'tags');
+		const tagsToBeDeleted = getDeletedResources(statusResult, 'tags');
 		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);
 
-		const variablesToBeImported = this.resourceHandler.getNonDeletedResources(
-			statusResult,
-			'variables',
-		)[0];
+		const variablesToBeImported = getNonDeletedResources(statusResult, 'variables')[0];
 		if (variablesToBeImported) {
 			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
 		}
-		const variablesToBeDeleted = this.resourceHandler.getDeletedResources(
-			statusResult,
-			'variables',
-		);
+		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
-		const foldersToBeDeleted = this.resourceHandler.getDeletedResources(statusResult, 'folders');
+		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
 		// #region Tracking Information
