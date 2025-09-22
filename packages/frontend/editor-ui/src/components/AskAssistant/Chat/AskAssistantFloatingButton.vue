@@ -58,7 +58,7 @@ const onClick = () => {
 .container {
 	position: absolute;
 	right: var(--spacing-s);
-	bottom: var(--ask-assistant-floating-button-bottom-offset, 0);
+	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing-2xl);
 	z-index: var(--z-index-ask-assistant-floating-button);
 }
 
