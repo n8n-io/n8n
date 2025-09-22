@@ -128,7 +128,7 @@ describe('ImportService', () => {
 			const result = await importService.isTableEmpty('users');
 
 			expect(result).toBe(true);
-			expect(mockQueryBuilder.select).toHaveBeenCalledWith('COUNT(*)');
+			expect(mockQueryBuilder.select).toHaveBeenCalledWith('COUNT(*)', 'count');
 			expect(mockQueryBuilder.from).toHaveBeenCalledWith('users', 'users');
 			expect(mockLogger.debug).toHaveBeenCalledWith('Table users has 0 rows');
 		});
@@ -162,8 +162,8 @@ describe('ImportService', () => {
 			);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to check if table users is empty:',
-				expect.any(Error),
+				'Failed to check if table users is empty',
+				expect.objectContaining({ error: new Error('Database connection failed') }),
 			);
 		});
 	});
@@ -436,7 +436,11 @@ describe('ImportService', () => {
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
 				'Failed to parse JSON on line 2 in /test/invalid.jsonl',
-				expect.any(Error),
+				expect.objectContaining({
+					error: new Error(
+						'Invalid JSON on line 2 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
+					),
+				}),
 			);
 		});
 
