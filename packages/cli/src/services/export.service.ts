@@ -3,7 +3,7 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource } from '@n8n/db';
 
 @Service()
 export class ExportService {

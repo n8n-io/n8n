@@ -7,6 +7,7 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	DataSource,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
@@ -15,7 +16,6 @@ import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
-import { DataSource } from '@n8n/db';
 
 @Service()
 export class ImportService {
@@ -151,8 +151,8 @@ export class ImportService {
 
 			this.logger.debug(`Table ${tableName} has ${result?.count} rows`);
 			return result?.count === '0';
-		} catch (error) {
-			this.logger.error(`Failed to check if table ${tableName} is empty:`, error);
+		} catch (error: unknown) {
+			this.logger.error(`Failed to check if table ${tableName} is empty:`, { error });
 			throw new Error(`Unable to check table ${tableName}: ${error}`);
 		}
 	}
@@ -291,10 +291,10 @@ export class ImportService {
 
 			try {
 				entities.push(JSON.parse(line));
-			} catch (error) {
+			} catch (error: unknown) {
 				// If parsing fails, it might be because the JSON spans multiple lines
 				// This shouldn't happen in proper JSONL, but let's handle it gracefully
-				this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, error);
+				this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, { error });
 				this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
 				throw new Error(
 					`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
@@ -350,7 +350,12 @@ export class ImportService {
 				this.logger.info(`      Found ${entities.length} entities`);
 
 				if (entities.length > 0) {
-					this.dataSource.createQueryBuilder().insert().into(tableName).values(entities).execute();
+					await this.dataSource
+						.createQueryBuilder()
+						.insert()
+						.into(tableName)
+						.values(entities)
+						.execute();
 					entityCount += entities.length;
 				}
 			}
@@ -359,7 +364,7 @@ export class ImportService {
 			totalEntitiesImported += entityCount;
 		}
 
-		this.logger.info(`\n📊 Import Summary:`);
+		this.logger.info('\n📊 Import Summary:');
 		this.logger.info(`   Total entities imported: ${totalEntitiesImported}`);
 		this.logger.info(`   Entity types processed: ${entityFiles.size}`);
 		this.logger.info('✅ Import completed successfully!');
