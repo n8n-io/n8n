@@ -19,7 +19,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { map } from 'lodash';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();

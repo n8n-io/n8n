@@ -12,6 +12,10 @@ import { computed, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTemplatesStore } from '@/stores/templates.store';
 
+// TODO - need to refactor this to just get the next level of children, not the full tree
+// and then have the sidebar item component fetch the next level when opened
+// this will make it much more efficient for large numbers of folders/workflows
+
 export function useSidebarItems() {
 	const projectsStore = useProjectsStore();
 	const folderStore = useFoldersStore();
@@ -88,17 +92,7 @@ export function useSidebarItems() {
 					id: folder.id,
 					label: folder.name,
 					icon: 'folder' as IconName,
-					children:
-						children.length > 0
-							? children
-							: [
-									{
-										id: 'empty',
-										label: 'No workflows or folders',
-										type: 'empty',
-										available: false,
-									},
-								],
+					children: children.length > 0 ? children : undefined,
 					route: { to: `/projects/${projectId}/folders/${folder.id}/workflows` },
 					type: 'folder',
 				});
@@ -151,10 +145,7 @@ export function useSidebarItems() {
 				label: 'Personal',
 				icon: 'user',
 				route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
-				children:
-					personalChildrenItems.value.length > 0
-						? personalChildrenItems.value
-						: [{ id: 'empty', label: 'No workflows or folders', type: 'empty', available: false }],
+				children: personalChildrenItems.value.length > 0 ? personalChildrenItems.value : undefined,
 				type: 'project',
 				available: true,
 			},
@@ -165,10 +156,7 @@ export function useSidebarItems() {
 				route: { to: '/shared/workflows' },
 				available: showShared.value,
 				type: 'project',
-				children:
-					sharedWorkflows.value.length > 0
-						? sharedWorkflows.value
-						: [{ id: 'empty', label: 'No shared workflows', type: 'empty', available: false }],
+				children: sharedWorkflows.value.length > 0 ? sharedWorkflows.value : undefined,
 			},
 		];
 	});
@@ -185,17 +173,7 @@ export function useSidebarItems() {
 					label: project.name as string,
 					icon: (project.icon?.value || 'layers') as IconName,
 					route: { to: `/projects/${project.id}/workflows` },
-					children:
-						children.length > 0
-							? convertToTreeStructure(project.id)
-							: [
-									{
-										id: 'empty',
-										label: 'No workflows or folders',
-										type: 'empty',
-										available: false,
-									},
-								],
+					children: children.length > 0 ? convertToTreeStructure(project.id) : undefined,
 					type: 'project',
 				};
 			}),

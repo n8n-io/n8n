@@ -44,9 +44,9 @@ const icon = computed<IconName>(() => {
 </script>
 
 <template>
-	<div class="itemWrapper">
+	<div class="sidebarItemWrapper">
 		<span
-			class="itemIdent"
+			class="sidebarItemIdent"
 			v-if="level && level > 1"
 			v-for="level in new Array(level - 1)"
 			:key="level"
@@ -54,20 +54,19 @@ const icon = computed<IconName>(() => {
 		<N8nRoute :to="to" class="sidebarItem" :aria-label="props.ariaLabel">
 			<div
 				v-if="item.type !== 'workflow'"
-				:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
+				class="sidebarItemIcon"
+				:class="{ other: item.type === 'other' }"
 			>
-				<div class="sidebarItemDropdownIcon">
-					<span
-						v-if="item.icon && !isSupportedIconName(item.icon as string)"
-						class="sidebarItemEmoji"
-						>{{ item.icon }}</span
-					>
-					<N8nIcon v-else-if="item.icon" :icon="icon" />
-				</div>
+				<span
+					v-if="item.icon && !isSupportedIconName(item.icon as string)"
+					class="sidebarItemEmoji"
+					>{{ item.icon }}</span
+				>
+				<N8nIcon v-else-if="item.icon" :icon="icon" />
 			</div>
 			<button
-				v-if="item.type !== 'other' && item.type !== 'workflow'"
-				class="sidebarItemDropdownButton"
+				v-if="item.children"
+				class="sidebarItemDropdown"
 				@click="click"
 				:aria-label="ariaLabel"
 			>
@@ -79,7 +78,7 @@ const icon = computed<IconName>(() => {
 </template>
 
 <style lang="scss" scoped>
-.itemWrapper {
+.sidebarItemWrapper {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
@@ -103,7 +102,7 @@ const icon = computed<IconName>(() => {
 	width: 100%;
 	position: relative;
 
-	&:hover .sidebarItemDropdownIcon {
+	&:hover .sidebarItemIcon {
 		color: var(--color-text-dark);
 	}
 }
@@ -131,26 +130,14 @@ const icon = computed<IconName>(() => {
 	color: var(--color-text-base);
 }
 
-.sidebarItemDropdown {
+.sidebarItemIcon {
 	position: relative;
 	width: var(--spacing-s);
 	height: var(--spacing-s);
 	min-width: var(--spacing-s);
-	border-radius: var(--border-radius-small);
-
-	.sidebarItemDropdownIcon {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		pointer-events: none;
-		color: var(--color-text-light);
-	}
 }
 
-.sidebarItemDropdownButton {
+.sidebarItemDropdown {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -169,16 +156,16 @@ const icon = computed<IconName>(() => {
 	z-index: 100;
 }
 
-.sidebarItem:hover > .sidebarItemDropdownButton {
+.sidebarItem:hover > .sidebarItemDropdown {
 	opacity: 1;
 }
 
-.sidebarItemDropdownButton:hover {
+.sidebarItemDropdown:hover {
 	background-color: var(--color-foreground-base);
 	opacity: 1;
 }
 
-.sidebarItemDropdownButton:focus-visible {
+.sidebarItemDropdown:focus-visible {
 	outline: 1px solid var(--color-secondary);
 	outline-offset: -1px;
 	opacity: 1;
@@ -192,12 +179,12 @@ const icon = computed<IconName>(() => {
 .sidebarItem.active {
 	background-color: var(--color-foreground-light);
 
-	.sidebarItemDropdownIcon {
+	.sidebarItemIcon {
 		color: var(--color-foreground-xdark);
 	}
 }
 
-.itemIdent {
+.sidebarItemIdent {
 	display: block;
 	position: relative;
 	width: 0.5rem;
@@ -207,7 +194,7 @@ const icon = computed<IconName>(() => {
 	border-left: 1px solid var(--color-foreground-light);
 }
 
-.itemIdent::before {
+.sidebarItemIdent::before {
 	content: '';
 	position: absolute;
 	bottom: -1px;
