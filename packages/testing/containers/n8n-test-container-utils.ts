@@ -24,3 +24,28 @@ export function createSilentLogConsumer() {
 
 	return { consumer, throwWithLogs };
 }
+
+/**
+ * Parse resource quota from environment variables
+ * Returns undefined if no limits are set
+ */
+export function getResourceQuotaFromEnv(): { memory?: number; cpu?: number } | undefined {
+	const memoryLimit = process.env.N8N_MEMORY_LIMIT;
+	const cpuLimit = process.env.N8N_CPU_LIMIT;
+
+	if (!memoryLimit && !cpuLimit) {
+		return undefined;
+	}
+
+	const quota: { memory?: number; cpu?: number } = {};
+
+	if (memoryLimit) {
+		quota.memory = parseFloat(memoryLimit);
+	}
+
+	if (cpuLimit) {
+		quota.cpu = parseFloat(cpuLimit);
+	}
+
+	return quota;
+}
