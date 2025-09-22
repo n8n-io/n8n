@@ -282,7 +282,7 @@ const v4Options: INodeProperties = {
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
 		show: {
-			operation: ['getAll'],
+			operation: ['search'],
 		},
 	},
 	[

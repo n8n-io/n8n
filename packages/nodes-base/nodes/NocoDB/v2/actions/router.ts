@@ -39,8 +39,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						operationResult = await rows.get.execute.call(this);
 						break;
 					}
-					case 'getAll': {
-						operationResult = await rows.getAll.execute.call(this);
+					case 'search': {
+						operationResult = await rows.search.execute.call(this);
 						break;
 					}
 					case 'create': {
