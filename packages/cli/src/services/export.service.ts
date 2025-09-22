@@ -3,6 +3,8 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
+
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 
 @Service()

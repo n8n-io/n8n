@@ -8,6 +8,7 @@ import {
 	CredentialsRepository,
 	TagRepository,
 } from '@n8n/db';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
