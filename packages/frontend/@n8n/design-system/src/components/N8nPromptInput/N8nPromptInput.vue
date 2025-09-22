@@ -85,9 +85,10 @@ const textareaStyle = computed(() => {
 function adjustHeight() {
 	if (!textareaRef.value) return;
 
-	// Store focus state before potential mode change
+	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
+	const previousHeight = textareaHeight.value;
 
 	// If text is empty, revert to single-line mode
 	if (!textValue.value || textValue.value.trim() === '') {
@@ -104,9 +105,6 @@ function adjustHeight() {
 		}
 		return;
 	}
-
-	// Save current height to compare
-	const oldHeight = textareaRef.value.style.height;
 
 	// Measure the natural height
 	textareaRef.value.style.height = '0';
@@ -128,8 +126,13 @@ function adjustHeight() {
 		textareaRef.value.style.height = `${scrollHeight}px`;
 	}
 
-	// Restore focus if mode changed
-	if (wasMultiline !== isMultiline.value && wasFocused) {
+	// Restore focus if mode changed or if scrollbar appeared/disappeared
+	if (
+		(wasMultiline !== isMultiline.value ||
+			(previousHeight <= TEXTAREA_MAX_HEIGHT && textareaHeight.value > TEXTAREA_MAX_HEIGHT) ||
+			(previousHeight > TEXTAREA_MAX_HEIGHT && textareaHeight.value <= TEXTAREA_MAX_HEIGHT)) &&
+		wasFocused
+	) {
 		void nextTick(() => {
 			textareaRef.value?.focus();
 		});
@@ -152,6 +155,19 @@ watch(textValue, (newValue) => {
 	}
 	emit('update:modelValue', newValue);
 	void nextTick(() => adjustHeight());
+});
+
+// Watch for scrollbar appearance/disappearance
+watch(textareaHeight, (newHeight, oldHeight) => {
+	const crossedThreshold =
+		(oldHeight <= TEXTAREA_MAX_HEIGHT && newHeight > TEXTAREA_MAX_HEIGHT) ||
+		(oldHeight > TEXTAREA_MAX_HEIGHT && newHeight <= TEXTAREA_MAX_HEIGHT);
+
+	if (crossedThreshold && isFocused.value) {
+		void nextTick(() => {
+			textareaRef.value?.focus();
+		});
+	}
 });
 
 function handleSubmit() {
