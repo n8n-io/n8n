@@ -7,7 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
-import { useClipboard } from '@vueuse/core';
+import { useClipboard } from '@/composables/useClipboard';
 import { VIEWS } from '@/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';

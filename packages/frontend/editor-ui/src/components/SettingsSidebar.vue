@@ -124,7 +124,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	// Append module-registered settings sidebar items.
 	const moduleItems = uiStore.settingsSidebarItems;
 
-	return menuItems.concat(moduleItems);
+	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
 });
 </script>
 
