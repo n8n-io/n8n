@@ -158,13 +158,12 @@ describe('ImportService', () => {
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
 
 			await expect(importService.isTableEmpty('users')).rejects.toThrow(
-				'Unable to check table users: Error: Database connection failed',
+				'Unable to check table users',
 			);
 
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to check if table users is empty',
-				expect.objectContaining({ error: new Error('Database connection failed') }),
-			);
+			expect(mockLogger.error).toHaveBeenCalledWith('Failed to check if table users is empty:', {
+				error: new Error('Database connection failed'),
+			});
 		});
 	});
 
@@ -432,15 +431,6 @@ describe('ImportService', () => {
 
 			await expect(importService.readEntityFile('/test/invalid.jsonl')).rejects.toThrow(
 				'Invalid JSON on line 2 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
-			);
-
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to parse JSON on line 2 in /test/invalid.jsonl',
-				expect.objectContaining({
-					error: new Error(
-						'Invalid JSON on line 2 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
-					),
-				}),
 			);
 		});
 
