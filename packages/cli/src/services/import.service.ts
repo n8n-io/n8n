@@ -153,7 +153,7 @@ export class ImportService {
 			return result?.count === '0';
 		} catch (error: unknown) {
 			this.logger.error(`Failed to check if table ${tableName} is empty:`, { error });
-			throw new Error(`Unable to check table ${tableName}: ${error}`);
+			throw new Error(`Unable to check table ${tableName}`);
 		}
 	}
 
