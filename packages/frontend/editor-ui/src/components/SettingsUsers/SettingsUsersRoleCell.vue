@@ -6,18 +6,18 @@ import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design
 const props = defineProps<{
 	data: UsersList['items'][number];
 	roles: Record<Role, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<Role | 'delete'>>;
+	actions: Array<ActionDropdownItem<Role>>;
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: Role | 'delete'; userId: string }];
+	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
 const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
 const roleLabel = computed(() => props.roles[selectedRole.value].label);
 
-const onActionSelect = (role: Role | 'delete') => {
+const onActionSelect = (role: Role) => {
 	emit('update:role', {
 		role,
 		userId: props.data.id,
@@ -41,11 +41,7 @@ const onActionSelect = (role: Role | 'delete') => {
 				</button>
 			</template>
 			<template #menuItem="item">
-				<N8nText v-if="item.id === 'delete'" color="text-dark" :class="$style.removeUser">{{
-					item.label
-				}}</N8nText>
 				<ElRadio
-					v-else
 					:model-value="selectedRole"
 					:label="item.id"
 					@update:model-value="selectedRole = item.id as Role"

@@ -52,7 +52,7 @@ export async function execute(
 	if (optimizeBulkEnabled) {
 		// This function is always called by index, so we inherently cannot operate in bulk
 		this.addExecutionHints({
-			message: 'Unable to optimize bulk insert due to expression in Data Table ID ',
+			message: 'Unable to optimize bulk insert due to expression in Data table ID ',
 			location: 'outputPane',
 		});
 		const json = await dataStoreProxy.insertRows([row], 'count');

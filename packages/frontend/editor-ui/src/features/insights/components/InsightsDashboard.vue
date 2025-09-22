@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { useI18n } from '@n8n/i18n';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { computed, defineAsyncComponent, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -42,6 +45,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const insightsStore = useInsightsStore();
+const projectsStore = useProjectsStore();
 
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
@@ -59,16 +63,29 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 	return `${key}:${order}` as const;
 };
 
+const sortTableBy = ref([{ id: props.insightType, desc: true }]);
+
+const upgradeModalVisible = ref(false);
+const selectedDateRange = ref<InsightsDateRange['key']>('week');
+const granularity = computed(
+	() =>
+		insightsStore.dateRanges.find((item) => item.key === selectedDateRange.value)?.granularity ??
+		'day',
+);
+const selectedProject = ref<ProjectSharingData | null>(null);
+
 const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 25,
 	sortBy,
 	dateRange = selectedDateRange.value,
+	projectId = selectedProject.value?.id,
 }: {
 	page?: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 	dateRange?: InsightsDateRange['key'];
+	projectId?: string;
 }) => {
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
@@ -80,18 +97,9 @@ const fetchPaginatedTableData = ({
 		take,
 		sortBy: sortKey,
 		dateRange,
+		projectId,
 	});
 };
-
-const sortTableBy = ref([{ id: props.insightType, desc: true }]);
-
-const upgradeModalVisible = ref(false);
-const selectedDateRange = ref<InsightsDateRange['key']>('week');
-const granularity = computed(
-	() =>
-		insightsStore.dateRanges.find((item) => item.key === selectedDateRange.value)?.granularity ??
-		'day',
-);
 
 function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANGE) {
 	if (value === UNLICENSED_TIME_RANGE) {
@@ -104,17 +112,27 @@ function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TI
 }
 
 watch(
-	() => [props.insightType, selectedDateRange.value],
+	() => [props.insightType, selectedDateRange.value, selectedProject.value],
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
 		if (insightsStore.isSummaryEnabled) {
-			void insightsStore.summary.execute(0, { dateRange: selectedDateRange.value });
+			void insightsStore.summary.execute(0, {
+				dateRange: selectedDateRange.value,
+				projectId: selectedProject.value?.id,
+			});
 		}
 
-		void insightsStore.charts.execute(0, { dateRange: selectedDateRange.value });
+		void insightsStore.charts.execute(0, {
+			dateRange: selectedDateRange.value,
+			projectId: selectedProject.value?.id,
+		});
 		if (insightsStore.isDashboardEnabled) {
-			fetchPaginatedTableData({ sortBy: sortTableBy.value, dateRange: selectedDateRange.value });
+			fetchPaginatedTableData({
+				sortBy: sortTableBy.value,
+				dateRange: selectedDateRange.value,
+				projectId: selectedProject.value?.id,
+			});
 		}
 	},
 	{
@@ -125,6 +143,9 @@ watch(
 onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.heading'));
 });
+onBeforeMount(async () => {
+	await projectsStore.getAvailableProjects();
+});
 </script>
 
 <template>
@@ -134,7 +155,18 @@ onMounted(() => {
 				{{ i18n.baseText('insights.dashboard.title') }}
 			</N8nHeading>
 
-			<div class="mt-s">
+			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
+				<ProjectSharing
+					v-model="selectedProject"
+					:projects="projectsStore.availableProjects"
+					:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+					size="mini"
+					:class="$style.projectSelect"
+					clearable
+					@clear="selectedProject = null"
+				/>
+
 				<InsightsDateRangeSelect
 					:model-value="selectedDateRange"
 					style="width: 173px"
@@ -280,6 +312,13 @@ onMounted(() => {
 		background-color: var(--color-background-xlight);
 		opacity: 0.75;
 		z-index: 1;
+	}
+}
+
+.projectSelect {
+	min-width: 200px;
+	:global(.el-input--suffix .el-input__inner) {
+		padding-right: 26px;
 	}
 }
 </style>

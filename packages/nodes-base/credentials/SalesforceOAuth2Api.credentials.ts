@@ -38,7 +38,7 @@ export class SalesforceOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			required: true,
 			default:
-				'={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/authorize" : "https://login.salesforce.com/services/oauth2/authorize" }}',
+				'={{ $self["environment"] === "sandbox" ? "https://test.salesforce.com/services/oauth2/authorize?prompt=login" : "https://login.salesforce.com/services/oauth2/authorize?prompt=login" }}',
 		},
 		{
 			displayName: 'Access Token URL',
