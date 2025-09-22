@@ -36,10 +36,10 @@ export const description: INodeProperties[] = [
 				action: 'Get row(s)',
 			},
 			{
-				name: 'If Row Does Exist',
+				name: 'If Row Exists',
 				value: rowExists.FIELD,
 				description: 'Match input items that are in the data table',
-				action: 'If Row Does Exist',
+				action: 'If Row Exists',
 			},
 			{
 				name: 'If Row Does Not Exist',
