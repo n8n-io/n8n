@@ -3,7 +3,8 @@ import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
+import type { MemorySaver } from '@langchain/langgraph';
+import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
@@ -43,7 +44,7 @@ export interface WorkflowBuilderAgentConfig {
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
-	checkpointer?: MemorySaver;
+	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
@@ -76,7 +77,7 @@ export class WorkflowBuilderAgent {
 		this.llmSimpleTask = config.llmSimpleTask;
 		this.llmComplexTask = config.llmComplexTask;
 		this.logger = config.logger;
-		this.checkpointer = config.checkpointer ?? new MemorySaver();
+		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
