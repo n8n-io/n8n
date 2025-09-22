@@ -481,7 +481,7 @@ export async function executeWebhook(
 			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
 				? 'Form'
 				: 'Webhook';
-			const errorMessage = getErrorMessage(err, webhookType);
+			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
 
 			Container.get(ErrorReporter).error(err, {
 				extra: {
@@ -895,9 +895,11 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 /**
  * Either return the original message, or a generic one if we don't want to surface the underlying cause.
  *
+ * ONLY EXPORTED FOR TESTING.
+ *
  * @param err the error being handled
  */
-function getErrorMessage(err: any, webhookType: 'Form' | 'Webhook'): string {
+export function _privateGetWebhookErrorMessage(err: any, webhookType: 'Form' | 'Webhook'): string {
 	// if workflow started manually, show an actual error message
 	if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
 		return err.message;

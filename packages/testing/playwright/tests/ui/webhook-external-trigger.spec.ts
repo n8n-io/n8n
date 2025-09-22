@@ -23,7 +23,7 @@ test.describe('External Webhook Triggering', () => {
 		expect(executionDetails.data).toContain('Hello from Playwright test');
 	});
 	test('should surface workflow configuration errors to the caller', async ({ api }) => {
-		const { webhookPath, workflowId } = await api.workflowApi.importWorkflow(
+		const { webhookPath } = await api.workflowApi.importWorkflow(
 			'webhook-misconfiguration-test.json',
 		);
 
