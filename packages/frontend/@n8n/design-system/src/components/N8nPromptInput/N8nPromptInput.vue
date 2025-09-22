@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import N8nSendStopButton from './N8nSendStopButton.vue';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
@@ -236,7 +237,28 @@ defineExpose({
 
 		<!-- Multiline mode: textarea full width with button below -->
 		<template v-else>
+			<N8nScrollArea
+				v-if="textareaHeight > TEXTAREA_MAX_HEIGHT"
+				:class="$style.scrollAreaWrapper"
+				:max-height="`${TEXTAREA_MAX_HEIGHT}px`"
+				type="hover"
+			>
+				<textarea
+					ref="textareaRef"
+					v-model="textValue"
+					:class="$style.multilineTextarea"
+					:style="{ height: `${textareaHeight}px` }"
+					:placeholder="placeholder"
+					:disabled="disabled || streaming"
+					:maxlength="maxLength"
+					@keydown="handleKeyDown"
+					@focus="handleFocus"
+					@blur="handleBlur"
+					@input="adjustHeight"
+				/>
+			</N8nScrollArea>
 			<textarea
+				v-else
 				ref="textareaRef"
 				v-model="textValue"
 				:class="$style.multilineTextarea"
@@ -336,6 +358,11 @@ defineExpose({
 }
 
 // Multiline mode
+.scrollAreaWrapper {
+	width: 100%;
+	margin-bottom: 0;
+}
+
 .multilineTextarea {
 	width: 100%;
 	border: none;
@@ -350,27 +377,10 @@ defineExpose({
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
-	overflow-y: hidden; // Changed dynamically via style binding
+	overflow-y: hidden;
 
 	&::placeholder {
 		color: var(--color-text-light);
-	}
-
-	// Custom scrollbar when scrolling
-	@supports not (selector(::-webkit-scrollbar)) {
-		scrollbar-width: thin;
-	}
-	@supports selector(::-webkit-scrollbar) {
-		&::-webkit-scrollbar {
-			width: 6px;
-		}
-		&::-webkit-scrollbar-thumb {
-			border-radius: 3px;
-			background: var(--color-foreground-dark);
-		}
-		&::-webkit-scrollbar-track {
-			background: transparent;
-		}
 	}
 }
 
