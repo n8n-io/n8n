@@ -304,8 +304,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			},
 			typeOptions: {
 				minValue: 1,
-				// TODO: deprecated, searching for alternative
-				// maxValue: 100,
+				maxValue: 100,
 			},
 			default: 50,
 			description: 'Max number of results to return',
