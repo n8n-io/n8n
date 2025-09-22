@@ -454,12 +454,13 @@ describe('prepareExecutionData', () => {
 });
 
 describe('getWebhookErrorMessage', () => {
+	const workflowStartNode = mock<INode>({ name: 'Start' });
 	it('should surface WorkflowConfigurationError', () => {
-		const err = new WorkflowConfigurationError(undefined, new Error('test'));
+		const err = new WorkflowConfigurationError(workflowStartNode, new Error('test'));
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toEqual(err.message);
 	});
 	it('should obfuscate other errors', () => {
-		const err = new NodeOperationError(undefined, new Error('test'));
+		const err = new NodeOperationError(workflowStartNode, new Error('test'));
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
