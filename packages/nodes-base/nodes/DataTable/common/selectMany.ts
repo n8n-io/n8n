@@ -32,7 +32,7 @@ export function getSelectFields(
 		},
 		default: 'id',
 	});
-	if (skipOperator) {
+	if (!skipOperator) {
 		conditionValues.push({
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 			displayName: 'Condition',
