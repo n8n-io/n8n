@@ -20,6 +20,7 @@ describe('DeprecationService', () => {
 		// this test suite.
 		process.env = {
 			N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+			N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 		};
 
 		jest.resetAllMocks();
@@ -140,6 +141,7 @@ describe('DeprecationService', () => {
 			process.env = {
 				N8N_RUNNERS_ENABLED: 'true',
 				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
 
 			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
@@ -239,6 +241,7 @@ describe('DeprecationService', () => {
 		beforeEach(() => {
 			process.env = {
 				N8N_RUNNERS_ENABLED: 'true',
+				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
 
 			jest.resetAllMocks();
@@ -254,6 +257,31 @@ describe('DeprecationService', () => {
 			'should not warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is %s',
 			(value) => {
 				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = value;
+				deprecationService.warn();
+				expect(logger.warn).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('N8N_GIT_NODE_DISABLE_BARE_REPOS', () => {
+		beforeEach(() => {
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+			};
+			jest.resetAllMocks();
+		});
+
+		test('should warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is not set', () => {
+			delete process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS;
+			deprecationService.warn();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test.each(['false', 'true'])(
+			'should not warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is %s',
+			(value) => {
+				process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS = value;
 				deprecationService.warn();
 				expect(logger.warn).not.toHaveBeenCalled();
 			},

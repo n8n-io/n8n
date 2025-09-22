@@ -754,12 +754,18 @@ export function useCanvasMapping({
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 			const runDataTotal =
 				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
+			const hasMultipleRunDataIterations =
+				(nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.iterations ?? 1) >
+				1;
 
 			return runDataTotal > 0
-				? i18n.baseText('ndv.output.items', {
-						adjustToNumber: runDataTotal,
-						interpolate: { count: String(runDataTotal) },
-					})
+				? i18n.baseText(
+						hasMultipleRunDataIterations ? 'ndv.output.itemsTotal' : 'ndv.output.items',
+						{
+							adjustToNumber: runDataTotal,
+							interpolate: { count: String(runDataTotal) },
+						},
+					)
 				: '';
 		}
 

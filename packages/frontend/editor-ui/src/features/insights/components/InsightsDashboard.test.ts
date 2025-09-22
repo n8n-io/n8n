@@ -4,9 +4,17 @@ import InsightsDashboard from './InsightsDashboard.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import { mockedStore, type MockedStore, useEmitters, waitAllPromises } from '@/__tests__/utils';
+import {
+	mockedStore,
+	type MockedStore,
+	useEmitters,
+	waitAllPromises,
+	getDropdownItems,
+} from '@/__tests__/utils';
 import { within, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createProjectListItem } from '@/__tests__/data/projects';
+import { useProjectsStore } from '@/stores/projects.store';
 import type {
 	FrontendModuleSettings,
 	InsightsByTime,
@@ -194,6 +202,11 @@ const mockTableData: InsightsByWorkflow = {
 };
 
 let insightsStore: MockedStore<typeof useInsightsStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
+
+const personalProject = createProjectListItem('personal');
+const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
+const projects = [personalProject, ...teamProjects];
 
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
@@ -206,9 +219,14 @@ describe('InsightsDashboard', () => {
 		});
 
 		insightsStore = mockedStore(useInsightsStore);
+		projectsStore = mockedStore(useProjectsStore);
 
 		insightsStore.isSummaryEnabled = true;
 		insightsStore.isDashboardEnabled = true;
+
+		// Mock projects store
+		projectsStore.availableProjects = projects;
+		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
 
 		// Mock async states
 		insightsStore.summary = {
@@ -508,6 +526,185 @@ describe('InsightsDashboard', () => {
 				take: 25,
 				sortBy: undefined,
 				dateRange: 'week',
+			});
+		});
+	});
+
+	describe('Project Filter Functionality', () => {
+		it('should render project sharing component', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-sharing-select')).toBeInTheDocument();
+			});
+		});
+
+		it('should select a project and filter data by project ID', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-sharing-select')).toBeInTheDocument();
+			});
+
+			const projectSelect = screen.getByTestId('project-sharing-select');
+
+			// Click to open the dropdown
+			await userEvent.click(projectSelect);
+
+			// Get dropdown items
+			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+			expect(projectSelectDropdownItems.length).toBeGreaterThan(0);
+
+			// Find and click the first team project
+			const teamProject = [...projectSelectDropdownItems].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			expect(teamProject).toBeDefined();
+
+			await userEvent.click(teamProject as Element);
+
+			// Verify that all data fetching methods were called with the selected project ID
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 25,
+				sortBy: 'total:desc',
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+		});
+
+		it('should combine project filter with date range changes', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			// Select a project first
+			const projectSelect = screen.getByTestId('project-sharing-select');
+			await userEvent.click(projectSelect);
+			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+			const teamProject = [...projectSelectDropdownItems].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			await userEvent.click(teamProject as Element);
+
+			// Clear previous calls
+			vi.clearAllMocks();
+
+			// Now change the date range
+			const dateRangeSelect = within(screen.getByTestId('range-select')).getByRole('combobox');
+			await userEvent.click(dateRangeSelect);
+
+			const controllingId = dateRangeSelect.getAttribute('aria-controls');
+			const actions = document.querySelector(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			// Select the first option (day range)
+			await userEvent.click(actions.querySelectorAll('li')[0]);
+
+			// Verify both project ID and new date range are passed
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'day',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'day',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 25,
+				sortBy: 'total:desc',
+				dateRange: 'day',
+				projectId: teamProjects[0].id,
+			});
+		});
+
+		it('should maintain project filter when insight type changes', async () => {
+			const { rerender } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			// Select a project
+			const projectSelect = screen.getByTestId('project-sharing-select');
+			await userEvent.click(projectSelect);
+			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+			const teamProject = [...projectSelectDropdownItems].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			await userEvent.click(teamProject as Element);
+
+			// Clear previous calls
+			vi.clearAllMocks();
+
+			// Change insight type
+			await rerender({ insightType: INSIGHT_TYPES.FAILED });
+
+			// Verify the project ID is still passed with the new insight type
+			expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, {
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
+				skip: 0,
+				take: 25,
+				sortBy: 'failed:desc',
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
+			});
+		});
+
+		it('should pass project ID to table pagination and sorting events', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			// Select a project
+			const projectSelect = screen.getByTestId('project-sharing-select');
+			await userEvent.click(projectSelect);
+			const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+			const teamProject = [...projectSelectDropdownItems].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			await userEvent.click(teamProject as Element);
+
+			await waitAllPromises();
+
+			// Clear previous calls to focus on pagination event
+			vi.clearAllMocks();
+
+			// Simulate pagination event - note that the function uses the current selectedProject value
+			// not the projectId parameter when called from table events
+			emitters.n8nDataTableServer.emit('update:options', {
+				page: 1,
+				itemsPerPage: 50,
+				sortBy: [{ id: 'failed', desc: true }],
+			});
+
+			// The function should use the selectedProject.value?.id when projectId is not explicitly passed
+			expect(insightsStore.table.execute).toHaveBeenCalledWith(0, {
+				skip: 50,
+				take: 50,
+				sortBy: 'failed:desc',
+				dateRange: 'week',
+				projectId: teamProjects[0].id,
 			});
 		});
 	});

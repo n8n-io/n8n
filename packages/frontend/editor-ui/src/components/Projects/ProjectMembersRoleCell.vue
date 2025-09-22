@@ -9,11 +9,11 @@ import { computed, ref, watch } from 'vue';
 const props = defineProps<{
 	data: ProjectMemberData;
 	roles: Record<ProjectRole, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<ProjectRole | 'remove'>>;
+	actions: Array<ActionDropdownItem<ProjectRole>>;
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: ProjectRole | 'remove'; userId: string }];
+	'update:role': [payload: { role: ProjectRole; userId: string }];
 }>();
 
 const selectedRole = ref<string>(props.data.role);
@@ -30,7 +30,7 @@ const roleLabel = computed(() => {
 	return props.roles[selectedRole.value]?.label || selectedRole.value;
 });
 
-const onActionSelect = (role: ProjectRole | 'remove') => {
+const onActionSelect = (role: ProjectRole) => {
 	emit('update:role', {
 		role,
 		userId: props.data.id,
@@ -43,6 +43,7 @@ const onActionSelect = (role: ProjectRole | 'remove') => {
 		v-if="isEditable"
 		placement="bottom-start"
 		:items="props.actions"
+		:max-height="280"
 		data-test-id="project-member-role-dropdown"
 		@select="onActionSelect"
 	>
@@ -53,11 +54,7 @@ const onActionSelect = (role: ProjectRole | 'remove') => {
 			</button>
 		</template>
 		<template #menuItem="item">
-			<N8nText v-if="item.id === 'remove'" color="text-dark" :class="$style.removeUser">{{
-				item.label
-			}}</N8nText>
 			<ElRadio
-				v-else
 				:model-value="selectedRole"
 				:label="item.id"
 				:disabled="item.disabled"
@@ -95,10 +92,5 @@ const onActionSelect = (role: ProjectRole | 'remove') => {
 	span {
 		white-space: normal;
 	}
-}
-
-.removeUser {
-	display: block;
-	padding: var(--spacing-2xs) var(--spacing-l);
 }
 </style>
