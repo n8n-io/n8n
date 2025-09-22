@@ -96,7 +96,7 @@ const connectionString = ref(`
         "--streamableHttp",
         "${rootStore.urlBaseEditor}rest/mcp-control/mcp",
         "--header",
-        "authorization:<YOUR_N8N_API_KEY>",
+        "authorization:<YOUR_N8N_API_KEY>"
       ]
     }
   }

@@ -9,7 +9,7 @@ const SettingsMCPView = async () => await import('@/features/mcpAccess/SettingsM
 export const MCPModule: FrontendModuleDescription = {
 	id: 'mcp',
 	name: 'MCP Access',
-	description: 'Access your n8n instance trough mcp clients',
+	description: 'Access your n8n instance through MCP clients',
 	icon: 'mcp',
 	routes: [
 		{
