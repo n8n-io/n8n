@@ -603,7 +603,7 @@ export const messageTypeFields: INodeProperties[] = [
 							},
 							{
 								displayName: 'Type',
-								name: 'type_v11',
+								name: 'type',
 								displayOptions: {
 									show: {
 										'@version': [{ _cnd: { gt: 1 } }],
