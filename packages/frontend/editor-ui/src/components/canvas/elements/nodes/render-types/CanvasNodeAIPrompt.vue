@@ -124,7 +124,6 @@ function onAddNodeClick() {
 				:disabled="isLoading"
 				:streaming="builderStore.streaming"
 				:placeholder="i18n.baseText('aiAssistant.builder.canvasPlaceholder')"
-				:max-height="120"
 				:show-character-count="true"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
