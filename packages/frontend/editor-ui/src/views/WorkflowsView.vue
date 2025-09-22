@@ -2042,6 +2042,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 				<WorkflowCard
 					data-test-id="resources-list-item-workflow"
+					data-target="workflow"
 					:class="{
 						['mb-2xs']: true,
 						[$style['drag-active']]: isDragging,
@@ -2055,7 +2056,9 @@ const onNameSubmit = async (name: string) => {
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
-					data-target="workflow"
+					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
+					:are-tags-enabled="settingsStore.areTagsEnabled"
+					:is-mcp-enabled="settingsStore.isModuleActive('mcp')"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"

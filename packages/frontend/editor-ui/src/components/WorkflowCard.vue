@@ -13,7 +13,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -49,11 +48,17 @@ const props = withDefaults(
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 		showOwnershipBadge?: boolean;
+		areTagsEnabled?: boolean;
+		isMcpEnabled?: boolean;
+		areFoldersEnabled?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		workflowListEventBus: undefined,
 		showOwnershipBadge: false,
+		areTagsEnabled: true,
+		isMcpEnabled: false,
+		areFoldersEnabled: false,
 	},
 );
 
@@ -82,7 +87,6 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 
-const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
@@ -96,10 +100,8 @@ const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toL
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
-const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
-
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
 const showCardBreadcrumbs = computed(() => {
@@ -183,7 +185,7 @@ const actions = computed(() => {
 	}
 
 	if (
-		isMCPEnabled.value &&
+		props.isMcpEnabled &&
 		workflowPermissions.value.update &&
 		!props.readOnly &&
 		!props.data.isArchived
@@ -475,11 +477,12 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="isMCPEnabled && data.settings?.availableInMCP">|</span>
+				<span v-if="props.isMcpEnabled && data.settings?.availableInMCP">|</span>
 			</span>
 			<span
-				v-show="isMCPEnabled && data.settings?.availableInMCP"
+				v-show="props.isMcpEnabled && data.settings?.availableInMCP"
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+				data-test-id="workflow-card-mcp"
 			>
 				<n8n-tooltip
 					placement="right"
@@ -490,7 +493,7 @@ const tags = computed(
 				</n8n-tooltip>
 			</span>
 			<span
-				v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
+				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
 				v-show="data"
 				:class="$style.cardTags"
 			>
