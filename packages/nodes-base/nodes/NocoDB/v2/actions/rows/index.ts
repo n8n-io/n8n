@@ -6,9 +6,6 @@ export * as get from './get';
 export * as getAll from './getAll';
 export * as create from './create';
 export * as delete from './delete';
-export * as link from './link';
-export * as linklist from './linklist';
-export * as unlink from './unlink';
 export * as update from './update';
 export * as upload from './upload';
 export * as upsert from './upsert';
@@ -18,9 +15,6 @@ import * as createAction from './create';
 import * as deleteAction from './delete';
 import * as getAction from './get';
 import * as getAllAction from './getAll';
-import * as linkAction from './link';
-import * as linklistAction from './linklist';
-import * as unlinkAction from './unlink';
 import * as updateAction from './update';
 import * as uploadAction from './upload';
 import * as upsertAction from './upsert';
@@ -42,13 +36,8 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					version: [4],
 				},
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
-				{
-					name: 'Count',
-					value: 'count',
-					description: 'Count number of records in table',
-					action: 'Get table count',
-				},
 				{
 					name: 'Create',
 					value: 'create',
@@ -63,6 +52,12 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					action: 'Create or update a row',
 				},
 				{
+					name: 'Update',
+					value: 'update',
+					description: 'Update a row',
+					action: 'Update a row',
+				},
+				{
 					name: 'Delete',
 					value: 'delete',
 					description: 'Delete a row',
@@ -75,34 +70,16 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					action: 'Get a row',
 				},
 				{
-					name: 'Get Linked Records',
-					value: 'linklist',
-					description: 'Retrieve linked records from a row',
-					action: 'Get linked records',
-				},
-				{
 					name: 'Get Many',
 					value: 'getAll',
-					description: 'Retrieve many rows',
-					action: 'Get many rows',
+					description: 'Search rows',
+					action: 'Search rows',
 				},
 				{
-					name: 'Link',
-					value: 'link',
-					description: 'Link a row with another row',
-					action: 'Link a row with another row',
-				},
-				{
-					name: 'Unlink',
-					value: 'unlink',
-					description: 'Unlink a row from another row',
-					action: 'Unlink a row from another row',
-				},
-				{
-					name: 'Update',
-					value: 'update',
-					description: 'Update a row',
-					action: 'Update a row',
+					name: 'Count',
+					value: 'count',
+					description: 'Count number of records in table',
+					action: 'Get table count',
 				},
 				{
 					name: 'Upload Attachment',
@@ -253,8 +230,5 @@ export const description: INodeProperties[] = updateDisplayOptions(
 		...updateAction.description,
 		...upsertAction.description,
 		...uploadAction.description,
-		...linkAction.description,
-		...linklistAction.description,
-		...unlinkAction.description,
 	],
 );
