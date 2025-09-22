@@ -113,7 +113,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('UI Test Project');
 
 			// Verify basic project settings form elements are visible (inner controls)
 			await expect(n8n.projectSettings.getNameInput()).toBeVisible();
@@ -138,7 +138,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Edit Test Project');
 
 			// Update project name
 			const newName = 'Updated Project Name';
@@ -167,7 +167,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Table Structure Test');
 
 			const table = n8n.projectSettings.getMembersTable();
 
@@ -182,7 +182,7 @@ test.describe('Projects', () => {
 			// Verify owner cannot change their own role
 			const ownerRow = memberRows.first();
 			const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-			await expect(roleDropdown).not.toBeVisible();
+			await expect(roleDropdown).toBeHidden();
 		});
 
 		test('should display role dropdown for members but not for current user @auth:owner', async ({
@@ -193,11 +193,11 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Role Dropdown Test');
 
 			// Current user (owner) should not have a role dropdown
 			const currentUserRow = n8n.page.locator('tbody tr').first();
-			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).not.toBeVisible();
+			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toBeHidden();
 
 			// The role should be displayed as static text for the current user
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
@@ -209,7 +209,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Search Test Project');
 
 			// Verify search input is visible
 			const searchInput = n8n.page.getByTestId('project-members-search');
@@ -233,7 +233,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Validation Test');
 
 			// Clear the project name (required field)
 			await n8n.projectSettings.fillProjectName('');
@@ -246,7 +246,7 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectName('Valid Project Name');
 
 			// Save button should now be enabled
-			await expect(saveButton).not.toBeDisabled();
+			await expect(saveButton).toBeEnabled();
 		});
 
 		test('should handle unsaved changes state @auth:owner', async ({ n8n }) => {
@@ -255,7 +255,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
 			// Initially, save and cancel buttons should be disabled (no changes)
 			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
@@ -265,8 +265,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectName('Modified Name');
 
 			// Save and cancel buttons should now be enabled
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
 
 			// Unsaved changes message should be visible
 			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();
@@ -285,7 +285,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Delete Test Project');
 
 			// Scroll to bottom to see delete section
 			await n8n.page
@@ -309,7 +309,7 @@ test.describe('Projects', () => {
 
 			// Navigate to project settings
 			await n8n.page.goto(`/projects/${projectId}/settings`);
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Persistence Test');
 
 			// Update project details
 			const projectName = 'Persisted Project Name';
@@ -326,7 +326,7 @@ test.describe('Projects', () => {
 
 			// Reload the page
 			await n8n.page.reload();
-			await n8n.projectSettings.waitForProjectSettingsRestResponse();
+			await expect(n8n.projectSettings.getTitle()).toHaveText('Persisted Project Name');
 
 			// Verify data persisted
 			await n8n.projectSettings.expectProjectNameValue(projectName);
