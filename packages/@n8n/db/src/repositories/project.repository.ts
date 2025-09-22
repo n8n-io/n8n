@@ -34,6 +34,7 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	// This returns personal projects of ALL users OR shared projects of the user
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: [
