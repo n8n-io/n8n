@@ -44,6 +44,32 @@ export class SidebarPage {
 		return this.page.getByTestId('add-first-project-button');
 	}
 
+	getUserMenu(): Locator {
+		return this.page.getByTestId('user-menu');
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('user-menu-item-logout');
+	}
+
+	async openUserMenu(): Promise<void> {
+		await this.getUserMenu().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.openUserMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+	}
+
 	async expand() {
 		const collapseButton = this.page.locator('#collapse-change-button');
 		const chevronRight = this.page.locator(

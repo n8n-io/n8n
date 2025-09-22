@@ -36,6 +36,7 @@
     "n8n-workflow": "workspace:*",
     "flatted": "catalog:",
     "nanoid": "catalog:",
+    "otplib": "^12.0.1",
     "tsx": "catalog:",
     "mockserver-client": "^5.15.0",
     "zod": "catalog:"
