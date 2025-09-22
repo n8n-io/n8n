@@ -472,7 +472,7 @@ defineExpose({
 
 .chatTitle {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-xs);
 }
 
 .headerText {

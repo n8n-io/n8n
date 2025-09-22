@@ -345,7 +345,14 @@ describe('Execution Lifecycle Hooks', () => {
 					1,
 					{
 						type: 'nodeExecuteAfter',
-						data: { executionId, nodeName, itemCount: 1, data: taskDataWithoutData },
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: taskDataWithoutData,
+						},
 					},
 					pushRef,
 				);
@@ -354,7 +361,14 @@ describe('Execution Lifecycle Hooks', () => {
 					2,
 					{
 						type: 'nodeExecuteAfterData',
-						data: { executionId, nodeName, itemCount: 1, data: mockTaskData },
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: mockTaskData,
+						},
 					},
 					pushRef,
 					true,
