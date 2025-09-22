@@ -1,4 +1,3 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type {
 	AGGridCellType,
 	DataStoreColumnType,
@@ -7,18 +6,10 @@ import type {
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useI18n } from '@n8n/i18n';
-
-/* eslint-disable id-denylist */
-const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
-	string: 'type',
-	number: 'hash',
-	boolean: 'toggle-right',
-	date: 'calendar',
-} as const;
-/* eslint-enable id-denylist */
+import { DATA_TYPE_ICON_MAP } from '@/constants';
 
 export const useDataStoreTypes = () => {
-	const getIconForType = (type: DataStoreColumnType) => COLUMN_TYPE_ICONS[type];
+	const getIconForType = (type: DataStoreColumnType) => DATA_TYPE_ICON_MAP[type];
 	const i18n = useI18n();
 
 	/**

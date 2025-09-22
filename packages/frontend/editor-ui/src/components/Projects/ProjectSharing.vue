@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import type { AllRolesMap } from '@n8n/permissions';
-import { computed, ref, watch } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import {
 	ProjectTypes,
 	type ProjectListItem,
 	type ProjectSharingData,
 } from '@/types/projects.types';
-import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { SelectSize } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
+import type { AllRolesMap } from '@n8n/permissions';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { computed, ref, watch } from 'vue';
 
 const locale = useI18n();
 
@@ -21,6 +22,8 @@ type Props = {
 	static?: boolean;
 	placeholder?: string;
 	emptyOptionsText?: string;
+	size?: SelectSize;
+	clearable?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -30,6 +33,7 @@ const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 const emit = defineEmits<{
 	projectAdded: [value: ProjectSharingData];
 	projectRemoved: [value: ProjectSharingData];
+	clear: [];
 }>();
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
@@ -122,9 +126,11 @@ watch(
 			:placeholder="selectPlaceholder"
 			:default-first-option="true"
 			:no-data-text="noDataText"
-			size="large"
+			:size="size ?? 'medium'"
 			:disabled="props.readonly"
+			:clearable
 			@update:model-value="onProjectSelected"
+			@clear="emit('clear')"
 		>
 			<template #prefix>
 				<N8nIcon v-if="projectIcon.type === 'icon'" :icon="projectIcon.value" color="text-dark" />
