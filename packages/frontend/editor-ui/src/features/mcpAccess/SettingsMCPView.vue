@@ -7,18 +7,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
-import { useClipboard } from '@/composables/useClipboard';
 import { VIEWS } from '@/constants';
 import router from '@/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
+import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-
-const { copy, copied, isSupported } = useClipboard();
 
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
@@ -84,28 +82,6 @@ const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
 		value: 'removeFromMCP',
 	},
 ]);
-
-const connectionString = ref(`
-{
-  "mcpServers": {
-    "n8n-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "supergateway",
-        "--streamableHttp",
-        "${rootStore.urlBaseEditor}rest/mcp-control/mcp",
-        "--header",
-        "authorization:<YOUR_N8N_API_KEY>"
-      ]
-    }
-  }
-}
-`);
-
-const connectionCode = computed(() => {
-	return `\`\`\`json${connectionString.value}\`\`\``;
-});
 
 const getProjectIcon = (workflow: WorkflowListItem): IconOrEmoji => {
 	if (workflow.homeProject?.type === 'personal') {
@@ -196,30 +172,11 @@ onMounted(async () => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div v-if="mcpStore.mcpAccessEnabled" :class="$style.connectionStringContainer">
-			<div :class="$style.connectionStringLabel">
-				<n8n-text
-					v-n8n-html="
-						i18n.baseText('settings.mcp.how.to.connect', {
-							interpolate: {
-								docsURL: 'https://docs.n8n.io/',
-							},
-						})
-					"
-				>
-				</n8n-text>
-			</div>
-			<div :class="[$style.settingsContainer, $style.connectionString]">
-				<n8n-markdown :content="connectionCode"></n8n-markdown>
-				<n8n-button
-					v-if="isSupported"
-					type="tertiary"
-					:icon="copied ? 'check' : 'copy'"
-					:square="true"
-					:class="$style['copy-button']"
-					@click="copy(connectionString)"
-				/>
-			</div>
+		<div v-if="mcpStore.mcpAccessEnabled">
+			<n8n-heading size="medium" :bold="true">
+				{{ i18n.baseText('setings.mcp.connection.info.heading') }}
+			</n8n-heading>
+			<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
 		</div>
 		<div v-if="mcpStore.mcpAccessEnabled" :class="$style['workflow-list-container']">
 			<div v-if="workflowsLoading">
@@ -391,41 +348,6 @@ onMounted(async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.connectionStringLabel {
-	code {
-		background: var(--color-background-medium);
-		border-radius: var(--border-radius-base);
-		padding: 0 var(--spacing-4xs);
-		font-size: var(--font-size-xs);
-	}
-}
-
-.connectionString {
-	flex-grow: 1;
-	position: relative;
-	padding-bottom: 0;
-
-	:global(.n8n-markdown) {
-		width: 100%;
-	}
-	code {
-		font-size: var(--font-size-2xs);
-	}
-
-	&:hover {
-		.copy-button {
-			display: flex;
-		}
-	}
-}
-
-.copy-button {
-	position: absolute;
-	top: var(--spacing-l);
-	right: var(--spacing-l);
-	display: none;
 }
 
 .table-link {
