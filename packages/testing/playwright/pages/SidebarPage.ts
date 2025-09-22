@@ -11,6 +11,10 @@ export class SidebarPage {
 		await this.page.getByTestId('project-plus-button').click();
 	}
 
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
+	}
+
 	async universalAdd() {
 		await this.page.getByTestId('universal-add').click();
 	}

@@ -8,6 +8,7 @@ import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { NodeCreator } from './components/NodeCreator';
+import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
@@ -16,6 +17,7 @@ export class CanvasPage extends BasePage {
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 	readonly nodeCreator = new NodeCreator(this.page);
+	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
