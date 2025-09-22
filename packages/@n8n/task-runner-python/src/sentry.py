@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Optional
 
-from src.errors.task_runtime_error import TaskRuntimeError
+from src.errors import TaskCancelledError, TaskRuntimeError, SecurityViolationError
 from src.config.sentry_config import SentryConfig
 from src.constants import (
     EXECUTOR_FILENAMES,
@@ -9,6 +9,8 @@ from src.constants import (
     SENTRY_TAG_SERVER_TYPE_KEY,
     SENTRY_TAG_SERVER_TYPE_VALUE,
 )
+
+IGNORED_ERROR_TYPES = (TaskRuntimeError, TaskCancelledError, SecurityViolationError)
 
 
 class TaskRunnerSentry:
@@ -44,7 +46,7 @@ class TaskRunnerSentry:
     def _filter_out_ignored_errors(self, event: Any, hint: Any) -> Optional[Any]:
         if "exc_info" in hint:
             exc_type, _, _ = hint["exc_info"]
-            if exc_type is TaskRuntimeError:
+            if exc_type in IGNORED_ERROR_TYPES:
                 return None
 
         for exception in event.get("exception", {}).get("values", []):
