@@ -1,6 +1,7 @@
 import { type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import * as base from './base';
+import * as linkrows from './linkrows';
 import * as rows from './rows';
 import { v0200Execute } from './v0200Execute';
 
@@ -46,18 +47,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						operationResult = await rows.create.execute.call(this);
 						break;
 					}
-					case 'link': {
-						operationResult = await rows.link.execute.call(this);
-						break;
-					}
-					case 'linklist': {
-						operationResult = await rows.linklist.execute.call(this);
-						break;
-					}
-					case 'unlink': {
-						operationResult = await rows.unlink.execute.call(this);
-						break;
-					}
 					case 'update': {
 						operationResult = await rows.update.execute.call(this);
 						break;
@@ -72,6 +61,23 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 					case 'delete': {
 						operationResult = await rows.delete.execute.call(this);
+						break;
+					}
+				}
+				break;
+			}
+			case 'linkrow': {
+				switch (operation) {
+					case 'getAll': {
+						operationResult = await linkrows.getAll.execute.call(this);
+						break;
+					}
+					case 'link': {
+						operationResult = await linkrows.link.execute.call(this);
+						break;
+					}
+					case 'unlink': {
+						operationResult = await linkrows.unlink.execute.call(this);
 						break;
 					}
 				}

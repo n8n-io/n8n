@@ -3,6 +3,7 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as base from './actions/base';
+import * as linkrows from './actions/linkrows';
 import * as rows from './actions/rows';
 
 export const authentication: INodeProperties = {
@@ -85,6 +86,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'row',
 				},
 				{
+					name: 'Linked Row',
+					value: 'linkrow',
+				},
+				{
 					name: 'Base',
 					value: 'base',
 				},
@@ -93,5 +98,6 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		...rows.description,
 		...base.description,
+		...linkrows.description,
 	],
 };
