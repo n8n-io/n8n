@@ -8,7 +8,7 @@ import type {
 import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
-export const FIELD: string = 'filter';
+export const FIELD: string = 'partition';
 
 const displayOptions: IDisplayOptions = {
 	show: {
