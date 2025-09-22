@@ -20,7 +20,6 @@ export class NocoDBV1 implements INodeType {
 			...baseDescription,
 			displayName: 'NocoDB',
 			name: 'nocoDb',
-			icon: 'file:nocodb.svg',
 			group: ['input'],
 			version: [1, 2, 3],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
