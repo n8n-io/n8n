@@ -217,6 +217,8 @@ export class ApiHelpers {
 	private async loginAndSetCookies(
 		credentials: Pick<UserCredentials, 'email' | 'password'>,
 	): Promise<LoginResponseData> {
+		console.log(credentials.email);
+		console.log(credentials.password);
 		const response = await this.request.post('/rest/login', {
 			data: {
 				emailOrLdapLoginId: credentials.email,
