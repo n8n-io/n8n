@@ -39,6 +39,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
+	ENABLE_MCP_ACCESS: 'enableMCPAccess',
+	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 };
 
 const props = withDefaults(
@@ -62,6 +64,8 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
+	// TODO: Handle this in card
+	'workflow:toggle-mcp-access': [value: { id: string; enabled: boolean }];
 	'action:move-to-folder': [
 		value: {
 			id: string;
@@ -92,6 +96,8 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+
+const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
@@ -173,6 +179,25 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.unarchive'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
+			});
+		}
+	}
+
+	if (
+		isMCPEnabled.value &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		if (props.data.settings?.availableInMCP) {
+			items.push({
+				label: locale.baseText('workflows.item.disableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.enableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
 			});
 		}
 	}
@@ -270,6 +295,12 @@ async function onAction(action: string) {
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
 			});
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
+			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: true });
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
+			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: false });
 			break;
 	}
 }
@@ -439,29 +470,40 @@ const tags = computed(
 			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small">
-				<span v-show="data"
-					>{{ locale.baseText('workflows.item.updated') }}
-					<TimeAgo :date="String(data.updatedAt)" /> |
-				</span>
-				<span v-show="data" class="mr-2xs"
-					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				</span>
-				<span
-					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
-					v-show="data"
-					:class="$style.cardTags"
+			<span v-show="data"
+				>{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" /> |
+			</span>
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+				<span v-if="isMCPEnabled && data.settings?.availableInMCP">|</span>
+			</span>
+			<span
+				v-show="isMCPEnabled && data.settings?.availableInMCP"
+				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+			>
+				<n8n-tooltip
+					placement="right"
+					:content="locale.baseText('workflows.item.availableInMCP')"
+					data-test-id="workflow-card-mcp-tooltip"
 				>
-					<n8n-tags
-						:tags="tags"
-						:truncate-at="3"
-						truncate
-						data-test-id="workflow-card-tags"
-						@click:tag="onClickTag"
-						@expand="onExpandTags"
-					/>
-				</span>
-			</n8n-text>
+					<n8n-icon icon="mcp" size="medium"></n8n-icon>
+				</n8n-tooltip>
+			</span>
+			<span
+				v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
+				v-show="data"
+				:class="$style.cardTags"
+			>
+				<n8n-tags
+					:tags="tags"
+					:truncate-at="3"
+					truncate
+					data-test-id="workflow-card-tags"
+					@click:tag="onClickTag"
+					@expand="onExpandTags"
+				/>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -552,10 +594,13 @@ const tags = computed(
 }
 
 .cardDescription {
-	min-height: 19px;
+	min-height: var(--spacing-xl);
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+	gap: var(--spacing-2xs);
 }
 
 .cardTags {
@@ -591,6 +636,15 @@ const tags = computed(
 	background-color: var(--color-background-light);
 	border-color: var(--color-foreground-light);
 	color: var(--color-text-base);
+}
+
+.description-cell--mcp {
+	display: inline-flex;
+	align-items: center;
+
+	&:hover {
+		color: var(--color-text-base);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

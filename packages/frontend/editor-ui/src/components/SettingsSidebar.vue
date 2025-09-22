@@ -121,7 +121,10 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
 
-	return menuItems;
+	// Append module-registered settings sidebar items.
+	const moduleItems = uiStore.settingsSidebarItems;
+
+	return menuItems.concat(moduleItems);
 });
 </script>
 
