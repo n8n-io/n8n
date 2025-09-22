@@ -47,9 +47,9 @@ const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
 
 const activeNode = computed(() => ndvStore.activeNode);
 
-const { installedPackage, isCommunityNode, isUpdateCheckAvailable } = useInstalledCommunityPackage(
-	props.nodeType?.name,
-);
+const nodeTypeName = computed(() => props.nodeType?.name);
+const { installedPackage, isCommunityNode, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(nodeTypeName);
 
 const packageName = computed(() => props.nodeType?.name.split('.')[0] ?? '');
 

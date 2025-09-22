@@ -5,18 +5,19 @@ import {
 	type ExtendedPublicInstalledPackage,
 	fetchInstalledPackageInfo,
 } from '@/utils/communityNodeUtils';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, type MaybeRefOrGetter, onMounted, ref, watch, toValue } from 'vue';
 
-export function useInstalledCommunityPackage(nodeTypeName?: string) {
+export function useInstalledCommunityPackage(nodeTypeName?: MaybeRefOrGetter<string | undefined>) {
 	const communityNodesStore = useCommunityNodesStore();
 	const usersStore = useUsersStore();
 
 	const installedPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
 
-	const packageName = computed(() => nodeTypeName?.split('.')[0] ?? '');
+	const packageName = computed(() => toValue(nodeTypeName)?.split('.')[0] ?? '');
 	const isCommunityNode = computed(() => {
-		if (nodeTypeName) {
-			return isCommunityPackageName(nodeTypeName);
+		const nodeType = toValue(nodeTypeName);
+		if (nodeType) {
+			return isCommunityPackageName(nodeType);
 		}
 		return false;
 	});
@@ -30,8 +31,8 @@ export function useInstalledCommunityPackage(nodeTypeName?: string) {
 	// update when installed package changes if it's defined
 	watch(
 		() => communityNodesStore.installedPackages[packageName.value],
-		async () => {
-			if (!packageName.value || !communityNodesStore.installedPackages[packageName.value]) return;
+		async (changedPackage) => {
+			if (!packageName.value || !changedPackage) return;
 			await initInstalledPackage();
 		},
 		{ deep: true },

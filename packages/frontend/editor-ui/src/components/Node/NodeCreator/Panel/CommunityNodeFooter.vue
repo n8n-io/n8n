@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { i18n } from '@n8n/i18n';
 
 export interface Props {
 	packageName: string;
@@ -62,18 +63,22 @@ onMounted(async () => {
 			<N8nText v-if="installedPackage" size="small" color="text-light" style="margin-right: auto">
 				Package version {{ installedPackage.installedVersion }} ({{
 					installedPackage.updateAvailable && !installedPackage.unverifiedUpdate
-						? 'Legacy'
-						: 'Latest'
+						? i18n.baseText('communityNodeFooter.legacy')
+						: i18n.baseText('nodeSettings.latest')
 				}})
 			</N8nText>
 			<template v-if="props.showManage">
 				<N8nLink theme="text" @click="openSettingsPage">
-					<N8nText size="small" color="primary" bold> Manage </N8nText>
+					<N8nText size="small" color="primary" bold>
+						{{ i18n.baseText('communityNodeFooter.manage') }}
+					</N8nText>
 				</N8nLink>
 				<N8nText size="small" style="color: var(--color-foreground-base)" bold>|</N8nText>
 			</template>
 			<N8nLink theme="text" @click="openIssuesPage">
-				<N8nText size="small" color="primary" bold> Report issue </N8nText>
+				<N8nText size="small" color="primary" bold>
+					{{ i18n.baseText('communityNodeFooter.reportIssue') }}
+				</N8nText>
 			</N8nLink>
 		</div>
 	</div>

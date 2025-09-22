@@ -21,9 +21,9 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
-const { installedPackage, initInstalledPackage } = useInstalledCommunityPackage(
-	communityNodeDetails?.packageName,
-);
+const packageName = computed(() => communityNodeDetails?.packageName);
+const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(packageName);
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -114,7 +114,7 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isOwner && installedPackage?.updateAvailable && !installedPackage.unverifiedUpdate"
+			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 			data-test-id="update-available"
 			:package-name="communityNodeDetails?.packageName"
 		/>

@@ -160,7 +160,8 @@ const nodeType = computed(() =>
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(node.value?.type);
+const nodeTypeName = computed(() => node.value?.type);
+const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
