@@ -138,7 +138,6 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
-		noDataExpression: false,
 		typeOptions: {
 			loadOptionsDependsOn: ['documentId.value'],
 		},
