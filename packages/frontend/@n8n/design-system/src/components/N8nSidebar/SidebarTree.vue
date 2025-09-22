@@ -9,7 +9,7 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 
 <template>
 	<TreeRoot :items :get-key="(item: IMenuElement) => item.id">
-		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name" :estimate-size="33">
+		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name" :estimate-size="32">
 			<TreeItem
 				as-child
 				:key="item.value.id"

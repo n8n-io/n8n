@@ -123,6 +123,7 @@ const icon = computed<IconName>(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
+	line-height: 18px;
 	min-width: 0;
 }
 
@@ -153,20 +154,19 @@ const icon = computed<IconName>(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: transparent;
+	background-color: var(--color-foreground-light);
 	cursor: pointer;
 	outline: none;
 	border: none;
-	width: var(--spacing-s);
-	height: var(--spacing-s);
-	border-radius: 0 var(--border-radius-small) var(--border-radius-small) 0;
+	height: var(--spacing-m);
+	width: var(--spacing-m);
+	border-radius: var(--border-radius-small);
 	position: absolute;
-	right: 0;
-	top: 0;
+	left: 5px;
+	top: 5px;
 	padding: 0;
 	opacity: 0;
-	width: 28px;
-	height: 28px;
+	z-index: 100;
 }
 
 .sidebarItem:hover > .sidebarItemDropdownButton {
