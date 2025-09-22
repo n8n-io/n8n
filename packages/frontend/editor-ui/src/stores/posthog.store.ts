@@ -136,7 +136,8 @@ export const usePostHog = defineStore('posthog', () => {
 		const distinctId = `${instanceId}#${userId}`;
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
-			api_host: config.apiHost,
+			api_host: 'http://localhost:5678/rest/posthog', // point to our proxy endpoint
+			ui_host: 'https://app.posthog.com',
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
 			debug: config.debug,

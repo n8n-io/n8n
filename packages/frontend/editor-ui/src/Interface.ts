@@ -79,6 +79,7 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					ui_host?: string;
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
 					debug?: boolean;
