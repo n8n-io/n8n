@@ -380,7 +380,7 @@ export function getPreBuiltAgentsCalloutWithDivider(): LinkCreateElement {
 
 export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement {
 	return {
-		uuid: uuidv4(),
+		uuid: 'ai_templates_root',
 		key: 'ai_templates_root',
 		type: 'link',
 		properties: {
