@@ -182,7 +182,7 @@ test.describe('Projects', () => {
 			// Verify owner cannot change their own role
 			const ownerRow = memberRows.first();
 			const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-			await expect(roleDropdown).not.toBeVisible();
+			await expect(roleDropdown).toBeHidden();
 		});
 
 		test('should display role dropdown for members but not for current user @auth:owner', async ({
@@ -197,7 +197,7 @@ test.describe('Projects', () => {
 
 			// Current user (owner) should not have a role dropdown
 			const currentUserRow = n8n.page.locator('tbody tr').first();
-			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).not.toBeVisible();
+			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toBeHidden();
 
 			// The role should be displayed as static text for the current user
 			await expect(currentUserRow.getByText('Admin')).toBeVisible();
@@ -246,7 +246,7 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectName('Valid Project Name');
 
 			// Save button should now be enabled
-			await expect(saveButton).not.toBeDisabled();
+			await expect(saveButton).toBeEnabled();
 		});
 
 		test('should handle unsaved changes state @auth:owner', async ({ n8n }) => {
@@ -265,8 +265,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.fillProjectName('Modified Name');
 
 			// Save and cancel buttons should now be enabled
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeDisabled();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeEnabled();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeEnabled();
 
 			// Unsaved changes message should be visible
 			await expect(n8n.page.getByText('You have unsaved changes')).toBeVisible();

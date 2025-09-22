@@ -7,6 +7,7 @@ import { resolveFromRoot } from '../utils/path-helper';
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { NodeCreator } from './components/NodeCreator';
 import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
@@ -14,6 +15,7 @@ export class CanvasPage extends BasePage {
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly nodeCreator = new NodeCreator(this.page);
 
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
@@ -387,6 +389,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('[data-test-id="edge"]');
 	}
 
+	getConnectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.connectionBetweenNodes(sourceNodeName, targetNodeName);
+	}
+
 	canvasNodePlusEndpointByName(nodeName: string): Locator {
 		return this.page
 			.locator(
@@ -735,5 +741,9 @@ export class CanvasPage extends BasePage {
 
 	getNodeWarningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
+	}
+
+	getCanvasPlusButton(): Locator {
+		return this.page.getByTestId('canvas-plus-button');
 	}
 }

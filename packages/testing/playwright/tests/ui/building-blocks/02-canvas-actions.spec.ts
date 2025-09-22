@@ -86,12 +86,10 @@ test.describe('Canvas Node Actions', () => {
 
 		test('should filter nodes by search term', async ({ n8n }) => {
 			await n8n.canvas.clickCanvasPlusButton();
-			const initialCount = await n8n.canvas.nodeCreatorNodeItems().count();
 			await n8n.canvas.fillNodeCreatorSearchBar('HTTP');
-			const filteredCount = await n8n.canvas.nodeCreatorNodeItems().count();
 
-			expect(filteredCount).toBeLessThan(initialCount);
-			expect(filteredCount).toBeGreaterThan(0);
+			const filteredItems = n8n.canvas.nodeCreatorNodeItems();
+			await expect(filteredItems.first()).toContainText('HTTP');
 		});
 	});
 });
