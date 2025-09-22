@@ -68,12 +68,7 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			await this.dataStoreRowsRepository.addColumn(
-				dataTableId,
-				column,
-				queryRunner,
-				em.connection.options.type,
-			);
+			await this.dataStoreRowsRepository.addColumn(dataTableId, column, queryRunner);
 
 			return column;
 		});
@@ -88,12 +83,7 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			await this.dataStoreRowsRepository.dropColumnFromTable(
-				dataStoreId,
-				column.name,
-				queryRunner,
-				em.connection.options.type,
-			);
+			await this.dataStoreRowsRepository.dropColumnFromTable(dataStoreId, column.name, queryRunner);
 			await this.shiftColumns(dataStoreId, column.index, -1, em);
 		});
 	}

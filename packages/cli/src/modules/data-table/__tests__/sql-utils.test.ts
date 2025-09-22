@@ -1,12 +1,20 @@
+import type { DataSource } from '@n8n/typeorm';
+
 import { addColumnQuery, deleteColumnQuery } from '../utils/sql-utils';
+
+const driver = {
+	postgres: { escape: (name: string) => `"${name}"` } as DataSource['driver'],
+	sqlite: { escape: (name: string) => `"${name}"` } as DataSource['driver'],
+	mysql: { escape: (name: string) => `\`${name}\`` } as DataSource['driver'],
+	mariadb: { escape: (name: string) => `\`${name}\`` } as DataSource['driver'],
+};
 
 describe('sql-utils', () => {
 	describe('addColumnQuery', () => {
 		it('should generate a valid SQL query for adding columns to a table, sqlite', () => {
 			const tableName = 'data_table_user_abc';
 			const column = { name: 'email', type: 'number' as const };
-
-			const query = addColumnQuery(tableName, column, 'sqlite');
+			const query = addColumnQuery(tableName, column, 'sqlite', driver.sqlite);
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "email" REAL');
 		});
@@ -15,7 +23,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_table_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
-			const query = addColumnQuery(tableName, column, 'postgres');
+			const query = addColumnQuery(tableName, column, 'postgres', driver.postgres);
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "email" DOUBLE PRECISION');
 		});
@@ -24,7 +32,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_table_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
-			const query = addColumnQuery(tableName, column, 'mysql');
+			const query = addColumnQuery(tableName, column, 'mysql', driver.mysql);
 
 			expect(query).toBe('ALTER TABLE `data_table_user_abc` ADD `email` DOUBLE');
 		});
@@ -33,7 +41,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_table_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
-			const query = addColumnQuery(tableName, column, 'mariadb');
+			const query = addColumnQuery(tableName, column, 'mariadb', driver.mariadb);
 
 			expect(query).toBe('ALTER TABLE `data_table_user_abc` ADD `email` DOUBLE');
 		});
@@ -44,7 +52,7 @@ describe('sql-utils', () => {
 			const tableName = 'data_table_user_abc';
 			const column = 'email';
 
-			const query = deleteColumnQuery(tableName, column, 'sqlite');
+			const query = deleteColumnQuery(tableName, column, driver.sqlite);
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" DROP COLUMN "email"');
 		});

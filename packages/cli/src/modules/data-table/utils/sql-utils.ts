@@ -6,7 +6,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { DataSourceOptions } from '@n8n/typeorm';
+import type { DataSource, DataSourceOptions } from '@n8n/typeorm';
 import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -68,8 +68,9 @@ function dataStoreColumnTypeToSql(
 function columnToWildcardAndType(
 	column: DataStoreCreateColumnSchema,
 	dbType: DataSourceOptions['type'],
+	driver: DataSource['driver'],
 ) {
-	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
+	return `${driver.escape(column.name)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
 }
 
 export function isValidColumnName(name: string) {
@@ -80,36 +81,22 @@ export function addColumnQuery(
 	tableName: DataStoreUserTableName,
 	column: DataStoreCreateColumnSchema,
 	dbType: DataSourceOptions['type'],
+	driver: DataSource['driver'],
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
 		throw new UnexpectedError(DATA_STORE_COLUMN_ERROR_MESSAGE);
 	}
 
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-
-	return `ALTER TABLE ${quotedTableName} ADD ${columnToWildcardAndType(column, dbType)}`;
+	return `ALTER TABLE ${driver.escape(tableName)} ADD ${columnToWildcardAndType(column, dbType, driver)}`;
 }
 
 export function deleteColumnQuery(
 	tableName: DataStoreUserTableName,
 	column: string,
-	dbType: DataSourceOptions['type'],
+	driver: DataSource['driver'],
 ): string {
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
-}
-
-export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
-	switch (dbType) {
-		case 'mysql':
-		case 'mariadb':
-			return `\`${name}\``;
-		case 'postgres':
-		case 'sqlite':
-		default:
-			return `"${name}"`;
-	}
+	return `ALTER TABLE ${driver.escape(tableName)} DROP COLUMN ${driver.escape(column)}`;
 }
 
 type WithInsertId = { insertId: number };

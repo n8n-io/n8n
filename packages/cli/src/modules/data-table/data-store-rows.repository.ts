@@ -33,7 +33,6 @@ import {
 	extractReturningData,
 	normalizeRows,
 	normalizeValue,
-	quoteIdentifier,
 	toDslColumns,
 	toSqliteGlobFromPercent,
 	toTableName,
@@ -41,6 +40,15 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
+
+function safeColumnRef(
+	alias: string | undefined,
+	columnName: string,
+	driver: DataSource['driver'],
+) {
+	const col = driver.escape(columnName);
+	return alias ? `${driver.escape(alias)}.${col}` : col;
+}
 
 /**
  * Converts filter conditions to SQL WHERE clauses with parameters.
@@ -57,14 +65,15 @@ type QueryBuilder = SelectQueryBuilder<any>;
 function getConditionAndParams(
 	filter: DataTableFilter['filters'][number],
 	index: number,
+	driver: DataSource['driver'],
 	dbType: DataSourceOptions['type'],
 	tableReference?: string,
 	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
 	const columnRef = tableReference
-		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
-		: quoteIdentifier(filter.columnName, dbType);
+		? safeColumnRef(tableReference, filter.columnName, driver)
+		: safeColumnRef(undefined, filter.columnName, driver);
 
 	if (filter.value === null) {
 		switch (filter.condition) {
@@ -437,22 +446,21 @@ export class DataStoreRowsRepository {
 		await queryRunner.dropTable(toTableName(dataStoreId), true);
 	}
 
-	async addColumn(
-		dataStoreId: string,
-		column: DataTableColumn,
-		queryRunner: QueryRunner,
-		dbType: DataSourceOptions['type'],
-	) {
-		await queryRunner.query(addColumnQuery(toTableName(dataStoreId), column, dbType));
+	async addColumn(dataStoreId: string, column: DataTableColumn, queryRunner: QueryRunner) {
+		await queryRunner.query(
+			addColumnQuery(
+				toTableName(dataStoreId),
+				column,
+				this.dataSource.options.type,
+				this.dataSource.driver,
+			),
+		);
 	}
 
-	async dropColumnFromTable(
-		dataStoreId: string,
-		columnName: string,
-		queryRunner: QueryRunner,
-		dbType: DataSourceOptions['type'],
-	) {
-		await queryRunner.query(deleteColumnQuery(toTableName(dataStoreId), columnName, dbType));
+	async dropColumnFromTable(dataStoreId: string, columnName: string, queryRunner: QueryRunner) {
+		await queryRunner.query(
+			deleteColumnQuery(toTableName(dataStoreId), columnName, this.dataSource.driver),
+		);
 	}
 
 	async getManyAndCount(
@@ -529,8 +537,9 @@ export class DataStoreRowsRepository {
 		const filterType = filter.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
+		const driver = this.dataSource.driver;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType, tableReference, columns),
+			getConditionAndParams(filter, i, driver, dbType, tableReference, columns),
 		);
 
 		if (conditionsAndParams.length === 1) {
@@ -558,8 +567,8 @@ export class DataStoreRowsRepository {
 	}
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
-		const dbType = this.dataSource.options.type;
-		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
+		const driver = this.dataSource.driver;
+		const quotedField = `${driver.escape('dataTable')}.${driver.escape(field)}`;
 		query.orderBy(quotedField, direction);
 	}
 
