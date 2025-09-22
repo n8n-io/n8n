@@ -58,7 +58,7 @@ describe('PKCE Flow', () => {
 					nock(config.baseUrl)
 						.post('/login/oauth/access_token')
 						.once()
-						// @ts-ignore - uri parameter required by nock but unused
+						// @ts-expect-error - uri parameter required by nock but unused
 						.reply(200, function (this: nock.ReplyFnContext, uri: string, requestBody: string) {
 							// Verify PKCE parameters are included correctly
 							if (expectCodeVerifier) {
@@ -124,7 +124,7 @@ describe('PKCE Flow', () => {
 				const nockScope = nock(config.baseUrl)
 					.post('/login/oauth/access_token')
 					.once()
-					// @ts-ignore - uri parameter required by nock but unused
+					// @ts-expect-error - uri parameter required by nock but unused
 					.reply(200, function (this: nock.ReplyFnContext, uri: string, requestBody: string) {
 						// Verify refresh token parameters
 						expect(requestBody).toContain(`refresh_token=${config.refreshToken}`);
