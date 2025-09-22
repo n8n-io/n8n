@@ -332,10 +332,13 @@ export class DataStoreRepository extends Repository<DataTable> {
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-        SELECT name AS table_name, SUM(pgsize) AS table_bytes
-         FROM dbstat
-        WHERE name LIKE '${tablePattern}'
-        GROUP BY name
+        WITH data_table_names(name) AS (
+          SELECT name
+          FROM sqlite_schema
+          WHERE type = 'table' AND name GLOB '${toTableName('*')}'
+        )
+        SELECT t.name AS table_name, (SELECT SUM(pgsize) FROM dbstat WHERE name = t.name) AS table_bytes
+        FROM data_table_names AS t
       `;
 				break;
 
