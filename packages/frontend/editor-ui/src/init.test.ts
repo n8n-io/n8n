@@ -289,7 +289,7 @@ describe('Init', () => {
 				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
-			it('should push TRIAL banner if trial is active', async () => {
+			it('should not push TRIAL banner if trial is active but user is visiting for the first time', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
 				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
 				usersStore.currentUserId = '123';
@@ -297,12 +297,44 @@ describe('Init', () => {
 				cloudPlanStore.userIsTrialing = true;
 				cloudPlanStore.trialExpired = false;
 
+				// Mock localStorage to simulate first visit
+				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
+
 				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
 
 				await initializeAuthenticatedFeatures(false);
 
 				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(setItemSpy).toHaveBeenCalledWith('n8n-trial-visit-count', '1');
+				expect(uiStore.pushBannerToStack).not.toHaveBeenCalledWith('TRIAL');
+
+				getItemSpy.mockRestore();
+				setItemSpy.mockRestore();
+			});
+
+			it('should push TRIAL banner if trial is active and user is returning', async () => {
+				settingsStore.settings.deployment.type = 'cloud';
+				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
+				usersStore.currentUserId = '123';
+
+				cloudPlanStore.userIsTrialing = true;
+				cloudPlanStore.trialExpired = false;
+
+				// Mock localStorage to simulate return visit
+				const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('1');
+				const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
+
+				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
+
+				await initializeAuthenticatedFeatures(false);
+
+				expect(cloudStoreSpy).toHaveBeenCalled();
+				expect(setItemSpy).toHaveBeenCalledWith('n8n-trial-visit-count', '2');
 				expect(uiStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+
+				getItemSpy.mockRestore();
+				setItemSpy.mockRestore();
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {

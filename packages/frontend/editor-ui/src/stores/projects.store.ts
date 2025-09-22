@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import * as dataStoreApi from '@/features/dataStore/dataStore.api';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
@@ -18,7 +19,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+
+export type ResourceCounts = {
+	credentials: number;
+	workflows: number;
+	dataTables: number;
+};
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -118,24 +124,22 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return newProject;
 	};
 
-	const updateProject = async (
-		id: Project['id'],
-		projectData: Required<UpdateProjectDto>,
-	): Promise<void> => {
+	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon, description } = projectData;
+		const { name, icon, description, relations } = projectData;
 		if (projectIndex !== -1) {
-			myProjects.value[projectIndex].name = name;
-			myProjects.value[projectIndex].icon = icon as IconOrEmoji;
-			myProjects.value[projectIndex].description = description;
+			if (typeof name !== 'undefined') myProjects.value[projectIndex].name = name;
+			if (typeof icon !== 'undefined') myProjects.value[projectIndex].icon = icon;
+			if (typeof description !== 'undefined')
+				myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
-			currentProject.value.name = name;
-			currentProject.value.icon = icon as IconOrEmoji;
-			currentProject.value.description = description;
+			if (typeof name !== 'undefined') currentProject.value.name = name;
+			if (typeof icon !== 'undefined') currentProject.value.icon = icon;
+			if (typeof description !== 'undefined') currentProject.value.description = description;
 		}
-		if (projectData.relations) {
+		if (relations) {
 			await getProject(id);
 		}
 	};
@@ -196,13 +200,18 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
-	const isProjectEmpty = async (projectId: string) => {
-		const [credentials, workflows] = await Promise.all([
+	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
+		const [credentials, workflows, dataTables] = await Promise.all([
 			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
+			dataStoreApi.fetchDataStoresApi(rootStore.restApiContext, projectId),
 		]);
 
-		return credentials.length === 0 && workflows.count === 0;
+		return {
+			credentials: credentials.length,
+			workflows: workflows.count,
+			dataTables: dataTables.count,
+		};
 	};
 
 	watch(
@@ -266,6 +275,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
-		isProjectEmpty,
+		getResourceCounts,
 	};
 });

@@ -65,15 +65,7 @@ beforeEach(async () => {
 	await testDb.truncate(['DataTable', 'DataTableColumn']);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('POST /projects/:projectId/data-tables', () => {
-	beforeEach(async () => {
-		await testDb.truncate(['DataTable', 'DataTableColumn']);
-	});
-
 	test('should not create data store when project does not exist', async () => {
 		const payload = {
 			name: 'Test Data Store',

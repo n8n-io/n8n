@@ -26,6 +26,7 @@ import {
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
+import ElDatePickerFilter from '@/features/dataStore/components/dataGrid/ElDatePickerFilter.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
@@ -40,7 +41,12 @@ import {
 	stringCellEditorParams,
 	dateValueFormatter,
 	numberValueFormatter,
+	getStringColumnFilterOptions,
+	getDateColumnFilterOptions,
+	getNumberColumnFilterOptions,
+	getBooleanColumnFilterOptions,
 } from '@/features/dataStore/utils/columnUtils';
+import { useI18n } from '@n8n/i18n';
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -58,6 +64,7 @@ export const useDataStoreGridBase = ({
 	const isTextEditorOpen = ref(false);
 	const { mapToAGCellType } = useDataStoreTypes();
 	const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
+	const i18n = useI18n();
 	const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
 	const currentSortOrder = ref<SortDirection>('asc');
 
@@ -150,14 +157,28 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopupPosition = 'over';
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: getStringColumnFilterOptions(i18n),
+			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,
 			});
 			columnDef.valueFormatter = dateValueFormatter;
 			columnDef.cellEditorPopup = true;
+			columnDef.dateComponent = ElDatePickerFilter;
+			columnDef.filterParams = {
+				filterOptions: getDateColumnFilterOptions(i18n),
+			};
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
+			columnDef.filterParams = {
+				filterOptions: getNumberColumnFilterOptions(i18n),
+			};
+		} else if (col.type === 'boolean') {
+			columnDef.filterParams = {
+				filterOptions: getBooleanColumnFilterOptions(i18n),
+			};
 		}
 
 		return {
@@ -206,6 +227,7 @@ export const useDataStoreGridBase = ({
 				{
 					editable: false,
 					sortable: true,
+					filter: false,
 					suppressMovable: true,
 					headerComponent: null,
 					lockPosition: true,
