@@ -6,6 +6,7 @@ import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { Request, Response, NextFunction } from 'express';
 
 @Service()
 export class CredentialsOverwrites {
@@ -14,7 +15,7 @@ export class CredentialsOverwrites {
 	private resolvedTypes: string[] = [];
 
 	constructor(
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly logger: Logger,
 	) {
@@ -24,6 +25,22 @@ export class CredentialsOverwrites {
 		});
 
 		this.setData(overwriteData);
+	}
+
+	getOverwriteEndpointMiddleware() {
+		const { endpointAuthToken } = this.globalConfig.credentials.overwrite;
+
+		if (!endpointAuthToken) {
+			return null;
+		}
+
+		return (req: Request, res: Response, next: NextFunction) => {
+			if (req.headers.authorization === `Bearer ${endpointAuthToken}`) {
+				next();
+			} else {
+				res.status(401).send('Unauthorized');
+			}
+		};
 	}
 
 	setData(overwriteData: ICredentialsOverwrite) {
