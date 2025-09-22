@@ -9,7 +9,9 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { UserError } from 'n8n-workflow';
 
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getFoldersPath,
 	getTagsPath,
@@ -18,7 +20,6 @@ import {
 	getVariablesPath,
 	isWorkflowModified,
 } from './source-control-helper.ee';
-import { SourceControlGitService } from './source-control-git.service.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
@@ -147,7 +148,9 @@ export class SourceControlStatusService {
 			this.logger.error(
 				`Failed to reset workfolder: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			throw error;
+			throw new UserError(
+				`Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page. Git error message: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 
