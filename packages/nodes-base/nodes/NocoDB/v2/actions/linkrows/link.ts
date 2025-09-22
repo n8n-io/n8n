@@ -97,7 +97,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const linkIds = this.getNodeParameter('linkId', i, undefined, {
 				extractValue: true,
 			}) as IDataObject[];
-
+			body = [];
+			for (const linkId of linkIds) {
+				// if it comes from expression (input)
+				if (Array.isArray(linkId)) {
+					body.push.apply(body, linkId);
+				} else {
+					body.push(linkId);
+				}
+			}
+			console.log(body);
 			if (!linkIds?.length) {
 				throw new Error('Linked Row ID Value cannot be empty');
 			}
@@ -105,7 +114,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			requestMethod = 'POST';
 			endPoint = `/api/v3/data/${baseId}/${table}/links/${linkFieldName}/${id}`;
 
-			body = linkIds;
 			responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
 			returnData.push.apply(returnData, [responseData] as IDataObject[]);
 		} catch (error) {
