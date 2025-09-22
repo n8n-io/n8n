@@ -1028,7 +1028,8 @@ const onWorkflowMCPAccessToggle = async (data: { id: string; enabled: boolean })
 
 	try {
 		await workflowsStore.updateWorkflowSetting(data.id, 'availableInMCP', data.enabled);
-		const item = workflowsAndFolders.value[index] as WorkflowListItem;
+		const item = workflowsAndFolders.value[index];
+		if (!item || item.resource !== 'workflow') return;
 		const updated = workflowsStore.workflowsById[data.id];
 		workflowsAndFolders.value.splice(index, 1, { ...item, settings: updated?.settings });
 	} catch (error) {

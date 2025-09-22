@@ -1765,7 +1765,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
 				...workflowsById.value[id],
-				settings: (updated.settings ?? ({} as IWorkflowSettings)) as IWorkflowDb['settings'],
+				settings: updated.settings,
 				versionId: updated.versionId,
 			};
 		}
