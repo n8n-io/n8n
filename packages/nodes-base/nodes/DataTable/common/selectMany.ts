@@ -15,6 +15,7 @@ import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 export function getSelectFields(
 	displayOptions: IDisplayOptions,
 	requireCondition = false,
+	skipOperator = false,
 ): INodeProperties[] {
 	return [
 		{
@@ -75,6 +76,11 @@ export function getSelectFields(
 								loadOptionsMethod: 'getConditionsForColumn',
 							},
 							default: 'eq',
+							displayOptions: skipOperator
+								? {
+										show: { '@version': [{ _cnd: { lt: 0 } }] },
+									}
+								: undefined,
 						},
 						{
 							displayName: 'Value',

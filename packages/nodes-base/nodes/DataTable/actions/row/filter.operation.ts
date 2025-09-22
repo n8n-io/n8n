@@ -18,14 +18,14 @@ const displayOptions: IDisplayOptions = {
 };
 
 export const description: INodeProperties[] = [
-	...getSelectFields(displayOptions),
+	...getSelectFields(displayOptions, true, true),
 	{
 		displayName: 'Keep Matches',
 		name: 'keepMatches',
 		description: 'Whether to return matching items, rather than missing items',
 		type: 'boolean',
 		default: false,
-		...displayOptions,
+		displayOptions,
 	},
 ];
 
@@ -38,5 +38,5 @@ export async function execute(
 	const dataStoreProxy = await getDataTableProxyExecute(this, index);
 	const hits = await executeSelectMany(this, index, dataStoreProxy, undefined, 1);
 	const hasHit = hits.length > 0;
-	return keepMatches !== hasHit ? [this.getInputData()[index]] : [];
+	return keepMatches === hasHit ? [this.getInputData()[index]] : [];
 }
