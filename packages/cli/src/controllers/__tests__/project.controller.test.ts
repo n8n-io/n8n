@@ -2,6 +2,7 @@ import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
+import type { Response } from 'express';
 import { ProjectController } from '@/controllers/project.controller';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -24,7 +25,7 @@ describe('ProjectController (members endpoints)', () => {
 			status: jest.fn().mockReturnThis(),
 			json: jest.fn().mockReturnThis(),
 			send: jest.fn().mockReturnThis(),
-		} as unknown as import('express').Response;
+		} as unknown as Response;
 		return res;
 	};
 
