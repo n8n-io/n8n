@@ -20,10 +20,8 @@ export function chatWithBuilder(
 		ctx,
 		'/ai/build',
 		{
-			payload: {
-				...payload,
-				useDeprecatedCredentials,
-			},
+			...payload,
+			useDeprecatedCredentials,
 		},
 		onMessageUpdated,
 		onDone,
