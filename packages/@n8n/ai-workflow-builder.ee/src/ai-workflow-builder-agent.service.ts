@@ -71,7 +71,11 @@ export class AiWorkflowBuilderService {
 	private async setupModels(
 		user?: IUser,
 		useDeprecatedCredentials = false,
-	): Promise<{ anthropicClaude: ChatAnthropic; tracingClient?: TracingClient }> {
+	): Promise<{
+		anthropicClaude: ChatAnthropic;
+		tracingClient?: TracingClient;
+		authHeaders?: { Authorization: string };
+	}> {
 		try {
 			// If client is provided, use it for API proxy
 			if (this.client && user) {
@@ -97,7 +101,7 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				return { tracingClient, anthropicClaude };
+				return { tracingClient, anthropicClaude, authHeaders };
 			}
 
 			// If base URL is not set, use environment variables
@@ -164,7 +168,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user?: IUser, useDeprecatedCredentials = false) {
-		const { anthropicClaude, tracingClient } = await this.setupModels(
+		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			useDeprecatedCredentials,
 		);
@@ -184,12 +188,24 @@ export class AiWorkflowBuilderService {
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
-			// onGenerationSuccess: () => {
-			// 	void this.client?.markBuilderSuccess()
-			// },
+			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
 		});
 
 		return agent;
+	}
+
+	async onGenerationSuccess(user?: IUser, authHeaders?: { Authorization: string }): Promise<void> {
+		try {
+			if (this.client) {
+				assert(authHeaders, 'Auth headers must be set when AI Assistant Service client is used');
+				assert(user);
+				await this.client.markBuilderSuccess(user, authHeaders);
+			}
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				this.logger?.error(`Unable to mark generation success ${error.message}`, { error });
+			}
+		}
 	}
 
 	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
