@@ -31,7 +31,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router';
 import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
-import { useFloatingUiOffsets } from '@/composables/useFloatingUIOffsets';
+import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
 
 const route = useRoute();
 const rootStore = useRootStore();

@@ -4,7 +4,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { setActivePinia } from 'pinia';
-import { useFloatingUiOffsets } from './useFloatingUIOffsets';
+import { useFloatingUiOffsets } from './useFloatingUiOffsets';
 import { reactive } from 'vue';
 import { EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
