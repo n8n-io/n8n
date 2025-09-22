@@ -20,6 +20,7 @@ import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
+import { EventService } from './events/event.service';
 
 @Service()
 export class ActiveExecutions {
@@ -34,6 +35,7 @@ export class ActiveExecutions {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
+		private readonly eventService: EventService,
 	) {}
 
 	has(executionId: string) {
@@ -160,6 +162,7 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
+		this.eventService.emit('execution-cancelled', { executionId });
 		const error = new ExecutionCancelledError(executionId);
 		execution.responsePromise?.reject(error);
 		if (execution.status === 'waiting') {

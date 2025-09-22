@@ -134,3 +134,35 @@ export const TEST_NODE_NO_CREDENTIALS: INode = {
 	},
 	credentials: undefined,
 };
+
+export const TEST_PARAMETER_URL_REDIRECT: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterUrlRedirect',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'testSearch',
+				searchable: true,
+				allowNewResource: {
+					label: 'resourceLocator.dataTable.createNew',
+					url: '/projects/{{$projectId}}/datatables/new',
+				},
+			},
+		},
+	],
+};
+
+export const TEST_NODE_URL_REDIRECT: INode = {
+	...TEST_NODE_MULTI_MODE,
+	name: 'Test Node - URL Redirect',
+	parameters: {
+		resource: 'test',
+		operation: 'get',
+		testParameterUrlRedirect: TEST_MODEL_VALUE,
+		id: '',
+		options: {},
+	},
+};

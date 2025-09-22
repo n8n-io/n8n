@@ -7,13 +7,12 @@ on:
     branches:
       - 'release/*'
 
-env:
-  BUILD_DIST_NAME: ${{ github.sha }}-release:build
-
 jobs:
   build-arm64:
     runs-on: blacksmith-4vcpu-ubuntu-2204-arm
     if: github.event.pull_request.merged == true
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - name: Checkout
@@ -41,13 +40,6 @@ jobs:
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-github
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ env.BUILD_DIST_NAME }}
-          path: ./packages/**/dist
-          retention-days: 7
 
       - name: Dry-run publishing
         run: |
@@ -122,11 +114,8 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          name: ${{ env.BUILD_DIST_NAME }}
-          path: .
+      - name: Restore Turbo Cache
+        uses: ./.github/actions/setup-nodejs-github
 
       - name: Create a frontend release
         uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
