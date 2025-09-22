@@ -134,7 +134,7 @@ describe('WorkflowCard', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -205,7 +205,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -233,7 +233,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -262,7 +262,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -291,7 +291,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -316,7 +316,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -352,7 +352,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -387,7 +387,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -421,7 +421,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -469,7 +469,7 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(actionsToggle);
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -500,7 +500,7 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(actionsToggle);
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -526,7 +526,7 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(actionsToggle);
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
