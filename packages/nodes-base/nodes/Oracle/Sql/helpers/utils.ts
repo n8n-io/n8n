@@ -677,28 +677,29 @@ function generateBindVariablesList(
 	query: string,
 ) {
 	const valList: string[] = item.datatype === 'string' ? item.valueString.split(',') : [];
-	let generatedSqlString = '(';
 
-	if (valList) {
-		for (let i = 0; i < valList.length; i++) {
-			// replace parameters with Dashes to underscore
-			const uniqueId = randomUUID().replace(/-/g, '_');
-			const newParamName = `${item.name}${uniqueId}`;
-			bindParameters[newParamName] = {
-				type: mapDbType(item.datatype).oracledbType,
-				val: getCompatibleValue(item.datatype, valList[i]),
-			};
+	// Escape bind name for regex safely
+	const escapedName = item.name.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-			generatedSqlString += `:${newParamName}`;
-			generatedSqlString += ',';
-		}
+	if (valList.length === 0) {
+		// Empty or undefined, generate "IN (NULL)"
+		const regex = new RegExp(':' + escapedName, 'g');
+		return query.replace(regex, '(NULL)');
 	}
 
-	// Safe replacement using RegExp
-	// escapes any special characters like .,+
-	// in the item.name string so it can safely be used
-	// in a regular expression.
-	const escapedName = item.name.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+	let generatedSqlString = '(';
+
+	for (let i = 0; i < valList.length; i++) {
+		// replace parameters with Dashes to underscore
+		const uniqueId = randomUUID().replace(/-/g, '_');
+		const newParamName = `${item.name}${uniqueId}`;
+		bindParameters[newParamName] = {
+			type: mapDbType(item.datatype).oracledbType,
+			val: getCompatibleValue(item.datatype, valList[i]),
+		};
+
+		generatedSqlString += `:${newParamName},`;
+	}
 
 	// replace :bindname
 	const regex = new RegExp(':' + escapedName, 'g');
