@@ -1,10 +1,12 @@
 import { ImportService } from '@/services/import.service';
 import { ImportEntitiesCommand } from '../entities';
-import { mock } from 'jest-mock-extended';
+import { mockInstance } from '@n8n/backend-test-utils';
 
-jest.mock('@/services/import.service', () => ({
-	ImportService: mock<ImportService>(),
-}));
+jest.mock('@/services/import.service');
+
+beforeAll(() => {
+	mockInstance(ImportService);
+});
 
 describe('ImportEntitiesCommand', () => {
 	describe('run', () => {
@@ -22,7 +24,7 @@ describe('ImportEntitiesCommand', () => {
 			await command.run();
 
 			// @ts-expect-error Protected property
-			expect(command.logger.info).toHaveBeenCalledTimes(4);
+			expect(command.logger.info).toHaveBeenCalledTimes(5);
 			// @ts-expect-error Protected property
 			expect(command.logger.error).not.toHaveBeenCalled();
 		});
