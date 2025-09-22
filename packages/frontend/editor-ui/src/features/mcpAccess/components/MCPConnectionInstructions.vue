@@ -44,18 +44,16 @@ const connectionCode = computed(() => {
 		<ol :class="$style.instructions">
 			<li>
 				<span :class="$style.label">
-					{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}
+					{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
 				</span>
-				:
 				<span :class="$style.value">
 					<code>{{ props.baseUrl + MCP_ENDPOINT }}</code>
 				</span>
 			</li>
 			<li>
 				<span :class="$style.label">
-					{{ i18n.baseText('settings.mcp.instructions.authorization') }}
+					{{ i18n.baseText('settings.mcp.instructions.authorization') }}:
 				</span>
-				:
 				<span :class="$style.value">
 					{{ i18n.baseText('generic.your') }}
 					<n8n-link to="/settings/api">n8n {{ i18n.baseText('generic.apiKey') }}</n8n-link>
@@ -99,6 +97,12 @@ const connectionCode = computed(() => {
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-s);
+
+		@media screen and (max-width: 820px) {
+			display: block;
+			word-wrap: break-word;
+			margin-top: var(--spacing-2xs);
+		}
 	}
 }
 
