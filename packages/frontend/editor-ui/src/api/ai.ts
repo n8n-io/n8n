@@ -21,7 +21,10 @@ export function chatWithBuilder(
 		'/ai/build',
 		{
 			...payload,
-			useDeprecatedCredentials,
+			payload: {
+				...payload.payload,
+				useDeprecatedCredentials,
+			},
 		},
 		onMessageUpdated,
 		onDone,
