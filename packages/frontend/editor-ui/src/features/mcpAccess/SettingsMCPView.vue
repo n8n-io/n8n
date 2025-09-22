@@ -32,7 +32,7 @@ const availableWorkflows = ref<WorkflowListItem[]>([]);
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
-		title: i18n.baseText('_reusableBaseText.name'),
+		title: i18n.baseText('generic.name'),
 		key: 'name',
 		width: 200,
 		disableSort: true,

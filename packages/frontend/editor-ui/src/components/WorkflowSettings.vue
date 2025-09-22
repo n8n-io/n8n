@@ -305,7 +305,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 const saveSettings = async () => {
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
-		settings: vlue,
+		settings: workflowSettings.value,
 	};
 
 	// Convert hours, minutes, seconds into seconds for the workflow timeout

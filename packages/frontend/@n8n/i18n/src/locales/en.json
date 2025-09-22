@@ -89,6 +89,7 @@
 	"generic.startNow": "Start now",
 	"generic.dismiss": "Dismiss",
 	"generic.saving": "Saving",
+	"generic.name": "Name",
 	"generic.unsavedWork.confirmMessage.headline": "Save changes before leaving?",
 	"generic.unsavedWork.confirmMessage.message": "If you don't save, you will lose your changes.",
 	"generic.unsavedWork.confirmMessage.confirmButtonText": "Save",
