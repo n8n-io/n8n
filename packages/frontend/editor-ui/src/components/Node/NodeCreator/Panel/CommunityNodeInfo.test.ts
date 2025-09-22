@@ -11,13 +11,12 @@ vi.mock('./utils', () => ({
 	fetchInstalledPackageInfo: vi.fn(),
 }));
 
-// Mock the useInstalledCommunityPackage composable
 const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
-
+const isUpdateCheckAvailable = ref(false);
 vi.mock('@/composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
 		installedPackage: mockInstalledPackage,
-		isUpdateCheckAvailable: ref(false),
+		isUpdateCheckAvailable,
 		isCommunityNode: ref(true),
 		initInstalledPackage: vi.fn(),
 	})),
@@ -93,6 +92,7 @@ describe('CommunityNodeInfo', () => {
 		} as ReturnType<typeof useViewStacks>);
 
 		mockInstalledPackage.value = undefined;
+		isUpdateCheckAvailable.value = false;
 	});
 
 	afterEach(() => {
@@ -143,6 +143,7 @@ describe('CommunityNodeInfo', () => {
 			numberOfDownloads: 9999,
 			nodeVersions: [{ npmVersion: '1.0.0' }, { npmVersion: '0.0.9' }],
 		});
+		isUpdateCheckAvailable.value = true;
 		mockInstalledPackage.value = {
 			installedVersion: '0.0.9',
 			packageName: 'n8n-nodes-test',
