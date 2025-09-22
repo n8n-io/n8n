@@ -9,6 +9,8 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	TagEntity,
+	WorkflowTagMapping,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
@@ -181,27 +183,62 @@ describe('SourceControlExportService', () => {
 	describe('exportTagsToWorkFolder', () => {
 		it('should export tags to work folder', async () => {
 			// Arrange
-			tagRepository.find.mockResolvedValue([mock()]);
-			workflowTagMappingRepository.find.mockResolvedValue([mock()]);
+			const mockTag = mock<TagEntity>({
+				id: 'tag1',
+				name: 'Tag 1',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const mockWorkflow = mock<WorkflowTagMapping>({
+				tagId: 'tag1',
+				workflowId: 'workflow1',
+			});
+			tagRepository.find.mockResolvedValue([mockTag]);
+			workflowTagMappingRepository.find.mockResolvedValue([mockWorkflow]);
+			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
 			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify(
+					{
+						tags: [
+							{
+								id: mockTag.id,
+								name: mockTag.name,
+							},
+						],
+						mappings: [mockWorkflow],
+					},
+					null,
+					2,
+				),
+			);
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 
-		it('should not export empty tags', async () => {
+		it('should clear tags file and export it when there are no tags', async () => {
 			// Arrange
 			tagRepository.find.mockResolvedValue([]);
+			const fileName = '/mock/n8n/git/tags.json';
 
 			// Act
 			const result = await service.exportTagsToWorkFolder(globalAdminContext);
 
 			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				fileName,
+				JSON.stringify({ tags: [], mappings: [] }, null, 2),
+			);
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
+			expect(result.files[0]).toMatchObject({ id: '', name: fileName });
 		});
 	});
 

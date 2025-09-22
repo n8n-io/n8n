@@ -14,6 +14,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 	jsonParse,
 } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
@@ -272,9 +273,9 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error(`${context.getNode().name} node not correctly configured`),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',

@@ -24,7 +24,7 @@ export class DataStoreAggregateController {
 
 	@Get('/limits')
 	@GlobalScope('dataStore:list')
-	async getDataTablesSize() {
-		return await this.dataStoreService.getDataTablesSize();
+	async getDataTablesSize(req: AuthenticatedRequest) {
+		return await this.dataStoreService.getDataTablesSize(req.user);
 	}
 }
