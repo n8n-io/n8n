@@ -26,14 +26,13 @@ const usersStore = useUsersStore();
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const rootStore = useRootStore();
 
-// Use store state directly in template
 const workflowsLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
-		title: 'Name',
+		title: i18n.baseText('_reusableBaseText.name'),
 		key: 'name',
 		width: 200,
 		disableSort: true,
@@ -42,7 +41,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
-		title: 'Folder',
+		title: i18n.baseText('generic.folder'),
 		key: 'parentFolder',
 		width: 200,
 		disableSort: true,
@@ -51,7 +50,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
-		title: 'Project',
+		title: i18n.baseText('generic.project'),
 		key: 'homeProject',
 		width: 200,
 		disableSort: true,
@@ -60,7 +59,7 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 	{
-		title: 'Active',
+		title: i18n.baseText('workflowDetails.active'),
 		key: 'active',
 		disableSort: true,
 		value() {
@@ -132,7 +131,6 @@ const fetchAvailableWorkflows = async () => {
 	try {
 		const workflows = await mcpStore.fetchWorkflowsAvailableForMCP(1, 200);
 		availableWorkflows.value = workflows;
-		// TODO: Add empty state if no workflows are available
 	} catch (error) {
 		toast.showError(error, 'Error fetching workflows');
 	} finally {
@@ -140,7 +138,6 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
-// TODO: Only owners can toggle this
 const onUpdateMCPEnabled = async (value: boolean) => {
 	const updated = await mcpStore.setMcpAccessEnabled(value);
 	if (updated) {
@@ -175,17 +172,17 @@ onMounted(async () => {
 		<div :class="$style.headingContainer">
 			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</n8n-heading>
 		</div>
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
+		<div :class="$style.mainToggleContainer">
+			<div :class="$style.mainToggleInfo">
 				<n8n-text :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</n8n-text>
-				<n8n-text size="small" color="text-light">{{
-					i18n.baseText('settings.mcp.toggle.description')
-				}}</n8n-text>
+				<n8n-text size="small" color="text-light">
+					{{ i18n.baseText('settings.mcp.toggle.description') }}
+				</n8n-text>
 			</div>
-			<div :class="$style.settingsContainerAction">
+			<div :class="$style.mainTooggle">
 				<N8nTooltip :disabled="isOwner" placement="top">
 					<template #content>
-						<span>Only the instance owner can change this</span>
+						<span>{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}</span>
 					</template>
 					<div>
 						<el-switch
@@ -356,7 +353,6 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: var(--spacing-l);
 
-	// TODO: Find a better way to disable pagination
 	:global(.table-pagination) {
 		display: none;
 	}
@@ -366,26 +362,25 @@ onMounted(async () => {
 	margin-bottom: var(--spacing-xs);
 }
 
-.settingsContainer {
+.mainToggleContainer {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing-s);
 	justify-content: space-between;
 	flex-shrink: 0;
 
-	border-radius: 4px;
-	border: 1px solid var(--Colors-Foreground---color-foreground-base, #d9dee8);
+	border-radius: var(--border-radius-base);
+	border: var(--border-base);
 }
 
-.settingsContainerInfo {
+.mainToggleInfo {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: flex-start;
-	gap: 1px;
 }
 
-.settingsContainerAction {
+.mainTooggle {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
@@ -401,8 +396,8 @@ onMounted(async () => {
 .connectionStringLabel {
 	code {
 		background: var(--color-background-medium);
-		border-radius: 4px;
-		padding: 0 4px;
+		border-radius: var(--border-radius-base);
+		padding: 0 var(--spacing-4xs);
 		font-size: var(--font-size-xs);
 	}
 }

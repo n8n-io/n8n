@@ -64,7 +64,6 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
-	// TODO: Handle this in card
 	'workflow:toggle-mcp-access': [value: { id: string; enabled: boolean }];
 	'action:move-to-folder': [
 		value: {
