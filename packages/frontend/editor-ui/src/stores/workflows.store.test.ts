@@ -31,7 +31,7 @@ import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
-import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
@@ -1162,6 +1162,144 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+		});
+	});
+
+	describe('updateWorkflowSetting', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('updates current workflow setting and store state', async () => {
+			workflowsStore.workflow.id = 'w1';
+			workflowsStore.workflow.versionId = 'v1';
+			workflowsStore.workflow.settings = {
+				executionOrder: 'v1',
+				timezone: 'UTC',
+			};
+
+			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w1',
+					versionId: 'v2',
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'UTC',
+						executionTimeout: 10,
+					},
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			// Act
+			const result = await workflowsStore.updateWorkflowSetting('w1', 'executionTimeout', 10);
+
+			// Assert request payload
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'PATCH',
+				'/workflows/w1',
+				expect.objectContaining({
+					versionId: 'v1',
+					settings: expect.objectContaining({ executionTimeout: 10, timezone: 'UTC' }),
+				}),
+			);
+
+			// Assert returned value and store updates
+			expect(result.versionId).toBe('v2');
+			expect(workflowsStore.workflow.versionId).toBe('v2');
+			expect(workflowsStore.workflow.settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'UTC',
+				executionTimeout: 10,
+			});
+		});
+
+		it('updates cached workflow without fetching when present in store', async () => {
+			workflowsStore.workflowsById = {
+				w2: createTestWorkflow({
+					id: 'w2',
+					name: 'Cached',
+					versionId: 'v2',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			};
+
+			const getWorkflowSpy = vi.spyOn(workflowsApi, 'getWorkflow');
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w2',
+					versionId: 'v3',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Europe/Berlin',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w2', 'timezone', 'Europe/Berlin');
+
+			// Should not fetch since cached with versionId exists
+			expect(getWorkflowSpy).not.toHaveBeenCalled();
+			expect(workflowsStore.workflowsById['w2'].versionId).toBe('v3');
+			expect(workflowsStore.workflowsById['w2'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Europe/Berlin',
+			});
+		});
+
+		it('fetches workflow when not cached and updates store', async () => {
+			workflowsStore.workflowsById = {} as Record<string, IWorkflowDb>;
+
+			vi.mocked(workflowsApi).getWorkflow.mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					name: 'Fetched',
+					versionId: 'v100',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			);
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					versionId: 'v101',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Asia/Tokyo',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w3', 'timezone', 'Asia/Tokyo');
+
+			expect(workflowsApi.getWorkflow).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'w3',
+			);
+			expect(workflowsStore.workflowsById['w3'].versionId).toBe('v101');
+			expect(workflowsStore.workflowsById['w3'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Asia/Tokyo',
+			});
 		});
 	});
 
