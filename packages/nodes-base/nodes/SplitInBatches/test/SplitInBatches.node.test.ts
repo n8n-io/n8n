@@ -1,21 +1,21 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { SplitInBatchesV3 } from '../v3/SplitInBatchesV3.node';
+import { SplitInBatchesV4 } from '../v4/SplitInBatchesV4.node';
 
 describe('Execute SplitInBatches Node', () => {
 	new NodeTestHarness().setupTests();
 });
 
-describe('SplitInBatchesV3 Infinite Loop Protection', () => {
-	let splitInBatchesNode: SplitInBatchesV3;
+describe('SplitInBatchesV4 Infinite Loop Protection', () => {
+	let splitInBatchesNode: SplitInBatchesV4;
 	let mockExecuteFunctions: Partial<IExecuteFunctions>;
 
 	beforeEach(() => {
-		splitInBatchesNode = new SplitInBatchesV3();
+		splitInBatchesNode = new SplitInBatchesV4();
 
 		// Clear static execution counters before each test
-		(SplitInBatchesV3 as any).executionCounters.clear();
+		(SplitInBatchesV4 as any).executionCounters.clear();
 
 		mockExecuteFunctions = {
 			getNode: jest.fn().mockReturnValue({ name: 'SplitInBatches' }),
@@ -41,22 +41,22 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 	afterEach(() => {
 		// Clean up static state after each test
-		(SplitInBatchesV3 as any).executionCounters.clear();
+		(SplitInBatchesV4 as any).executionCounters.clear();
 	});
 
 	describe('checkExecutionLimit', () => {
 		it('should allow executions under the limit', () => {
 			// Test that executions under the limit (3) are allowed
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 		});
 
@@ -64,23 +64,23 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			// With 3 input items and batch size 1, expected batches = 3, limit = max(3*2, 10) = 10
 			// Execute up to the limit
 			for (let i = 0; i < 10; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// The 11th execution should throw
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
 		it('should include proper error message with node name and execution count', () => {
 			// Execute up to the limit (10 for this dataset)
 			for (let i = 0; i < 10; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			try {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 				fail('Expected NodeOperationError to be thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(NodeOperationError);
@@ -98,17 +98,17 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		it('should clean up execution counter after throwing error', () => {
 			// Execute up to the limit and trigger error
 			for (let i = 0; i < 10; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			try {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			} catch (error) {
 				// Expected error
 			}
 
 			// Counter should be cleaned up
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters;
 			const globalKey = 'test-execution-id_SplitInBatches';
 			expect(executionCounters.has(globalKey)).toBe(false);
 		});
@@ -121,23 +121,23 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 			// Execute node 1 up to limit (10 for this dataset)
 			for (let i = 0; i < 10; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Node 2 should still be able to execute (it has its own counter)
 			for (let i = 0; i < 10; i++) {
 				expect(() => {
-					(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
+					(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 				}).not.toThrow();
 			}
 
 			// Both nodes should throw when they exceed their respective limits
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
@@ -149,23 +149,23 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 			// Execute first execution up to limit (10 for this dataset)
 			for (let i = 0; i < 10; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Different execution ID should still be able to execute (it has its own counter)
 			for (let i = 0; i < 10; i++) {
 				expect(() => {
-					(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
+					(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 				}).not.toThrow();
 			}
 
 			// Both executions should throw when they exceed their respective limits
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 	});
@@ -173,15 +173,15 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 	describe('resetExecutionCount', () => {
 		it('should remove execution counter for the node', () => {
 			// Build up counter
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters;
 			const globalKey = 'test-execution-id_SplitInBatches';
 			expect(executionCounters.has(globalKey)).toBe(true);
 
 			// Reset counter
-			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV4 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
 
 			// Counter should be removed
 			expect(executionCounters.has(globalKey)).toBe(false);
@@ -194,10 +194,10 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			};
 
 			// Build up counters for both nodes
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
+			(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2);
 
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters;
 			const globalKey1 = 'test-execution-id_SplitInBatches';
 			const globalKey2 = 'test-execution-id_AnotherSplitInBatches';
 
@@ -205,7 +205,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			expect(executionCounters.has(globalKey2)).toBe(true);
 
 			// Reset only first node
-			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV4 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
 
 			// Only first node's counter should be removed
 			expect(executionCounters.has(globalKey1)).toBe(false);
@@ -215,7 +215,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 	describe('execute method integration', () => {
 		it('should call checkExecutionLimit on each execution', async () => {
-			const checkExecutionLimitSpy = jest.spyOn(SplitInBatchesV3 as any, 'checkExecutionLimit');
+			const checkExecutionLimitSpy = jest.spyOn(SplitInBatchesV4 as any, 'checkExecutionLimit');
 
 			// The execute method signature is: execute(this: IExecuteFunctions)
 			// So mockExecuteFunctions should be the 'this' context
@@ -245,7 +245,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should call resetExecutionCount when reset option is true', async () => {
-			const resetExecutionCountSpy = jest.spyOn(SplitInBatchesV3 as any, 'resetExecutionCount');
+			const resetExecutionCountSpy = jest.spyOn(SplitInBatchesV4 as any, 'resetExecutionCount');
 
 			const executeFunctionsWithContext = {
 				...mockExecuteFunctions,
@@ -278,7 +278,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should call resetExecutionCount when processing completes normally', async () => {
-			const resetExecutionCountSpy = jest.spyOn(SplitInBatchesV3 as any, 'resetExecutionCount');
+			const resetExecutionCountSpy = jest.spyOn(SplitInBatchesV4 as any, 'resetExecutionCount');
 
 			// Mock an execution that has processed all items and has low execution count
 			const executeFunctionsWithContext = {
@@ -359,7 +359,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should always reset counter after normal completion regardless of execution count', async () => {
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters;
 			const globalKey = 'test-execution-id_SplitInBatches';
 
 			// Manually set a high counter to simulate multiple batch runs (bypassing the limit check)
@@ -415,18 +415,18 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			// Should allow 40 executions without throwing
 			for (let i = 0; i < 40; i++) {
 				expect(() => {
-					(SplitInBatchesV3 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
+					(SplitInBatchesV4 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
 				}).not.toThrow();
 			}
 
 			// 41st execution should throw
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
+				(SplitInBatchesV4 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
 		it('should prevent memory leaks by resetting counters after normal multi-batch processing', async () => {
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters;
 
 			// Simulate multiple different workflows completing
 			const workflows = ['workflow1', 'workflow2', 'workflow3'];
@@ -473,8 +473,8 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should reset counter before infinite loop check when options.reset is true', async () => {
-			const splitInBatchesNode = new SplitInBatchesV3();
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const splitInBatchesNode = new SplitInBatchesV4();
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters as Map<string, number>;
 			const globalKey = 'test-execution-id_SplitInBatches';
 
 			// Set high counter to simulate previous executions
@@ -501,8 +501,8 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should clean up counter on checkExecutionLimit error', async () => {
-			const splitInBatchesNode = new SplitInBatchesV3();
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const splitInBatchesNode = new SplitInBatchesV4();
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters as Map<string, number>;
 			const globalKey = 'test-execution-id_SplitInBatches';
 
 			// Set counter to exceed limit
@@ -530,7 +530,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		});
 
 		it('should provide cleanup method for execution counters', () => {
-			const executionCounters = (SplitInBatchesV3 as any).executionCounters as Map<string, number>;
+			const executionCounters = (SplitInBatchesV4 as any).executionCounters as Map<string, number>;
 			const executionId = 'test-execution';
 
 			// Add some counters
@@ -539,7 +539,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			executionCounters.set('other-execution_node1', 2);
 
 			// Cleanup specific execution
-			SplitInBatchesV3.cleanupExecutionCounters(executionId);
+			SplitInBatchesV4.cleanupExecutionCounters(executionId);
 
 			// Should remove counters for the specific execution
 			expect(executionCounters.has(`${executionId}_node1`)).toBe(false);

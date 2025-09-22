@@ -5,39 +5,9 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
-	// Global tracking across all instances within the same workflow execution
-	private static executionCounters = new Map<string, number>();
-
-	// Track executions for automatic cleanup after timeout
-	private static executionTracking = new Map<string, number>();
-
-	// Timer reference for cleanup
-	private static cleanupTimer: NodeJS.Timeout | null = null;
-
-	static {
-		// Start periodic cleanup for abandoned executions (every 5 minutes)
-		SplitInBatchesV3.cleanupTimer = setInterval(
-			() => {
-				const now = Date.now();
-				const timeout = 5 * 60 * 1000; // 5 minutes
-
-				for (const [executionId, timestamp] of SplitInBatchesV3.executionTracking) {
-					if (now - timestamp > timeout) {
-						SplitInBatchesV3.cleanupExecutionCounters(executionId);
-						SplitInBatchesV3.executionTracking.delete(executionId);
-					}
-				}
-			},
-			5 * 60 * 1000,
-		);
-
-		// Allow timer to be cleared on process shutdown
-		SplitInBatchesV3.cleanupTimer.unref();
-	}
-
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
@@ -93,33 +63,20 @@ export class SplitInBatchesV3 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
-		const options = this.getNodeParameter('options', 0, {});
-
-		// Reset execution counter BEFORE infinite loop check when explicitly requested
-		if (options.reset === true) {
-			SplitInBatchesV3.resetExecutionCount(this);
-		}
-
-		// PAY-2940: Check for infinite loops on EVERY execution
-		try {
-			SplitInBatchesV3.checkExecutionLimit(this);
-		} catch (error) {
-			// Clean up counter on error to prevent memory leaks
-			SplitInBatchesV3.resetExecutionCount(this);
-			throw error;
-		}
-
 		// Get the input data and create a new array so that we can remove
 		// items without a problem
 		const items = this.getInputData().slice();
 
 		const nodeContext = this.getContext('node');
+
 		const batchSize = this.getNodeParameter('batchSize', 0) as number;
 
 		const returnItems: INodeExecutionData[] = [];
 
+		const options = this.getNodeParameter('options', 0, {});
+
 		if (nodeContext.items === undefined || options.reset === true) {
-			// Is the first time the node runs or reset is requested
+			// Is the first time the node runs
 
 			const sourceData = this.getInputSourceData();
 
@@ -197,81 +154,11 @@ export class SplitInBatchesV3 implements INodeType {
 
 		if (returnItems.length === 0) {
 			nodeContext.done = true;
-			// Normal completion - always reset counter to prevent memory leaks
-			// The infinite loop protection happens in checkExecutionLimit, not here
-			SplitInBatchesV3.resetExecutionCount(this);
 			return [nodeContext.processedItems, []];
 		}
 
 		nodeContext.done = false;
 
 		return [[], returnItems];
-	}
-
-	/**
-	 * Prevents infinite loops by limiting executions (PAY-2940)
-	 */
-	private static checkExecutionLimit(executeFunctions: IExecuteFunctions): void {
-		const nodeName = executeFunctions.getNode().name;
-		const executionId = executeFunctions.getExecutionId();
-		const globalKey = `${executionId}_${nodeName}`;
-
-		// Track execution timestamp for cleanup
-		SplitInBatchesV3.executionTracking.set(executionId, Date.now());
-
-		// Initialize and increment counter in static map
-		const currentCount = SplitInBatchesV3.executionCounters.get(globalKey) || 0;
-		const newCount = currentCount + 1;
-		SplitInBatchesV3.executionCounters.set(globalKey, newCount);
-
-		// Calculate dynamic limit based on input data and batch size
-		const inputItems = executeFunctions.getInputData();
-		const batchSize = executeFunctions.getNodeParameter('batchSize', 0) as number;
-
-		// Expected batches = ceil(inputItems / batchSize) + some buffer for edge cases
-		// Minimum of 10 to handle small datasets, maximum of 1000 to prevent true infinite loops
-		const expectedBatches = Math.ceil(inputItems.length / Math.max(batchSize, 1));
-		const bufferMultiplier = 2; // Allow 2x expected batches for safety
-		const maxExecutions = Math.min(Math.max(expectedBatches * bufferMultiplier, 10), 1000);
-
-		if (newCount > maxExecutions) {
-			// Clean up before throwing error
-			SplitInBatchesV3.executionCounters.delete(globalKey);
-			throw new NodeOperationError(
-				executeFunctions.getNode(),
-				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the calculated limit of ${maxExecutions} (expected ~${expectedBatches} batches). ` +
-					'This indicates an infinite loop. Check that the "done" output is not connected back to this node\'s input.',
-			);
-		}
-	}
-
-	/**
-	 * Resets execution counter when processing completes
-	 */
-	private static resetExecutionCount(executeFunctions: IExecuteFunctions): void {
-		const nodeName = executeFunctions.getNode().name;
-		const executionId = executeFunctions.getExecutionId();
-		const globalKey = `${executionId}_${nodeName}`;
-
-		SplitInBatchesV3.executionCounters.delete(globalKey);
-
-		// Clean up tracking when execution completes normally
-		SplitInBatchesV3.executionTracking.delete(executionId);
-	}
-
-	/**
-	 * Cleanup all counters for a specific execution ID to prevent memory leaks
-	 */
-	static cleanupExecutionCounters(executionId: string): void {
-		const keysToDelete: string[] = [];
-		for (const key of SplitInBatchesV3.executionCounters.keys()) {
-			if (key.startsWith(`${executionId}_`)) {
-				keysToDelete.push(key);
-			}
-		}
-		keysToDelete.forEach((key) => SplitInBatchesV3.executionCounters.delete(key));
-
-		// Also clean up execution tracking
-		SplitInBatchesV3.executionTracking.delete(executionId);
 	}
 }
