@@ -282,5 +282,6 @@ export function getChatPayload(message: string, id: string): ChatPayload {
 		workflowContext: {
 			currentWorkflow: { id, nodes: [], connections: {} },
 		},
+		useDeprecatedCredentials: false,
 	};
 }

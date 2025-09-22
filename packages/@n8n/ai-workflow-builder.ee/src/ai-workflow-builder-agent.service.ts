@@ -11,10 +11,10 @@ import { Client as TracingClient } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
-import { LLMServiceError } from './errors';
-import { anthropicClaudeSonnet4 } from './llm-config';
-import { formatMessages } from './utils/stream-processor';
-import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
+import { LLMServiceError } from '@/errors';
+import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { formatMessages } from '@/utils/stream-processor';
+import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -31,7 +31,7 @@ export class AiWorkflowBuilderService {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
 
-	static async getAnthropicClaudeModel({
+	private static async getAnthropicClaudeModel({
 		baseUrl,
 		authHeaders = {},
 		apiKey = '-',
@@ -198,7 +198,10 @@ export class AiWorkflowBuilderService {
 		return agent;
 	}
 
-	async onGenerationSuccess(user?: IUser, authHeaders?: { Authorization: string }): Promise<void> {
+	private async onGenerationSuccess(
+		user?: IUser,
+		authHeaders?: { Authorization: string },
+	): Promise<void> {
 		try {
 			if (this.client) {
 				assert(authHeaders, 'Auth headers must be set when AI Assistant Service client is used');
