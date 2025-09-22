@@ -188,7 +188,11 @@ export class AiWorkflowBuilderService {
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
-			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			onGenerationSuccess: async () => {
+				if (!useDeprecatedCredentials) {
+					await this.onGenerationSuccess(user, authHeaders);
+				}
+			},
 		});
 
 		return agent;
