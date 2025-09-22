@@ -43,7 +43,7 @@ const textAreaMaxHeight = computed(() => {
 	return props.maxLinesBeforeScroll * 18;
 });
 
-const { characterCount, remainingCharacters, isOverLimit, isAtLimit } = useCharacterLimit({
+const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
 	maxLength: toRef(props, 'maxLength'),
 });
