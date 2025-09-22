@@ -58,7 +58,6 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 	};
-	useDeprecatedCredentials: boolean;
 }
 
 export class WorkflowBuilderAgent {
