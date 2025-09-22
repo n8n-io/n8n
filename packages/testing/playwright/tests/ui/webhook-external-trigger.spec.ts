@@ -27,9 +27,6 @@ test.describe('External Webhook Triggering', () => {
 			'webhook-misconfiguration-test.json',
 		);
 
-		console.log(webhookPath);
-		console.log(workflowId);
-
 		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
 
 		expect(webhookResponse.ok()).toBe(false);
