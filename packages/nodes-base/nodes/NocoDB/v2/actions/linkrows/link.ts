@@ -101,12 +101,22 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			for (const linkId of linkIds) {
 				// if it comes from expression (input)
 				if (Array.isArray(linkId)) {
-					body.push.apply(body, linkId);
+					body.push.apply(
+						body,
+						linkId.map((id: string | number | Record<any, any>) => {
+							if (['string', 'number'].includes(typeof id)) {
+								return { id } as IDataObject;
+							} else {
+								return id as IDataObject;
+							}
+						}),
+					);
 				} else {
-					body.push(linkId);
+					if (['string', 'number'].includes(typeof linkId)) {
+						body.push({ id: linkId });
+					}
 				}
 			}
-			console.log(body);
 			if (!linkIds?.length) {
 				throw new Error('Linked Row ID Value cannot be empty');
 			}

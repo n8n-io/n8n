@@ -105,7 +105,27 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			requestMethod = 'DELETE';
 			endPoint = `/api/v3/data/${baseId}/${table}/links/${linkFieldName}/${id}`;
 
-			body = linkIds;
+			body = [];
+			for (const linkId of linkIds) {
+				// if it comes from expression (input)
+				if (Array.isArray(linkId)) {
+					body.push.apply(
+						body,
+						linkId.map((id: string | number | Record<any, any>) => {
+							if (['string', 'number'].includes(typeof id)) {
+								return { id } as IDataObject;
+							} else {
+								return id as IDataObject;
+							}
+						}),
+					);
+				} else {
+					if (['string', 'number'].includes(typeof linkId)) {
+						body.push({ id: linkId });
+					}
+				}
+			}
+
 			responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
 			returnData.push.apply(returnData, [responseData] as IDataObject[]);
 		} catch (error) {
