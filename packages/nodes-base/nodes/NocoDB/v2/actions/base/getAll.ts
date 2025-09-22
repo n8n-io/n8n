@@ -67,7 +67,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData.push.apply(returnData, responseData.list as IDataObject[]);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ error: error.toString() });
