@@ -235,7 +235,7 @@ export async function execute(
 			rows: values?.length ?? 0,
 		});
 	} else {
-		// v2.1: incorrectly appends raw data
+		// v2.1: incorrectly appends raw data, left for backward compatibility reasons
 		// if used range dimensions are smaller or bigger than inserted values dimensions, it will throw error
 		// Example: if used range is 2x4(cols x rows) and new data is 2x3, it will throw error "The number of rows or columns in the input array doesn't match the size or dimensions of the range."
 		const usedRange = address.split('!')[1];
