@@ -30,12 +30,12 @@ export class CredentialsOverwrites {
 	getOverwriteEndpointMiddleware() {
 		const { endpointAuthToken } = this.globalConfig.credentials.overwrite;
 
-		if (!endpointAuthToken) {
+		if (!endpointAuthToken?.trim()) {
 			return null;
 		}
 
 		return (req: Request, res: Response, next: NextFunction) => {
-			if (req.headers.authorization === `Bearer ${endpointAuthToken}`) {
+			if (req.headers.authorization === `Bearer ${endpointAuthToken.trim()}`) {
 				next();
 			} else {
 				res.status(401).send('Unauthorized');

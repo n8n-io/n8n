@@ -78,7 +78,7 @@ describe('CredentialsOverwrites', () => {
 			let status: () => {
 				send: () => void;
 			};
-			let middleware: (req: Request, res: Response, next: NextFunction) => void;
+			let middleware: null | ((req: Request, res: Response, next: NextFunction) => void);
 			beforeEach(() => {
 				globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
 				next = jest.fn();
