@@ -8,7 +8,7 @@ import {
 import type { FieldEntry } from '../../common/constants';
 import { ANY_CONDITION, ALL_CONDITIONS } from '../../common/constants';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
-import { executeSelectMany } from '../../common/selectMany';
+import { executeSelectMany, getSelectFilter } from '../../common/selectMany';
 
 describe('selectMany utils', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
@@ -28,6 +28,15 @@ describe('selectMany utils', () => {
 				keyValue: 1,
 			},
 		];
+
+		const mockDataStoreProxy = {
+			getColumns: jest.fn().mockResolvedValue([
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'status', type: 'string' },
+			]),
+		};
+
 		mockExecuteFunctions = {
 			getNode: jest.fn().mockReturnValue(node),
 			getNodeParameter: jest.fn().mockImplementation((field) => {
@@ -40,6 +49,9 @@ describe('selectMany utils', () => {
 						return ANY_CONDITION;
 				}
 			}),
+			helpers: {
+				getDataStoreProxy: jest.fn().mockResolvedValue(mockDataStoreProxy),
+			},
 		} as unknown as IExecuteFunctions;
 
 		jest.clearAllMocks();
@@ -327,6 +339,86 @@ describe('selectMany utils', () => {
 				// ASSERT
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
 			});
+		});
+	});
+
+	describe('getSelectFilter', () => {
+		it('should validate filter conditions against table schema', async () => {
+			// ARRANGE
+			filters = [
+				{ condition: 'eq', keyName: 'name', keyValue: 'John' }, // Valid column
+				{ condition: 'eq', keyName: 'invalid_column', keyValue: 'test' }, // Invalid column
+			];
+
+			// ACT & ASSERT
+			await expect(getSelectFilter(mockExecuteFunctions, 0)).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Filter validation failed: Column(s) "invalid_column" do not exist in the selected table. ' +
+						'This often happens when switching between tables with different schemas. ' +
+						'Please update your filter conditions.',
+				),
+			);
+		});
+
+		it('should allow system columns in filter conditions', async () => {
+			// ARRANGE
+			filters = [
+				{ condition: 'eq', keyName: 'id', keyValue: 1 }, // System column
+				{ condition: 'neq', keyName: 'createdAt', keyValue: null }, // System column
+			];
+
+			// ACT
+			const result = await getSelectFilter(mockExecuteFunctions, 0);
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.filters).toHaveLength(2);
+		});
+
+		it('should allow combination of system and custom columns', async () => {
+			// ARRANGE
+			filters = [
+				{ condition: 'eq', keyName: 'id', keyValue: 1 }, // System column
+				{ condition: 'eq', keyName: 'name', keyValue: 'John' }, // Custom column
+			];
+
+			// ACT
+			const result = await getSelectFilter(mockExecuteFunctions, 0);
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.filters).toHaveLength(2);
+		});
+
+		it('should pass validation when no filters are provided', async () => {
+			// ARRANGE
+			filters = [];
+
+			// ACT
+			const result = await getSelectFilter(mockExecuteFunctions, 0);
+
+			// ASSERT
+			expect(result).toBeDefined();
+			expect(result.filters).toHaveLength(0);
+		});
+
+		it('should report multiple invalid columns in error message', async () => {
+			// ARRANGE
+			filters = [
+				{ condition: 'eq', keyName: 'invalid1', keyValue: 'test1' },
+				{ condition: 'eq', keyName: 'invalid2', keyValue: 'test2' },
+			];
+
+			// ACT & ASSERT
+			await expect(getSelectFilter(mockExecuteFunctions, 0)).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Filter validation failed: Column(s) "invalid1, invalid2" do not exist in the selected table. ' +
+						'This often happens when switching between tables with different schemas. ' +
+						'Please update your filter conditions.',
+				),
+			);
 		});
 	});
 });
