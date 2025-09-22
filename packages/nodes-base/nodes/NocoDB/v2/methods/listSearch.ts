@@ -386,3 +386,53 @@ export async function getLinkFieldsId(this: ILoadOptionsFunctions, filter?: stri
 		);
 	}
 }
+
+export async function getRelatedTableFields(this: ILoadOptionsFunctions) {
+	const version = this.getNodeParameter('version', 0) as number;
+	if (version === 3) {
+		return { results: [] };
+	}
+	const baseId = this.getNodeParameter('projectId', 0, {
+		extractValue: true,
+	}) as string;
+	const linkFieldName = this.getNodeParameter('linkFieldName', 0, {
+		extractValue: true,
+	}) as string;
+
+	if (linkFieldName) {
+		try {
+			const requestMethod = 'GET';
+			let endpoint = `/api/v3/meta/bases/${baseId}/fields/${linkFieldName}`;
+			let responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+			const relatedTableId = responseData.options?.related_table_id;
+			if (!relatedTableId) {
+				return { results: [] };
+			}
+
+			endpoint = `/api/v3/meta/bases/${baseId}/tables/${relatedTableId}`;
+			responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+
+			return {
+				results: responseData.fields.map((i: IDataObject) => {
+					return {
+						name: i.title,
+						value: i.id,
+					};
+				}),
+			};
+		} catch (e) {
+			const message = e.messages?.[0] ?? '';
+			throw new NodeOperationError(
+				this.getNode(),
+				new Error(`Error while fetching fields: ${message}`, { cause: e }),
+				{
+					level: 'warning',
+				},
+			);
+		}
+	} else {
+		throw new NodeOperationError(this.getNode(), 'No table selected!', {
+			level: 'warning',
+		});
+	}
+}
