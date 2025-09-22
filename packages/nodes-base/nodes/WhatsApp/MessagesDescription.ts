@@ -560,7 +560,7 @@ export const messageTypeFields: INodeProperties[] = [
 						values: [
 							{
 								displayName: 'Type',
-								name: 'type_v1',
+								name: 'type',
 								displayOptions: {
 									show: {
 										'@version': [1],
