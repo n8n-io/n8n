@@ -245,6 +245,10 @@ export async function v0200Execute(this: IExecuteFunctions): Promise<INodeExecut
 						qs.fields = (qs.fields as IDataObject[]).join(',');
 					}
 
+					if (qs.shuffle) {
+						qs.shuffle = Number(qs.shuffle);
+					}
+
 					if (returnAll) {
 						responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 					} else {
