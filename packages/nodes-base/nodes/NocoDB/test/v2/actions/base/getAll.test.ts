@@ -12,7 +12,7 @@ jest.mock('../../../../v2/transport/index', () => {
 	};
 });
 
-describe('NocoDB getAll Node', () => {
+describe('NocoDB base getAll action', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 
 	beforeEach(() => {
