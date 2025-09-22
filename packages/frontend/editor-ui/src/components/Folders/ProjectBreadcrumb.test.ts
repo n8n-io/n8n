@@ -159,7 +159,7 @@ describe('ProjectBreadcrumb', () => {
 				},
 			});
 			const link = container.querySelector('a');
-			expect(link).toHaveAttribute('href', '/projects/shared');
+			expect(link).toHaveAttribute('href', '/shared');
 		});
 
 		it('generates project link when not shared and currentProject exists', () => {

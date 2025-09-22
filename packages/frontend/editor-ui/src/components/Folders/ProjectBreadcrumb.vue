@@ -54,7 +54,7 @@ const projectName = computed(() => {
 
 const projectLink = computed(() => {
 	if (props.isShared) {
-		return '/projects/shared';
+		return '/shared';
 	}
 
 	if (props.currentProject) {
