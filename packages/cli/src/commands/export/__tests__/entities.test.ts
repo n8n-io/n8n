@@ -5,12 +5,9 @@ import { ExportService } from '@/services/export.service';
 jest.mock('fs-extra');
 jest.mock('@/services/export.service');
 
-beforeAll(() => {
-	mockInstance(ExportService);
-});
-
 describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);
+
 	describe('run', () => {
 		it('should export entities', async () => {
 			const command = new ExportEntitiesCommand();
