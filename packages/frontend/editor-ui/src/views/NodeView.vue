@@ -1604,7 +1604,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// Set the project if provided from the parent window
 				if (json.projectId) {
-					await projectsStore.getProject(json.projectId);
+					await fetchAndSetProject(json.projectId);
 				}
 				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
@@ -1626,7 +1626,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// Set the project if provided from the parent window
 				if (json.projectId) {
-					await projectsStore.getProject(json.projectId);
+					await fetchAndSetProject(json.projectId);
 				}
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
