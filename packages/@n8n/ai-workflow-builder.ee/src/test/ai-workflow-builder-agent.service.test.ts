@@ -258,15 +258,6 @@ describe('AiWorkflowBuilderService', () => {
 
 			// Clear previous calls and setup return value
 			MockedWorkflowBuilderAgent.mockClear();
-			const mockAgentInstance = {
-				chat: jest.fn().mockReturnValue({
-					async *[Symbol.asyncIterator]() {
-						yield {
-							messages: [{ role: 'assistant', type: 'message', text: 'Test response' }],
-						};
-					},
-				}),
-			};
 
 			const testService = new AiWorkflowBuilderService(mockNodeTypes, mockClient, mockLogger);
 

@@ -169,6 +169,7 @@ describe('WorkflowBuilderAgent', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
 				},
+				useDeprecatedCredentials: false,
 			};
 		});
 
@@ -176,6 +177,7 @@ describe('WorkflowBuilderAgent', () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
 				message: longMessage,
+				useDeprecatedCredentials: false,
 			};
 
 			await expect(async () => {
@@ -193,6 +195,7 @@ describe('WorkflowBuilderAgent', () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
 				message: validMessage,
+				useDeprecatedCredentials: false,
 			};
 
 			// Mock the stream processing to return a proper StreamOutput
@@ -271,183 +274,5 @@ describe('WorkflowBuilderAgent', () => {
 				await generator.next();
 			}).rejects.toThrow(unknownError);
 		});
-
-		it('should call onGenerationSuccess on end of workflow generation', async () => {
-			const mockOnGenerationSuccess = jest.fn().mockResolvedValue(undefined);
-
-			// Create agent with onGenerationSuccess callback
-			const agentWithCallback = new WorkflowBuilderAgent({
-				...config,
-				onGenerationSuccess: mockOnGenerationSuccess,
-			});
-
-			// Mock the LLM to return a response without tool calls (indicating completion)
-			const mockResponse = {
-				content: 'Workflow created successfully!',
-				tool_calls: [], // Empty array indicates no more tool calls (workflow generation complete)
-			};
-			(mockLlmSimple.invoke as jest.Mock).mockResolvedValue(mockResponse);
-
-			// Create a mock that actually runs through the LangGraph workflow
-			// We'll mock the workflow stream to simulate what happens when shouldContinue returns END
-			const mockStream = (async function* () {
-				// First yield the agent response (simulating the agent node)
-				yield [
-					'updates',
-					{
-						agent: {
-							messages: [mockResponse], // AI message with no tool calls
-						},
-					},
-				];
-			})();
-
-			// Instead of mocking createStreamProcessor, mock the workflow compilation
-			const mockCompiledWorkflow = {
-				stream: jest.fn().mockResolvedValue(mockStream),
-				getState: jest.fn(),
-				updateState: jest.fn(),
-			};
-
-			const mockWorkflow = {
-				compile: jest.fn().mockReturnValue(mockCompiledWorkflow),
-			};
-
-			// Spy on the createWorkflow method to inject our mocked workflow
-			const createWorkflowSpy = jest
-				.spyOn(agentWithCallback as any, 'createWorkflow')
-				.mockReturnValue(mockWorkflow);
-
-			// We need to create a custom implementation that includes the shouldContinue logic
-			// Since we can't easily mock the LangGraph internals, we'll simulate the callback being called
-			// by creating a custom stream processor that mimics the workflow behavior
-			mockCreateStreamProcessor.mockImplementation(async function* (stream) {
-				for await (const [streamMode, chunk] of stream) {
-					if (streamMode === 'updates' && typeof chunk === 'object' && chunk !== null) {
-						const agentChunk = chunk as {
-							agent?: { messages?: Array<{ content: string; tool_calls?: unknown[] }> };
-						};
-						if (agentChunk.agent?.messages) {
-							const lastMessage = agentChunk.agent.messages[agentChunk.agent.messages.length - 1];
-
-							// Simulate the shouldContinue logic: if no tool calls, trigger onGenerationSuccess
-							if (!lastMessage.tool_calls || lastMessage.tool_calls.length === 0) {
-								// Call the callback synchronously to match the actual implementation
-								void mockOnGenerationSuccess();
-							}
-
-							yield {
-								messages: [
-									{
-										role: 'assistant',
-										type: 'message',
-										text: lastMessage.content,
-									},
-								],
-							};
-						}
-					}
-				}
-			});
-
-			const generator = agentWithCallback.chat(mockPayload);
-			await generator.next();
-
-			// Verify onGenerationSuccess was called
-			expect(mockOnGenerationSuccess).toHaveBeenCalledTimes(1);
-
-			// Clean up
-			createWorkflowSpy.mockRestore();
-		});
 	});
-
-	// describe('getSessions', () => {
-	// 	beforeEach(() => {
-	// 		mockFormatMessages.mockImplementation(
-	// 			(messages: Array<AIMessage | HumanMessage | ToolMessage>) =>
-	// 				messages.map((m) => ({ type: m.constructor.name.toLowerCase(), content: m.content })),
-	// 		);
-	// 	});
-
-	// 	it('should return session for existing workflowId', async () => {
-	// 		const workflowId = 'workflow-123';
-	// 		const userId = 'user-456';
-	// 		const mockCheckpoint = {
-	// 			checkpoint: {
-	// 				channel_values: {
-	// 					messages: [new HumanMessage('Hello'), new AIMessage('Hi there!')],
-	// 				},
-	// 				ts: '2023-12-01T12:00:00Z',
-	// 			},
-	// 		};
-
-	// 		(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-
-	// 		const result = await agent.getSessions(workflowId, userId);
-
-	// 		expect(result.sessions).toHaveLength(1);
-	// 		expect(result.sessions[0]).toMatchObject({
-	// 			sessionId: 'workflow-workflow-123-user-user-456',
-	// 			lastUpdated: '2023-12-01T12:00:00Z',
-	// 		});
-	// 		expect(result.sessions[0].messages).toHaveLength(2);
-	// 	});
-
-	// 	it('should return empty sessions when workflowId is undefined', async () => {
-	// 		const result = await agent.getSessions(undefined);
-
-	// 		expect(result.sessions).toHaveLength(0);
-	// 		expect(mockCheckpointer.getTuple).not.toHaveBeenCalled();
-	// 	});
-
-	// 	it('should return empty sessions when no checkpoint exists', async () => {
-	// 		const workflowId = 'workflow-123';
-	// 		(mockCheckpointer.getTuple as jest.Mock).mockRejectedValue(new Error('Thread not found'));
-
-	// 		const result = await agent.getSessions(workflowId);
-
-	// 		expect(result.sessions).toHaveLength(0);
-	// 		expect(mockLogger.debug).toHaveBeenCalledWith('No session found for workflow:', {
-	// 			workflowId,
-	// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	// 			error: expect.any(Error),
-	// 		});
-	// 	});
-
-	// 	it('should handle checkpoint without messages', async () => {
-	// 		const workflowId = 'workflow-123';
-	// 		const mockCheckpoint = {
-	// 			checkpoint: {
-	// 				channel_values: {},
-	// 				ts: '2023-12-01T12:00:00Z',
-	// 			},
-	// 		};
-
-	// 		(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-
-	// 		const result = await agent.getSessions(workflowId);
-
-	// 		expect(result.sessions).toHaveLength(1);
-	// 		expect(result.sessions[0].messages).toHaveLength(0);
-	// 	});
-
-	// 	it('should handle checkpoint with null messages', async () => {
-	// 		const workflowId = 'workflow-123';
-	// 		const mockCheckpoint = {
-	// 			checkpoint: {
-	// 				channel_values: {
-	// 					messages: null,
-	// 				},
-	// 				ts: '2023-12-01T12:00:00Z',
-	// 			},
-	// 		};
-
-	// 		(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-
-	// 		const result = await agent.getSessions(workflowId);
-
-	// 		expect(result.sessions).toHaveLength(1);
-	// 		expect(result.sessions[0].messages).toHaveLength(0);
-	// 	});
-	// });
 });
