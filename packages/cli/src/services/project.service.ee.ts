@@ -1,5 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -73,6 +73,7 @@ export class ProjectService {
 		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	private get workflowService() {
@@ -90,6 +91,12 @@ export class ProjectService {
 	private get folderService() {
 		return import('@/services/folder.service').then(({ FolderService }) =>
 			Container.get(FolderService),
+		);
+	}
+
+	private get dataTableService() {
+		return import('@/modules/data-table/data-store.service').then(({ DataStoreService }) =>
+			Container.get(DataStoreService),
 		);
 	}
 
@@ -115,11 +122,12 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
+				'dataStore:create',
 			]);
 
 			if (!targetProject) {
 				throw new NotFoundError(
-					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow and credentials in the target project.`,
+					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow, credentials or data tables in the target project.`,
 				);
 			}
 		}
@@ -176,10 +184,21 @@ export class ProjectService {
 		// 5. delete shared workflows into this project
 		// Cascading deletes take care of this.
 
-		// 6. delete project
+		// 6. delete or migrate associated data tables
+		if (this.moduleRegistry.isActive('data-table')) {
+			const dataTableService = await this.dataTableService;
+
+			if (targetProject) {
+				await dataTableService.transferDataStoresByProjectId(project.id, targetProject.id);
+			} else {
+				await dataTableService.deleteDataStoreByProjectId(project.id);
+			}
+		}
+
+		// 7. delete project
 		await this.projectRepository.remove(project);
 
-		// 7. delete project relations
+		// 8. delete project relations
 		// Cascading deletes take care of this.
 	}
 

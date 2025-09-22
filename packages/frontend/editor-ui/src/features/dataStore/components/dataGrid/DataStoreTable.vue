@@ -25,6 +25,10 @@ import {
 	ScrollApiModule,
 	PinnedRowModule,
 	ColumnApiModule,
+	TextFilterModule,
+	NumberFilterModule,
+	DateFilterModule,
+	EventApiModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -33,6 +37,7 @@ import { useDataStorePagination } from '@/features/dataStore/composables/useData
 import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataStoreGridBase';
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 import { useDataStoreOperations } from '@/features/dataStore/composables/useDataStoreOperations';
+import { useDataStoreColumnFilters } from '@/features/dataStore/composables/useDataStoreColumnFilters';
 import { useI18n } from '@n8n/i18n';
 
 // Register only the modules we actually use
@@ -53,6 +58,10 @@ ModuleRegistry.registerModules([
 	PinnedRowModule,
 	ScrollApiModule,
 	ColumnApiModule,
+	TextFilterModule,
+	NumberFilterModule,
+	DateFilterModule,
+	EventApiModule,
 ]);
 
 type Props = {
@@ -78,6 +87,12 @@ const dataStoreGridBase = useDataStoreGridBase({
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
+const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
+	gridApi: dataStoreGridBase.gridApi,
+	colDefs: dataStoreGridBase.colDefs,
+	setGridData: dataStoreGridBase.setGridData,
+});
+
 const {
 	currentPage,
 	pageSize,
@@ -87,9 +102,7 @@ const {
 	setTotalItems,
 	setCurrentPage,
 	setPageSize,
-} = useDataStorePagination({
-	onChange: fetchDataStoreRowsFunction,
-});
+} = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
 
 const selection = useDataStoreSelection({
 	gridApi: dataStoreGridBase.gridApi,
@@ -118,6 +131,7 @@ const dataStoreOperations = useDataStoreOperations({
 	handleClearSelection: selection.handleClearSelection,
 	selectedRowIds: selection.selectedRowIds,
 	handleCopyFocusedCell: dataStoreGridBase.handleCopyFocusedCell,
+	currentFilterJSON,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -140,11 +154,16 @@ const initialize = async (params: GridReadyEvent) => {
 	dataStoreGridBase.onGridReady(params);
 	dataStoreGridBase.loadColumns(props.dataStore.columns);
 	await dataStoreOperations.fetchDataStoreRows();
+	initializeFilters();
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-store-no-rows-overlay">${i18n.baseText('dataStore.noRows')}</div>`;
 
 watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
+	await setCurrentPage(1);
+});
+
+watch(currentFilterJSON, async () => {
 	await setCurrentPage(1);
 });
 
@@ -186,20 +205,21 @@ defineExpose({
 				@selection-changed="selection.onSelectionChanged"
 				@sort-changed="dataStoreGridBase.onSortChanged"
 				@cell-key-down="dataStoreOperations.onCellKeyDown"
+				@filter-changed="onFilterChanged"
 			/>
-		</div>
-		<div :class="$style.footer">
-			<el-pagination
-				v-model:current-page="currentPage"
-				v-model:page-size="pageSize"
-				data-test-id="data-store-content-pagination"
-				background
-				:total="totalItems"
-				:page-sizes="pageSizeOptions"
-				layout="total, prev, pager, next, sizes"
-				@update:current-page="setCurrentPage"
-				@size-change="setPageSize"
-			/>
+			<div :class="$style.footer">
+				<el-pagination
+					v-model:current-page="currentPage"
+					v-model:page-size="pageSize"
+					data-test-id="data-store-content-pagination"
+					background
+					:total="totalItems"
+					:page-sizes="pageSizeOptions"
+					layout="total, prev, pager, next, sizes"
+					@update:current-page="setCurrentPage"
+					@size-change="setPageSize"
+				/>
+			</div>
 		</div>
 		<SelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
@@ -211,17 +231,6 @@ defineExpose({
 
 <style module lang="scss">
 .wrapper {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-	align-items: center;
-}
-
-.grid-container {
-	position: relative;
-	display: flex;
-	width: 100%;
-
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
@@ -343,6 +352,22 @@ defineExpose({
 		}
 	}
 
+	:global(.ag-text-field-input-wrapper),
+	:global(.ag-number-field-input-wrapper) {
+		&:before {
+			display: none;
+		}
+
+		:global(.ag-input-field-input) {
+			padding-left: var(--ag-spacing);
+		}
+	}
+
+	:global(.ag-picker-field-wrapper) {
+		border-radius: var(--border-radius-base);
+		padding-left: var(--ag-spacing);
+	}
+
 	:global(.ag-cell-inline-editing) {
 		box-shadow: none;
 
@@ -372,6 +397,36 @@ defineExpose({
 	:global(.ag-row-last) {
 		border-bottom: none;
 	}
+
+	:global(.ag-filter-body-wrapper) {
+		min-width: 200px;
+	}
+
+	// we should make this look like the text button as we can't use the component directly
+	:global(.ag-filter-apply-panel) {
+		padding-top: 0;
+
+		:global(.ag-filter-apply-panel-button) {
+			background: transparent;
+			border: none;
+			padding: 0;
+
+			&:hover {
+				color: var(--color-primary);
+				background: transparent;
+			}
+		}
+	}
+}
+
+.grid-container {
+	position: relative;
+	display: flex;
+	width: 100%;
+	min-height: 500px;
+	flex-direction: column;
+	gap: var(--spacing-m);
+	align-items: center;
 }
 
 .footer {
