@@ -215,12 +215,13 @@ export class DataStoreRepository extends Repository<DataTable> {
 		}
 
 		if (filter?.name) {
-			const nameFilters = typeof filter.name === 'string' ? [filter.name] : filter.name;
-			for (const name of nameFilters) {
-				query.andWhere('LOWER(dataStore.name) LIKE LOWER(:name)', {
-					name: `%${name}%`,
+			const nameFilters = Array.isArray(filter.name) ? filter.name : [filter.name];
+
+			nameFilters.forEach((name, i) => {
+				query.andWhere(`LOWER(dataStore.name) LIKE LOWER(:name${i})`, {
+					['name' + i]: `%${name}%`,
 				});
-			}
+			});
 		}
 	}
 
@@ -258,7 +259,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
-		if (query.take) query.take(options.take);
+		if (options.take !== undefined) query.take(options.take);
 	}
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataTable>): void {
