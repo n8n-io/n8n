@@ -191,12 +191,13 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		const { quotaStatus } = await dataStoreStore.fetchDataStoreSize();
-		if (quotaStatus === 'error') {
-			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
-		} else if (quotaStatus === 'warn') {
-			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
-		}
+		void dataStoreStore.fetchDataStoreSize().then(({ quotaStatus }) => {
+			if (quotaStatus === 'error') {
+				uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+			} else if (quotaStatus === 'warn') {
+				uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+			}
+		});
 	}
 
 	if (insightsStore.isSummaryEnabled) {
