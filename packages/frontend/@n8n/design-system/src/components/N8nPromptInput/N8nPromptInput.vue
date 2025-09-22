@@ -2,12 +2,12 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import N8nSendStopButton from './N8nSendStopButton.vue';
+import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
-	maxHeight?: number;
 	maxLength?: number;
 	loading?: boolean;
 	streaming?: boolean;
@@ -19,8 +19,7 @@ export interface N8nPromptInputProps {
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxHeight: 200,
-	maxLength: 1000,
+	maxLength: 2000,
 	loading: false,
 	streaming: false,
 	disabled: false,
@@ -52,6 +51,7 @@ const TEXTAREA_MAX_HEIGHT = MAX_LINES_BEFORE_SCROLL * LINE_HEIGHT;
 const characterCount = computed(() => textValue.value.length);
 const remainingCharacters = computed(() => props.maxLength - characterCount.value);
 const isOverLimit = computed(() => characterCount.value > props.maxLength);
+const showWarningBanner = computed(() => characterCount.value >= props.maxLength);
 const sendDisabled = computed(
 	() => !textValue.value.trim() || props.streaming || props.disabled || isOverLimit.value,
 );
@@ -67,7 +67,6 @@ const containerStyle = computed(() => {
 	// Container will expand based on textarea + margin + button
 	return {
 		minHeight: '80px',
-		maxHeight: `${props.maxHeight}px`,
 	};
 });
 
@@ -146,6 +145,11 @@ watch(
 );
 
 watch(textValue, (newValue) => {
+	// Prevent exceeding max length (e.g., from paste operations)
+	if (newValue.length > props.maxLength) {
+		textValue.value = newValue.substring(0, props.maxLength);
+		return;
+	}
 	emit('update:modelValue', newValue);
 	void nextTick(() => adjustHeight());
 });
@@ -160,6 +164,19 @@ function handleStop() {
 }
 
 function handleKeyDown(event: KeyboardEvent) {
+	// Prevent adding characters if at max length (but allow deletions/navigation)
+	if (
+		characterCount.value >= props.maxLength &&
+		event.key.length === 1 &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		event.key !== 'Backspace' &&
+		event.key !== 'Delete'
+	) {
+		event.preventDefault();
+		return;
+	}
+
 	if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
 		event.preventDefault();
 		handleSubmit();
@@ -205,6 +222,11 @@ defineExpose({
 		]"
 		:style="containerStyle"
 	>
+		<!-- Warning banner when character limit is reached -->
+		<N8nCallout v-if="showWarningBanner" icon="info" theme="warning" :class="$style.warningCallout">
+			You've reached the {{ maxLength }} character limit
+		</N8nCallout>
+
 		<!-- Single line mode: input and button side by side -->
 		<div v-if="!isMultiline" :class="$style.singleLineWrapper">
 			<textarea
@@ -213,7 +235,6 @@ defineExpose({
 				:class="$style.singleLineTextarea"
 				:placeholder="placeholder"
 				:disabled="disabled || streaming"
-				:maxlength="maxLength"
 				rows="1"
 				@keydown="handleKeyDown"
 				@focus="handleFocus"
@@ -250,7 +271,6 @@ defineExpose({
 					:style="{ height: `${textareaHeight}px` }"
 					:placeholder="placeholder"
 					:disabled="disabled || streaming"
-					:maxlength="maxLength"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"
@@ -265,7 +285,6 @@ defineExpose({
 				:style="textareaStyle"
 				:placeholder="placeholder"
 				:disabled="disabled || streaming"
-				:maxlength="maxLength"
 				@keydown="handleKeyDown"
 				@focus="handleFocus"
 				@blur="handleBlur"
@@ -320,6 +339,10 @@ defineExpose({
 			color: var(--color-text-light);
 		}
 	}
+}
+
+.warningCallout {
+	margin: 0 0 var(--spacing-2xs) 0;
 }
 
 // Single line mode
