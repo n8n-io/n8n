@@ -23,6 +23,7 @@ export const useLogsStore = defineStore('logs', () => {
 				: LOGS_PANEL_STATE.ATTACHED
 			: LOGS_PANEL_STATE.CLOSED,
 	);
+	const height = ref(0);
 	const detailsState = useLocalStorage<LogDetailsPanelState>(
 		LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,
 		LOG_DETAILS_PANEL_STATE.OUTPUT,
@@ -42,6 +43,10 @@ export const useLogsStore = defineStore('logs', () => {
 
 	const chatSessionId = ref<string>(getNewSessionId());
 	const chatSessionMessages = ref<ChatMessage[]>([]);
+
+	function setHeight(value: number) {
+		height.value = value;
+	}
 
 	function getNewSessionId(): string {
 		return uuid().replace(/-/g, '');
@@ -123,10 +128,12 @@ export const useLogsStore = defineStore('logs', () => {
 		detailsState: computed(() =>
 			isSubNodeSelected.value ? detailsStateSubNode.value : detailsState.value,
 		),
+		height: computed(() => height.value),
 		isLogSelectionSyncedWithCanvas: computed(() => isLogSelectionSyncedWithCanvas.value),
 		chatSessionId: computed(() => chatSessionId.value),
 		chatSessionMessages: computed(() => chatSessionMessages.value),
 		addChatMessage,
+		setHeight,
 		toggleOpen,
 		setPreferPoppedOut,
 		setSubNodeSelected,

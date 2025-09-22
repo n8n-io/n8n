@@ -4,19 +4,11 @@ import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
-import { computed, watch } from 'vue';
-import { useCssVarWithCleanup } from '@/composables/useCssVarWithCleanup';
+import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
-const isVisible = computed(
-	() =>
-		assistantStore.canShowAssistantButtonsOnCanvas &&
-		!assistantStore.isAssistantOpen &&
-		!assistantStore.hideAssistantFloatingButton,
-);
-const heightCssVar = useCssVarWithCleanup('--ask-assistant-floating-button-height');
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -40,18 +32,10 @@ const onClick = () => {
 		has_existing_session: !assistantStore.isSessionEnded,
 	});
 };
-
-watch(
-	isVisible,
-	(visible) => {
-		heightCssVar.value = `${visible ? 64 : 0}px`;
-	},
-	{ immediate: true },
-);
 </script>
 
 <template>
-	<div v-if="isVisible" :class="$style.container" data-test-id="ask-assistant-floating-button">
+	<div :class="$style.container" data-test-id="ask-assistant-floating-button">
 		<n8n-tooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"
@@ -74,15 +58,8 @@ watch(
 .container {
 	position: absolute;
 	right: var(--spacing-s);
+	bottom: var(--ask-assistant-floating-button-bottom-offset, 0);
 	z-index: var(--z-index-ask-assistant-floating-button);
-
-	/* Account for logs panel height */
-	bottom: calc(var(--logs-panel-height, 0px) + var(--spacing-s));
-
-	/* When NDV is opened, bring to the bottom */
-	body:has(:global(#ndv)) & {
-		bottom: var(--spacing-s);
-	}
 }
 
 .tooltip {

@@ -1,12 +1,11 @@
 import { render } from '@testing-library/vue';
-import { useCssVarWithCleanup } from './useCssVarWithCleanup';
+import { useExposeCssVar } from './useExposeCssVar';
 import { defineComponent, h } from 'vue';
 
-describe(useCssVarWithCleanup, () => {
+describe(useExposeCssVar, () => {
 	it('should set CSS variable', () => {
 		const Component = defineComponent(() => {
-			const variable = useCssVarWithCleanup('--test-var');
-			variable.value = '1234px';
+			useExposeCssVar('--test-var', '1234px');
 			return () => h('div');
 		});
 
@@ -16,8 +15,7 @@ describe(useCssVarWithCleanup, () => {
 
 	it('should unset CSS variable when component is unmounted', () => {
 		const Component = defineComponent(() => {
-			const variable = useCssVarWithCleanup('--test-var');
-			variable.value = '1234px';
+			useExposeCssVar('--test-var', '1234px');
 			return () => h('div');
 		});
 		const rendered = render(Component);
@@ -29,8 +27,7 @@ describe(useCssVarWithCleanup, () => {
 
 	it('should restore CSS variable before mount when component is unmounted', () => {
 		const Component = defineComponent(() => {
-			const variable = useCssVarWithCleanup('--test-var');
-			variable.value = '1234px';
+			useExposeCssVar('--test-var', '1234px');
 			return () => h('div');
 		});
 

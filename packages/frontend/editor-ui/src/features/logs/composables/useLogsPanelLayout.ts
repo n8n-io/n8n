@@ -1,4 +1,4 @@
-import { computed, toValue, watch, type ComputedRef, type ShallowRef } from 'vue';
+import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
@@ -9,7 +9,6 @@ import {
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
 } from '@/features/logs/logs.constants';
-import { useCssVarWithCleanup } from '@/composables/useCssVarWithCleanup';
 
 const INITIAL_POPUP_HEIGHT = 400;
 const COLLAPSED_PANEL_HEIGHT = 32;
@@ -23,7 +22,6 @@ export function useLogsPanelLayout(
 ) {
 	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
-	const heightCssVar = useCssVarWithCleanup('--logs-panel-height');
 
 	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
 		container: document.body,
@@ -109,17 +107,30 @@ export function useLogsPanelLayout(
 	}
 
 	watch(
-		[isOpen, resizer.size, () => toValue(popOutWindow)],
-		([open, height, popOutWin]) => {
-			if (popOutWin) {
-				popOutWin.document.documentElement.style.setProperty('--logs-panel-height', '100vh');
-				heightCssVar.value = '0px';
+		[() => logsStore.state, resizer.size, isPoppedOut],
+		([state, height]) => {
+			const updatedHeight =
+				state === LOGS_PANEL_STATE.FLOATING
+					? 0
+					: state === LOGS_PANEL_STATE.ATTACHED
+						? height
+						: COLLAPSED_PANEL_HEIGHT;
+
+			if (state === LOGS_PANEL_STATE.FLOATING) {
+				popOutWindow?.value?.document.documentElement.style.setProperty(
+					'--logs-panel-height',
+					'100vh',
+				);
 			} else {
-				heightCssVar.value = `${open ? height : COLLAPSED_PANEL_HEIGHT}px`;
+				document.documentElement.style.setProperty('--logs-panel-height', `${updatedHeight}px`);
 			}
+
+			logsStore.setHeight(updatedHeight);
 		},
 		{ immediate: true },
 	);
+
+	onBeforeUnmount(() => logsStore.setHeight(0));
 
 	return {
 		height: resizer.size,
