@@ -1,5 +1,5 @@
 import { type Logger } from '@n8n/backend-common';
-import { type DataSource } from '@n8n/typeorm';
+import { type DataSource } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
 
@@ -13,6 +13,7 @@ jest.mock('fs/promises');
 jest.mock('@n8n/db', () => ({
 	CredentialsRepository: mock<CredentialsRepository>(),
 	TagRepository: mock<TagRepository>(),
+	DataSource: mock<DataSource>(),
 }));
 
 describe('ImportService', () => {
