@@ -155,7 +155,7 @@ describe('Project members endpoints', () => {
 			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
 
 		expect(res.status).toBe(201);
-		const relations = await getProjectRelations(project.id);
+		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
 			true,
 		);
@@ -175,7 +175,7 @@ describe('Project members endpoints', () => {
 			.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
 
 		expect(res.status).toBe(409);
-		const relations = await getProjectRelations(project.id);
+		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
 			true,
 		);
@@ -195,7 +195,7 @@ describe('Project members endpoints', () => {
 			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
 
 		expect(res.status).toBe(200);
-		const relations = await getProjectRelations(project.id);
+		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
 			true,
 		);
@@ -213,7 +213,7 @@ describe('Project members endpoints', () => {
 			.send({ role: 'project:editor' });
 
 		expect(res.status).toBe(204);
-		const relations = await getProjectRelations(project.id);
+		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:editor')).toBe(
 			true,
 		);
@@ -229,7 +229,7 @@ describe('Project members endpoints', () => {
 		const res = await ownerAgent.delete(`/projects/${project.id}/users/${member.id}`);
 
 		expect(res.status).toBe(204);
-		const relations = await getProjectRelations(project.id);
+		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id)).toBe(false);
 	});
 });
