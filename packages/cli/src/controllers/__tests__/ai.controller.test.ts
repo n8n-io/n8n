@@ -122,6 +122,7 @@ describe('AiController', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
+				useDeprecatedCredentials: false,
 			},
 		};
 
