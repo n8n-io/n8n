@@ -94,6 +94,19 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 	},
 }));
 
+// Mock ProjectMembersActionsCell component to avoid dependence on design-system ActionToggle
+vi.mock('@/components/Projects/ProjectMembersActionsCell.vue', () => ({
+	default: {
+		name: 'ProjectMembersActionsCell',
+		props: {
+			data: { type: Object, required: true },
+			actions: { type: Array, required: true },
+		},
+		emits: ['action'],
+		template: '<div :data-test-id="`actions-cell-` + data.id"></div>',
+	},
+}));
+
 const mockMembers: ProjectMemberData[] = [
 	{
 		id: '1',

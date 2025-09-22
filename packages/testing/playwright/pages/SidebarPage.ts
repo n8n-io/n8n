@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class SidebarPage {
 	readonly page: Page;
@@ -42,5 +42,17 @@ export class SidebarPage {
 
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
+	}
+
+	async expand() {
+		const collapseButton = this.page.locator('#collapse-change-button');
+		const chevronRight = this.page.locator(
+			'#collapse-change-button svg[data-icon="chevron-right"]',
+		);
+
+		await expect(collapseButton).toBeVisible();
+		if (await chevronRight.isVisible()) {
+			await collapseButton.click();
+		}
 	}
 }

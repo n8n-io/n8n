@@ -1,8 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataTableSizeStatus } from 'n8n-workflow';
+import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 
-import { DataTablesSizeData } from './data-store.types';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
@@ -13,13 +12,10 @@ export class DataStoreSizeValidator {
 
 	constructor(private readonly globalConfig: GlobalConfig) {}
 
-	private shouldRefresh(
-		cachedData: DataTablesSizeData | undefined,
-		now: Date,
-	): cachedData is undefined {
+	private shouldRefresh(now: Date): boolean {
 		if (
 			!this.lastCheck ||
-			!cachedData ||
+			!this.cachedSizeData ||
 			now.getTime() - this.lastCheck.getTime() >= this.globalConfig.dataTable.sizeCheckCacheDuration
 		) {
 			return true;
@@ -37,7 +33,7 @@ export class DataStoreSizeValidator {
 			this.cachedSizeData = await this.pendingCheck;
 		} else {
 			// Check if we need to refresh the size data
-			if (this.shouldRefresh(this.cachedSizeData, now)) {
+			if (this.shouldRefresh(now)) {
 				this.pendingCheck = fetchSizeDataFn();
 				try {
 					this.cachedSizeData = await this.pendingCheck;
@@ -48,7 +44,7 @@ export class DataStoreSizeValidator {
 			}
 		}
 
-		return this.cachedSizeData;
+		return this.cachedSizeData!;
 	}
 
 	async validateSize(
