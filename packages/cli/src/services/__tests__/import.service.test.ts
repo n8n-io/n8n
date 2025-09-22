@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
 
 import { ImportService } from '../import.service';
-import { CredentialsRepository, TagRepository } from '@n8n/db';
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 
 // Mock fs/promises
 jest.mock('fs/promises');
