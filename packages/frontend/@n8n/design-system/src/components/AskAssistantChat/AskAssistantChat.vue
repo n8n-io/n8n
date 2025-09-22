@@ -54,7 +54,6 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
-	placeholder: t('assistantChat.inputPlaceholder'),
 	maxLength: 2000,
 });
 
@@ -340,7 +339,7 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:placeholder="placeholder"
+				:placeholder="placeholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
 				:max-length="maxLength"

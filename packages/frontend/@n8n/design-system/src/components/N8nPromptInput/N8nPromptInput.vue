@@ -10,6 +10,7 @@ export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
 	maxLength?: number;
+	maxLinesBeforeScroll?: number;
 	streaming?: boolean;
 	disabled?: boolean;
 }
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
 	maxLength: 2000,
+	maxLinesBeforeScroll: 6,
 	streaming: false,
 	disabled: false,
 });
@@ -37,11 +39,9 @@ const textValue = ref(props.modelValue || '');
 const textareaHeight = ref<number>(24);
 const isMultiline = ref(false);
 
-// Constants
-const LINE_HEIGHT = 18;
-const SINGLE_LINE_HEIGHT = 24;
-const MAX_LINES_BEFORE_SCROLL = 6;
-const TEXTAREA_MAX_HEIGHT = MAX_LINES_BEFORE_SCROLL * LINE_HEIGHT;
+const textAreaMaxHeight = computed(() => {
+	return props.maxLinesBeforeScroll * 18;
+});
 
 const { characterCount, remainingCharacters, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
@@ -62,7 +62,7 @@ const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => 
 		return {};
 	}
 
-	const height = Math.min(textareaHeight.value, TEXTAREA_MAX_HEIGHT);
+	const height = Math.min(textareaHeight.value, textAreaMaxHeight.value);
 	return {
 		height: `${height}px`,
 		overflowY: 'hidden',
@@ -75,14 +75,14 @@ function adjustHeight() {
 	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
-	const previousHeight = textareaHeight.value;
+	const singleLineHeight = 24;
 
 	// If text is empty, revert to single-line mode
 	if (!textValue.value || textValue.value.trim() === '') {
 		isMultiline.value = false;
-		textareaHeight.value = SINGLE_LINE_HEIGHT;
+		textareaHeight.value = singleLineHeight;
 		if (textareaRef.value) {
-			textareaRef.value.style.height = `${SINGLE_LINE_HEIGHT}px`;
+			textareaRef.value.style.height = `${singleLineHeight}px`;
 		}
 		// Restore focus if mode changed
 		if (wasMultiline && !isMultiline.value && wasFocused) {
@@ -99,7 +99,7 @@ function adjustHeight() {
 
 	// Check if we need multiline mode
 	// Switch to multiline when text would wrap or when there's actual line breaks
-	const shouldBeMultiline = scrollHeight > SINGLE_LINE_HEIGHT || textValue.value.includes('\n');
+	const shouldBeMultiline = scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
 	// Update height tracking
 	textareaHeight.value = scrollHeight;
@@ -107,19 +107,14 @@ function adjustHeight() {
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
-		textareaRef.value.style.height = `${SINGLE_LINE_HEIGHT}px`;
+		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
 		// For multiline, set exact scrollHeight
 		textareaRef.value.style.height = `${scrollHeight}px`;
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
-	if (
-		(wasMultiline !== isMultiline.value ||
-			(previousHeight <= TEXTAREA_MAX_HEIGHT && textareaHeight.value > TEXTAREA_MAX_HEIGHT) ||
-			(previousHeight > TEXTAREA_MAX_HEIGHT && textareaHeight.value <= TEXTAREA_MAX_HEIGHT)) &&
-		wasFocused
-	) {
+	if (wasMultiline !== isMultiline.value || wasFocused) {
 		void nextTick(() => {
 			textareaRef.value?.focus();
 		});
@@ -144,19 +139,6 @@ watch(textValue, (newValue, oldValue) => {
 	// Only adjust height if value actually changed
 	if (newValue !== oldValue) {
 		void nextTick(() => adjustHeight());
-	}
-});
-
-// Watch for scrollbar appearance/disappearance
-watch(textareaHeight, (newHeight, oldHeight) => {
-	const crossedThreshold =
-		(oldHeight <= TEXTAREA_MAX_HEIGHT && newHeight > TEXTAREA_MAX_HEIGHT) ||
-		(oldHeight > TEXTAREA_MAX_HEIGHT && newHeight <= TEXTAREA_MAX_HEIGHT);
-
-	if (crossedThreshold && isFocused.value) {
-		void nextTick(() => {
-			textareaRef.value?.focus();
-		});
 	}
 });
 
@@ -260,19 +242,16 @@ defineExpose({
 		<!-- Multiline mode: textarea full width with button below -->
 		<template v-else>
 			<!-- Use ScrollArea when content exceeds max height -->
-			<component
-				:is="textareaHeight > TEXTAREA_MAX_HEIGHT ? N8nScrollArea : 'div'"
-				:class="textareaHeight > TEXTAREA_MAX_HEIGHT ? $style.scrollAreaWrapper : null"
-				:max-height="textareaHeight > TEXTAREA_MAX_HEIGHT ? `${TEXTAREA_MAX_HEIGHT}px` : undefined"
-				:type="textareaHeight > TEXTAREA_MAX_HEIGHT ? 'hover' : undefined"
+			<N8nScrollArea
+				:class="$style.scrollAreaWrapper"
+				:max-height="`${textAreaMaxHeight}px`"
+				type="hover"
 			>
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
 					:class="$style.multilineTextarea"
-					:style="
-						textareaHeight > TEXTAREA_MAX_HEIGHT ? `height: ${textareaHeight}px` : textareaStyle
-					"
+					:style="textareaStyle"
 					:placeholder="placeholder"
 					:disabled="disabled || streaming"
 					@keydown="handleKeyDown"
@@ -280,7 +259,7 @@ defineExpose({
 					@blur="handleBlur"
 					@input="adjustHeight"
 				/>
-			</component>
+			</N8nScrollArea>
 			<div :class="$style.bottomActions">
 				<N8nSendStopButton
 					:streaming="streaming"
