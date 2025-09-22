@@ -125,6 +125,11 @@ const onAddMember = async (userId: string) => {
 	const role = firstLicensedRole.value;
 	if (!role) return;
 
+	// Optimistically update UI
+	if (!formData.value.relations.find((r) => r.id === userId)) {
+		formData.value.relations.push({ id: userId, role });
+	}
+
 	try {
 		await projectsStore.addMember(projectsStore.currentProject.id, { userId, role });
 		telemetry.track('User added member to project', {
@@ -133,6 +138,8 @@ const onAddMember = async (userId: string) => {
 			role,
 		});
 	} catch (error) {
+		// Rollback optimistic change
+		formData.value.relations = formData.value.relations.filter((r) => r.id !== userId);
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 	}
 };

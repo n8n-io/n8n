@@ -416,8 +416,8 @@ describe('ProjectSettings', () => {
 	});
 
 	describe('Members table and role updates', () => {
-		it('adds a member and saves with telemetry', async () => {
-			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+		it('adds a member immediately and emits telemetry', async () => {
+			const addSpy = vi.spyOn(projectsStore, 'addMember').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
@@ -428,14 +428,7 @@ describe('ProjectSettings', () => {
 			emitters.n8nUserSelect.emit('update:model-value', '2');
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('2');
-
-			// Ensure form valid + dirty; name keystroke triggers validate and enables save
-			const nameInput = getByTestId('project-settings-name-input');
-			await userEvent.type(nameInput.querySelector('input')!, ' ');
-			await userEvent.click(getByTestId('project-settings-save-button'));
-			await nextTick();
-
-			expect(updateSpy).toHaveBeenCalled();
+			expect(addSpy).toHaveBeenCalledWith('123', expect.objectContaining({ userId: '2' }));
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User added member to project',
 				expect.objectContaining({ project_id: '123', target_user_id: '2' }),
@@ -460,20 +453,13 @@ describe('ProjectSettings', () => {
 		});
 
 		it('inline role change saves immediately with telemetry', async () => {
-			projectsStore.updateProject.mockResolvedValue(undefined);
+			const roleSpy = vi.spyOn(projectsStore, 'updateMemberRole').mockResolvedValue(undefined);
 			renderComponent();
 			await nextTick();
 
 			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:editor' });
 			await nextTick();
-			expect(projectsStore.updateProject).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					relations: expect.arrayContaining([
-						expect.objectContaining({ userId: '1', role: 'project:editor' }),
-					]),
-				}),
-			);
+			expect(roleSpy).toHaveBeenCalledWith('123', '1', 'project:editor');
 			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User changed member role on project',
@@ -483,7 +469,7 @@ describe('ProjectSettings', () => {
 
 		it('rolls back role on save error', async () => {
 			// First, inline update fails and rolls back
-			projectsStore.updateProject.mockRejectedValueOnce(new Error('fail'));
+			vi.spyOn(projectsStore, 'updateMemberRole').mockRejectedValueOnce(new Error('fail'));
 			const utils = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:viewer' });
@@ -502,7 +488,7 @@ describe('ProjectSettings', () => {
 		});
 
 		it('removes member immediately and shows success toast with telemetry', async () => {
-			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
 			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('1');
@@ -513,9 +499,7 @@ describe('ProjectSettings', () => {
 
 			// Members list container should now be hidden
 			expect(queryByTestId('members-count')).toBeNull();
-			expect(updateSpy).toHaveBeenCalled();
-			const payload = updateSpy.mock.calls[0][1];
-			expect(payload.relations).toEqual([]);
+			expect(removeSpy).toHaveBeenCalledWith('123', '1');
 			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User removed member from project',
