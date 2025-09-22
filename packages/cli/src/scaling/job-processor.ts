@@ -14,6 +14,7 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
+import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -44,6 +45,7 @@ export class JobProcessor {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -270,6 +272,9 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
+		const executionId = this.runningJobs[jobId]?.executionId;
+		if (executionId) this.eventService.emit('execution-cancelled', { executionId });
+
 		this.runningJobs[jobId]?.run.cancel();
 		delete this.runningJobs[jobId];
 	}
