@@ -100,13 +100,15 @@ const projects = computed(() =>
 		(project) => project.id !== projectsStore.currentProjectId,
 	),
 );
-const projectRoles = computed(() =>
-	rolesStore.processedProjectRoles.map((role) => ({
-		...role,
-		displayName: projectRoleTranslations.value[role.slug] ?? role.displayName,
-	})),
+// const projectRoles = computed(() =>
+// 	rolesStore.processedProjectRoles.map((role) => ({
+// 		...role,
+// 		displayName: projectRoleTranslations.value[role.slug] ?? role.displayName,
+// 	})),
+// );
+const firstLicensedRole = computed(
+	() => rolesStore.processedProjectRoles.find((role) => role.licensed)?.slug,
 );
-const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
 	{
@@ -562,7 +564,7 @@ onMounted(() => {
 						data-test-id="project-members-table"
 						:data="filteredMembersData"
 						:current-user-id="usersStore.currentUser?.id"
-						:project-roles="projectRoles"
+						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import type { ProjectMemberData } from '@/types/projects.types';
-import { isProjectRole } from '@/utils/typeGuards';
 import {
 	N8nDataTableServer,
 	N8nText,
@@ -80,13 +79,13 @@ const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() 
 	),
 );
 
-const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
-	...props.projectRoles.map((role) => ({
+const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() =>
+	props.projectRoles.map((role) => ({
 		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
 	})),
-]);
+);
 
 const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
 
