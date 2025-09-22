@@ -116,7 +116,7 @@ export function buildGetManyFilter(
 			default:
 				return {
 					columnName: x.keyName,
-					condition: x.condition,
+					condition: x.condition ?? 'eq',
 					value: x.keyValue,
 				};
 		}
