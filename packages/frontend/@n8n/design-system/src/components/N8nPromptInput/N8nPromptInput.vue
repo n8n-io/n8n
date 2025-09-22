@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
 import N8nSendStopButton from './N8nSendStopButton.vue';
+import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
@@ -35,8 +36,8 @@ const emit = defineEmits<{
 	blur: [event: FocusEvent];
 }>();
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
-const containerRef = ref<HTMLDivElement | null>(null);
+const textareaRef = ref<HTMLTextAreaElement>();
+const containerRef = ref<HTMLDivElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 const textareaHeight = ref<number>(24);
@@ -48,29 +49,21 @@ const SINGLE_LINE_HEIGHT = 24;
 const MAX_LINES_BEFORE_SCROLL = 6;
 const TEXTAREA_MAX_HEIGHT = MAX_LINES_BEFORE_SCROLL * LINE_HEIGHT;
 
-const characterCount = computed(() => textValue.value.length);
-const remainingCharacters = computed(() => props.maxLength - characterCount.value);
-const isOverLimit = computed(() => characterCount.value > props.maxLength);
-const showWarningBanner = computed(() => characterCount.value >= props.maxLength);
+const { characterCount, remainingCharacters, isOverLimit, isAtLimit } = useCharacterLimit({
+	value: textValue,
+	maxLength: toRef(props, 'maxLength'),
+});
+
+const showWarningBanner = computed(() => isAtLimit.value);
 const sendDisabled = computed(
 	() => !textValue.value.trim() || props.streaming || props.disabled || isOverLimit.value,
 );
 
 const containerStyle = computed(() => {
-	if (!isMultiline.value) {
-		return {
-			minHeight: '40px',
-		};
-	}
-
-	// In multiline mode, let content size naturally
-	// Container will expand based on textarea + margin + button
-	return {
-		minHeight: '80px',
-	};
+	return { minHeight: isMultiline.value ? '80px' : '40px' };
 });
 
-const textareaStyle = computed(() => {
+const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
 	if (!isMultiline.value) {
 		return {};
 	}
@@ -78,7 +71,7 @@ const textareaStyle = computed(() => {
 	const height = Math.min(textareaHeight.value, TEXTAREA_MAX_HEIGHT);
 	return {
 		height: `${height}px`,
-		overflowY: textareaHeight.value > TEXTAREA_MAX_HEIGHT ? 'auto' : 'hidden',
+		overflowY: 'hidden',
 	};
 });
 
@@ -147,14 +140,17 @@ watch(
 	},
 );
 
-watch(textValue, (newValue) => {
+watch(textValue, (newValue, oldValue) => {
 	// Prevent exceeding max length (e.g., from paste operations)
 	if (newValue.length > props.maxLength) {
 		textValue.value = newValue.substring(0, props.maxLength);
 		return;
 	}
 	emit('update:modelValue', newValue);
-	void nextTick(() => adjustHeight());
+	// Only adjust height if value actually changed
+	if (newValue !== oldValue) {
+		void nextTick(() => adjustHeight());
+	}
 });
 
 // Watch for scrollbar appearance/disappearance
@@ -274,17 +270,20 @@ defineExpose({
 
 		<!-- Multiline mode: textarea full width with button below -->
 		<template v-else>
-			<N8nScrollArea
-				v-if="textareaHeight > TEXTAREA_MAX_HEIGHT"
-				:class="$style.scrollAreaWrapper"
-				:max-height="`${TEXTAREA_MAX_HEIGHT}px`"
-				type="hover"
+			<!-- Use ScrollArea when content exceeds max height -->
+			<component
+				:is="textareaHeight > TEXTAREA_MAX_HEIGHT ? N8nScrollArea : 'div'"
+				:class="textareaHeight > TEXTAREA_MAX_HEIGHT ? $style.scrollAreaWrapper : null"
+				:max-height="textareaHeight > TEXTAREA_MAX_HEIGHT ? `${TEXTAREA_MAX_HEIGHT}px` : undefined"
+				:type="textareaHeight > TEXTAREA_MAX_HEIGHT ? 'hover' : undefined"
 			>
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
 					:class="$style.multilineTextarea"
-					:style="{ height: `${textareaHeight}px` }"
+					:style="
+						textareaHeight > TEXTAREA_MAX_HEIGHT ? `height: ${textareaHeight}px` : textareaStyle
+					"
 					:placeholder="placeholder"
 					:disabled="disabled || streaming"
 					@keydown="handleKeyDown"
@@ -292,20 +291,7 @@ defineExpose({
 					@blur="handleBlur"
 					@input="adjustHeight"
 				/>
-			</N8nScrollArea>
-			<textarea
-				v-else
-				ref="textareaRef"
-				v-model="textValue"
-				:class="$style.multilineTextarea"
-				:style="textareaStyle"
-				:placeholder="placeholder"
-				:disabled="disabled || streaming"
-				@keydown="handleKeyDown"
-				@focus="handleFocus"
-				@blur="handleBlur"
-				@input="adjustHeight"
-			/>
+			</component>
 			<div :class="$style.bottomActions">
 				<div v-if="showCharacterCount && !streaming" :class="$style.characterCount">
 					<span :class="{ [$style.overLimit]: isOverLimit }">
