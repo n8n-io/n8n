@@ -1,12 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-export * as getAll from './getAll';
+export * as list from './list';
 export * as link from './link';
 export * as unlink from './unlink';
 
-import * as getAllAction from './getAll';
 import * as linkAction from './link';
+import * as listAction from './list';
 import * as unlinkAction from './unlink';
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -23,25 +23,25 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Get Many',
-					value: 'getAll',
-					description: 'Search rows',
-					action: 'Search rows',
+					name: 'List',
+					value: 'list',
+					description: 'List all linked rows from a relational field',
+					action: 'Get linked rows',
 				},
 				{
 					name: 'Link',
 					value: 'link',
-					description: 'Link a row with another row',
-					action: 'Link a row with another row',
+					description: 'Link one or more rows to a relational field',
+					action: 'Link a row',
 				},
 				{
 					name: 'Unlink',
 					value: 'unlink',
-					description: 'Unlink a row from another row',
-					action: 'Unlink a row from another row',
+					description: 'Unlink one or more rows from a relational field',
+					action: 'Unlink a row',
 				},
 			],
-			default: 'get',
+			default: 'list',
 		},
 
 		// ----------------------------------
@@ -131,7 +131,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 		},
 
-		...getAllAction.description,
+		...listAction.description,
 		...linkAction.description,
 		...unlinkAction.description,
 	],

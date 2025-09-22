@@ -68,8 +68,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 			case 'linkrow': {
 				switch (operation) {
-					case 'getAll': {
-						operationResult = await linkrows.getAll.execute.call(this);
+					case 'list': {
+						operationResult = await linkrows.list.execute.call(this);
 						break;
 					}
 					case 'link': {
