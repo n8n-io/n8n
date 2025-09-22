@@ -276,10 +276,7 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
-export function getChatPayload(
-	message: string,
-	id: string,
-): Omit<ChatPayload, 'useDeprecatedCredentials'> {
+export function getChatPayload(message: string, id: string): ChatPayload {
 	return {
 		message,
 		workflowContext: {

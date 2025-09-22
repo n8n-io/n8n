@@ -69,7 +69,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async setupModels(
-		user?: IUser,
+		user: IUser,
 		useDeprecatedCredentials = false,
 	): Promise<{
 		anthropicClaude: ChatAnthropic;
@@ -78,7 +78,7 @@ export class AiWorkflowBuilderService {
 	}> {
 		try {
 			// If client is provided, use it for API proxy
-			if (this.client && user) {
+			if (this.client) {
 				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
 
 				// Extract baseUrl from client configuration
@@ -167,15 +167,11 @@ export class AiWorkflowBuilderService {
 		return nodeTypes;
 	}
 
-	private async getAgent(user?: IUser, useDeprecatedCredentials = false) {
+	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
 		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			useDeprecatedCredentials,
 		);
-
-		if (!anthropicClaude) {
-			throw new LLMServiceError('Failed to initialize LLM models');
-		}
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
@@ -215,7 +211,7 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
+	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {

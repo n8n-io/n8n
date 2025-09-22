@@ -370,15 +370,6 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockClient.generateApiProxyCredentials).toHaveBeenCalledWith(mockUser);
 		});
 
-		it('should work without user', async () => {
-			const generator = service.chat(mockPayload);
-			const result = await generator.next();
-
-			expect(result.value).toEqual({
-				messages: [{ role: 'assistant', type: 'message', text: 'Test response' }],
-			});
-		});
-
 		it('should create WorkflowBuilderAgent with correct configuration when using client', async () => {
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -404,7 +395,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockLogger,
 			);
 
-			const generator = serviceWithoutClient.chat(mockPayload);
+			const generator = serviceWithoutClient.chat(mockPayload, mockUser);
 			await generator.next();
 
 			// Verify WorkflowBuilderAgent was called
@@ -452,7 +443,7 @@ describe('AiWorkflowBuilderService', () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
 			process.env.N8N_AI_ANTHROPIC_KEY = 'test-env-key';
 
-			const generator = serviceWithoutClient.chat(mockPayload);
+			const generator = serviceWithoutClient.chat(mockPayload, mockUser);
 			await generator.next();
 
 			expect(anthropicClaudeSonnet4Mock).toHaveBeenCalledWith({
