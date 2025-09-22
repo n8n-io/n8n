@@ -196,7 +196,6 @@
 	"aiAssistant.tabs.build": "Build",
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "Ask n8n to build...",
-	"aiAssistant.builder.canvasPlaceholder": "Ask n8n to build...",
 	"aiAssistant.builder.assistantPlaceholder": "What would you like to modify or add?",
 	"aiAssistant.builder.generateNew": "Generate new workflow",
 	"aiAssistant.builder.newWorkflowNotice": "The created workflow will be added to the editor",
