@@ -76,4 +76,58 @@ describe('ProjectController (members endpoints)', () => {
 			project: { id: projectId, name: 'Project' },
 		});
 	});
+
+	it('emits team-project-updated on changeProjectUserRole and returns 204', async () => {
+		// Arrange
+		const projectId = 'p2';
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u2', role: { slug: 'project:editor' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.changeProjectUserRole(req, res, projectId, 'u2', {
+			role: 'project:editor',
+		} as any);
+
+		// Assert
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u2', role: 'project:editor' },
+			],
+			projectId,
+		});
+		expect(res.status).toHaveBeenCalledWith(204);
+	});
+
+	it('emits team-project-updated on deleteProjectUser and returns 204', async () => {
+		// Arrange
+		const projectId = 'p3';
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u3', role: { slug: 'project:viewer' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.deleteProjectUser(req, res, projectId, 'u2');
+
+		// Assert
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u3', role: 'project:viewer' },
+			],
+			projectId,
+		});
+		expect(res.status).toHaveBeenCalledWith(204);
+	});
 });

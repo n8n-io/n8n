@@ -667,10 +667,9 @@ describe('PATCH /projects/:projectId', () => {
 			const memberAgent = testServer.authAgentFor(testUser1);
 
 			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-			const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
-				name: teamProject1.name,
+			// Add two members to teamProject1
+			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
-					{ userId: testUser1.id, role: 'project:admin' },
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
 				] as Array<{
@@ -678,8 +677,9 @@ describe('PATCH /projects/:projectId', () => {
 					role: ProjectRole;
 				}>,
 			});
-			expect(resp.status).toBe(200);
+			expect(addResp.status === 200 || addResp.status === 201).toBe(true);
 
+			// External secrets cache must be cleared for credentials owned by teamProject1
 			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
 			deleteSpy.mockClear();
 
@@ -778,13 +778,9 @@ describe('PATCH /projects/:projectId', () => {
 
 				await testServer
 					.authAgentFor(projectAdmin)
-					.patch(`/projects/${teamProject.id}`)
+					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						name: teamProject.name,
-						relations: [
-							{ userId: projectAdmin.id, role: 'project:admin' },
-							{ userId: userToBeInvited.id, role },
-						] as Array<{
+						relations: [{ userId: userToBeInvited.id, role }] as Array<{
 							userId: string;
 							role: ProjectRole;
 						}>,
@@ -818,17 +814,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser1.id, role: 'project:editor' },
-					{ userId: testUser3.id, role: 'project:editor' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
+			const resp = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser1.id}`)
+				.send({ role: 'project:editor' });
 			expect(resp.status).toBe(400);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
@@ -855,18 +843,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser1.id, role: 'project:viewer' },
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser3.id, role: 'project:admin' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
-			expect(resp.status).toBe(200);
+			const resp1 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser2.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp1.status).toBe(204);
+			const resp2 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser3.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp2.status).toBe(204);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
 			expect(tpRelations.length).toBe(3);
@@ -886,11 +870,8 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const resp = await memberAgent.patch(`/projects/${personalProject.id}`).send({
-				relations: [
-					{ userId: testUser1.id, role: PROJECT_OWNER_ROLE_SLUG },
-					{ userId: testUser2.id, role: 'project:admin' },
-				] as Array<{
+			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
+				relations: [{ userId: testUser2.id, role: 'project:admin' }] as Array<{
 					userId: string;
 					role: ProjectRole;
 				}>,

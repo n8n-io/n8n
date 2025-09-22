@@ -135,14 +135,14 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
 		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {
-			if (typeof nm !== 'undefined') myProjects.value[projectIndex].name = nm;
-			if (typeof ic !== 'undefined') myProjects.value[projectIndex].icon = ic as any;
-			if (typeof desc !== 'undefined') myProjects.value[projectIndex].description = desc as any;
+			if (nm !== undefined) myProjects.value[projectIndex].name = nm;
+			if (ic !== undefined) myProjects.value[projectIndex].icon = ic;
+			if (desc !== undefined) myProjects.value[projectIndex].description = desc;
 		}
 		if (currentProject.value) {
-			if (typeof nm !== 'undefined') currentProject.value.name = nm;
-			if (typeof ic !== 'undefined') currentProject.value.icon = ic as any;
-			if (typeof desc !== 'undefined') currentProject.value.description = desc as any;
+			if (nm !== undefined) currentProject.value.name = nm;
+			if (ic !== undefined) currentProject.value.icon = ic;
+			if (desc !== undefined) currentProject.value.description = desc;
 		}
 	};
 
