@@ -7,8 +7,8 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
-	DataSource,
 } from '@n8n/db';
+import { DataSource } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';

@@ -1,5 +1,5 @@
 import { type Logger } from '@n8n/backend-common';
-import { type DataSource } from '@n8n/db';
+import { type DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 
