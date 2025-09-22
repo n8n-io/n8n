@@ -17,47 +17,6 @@ export function getSelectFields(
 	requireCondition = false,
 	skipOperator = false,
 ): INodeProperties[] {
-	const conditionValues: INodeProperties[] = [];
-	conditionValues.push({
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Column',
-		name: 'keyName',
-		type: 'options',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description:
-			'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
-			loadOptionsMethod: 'getDataTableColumns',
-		},
-		default: 'id',
-	});
-	if (!skipOperator) {
-		conditionValues.push({
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-			displayName: 'Condition',
-			name: 'condition',
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
-			type: 'options',
-			typeOptions: {
-				loadOptionsDependsOn: ['&keyName'],
-				loadOptionsMethod: 'getConditionsForColumn',
-			},
-			default: 'eq',
-		});
-	}
-	conditionValues.push({
-		displayName: 'Value',
-		name: 'keyValue',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			hide: {
-				condition: ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'],
-			},
-		},
-	});
-
 	return [
 		{
 			displayName: 'Must Match',
@@ -91,7 +50,50 @@ export function getSelectFields(
 				{
 					displayName: 'Conditions',
 					name: 'conditions',
-					values: conditionValues,
+					values: [
+						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+							displayName: 'Column',
+							name: 'keyName',
+							type: 'options',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+							description:
+								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							typeOptions: {
+								loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
+								loadOptionsMethod: 'getDataTableColumns',
+							},
+							default: 'id',
+						},
+						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+							displayName: 'Condition',
+							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
+							type: 'options',
+							typeOptions: {
+								loadOptionsDependsOn: ['&keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
+							default: 'eq',
+							displayOptions: skipOperator
+								? {
+										show: { '@version': [{ _cnd: { lt: 0 } }] },
+									}
+								: undefined,
+						},
+						{
+							displayName: 'Value',
+							name: 'keyValue',
+							type: 'string',
+							default: '',
+							displayOptions: {
+								hide: {
+									condition: ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'],
+								},
+							},
+						},
+					],
 				},
 			],
 			description: 'Filter to decide which rows get',
