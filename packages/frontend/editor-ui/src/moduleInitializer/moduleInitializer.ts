@@ -48,11 +48,11 @@ export const registerModuleProjectTabs = () => {
 /**
  * Initialize modules settings sidebar items (used in SettingsSidebar), done in init.ts
  */
-export const registerModuleSettingsSidebarItems = () => {
+export const registerModuleSettingsPages = () => {
 	const uiStore = useUIStore();
 	modules.forEach((module) => {
-		if (module.settingsSidebarItems && module.settingsSidebarItems.length > 0) {
-			uiStore.registerSettingsSidebarItems(module.id, module.settingsSidebarItems);
+		if (module.settingsPages && module.settingsPages.length > 0) {
+			uiStore.registerSettingsPages(module.id, module.settingsPages);
 		}
 	});
 };

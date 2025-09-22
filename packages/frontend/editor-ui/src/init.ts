@@ -9,7 +9,7 @@ import {
 	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
-	registerModuleSettingsSidebarItems,
+	registerModuleSettingsPages,
 } from '@/moduleInitializer/moduleInitializer';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -220,7 +220,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
-	registerModuleSettingsSidebarItems();
+	registerModuleSettingsPages();
 
 	authenticatedFeaturesInitialized = true;
 }

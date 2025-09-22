@@ -26,7 +26,7 @@ export const MCPModule: FrontendModuleDescription = {
 			},
 		},
 	],
-	settingsSidebarItems: [
+	settingsPages: [
 		{
 			id: 'settings-mcp',
 			icon: 'mcp',

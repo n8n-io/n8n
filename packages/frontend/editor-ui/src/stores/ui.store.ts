@@ -275,7 +275,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Modules can register items and SettingsSidebar will render them
 	 * when the corresponding module is active.
 	 */
-	const registeredSettingsSidebarItems = ref<Record<string, IMenuItem[]>>({});
+	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -375,7 +375,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const settingsSidebarItems = computed<IMenuItem[]>(() => {
 		const items: IMenuItem[] = [];
-		Object.entries(registeredSettingsSidebarItems.value).forEach(([moduleName, moduleItems]) => {
+		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
 				items.push(...moduleItems);
 			}
@@ -594,8 +594,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsSidebarItems = (moduleName: string, items: IMenuItem[]) => {
-		registeredSettingsSidebarItems.value[moduleName] = items;
+	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+		registeredSettingsPages.value[moduleName] = items;
 	};
 
 	/**
@@ -715,7 +715,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		initialize,
 		moduleTabs,
 		registerCustomTabs,
-		registerSettingsSidebarItems,
+		registerSettingsPages,
 		registerModal,
 		unregisterModal,
 		initializeModalsFromRegistry,

@@ -29,5 +29,5 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
-	settingsSidebarItems?: IMenuItem[];
+	settingsPages?: IMenuItem[];
 };
