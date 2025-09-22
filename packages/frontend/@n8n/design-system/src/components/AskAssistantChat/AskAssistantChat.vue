@@ -54,6 +54,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
+	placeholder: t('assistantChat.inputPlaceholder'),
+	maxLength: 2000,
 });
 
 function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -338,7 +340,7 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
+				:placeholder="placeholder"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
 				:max-length="maxLength"

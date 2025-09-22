@@ -10,22 +10,16 @@ export interface N8nPromptInputProps {
 	modelValue?: string;
 	placeholder?: string;
 	maxLength?: number;
-	loading?: boolean;
 	streaming?: boolean;
 	disabled?: boolean;
-	showCharacterCount?: boolean;
-	rows?: number;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
 	maxLength: 2000,
-	loading: false,
 	streaming: false,
 	disabled: false,
-	showCharacterCount: false,
-	rows: 1,
 });
 
 const emit = defineEmits<{
@@ -254,11 +248,6 @@ defineExpose({
 				@input="adjustHeight"
 			/>
 			<div :class="$style.inlineActions">
-				<div v-if="showCharacterCount && !streaming" :class="$style.characterCount">
-					<span :class="{ [$style.overLimit]: isOverLimit }">
-						{{ remainingCharacters }}
-					</span>
-				</div>
 				<N8nSendStopButton
 					:streaming="streaming"
 					:disabled="sendDisabled"
@@ -293,11 +282,6 @@ defineExpose({
 				/>
 			</component>
 			<div :class="$style.bottomActions">
-				<div v-if="showCharacterCount && !streaming" :class="$style.characterCount">
-					<span :class="{ [$style.overLimit]: isOverLimit }">
-						{{ remainingCharacters }}
-					</span>
-				</div>
 				<N8nSendStopButton
 					:streaming="streaming"
 					:disabled="sendDisabled"
