@@ -16,16 +16,6 @@ describe('NocoDB  base get action', () => {
 	let mockNode: INode;
 
 	beforeEach(() => {
-		mockNode = {
-			parameters: {},
-			id: 'node1',
-			name: 'NocoDB',
-			type: 'nocoDb',
-			typeVersion: 1,
-			position: [0, 0],
-			credentials: {},
-		};
-
 		mockExecuteFunctions = {
 			getNodeParameter: jest.fn(),
 			getInputData: jest.fn(() => [{ json: {} }]),
@@ -33,7 +23,7 @@ describe('NocoDB  base get action', () => {
 			helpers: {
 				returnJsonArray: jest.fn((data) => [data]),
 			},
-			getNode: jest.fn(() => mockNode),
+			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
 		(apiRequest.call as jest.Mock).mockClear();
 	});
