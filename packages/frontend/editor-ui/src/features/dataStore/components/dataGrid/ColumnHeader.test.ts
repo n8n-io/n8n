@@ -36,9 +36,18 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 	props: {
 		params: {
 			displayName: 'My Column',
-			column: { getColId: () => 'col-1', getColDef: () => ({ cellDataType: 'string' }) },
+			column: {
+				getColId: () => 'col-1',
+				getColDef: () => ({ cellDataType: 'string' }),
+				getSort: () => null,
+			},
 			onDelete: onDeleteMock,
 			allowMenuActions: true,
+			api: {
+				getFilterModel: vi.fn().mockReturnValue({}),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			},
 		},
 	},
 });

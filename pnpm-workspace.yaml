@@ -6,7 +6,9 @@ packages:
   - cypress
   - packages/testing/**
 
-minimumReleaseAge: 10080 # 7 days
+minimumReleaseAge: 2880 # 2 days
+minimumReleaseAgeExclude:
+  - eslint-plugin-storybook
 
 catalog:
   '@n8n/typeorm': 0.3.20-12
