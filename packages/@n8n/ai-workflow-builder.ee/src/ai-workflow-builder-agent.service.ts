@@ -1,32 +1,23 @@
-import { type ChatAnthropic } from '@langchain/anthropic';
+import { ChatAnthropic } from '@langchain/anthropic';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
-import { ChatOpenAI } from '@langchain/openai';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
-import { Client } from 'langsmith';
+import { Client as TracingClient } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from './errors';
-import { anthropicClaudeSonnet4, gpt41mini } from './llm-config';
+import { anthropicClaudeSonnet4 } from './llm-config';
 import { WorkflowBuilderAgent, type ChatPayload } from './workflow-builder-agent';
 
 @Service()
 export class AiWorkflowBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
 
-	private openAIGptModel: ChatOpenAI | undefined;
-
-	private anthropicClaudeModel: ChatAnthropic | undefined;
-
-	private tracingClient: Client | undefined;
-
 	private checkpointer = new MemorySaver();
-
-	private agent: WorkflowBuilderAgent | undefined;
 
 	constructor(
 		private readonly nodeTypes: INodeTypes,
@@ -35,51 +26,6 @@ export class AiWorkflowBuilderService {
 		private readonly instanceUrl?: string,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
-	}
-
-	private async refreshCredentials(user?: IUser, useDeprecatedCredentials = false) {
-		if (useDeprecatedCredentials || !user || !this.client) {
-			return;
-		}
-
-		const authHeaders = await this.getApiProxyAuthHeaders(user, true, useDeprecatedCredentials);
-
-		// Update auth headers for existing LLM models
-		if (this.openAIGptModel) {
-			this.openAIGptModel.clientConfig.defaultHeaders = {
-				...this.openAIGptModel.clientConfig.defaultHeaders,
-				...authHeaders,
-			};
-		}
-
-		if (this.anthropicClaudeModel) {
-			this.anthropicClaudeModel.clientOptions.defaultHeaders = {
-				...this.anthropicClaudeModel.clientOptions.defaultHeaders,
-				...authHeaders,
-			};
-		}
-
-		// Update auth headers for tracing client
-		if (
-			this.tracingClient &&
-			'fetchOptions' in this.tracingClient &&
-			// @ts-expect-error fetchOptions is private property
-			'headers' in this.tracingClient.fetchOptions
-		) {
-			// @ts-expect-error fetchOptions is private property
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			this.tracingClient.fetchOptions = {
-				// @ts-expect-error fetchOptions is private property
-				...this.tracingClient.fetchOptions,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				headers: {
-					// @ts-expect-error fetchOptions is private property
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					...this.tracingClient.fetchOptions?.headers,
-					...authHeaders,
-				},
-			};
-		}
 	}
 
 	private async getApiProxyAuthHeaders(
@@ -114,16 +60,8 @@ export class AiWorkflowBuilderService {
 		user?: IUser,
 		requiresUpdatedCredentials = false,
 		useDeprecatedCredentials = false,
-	) {
+	): Promise<{ anthropicClaude: ChatAnthropic; tracingClient?: TracingClient }> {
 		try {
-			if (this.openAIGptModel && this.anthropicClaudeModel) {
-				if (requiresUpdatedCredentials) {
-					await this.refreshCredentials(user, useDeprecatedCredentials);
-				}
-
-				return;
-			}
-
 			// If client is provided, use it for API proxy
 			if (this.client && user) {
 				const authHeaders = await this.getApiProxyAuthHeaders(
@@ -135,16 +73,7 @@ export class AiWorkflowBuilderService {
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				this.openAIGptModel = await gpt41mini({
-					baseUrl: baseUrl + '/openai',
-					// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
-					apiKey: '-',
-					headers: {
-						...authHeaders,
-					},
-				});
-
-				this.anthropicClaudeModel = await anthropicClaudeSonnet4({
+				const chatModel = await anthropicClaudeSonnet4({
 					baseUrl: baseUrl + '/anthropic',
 					apiKey: '-',
 					headers: {
@@ -153,7 +82,7 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				this.tracingClient = new Client({
+				const tracingClient = new TracingClient({
 					apiKey: '-',
 					apiUrl: baseUrl + '/langsmith',
 					autoBatchTracing: false,
@@ -164,19 +93,19 @@ export class AiWorkflowBuilderService {
 						},
 					},
 				});
-				return;
-			}
-			// If base URL is not set, use environment variables
-			this.openAIGptModel = await gpt41mini({
-				apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
-			});
 
-			this.anthropicClaudeModel = await anthropicClaudeSonnet4({
+				return { tracingClient, anthropicClaude: chatModel };
+			}
+
+			// If base URL is not set, use environment variables
+			const anthropicClaude = await anthropicClaudeSonnet4({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 				headers: {
 					'anthropic-beta': 'prompt-caching-2024-07-31',
 				},
 			});
+
+			return { anthropicClaude };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
@@ -239,21 +168,25 @@ export class AiWorkflowBuilderService {
 		requiresUpdatedCredentials = false,
 		useDeprecatedCredentials = false,
 	) {
-		await this.setupModels(user, requiresUpdatedCredentials, useDeprecatedCredentials);
+		const { anthropicClaude, tracingClient } = await this.setupModels(
+			user,
+			requiresUpdatedCredentials,
+			useDeprecatedCredentials,
+		);
 
-		if (!this.anthropicClaudeModel || !this.openAIGptModel) {
+		if (!anthropicClaude) {
 			throw new LLMServiceError('Failed to initialize LLM models');
 		}
 
-		this.agent ??= new WorkflowBuilderAgent({
+		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// We use Sonnet both for simple and complex tasks
-			llmSimpleTask: this.anthropicClaudeModel,
-			llmComplexTask: this.anthropicClaudeModel,
+			llmSimpleTask: anthropicClaude,
+			llmComplexTask: anthropicClaude,
 			logger: this.logger,
 			checkpointer: this.checkpointer,
-			tracer: this.tracingClient
-				? new LangChainTracer({ client: this.tracingClient, projectName: 'n8n-workflow-builder' })
+			tracer: tracingClient
+				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
 			instanceUrl: this.instanceUrl,
 			// onGenerationSuccess: () => {
@@ -261,7 +194,7 @@ export class AiWorkflowBuilderService {
 			// },
 		});
 
-		return this.agent;
+		return agent;
 	}
 
 	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
