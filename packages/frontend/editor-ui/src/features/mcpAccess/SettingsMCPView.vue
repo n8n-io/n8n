@@ -165,12 +165,6 @@ const onWorkflowAction = async (action: string, workflow: WorkflowListItem) => {
 	}
 };
 
-const onAddWorkflow = () => {
-	toast.showMessage({
-		title: '🚧 Coming soon',
-	});
-};
-
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp'));
 	if (mcpStore.mcpAccessEnabled) await fetchAvailableWorkflows();
@@ -251,9 +245,15 @@ onMounted(async () => {
 					<n8n-heading size="medium" :bold="true">
 						{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
 					</n8n-heading>
-					<n8n-button @click="onAddWorkflow">{{ i18n.baseText('workflows.add') }}</n8n-button>
 				</div>
+				<n8n-action-box
+					v-if="availableWorkflows.length === 0"
+					data-test-id="empty-shared-action-box"
+					:heading="i18n.baseText('settings.mcp.empty.title')"
+					:description="i18n.baseText('settings.mcp.empty.description')"
+				/>
 				<N8nDataTableServer
+					v-else
 					:headers="tableHeaders"
 					:items="availableWorkflows"
 					:items-length="availableWorkflows.length"

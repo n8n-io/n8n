@@ -1997,6 +1997,8 @@
 	"settings.mcp.how.to.connect": "To connect, add this to your <code>mcp.json</code> file. <a href=\"{docsURL}\" target=\"_blank\">Learn more</a>",
 	"settings.mcp.available.workflows.heading": "Available Workflows",
 	"settings.mcp.workflows.table.action.removeMCPAccess": "Remove MCP Access",
+	"settings.mcp.empty.title": "No workflows available for MCP",
+	"settings.mcp.empty.description": "Enable MCP access in each workflow's settings to see them here.",
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
