@@ -15,6 +15,7 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
+import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
 
@@ -29,6 +30,29 @@ describe(useLogsExecutionData, () => {
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
+	});
+
+	describe('isEnabled', () => {
+		beforeEach(() => {
+			workflowsStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
+					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
+				}),
+			);
+		});
+
+		it('should not calculate entries isEnabled is false', () => {
+			const { entries } = useLogsExecutionData(computed(() => false));
+
+			expect(entries.value).toHaveLength(0);
+		});
+
+		it('should calculate entries if isEnabled is true', () => {
+			const { entries } = useLogsExecutionData(computed(() => true));
+
+			expect(entries.value).toHaveLength(1);
+		});
 	});
 
 	describe('loadSubExecution', () => {
@@ -76,7 +100,7 @@ describe(useLogsExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
 			expect(entries.value).toHaveLength(2);
 			expect(entries.value[1].children).toHaveLength(0);
@@ -107,7 +131,7 @@ describe(useLogsExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
 			await loadSubExecution(entries.value[1]);
 

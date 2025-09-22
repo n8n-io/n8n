@@ -1,4 +1,4 @@
-import { watch, computed, ref } from 'vue';
+import { watch, computed, ref, type ComputedRef } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -11,7 +11,7 @@ import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
-export function useLogsExecutionData() {
+export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
@@ -50,7 +50,7 @@ export function useLogsExecutionData() {
 	);
 
 	const entries = computed<LogEntry[]>(() => {
-		if (!execData.value?.data || !workflow.value) {
+		if (!isEnabled.value || !execData.value?.data || !workflow.value) {
 			return [];
 		}
 
