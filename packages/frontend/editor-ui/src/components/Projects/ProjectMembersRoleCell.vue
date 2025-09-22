@@ -1,36 +1,25 @@
 <script lang="ts" setup>
 import type { ProjectMemberData } from '@/types/projects.types';
-import { isProjectRole } from '@/utils/typeGuards';
-import { type ActionDropdownItem, N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
-import type { ProjectRole } from '@n8n/permissions';
+import type { ActionDropdownItem } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
+import type { AllRolesMap, Role } from '@n8n/permissions';
 import { ElRadio } from 'element-plus';
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	data: ProjectMemberData;
-	roles: Record<ProjectRole, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<ProjectRole>>;
+	roles: AllRolesMap['project'];
+	actions: Array<ActionDropdownItem<Role['slug']>>;
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: ProjectRole; userId: string }];
+	'update:role': [payload: { role: Role['slug']; userId: string }];
 }>();
 
-const selectedRole = ref<string>(props.data.role);
+const selectedRole = computed(() => props.roles.find((role) => role.slug === props.data.role));
 const isEditable = computed(() => props.data.role !== 'project:personalOwner');
 
-watch(
-	() => props.data.role,
-	(newRole) => {
-		selectedRole.value = newRole;
-	},
-);
-const roleLabel = computed(() => {
-	// @ts-ignore - backend type is incorrect
-	return props.roles[selectedRole.value]?.label || selectedRole.value;
-});
-
-const onActionSelect = (role: ProjectRole) => {
+const onActionSelect = (role: Role['slug']) => {
 	emit('update:role', {
 		role,
 		userId: props.data.id,
@@ -49,27 +38,22 @@ const onActionSelect = (role: ProjectRole) => {
 	>
 		<template #activator>
 			<button :class="$style.roleLabel" type="button">
-				<N8nText color="text-dark">{{ roleLabel }}</N8nText>
+				<N8nText color="text-dark">{{ selectedRole?.displayName }}</N8nText>
 				<N8nIcon color="text-dark" icon="chevron-down" size="large" />
 			</button>
 		</template>
 		<template #menuItem="item">
-			<ElRadio
-				:model-value="selectedRole"
-				:label="item.id"
-				:disabled="item.disabled"
-				@update:model-value="selectedRole = item.id"
-			>
+			<ElRadio :model-value="selectedRole?.slug" :label="item.id" :disabled="item.disabled">
 				<span :class="$style.radioLabel">
 					<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
-					<N8nText color="text-dark" size="small">{{
-						isProjectRole(item.id) ? props.roles[item.id]?.desc || '' : ''
-					}}</N8nText>
+					<N8nText color="text-dark" size="small">
+						{{ item.description }}
+					</N8nText>
 				</span>
 			</ElRadio>
 		</template>
 	</N8nActionDropdown>
-	<span v-else>{{ roleLabel }}</span>
+	<span v-else> {{ selectedRole?.displayName }}</span>
 </template>
 
 <style lang="scss" module>

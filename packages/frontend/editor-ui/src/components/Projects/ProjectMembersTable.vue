@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import ProjectMembersRoleCell from '@/components/Projects/ProjectMembersRoleCell.vue';
 import type { ProjectMemberData } from '@/types/projects.types';
 import {
 	N8nDataTableServer,
-	N8nText,
 	N8nUserInfo,
 	type ActionDropdownItem,
 	type UserAction,
@@ -11,7 +9,7 @@ import {
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 import { useI18n } from '@n8n/i18n';
-import type { ProjectRole } from '@n8n/permissions';
+import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 
 const i18n = useI18n();
@@ -20,13 +18,13 @@ const props = defineProps<{
 	data: { items: ProjectMemberData[]; count: number };
 	loading?: boolean;
 	currentUserId?: string;
-	projectRoles: Array<{ slug: string; displayName: string; licensed: boolean }>;
+	projectRoles: AllRolesMap['project'];
 	actions?: Array<UserAction<ProjectMemberData>>;
 }>();
 
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
-	'update:role': [payload: { role: ProjectRole; userId: string }];
+	'update:role': [payload: { role: Role['slug']; userId: string }];
 	action: [value: { action: string; userId: string }];
 }>();
 
@@ -64,32 +62,18 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 	},
 ]);
 
-const roles = computed<Record<ProjectRole, { label: string; desc: string }>>(() =>
-	props.projectRoles.reduce(
-		(acc, role) => {
-			acc[role.slug as ProjectRole] = {
-				label: role.displayName,
-				// @ts-ignore - backend type is incorrect
-				desc: 'description' in role ? role.description : '',
-			};
-			console.log(acc);
-			return acc;
-		},
-		{} as Record<ProjectRole, { label: string; desc: string }>,
-	),
-);
-
-const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() =>
+const roleActions = computed<Array<ActionDropdownItem<string>>>(() =>
 	props.projectRoles.map((role) => ({
-		id: role.slug as ProjectRole,
+		id: role.slug,
 		label: role.displayName,
 		disabled: !role.licensed,
+		description: role.description ?? undefined,
 	})),
 );
 
 const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
 
-const onRoleChange = ({ role, userId }: { role: ProjectRole; userId: string }) => {
+const onRoleChange = ({ role, userId }: { role: Role['slug']; userId: string }) => {
 	emit('update:role', { role, userId });
 };
 
@@ -121,11 +105,13 @@ const filterActions = (member: ProjectMemberData) => {
 				<ProjectMembersRoleCell
 					v-if="canUpdateRole(item)"
 					:data="item"
-					:roles="roles"
+					:roles="props.projectRoles"
 					:actions="roleActions"
 					@update:role="onRoleChange"
 				/>
-				<N8nText v-else color="text-dark">{{ roles[item.role]?.label ?? item.role }}</N8nText>
+				<N8nText v-else color="text-dark">
+					{{ props.projectRoles.find((role) => role.slug === item.role)?.displayName ?? item.role }}
+				</N8nText>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<ProjectMembersActionsCell
