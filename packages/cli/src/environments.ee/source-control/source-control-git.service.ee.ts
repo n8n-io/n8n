@@ -194,18 +194,6 @@ export class SourceControlGitService {
 		return false;
 	}
 
-	private async getAuthorizedHttpsRepositoryUrl(repositoryUrl: string): Promise<string> {
-		const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-		if (!credentials) {
-			throw new UnexpectedError('HTTPS connection type specified but no credentials found');
-		}
-
-		const urlObj = new URL(repositoryUrl);
-		urlObj.username = encodeURIComponent(credentials.username);
-		urlObj.password = encodeURIComponent(credentials.password);
-		return urlObj.toString();
-	}
-
 	async initRepository(
 		sourceControlPreferences: Pick<
 			SourceControlPreferences,
@@ -260,6 +248,18 @@ export class SourceControlGitService {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
 		}
+	}
+
+	private async getAuthorizedHttpsRepositoryUrl(repositoryUrl: string): Promise<string> {
+		const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
+		if (!credentials) {
+			throw new UnexpectedError('HTTPS connection type specified but no credentials found');
+		}
+
+		const urlObj = new URL(repositoryUrl);
+		urlObj.username = encodeURIComponent(credentials.username);
+		urlObj.password = encodeURIComponent(credentials.password);
+		return urlObj.toString();
 	}
 
 	/**
