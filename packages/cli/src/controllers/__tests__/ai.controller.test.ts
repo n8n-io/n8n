@@ -151,6 +151,7 @@ describe('AiController', () => {
 						executionData: undefined,
 						executionSchema: undefined,
 					},
+					useDeprecatedCredentials: false,
 				},
 				request.user,
 				expect.any(AbortSignal),
