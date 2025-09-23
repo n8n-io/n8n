@@ -32,10 +32,10 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import { replyToEmail } from '../utils/replyToEmail';
 
 const preBuiltAgentsCallout: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -193,6 +193,25 @@ export class GmailV2 implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		const replyToSenderOnly = this.getNodeParameter(
+			'options.replyToSenderOnly',
+			0,
+			false,
+		) as boolean;
+		const replyToRecipientsOnly = this.getNodeParameter(
+			'options.replyToRecipientsOnly',
+			0,
+			false,
+		) as boolean;
+
+		if (replyToSenderOnly && replyToRecipientsOnly) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option.',
+				{ itemIndex: 0 },
+			);
+		}
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			const email: IEmail = createEmail(this);
