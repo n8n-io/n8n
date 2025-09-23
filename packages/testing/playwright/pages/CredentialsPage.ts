@@ -1,10 +1,12 @@
 import { BasePage } from './BasePage';
 import { AddResource } from './components/AddResource';
 import { CredentialModal } from './components/CredentialModal';
+import { ResourceCards } from './components/ResourceCards';
 
 export class CredentialsPage extends BasePage {
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 	readonly addResource = new AddResource(this.page);
+	readonly cards = new ResourceCards(this.page);
 
 	get emptyListCreateCredentialButton() {
 		return this.page.getByRole('button', { name: 'Add first credential' });
@@ -12,14 +14,6 @@ export class CredentialsPage extends BasePage {
 
 	get createCredentialButton() {
 		return this.page.getByTestId('create-credential-button');
-	}
-
-	get credentialCards() {
-		return this.page.getByTestId('resources-list-item');
-	}
-
-	getCredentialByName(name: string) {
-		return this.credentialCards.filter({ hasText: name }).first();
 	}
 
 	/**

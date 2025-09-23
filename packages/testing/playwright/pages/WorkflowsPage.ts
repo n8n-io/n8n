@@ -2,11 +2,11 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { AddResource } from './components/AddResource';
-import { ResourceCard } from './components/ResourceCard';
+import { ResourceCards } from './components/ResourceCards';
 
 export class WorkflowsPage extends BasePage {
 	readonly addResource = new AddResource(this.page);
-	readonly resourceCard = new ResourceCard(this.page);
+	readonly cards = new ResourceCards(this.page);
 
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
@@ -72,16 +72,8 @@ export class WorkflowsPage extends BasePage {
 		await this.fillByTestId('resources-list-search', searchTerm);
 	}
 
-	getWorkflowItems() {
-		return this.page.getByTestId('resources-list-item-workflow');
-	}
-
-	getWorkflowByName(name: string) {
-		return this.getWorkflowItems().filter({ hasText: name });
-	}
-
 	async shareWorkflow(workflowName: string) {
-		const workflow = this.getWorkflowByName(workflowName);
+		const workflow = this.cards.getWorkflow(workflowName);
 		await workflow.getByTestId('workflow-card-actions').click();
 		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}

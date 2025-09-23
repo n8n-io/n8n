@@ -1,47 +1,47 @@
 import type { Locator, Page } from '@playwright/test';
 
 /**
- * ResourceCard component for handling folder, workflow, credential, and data store cards.
+ * ResourceCards component for handling folder, workflow, credential, and data store cards.
  * All cards are contained within a resources-list-wrapper.
  */
-export class ResourceCard {
+export class ResourceCards {
 	constructor(private page: Page) {}
 
 	getResourcesListWrapper(): Locator {
 		return this.page.getByTestId('resources-list-wrapper');
 	}
 
-	getFolderCards(): Locator {
+	getFolders(): Locator {
 		return this.page.getByTestId('folder-card');
 	}
 
-	getWorkflowCards(): Locator {
+	getWorkflows(): Locator {
 		return this.page.getByTestId('resources-list-item-workflow');
 	}
 
-	getCredentialCards(): Locator {
+	getCredentials(): Locator {
 		return this.page.getByTestId('resources-list-item');
 	}
 
-	getDataStoreCards(): Locator {
+	getDataStores(): Locator {
 		return this.page.getByTestId('data-store-card');
 	}
 
-	getFolderByName(name: string): Locator {
+	getFolder(name: string): Locator {
 		return this.page.locator(`[data-test-id="folder-card"][data-resourcename="${name}"]`);
 	}
 
-	getWorkflowByName(name: string): Locator {
-		return this.getWorkflowCards().filter({ hasText: name });
+	getWorkflow(name: string): Locator {
+		return this.getWorkflows().filter({ hasText: name });
 	}
 
-	getCredentialByName(name: string): Locator {
-		return this.getCredentialCards().filter({
+	getCredential(name: string): Locator {
+		return this.getCredentials().filter({
 			has: this.page.getByTestId('card-content').locator('h2').filter({ hasText: name }),
 		});
 	}
 
-	getDataStoreByName(name: string): Locator {
+	getDataStore(name: string): Locator {
 		return this.page.getByTestId('data-store-card-name').filter({ hasText: name });
 	}
 
@@ -63,7 +63,7 @@ export class ResourceCard {
 	}
 
 	async openFolder(folderName: string): Promise<void> {
-		const folderCard = this.getFolderByName(folderName);
+		const folderCard = this.getFolder(folderName);
 		await this.clickCardAction(folderCard, 'open');
 	}
 }
