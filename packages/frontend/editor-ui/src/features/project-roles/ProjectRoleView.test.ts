@@ -155,7 +155,7 @@ describe('ProjectRoleView', () => {
 
 	describe('New Role Creation', () => {
 		it('should render new role form when no roleSlug prop provided', () => {
-			const { getByText, getByPlaceholderText, getByTestId } = renderComponent();
+			const { getByText, getByPlaceholderText } = renderComponent();
 
 			expect(getByText('New Role')).toBeInTheDocument();
 			expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
