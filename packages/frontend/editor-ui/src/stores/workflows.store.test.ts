@@ -894,6 +894,7 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 		});
+
 		it('should replace existing placeholder task data in new log view', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
@@ -934,7 +935,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionPayload(successEventWithExecutionIndex);
+			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -1449,8 +1450,11 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('markExecutionAsStopped', () => {
-		it('should remove non successful node runs', () => {
+		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+				status: 'running',
+				startedAt: new Date('2023-01-01T09:00:00Z'),
+				stoppedAt: undefined,
 				data: {
 					resultData: {
 						runData: {
@@ -1467,7 +1471,9 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			});
+		});
 
+		it('should remove non successful node runs', () => {
 			workflowsStore.markExecutionAsStopped();
 
 			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
@@ -1478,12 +1484,6 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-			});
-
 			workflowsStore.markExecutionAsStopped({
 				status: 'canceled',
 				startedAt: new Date('2023-01-01T10:00:00Z'),
@@ -1501,23 +1501,6 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not update execution data when stopData is not provided', () => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				id: '1',
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-				data: {
-					resultData: {
-						runData: {
-							node1: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'error' }),
-							],
-						},
-					},
-				},
-			});
-
 			workflowsStore.markExecutionAsStopped();
 
 			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
@@ -1525,11 +1508,6 @@ describe('useWorkflowsStore', () => {
 				new Date('2023-01-01T09:00:00Z'),
 			);
 			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
-
-			// Should still filter runData
-			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
-			expect(runData?.node1).toHaveLength(1);
-			expect(runData?.node1[0].executionStatus).toBe('success');
 		});
 	});
 });
