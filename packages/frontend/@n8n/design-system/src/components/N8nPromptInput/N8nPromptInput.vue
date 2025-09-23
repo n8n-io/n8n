@@ -70,8 +70,6 @@ const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => 
 });
 
 function adjustHeight() {
-	if (!textareaRef.value) return;
-
 	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
@@ -84,16 +82,11 @@ function adjustHeight() {
 		if (textareaRef.value) {
 			textareaRef.value.style.height = `${singleLineHeight}px`;
 		}
-		// Restore focus if mode changed
-		if (wasMultiline && !isMultiline.value && wasFocused) {
-			void nextTick(() => {
-				textareaRef.value?.focus();
-			});
-		}
 		return;
 	}
 
 	// Measure the natural height
+	if (!textareaRef.value) return;
 	textareaRef.value.style.height = '0';
 	const scrollHeight = textareaRef.value.scrollHeight;
 
@@ -130,11 +123,6 @@ watch(
 );
 
 watch(textValue, (newValue, oldValue) => {
-	// Prevent exceeding max length (e.g., from paste operations)
-	if (newValue.length > props.maxLength) {
-		textValue.value = newValue.substring(0, props.maxLength);
-		return;
-	}
 	emit('update:modelValue', newValue);
 	// Only adjust height if value actually changed
 	if (newValue !== oldValue) {
@@ -143,7 +131,6 @@ watch(textValue, (newValue, oldValue) => {
 });
 
 function handleSubmit() {
-	if (sendDisabled.value) return;
 	emit('submit');
 }
 

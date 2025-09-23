@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
@@ -378,14 +379,77 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// The N8nSendStopButton emits stop, which N8nPromptInput forwards
-			// We need to test this through the component structure
-			expect(render.emitted()).toBeDefined();
+			const stopButton = render.container.querySelector('.stopButton') as HTMLButtonElement;
+			expect(stopButton).toBeTruthy();
+
+			// Click the stop button
+			await fireEvent.click(stopButton);
+
+			// Verify stop event was emitted
+			expect(render.emitted('stop')).toBeTruthy();
+			expect(render.emitted('stop')?.[0]).toEqual([]);
+		});
+
+		it('should handle stop event from N8nSendStopButton component', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Test message',
+					streaming: true,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: {
+							name: 'N8nSendStopButton',
+							props: ['disabled', 'streaming'],
+							template: '<button @click="$emit(\'stop\')" class="stop-button-stub">Stop</button>',
+							emits: ['stop'],
+						},
+					},
+				},
+			});
+
+			// Find the stop button and click it
+			const stopButton = wrapper.find('.stop-button-stub');
+			expect(stopButton.exists()).toBe(true);
+			await stopButton.trigger('click');
+
+			// Check that N8nPromptInput emitted the stop event
+			expect(wrapper.emitted('stop')).toBeTruthy();
+			expect(wrapper.emitted('stop')?.[0]).toEqual([]);
+
+			wrapper.unmount();
 		});
 	});
 
 	describe('exposed methods', () => {
-		it('should expose focusInput method', async () => {
+		it('should expose focusInput method and focus the textarea', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'test',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			// Get the textarea element
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+
+			// Spy on the focus method
+			const focusSpy = vi.spyOn(textarea, 'focus');
+
+			// Call the exposed focusInput method
+			await wrapper.vm.focusInput();
+
+			// Verify focus was called
+			expect(focusSpy).toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('should focus input through ref access', () => {
 			const wrapper = renderComponent({
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
