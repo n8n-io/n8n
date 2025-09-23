@@ -155,7 +155,7 @@ onMounted(async () => {
 					{{ i18n.baseText('settings.mcp.toggle.description') }}
 				</n8n-text>
 			</div>
-			<div :class="$style.mainTooggle">
+			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
 				<N8nTooltip :disabled="isOwner" placement="top">
 					<template #content>
 						<span>{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}</span>
@@ -164,7 +164,7 @@ onMounted(async () => {
 						<el-switch
 							:model-value="mcpStore.mcpAccessEnabled"
 							size="large"
-							data-test-id="enable-n8n-mcp"
+							data-test-id="mcp-access-toggle"
 							:disabled="!isOwner"
 							@update:model-value="onUpdateMCPEnabled"
 						/>
@@ -172,133 +172,139 @@ onMounted(async () => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div v-if="mcpStore.mcpAccessEnabled">
-			<n8n-heading size="medium" :bold="true">
-				{{ i18n.baseText('setings.mcp.connection.info.heading') }}
-			</n8n-heading>
-			<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
-		</div>
-		<div v-if="mcpStore.mcpAccessEnabled" :class="$style['workflow-list-container']">
-			<div v-if="workflowsLoading">
-				<n8n-loading
-					v-if="workflowsLoading"
-					:loading="workflowsLoading"
-					variant="h1"
-					class="mb-l"
-				/>
-				<n8n-loading
-					v-if="workflowsLoading"
-					:loading="workflowsLoading"
-					variant="p"
-					:rows="5"
-					:shrink-last="false"
-				/>
+		<div
+			v-if="mcpStore.mcpAccessEnabled"
+			:class="$style.container"
+			data-test-id="mcp-enabled-section"
+		>
+			<div>
+				<n8n-heading size="medium" :bold="true">
+					{{ i18n.baseText('setings.mcp.connection.info.heading') }}
+				</n8n-heading>
+				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
 			</div>
-			<div v-else class="mt-s mb-xl">
-				<div :class="[$style.header, 'mb-s']">
-					<n8n-heading size="medium" :bold="true">
-						{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
-					</n8n-heading>
+			<div :class="$style['workflow-list-container']">
+				<div v-if="workflowsLoading">
+					<n8n-loading
+						v-if="workflowsLoading"
+						:loading="workflowsLoading"
+						variant="h1"
+						class="mb-l"
+					/>
+					<n8n-loading
+						v-if="workflowsLoading"
+						:loading="workflowsLoading"
+						variant="p"
+						:rows="5"
+						:shrink-last="false"
+					/>
 				</div>
-				<n8n-action-box
-					v-if="availableWorkflows.length === 0"
-					data-test-id="empty-shared-action-box"
-					:heading="i18n.baseText('settings.mcp.empty.title')"
-					:description="i18n.baseText('settings.mcp.empty.description')"
-				/>
-				<N8nDataTableServer
-					v-else
-					:headers="tableHeaders"
-					:items="availableWorkflows"
-					:items-length="availableWorkflows.length"
-				>
-					<template #[`item.name`]="{ item }">
-						<n8n-link
-							:new-window="true"
-							:to="
-								router.resolve({
-									name: VIEWS.WORKFLOW,
-									params: { name: item.id },
-								}).fullPath
-							"
-							:theme="'text'"
-							:class="$style['table-link']"
-						>
-							{{ item.name }}
-							<n8n-icon
-								icon="external-link"
-								:class="$style['link-icon']"
-								color="text-light"
-							></n8n-icon>
-						</n8n-link>
-					</template>
-					<template #[`item.parentFolder`]="{ item }">
-						<span v-if="item.parentFolder" :class="$style['folder-cell']">
+				<div v-else class="mt-s mb-xl">
+					<div :class="[$style.header, 'mb-s']">
+						<n8n-heading size="medium" :bold="true">
+							{{ i18n.baseText('settings.mcp.available.workflows.heading') }}
+						</n8n-heading>
+					</div>
+					<n8n-action-box
+						v-if="availableWorkflows.length === 0"
+						data-test-id="empty-shared-action-box"
+						:heading="i18n.baseText('settings.mcp.empty.title')"
+						:description="i18n.baseText('settings.mcp.empty.description')"
+					/>
+					<N8nDataTableServer
+						v-else
+						:headers="tableHeaders"
+						:items="availableWorkflows"
+						:items-length="availableWorkflows.length"
+					>
+						<template #[`item.name`]="{ item }">
 							<n8n-link
-								v-if="item.homeProject"
-								:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
-								:theme="'text'"
-								:class="$style['table-link']"
 								:new-window="true"
-							>
-								{{ item.parentFolder.name }}
-								<n8n-icon
-									icon="external-link"
-									:class="$style['link-icon']"
-									color="text-light"
-								></n8n-icon>
-							</n8n-link>
-							<span v-else>
-								<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-								{{ item.parentFolder.name }}
-							</span>
-						</span>
-						<span v-else>-</span>
-					</template>
-					<template #[`item.homeProject`]="{ item }">
-						<span v-if="item.homeProject" :class="$style['folder-cell']">
-							<n8n-link
 								:to="
 									router.resolve({
-										name: VIEWS.PROJECTS_WORKFLOWS,
-										params: { projectId: item.homeProject.id },
+										name: VIEWS.WORKFLOW,
+										params: { name: item.id },
 									}).fullPath
 								"
 								:theme="'text'"
-								:class="[$style['table-link'], $style['project-link']]"
-								:new-window="true"
+								:class="$style['table-link']"
 							>
-								<ProjectIcon
-									v-if="item.homeProject"
-									:icon="getProjectIcon(item)"
-									:border-less="true"
-								/>
-								{{ getProjectName(item) }}
+								{{ item.name }}
 								<n8n-icon
 									icon="external-link"
 									:class="$style['link-icon']"
 									color="text-light"
 								></n8n-icon>
 							</n8n-link>
-						</span>
-						<span v-else>-</span>
-					</template>
-					<template #[`item.active`]="{ item }">
-						<n8n-icon
-							:icon="item.active ? 'check' : 'x'"
-							:size="16"
-							:color="item.active ? 'success' : 'danger'"
-						/>
-					</template>
-					<template #[`item.actions`]="{ item }">
-						<N8nActionToggle
-							placement="bottom"
-							:actions="tableActions"
-							theme="dark"
-							@action="onWorkflowAction($event, item)"
-						/>
-					</template>
-				</N8nDataTableServer>
+						</template>
+						<template #[`item.parentFolder`]="{ item }">
+							<span v-if="item.parentFolder" :class="$style['folder-cell']">
+								<n8n-link
+									v-if="item.homeProject"
+									:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
+									:theme="'text'"
+									:class="$style['table-link']"
+									:new-window="true"
+								>
+									{{ item.parentFolder.name }}
+									<n8n-icon
+										icon="external-link"
+										:class="$style['link-icon']"
+										color="text-light"
+									></n8n-icon>
+								</n8n-link>
+								<span v-else>
+									<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
+									{{ item.parentFolder.name }}
+								</span>
+							</span>
+							<span v-else>-</span>
+						</template>
+						<template #[`item.homeProject`]="{ item }">
+							<span v-if="item.homeProject" :class="$style['folder-cell']">
+								<n8n-link
+									:to="
+										router.resolve({
+											name: VIEWS.PROJECTS_WORKFLOWS,
+											params: { projectId: item.homeProject.id },
+										}).fullPath
+									"
+									:theme="'text'"
+									:class="[$style['table-link'], $style['project-link']]"
+									:new-window="true"
+								>
+									<ProjectIcon
+										v-if="item.homeProject"
+										:icon="getProjectIcon(item)"
+										:border-less="true"
+									/>
+									{{ getProjectName(item) }}
+									<n8n-icon
+										icon="external-link"
+										:class="$style['link-icon']"
+										color="text-light"
+									></n8n-icon>
+								</n8n-link>
+							</span>
+							<span v-else>-</span>
+						</template>
+						<template #[`item.active`]="{ item }">
+							<n8n-icon
+								:icon="item.active ? 'check' : 'x'"
+								:size="16"
+								:color="item.active ? 'success' : 'danger'"
+							/>
+						</template>
+						<template #[`item.actions`]="{ item }">
+							<N8nActionToggle
+								placement="bottom"
+								:actions="tableActions"
+								theme="dark"
+								@action="onWorkflowAction($event, item)"
+							/>
+						</template>
+					</N8nDataTableServer>
+				</div>
 			</div>
 		</div>
 	</div>
