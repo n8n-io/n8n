@@ -127,11 +127,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
 		// Only persist scalar settings here; member updates are handled via dedicated endpoints
 		const { name, icon, description } = projectData as Partial<UpdateProjectDto>;
-		await projectsApi.updateProject(rootStore.restApiContext, id, {
-			name,
-			icon,
-			description,
-		} as UpdateProjectDto);
+		const payload: Partial<UpdateProjectDto> = {};
+		if (name !== undefined) payload.name = name;
+		if (icon !== undefined) payload.icon = icon;
+		if (description !== undefined) payload.description = description;
+		await projectsApi.updateProject(rootStore.restApiContext, id, payload as UpdateProjectDto);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
 		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {

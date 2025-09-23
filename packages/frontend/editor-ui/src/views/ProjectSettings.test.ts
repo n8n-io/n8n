@@ -471,21 +471,23 @@ describe('ProjectSettings', () => {
 		it('rolls back role on save error', async () => {
 			// First, inline update fails and rolls back
 			vi.spyOn(projectsStore, 'updateMemberRole').mockRejectedValueOnce(new Error('fail'));
-			const utils = renderComponent();
+			const wrapper = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:viewer' });
 			await nextTick();
 			expect(mockShowError).toHaveBeenCalled();
 
-			// Next form save should contain original role (admin) due to rollback
-			const nameInput = utils.getByTestId('project-settings-name-input');
+			// Next form save persists only name/description and succeeds
+			const nameInput = wrapper.getByTestId('project-settings-name-input');
 			await userEvent.type(getInput(nameInput), ' touch');
-			await userEvent.click(utils.getByTestId('project-settings-save-button'));
+			await userEvent.click(wrapper.getByTestId('project-settings-save-button'));
 			await nextTick();
 			const lastCall = projectsStore.updateProject.mock.calls.pop();
-			expect(lastCall?.[1].relations).toEqual(
-				expect.arrayContaining([expect.objectContaining({ userId: '1', role: 'project:admin' })]),
+			const payload = lastCall?.[1];
+			expect(payload).toEqual(
+				expect.objectContaining({ name: expect.any(String), description: expect.any(String) }),
 			);
+			expect(payload).not.toHaveProperty('relations');
 		});
 
 		it('removes member immediately and shows success toast with telemetry', async () => {
@@ -513,29 +515,34 @@ describe('ProjectSettings', () => {
 			expect(queryByTestId('members-count')).toBeNull();
 		});
 
-		it('prevents saving when invalid role selected', async () => {
-			// Set invalid role and try to save
-			const utils = renderComponent();
+		it('saves only name and description with Save button', async () => {
+			const wrapper = renderComponent();
 			await nextTick();
-			emitters.projectMembersTable.emit('update:role', {
-				userId: '1',
-				role: 'project:personalOwner',
-			});
+
+			// Edit name and description
+			const nameInput = wrapper.getByTestId('project-settings-name-input');
+			await userEvent.type(nameInput.querySelector('input')!, ' New');
+			const descInput = wrapper.getByTestId('project-settings-description-input');
+			await userEvent.type(descInput.querySelector('textarea')!, 'New description');
+
+			// Save
+			await userEvent.click(wrapper.getByTestId('project-settings-save-button'));
 			await nextTick();
-			// Clear prior success toast from inline update (if any)
-			mockShowMessage.mockClear();
-			// Mark form dirty so save is enabled
-			const nameInput = utils.getByTestId('project-settings-name-input');
-			await userEvent.type(nameInput.querySelector('input')!, ' ');
-			await userEvent.click(utils.getByTestId('project-settings-save-button'));
-			await nextTick();
-			expect(mockShowError).toHaveBeenCalled();
-			// Should not show success on invalid role
-			expect(mockShowMessage).not.toHaveBeenCalled();
+
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+			const lastCall = projectsStore.updateProject.mock.calls.pop();
+			const [id, payload] = lastCall as unknown as [string, Record<string, unknown>];
+			expect(id).toBe('123');
+			expect(payload).toEqual(
+				expect.objectContaining({ name: expect.any(String), description: expect.any(String) }),
+			);
+			expect(payload).not.toHaveProperty('relations');
+			expect(payload).not.toHaveProperty('icon');
+			expect(mockShowMessage).toHaveBeenCalled();
 		});
 
 		it('resets pagination to first page on search', async () => {
-			const utils = renderComponent();
+			const wrapper = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:options', {
 				page: 2,
@@ -543,14 +550,14 @@ describe('ProjectSettings', () => {
 				sortBy: [],
 			});
 			await nextTick();
-			const searchContainer = utils.getByTestId('project-members-search');
+			const searchContainer = wrapper.getByTestId('project-members-search');
 			const searchInput = searchContainer.querySelector('input')!;
 			await userEvent.type(searchInput, 'john');
 			await new Promise((r) => setTimeout(r, 350));
 			// unmount first to avoid duplicate elements
-			utils.unmount();
-			const utils2 = renderComponent();
-			expect(utils2.getByTestId('members-page').textContent).toBe('0');
+			wrapper.unmount();
+			const wrapper2 = renderComponent();
+			expect(wrapper2.getByTestId('members-page').textContent).toBe('0');
 		});
 	});
 

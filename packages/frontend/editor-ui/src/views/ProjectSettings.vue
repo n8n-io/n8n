@@ -131,6 +131,7 @@ const onAddMember = async (userId: string) => {
 	}
 
 	try {
+		suppressNextSync.value = true;
 		await projectsStore.addMember(projectsStore.currentProject.id, { userId, role });
 		toast.showMessage({
 			type: 'success',
@@ -165,6 +166,7 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 	formData.value.relations[memberIndex].role = role;
 
 	try {
+		suppressNextSync.value = true;
 		await projectsStore.updateMemberRole(projectsStore.currentProject.id, userId, role);
 		toast.showMessage({
 			type: 'success',
@@ -312,18 +314,10 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
-			throw new Error('Invalid role selected for this project.');
-		}
-
+		// Persist only scalar project settings here
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
-			icon: projectIcon.value,
 			description: formData.value.description ?? '',
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -389,11 +383,19 @@ const selectProjectNameIfMatchesDefault = () => {
 };
 
 const onIconUpdated = async () => {
-	await updateProject();
-	toast.showMessage({
-		title: i18n.baseText('projects.settings.icon.update.successful.title'),
-		type: 'success',
-	});
+	if (!projectsStore.currentProject) return;
+	try {
+		// Update only the icon; do not persist name/description here
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			icon: projectIcon.value,
+		});
+		toast.showMessage({
+			title: i18n.baseText('projects.settings.icon.update.successful.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+	}
 };
 
 // Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
