@@ -267,7 +267,7 @@ describe('API: ai', () => {
 					onError: (e: Error) => void,
 				) => {
 					onError(error);
-					return await Promise.reject(error);
+					return await Promise.resolve();
 				},
 			);
 

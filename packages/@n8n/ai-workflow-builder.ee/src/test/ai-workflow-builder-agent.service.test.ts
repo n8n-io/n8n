@@ -302,7 +302,7 @@ describe('AiWorkflowBuilderService', () => {
 			const actualCall = MockedWorkflowBuilderAgent.mock.calls[0][0];
 			const parsedNodeTypes = actualCall.parsedNodeTypes;
 
-			// Should have the merged HttpRequestTool node but not the separate HttpRequest node
+			// Should have the merged HttpRequestTool node and keep the separate HttpRequest node
 			const toolNode = parsedNodeTypes.find(
 				(node: INodeTypeDescription) => node.name === 'HttpRequestTool',
 			);
