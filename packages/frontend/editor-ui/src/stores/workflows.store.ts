@@ -1856,19 +1856,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function markExecutionAsStopped() {
+	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
+		workflowExecutionStartedData.value = undefined;
 
 		clearPopupWindowState();
 
-		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
+		if (!workflowExecutionData.value) {
+			return;
+		}
+
+		const runData = workflowExecutionData.value.data?.resultData.runData ?? {};
+
 		for (const nodeName in runData) {
 			runData[nodeName] = runData[nodeName].filter(
 				({ executionStatus }) => executionStatus === 'success',
 			);
+		}
+
+		if (stopData) {
+			workflowExecutionData.value.status = stopData.status;
+			workflowExecutionData.value.startedAt = stopData.startedAt;
+			workflowExecutionData.value.stoppedAt = stopData.stoppedAt;
 		}
 	}
 
