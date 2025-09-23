@@ -664,6 +664,7 @@ describe('ImportService', () => {
 
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
 			// Mock the transaction method to just call the callback
@@ -701,6 +702,7 @@ describe('ImportService', () => {
 
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
 			// Mock the transaction method
@@ -735,6 +737,7 @@ describe('ImportService', () => {
 
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
 			// Mock the transaction method
