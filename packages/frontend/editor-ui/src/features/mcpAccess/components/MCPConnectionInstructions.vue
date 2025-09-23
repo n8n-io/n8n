@@ -43,21 +43,39 @@ const connectionCode = computed(() => {
 	<div :class="$style.container">
 		<ol :class="$style.instructions">
 			<li>
-				<span :class="$style.label">
-					{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
-				</span>
-				<span :class="$style.value">
-					<code>{{ props.baseUrl + MCP_ENDPOINT }}</code>
-				</span>
+				<div :class="$style.item">
+					<span :class="$style.label">
+						{{ i18n.baseText('settings.mcp.instructions.enableAccess') }}
+					</span>
+				</div>
 			</li>
 			<li>
-				<span :class="$style.label">
-					{{ i18n.baseText('settings.mcp.instructions.authorization') }}:
-				</span>
-				<span :class="$style.value">
-					{{ i18n.baseText('generic.your') }}
-					<n8n-link to="/settings/api">n8n {{ i18n.baseText('generic.apiKey') }}</n8n-link>
-				</span>
+				<div :class="$style.item">
+					<span :class="$style.label">
+						{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
+					</span>
+					<span :class="$style.url">
+						<code>{{ props.baseUrl + MCP_ENDPOINT }}</code>
+						<n8n-button
+							v-if="isSupported"
+							type="tertiary"
+							:icon="copied ? 'check' : 'copy'"
+							:square="true"
+							:class="$style['copy-url-button']"
+							@click="copy(props.baseUrl + MCP_ENDPOINT)"
+						/>
+					</span>
+				</div>
+			</li>
+			<li>
+				<div :class="$style.item">
+					<span :class="$style.label">
+						{{ i18n.baseText('settings.mcp.instructions.apiKey.part1') }}
+						<n8n-link to="/settings/api">{{ i18n.baseText('generic.apiKey') }}</n8n-link
+						>.
+						{{ i18n.baseText('settings.mcp.instructions.apiKey.part2') }}
+					</span>
+				</div>
 			</li>
 		</ol>
 		<div :class="$style.connectionString">
@@ -69,7 +87,7 @@ const connectionCode = computed(() => {
 						type="tertiary"
 						:icon="copied ? 'check' : 'copy'"
 						:square="true"
-						:class="$style['copy-button']"
+						:class="$style['copy-json-button']"
 						@click="copy(connectionString)"
 					/>
 				</template>
@@ -87,16 +105,36 @@ const connectionCode = computed(() => {
 .instructions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing-xs);
 	padding-left: var(--spacing-l);
 	margin: var(--spacing-s);
 
-	.value {
-		padding: var(--spacing-4xs);
+	.item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2xs);
+	}
+
+	.label {
+		font-size: var(--font-size-s);
+	}
+
+	.url {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2xs);
+		padding-left: var(--spacing-3xs);
 		background: var(--color-background-xlight);
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-s);
+		overflow: hidden;
+
+		.copy-url-button {
+			border: none;
+			border-radius: 0;
+			border-left: var(--border-base);
+		}
 
 		@media screen and (max-width: 820px) {
 			display: block;
@@ -119,13 +157,13 @@ const connectionCode = computed(() => {
 	}
 
 	&:hover {
-		.copy-button {
+		.copy-json-button {
 			display: flex;
 		}
 	}
 }
 
-.copy-button {
+.copy-json-button {
 	position: absolute;
 	top: var(--spacing-xl);
 	right: var(--spacing-xl);

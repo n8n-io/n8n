@@ -212,6 +212,7 @@ onMounted(async () => {
 					/>
 					<N8nDataTableServer
 						v-else
+						:class="$style['workflow-table']"
 						data-test-id="mcp-workflow-table"
 						:headers="tableHeaders"
 						:items="availableWorkflows"
@@ -362,6 +363,12 @@ onMounted(async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.workflow-table {
+	tr:last-child {
+		border-bottom: none !important;
+	}
 }
 
 .table-link {
