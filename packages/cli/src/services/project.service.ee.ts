@@ -15,10 +15,11 @@ import { Container, Service } from '@n8n/di';
 import {
 	hasGlobalScope,
 	type Scope,
-	type ProjectRole,
 	AssignableProjectRole,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -42,7 +43,7 @@ export class TeamProjectOverQuotaError extends UserError {
 }
 
 export class UnlicensedProjectRoleError extends UserError {
-	constructor(role: ProjectRole | AssignableProjectRole) {
+	constructor(role: string) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
 }
@@ -391,8 +392,8 @@ export class ProjectService {
 		for (const rel of relations) {
 			const existing = existingByUserId.get(rel.userId);
 			if (!existing) continue; // will be inserted below
-			const current = existing.role?.slug as AssignableProjectRole | undefined;
-			if (current && current !== rel.role) {
+			const current = existing.role?.slug;
+			if (current && current !== rel.role && this.isAssignableProjectRoleSlug(current)) {
 				conflicts.push({ userId: rel.userId, currentRole: current, requestedRole: rel.role });
 			}
 		}
@@ -607,5 +608,14 @@ export class ProjectService {
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {
 		return await this.projectRepository.getProjectCounts();
+	}
+
+	/** Type guard for assignable project role slugs */
+	private isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
+		return (
+			slug === PROJECT_ADMIN_ROLE_SLUG ||
+			slug === PROJECT_EDITOR_ROLE_SLUG ||
+			slug === PROJECT_VIEWER_ROLE_SLUG
+		);
 	}
 }

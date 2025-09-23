@@ -29,10 +29,10 @@ export const createProject = async (
 export const updateProject = async (
 	context: IRestApiContext,
 	id: Project['id'],
-	payload: UpdateProjectDto,
+	payload: Partial<Pick<UpdateProjectDto, 'name' | 'icon' | 'description'>>,
 ): Promise<void> => {
 	// Only send scalar settings; member updates are handled via dedicated endpoints
-	const { name, icon, description } = payload as Partial<UpdateProjectDto>;
+	const { name, icon, description } = payload;
 	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, icon, description });
 };
 
