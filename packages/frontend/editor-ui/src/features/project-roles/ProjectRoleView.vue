@@ -6,7 +6,7 @@ import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
-import isEqualWith from 'lodash/isEqualWith';
+import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -60,9 +60,12 @@ const { state: form } = useAsyncState(
 const hasUnsavedChanges = computed(() => {
 	if (!initialState.value) return false;
 
-	if (!isEqualWith(initialState.value.displayName, form.value.displayName)) return true;
-	if (!isEqualWith(initialState.value.description, form.value.description)) return true;
-	if (!isEqualWith(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
+	if (!isEqual(initialState.value.displayName, form.value.displayName)) return true;
+	// We need to explicitly check for an empty string and convert it to null.
+	// Using `??` wouldn't work here because `""` is a valid value and not `null` or `undefined`.
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+	if (!isEqual(initialState.value.description ?? null, form.value.description || null)) return true;
+	if (!isEqual(sortBy(initialState.value.scopes), sortBy(form.value.scopes))) return true;
 
 	return false;
 });
