@@ -60,7 +60,7 @@ describe('NocoDB Linkrows Link Node', () => {
 
 	// Test Case 1: Successful linking of a single row
 	it('should successfully link a single row', async () => {
-		mockApiRequest.call.mockResolvedValueOnce({ id: 'linkedRow1' });
+		mockApiRequest.call.mockResolvedValueOnce({ success: true });
 
 		const result = await execute.call(mockThis);
 
@@ -71,7 +71,7 @@ describe('NocoDB Linkrows Link Node', () => {
 			[{ id: 'linkedRow1' }],
 			{},
 		);
-		expect(result).toEqual([[{ id: 'linkedRow1' }]]);
+		expect(result).toEqual([[{ success: true }]]);
 	});
 
 	// Test Case 2: Successful linking of multiple rows
@@ -94,7 +94,7 @@ describe('NocoDB Linkrows Link Node', () => {
 			}
 			return defaultValue;
 		};
-		mockApiRequest.call.mockResolvedValueOnce([{ id: 'linkedRow1' }, { id: 'linkedRow2' }]);
+		mockApiRequest.call.mockResolvedValueOnce({ success: true });
 
 		const result = await execute.call(mockThis);
 
@@ -105,7 +105,7 @@ describe('NocoDB Linkrows Link Node', () => {
 			[{ id: 'linkedRow1' }, { id: 'linkedRow2' }],
 			{},
 		);
-		expect(result).toEqual([[[{ id: 'linkedRow1' }, { id: 'linkedRow2' }]]]);
+		expect(result).toEqual([[{ success: true }]]);
 	});
 
 	// Test Case 3: Error handling (continueOnFail = true)
@@ -165,14 +165,11 @@ describe('NocoDB Linkrows Link Node', () => {
 			if (name === 'linkFieldName') return 'linkField1';
 			if (name === 'id') return 'row1';
 			if (name === 'linkId') {
-				if (options?.extractValue) {
-					return [[{ id: 'exprRow1' }, { id: 'exprRow2' }]];
-				}
 				return [[{ id: 'exprRow1' }, { id: 'exprRow2' }]];
 			}
 			return defaultValue;
 		};
-		mockApiRequest.call.mockResolvedValueOnce([{ id: 'exprRow1' }, { id: 'exprRow2' }]);
+		mockApiRequest.call.mockResolvedValueOnce({ success: true });
 
 		const result = await execute.call(mockThis);
 
@@ -183,7 +180,7 @@ describe('NocoDB Linkrows Link Node', () => {
 			[{ id: 'exprRow1' }, { id: 'exprRow2' }],
 			{},
 		);
-		expect(result).toEqual([[[{ id: 'exprRow1' }, { id: 'exprRow2' }]]]);
+		expect(result).toEqual([[{ success: true }]]);
 	});
 
 	// Test Case 7: linkId from expression (array of strings/numbers)
@@ -206,7 +203,7 @@ describe('NocoDB Linkrows Link Node', () => {
 			}
 			return defaultValue;
 		};
-		mockApiRequest.call.mockResolvedValueOnce([{ id: 'exprRowA' }, { id: 123 }]);
+		mockApiRequest.call.mockResolvedValueOnce({ success: true });
 
 		const result = await execute.call(mockThis);
 
@@ -217,6 +214,6 @@ describe('NocoDB Linkrows Link Node', () => {
 			[{ id: 'exprRowA' }, { id: 123 }],
 			{},
 		);
-		expect(result).toEqual([[[{ id: 'exprRowA' }, { id: 123 }]]]);
+		expect(result).toEqual([[{ success: true }]]);
 	});
 });
