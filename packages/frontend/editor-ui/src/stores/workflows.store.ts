@@ -104,6 +104,7 @@ import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
+import { useFoldersStore } from './folders.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -136,6 +137,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const foldersStore = useFoldersStore();
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
@@ -588,16 +590,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Also set fetched workflows to store
 		// When fetching workflows from overview page, they don't have resource property
 		// so in order to filter out folders, we need to check if resource is not folder
-		data
-			.filter((item) => item.resource !== 'folder')
-			.forEach((item) => {
+
+		data.forEach((item) => {
+			if (item.resource === 'workflow') {
 				addWorkflow({
 					...item,
 					nodes: [],
 					connections: {},
 					versionId: '',
 				});
-			});
+			} else if (item.resource === 'folder') {
+				foldersStore.cacheFolders([
+					{
+						id: item.id,
+						name: item.name,
+						parentFolder: item.parentFolder?.id,
+						projectId: item.homeProject?.id,
+					},
+				]);
+			}
+		});
 		return data;
 	}
 

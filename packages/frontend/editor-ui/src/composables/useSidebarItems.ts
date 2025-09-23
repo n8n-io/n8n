@@ -61,8 +61,10 @@ export function useSidebarItems() {
 				true,
 			);
 		} else {
-			await folderStore.fetchProjectFolders(id);
-			await workflowsStore.fetchAllWorkflows(id, true);
+			await workflowsStore.fetchWorkflowsPage(id, undefined, undefined, undefined, {
+				parentFolderId: '',
+				isArchived: false,
+			});
 		}
 	}
 

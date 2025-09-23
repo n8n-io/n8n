@@ -65,7 +65,7 @@ const icon = computed<IconName>(() => {
 				<N8nIcon v-else-if="item.icon" :icon="icon" />
 			</div>
 			<button
-				v-if="item.children"
+				v-if="item.type !== 'workflow' && item.type !== 'other'"
 				class="sidebarItemDropdown"
 				@click="click"
 				:aria-label="ariaLabel"

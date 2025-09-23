@@ -125,8 +125,15 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await fetchProjectFolders(projectId);
 	}
 
-	async function fetchProjectFolders(projectId: string) {
-		const { data } = await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
+	async function fetchProjectFolders(projectId: string, folderId?: string) {
+		const { data } = await workflowsApi.getProjectFolders(
+			rootStore.restApiContext,
+			projectId,
+			undefined,
+			{
+				excludeFolderIdAndDescendants: folderId,
+			},
+		);
 
 		const forCache: FolderShortInfo[] = data.map((folder) => ({
 			id: folder.id,
