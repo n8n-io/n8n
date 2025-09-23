@@ -194,14 +194,7 @@ export class SourceControlGitService {
 		return false;
 	}
 
-	private async getAuthorizedHttpsRepositoryUrl(
-		repositoryUrl: string,
-		connectionType: string | undefined,
-	): Promise<string> {
-		if (connectionType !== 'https') {
-			return repositoryUrl;
-		}
-
+	private async getAuthorizedHttpsRepositoryUrl(repositoryUrl: string): Promise<string> {
 		const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
 		if (!credentials) {
 			throw new UnexpectedError('HTTPS connection type specified but no credentials found');
@@ -223,7 +216,9 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (Promise)');
 		}
-		if (sourceControlPreferences.initRepo) {
+		const { branchName, initRepo, repositoryUrl, connectionType } = sourceControlPreferences;
+
+		if (initRepo) {
 			try {
 				await this.git.init();
 			} catch (error) {
@@ -231,14 +226,14 @@ export class SourceControlGitService {
 			}
 		}
 
-		const repositoryUrl = await this.getAuthorizedHttpsRepositoryUrl(
-			sourceControlPreferences.repositoryUrl,
-			sourceControlPreferences.connectionType,
-		);
-
 		try {
-			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, repositoryUrl);
-			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
+			const authorizedRepositoryUrl =
+				connectionType === 'https'
+					? await this.getAuthorizedHttpsRepositoryUrl(repositoryUrl)
+					: repositoryUrl;
+			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, authorizedRepositoryUrl);
+			// make sure to not log authorized url
+			this.logger.debug(`Git remote added: ${repositoryUrl}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
 				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
@@ -253,13 +248,13 @@ export class SourceControlGitService {
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
 
-		await this.trackRemoteIfReady(sourceControlPreferences.branchName);
+		await this.trackRemoteIfReady(branchName);
 
-		if (sourceControlPreferences.initRepo) {
+		if (initRepo) {
 			try {
 				const branches = await this.getBranches();
 				if (branches.branches?.length === 0) {
-					await this.git.raw(['branch', '-M', sourceControlPreferences.branchName]);
+					await this.git.raw(['branch', '-M', branchName]);
 				}
 			} catch (error) {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
