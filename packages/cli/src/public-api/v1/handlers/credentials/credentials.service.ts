@@ -155,7 +155,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	};
 
 	const optionsValues: { [key: string]: string[] } = {};
-	const resolveProperties: string[] = [];
 
 	// get all possible values of properties type "options"
 	// so we can later resolve the displayOptions dependencies
@@ -169,7 +168,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 
 	let requiredFields: string[] = [];
 
-	const propertyRequiredDependencies: { [key: string]: IDependency } = {};
+	const propertyRequiredDependencies: { [key: string]: { [value: string]: string[] } } = {};
 
 	// add all credential's properties to the properties
 	// object in the JSON Schema definition. This allows us
@@ -219,100 +218,112 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				propertyRequiredDependencies[dependantName] = {};
 			}
 
-			if (!resolveProperties.includes(dependantName)) {
-				let conditionalValue;
-				if (typeof dependantValue === 'object' && dependantValue._cnd) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
+			const valueKey =
+				typeof dependantValue === 'object' && dependantValue._cnd
+					? JSON.stringify(dependantValue._cnd)
+					: String(dependantValue);
 
-					if (key === 'eq') {
-						conditionalValue = {
-							const: [targetValue],
-						};
-					} else if (key === 'not') {
-						conditionalValue = {
-							not: {
-								const: [targetValue],
-							},
-						};
-					} else if (key === 'gt') {
-						conditionalValue = {
-							type: 'number',
-							exclusiveMinimum: [targetValue],
-						};
-					} else if (key === 'gte') {
-						conditionalValue = {
-							type: 'number',
-							minimum: [targetValue],
-						};
-					} else if (key === 'lt') {
-						conditionalValue = {
-							type: 'number',
-							exclusiveMaximum: [targetValue],
-						};
-					} else if (key === 'lte') {
-						conditionalValue = {
-							type: 'number',
-							maximum: [targetValue],
-						};
-					} else if (key === 'startsWith') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `^${targetValue}`,
-						};
-					} else if (key === 'endsWith') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}$`,
-						};
-					} else if (key === 'includes') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}`,
-						};
-					} else if (key === 'regex') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}`,
-						};
-					} else {
-						conditionalValue = {
-							enum: [dependantValue],
-						};
-					}
+			if (!propertyRequiredDependencies[dependantName][valueKey]) {
+				propertyRequiredDependencies[dependantName][valueKey] = [];
+			}
+
+			propertyRequiredDependencies[dependantName][valueKey].push(property.name);
+
+			requiredFields = requiredFields.filter((field) => field !== property.name);
+		}
+	});
+
+	const conditionalSchemas: any[] = [];
+
+	Object.entries(propertyRequiredDependencies).forEach(([dependantName, valueGroups]) => {
+		Object.entries(valueGroups).forEach(([valueKey, propertyNames]) => {
+			let dependantValue: any;
+
+			try {
+				dependantValue = JSON.parse(valueKey);
+			} catch {
+				dependantValue = valueKey;
+			}
+			let conditionalValue;
+			if (typeof dependantValue === 'object' && dependantValue._cnd) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
+
+				if (key === 'eq') {
+					conditionalValue = {
+						const: targetValue,
+					};
+				} else if (key === 'not') {
+					conditionalValue = {
+						not: {
+							const: targetValue,
+						},
+					};
+				} else if (key === 'gt') {
+					conditionalValue = {
+						type: 'number',
+						exclusiveMinimum: targetValue,
+					};
+				} else if (key === 'gte') {
+					conditionalValue = {
+						type: 'number',
+						minimum: targetValue,
+					};
+				} else if (key === 'lt') {
+					conditionalValue = {
+						type: 'number',
+						exclusiveMaximum: targetValue,
+					};
+				} else if (key === 'lte') {
+					conditionalValue = {
+						type: 'number',
+						maximum: targetValue,
+					};
+				} else if (key === 'startsWith') {
+					conditionalValue = {
+						type: 'string',
+						pattern: `^${targetValue}`,
+					};
+				} else if (key === 'endsWith') {
+					conditionalValue = {
+						type: 'string',
+						pattern: `${targetValue}$`,
+					};
+				} else if (key === 'includes') {
+					conditionalValue = {
+						type: 'string',
+						pattern: `${targetValue}`,
+					};
+				} else if (key === 'regex') {
+					conditionalValue = {
+						type: 'string',
+						pattern: `${targetValue}`,
+					};
 				} else {
 					conditionalValue = {
 						enum: [dependantValue],
 					};
 				}
-				propertyRequiredDependencies[dependantName] = {
-					if: {
-						properties: {
-							[dependantName]: conditionalValue,
-						},
-					},
-					then: {
-						allOf: [],
-					},
-					else: {
-						allOf: [],
-					},
+			} else {
+				conditionalValue = {
+					enum: [dependantValue],
 				};
 			}
-
-			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependantName].else?.allOf.push({
-				not: { required: [property.name] },
+			conditionalSchemas.push({
+				if: {
+					properties: {
+						[dependantName]: conditionalValue,
+					},
+				},
+				then: {
+					required: propertyNames,
+				},
 			});
-
-			resolveProperties.push(dependantName);
-			// remove global required
-			requiredFields = requiredFields.filter((field) => field !== property.name);
-		}
+		});
 	});
 	Object.assign(jsonSchema, { required: requiredFields });
 
-	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+	jsonSchema.allOf = conditionalSchemas;
 
 	if (!jsonSchema.allOf.length) {
 		delete jsonSchema.allOf;
