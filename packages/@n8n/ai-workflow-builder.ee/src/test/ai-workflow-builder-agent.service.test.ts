@@ -662,4 +662,28 @@ describe('AiWorkflowBuilderService', () => {
 			expect(sessions.sessions[0].sessionId).toBe('test-thread-id');
 		});
 	});
+
+	describe('getBuilderInstanceCredits', () => {
+		it('should return builder instance credits when client is available', async () => {
+			const expectedCredits = {
+				creditsQuota: 100,
+				creditsClaimed: 25,
+			};
+
+			(mockClient.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
+
+			const result = await service.getBuilderInstanceCredits(mockUser);
+
+			expect(result).toEqual(expectedCredits);
+			expect(mockClient.getBuilderInstanceCredits).toHaveBeenCalledWith(mockUser);
+		});
+
+		it('should throw error when client is not configured', async () => {
+			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
+
+			await expect(serviceWithoutClient.getBuilderInstanceCredits(mockUser)).rejects.toThrow(
+				'AI Assistant client is not setup',
+			);
+		});
+	});
 });

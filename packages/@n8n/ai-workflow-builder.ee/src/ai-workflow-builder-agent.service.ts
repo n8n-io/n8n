@@ -326,4 +326,9 @@ export class AiWorkflowBuilderService {
 
 		return { sessions };
 	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		assert(this.client, 'AI Assistant client is not setup');
+		return await this.client.getBuilderInstanceCredits(user);
+	}
 }

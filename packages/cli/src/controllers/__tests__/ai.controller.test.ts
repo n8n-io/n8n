@@ -397,4 +397,30 @@ describe('AiController', () => {
 			});
 		});
 	});
+
+	describe('getBuilderCredits', () => {
+		it('should return builder instance credits successfully', async () => {
+			const expectedCredits: AiAssistantSDK.BuilderInstanceCreditsResponse = {
+				creditsQuota: 100,
+				creditsClaimed: 25,
+			};
+
+			workflowBuilderService.getBuilderInstanceCredits.mockResolvedValue(expectedCredits);
+
+			const result = await controller.getBuilderCredits(request, response);
+
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+			expect(result).toEqual(expectedCredits);
+		});
+
+		it('should throw InternalServerError if getting credits fails', async () => {
+			const mockError = new Error('Failed to get credits');
+			workflowBuilderService.getBuilderInstanceCredits.mockRejectedValue(mockError);
+
+			await expect(controller.getBuilderCredits(request, response)).rejects.toThrow(
+				InternalServerError,
+			);
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+		});
+	});
 });

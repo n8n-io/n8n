@@ -8,7 +8,7 @@ import {
 	AiSessionRetrievalRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -217,6 +217,19 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Get('/build/credits')
+	async getBuilderCredits(
+		req: AuthenticatedRequest,
+		_: Response,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		try {
+			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
