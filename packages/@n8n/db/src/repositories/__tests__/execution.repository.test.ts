@@ -5,7 +5,7 @@ import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
 
-const GREATER_THAN_MAX_UPDATE_THRESHOLD = 32001;
+const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
 /**
  * TODO: add tests for all the other methods

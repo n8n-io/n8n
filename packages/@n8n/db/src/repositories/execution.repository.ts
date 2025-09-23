@@ -125,8 +125,8 @@ const moreThanOrEqual = (date: string): unknown => {
 };
 
 // This is the max number of elements in an IN-clause.
-// It's picked to work with the defaults for SQLite/Postgres/MySQL as of September 2025.
-const MAX_UPDATE_BATCH_SIZE = 32000;
+// It's a conservative value, as some databases indicate limits around 1000.
+const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
