@@ -124,6 +124,10 @@ const moreThanOrEqual = (date: string): unknown => {
 	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
 };
 
+// This is the max number of elements in an IN-clause.
+// It's picked to work with the defaults for SQLite/Postgres/MySQL as of September 2025.
+const MAX_UPDATE_BATCH_SIZE = 32000;
+
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
@@ -382,15 +386,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async markAsCrashed(executionIds: string | string[]) {
 		if (!Array.isArray(executionIds)) executionIds = [executionIds];
 
-		await this.update(
-			{ id: In(executionIds) },
-			{
-				status: 'crashed',
-				stoppedAt: new Date(),
-			},
-		);
-
-		this.logger.info('Marked executions as `crashed`', { executionIds });
+		let processed: number = 0;
+		while (processed < executionIds.length) {
+			// NOTE: if a slice goes past the end of the array, it just returns up til the end.
+			const batch: string[] = executionIds.slice(processed, processed + MAX_UPDATE_BATCH_SIZE);
+			await this.update(
+				{ id: In(batch) },
+				{
+					status: 'crashed',
+					stoppedAt: new Date(),
+				},
+			);
+			this.logger.info('Marked executions as `crashed`', { executionIds });
+			// Updated processed count
+			processed += batch.length;
+		}
 	}
 
 	/**
