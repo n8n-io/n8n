@@ -62,7 +62,7 @@ export class ExportService {
 
 			// Get column information for this table
 			const columnNames = metadata.columns.map((col) => col.databaseName);
-			const columns = columnNames.map(this.dataSource.driver.escape);
+			const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
 			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
 			let offset = 0;
