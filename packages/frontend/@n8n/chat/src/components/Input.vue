@@ -381,7 +381,7 @@ function adjustTextAreaHeight() {
 	}
 }
 .chat-inputs {
-	width: 100%;
+	width: var(--chat--input--width, 100%);
 	display: flex;
 	justify-content: center;
 	align-items: flex-end;

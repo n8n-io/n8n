@@ -190,7 +190,6 @@ async function initializeChat() {
 	chatApp = createApp(Chat);
 	chatApp.use(ChatPlugin, chatOptions.value);
 	chatApp.mount(chatContainer.value);
-	console.log('✅ Chat initialized successfully');
 }
 
 function destroyChat() {
@@ -444,7 +443,7 @@ onUnmounted(() => {
 
 		/* Body and Footer */
 		--chat--body--background: var(--color-background-light);
-		--chat--footer--background: var(--color-background-base) !important;
+		--chat--footer--background: var(--color-background-light);
 		--chat--footer--color: var(--color-text-base) !important;
 
 		/* Messages List */
@@ -471,11 +470,12 @@ onUnmounted(() => {
 		--chat--message--pre--background: var(--color-background-xlight) !important;
 
 		/* Footer Container */
-		--chat--footer--background: var(--color-background-base) !important;
 		--chat--footer--padding: var(--spacing-m) !important;
+		--chat--footer--border-top: none !important;
 
 		/* Input Container - unified rounded container */
-		--chat--input--container--background: var(--color-background-light) !important;
+		--chat--input--width: 90% !important;
+		--chat--input--container--background: var(--color-background-xlight) !important;
 		--chat--input--container--border: 1px solid var(--color-foreground-light) !important;
 		--chat--input--container--border-radius: 24px !important;
 		--chat--input--container--padding: 12px !important;
@@ -509,7 +509,7 @@ onUnmounted(() => {
 		--chat--input--file--button--background-hover: transparent !important;
 
 		/* Message Action Buttons */
-		--chat--message-actions--gap: 8px !important;
+		--chat--message-actions--gap: var(--spacing-s) !important;
 		--chat--message-actions--button-size: 28px !important;
 		--chat--message-actions--button-border: none !important;
 		--chat--message-actions--button-border-radius: 6px !important;
@@ -534,8 +534,9 @@ onUnmounted(() => {
 		:global(.chat-layout) {
 			/* Body and Footer - darker background like the old design */
 			--chat--body--background: var(--color-background-xlight) !important;
-			--chat--footer--background: var(--color-background-dark) !important;
+			--chat--footer--background: var(--color-background-xlight) !important;
 			--chat--footer--color: var(--color-text-base) !important;
+			--chat--footer--border-top: none !important;
 
 			/* Bot Messages - darker background with subtle border */
 			--chat--message--bot--background: var(--color-background-medium) !important;
@@ -550,12 +551,13 @@ onUnmounted(() => {
 			--chat--message--pre--background: var(--color-background-base) !important;
 
 			/* Input Area - match the old design's input styling */
-			--chat--input--background: var(--color-background-medium) !important;
+			--chat--input--background: var(--color-background-light) !important;
 			--chat--input--text-color: var(--color-text-base) !important;
 			--chat--input--border: 1px solid var(--color-foreground-base) !important;
 			--chat--input--border-active: 1px solid var(--color-primary) !important;
 
 			/* Message Action Buttons - dark mode */
+			--chat--message-actions--button-size: 16px;
 			--chat--message-actions--button-background: transparent !important;
 			--chat--message-actions--button-color: rgba(255, 255, 255, 0.6) !important;
 			--chat--message-actions--button-border: none !important;
