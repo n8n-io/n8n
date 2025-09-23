@@ -22,8 +22,8 @@ catalogs:
       specifier: 0.3.20-12
       version: 0.3.20-12
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.15.0
-      version: 1.15.0
+      specifier: 1.16.0
+      version: 1.16.0
     '@sentry/node':
       specifier: ^9.42.1
       version: 9.42.1
@@ -420,7 +420,7 @@ importers:
         version: link:../di
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.15.0
+        version: 1.16.0
       langsmith:
         specifier: ^0.3.45
         version: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1500,7 +1500,7 @@ importers:
         version: 0.3.20-12(@sentry/node@9.42.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.15.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.15.0
+        version: 1.16.0
       '@n8n_io/license-sdk':
         specifier: 2.23.0
         version: 2.23.0
@@ -5882,8 +5882,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.15.0':
-    resolution: {integrity: sha512-M/bNnxyVGxwLGU/mzQrZOkZK4NkR9x8cUMZHfVJlv1z6YTlHX56BYH+0jSlb2c15DEwPkku9l0RFVLTTt0ExQQ==}
+  '@n8n_io/ai-assistant-sdk@1.16.0':
+    resolution: {integrity: sha512-oKgwsklG5dLk6U9BhW814Xk+9zYYYF3nCT2IHDadt/mrjke4qLBTsvoMOUC+iYQOfygaqdZ5RbeIMzA1/4U5tA==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.23.0':
@@ -16352,8 +16352,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.0.7:
-    resolution: {integrity: sha512-TvyUcFXmjZcXUvU+r1MOyn4/vv4iF+tPwg5Ig33l/FJ3myZkxeQpzzQMLMFWcQAjr6Xs7BRwVy/TwbmNZUA/4w==}
+  vue-component-type-helpers@3.0.8:
+    resolution: {integrity: sha512-WyR30Eq15Y/+odrUUMax6FmPbZwAp/HnC7qgR1r3lVFAcqwQ4wUoV79Mbh4SxDy3NiqDa+G4TOKD5xXSgBHo5A==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -20323,7 +20323,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.15.0': {}
+  '@n8n_io/ai-assistant-sdk@1.16.0': {}
 
   '@n8n_io/license-sdk@2.23.0':
     dependencies:
@@ -21793,7 +21793,7 @@ snapshots:
       storybook: 9.1.6(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.0.7
+      vue-component-type-helpers: 3.0.8
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -33292,7 +33292,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.0.7: {}
+  vue-component-type-helpers@3.0.8: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
