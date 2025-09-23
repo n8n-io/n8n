@@ -43,6 +43,7 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 // This will be used to filter out items that are already visible in the breadcrumbs
 const visibleIds = ref<Set<string>>(new Set());
 
+// For shared context we do not show any folder breadcrumbs, only project badge
 const isSharedContext = computed(() => projectsStore.projectNavActiveId === 'shared');
 
 const currentProject = computed(() => {
@@ -76,7 +77,7 @@ const hasMoreItems = computed(() => {
 
 const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	visibleIds.value.clear();
-	if (!props.currentFolder) return [];
+	if (!props.currentFolder || isSharedContext.value) return [];
 
 	const items: FolderPathItem[] = [];
 	// Only show parent folder if we are showing 2 levels of visible breadcrumbs
@@ -111,7 +112,12 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 });
 
 const fetchHiddenBreadCrumbsItems = async () => {
-	if (!projectName.value || !props.currentFolder?.parentFolder || !currentProject.value) {
+	if (
+		!projectName.value ||
+		!props.currentFolder?.parentFolder ||
+		isSharedContext.value ||
+		!currentProject.value
+	) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
 		try {
@@ -199,10 +205,9 @@ onBeforeUnmount(() => {
 			@item-hover="onItemHover"
 			@item-drop="emit('itemDrop', $event)"
 		>
-			<template v-if="currentProject || isSharedContext" #prepend>
+			<template v-if="currentProject" #prepend>
 				<ProjectBreadcrumb
 					:current-project="currentProject"
-					:is-shared="isSharedContext"
 					:is-dragging="isDragging"
 					@project-drop="onProjectDrop"
 					@project-hover="onProjectHover"

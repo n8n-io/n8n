@@ -125,7 +125,7 @@ describe('FolderBreadcrumbs', () => {
 		expect(queryByTestId('ellipsis')).not.toBeInTheDocument();
 	});
 
-	it('should render personal project as fallback', () => {
+	it('should render personal project as fallback when not in shared context', () => {
 		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = TEST_PROJECT;
@@ -140,63 +140,18 @@ describe('FolderBreadcrumbs', () => {
 		expect(getByTestId('home-project')).toBeVisible();
 	});
 
-	describe('Shared context', () => {
-		it('should render shared project breadcrumb when in shared context', () => {
-			projectsStore.currentProject = null;
-			projectsStore.projectNavActiveId = 'shared';
+	it('should not render folder breadcrumbs in shared context', () => {
+		projectsStore.currentProject = null;
+		projectsStore.projectNavActiveId = 'shared';
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
 
-			const { getByTestId } = renderComponent({
-				props: {
-					currentFolder: null,
-				},
-			});
-
-			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
-			expect(getByTestId('home-project')).toBeVisible();
+		const { getByTestId, queryAllByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER,
+			},
 		});
 
-		it('should render shared project breadcrumb with folder when in shared context', () => {
-			projectsStore.currentProject = null;
-			projectsStore.projectNavActiveId = 'shared';
-			foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
-
-			const { getByTestId, queryAllByTestId } = renderComponent({
-				props: {
-					currentFolder: TEST_FOLDER,
-				},
-			});
-
-			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
-			expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(1);
-		});
-
-		it('should not render personal project fallback when in shared context', () => {
-			projectsStore.currentProject = null;
-			projectsStore.personalProject = TEST_PROJECT;
-			projectsStore.projectNavActiveId = 'shared';
-
-			const { getByTestId } = renderComponent({
-				props: {
-					currentFolder: null,
-				},
-			});
-
-			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
-			expect(getByTestId('home-project')).toBeVisible();
-		});
-
-		it('should render regular project when not in shared context', () => {
-			projectsStore.currentProject = TEST_PROJECT;
-			projectsStore.projectNavActiveId = TEST_PROJECT.id;
-
-			const { getByTestId } = renderComponent({
-				props: {
-					currentFolder: null,
-				},
-			});
-
-			expect(getByTestId('folder-breadcrumbs')).toBeVisible();
-			expect(getByTestId('home-project')).toBeVisible();
-		});
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(0);
 	});
 });
