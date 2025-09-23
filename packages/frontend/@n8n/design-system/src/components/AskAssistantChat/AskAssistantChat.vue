@@ -54,7 +54,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
-	maxLength: 2000,
+	maxLength: undefined,
+	placeholder: undefined,
 });
 
 function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
