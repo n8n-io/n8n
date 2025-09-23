@@ -154,167 +154,97 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		required: [],
 	};
 
-	const optionsValues: { [key: string]: string[] } = {};
-	const resolveProperties: string[] = [];
-
-	// get all possible values of properties type "options"
-	// so we can later resolve the displayOptions dependencies
-	properties
-		.filter((property) => property.type === 'options')
-		.forEach((property) => {
-			Object.assign(optionsValues, {
-				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
-			});
-		});
-
+	// Track properties with display conditions
+	const conditionalProperties: { [key: string]: INodeProperties[] } = {};
+	const unconditionalProperties: INodeProperties[] = [];
 	let requiredFields: string[] = [];
 
-	const propertyRequiredDependencies: { [key: string]: IDependency } = {};
-
-	// add all credential's properties to the properties
-	// object in the JSON Schema definition. This allows us
-	// to later validate that only this properties are set in
-	// the credentials sent in the API call.
-	// eslint-disable-next-line complexity
+	// Separate conditional and unconditional properties
 	properties.forEach((property) => {
-		if (property.required) {
-			requiredFields.push(property.name);
-		}
-		if (property.type === 'options') {
-			// if the property is type options,
-			// include all possible values in the enum property.
-			Object.assign(jsonSchema.properties, {
-				[property.name]: {
-					type: 'string',
-					enum: property.options?.map((data: INodePropertyOptions) => data.value),
-				},
-			});
-		} else {
-			Object.assign(jsonSchema.properties, {
-				[property.name]: {
-					type: property.type,
-				},
-			});
-		}
-
-		// if the credential property has a dependency
-		// then add a JSON Schema condition that satisfy each property value
-		// e.x: If A has value X then required B, else required C
-		// see https://json-schema.org/understanding-json-schema/reference/conditionals.html#if-then-else
 		if (property.displayOptions?.show) {
-			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
-			const displayOptionsValues = property.displayOptions.show[dependantName];
-			let dependantValue: DisplayCondition | string | number | boolean = '';
-
-			if (
-				displayOptionsValues &&
-				Array.isArray(displayOptionsValues) &&
-				displayOptionsValues[0] !== undefined &&
-				displayOptionsValues[0] !== null
-			) {
-				dependantValue = displayOptionsValues[0];
+			const dependantName = Object.keys(property.displayOptions.show)[0];
+			if (!conditionalProperties[dependantName]) {
+				conditionalProperties[dependantName] = [];
 			}
-
-			if (propertyRequiredDependencies[dependantName] === undefined) {
-				propertyRequiredDependencies[dependantName] = {};
+			conditionalProperties[dependantName].push(property);
+		} else {
+			unconditionalProperties.push(property);
+			if (property.required) {
+				requiredFields.push(property.name);
 			}
-
-			if (!resolveProperties.includes(dependantName)) {
-				let conditionalValue;
-				if (typeof dependantValue === 'object' && dependantValue._cnd) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
-
-					if (key === 'eq') {
-						conditionalValue = {
-							const: [targetValue],
-						};
-					} else if (key === 'not') {
-						conditionalValue = {
-							not: {
-								const: [targetValue],
-							},
-						};
-					} else if (key === 'gt') {
-						conditionalValue = {
-							type: 'number',
-							exclusiveMinimum: [targetValue],
-						};
-					} else if (key === 'gte') {
-						conditionalValue = {
-							type: 'number',
-							minimum: [targetValue],
-						};
-					} else if (key === 'lt') {
-						conditionalValue = {
-							type: 'number',
-							exclusiveMaximum: [targetValue],
-						};
-					} else if (key === 'lte') {
-						conditionalValue = {
-							type: 'number',
-							maximum: [targetValue],
-						};
-					} else if (key === 'startsWith') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `^${targetValue}`,
-						};
-					} else if (key === 'endsWith') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}$`,
-						};
-					} else if (key === 'includes') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}`,
-						};
-					} else if (key === 'regex') {
-						conditionalValue = {
-							type: 'string',
-							pattern: `${targetValue}`,
-						};
-					} else {
-						conditionalValue = {
-							enum: [dependantValue],
-						};
-					}
-				} else {
-					conditionalValue = {
-						enum: [dependantValue],
-					};
-				}
-				propertyRequiredDependencies[dependantName] = {
-					if: {
-						properties: {
-							[dependantName]: conditionalValue,
-						},
-					},
-					then: {
-						allOf: [],
-					},
-					else: {
-						allOf: [],
-					},
-				};
-			}
-
-			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
-			propertyRequiredDependencies[dependantName].else?.allOf.push({
-				not: { required: [property.name] },
-			});
-
-			resolveProperties.push(dependantName);
-			// remove global required
-			requiredFields = requiredFields.filter((field) => field !== property.name);
 		}
 	});
-	Object.assign(jsonSchema, { required: requiredFields });
 
-	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+	// Add unconditional properties to schema
+	unconditionalProperties.forEach((property) => {
+		if (property.type === 'options') {
+			jsonSchema.properties[property.name] = {
+				type: 'string',
+				enum: property.options?.map((option: INodePropertyOptions) => option.value),
+			};
+		} else {
+			jsonSchema.properties[property.name] = {
+				type: property.type,
+			};
+		}
+	});
 
-	if (!jsonSchema.allOf.length) {
+	// Handle conditional properties
+	const allOfConditions: any[] = [];
+
+	Object.entries(conditionalProperties).forEach(([dependantName, dependentProps]) => {
+		// Group properties by their condition values
+		const conditionGroups: { [key: string]: INodeProperties[] } = {};
+
+		dependentProps.forEach((prop) => {
+			const displayOptionsValues = prop.displayOptions?.show?.[dependantName];
+			if (displayOptionsValues && Array.isArray(displayOptionsValues)) {
+				const conditionValue = displayOptionsValues[0];
+				const key = String(conditionValue);
+				if (!conditionGroups[key]) {
+					conditionGroups[key] = [];
+				}
+				conditionGroups[key].push(prop);
+			}
+		});
+
+		// Create conditional schemas for each condition value
+		Object.entries(conditionGroups).forEach(([conditionValue, props]) => {
+			const conditionSchema: any = {
+				if: {
+					properties: {
+						[dependantName]: { const: conditionValue },
+					},
+				},
+				then: {
+					properties: {},
+					additionalProperties: false,
+				},
+			};
+
+			// Add properties that should be available for this condition
+			props.forEach((prop) => {
+				if (prop.type === 'options') {
+					conditionSchema.then.properties[prop.name] = {
+						type: 'string',
+						enum: prop.options?.map((option: INodePropertyOptions) => option.value),
+					};
+				} else {
+					conditionSchema.then.properties[prop.name] = {
+						type: prop.type,
+					};
+				}
+			});
+
+			allOfConditions.push(conditionSchema);
+		});
+	});
+
+	// Set required fields and allOf conditions
+	jsonSchema.required = requiredFields;
+	if (allOfConditions.length > 0) {
+		jsonSchema.allOf = allOfConditions;
+	} else {
 		delete jsonSchema.allOf;
 	}
 
