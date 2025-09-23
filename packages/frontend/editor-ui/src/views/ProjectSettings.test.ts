@@ -312,17 +312,16 @@ describe('ProjectSettings', () => {
 	});
 
 	it('renders core form elements and initializes state', async () => {
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 		await nextTick();
 		expect(getByTestId('project-settings-container')).toBeInTheDocument();
 		const nameInput = getByTestId('project-settings-name-input');
 		const descriptionInput = getByTestId('project-settings-description-input');
-		const saveButton = getByTestId('project-settings-save-button');
-		const cancelButton = getByTestId('project-settings-cancel-button');
 		expect(nameInput).toBeInTheDocument();
 		expect(descriptionInput).toBeInTheDocument();
-		expect(saveButton).toBeDisabled();
-		expect(cancelButton).toBeDisabled();
+		// Save/Cancel are not rendered until form is dirty
+		expect(queryByTestId('project-settings-save-button')).toBeNull();
+		expect(queryByTestId('project-settings-cancel-button')).toBeNull();
 		const actualName = getInput(nameInput);
 		const actualDesc = getTextarea(descriptionInput);
 		expect(actualName.value).toBe('Test Project');
@@ -332,18 +331,19 @@ describe('ProjectSettings', () => {
 	describe('Form interactions', () => {
 		it('marks dirty, cancels reset, and saves via Enter and button', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-			const cancelButton = getByTestId('project-settings-cancel-button');
 			const actualInput = getInput(nameInput);
 
 			// Dirty then cancel
 			await userEvent.type(actualInput, ' Extra');
-			expect(cancelButton).toBeEnabled();
-			await userEvent.click(cancelButton);
+			const cancelBtn1 = getByTestId('project-settings-cancel-button');
+			expect(cancelBtn1).toBeEnabled();
+			await userEvent.click(cancelBtn1);
 			expect(actualInput.value).toBe('Test Project');
-			expect(cancelButton).toBeDisabled();
+			// Buttons disappear when clean
+			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 
 			// Save via Enter
 			await userEvent.type(actualInput, ' - Updated');
@@ -361,8 +361,9 @@ describe('ProjectSettings', () => {
 
 			// Save via button
 			await userEvent.type(actualInput, ' Again');
-			expect(saveButton).toBeEnabled();
-			await userEvent.click(saveButton);
+			const saveBtn = getByTestId('project-settings-save-button');
+			expect(saveBtn).toBeEnabled();
+			await userEvent.click(saveBtn);
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalledTimes(2);
 			expect(mockShowMessage).toHaveBeenCalledTimes(2);
@@ -375,7 +376,6 @@ describe('ProjectSettings', () => {
 			projectsStore.updateProject.mockRejectedValue(error);
 			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
 			const actualInput = getInput(nameInput);
 
 			await userEvent.type(actualInput, ' Updated');
@@ -387,8 +387,9 @@ describe('ProjectSettings', () => {
 
 			projectsStore.updateProject.mockClear();
 			await userEvent.clear(actualInput);
-			expect(saveButton).toBeDisabled();
-			await userEvent.click(saveButton);
+			const saveButton2 = getByTestId('project-settings-save-button');
+			expect(saveButton2).toBeDisabled();
+			await userEvent.click(saveButton2);
 			expect(projectsStore.updateProject).not.toHaveBeenCalled();
 		});
 	});
@@ -396,22 +397,22 @@ describe('ProjectSettings', () => {
 	describe('Save state and validation', () => {
 		it('maintains state after save and validation toggles', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const saveButton = getByTestId('project-settings-save-button');
 			const actualInput = getInput(nameInput);
 
 			await userEvent.clear(actualInput);
+			const saveButton = getByTestId('project-settings-save-button');
 			expect(saveButton).toBeDisabled();
 			await userEvent.type(actualInput, 'Valid Project Name');
 			expect(saveButton).toBeEnabled();
-			expect(cancelButton).toBeEnabled();
+			expect(getByTestId('project-settings-cancel-button')).toBeEnabled();
 			await userEvent.click(saveButton);
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalled();
-			expect(cancelButton).toBeDisabled();
-			expect(saveButton).toBeDisabled();
+			// Buttons removed when clean again
+			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 		});
 	});
 
@@ -509,10 +510,8 @@ describe('ProjectSettings', () => {
 				expect.objectContaining({ project_id: '123', target_user_id: '1' }),
 			);
 
-			// Save should not re-add removed user
-			await userEvent.click(getByTestId('project-settings-save-button'));
-			await nextTick();
-			expect(queryByTestId('members-count')).toBeNull();
+			// Save button is not shown (no form edits)
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 		});
 
 		it('saves only name and description with Save button', async () => {

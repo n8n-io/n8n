@@ -500,7 +500,7 @@ onMounted(() => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
-				<div :class="$style['project-name']">
+				<div :class="$style.projectName">
 					<N8nIconPicker
 						v-model="projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
@@ -515,7 +515,7 @@ onMounted(() => {
 						name="name"
 						required
 						data-test-id="project-settings-name-input"
-						:class="$style['project-name-input']"
+						:class="$style.projectNameInput"
 						@enter="onSubmit"
 						@input="onTextInput"
 						@validate="isValid = $event"
@@ -533,20 +533,18 @@ onMounted(() => {
 					:maxlength="512"
 					:autosize="true"
 					data-test-id="project-settings-description-input"
-					:class="$style['project-description-input']"
+					:class="$style.projectDescriptionInput"
 					@enter="onSubmit"
 					@input="onTextInput"
 					@validate="isValid = $event"
 				/>
 			</fieldset>
-			<!-- Action buttons moved directly under description to only affect name/description -->
-			<fieldset :class="$style.buttons">
+			<fieldset v-if="isDirty" :class="$style.buttons">
 				<div>
-					<small v-if="isDirty" class="mr-2xs">{{
+					<small class="mr-2xs">{{
 						i18n.baseText('projects.settings.message.unsavedChanges')
 					}}</small>
 					<N8nButton
-						:disabled="!isDirty"
 						type="secondary"
 						native-type="button"
 						class="mr-2xs"
@@ -556,14 +554,18 @@ onMounted(() => {
 					>
 				</div>
 				<N8nButton
-					:disabled="!isDirty || !isValid"
+					:disabled="!isValid"
 					type="primary"
 					data-test-id="project-settings-save-button"
 					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
 				>
 			</fieldset>
 			<fieldset>
-				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
+				<h3>
+					<label for="projectMembers">{{
+						i18n.baseText('projects.settings.projectMembers')
+					}}</label>
+				</h3>
 				<N8nUserSelect
 					id="projectMembers"
 					class="mb-s"
@@ -650,6 +652,12 @@ onMounted(() => {
 		fieldset {
 			padding-bottom: var(--spacing-xl);
 
+			h3 {
+				label {
+					font-size: var(--font-size-l);
+				}
+			}
+
 			label {
 				display: block;
 				margin-bottom: var(--spacing-xs);
@@ -684,22 +692,22 @@ onMounted(() => {
 	margin-bottom: var(--spacing-s);
 }
 
-.project-name {
+.projectName {
 	display: flex;
 	gap: var(--spacing-2xs);
 	max-width: var(--project-field-width);
 
-	.project-name-input {
+	.projectNameInput {
 		flex: 1;
 	}
 }
 
-.project-description-input {
+.projectDescriptionInput {
 	max-width: var(--project-field-width);
 }
 
 /* Ensure textarea uses regular UI font, not monospace */
-.project-description-input :global(textarea) {
+.projectDescriptionInput :global(textarea) {
 	font-family: var(--font-family);
 }
 </style>
