@@ -111,35 +111,6 @@ describe('SourceControl Integration Tests', () => {
 		});
 	});
 
-	describe('Credential Management', () => {
-		it('should handle HTTPS credentials securely', async () => {
-			// Arrange
-			const credentials = { username: 'testuser', password: 'secret' };
-
-			jest
-				.spyOn(mockPreferencesService, 'getDecryptedHttpsCredentials')
-				.mockResolvedValue(credentials);
-
-			// Act
-			const retrievedCredentials = await mockPreferencesService.getDecryptedHttpsCredentials();
-
-			// Assert
-			expect(retrievedCredentials).toEqual(credentials);
-			expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
-		});
-
-		it('should clean up credentials on disconnect', async () => {
-			// Arrange
-			jest.spyOn(mockPreferencesService, 'deleteHttpsCredentials').mockResolvedValue();
-
-			// Act
-			await mockPreferencesService.deleteHttpsCredentials();
-
-			// Assert
-			expect(mockPreferencesService.deleteHttpsCredentials).toHaveBeenCalled();
-		});
-	});
-
 	describe('URL Encoding and Security', () => {
 		it('should properly encode URLs with credentials', () => {
 			// Arrange
