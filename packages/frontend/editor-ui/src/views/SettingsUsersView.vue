@@ -81,6 +81,13 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
 		},
 		{
+			label: i18n.baseText('settings.users.actions.delete'),
+			value: 'delete',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+				user.id !== usersStore.currentUserId,
+		},
+		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
 			value: 'copyPasswordResetLink',
 			guard: (user) =>

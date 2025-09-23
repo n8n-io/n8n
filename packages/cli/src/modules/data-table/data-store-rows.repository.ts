@@ -82,7 +82,6 @@ function getConditionAndParams(
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
 		eq: '=',
-		neq: '!=',
 		gt: '>',
 		gte: '>=',
 		lt: '<',
@@ -91,6 +90,11 @@ function getConditionAndParams(
 
 	if (operators[filter.condition]) {
 		return [`${columnRef} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
+	}
+
+	// Special handling for neq to include NULL values (only if value is not null!)
+	if (filter.condition === 'neq') {
+		return [`(${columnRef} != :${paramName} OR ${columnRef} IS NULL)`, { [paramName]: value }];
 	}
 
 	switch (filter.condition) {
@@ -158,6 +162,18 @@ export class DataStoreRowsRepository {
 		columns: DataTableColumn[],
 		em: EntityManager,
 	) {
+		let insertedRows = 0;
+
+		// Special case: no columns, insert each row individually
+		if (columns.length === 0) {
+			for (const row of rows) {
+				const query = em.createQueryBuilder().insert().into(table).values(row);
+				await query.execute();
+				insertedRows++;
+			}
+			return { success: true, insertedRows } as const;
+		}
+
 		// DB systems have different maximum parameters per query
 		// with old sqlite versions having the lowest in 999 parameters
 		// In practice 20000 works here, but performance didn't meaningfully change
@@ -169,7 +185,6 @@ export class DataStoreRowsRepository {
 		const columnNames = columns.map((x) => x.name);
 		const dbType = this.dataSource.options.type;
 
-		let insertedRows = 0;
 		for (let i = 0; i < batches; ++i) {
 			const start = i * rowsPerBatch;
 			const endExclusive = Math.min(rows.length, (i + 1) * rowsPerBatch);

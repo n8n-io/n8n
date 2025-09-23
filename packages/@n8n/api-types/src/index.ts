@@ -49,12 +49,15 @@ export {
 
 export {
 	DATA_STORE_COLUMN_REGEX,
+	DATA_STORE_COLUMN_MAX_LENGTH,
+	DATA_STORE_COLUMN_ERROR_MESSAGE,
 	type DataStore,
 	type DataStoreColumn,
 	type DataStoreCreateColumnSchema,
 	type DataStoreListFilter,
 	type DataStoreListOptions,
 	dateTimeSchema,
+	dataStoreColumnNameSchema,
 } from './schemas/data-store.schema';
 
 export type {
