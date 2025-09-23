@@ -24,7 +24,7 @@ export class NocoDbApiToken implements ICredentialType {
 			displayName: 'Cloud NocoDB',
 			name: 'isCloudNocoDb',
 			type: 'boolean',
-			description: 'Switch this on if using NocoDB cloud at https://app.nocodb.com',
+			description: 'Turn this on if using NocoDB cloud at https://app.nocodb.com',
 			// cannot be true due to existing creds will also be set to true
 			default: false,
 		},
