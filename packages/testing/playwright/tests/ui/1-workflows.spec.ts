@@ -30,7 +30,7 @@ test.describe('Workflows', () => {
 	test('should create a new workflow using add workflow button and save successfully', async ({
 		n8n,
 	}) => {
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;

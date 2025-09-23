@@ -1,21 +1,17 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { AddResource } from './components/AddResource';
 
 export class WorkflowsPage extends BasePage {
+	readonly addResource = new AddResource(this.page);
+
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
 	}
 
 	async clickAddProjectButton() {
 		await this.clickByTestId('project-plus-button');
-	}
-
-	/**
-	 * This is the add workflow button on the workflows page, visible when there are already workflows.
-	 */
-	async clickAddWorkflowButton() {
-		await this.clickByTestId('add-resource-workflow');
 	}
 
 	/**

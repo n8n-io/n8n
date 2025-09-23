@@ -343,8 +343,7 @@ test.describe('Credentials', () => {
 
 		const projectId = await n8n.start.fromNewProject();
 		await n8n.navigate.toCredentials(projectId);
-		await n8n.credentials.addResourceButton.click();
-		await n8n.credentials.actionCredentialButton.click();
+		await n8n.credentials.addResource.credential();
 		await n8n.credentials.selectCredentialType('Notion API');
 		await n8n.canvas.credentialModal.fillField('apiKey', '1234567890');
 
