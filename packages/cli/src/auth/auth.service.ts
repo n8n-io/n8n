@@ -1,3 +1,4 @@
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -8,9 +9,9 @@ import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
+import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -52,6 +53,7 @@ export class AuthService {
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 		private readonly mfaService: MfaService,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -118,35 +120,26 @@ export class AuthService {
 		};
 	}
 
+	extractAPIKeyFromHeader(headerValue: string) {
+		if (!headerValue.startsWith('Bearer')) {
+			throw new AuthError('Invalid authorization header format');
+		}
+		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
+		if (apiKeyMatch) {
+			return apiKeyMatch[1];
+		}
+		throw new AuthError('Invalid authorization header format');
+	}
+
 	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
-		let apiKey = req.headers['authorization'] ?? req.headers['Authorization'];
-		if (!apiKey || typeof apiKey !== 'string') {
+		const headerValue = req.headers['authorization'];
+		if (!headerValue || typeof headerValue !== 'string') {
 			response.status(401).json({ status: 'error', message: 'API key is required' });
 			return;
 		}
-
-		// Remove 'Bearer ' prefix if present (case-insensitive)
-		const apiKeyMatch = apiKey.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			apiKey = apiKeyMatch[1];
-		}
-
 		try {
-			// If API key looks like a JWT, verify it to ensure it's not expired
-			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
-			const decoded = this.jwtService.decode(apiKey);
-			if (decoded) {
-				try {
-					this.jwtService.verify(apiKey);
-				} catch (e) {
-					console.log(e);
-					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
-						response.status(401).json({ status: 'error', message: 'Invalid API key' });
-						return;
-					}
-					throw e;
-				}
-			}
+			const apiKey = this.extractAPIKeyFromHeader(headerValue);
+
 			const user = await this.getUserForApiKey(apiKey);
 			if (user.disabled) {
 				response.status(403).json({ status: 'error', message: 'User is disabled' });
@@ -157,8 +150,26 @@ export class AuthService {
 				return;
 			}
 			req.user = user;
+
+			// If API key looks like a JWT, verify it to ensure it's not expired
+			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
+			const decoded = this.jwtService.decode(apiKey);
+			if (decoded) {
+				try {
+					this.jwtService.verify(apiKey);
+				} catch (e) {
+					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
+						response.status(401).json({ status: 'error', message: 'Invalid API key' });
+						return;
+					}
+					this.errorReporter.error(e);
+					throw e;
+				}
+			}
+
 			next();
 		} catch (error) {
+			this.errorReporter.error(error);
 			if (error instanceof AuthError) {
 				response.status(401).json({ status: 'error', message: 'Invalid API key' });
 			} else {
