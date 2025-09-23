@@ -10,7 +10,6 @@ import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { FrontendService } from './services/frontend.service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
@@ -26,7 +25,6 @@ export class CredentialsOverwrites {
 		private readonly logger: Logger,
 		private readonly settings: SettingsRepository,
 		private readonly cipher: Cipher,
-		private readonly frontendService: FrontendService,
 	) {}
 
 	async init() {
@@ -37,21 +35,25 @@ export class CredentialsOverwrites {
 				errorMessage: 'The credentials-overwrite is not valid JSON.',
 			});
 
-			await this.setData(overwriteData, false);
+			await this.setData(overwriteData, false, false);
 		}
 
 		const persistence = this.globalConfig.credentials.overwrite.persistence;
 
 		if (persistence) {
 			this.logger.debug('Loading overwrite credentials from database');
-			await this.loadOverwriteDataFromDB();
+			await this.loadOverwriteDataFromDB(false);
 		}
 	}
 
 	private reloading = false;
 
 	@OnPubSubEvent('reload-overwrite-credentials')
-	async loadOverwriteDataFromDB() {
+	async reloadOverwriteCredentials() {
+		await this.loadOverwriteDataFromDB(true);
+	}
+
+	async loadOverwriteDataFromDB(reloadFrontend: boolean) {
 		if (this.reloading) return;
 		try {
 			this.reloading = true;
@@ -64,7 +66,7 @@ export class CredentialsOverwrites {
 					errorMessage: 'The credentials-overwrite is not valid JSON.',
 				});
 
-				await this.setData(overwriteData, false);
+				await this.setData(overwriteData, false, reloadFrontend);
 			}
 		} catch (error) {
 			this.logger.error('Error loading overwrite credentials', { error });
@@ -113,7 +115,11 @@ export class CredentialsOverwrites {
 		};
 	}
 
-	async setData(overwriteData: ICredentialsOverwrite, storeInDb: boolean = true) {
+	async setData(
+		overwriteData: ICredentialsOverwrite,
+		storeInDb: boolean = true,
+		reloadFrontend: boolean = true,
+	) {
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
@@ -131,7 +137,16 @@ export class CredentialsOverwrites {
 			await this.saveOverwriteDataToDB(overwriteData, true);
 		}
 
-		await this.frontendService?.generateTypes();
+		if (reloadFrontend) {
+			await this.reloadFrontendService();
+		}
+	}
+
+	private async reloadFrontendService() {
+		// FrontendService has CredentialOverwrites injected via the constructor
+		// to break the circular dependency we need to use the container to get the instance
+		const { FrontendService } = await import('./services/frontend.service');
+		await Container.get(FrontendService)?.generateTypes();
 	}
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
