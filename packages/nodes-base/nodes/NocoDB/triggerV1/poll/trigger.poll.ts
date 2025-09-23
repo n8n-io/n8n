@@ -67,27 +67,32 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 		} else {
 			responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 		}
+		if (responseData?.length) {
+			const downloadAttachments = this.getNodeParameter(
+				'downloadAttachments',
+				undefined,
+			) as boolean;
 
-		const downloadAttachments = this.getNodeParameter('downloadAttachments', undefined) as boolean;
-
-		if (downloadAttachments) {
-			const downloadFieldNames = (
-				this.getNodeParameter('downloadFieldNames', undefined) as string
-			).split(',');
-			const response = await downloadRecordAttachments.call(
-				this,
-				responseData as IDataObject[],
-				downloadFieldNames,
-				[{ item: 0 }],
-			);
-			returnData.push.apply(returnData, response);
+			if (downloadAttachments) {
+				const downloadFieldNames = (
+					this.getNodeParameter('downloadFieldNames', undefined) as string
+				).split(',');
+				const response = await downloadRecordAttachments.call(
+					this,
+					responseData as IDataObject[],
+					downloadFieldNames,
+					[{ item: 0 }],
+				);
+				returnData.push.apply(returnData, response);
+			} else {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			}
+			webhookData.lastTimeChecked = endDate;
+			return [this.helpers.returnJsonArray(returnData)];
 		} else {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			return null;
 		}
-		webhookData.lastTimeChecked = endDate;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-
-	return [this.helpers.returnJsonArray(returnData)];
 }
