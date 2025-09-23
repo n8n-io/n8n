@@ -254,8 +254,10 @@ describe('AskAssistantChat', () => {
 		});
 
 		expect(wrapper.container).toMatchSnapshot();
-		const textarea = wrapper.queryByTestId('chat-input');
-		expect(textarea).toHaveAttribute('maxLength', '100');
+		// textarea is inside N8nPromptInput
+		const promptInput = wrapper.queryByTestId('chat-input');
+		const textarea = promptInput?.querySelector('textarea');
+		expect(textarea).toHaveAttribute('maxlength', '100');
 	});
 
 	describe('collapseToolMessages', () => {
