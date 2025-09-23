@@ -11,6 +11,7 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -20,28 +21,29 @@ const { showError, showMessage } = useToast();
 const rolesStore = useRolesStore();
 const router = useRouter();
 const message = useMessage();
+const i18n = useI18n();
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
-		title: 'Name',
+		title: i18n.baseText('projectRoles.sourceControl.table.name'),
 		key: 'displayName',
 		width: 400,
 		disableSort: true,
 	},
 	{
-		title: 'Type',
+		title: i18n.baseText('projectRoles.sourceControl.table.type'),
 		key: 'systemRole',
 		disableSort: true,
 	},
 	{
-		title: 'Assigned to',
+		title: i18n.baseText('projectRoles.sourceControl.table.assignedTo'),
 		key: 'usedByUsers',
 		disableSort: true,
 		align: 'end',
 		width: 75,
 	},
 	{
-		title: 'Last edited',
+		title: i18n.baseText('projectRoles.sourceControl.table.lastEdited'),
 		key: 'updatedAt',
 		disableSort: true,
 	},
@@ -110,19 +112,11 @@ async function duplicateRole(item: Role) {
 }
 
 const actions = {
-	// TODO: implement in P1
-	// set_default: (_item: Role) => {
-	// },
 	duplicate: duplicateRole,
 	delete: deleteRole,
 } as const;
 
 const rowActions = computed<Array<{ label: string; value: keyof typeof actions }>>(() => [
-	// TODO: implement in P1
-	// {
-	// 	label: 'Set as default',
-	// 	value: 'set_default',
-	// },
 	{
 		label: 'Duplicate',
 		value: 'duplicate',
@@ -140,7 +134,7 @@ function handleAction(action: string, item: Role) {
 
 <template>
 	<div>
-		<div class="mb-xl" style="display: flex; justify-content: space-between; align-items: center">
+		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">Project Roles</N8nHeading>
 			<N8nButton type="secondary" @click="router.push({ name: VIEWS.PROJECT_NEW_ROLE })">
 				Add Role
@@ -181,3 +175,11 @@ function handleAction(action: string, item: Role) {
 		</N8nDataTableServer>
 	</div>
 </template>
+
+<style lang="css" module>
+.headerContainer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+</style>

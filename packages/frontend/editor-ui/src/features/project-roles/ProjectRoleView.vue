@@ -200,12 +200,12 @@ const displayNameValidationRules = [
 		<N8nButton
 			icon="arrow-left"
 			type="secondary"
-			style="position: absolute; top: 10px; left: 10px"
+			:class="$style.backButton"
 			text
 			@click="() => router.back()"
 			>Back to role list</N8nButton
 		>
-		<div class="mb-xl" style="display: flex; justify-content: space-between; align-items: center">
+		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : 'New Role' }}
 			</N8nHeading>
@@ -225,7 +225,7 @@ const displayNameValidationRules = [
 			</template>
 		</div>
 
-		<div style="width: 415px" class="mb-l">
+		<div class="mb-l" :class="$style.formContainer">
 			<N8nFormInput
 				v-model="form.displayName"
 				label="Role name"
@@ -249,21 +249,15 @@ const displayNameValidationRules = [
 		<N8nHeading tag="h2" size="xlarge" class="mb-s">Permissions</N8nHeading>
 		<N8nText color="text-light" class="mb-2xs" tag="p">Preset</N8nText>
 
-		<div style="display: flex; gap: 8px" class="mb-s">
+		<div class="mb-s" :class="$style.presetsContainer">
 			<N8nButton type="secondary" @click="setPreset('project:admin')"> Admin </N8nButton>
 			<N8nButton type="secondary" @click="setPreset('project:editor')"> Editor </N8nButton>
 			<N8nButton type="secondary" @click="setPreset('project:viewer')"> Viewer </N8nButton>
 		</div>
 
 		<div :class="$style.cardContainer">
-			<div
-				v-for="type in scopeTypes"
-				:key="type"
-				class="mb-s mt-s"
-				style="display: flex"
-				:class="$style.card"
-			>
-				<div style="width: 133px">{{ type }}</div>
+			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
+				<div style="width: 133px" :class="$style.cardTitle">{{ type }}</div>
 				<div>
 					<N8nFormInput
 						v-for="scope in scopes[type]"
@@ -296,7 +290,36 @@ const displayNameValidationRules = [
 	background: var(--color-foreground-xlight);
 }
 
+.card {
+	display: flex;
+}
+
 .card:not(:last-child) {
 	border-bottom: 1px solid var(--color-foreground-base);
+}
+
+.cardTitle {
+	text-transform: capitalize;
+}
+
+.backButton {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+}
+
+.headerContainer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.formContainer {
+	max-width: 415px;
+}
+
+.presetsContainer {
+	display: flex;
+	gap: 8px;
 }
 </style>
