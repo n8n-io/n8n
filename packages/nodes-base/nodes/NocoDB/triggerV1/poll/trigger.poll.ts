@@ -74,6 +74,8 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 		} else {
 			responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 		}
+		webhookData.lastTimeChecked = endDate;
+
 		if (responseData?.length) {
 			const downloadAttachments = this.getNodeParameter(
 				'downloadAttachments',
