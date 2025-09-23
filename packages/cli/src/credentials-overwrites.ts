@@ -38,7 +38,8 @@ export class CredentialsOverwrites {
 
 		return (req: Request, res: Response, next: NextFunction) => {
 			if (req.headers.authorization !== expectedAuthorizationHeaderValue) {
-				return res.status(401).send('Unauthorized');
+				res.status(401).send('Unauthorized');
+				return;
 			}
 			next();
 		};
