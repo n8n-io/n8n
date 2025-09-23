@@ -386,13 +386,14 @@ export class ImportService {
 				(error.message.includes('Migration timestamp mismatch') ||
 					error.message.includes('Migration name mismatch') ||
 					error.message.includes('Migration ID mismatch') ||
-					error.message.includes('Target database has no migrations'))
+					error.message.includes('Target database has no migrations') ||
+					error.message.includes('Invalid JSON in migrations file'))
 			) {
 				throw error;
 			}
-			// If we can't query the migrations table, it might not exist or be accessible
-			this.logger.warn(
-				'Could not validate migrations against target database. Proceeding with import...',
+			// If we can't query the migrations table, abort the import to prevent schema/data mismatch
+			throw new Error(
+				'Could not validate migrations against target database. Cannot proceed with import without migration validation to prevent schema/data mismatch.',
 			);
 		}
 	}

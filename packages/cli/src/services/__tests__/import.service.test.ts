@@ -887,16 +887,14 @@ describe('ImportService', () => {
 			);
 		});
 
-		it('should handle database query errors gracefully', async () => {
+		it('should abort import when database query errors occur', async () => {
 			const importMigrations = [{ name: 'Migration1', timestamp: '1000' }];
 
 			jest.mocked(readFile).mockResolvedValue(JSON.stringify(importMigrations[0]));
 			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database error'));
 
-			await importService.validateMigrations('/test/input');
-
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				'Could not validate migrations against target database. Proceeding with import...',
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Could not validate migrations against target database. Cannot proceed with import without migration validation to prevent schema/data mismatch.',
 			);
 		});
 
