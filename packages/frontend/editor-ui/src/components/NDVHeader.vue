@@ -75,7 +75,7 @@ function onRename(newNodeName: string) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-3xs);
 	background: var(--color-background-xlight);
 }
 
