@@ -11,6 +11,7 @@ const props = defineProps<{
 	empty?: boolean;
 	level?: number;
 	click?: () => void;
+	mouseenter?: () => void;
 	open?: boolean;
 	ariaLabel?: string;
 }>();
@@ -44,7 +45,7 @@ const icon = computed<IconName>(() => {
 </script>
 
 <template>
-	<div class="sidebarItemWrapper">
+	<div class="sidebarItemWrapper" @mouseenter="mouseenter">
 		<span
 			class="sidebarItemIdent"
 			v-if="level && level > 1"
@@ -65,7 +66,7 @@ const icon = computed<IconName>(() => {
 				<N8nIcon v-else-if="item.icon" :icon="icon" />
 			</div>
 			<button
-				v-if="item.type !== 'workflow' && item.type !== 'other'"
+				v-if="item.children"
 				class="sidebarItemDropdown"
 				@click="click"
 				:aria-label="ariaLabel"

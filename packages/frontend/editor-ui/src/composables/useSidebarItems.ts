@@ -61,15 +61,24 @@ export function useSidebarItems() {
 				true,
 			);
 		} else {
-			await workflowsStore.fetchWorkflowsPage(id, undefined, undefined, undefined, {
-				parentFolderId: '',
-				isArchived: false,
-			});
+			const data = await workflowsStore.fetchWorkflowsPage(
+				id,
+				undefined,
+				undefined,
+				undefined,
+				{
+					parentFolderId: '0',
+					isArchived: false,
+				},
+				true,
+			);
+			console.log('fetched workflows for project', id, data);
 		}
 	}
 
 	async function openFolder(folderId: string) {
 		const folder = folderStore.getCachedFolder(folderId);
+
 		await workflowsStore.fetchWorkflowsPage(
 			folder.projectId,
 			undefined,

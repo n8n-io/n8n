@@ -33,16 +33,16 @@ defineProps<{
 					v-else
 					:item="item.value as IMenuItem"
 					:key="item.value.id"
-					:click="
+					:mouseenter="
 						async () => {
 							if (item.value.type === 'project' && openProject) {
 								await openProject(item.value.id);
 							} else if (item.value.type === 'folder' && openFolder) {
 								await openFolder(item.value.id);
 							}
-							handleToggle();
 						}
 					"
+					:click="() => handleToggle()"
 					:open="isExpanded"
 					:level="item.level"
 					:ariaLabel="`Open ${item.value.label}`"
