@@ -15,6 +15,7 @@ const props = defineProps<{
 	projectItems: IMenuElement[];
 	canCreateProject: boolean;
 	openProject: (id: string) => Promise<void>;
+	openFolder: (folderId: string) => Promise<void>;
 	showProjects: boolean;
 	bottomItems?: IMenuElement[];
 	userName: string;
@@ -117,7 +118,7 @@ const {
 			:style="{ width: `${sidebarWidth}px` }"
 			@mouseleave="peakMouseOver"
 		>
-			<SidebarTree :items="topItems" :open-project="openProject" />
+			<SidebarTree :items="topItems" :open-project="openProject" :open-folder="openFolder" />
 			<template v-if="showProjects">
 				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
 				<SidebarProjectsEmpty
@@ -126,7 +127,11 @@ const {
 					@create-project="$emit('createProject')"
 				/>
 				<template v-else>
-					<SidebarTree :items="projectItems" :open-project="openProject" />
+					<SidebarTree
+						:items="projectItems"
+						:open-project="openProject"
+						:open-folder="openFolder"
+					/>
 				</template>
 			</template>
 			<div v-if="bottomItems?.length" class="sidebarBottomItems">

@@ -4,7 +4,11 @@ import { TreeItem, TreeRoot, TreeVirtualizer } from 'reka-ui';
 import SidebarItem from './SidebarItem.vue';
 import N8nText from '../N8nText';
 
-defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void> }>();
+defineProps<{
+	items: IMenuElement[];
+	openProject?: (id: string) => Promise<void>;
+	openFolder?: (id: string) => Promise<void>;
+}>();
 </script>
 
 <template>
@@ -33,6 +37,8 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 						async () => {
 							if (item.value.type === 'project' && openProject) {
 								await openProject(item.value.id);
+							} else if (item.value.type === 'folder' && openFolder) {
+								await openFolder(item.value.id);
 							}
 							handleToggle();
 						}

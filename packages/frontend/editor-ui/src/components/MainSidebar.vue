@@ -60,8 +60,15 @@ const user = ref<Element | null>(null);
 
 const basePath = ref('');
 
-const { topItems, projectItems, canCreateProject, showProjects, openProject, bottomItems } =
-	useSidebarItems();
+const {
+	topItems,
+	projectItems,
+	canCreateProject,
+	showProjects,
+	openProject,
+	openFolder,
+	bottomItems,
+} = useSidebarItems();
 
 const {
 	menu,
@@ -272,6 +279,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 		:can-create-project="canCreateProject"
 		:bottom-items="bottomItems"
 		:open-project="openProject"
+		:open-folder="openFolder"
 		:user-name="usersStore.currentUser?.fullName || ''"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:help-items="helpMenuItems"

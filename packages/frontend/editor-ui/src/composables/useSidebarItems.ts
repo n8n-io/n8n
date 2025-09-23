@@ -68,6 +68,21 @@ export function useSidebarItems() {
 		}
 	}
 
+	async function openFolder(folderId: string) {
+		const folder = folderStore.getCachedFolder(folderId);
+		await workflowsStore.fetchWorkflowsPage(
+			folder.projectId,
+			undefined,
+			undefined,
+			undefined,
+			{
+				parentFolderId: folderId,
+				isArchived: false,
+			},
+			true,
+		);
+	}
+
 	function convertToTreeStructure(projectId: string): IMenuElement[] {
 		const projectFolders = Object.values(folderStore.breadcrumbsCache).filter(
 			(f) => f.projectId === projectId,
@@ -241,6 +256,7 @@ export function useSidebarItems() {
 	return {
 		topItems: topItemsFiltered,
 		openProject,
+		openFolder,
 		projectItems,
 		showProjects,
 		canCreateProject,
