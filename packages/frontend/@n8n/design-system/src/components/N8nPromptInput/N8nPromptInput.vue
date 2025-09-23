@@ -18,7 +18,7 @@ export interface N8nPromptInputProps {
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
-	maxLength: 2000,
+	maxLength: 1000,
 	maxLinesBeforeScroll: 6,
 	streaming: false,
 	disabled: false,

@@ -124,6 +124,7 @@ function onAddNodeClick() {
 				:disabled="isLoading"
 				:streaming="builderStore.streaming"
 				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+				:max-lines-before-scroll="4"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
 				@stop="builderStore.stopStreaming"
