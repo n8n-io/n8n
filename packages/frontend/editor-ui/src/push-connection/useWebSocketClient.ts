@@ -79,6 +79,7 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 		socket.value.addEventListener('message', onMessage);
 		socket.value.addEventListener('error', onError);
 		socket.value.addEventListener('close', onConnectionLost);
+		socket.value.binaryType = 'arraybuffer';
 	};
 
 	const reconnectTimer = useReconnectTimer({

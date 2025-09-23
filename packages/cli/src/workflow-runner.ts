@@ -3,6 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -58,6 +59,7 @@ export class WorkflowRunner {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionDataService: ExecutionDataService,
 		private readonly eventService: EventService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	setExecutionMode(mode: 'regular' | 'queue') {
@@ -219,9 +221,9 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 
 		const workflowSettings = data.workflowData.settings ?? {};
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout; // initialize with default
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 		}
 
 		let pinData: IPinData | undefined;
@@ -305,7 +307,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 			if (workflowTimeout > 0) {
-				let timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as milliseconds
+				let timeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout) * 1000; // as milliseconds
 				if (data.startedAt && data.startedAt instanceof Date) {
 					// If startedAt is set, we calculate the timeout based on the startedAt time
 					// This is useful for executions that were waiting in a waiting state

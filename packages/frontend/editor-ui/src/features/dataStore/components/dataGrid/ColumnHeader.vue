@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import type { IHeaderParams } from 'ag-grid-community';
+import type { IHeaderParams, SortDirection } from 'ag-grid-community';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
+import { N8nActionDropdown } from '@n8n/design-system';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
+	allowMenuActions: boolean;
 };
 
 const props = defineProps<{
@@ -18,13 +20,17 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
+const isFilterOpen = ref(false);
+const hasActiveFilter = ref(false);
+const currentSort = ref<SortDirection>(null);
 
 const enum ItemAction {
 	Delete = 'delete',
 }
 
 const onItemClick = (action: string) => {
-	if (action === (ItemAction.Delete as string)) {
+	const actionEnum = action as ItemAction;
+	if (actionEnum === ItemAction.Delete) {
 		props.params.onDelete(props.params.column.getColId());
 	}
 };
@@ -41,8 +47,25 @@ const onDropdownVisibleChange = (visible: boolean) => {
 	isDropdownOpen.value = visible;
 };
 
-const isDropdownVisible = computed(() => {
-	return isHovered.value || isDropdownOpen.value;
+const checkFilterStatus = () => {
+	const columnId = props.params.column.getColId();
+	const filterModel = props.params.api.getFilterModel();
+	hasActiveFilter.value = filterModel && Boolean(filterModel[columnId]);
+};
+
+const checkSortStatus = () => {
+	currentSort.value = props.params.column.getSort() ?? null;
+};
+
+const isMenuButtonVisible = computed(() => {
+	return (
+		props.params.allowMenuActions &&
+		(isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value)
+	);
+});
+
+const isFilterButtonVisible = computed(() => {
+	return isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value;
 });
 
 const typeIcon = computed(() => {
@@ -61,28 +84,97 @@ const columnActionItems = [
 		customClass: 'data-store-column-header-action-item',
 	} as const,
 ];
+
+const isSortable = computed(() => {
+	return props.params.column.getColDef().sortable;
+});
+
+const showSortIndicator = computed(() => {
+	return isSortable.value && Boolean(currentSort.value);
+});
+
+const onHeaderClick = () => {
+	if (isSortable.value) {
+		const currentSortDirection = currentSort.value;
+		let nextSort: SortDirection = null;
+
+		if (!currentSortDirection) {
+			nextSort = 'asc';
+		} else if (currentSortDirection === 'asc') {
+			nextSort = 'desc';
+		}
+
+		props.params.setSort(nextSort, false);
+	}
+};
+const onShowFilter = (e: MouseEvent) => {
+	e.stopPropagation();
+	isFilterOpen.value = true;
+	props.params.showFilter(e.currentTarget as HTMLElement);
+};
+
+const onFilterClosed = () => {
+	isFilterOpen.value = false;
+};
+
+onMounted(() => {
+	// Check initial states
+	checkFilterStatus();
+	checkSortStatus();
+
+	props.params.api.addEventListener('filterChanged', checkFilterStatus);
+	props.params.api.addEventListener('sortChanged', checkSortStatus);
+	// TODO: this event is marked as internal. What can we use instead?
+	// @ts-expect-error - filterClosed is not a public event
+	props.params.api.addEventListener('filterClosed', onFilterClosed);
+});
+
+onUnmounted(() => {
+	props.params.api.removeEventListener('filterChanged', checkFilterStatus);
+	props.params.api.removeEventListener('sortChanged', checkSortStatus);
+	// @ts-expect-error - filterClosed is not a public event
+	props.params.api.removeEventListener('filterClosed', onFilterClosed);
+});
 </script>
+
 <template>
 	<div
-		class="ag-header-cell-label data-store-column-header-wrapper"
+		:class="['ag-header-cell-label', 'data-store-column-header-wrapper', { sortable: isSortable }]"
 		data-test-id="data-store-column-header"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
+		@click="onHeaderClick"
 	>
 		<div class="data-store-column-header-icon-wrapper">
 			<N8nIcon v-if="typeIcon" :icon="typeIcon" />
 			<span class="ag-header-cell-text" data-test-id="data-store-column-header-text">{{
 				props.params.displayName
 			}}</span>
+
+			<div v-if="showSortIndicator" class="sort-indicator">
+				<N8nIcon v-if="currentSort === 'asc'" icon="arrow-up" class="sort-icon-active" />
+				<N8nIcon v-else-if="currentSort === 'desc'" icon="arrow-down" class="sort-icon-active" />
+			</div>
 		</div>
+
+		<N8nIconButton
+			v-show="isFilterButtonVisible"
+			icon="funnel"
+			type="tertiary"
+			text
+			:class="{ 'filter-highlighted': hasActiveFilter }"
+			@click="onShowFilter"
+		/>
+
 		<N8nActionDropdown
-			v-show="isDropdownVisible"
+			v-show="isMenuButtonVisible"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"
 			@visible-change="onDropdownVisibleChange"
+			@click.stop
 		/>
 	</div>
 </template>
@@ -93,6 +185,12 @@ const columnActionItems = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
+	cursor: default;
+
+	&.sortable {
+		cursor: pointer;
+	}
 }
 
 .data-store-column-header-action-item {
@@ -115,6 +213,26 @@ const columnActionItems = [
 .ag-header-cell-text {
 	@include mixins.utils-ellipsis;
 	min-width: 0;
-	flex: 1;
+}
+
+.sort-indicator {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex-shrink: 0;
+
+	.sort-icon-active {
+		font-size: var(--font-size-2xs);
+		line-height: 1;
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+.filter-highlighted {
+	color: var(--color-primary);
+	&:hover {
+		color: var(--color-primary);
+	}
 }
 </style>

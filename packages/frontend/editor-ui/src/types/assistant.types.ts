@@ -166,7 +166,6 @@ export namespace ChatRequest {
 	}
 
 	// API-only types
-
 	export type MessageResponse =
 		| ((
 				| TextMessage

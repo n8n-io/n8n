@@ -5,6 +5,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
+import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
@@ -37,8 +38,9 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
-export { DatabaseConfig } from './configs/database.config';
+export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
@@ -208,4 +210,7 @@ export class GlobalConfig {
 
 	@Nested
 	ai: AiConfig;
+
+	@Nested
+	dataTable: DataTableConfig;
 }

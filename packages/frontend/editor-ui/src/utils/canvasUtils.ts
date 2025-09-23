@@ -263,3 +263,11 @@ export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpoin
 
 	return endpointsWithSpacers;
 }
+
+export function shouldIgnoreCanvasShortcut(el: Element): boolean {
+	return (
+		['INPUT', 'TEXTAREA'].includes(el.tagName) ||
+		el.closest('[contenteditable]') !== null ||
+		el.closest('.ignore-key-press-canvas') !== null
+	);
+}

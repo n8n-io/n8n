@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -30,7 +30,7 @@ const user = mock<User>({
 	id: '123',
 	password: 'password',
 	authIdentities: [],
-	role: 'global:owner',
+	role: GLOBAL_OWNER_ROLE,
 });
 
 const attributes: SamlUserAttributes = {

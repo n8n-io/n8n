@@ -10,17 +10,20 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { SampleTemplates, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
+import {
+	SampleTemplates,
+	isPrebuiltAgentTemplateId,
+	isTutorialTemplateId,
+} from '@/utils/templates/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-	hasTrimmedData,
-	hasTrimmedItem,
 } from '@/utils/executionUtils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
@@ -46,6 +49,7 @@ export async function executionFinished(
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
 	workflowsStore.lastAddedExecutingNode = null;
 
@@ -74,8 +78,22 @@ export async function executionFinished(
 			);
 		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
 			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
+		} else if (
+			templateId === 'ready-to-run-ai-workflow-v1' ||
+			templateId === 'ready-to-run-ai-workflow-v2'
+		) {
+			if (data.status === 'success') {
+				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
+			} else {
+				readyToRunWorkflowsV2Store.trackExecuteAiWorkflow(data.status);
+			}
 		} else if (isPrebuiltAgentTemplateId(templateId)) {
 			telemetry.track('User executed pre-built Agent', {
+				template: templateId,
+				status: data.status,
+			});
+		} else if (isTutorialTemplateId(templateId)) {
+			telemetry.track('User executed tutorial template', {
 				template: templateId,
 				status: data.status,
 			});
@@ -197,25 +215,12 @@ export async function fetchExecutionData(
  * Returns the run execution data from the execution object in a normalized format
  */
 export function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
-	const workflowsStore = useWorkflowsStore();
-
-	const runExecutionData: IRunExecutionData = {
+	return {
+		...execution.data,
 		startData: execution.data?.startData,
 		resultData: execution.data?.resultData ?? { runData: {} },
 		executionData: execution.data?.executionData,
 	};
-
-	if (workflowsStore.workflowExecutionData?.workflowId === execution.workflowId) {
-		const activeRunData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
-		if (activeRunData) {
-			for (const key of Object.keys(activeRunData)) {
-				if (hasTrimmedItem(activeRunData[key])) continue;
-				runExecutionData.resultData.runData[key] = activeRunData[key];
-			}
-		}
-	}
-
-	return runExecutionData;
 }
 
 /**
@@ -423,14 +428,6 @@ export function setRunExecutionData(
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
-
-	// It does not push the runData as it got already pushed with each
-	// node that did finish. For that reason copy in here the data
-	// which we already have. But if the run data in the store is trimmed,
-	// we skip copying so we use the full data from the final message.
-	if (workflowsStore.getWorkflowRunData && !hasTrimmedData(workflowsStore.getWorkflowRunData)) {
-		runExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
-	}
 
 	workflowsStore.executingNode.length = 0;
 

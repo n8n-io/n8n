@@ -5,7 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { getSelectFields, getSelectFilter } from '../../common/selectMany';
+import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
+import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
 export const FIELD: string = 'get';
@@ -17,7 +18,34 @@ const displayOptions: IDisplayOptions = {
 	},
 };
 
-export const description: INodeProperties[] = [...getSelectFields(displayOptions)];
+export const description: INodeProperties[] = [
+	...getSelectFields(displayOptions),
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions,
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			...displayOptions,
+			show: {
+				...displayOptions.show,
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+		},
+		default: ROWS_LIMIT_DEFAULT,
+		description: 'Max number of results to return',
+	},
+];
 
 export async function execute(
 	this: IExecuteFunctions,
@@ -25,26 +53,5 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataTableProxyExecute(this, index);
 
-	let take = 1000;
-	const result: INodeExecutionData[] = [];
-
-	const filter = getSelectFilter(this, index);
-
-	do {
-		const response = await dataStoreProxy.getManyRowsAndCount({
-			skip: result.length,
-			take,
-			filter,
-		});
-		const data = response.data.map((json) => ({ json }));
-
-		// Optimize common path of <1000 results
-		if (response.count === response.data.length) {
-			return data;
-		}
-
-		result.push.apply(result, data);
-		take = Math.min(take, response.count - result.length);
-	} while (take > 0);
-	return result;
+	return await executeSelectMany(this, index, dataStoreProxy);
 }

@@ -62,4 +62,37 @@ export class WorkflowComposer {
 		await this.n8n.canvas.importWorkflow(fileName, workflowName);
 		return { workflowName };
 	}
+
+	/**
+	 * Creates a new workflow by importing from a URL
+	 * @param url - The URL to import the workflow from
+	 * @returns Promise that resolves when the import is complete
+	 */
+	async importWorkflowFromURL(url: string): Promise<void> {
+		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.canvas.clickWorkflowMenu();
+		await this.n8n.canvas.clickImportFromURL();
+		await this.n8n.canvas.fillImportURLInput(url);
+		await this.n8n.canvas.clickConfirmImportURL();
+	}
+
+	/**
+	 * Opens the import from URL dialog and then dismisses it by clicking outside
+	 */
+	async openAndDismissImportFromURLDialog(): Promise<void> {
+		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.canvas.clickWorkflowMenu();
+		await this.n8n.canvas.clickImportFromURL();
+		await this.n8n.canvas.clickOutsideModal();
+	}
+
+	/**
+	 * Opens the import from URL dialog and then cancels it
+	 */
+	async openAndCancelImportFromURLDialog(): Promise<void> {
+		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.canvas.clickWorkflowMenu();
+		await this.n8n.canvas.clickImportFromURL();
+		await this.n8n.canvas.clickCancelImportURL();
+	}
 }

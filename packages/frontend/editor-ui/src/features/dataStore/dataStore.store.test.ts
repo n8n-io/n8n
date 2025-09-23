@@ -29,7 +29,6 @@ describe('dataStore.store', () => {
 					id: datastoreId,
 					name: 'Test',
 					sizeBytes: 0,
-					recordCount: 0,
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-01T00:00:00.000Z',
 					projectId,

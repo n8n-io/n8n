@@ -49,10 +49,12 @@ export const nodeConnectionSchema = z.object({
  * Factory function to create the connect nodes tool
  */
 export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
-	return tool(
+	const DISPLAY_TITLE = 'Connecting nodes';
+
+	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'connect_nodes');
+			const reporter = createProgressReporter(config, 'connect_nodes', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -316,4 +318,9 @@ CONNECTION EXAMPLES:
 			schema: nodeConnectionSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

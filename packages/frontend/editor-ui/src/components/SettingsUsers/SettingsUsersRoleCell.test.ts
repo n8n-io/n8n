@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { ROLE, type UsersList } from '@n8n/api-types';
+import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { type ActionDropdownItem } from '@n8n/design-system';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -55,10 +55,9 @@ const mockRoles = {
 	[ROLE.Default]: { label: 'Default', desc: '' },
 };
 
-const mockActions: ActionDropdownItem[] = [
+const mockActions: Array<ActionDropdownItem<Role>> = [
 	{ id: ROLE.Member, label: 'Member' },
 	{ id: ROLE.Admin, label: 'Admin' },
-	{ id: 'delete', label: 'Delete User', divided: true },
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -105,15 +104,5 @@ describe('SettingsUsersRoleCell', () => {
 
 		expect(emitted()).toHaveProperty('update:role');
 		expect(emitted()['update:role'][0]).toEqual([{ role: ROLE.Admin, userId: '1' }]);
-	});
-
-	it('should emit "update:role" with "delete" when delete action is clicked', async () => {
-		const { emitted } = renderComponent();
-		const user = userEvent.setup();
-
-		await user.click(screen.getByTestId('action-delete'));
-
-		expect(emitted()).toHaveProperty('update:role');
-		expect(emitted()['update:role'][0]).toEqual([{ role: 'delete', userId: '1' }]);
 	});
 });

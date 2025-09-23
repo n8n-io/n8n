@@ -4,6 +4,7 @@ import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 type Props = {
 	dataStore: DataStoreResource;
@@ -12,6 +13,7 @@ type Props = {
 };
 
 const i18n = useI18n();
+const dataStoreStore = useDataStoreStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -28,6 +30,11 @@ const dataStoreRoute = computed(() => {
 		},
 	};
 });
+
+const getDataStoreSize = computed(() => {
+	const size = dataStoreStore.dataStoreSizes[props.dataStore.id] ?? 0;
+	return size;
+});
 </script>
 <template>
 	<div data-test-id="data-store-card">
@@ -43,7 +50,7 @@ const dataStoreRoute = computed(() => {
 					/>
 				</template>
 				<template #header>
-					<div :class="$style['card-header']" @click.prevent>
+					<div :class="$style['card-header']">
 						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
 						</n8n-text>
@@ -57,12 +64,12 @@ const dataStoreRoute = computed(() => {
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--record-count']]"
-							data-test-id="data-store-card-record-count"
+							:class="[$style['info-cell'], $style['info-cell--size']]"
+							data-test-id="data-store-card-size"
 						>
 							{{
-								i18n.baseText('dataStore.card.row.count', {
-									interpolate: { count: props.dataStore.recordCount ?? 0 },
+								i18n.baseText('dataStore.card.size', {
+									interpolate: { size: getDataStoreSize },
 								})
 							}}
 						</N8nText>
@@ -155,8 +162,8 @@ const dataStoreRoute = computed(() => {
 		flex-wrap: wrap;
 	}
 	.info-cell--created,
-	.info-cell--record-count,
-	.info-cell--column-count {
+	.info-cell--column-count,
+	.info-cell--size {
 		display: none;
 	}
 }

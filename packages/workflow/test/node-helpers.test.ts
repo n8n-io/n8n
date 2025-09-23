@@ -5630,6 +5630,44 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('Create user in Test Node');
 		});
+
+		test.each([
+			['javaScript', 'Code in JavaScript'],
+			['python', 'Code in Python (Beta)'],
+			['pythonNative', 'Code in Python (Native) (Beta)'],
+		])(
+			'should return action-based name for Code node with %s language',
+			(language, expectedAction) => {
+				mockNodeTypeDescription.name = 'n8n-nodes-base.code';
+				mockNodeTypeDescription.properties = [
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'JavaScript',
+								value: 'javaScript',
+								action: 'Code in JavaScript',
+							},
+							{
+								name: 'Python (Beta)',
+								value: 'python',
+								action: 'Code in Python (Beta)',
+							},
+							{
+								name: 'Python (Native) (Beta)',
+								value: 'pythonNative',
+								action: 'Code in Python (Native) (Beta)',
+							},
+						],
+						default: 'javaScript',
+					},
+				];
+				const result = makeNodeName({ language }, mockNodeTypeDescription);
+				expect(result).toBe(expectedAction);
+			},
+		);
 	});
 	describe('isTool', () => {
 		it('should return true for a node with AiTool output', () => {

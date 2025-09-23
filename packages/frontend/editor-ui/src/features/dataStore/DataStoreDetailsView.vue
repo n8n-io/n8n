@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type {
+	AddColumnResponse,
+	DataStore,
+	DataStoreColumnCreatePayload,
+} from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +14,7 @@ import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBread
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
 import { useDebounce } from '@/composables/useDebounce';
+import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 
 type Props = {
 	id: string;
@@ -28,6 +33,8 @@ const dataStoreStore = useDataStoreStore();
 const loading = ref(false);
 const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
+const dataStoreTableRef = ref<InstanceType<typeof DataStoreTable>>();
+
 const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
@@ -79,6 +86,16 @@ const onToggleSave = (value: boolean) => {
 	}
 };
 
+const onAddColumn = async (column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> => {
+	if (!dataStoreTableRef.value) {
+		return {
+			success: false,
+			errorMessage: i18n.baseText('dataStore.error.tableNotInitialized'),
+		};
+	}
+	return await dataStoreTableRef.value.addColumn(column);
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 	await initialize();
@@ -104,9 +121,23 @@ onMounted(async () => {
 					<n8n-spinner />
 					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
 				</div>
+				<div :class="$style.actions">
+					<n8n-button @click="dataStoreTableRef?.addRow">{{
+						i18n.baseText('dataStore.addRow.label')
+					}}</n8n-button>
+					<AddColumnButton
+						:use-text-trigger="true"
+						:popover-id="'ds-details-add-column-popover'"
+						:params="{ onAddColumn }"
+					/>
+				</div>
 			</div>
 			<div :class="$style.content">
-				<DataStoreTable :data-store="dataStore" @toggle-save="onToggleSave" />
+				<DataStoreTable
+					ref="dataStoreTableRef"
+					:data-store="dataStore"
+					@toggle-save="onToggleSave"
+				/>
 			</div>
 		</div>
 	</div>
@@ -118,15 +149,11 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
 	box-sizing: border-box;
 	align-content: start;
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .header-loading {
-	margin-bottom: var(--spacing-2xl);
-
 	div {
 		height: 2em;
 	}
@@ -136,7 +163,11 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing-l);
 	align-items: center;
-	margin-bottom: var(--spacing-xl);
+}
+
+.header,
+.header-loading {
+	padding: var(--spacing-s);
 }
 
 .saving {
@@ -144,5 +175,11 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing-3xs);
 	margin-top: var(--spacing-5xs);
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing-3xs);
+	margin-left: auto;
 }
 </style>

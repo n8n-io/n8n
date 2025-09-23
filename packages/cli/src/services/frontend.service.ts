@@ -121,16 +121,20 @@ export class FrontendService {
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
 			saveExecutionProgress: this.globalConfig.executions.saveExecutionProgress,
-			executionTimeout: config.getEnv('executions.timeout'),
-			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
+			executionTimeout: this.globalConfig.executions.timeout,
+			maxExecutionTimeout: this.globalConfig.executions.maxTimeout,
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
+			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
+			isNativePythonRunnerEnabled:
+				this.globalConfig.taskRunners.enabled &&
+				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -179,6 +183,9 @@ export class FrontendService {
 					loginUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/login`,
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
+			},
+			dataTables: {
+				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
 				enabled: isApiEnabled(),

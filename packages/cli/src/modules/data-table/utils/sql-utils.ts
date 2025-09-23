@@ -1,16 +1,19 @@
 import {
-	DATA_STORE_COLUMN_REGEX,
+	dataStoreColumnNameSchema,
+	DATA_STORE_COLUMN_ERROR_MESSAGE,
 	type DataStoreCreateColumnSchema,
-	type DataStoreColumn,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRows, DataStoreRowWithId } from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRowReturn, DataStoreRowsReturn } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataStoreUserTableName } from '../data-store.types';
+import type { DataTableColumn } from '../data-table-column.entity';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -69,9 +72,8 @@ function columnToWildcardAndType(
 	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
 }
 
-function isValidColumnName(name: string) {
-	// Only allow alphanumeric and underscore
-	return DATA_STORE_COLUMN_REGEX.test(name);
+export function isValidColumnName(name: string) {
+	return dataStoreColumnNameSchema.safeParse(name).success;
 }
 
 export function addColumnQuery(
@@ -81,7 +83,7 @@ export function addColumnQuery(
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
-		throw new UnexpectedError('bad column name');
+		throw new UnexpectedError(DATA_STORE_COLUMN_ERROR_MESSAGE);
 	}
 
 	const quotedTableName = quoteIdentifier(tableName, dbType);
@@ -98,33 +100,6 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
-export function splitRowsByExistence(
-	existing: Array<Record<string, unknown>>,
-	matchFields: string[],
-	rows: DataStoreRows,
-): { rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows } {
-	// Extracts only the fields relevant to matching and serializes them for comparison
-	const getMatchKey = (row: Record<string, unknown>): string =>
-		JSON.stringify(Object.fromEntries(matchFields.map((field) => [field, row[field]])));
-
-	const existingSet = new Set(existing.map((row) => getMatchKey(row)));
-
-	const rowsToUpdate: DataStoreRows = [];
-	const rowsToInsert: DataStoreRows = [];
-
-	for (const row of rows) {
-		const key = getMatchKey(row);
-
-		if (existingSet.has(key)) {
-			rowsToUpdate.push(row);
-		} else {
-			rowsToInsert.push(row);
-		}
-	}
-
-	return { rowsToInsert, rowsToUpdate };
-}
-
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'mysql':
@@ -138,7 +113,6 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 }
 
 type WithInsertId = { insertId: number };
-type WithRowId = { id: number };
 
 const isArrayOf = <T>(data: unknown, itemGuard: (x: unknown) => x is T): data is T[] =>
 	Array.isArray(data) && data.every(itemGuard);
@@ -147,18 +121,35 @@ const isNumber = (value: unknown): value is number => {
 	return typeof value === 'number' && Number.isFinite(value);
 };
 
+const isDate = (value: unknown): value is Date => {
+	return value instanceof Date;
+};
+
 function hasInsertId(data: unknown): data is WithInsertId {
 	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
 }
 
-function hasRowId(data: unknown): data is WithRowId {
+function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'id' in data &&
+		isNumber(data.id) &&
+		'createdAt' in data &&
+		(isDate(data.createdAt) || typeof data.createdAt === 'string') &&
+		'updatedAt' in data &&
+		(isDate(data.updatedAt) || typeof data.updatedAt === 'string')
+	);
+}
+
+function hasRowId(data: unknown): data is Pick<DataStoreRowReturn, 'id'> {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
-export function extractReturningData(raw: unknown): DataStoreRowWithId[] {
-	if (!isArrayOf(raw, hasRowId)) {
+export function extractReturningData(raw: unknown): DataStoreRowReturn[] {
+	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
-			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 		);
 	}
 
@@ -171,7 +162,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 		case 'mariadb': {
 			if (!isArrayOf(raw, hasRowId)) {
 				throw new UnexpectedError(
-					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+					`Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 				);
 			}
 			return raw.map((r) => r.id);
@@ -192,7 +183,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColumn[]) {
 	// we need to normalize system dates as well
 	const systemColumns = [
 		{ name: 'createdAt', type: 'date' },
@@ -216,52 +207,96 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 				}
 			}
 			if (type === 'date' && value !== null && value !== undefined) {
-				// Convert date objects or strings to ISO string
+				// Convert date objects or strings to dates in UTC
 				let dateObj: Date | null = null;
 
 				if (value instanceof Date) {
 					dateObj = value;
-				} else if (typeof value === 'string' || typeof value === 'number') {
+				} else if (typeof value === 'string') {
+					// sqlite returns date strings without timezone information, but we store them as UTC
+					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+					if (!isNaN(parsed.getTime())) {
+						dateObj = parsed;
+					}
+				} else if (typeof value === 'number') {
 					const parsed = new Date(value);
 					if (!isNaN(parsed.getTime())) {
 						dateObj = parsed;
 					}
 				}
 
-				normalized[key] = dateObj ? dateObj.toISOString() : value;
+				normalized[key] = dateObj ?? value;
 			}
 		}
 		return normalized;
 	});
 }
 
+function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): string {
+	// MySQL/MariaDB DATETIME format doesn't accept ISO strings with 'Z' timezone
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		return date.toISOString().replace('T', ' ').replace('Z', '');
+	}
+	// PostgreSQL and SQLite accept ISO strings
+	return date.toISOString();
+}
+
 export function normalizeValue(
 	value: DataStoreColumnJsType,
 	columnType: string | undefined,
-	dbType: DataSourceOptions['type'],
+	dbType?: DataSourceOptions['type'],
 ): DataStoreColumnJsType {
-	if (['mysql', 'mariadb'].includes(dbType)) {
-		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value;
-			} else if (typeof value === 'string') {
-				const date = new Date(value);
-				if (!isNaN(date.getTime())) {
-					return date;
-				}
-			}
+	if (columnType !== 'date' || value === null || value === undefined) {
+		return value;
+	}
+
+	// Convert Date objects to appropriate string format for database parameter binding
+	if (value instanceof Date) {
+		return formatDateForDatabase(value, dbType);
+	}
+
+	if (typeof value === 'string') {
+		const date = new Date(value);
+		if (!isNaN(date.getTime())) {
+			// Convert parsed date strings to appropriate format
+			return formatDateForDatabase(date, dbType);
 		}
 	}
 
 	return value;
 }
 
-export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
-	return dbType.includes('postgres') ? `$${index}` : '?';
+/**
+ * Convert a LIKE-style pattern (only % is wildcard) into a SQLite GLOB pattern.
+ */
+export function toSqliteGlobFromPercent(input: string): string {
+	const out: string[] = [];
+	for (const ch of String(input ?? '')) {
+		if (ch === '%') out.push('*');
+		else if (ch === '[') out.push('[[]');
+		else if (ch === ']') out.push('[]]');
+		else if (ch === '*') out.push('[*]');
+		else if (ch === '?') out.push('[?]');
+		else out.push(ch);
+	}
+	return out.join('');
 }
 
-export function buildColumnTypeMap(
-	columns: Array<{ name: string; type: string }>,
-): Record<string, string> {
-	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
+/**
+ * LIKE escaper for DBs where we use ESCAPE '\'.
+ * Keep '%' as wildcard; make '_' literal; escape the escape char itself.
+ */
+export function escapeLikeSpecials(input: string): string {
+	return input
+		.replace(/\\/g, '\\\\') // escape the escape char itself
+		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
+}
+
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
+	const { tablePrefix } = Container.get(GlobalConfig).database;
+	return `${tablePrefix}data_table_user_${dataStoreId}`;
+}
+
+export function toTableId(tableName: DataStoreUserTableName) {
+	return tableName.replace(/.*data_table_user_/, '');
 }

@@ -1,6 +1,14 @@
-import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	Project,
+	User,
+	SharedCredentials,
+	ProjectRepository,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
@@ -10,9 +18,9 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { UM_FIX_INSTRUCTION } from '@/constants';
-
 import { BaseCommand } from '../base-command';
+
+import { UM_FIX_INSTRUCTION } from '@/constants';
 
 const flagsSchema = z.object({
 	input: z
@@ -232,7 +240,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		if (sharedCredential && sharedCredential.project.type === 'personal') {
 			const user = await this.transactionManager.findOneByOrFail(User, {
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharedCredential.projectId,
 				},
 			});
@@ -253,7 +261,11 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 
 		if (!userId) {
-			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
+			const owner = await this.transactionManager.findOneBy(User, {
+				role: {
+					slug: GLOBAL_OWNER_ROLE.slug,
+				},
+			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}

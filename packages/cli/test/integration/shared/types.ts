@@ -43,8 +43,10 @@ type EndpointGroup =
 	| 'ai'
 	| 'folder'
 	| 'insights'
+	| 'data-store'
+	| 'module-settings'
 	| 'data-table'
-	| 'module-settings';
+	| 'third-party-licenses';
 
 type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-table';
 

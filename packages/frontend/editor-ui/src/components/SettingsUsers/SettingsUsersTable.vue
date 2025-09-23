@@ -109,7 +109,7 @@ const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
 	},
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
-const roleActions = computed<ActionDropdownItem[]>(() => [
+const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 	{
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),
@@ -117,11 +117,6 @@ const roleActions = computed<ActionDropdownItem[]>(() => [
 	{
 		id: ROLE.Admin,
 		label: i18n.baseText('auth.roles.admin'),
-	},
-	{
-		id: 'delete',
-		label: i18n.baseText('settings.users.table.row.deleteUser'),
-		divided: true,
 	},
 ]);
 
@@ -138,11 +133,7 @@ const filterActions = (user: UsersList['items'][number]) => {
 };
 
 const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
-	if (role === 'delete') {
-		emit('action', { action: 'delete', userId });
-	} else {
-		emit('update:role', { role: role as Role, userId });
-	}
+	emit('update:role', { role: role as Role, userId });
 };
 </script>
 

@@ -8,6 +8,11 @@ describe('AssistantLoadingMessage', () => {
 			props: {
 				message: 'Thinking...',
 			},
+			global: {
+				stubs: {
+					N8nText: true,
+				},
+			},
 		});
 		expect(container).toMatchSnapshot();
 	});

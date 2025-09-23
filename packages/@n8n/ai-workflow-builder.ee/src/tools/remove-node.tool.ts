@@ -73,9 +73,11 @@ function buildResponseMessage(
  * Factory function to create the remove node tool
  */
 export function createRemoveNodeTool(_logger?: Logger) {
-	return tool(
+	const DISPLAY_TITLE = 'Removing node';
+
+	const dynamicTool = tool(
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'remove_node');
+			const reporter = createProgressReporter(config, 'remove_node', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -152,4 +154,9 @@ export function createRemoveNodeTool(_logger?: Logger) {
 			schema: removeNodeSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

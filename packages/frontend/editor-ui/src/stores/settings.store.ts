@@ -10,10 +10,7 @@ import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
-import {
-	INSECURE_CONNECTION_WARNING,
-	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-} from '@/constants';
+import { INSECURE_CONNECTION_WARNING } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
@@ -67,11 +64,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		secureCookie: settings.value.authCookie.secure,
 	}));
 
-	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise);
+	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise ?? {});
 
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
+	const nodeEnv = computed(() => settings.value.nodeEnv);
+
 	const concurrency = computed(() => settings.value.concurrency);
+
+	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
 
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
@@ -146,7 +147,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
-	const isDataStoreFeatureEnabled = computed(() => isModuleActive('data-store'));
+	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -189,6 +190,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
+
 		userManagement.value = newSettings.userManagement;
 		if (userManagement.value) {
 			userManagement.value.showSetupOnFirstLoad =
@@ -281,8 +283,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		await getSettings();
 
 		initialized.value = true;
-
-		await getModuleSettings();
 	};
 
 	const stopShowingSetupPage = () => {
@@ -319,15 +319,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
-	/**
-	 * (Experimental) If set to true, show node settings for a selected node in docked pane
-	 */
-	const experimental__dockedNodeSettingsEnabled = useLocalStorage(
-		LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-		false,
-		{ writeDefaults: false },
-	);
-
 	return {
 		settings,
 		userManagement,
@@ -344,7 +335,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		pruning,
 		security,
 		nodeJsVersion,
+		nodeEnv,
 		concurrency,
+		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
@@ -384,7 +377,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
 		getTimezones,
@@ -400,6 +392,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
-		isDataStoreFeatureEnabled,
+		isDataTableFeatureEnabled,
 	};
 });

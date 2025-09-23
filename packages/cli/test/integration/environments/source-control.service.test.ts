@@ -3,14 +3,19 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import {
 	CredentialsEntity,
 	type Folder,
-	FolderRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	Project,
 	type TagEntity,
-	TagRepository,
 	type User,
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createCredentials } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
+import { createUser } from '@test-integration/db/users';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
@@ -28,6 +33,7 @@ import type { SourceControlGitService } from '@/environments.ee/source-control/s
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
+import { SourceControlStatusService } from '@/environments.ee/source-control/source-control-status.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
@@ -36,10 +42,6 @@ import type { RemoteResourceOwner } from '@/environments.ee/source-control/types
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { createCredentials } from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
-import { createUser } from '@test-integration/db/users';
 
 jest.mock('fast-glob');
 
@@ -174,6 +176,7 @@ describe('SourceControlService', () => {
 
 	let gitService: SourceControlGitService;
 	let service: SourceControlService;
+	let statusService: SourceControlStatusService;
 
 	let cipher: Cipher;
 
@@ -217,10 +220,10 @@ describe('SourceControlService', () => {
 			*/
 
 		[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
-			await createUser({ role: 'global:admin' }),
-			await createUser({ role: 'global:owner' }),
-			await createUser({ role: 'global:member' }),
-			await createUser({ role: 'global:member' }),
+			createUser({ role: GLOBAL_ADMIN_ROLE }),
+			createUser({ role: GLOBAL_OWNER_ROLE }),
+			createUser({ role: GLOBAL_MEMBER_ROLE }),
+			createUser({ role: GLOBAL_MEMBER_ROLE }),
 		]);
 
 		[projectA, projectB] = await Promise.all([
@@ -422,6 +425,7 @@ describe('SourceControlService', () => {
 		};
 
 		gitService = mock<SourceControlGitService>();
+		statusService = Container.get(SourceControlStatusService);
 
 		service = new SourceControlService(
 			mock(),
@@ -430,14 +434,13 @@ describe('SourceControlService', () => {
 			Container.get(SourceControlExportService),
 			Container.get(SourceControlImportService),
 			Container.get(SourceControlScopedService),
-			Container.get(TagRepository),
-			Container.get(FolderRepository),
 			Container.get(EventService),
+			statusService,
 		);
 
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
-		service.resetWorkfolder = async () => undefined;
+		statusService['resetWorkfolder'] = async () => undefined;
 
 		// Git mocking
 		gitFiles = {

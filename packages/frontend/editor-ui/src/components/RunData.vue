@@ -16,12 +16,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	parseErrorMetadata,
-	NodeConnectionTypes,
-	NodeHelpers,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
@@ -93,6 +88,8 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
+import { hasTrimmedRunData } from '@/utils/executionUtils';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -146,6 +143,7 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableSettingsHint?: boolean;
@@ -172,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	disableSettingsHint: false,
 	compact: false,
+	showActionsOnHover: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
@@ -181,6 +180,7 @@ defineSlots<{
 	content: {};
 	'callout-message': {};
 	header: {};
+	'header-end': (props: InstanceType<typeof RunDataItemCount>['$props']) => unknown;
 	'input-select': {};
 	'before-data': {};
 	'run-info': {};
@@ -299,10 +299,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
-);
-
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -359,6 +355,10 @@ const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
+const isTrimmedManualExecutionDataItem = computed(() =>
+	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
 );
@@ -388,6 +388,9 @@ const maxOutputIndex = computed(() => {
 	return 0;
 });
 const currentPageOffset = computed(() => pageSize.value * (currentPage.value - 1));
+const showBranchSwitch = computed(
+	() => maxOutputIndex.value > 0 && branches.value.length > 1 && !displaysMultipleNodes.value,
+);
 const maxRunIndex = computed(() => {
 	if (!node.value) {
 		return 0;
@@ -404,6 +407,29 @@ const maxRunIndex = computed(() => {
 	}
 
 	return 0;
+});
+
+const runSelectorOptionsCount = computed(() => {
+	if (!node.value) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (!runData?.hasOwnProperty(node.value.name)) {
+		return 0;
+	}
+
+	// If there is branch selector – we show all runs in the run selector
+	if (showBranchSwitch.value) {
+		return maxRunIndex.value + 1;
+	}
+
+	// If there is only one branch - we show only the runs containing the data in the connected branch
+	return runData[node.value.name].filter((nodeRun) => {
+		const nodeOutput = nodeRun?.data?.[connectionType.value]?.[currentOutputIndex.value];
+		return nodeOutput && nodeOutput?.length > 0;
+	}).length;
 });
 
 const rawInputData = computed(() =>
@@ -647,9 +673,10 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
-watch(hasNodeRun, () => {
-	if (props.paneType === 'output') setDisplayMode();
-	else {
+watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	} else {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
@@ -1136,7 +1163,7 @@ function getRunLabel(option: number) {
 		: '';
 
 	const itemsLabel = itemsCount > 0 ? ` (${items}${subexecutions})` : '';
-	return option + i18n.baseText('ndv.output.of') + (maxRunIndex.value + 1) + itemsLabel;
+	return option + i18n.baseText('ndv.output.of') + runSelectorOptionsCount.value + itemsLabel;
 }
 
 function getRawInputData(
@@ -1350,7 +1377,11 @@ defineExpose({ enterEditMode });
 		:class="[
 			'run-data',
 			$style.container,
-			{ [$style['ndv-v2']]: isNDVV2, [$style.compact]: compact },
+			{
+				[$style['ndv-v2']]: isNDVV2,
+				[$style.compact]: compact,
+				[$style.showActionsOnHover]: showActionsOnHover,
+			},
 		]"
 		@mouseover="activatePane"
 	>
@@ -1483,7 +1514,7 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
+			<slot name="header-end" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-show="!binaryDataDisplayVisible">
@@ -1510,10 +1541,11 @@ defineExpose({ enterEditMode });
 					>
 						<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
 						<N8nOption
-							v-for="option in maxRunIndex + 1"
+							v-for="option in runSelectorOptionsCount"
 							:key="option"
 							:label="getRunLabel(option)"
 							:value="option - 1"
+							data-test-id="run-selection-option"
 						></N8nOption>
 					</N8nSelect>
 
@@ -1564,11 +1596,7 @@ defineExpose({ enterEditMode });
 				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
 
-			<div
-				v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
-				:class="$style.outputs"
-				data-test-id="branches"
-			>
+			<div v-if="showBranchSwitch" :class="$style.outputs" data-test-id="branches">
 				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
@@ -1747,9 +1775,8 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.center"
 			>
-				<div v-if="search">
-					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-					<N8nText>
+				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+					<template #description>
 						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 							<template #link>
 								<a href="#" @click="onSearchClear">
@@ -1757,8 +1784,8 @@ defineExpose({ enterEditMode });
 								</a>
 							</template>
 						</I18nT>
-					</N8nText>
-				</div>
+					</template>
+				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
 				</N8nText>
@@ -1821,9 +1848,12 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-				<N8nText>
+			<NDVEmptyState
+				v-else-if="showIoSearchNoMatchContent"
+				:class="$style.center"
+				:title="i18n.baseText('ndv.search.noMatch.title')"
+			>
+				<template #description>
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click="onSearchClear">
@@ -1831,8 +1861,8 @@ defineExpose({ enterEditMode });
 							</a>
 						</template>
 					</I18nT>
-				</N8nText>
-			</div>
+				</template>
+			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<LazyRunDataTable
@@ -2108,6 +2138,9 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
+	}
+
+	.showActionsOnHover & {
 		visibility: hidden;
 
 		:global(.el-input__prefix) {
@@ -2115,7 +2148,7 @@ defineExpose({ enterEditMode });
 		}
 	}
 
-	.compact:hover & {
+	.showActionsOnHover:hover & {
 		visibility: visible;
 	}
 }

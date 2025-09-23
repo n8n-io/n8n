@@ -47,7 +47,6 @@ const DEFAULT_DATA_STORE: DataStore = {
 	id: 'ds1',
 	name: 'Test Data Store',
 	sizeBytes: 2048,
-	recordCount: 50,
 	columns: [
 		{ id: '1', name: 'id', type: 'string', index: 0 },
 		{ id: '2', name: 'name', type: 'string', index: 1 },

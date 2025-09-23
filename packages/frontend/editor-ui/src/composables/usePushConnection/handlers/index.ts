@@ -3,6 +3,7 @@ export * from './executionRecovered';
 export * from './executionStarted';
 export * from './nodeDescriptionUpdated';
 export * from './nodeExecuteAfter';
+export * from './nodeExecuteAfterData';
 export * from './nodeExecuteBefore';
 export * from './reloadNodeType';
 export * from './removeNodeType';

@@ -1,6 +1,6 @@
-import { getGlobalScopes } from './get-global-scopes.ee';
 import { hasScope } from './has-scope.ee';
 import type { AuthPrincipal, Scope, ScopeOptions } from '../types.ee';
+import { getAuthPrincipalScopes } from './get-role-scopes.ee';
 
 /**
  * Checks if an auth-principal has specified global scope(s).
@@ -12,6 +12,6 @@ export const hasGlobalScope = (
 	scope: Scope | Scope[],
 	scopeOptions?: ScopeOptions,
 ): boolean => {
-	const global = getGlobalScopes(principal);
+	const global = getAuthPrincipalScopes(principal);
 	return hasScope(scope, { global }, undefined, scopeOptions);
 };

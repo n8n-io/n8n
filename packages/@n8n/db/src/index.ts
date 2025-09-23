@@ -16,6 +16,7 @@ export { separate } from './utils/separate';
 export { sql } from './utils/sql';
 export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
 
+export * from './constants';
 export * from './entities';
 export * from './entities/types-db';
 export { NoXss } from './utils/validators/no-xss.validator';
@@ -36,3 +37,5 @@ export { DbConnection } from './connection/db-connection';
 export { DbConnectionOptions } from './connection/db-connection-options';
 
 export { AuthRolesService } from './services/auth.roles.service';
+
+export { DataSource } from '@n8n/typeorm';

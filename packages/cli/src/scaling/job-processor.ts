@@ -1,5 +1,6 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
@@ -13,7 +14,6 @@ import type {
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import config from '@/config';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -43,6 +43,7 @@ export class JobProcessor {
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -97,12 +98,12 @@ export class JobProcessor {
 
 		const workflowSettings = execution.workflowData.settings ?? {};
 
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout');
+		let workflowTimeout = workflowSettings.executionTimeout ?? this.executionsConfig.timeout;
 
 		let executionTimeoutTimestamp: number | undefined;
 
 		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
+			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 

@@ -7,7 +7,6 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
@@ -52,40 +51,22 @@ const dataStoreResources = computed<DataStoreResource[]>(() =>
 	}),
 );
 
-const projectId = computed(() => {
-	return Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId;
-});
-
 const totalCount = computed(() => dataStoreStore.totalCount);
 
-const currentProject = computed(() => projectsStore.currentProject);
-
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
+const currentProject = computed(() => {
+	if (projectPages.isOverviewSubPage) {
+		return projectsStore.personalProject;
 	}
-	return currentProject.value?.name;
-});
-
-const emptyCalloutDescription = computed(() => {
-	return projectPages.isOverviewSubPage ? i18n.baseText('dataStore.empty.description') : '';
-});
-
-const emptyCalloutButtonText = computed(() => {
-	if (projectPages.isOverviewSubPage || !projectName.value) {
-		return '';
-	}
-	return i18n.baseText('dataStore.empty.button.label', {
-		interpolate: { projectName: projectName.value },
-	});
+	return projectsStore.currentProject;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 const initialize = async () => {
 	loading.value = true;
+	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectId.value, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectIdFilter ?? '', currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -108,7 +89,7 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 const onAddModalClick = () => {
 	void router.push({
 		name: PROJECT_DATA_STORES,
-		params: { projectId: projectId.value, new: 'new' },
+		params: { projectId: currentProject.value?.id, new: 'new' },
 	});
 };
 
@@ -161,8 +142,8 @@ watch(
 			<n8n-action-box
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
-				:description="emptyCalloutDescription"
-				:button-text="emptyCalloutButtonText"
+				:description="i18n.baseText('dataStore.empty.description')"
+				:button-text="i18n.baseText('dataStore.add.button.label')"
 				button-type="secondary"
 				@click:button="onAddModalClick"
 			/>

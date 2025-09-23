@@ -2,7 +2,7 @@ import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } fr
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
+import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -79,12 +79,14 @@ export class PublicApiKeyService {
 	}
 
 	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository
-			.createQueryBuilder('user')
-			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
-			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select('user')
-			.getOne();
+		return await this.userRepository.findOne({
+			where: {
+				apiKeys: {
+					apiKey,
+				},
+			},
+			relations: ['role'],
+		});
 	}
 
 	/**
@@ -116,6 +118,8 @@ export class PublicApiKeyService {
 			const user = await this.getUserForApiKey(providedApiKey);
 
 			if (!user) return false;
+
+			if (user.disabled) return false;
 
 			// Legacy API keys are not JWTs and do not need to be verified.
 			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
@@ -161,7 +165,7 @@ export class PublicApiKeyService {
 		return decoded?.exp ?? null;
 	};
 
-	apiKeyHasValidScopesForRole(role: GlobalRole, apiKeyScopes: ApiKeyScope[]) {
+	apiKeyHasValidScopesForRole(role: AuthPrincipal, apiKeyScopes: ApiKeyScope[]) {
 		const scopesForRole = getApiKeyScopesForRole(role);
 		return apiKeyScopes.every((scope) => scopesForRole.includes(scope));
 	}

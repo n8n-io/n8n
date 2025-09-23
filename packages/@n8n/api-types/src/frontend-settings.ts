@@ -59,7 +59,9 @@ export interface FrontendSettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
+	isNativePythonRunnerEnabled: boolean;
 	authCookie: {
 		secure: boolean;
 	};
@@ -79,6 +81,9 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+	};
+	dataTables: {
+		maxSize: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;

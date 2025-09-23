@@ -20,6 +20,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
+import { useCalloutHelpers } from './composables/useCalloutHelpers';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -65,6 +66,8 @@ const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboard
 const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
 const EvaluationRootView = async () =>
 	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
+const PrebuiltAgentTemplatesView = async () =>
+	await import('@/views/PrebuiltAgentTemplatesView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -104,6 +107,29 @@ export const routes: RouteRecordRaw[] = [
 			},
 			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/templates/agents',
+		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
+		components: {
+			default: PrebuiltAgentTemplatesView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const calloutHelpers = useCalloutHelpers();
+			const templatesStore = useTemplatesStore();
+
+			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
+			} else {
+				next();
+			}
 		},
 	},
 	// Following two routes are kept in-app:
