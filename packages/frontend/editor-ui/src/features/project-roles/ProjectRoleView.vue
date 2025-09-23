@@ -203,11 +203,11 @@ const displayNameValidationRules = [
 			:class="$style.backButton"
 			text
 			@click="() => router.back()"
-			>Back to role list</N8nButton
+			>{{ i18n.baseText('projectRoles.backToRoleList') }}</N8nButton
 		>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
-				{{ roleSlug ? `Role "${form.displayName}"` : 'New Role' }}
+				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
 			<div v-if="initialState">
 				<N8nButton
@@ -216,19 +216,21 @@ const displayNameValidationRules = [
 					class="mr-xs"
 					@click="resetForm(initialState)"
 				>
-					Discard changes
+					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
-				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">Save</N8nButton>
+				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">{{
+					i18n.baseText('projectRoles.save')
+				}}</N8nButton>
 			</div>
 			<template v-else>
-				<N8nButton @click="handleSubmit">Create</N8nButton>
+				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
 			</template>
 		</div>
 
 		<div class="mb-l" :class="$style.formContainer">
 			<N8nFormInput
 				v-model="form.displayName"
-				label="Role name"
+				:label="i18n.baseText('projectRoles.roleName')"
 				validate-on-blur
 				:validation-rules="displayNameValidationRules"
 				class="mb-s"
@@ -238,21 +240,31 @@ const displayNameValidationRules = [
 			></N8nFormInput>
 			<N8nFormInput
 				v-model="form.description"
-				label="Description"
-				:placeholder="'Optional'"
+				:label="i18n.baseText('projectRoles.description')"
+				:placeholder="i18n.baseText('projectRoles.optional')"
 				type="textarea"
 				:maxlength="500"
 				:autosize="{ minRows: 2, maxRows: 4 }"
 			></N8nFormInput>
 		</div>
 
-		<N8nHeading tag="h2" size="xlarge" class="mb-s">Permissions</N8nHeading>
-		<N8nText color="text-light" class="mb-2xs" tag="p">Preset</N8nText>
+		<N8nHeading tag="h2" size="xlarge" class="mb-s">{{
+			i18n.baseText('projectRoles.permissions')
+		}}</N8nHeading>
+		<N8nText color="text-light" class="mb-2xs" tag="p">{{
+			i18n.baseText('projectRoles.preset')
+		}}</N8nText>
 
 		<div class="mb-s" :class="$style.presetsContainer">
-			<N8nButton type="secondary" @click="setPreset('project:admin')"> Admin </N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:editor')"> Editor </N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:viewer')"> Viewer </N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:admin')">{{
+				i18n.baseText('projectRoles.admin')
+			}}</N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:editor')">{{
+				i18n.baseText('projectRoles.editor')
+			}}</N8nButton>
+			<N8nButton type="secondary" @click="setPreset('project:viewer')">{{
+				i18n.baseText('projectRoles.viewer')
+			}}</N8nButton>
 		</div>
 
 		<div :class="$style.cardContainer">
