@@ -113,7 +113,7 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			this.git = simpleGit(this.gitOptions).env('GIT_TERMINAL_PROMPT', '0');
-		} else {
+		} else if (preferences.connectionType === 'ssh') {
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
 			const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 
