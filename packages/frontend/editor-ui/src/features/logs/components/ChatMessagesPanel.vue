@@ -124,6 +124,8 @@ const chatOptions = computed<ChatOptions>(() => {
 		sessionId: props.sessionId,
 		// Enable streaming based on ChatTrigger node configuration
 		enableStreaming: isStreamingEnabled.value,
+		// Enable message actions (repost and copy to input)
+		enableMessageActions: true,
 		// Use the correct field names that ChatTrigger expects
 		chatInputKey: 'chatInput',
 		chatSessionKey: 'sessionId',
@@ -468,29 +470,58 @@ onUnmounted(() => {
 		/* Code blocks in messages */
 		--chat--message--pre--background: var(--color-background-xlight) !important;
 
-		/* Input Area */
+		/* Footer Container */
+		--chat--footer--background: var(--color-background-base) !important;
+		--chat--footer--padding: var(--spacing-m) !important;
+
+		/* Input Container - unified rounded container */
+		--chat--input--container--background: var(--color-background-light) !important;
+		--chat--input--container--border: 1px solid var(--color-foreground-light) !important;
+		--chat--input--container--border-radius: 24px !important;
+		--chat--input--container--padding: 12px !important;
+
+		/* Input Textarea */
 		--chat--input--font-size: var(--font-size-s) !important;
-		--chat--input--padding: var(--spacing-s) !important;
-		--chat--input--border-radius: var(--border-radius-base) !important;
-		--chat--input--border: var(--border-base) !important;
-		--chat--input--border-active: 1px solid var(--color-primary) !important;
-		--chat--input--background: var(--color-background-xlight) !important;
-		--chat--input--text-color: var(--color-text-base) !important;
+		--chat--input--padding: 12px 16px !important;
+		--chat--input--border-radius: 20px !important;
+		--chat--input--border: none !important;
+		--chat--input--border-active: none !important;
+		--chat--input--background: transparent !important;
+		--chat--input--text-color: var(--color-text-dark) !important;
 		--chat--input--line-height: var(--font-line-height-regular) !important;
 		--chat--input--placeholder--font-size: var(--font-size-s) !important;
 		--chat--textarea--height: 44px !important;
 		--chat--textarea--max-height: 200px !important;
 
-		/* Input Buttons */
+		/* Send Button - integrated into container */
 		--chat--input--send--button--color: var(--color-primary) !important;
 		--chat--input--send--button--color-hover: var(--color-primary-shade-1) !important;
 		--chat--input--send--button--background: transparent !important;
-		--chat--input--send--button--background-hover: transparent !important;
+		--chat--input--send--button--background-hover: var(--color-primary-tint-2) !important;
+		--chat--input--send--button--border-radius: 20px !important;
+		--chat--input--send--button--size: 36px !important;
+		--chat--input--send--button--margin: 4px !important;
+
+		/* File Button */
 		--chat--input--file--button--color: var(--color-text-light) !important;
 		--chat--input--file--button--color-hover: var(--color-text-base) !important;
 		--chat--input--file--button--background: transparent !important;
 		--chat--input--file--button--background-hover: transparent !important;
-		--chat--close--button--color-hover: var(--color-primary) !important;
+
+		/* Message Action Buttons */
+		--chat--message-actions--gap: 8px !important;
+		--chat--message-actions--button-size: 28px !important;
+		--chat--message-actions--button-border: none !important;
+		--chat--message-actions--button-border-radius: 6px !important;
+		--chat--message-actions--button-background: transparent !important;
+		--chat--message-actions--button-color: rgba(255, 255, 255, 0.7) !important;
+		--chat--message-actions--button-shadow: none !important;
+		--chat--message-actions--button-transition: all 0.15s ease !important;
+		--chat--message-actions--button-hover-background: rgba(255, 255, 255, 0.1) !important;
+		--chat--message-actions--button-hover-color: rgba(255, 255, 255, 1) !important;
+		--chat--message-actions--button-hover-transform: scale(1.1) !important;
+		--chat--message-actions--button-active-transform: scale(0.95) !important;
+		--chat--message-actions--button-active-background: rgba(255, 255, 255, 0.2) !important;
 	}
 
 	/* Hide the default chat header since we use our own */
@@ -523,6 +554,14 @@ onUnmounted(() => {
 			--chat--input--text-color: var(--color-text-base) !important;
 			--chat--input--border: 1px solid var(--color-foreground-base) !important;
 			--chat--input--border-active: 1px solid var(--color-primary) !important;
+
+			/* Message Action Buttons - dark mode */
+			--chat--message-actions--button-background: transparent !important;
+			--chat--message-actions--button-color: rgba(255, 255, 255, 0.6) !important;
+			--chat--message-actions--button-border: none !important;
+			--chat--message-actions--button-hover-background: rgba(255, 255, 255, 0.15) !important;
+			--chat--message-actions--button-hover-color: rgba(255, 255, 255, 0.9) !important;
+			--chat--message-actions--button-active-background: rgba(255, 255, 255, 0.25) !important;
 		}
 	}
 }

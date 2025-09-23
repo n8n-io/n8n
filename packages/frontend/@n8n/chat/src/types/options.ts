@@ -38,4 +38,6 @@ export interface ChatOptions {
 	// Event handlers for message lifecycle
 	beforeMessageSent?: (message: string) => void | Promise<void>;
 	afterMessageSent?: (message: string, response?: any) => void | Promise<void>;
+	// Message action options
+	enableMessageActions?: boolean;
 }
