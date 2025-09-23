@@ -74,14 +74,14 @@ describe('InsightsDateFilterDto', () => {
 					startDate: '2025-13-01', // Invalid month
 					endDate: '2025-13-31', // Invalid month
 				},
-				expectedErrorPath: ['startDate', 'endDate'],
+				expectedErrorPaths: ['startDate', 'endDate'],
 			},
 			{
 				name: 'startDate is an invalid timestamp',
 				request: {
 					startDate: NaN,
 				},
-				expectedErrorPath: ['startDate'],
+				expectedErrorPaths: ['startDate'],
 			},
 			{
 				name: 'endDate is an invalid timestamp',
@@ -89,14 +89,14 @@ describe('InsightsDateFilterDto', () => {
 					endDate: NaN,
 					projectId: 'validProjectId',
 				},
-				expectedErrorPath: ['endDate'],
+				expectedErrorPaths: ['endDate'],
 			},
 			{
 				name: 'startDate is an invalid ISO string',
 				request: {
 					startDate: 'invalid--date',
 				},
-				expectedErrorPath: ['startDate'],
+				expectedErrorPaths: ['startDate'],
 			},
 			{
 				name: 'endDate is an invalid ISO string',
@@ -104,21 +104,21 @@ describe('InsightsDateFilterDto', () => {
 					startDate: '2025-01-01',
 					endDate: 'not-a-date',
 				},
-				expectedErrorPath: ['endDate'],
+				expectedErrorPaths: ['endDate'],
 			},
 			{
 				name: 'invalid dateRange value',
 				request: {
 					dateRange: 'invalid-value',
 				},
-				expectedErrorPath: ['dateRange'],
+				expectedErrorPaths: ['dateRange'],
 			},
 			{
 				name: 'invalid projectId value',
 				request: {
 					projectId: 10,
 				},
-				expectedErrorPath: ['projectId'],
+				expectedErrorPaths: ['projectId'],
 			},
 			{
 				name: 'all fields invalid',
@@ -128,19 +128,14 @@ describe('InsightsDateFilterDto', () => {
 					endDate: 'not-a-date',
 					projectId: 10,
 				},
-				expectedErrorPath: ['dateRange', 'startDate', 'endDate', 'projectId'],
+				expectedErrorPaths: ['dateRange', 'startDate', 'endDate', 'projectId'],
 			},
-		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
+		])('should fail validation for $name', ({ request, expectedErrorPaths }) => {
 			const result = InsightsDateFilterDto.safeParse(request);
+			const issuesPaths = new Set(result.error?.issues.map((issue) => issue.path[0]));
 
 			expect(result.success).toBe(false);
-
-			if (expectedErrorPath && !result.success) {
-				if (Array.isArray(expectedErrorPath)) {
-					const errorPaths = result.error.issues[0].path;
-					expect(errorPaths).toContain(expectedErrorPath[0]);
-				}
-			}
+			expect(new Set(issuesPaths)).toEqual(new Set(expectedErrorPaths));
 		});
 	});
 });
