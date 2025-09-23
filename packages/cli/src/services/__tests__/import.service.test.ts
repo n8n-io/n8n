@@ -655,6 +655,32 @@ describe('ImportService', () => {
 		});
 	});
 
+	describe('replaceInvalidCreds', () => {
+		it('should handle error when replaceInvalidCredentials fails', async () => {
+			const mockWorkflow = {
+				nodes: [{ id: 'node1', credentials: { httpBasicAuth: 'invalid' } }],
+			};
+
+			// Mock replaceInvalidCredentials to throw an error
+			const mockReplaceInvalidCredentials = jest
+				.fn()
+				.mockRejectedValue(new Error('Credential replacement failed'));
+
+			// Mock the replaceInvalidCredentials function
+			jest.doMock('@/workflow-helpers', () => ({
+				replaceInvalidCredentials: mockReplaceInvalidCredentials,
+			}));
+
+			// @ts-expect-error Accessing private method for testing
+			await importService.replaceInvalidCreds(mockWorkflow);
+
+			// Verify error was logged
+			expect(mockLogger.error).toHaveBeenCalledWith('Failed to replace invalid credential', {
+				error: expect.any(Error),
+			});
+		});
+	});
+
 	describe('importEntities', () => {
 		it('should call transaction with correct parameters', async () => {
 			const mockEntityMetadatas = [
@@ -936,6 +962,110 @@ describe('ImportService', () => {
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
 				'Migration ID mismatch. Import data: Migration2 (id: migration2) does not match target database: Migration2 (id: different_id). Cannot import data from different migration states.',
+			);
+		});
+
+		it('should throw error when migrations file contains invalid JSON', async () => {
+			jest.mocked(readFile).mockResolvedValue('invalid json\n{"valid": "json"}');
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Invalid JSON in migrations file:',
+			);
+		});
+
+		it('should handle non-Error objects in JSON parsing', async () => {
+			// Mock JSON.parse to throw a non-Error object
+			const originalJSONParse = JSON.parse;
+			JSON.parse = jest.fn().mockImplementation(() => {
+				throw 'String error'; // Non-Error object
+			});
+
+			jest.mocked(readFile).mockResolvedValue('invalid json');
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Invalid JSON in migrations file: Unknown error',
+			);
+
+			// Restore original JSON.parse
+			JSON.parse = originalJSONParse;
+		});
+
+		it('should handle migrations with both timestamp and id fields', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
+				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations('/test/input');
+
+			// Should not throw an error
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should handle migrations with missing timestamp but present id', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', id: 'migration1' },
+				{ name: 'Migration2', id: 'migration2' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration timestamp mismatch',
+			);
+		});
+
+		it('should handle migrations with null/undefined values', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: null, id: null },
+				{ name: 'Migration2', timestamp: undefined, id: undefined },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration timestamp mismatch',
+			);
+		});
+
+		it('should handle database migrations with null timestamp', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
+				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: null, id: 'migration2' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration timestamp mismatch',
 			);
 		});
 	});

@@ -274,7 +274,15 @@ export class ImportService {
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())
-			.map((line) => JSON.parse(line));
+			.map((line) => {
+				try {
+					return JSON.parse(line) as Record<string, unknown>;
+				} catch (error) {
+					throw new Error(
+						`Invalid JSON in migrations file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					);
+				}
+			});
 
 		if (importMigrations.length === 0) {
 			this.logger.info('No migrations found in import data');
@@ -283,13 +291,13 @@ export class ImportService {
 
 		// Find the latest migration in import data
 		const latestImportMigration = importMigrations.reduce((latest, current) => {
-			const currentTimestamp = parseInt(current.timestamp || current.id || '0');
-			const latestTimestamp = parseInt(latest.timestamp || latest.id || '0');
+			const currentTimestamp = parseInt(String(current.timestamp || current.id || '0'));
+			const latestTimestamp = parseInt(String(latest.timestamp || latest.id || '0'));
 			return currentTimestamp > latestTimestamp ? current : latest;
 		});
 
 		this.logger.info(
-			`Latest migration in import data: ${latestImportMigration.name} (timestamp: ${latestImportMigration.timestamp || latestImportMigration.id}, id: ${latestImportMigration.id})`,
+			`Latest migration in import data: ${String(latestImportMigration.name)} (timestamp: ${String(latestImportMigration.timestamp || latestImportMigration.id)}, id: ${String(latestImportMigration.id)})`,
 		);
 
 		// Get migrations from target database
@@ -314,9 +322,9 @@ export class ImportService {
 
 			// Compare timestamps, names, and IDs for comprehensive validation
 			const importTimestamp = parseInt(
-				latestImportMigration.timestamp || latestImportMigration.id || '0',
+				String(latestImportMigration.timestamp || latestImportMigration.id || '0'),
 			);
-			const dbTimestamp = parseInt(latestDbMigration.timestamp || '0');
+			const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 			const importName = latestImportMigration.name;
 			const dbName = latestDbMigration.name;
 			const importId = latestImportMigration.id;
@@ -325,27 +333,47 @@ export class ImportService {
 			// Check timestamp match
 			if (importTimestamp !== dbTimestamp) {
 				throw new Error(
-					`Migration timestamp mismatch. Import data: ${importName} (${importTimestamp}) ` +
-						`does not match target database: ${dbName} (${dbTimestamp}). ` +
-						`Cannot import data from different migration states.`,
+					'Migration timestamp mismatch. Import data: ' +
+						String(importName) +
+						' (' +
+						String(importTimestamp) +
+						') ' +
+						'does not match target database: ' +
+						String(dbName) +
+						' (' +
+						String(dbTimestamp) +
+						'). ' +
+						'Cannot import data from different migration states.',
 				);
 			}
 
 			// Check name match
 			if (importName !== dbName) {
 				throw new Error(
-					`Migration name mismatch. Import data: ${importName} ` +
-						`does not match target database: ${dbName}. ` +
-						`Cannot import data from different migration states.`,
+					'Migration name mismatch. Import data: ' +
+						String(importName) +
+						' ' +
+						'does not match target database: ' +
+						String(dbName) +
+						'. ' +
+						'Cannot import data from different migration states.',
 				);
 			}
 
 			// Check ID match (if both have IDs)
 			if (importId && dbId && importId !== dbId) {
 				throw new Error(
-					`Migration ID mismatch. Import data: ${importName} (id: ${importId}) ` +
-						`does not match target database: ${dbName} (id: ${dbId}). ` +
-						`Cannot import data from different migration states.`,
+					'Migration ID mismatch. Import data: ' +
+						String(importName) +
+						' (id: ' +
+						String(importId) +
+						') ' +
+						'does not match target database: ' +
+						String(dbName) +
+						' (id: ' +
+						String(dbId) +
+						'). ' +
+						'Cannot import data from different migration states.',
 				);
 			}
 

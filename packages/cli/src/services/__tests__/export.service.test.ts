@@ -55,12 +55,12 @@ describe('ExportService', () => {
 			mockDataSource.options = { entityPrefix: '' };
 
 			// Mock the system table query to fail (migrations table doesn't exist in tests)
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				// For regular entity queries, return empty array
-				return Promise.resolve([]);
+				return [];
 			});
 		});
 
@@ -77,14 +77,14 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - override the default implementation for this test
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users') && query.includes('LIMIT 500 OFFSET 0')) {
-					return Promise.resolve(mockEntities);
+					return mockEntities;
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -122,17 +122,17 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - override the default implementation for this test
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users') && query.includes('LIMIT 500 OFFSET 0')) {
-					return Promise.resolve(page1Entities);
+					return page1Entities;
 				}
 				if (query.includes('users') && query.includes('LIMIT 500 OFFSET 500')) {
-					return Promise.resolve(page2Entities);
+					return page2Entities;
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -189,18 +189,18 @@ describe('ExportService', () => {
 
 			// Mock database queries - override the default implementation for this test
 			let callCount = 0;
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users')) {
 					callCount++;
 					if (callCount <= 20) {
-						return Promise.resolve(largePage);
+						return largePage;
 					}
-					return Promise.resolve([]);
+					return [];
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -222,12 +222,12 @@ describe('ExportService', () => {
 			(mkdir as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - override the default implementation for this test
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				// For regular entity queries, return empty array
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -247,17 +247,17 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - override the default implementation for this test
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users') && query.includes('LIMIT 500 OFFSET 0')) {
-					return Promise.resolve(userEntities);
+					return userEntities;
 				}
 				if (query.includes('workflows') && query.includes('LIMIT 500 OFFSET 0')) {
-					return Promise.resolve(workflowEntities);
+					return workflowEntities;
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -286,14 +286,14 @@ describe('ExportService', () => {
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
 			// Mock database queries - override the default implementation for this test
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users') && query.includes('LIMIT 500 OFFSET 0')) {
-					return Promise.resolve(mockEntities);
+					return mockEntities;
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -320,18 +320,18 @@ describe('ExportService', () => {
 
 			// Mock database queries - override the default implementation for this test
 			let callCount = 0;
-			jest.mocked(mockDataSource.query).mockImplementation((query: string) => {
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
-					return Promise.reject(new Error('Table not found'));
+					throw new Error('Table not found');
 				}
 				if (query.includes('users')) {
 					callCount++;
 					if (callCount <= 3) {
-						return Promise.resolve(largePage);
+						return largePage;
 					}
-					return Promise.resolve([]);
+					return [];
 				}
-				return Promise.resolve([]);
+				return [];
 			});
 
 			await exportService.exportEntities(outputDir);
@@ -386,6 +386,45 @@ describe('ExportService', () => {
 			(mkdir as jest.Mock).mockRejectedValue(new Error('Permission denied'));
 
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
+		});
+
+		it('should export migrations table when it has data', async () => {
+			const outputDir = '/test/output';
+			const mockMigrations = [
+				{ id: '001', name: 'InitialMigration', timestamp: '1000' },
+				{ id: '002', name: 'AddUsersTable', timestamp: '2000' },
+			];
+
+			// Mock file system operations
+			(readdir as jest.Mock).mockResolvedValue([]);
+			(mkdir as jest.Mock).mockResolvedValue(undefined);
+			(appendFile as jest.Mock).mockResolvedValue(undefined);
+
+			// Mock database queries to return migrations data
+			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.includes('migrations') && query.includes('COUNT')) {
+					return [{ count: '2' }];
+				}
+				if (query.includes('migrations') && query.includes('SELECT *')) {
+					return mockMigrations;
+				}
+				// For regular entity queries, return empty array
+				return [];
+			});
+
+			await exportService.exportEntities(outputDir);
+
+			// Verify migrations file was created
+			expect(appendFile).toHaveBeenCalledWith(
+				'/test/output/migrations.jsonl',
+				JSON.stringify(mockMigrations[0]) + '\n' + JSON.stringify(mockMigrations[1]) + '\n',
+				'utf8',
+			);
+
+			// Verify logging
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'   ✅ Completed export for migrations: 2 entities in 1 file',
+			);
 		});
 	});
 
