@@ -29,7 +29,7 @@ const connectionString = computed(() => {
 		        "--streamableHttp",
 		        "${props.baseUrl}${MCP_ENDPOINT}",
 		        "--header",
-		        "authorization:<YOUR_N8N_API_KEY>"
+		        "authorization:Bearer <YOUR_N8N_API_KEY>"
 		      ]
 		    }
 		  }
