@@ -195,7 +195,7 @@ export class E2EController {
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
-		if (this.enabledFeatures[LICENSE_FEATURES.AI_ASSISTANT] === true) {
+		if (this.enabledFeatures[LICENSE_FEATURES.AI_ASSISTANT]) {
 			this.frontendService.settings.aiAssistant.setup = true;
 		}
 	}
