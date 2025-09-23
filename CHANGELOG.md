@@ -1,3 +1,15 @@
+## [1.113.1](https://github.com/n8n-io/n8n/compare/n8n@1.113.0...n8n@1.113.1) (2025-09-23)
+
+
+### Bug Fixes
+
+* **core:** Use different query to get sqlite data table sizes ([#19878](https://github.com/n8n-io/n8n/issues/19878)) ([24f08e1](https://github.com/n8n-io/n8n/commit/24f08e12f087c55aae4ace6e5c17fbc735ac4c04))
+* **editor:** Fix UI being blocked from loading while data table limits are being fetched ([#19871](https://github.com/n8n-io/n8n/issues/19871)) ([436c5ab](https://github.com/n8n-io/n8n/commit/436c5abd830732cf12cb5fd5269529c089b7daad))
+* **editor:** Make the data table size cache longer by default ([#19875](https://github.com/n8n-io/n8n/issues/19875)) ([71cf584](https://github.com/n8n-io/n8n/commit/71cf58473b0a60f0a65b006a39fce551f39c118f))
+* Pass project ID to the wf execution demo iframe ([#19785](https://github.com/n8n-io/n8n/issues/19785)) ([a0efb97](https://github.com/n8n-io/n8n/commit/a0efb97904d5b9bb3ba70357bc40603d670fa942))
+
+
+
 # [1.113.0](https://github.com/n8n-io/n8n/compare/n8n@1.112.0...n8n@1.113.0) (2025-09-22)
 
 
