@@ -220,8 +220,8 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 
 			const valueKey =
 				typeof dependantValue === 'object' && dependantValue._cnd
-					? JSON.stringify(dependantValue._cnd)
-					: String(dependantValue);
+					? JSON.stringify(dependantValue)
+					: JSON.stringify(dependantValue);
 
 			if (!propertyRequiredDependencies[dependantName][valueKey]) {
 				propertyRequiredDependencies[dependantName][valueKey] = [];
@@ -310,14 +310,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				};
 			}
 			conditionalSchemas.push({
-				if: {
-					properties: {
-						[dependantName]: conditionalValue,
-					},
-				},
-				then: {
-					required: propertyNames,
-				},
+				if: { properties: { [dependantName]: conditionalValue } },
+				then: { allOf: propertyNames.map((name) => ({ required: [name] })) },
+				else: { allOf: propertyNames.map((name) => ({ not: { required: [name] } })) },
 			});
 		});
 	});

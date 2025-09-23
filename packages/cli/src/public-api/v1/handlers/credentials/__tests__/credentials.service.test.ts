@@ -136,12 +136,18 @@ describe('CredentialsService', () => {
 				cond.if?.properties?.keyType?.enum?.includes('passphrase'),
 			);
 			expect(passphraseCond).toBeDefined();
-			expect(passphraseCond.then?.required).toEqual(['secret']);
+			expect(passphraseCond.then?.allOf.some((r: any) => r.required?.includes('secret'))).toBe(
+				true,
+			);
 
 			// Check PEM key condition
 			const pemCond = allOf.find((cond) => cond.if?.properties?.keyType?.enum?.includes('pemKey'));
 			expect(pemCond).toBeDefined();
-			expect(pemCond.then?.required.sort()).toEqual(['privateKey', 'publicKey'].sort());
+			expect(
+				pemCond.then?.allOf.some((r: any) =>
+					['privateKey', 'publicKey'].every((key) => r.required?.includes(key)),
+				),
+			).toBe(true);
 		});
 	});
 });
