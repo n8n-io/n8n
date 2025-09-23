@@ -89,6 +89,64 @@ describe('NocoDB Rows Search Action', () => {
 			);
 			expect(result).toEqual([[expectedResponse]]);
 		});
+
+		it('should make a search request with only fields option', async () => {
+			// Mocking getNodeParameter for v4 with only fields
+			mockExecuteFunctions.getNodeParameter = jest
+				.fn()
+				.mockImplementation((name: string, index: number) => {
+					if (name === 'version') return 4;
+					if (name === 'projectId') return 'base1';
+					if (name === 'table') return 'table1';
+					if (name === 'returnAll') return false;
+					if (name === 'limit') return 50;
+					if (name === 'options') {
+						return {
+							fields: {
+								items: [{ field: { value: 'fieldC' } }, { field: { value: 'fieldD' } }],
+							},
+						};
+					}
+					return undefined;
+				});
+
+			// Mocking apiRequest.call
+			(apiRequest.call as jest.Mock).mockResolvedValue({
+				records: [{ id: 1, fieldC: 'valueC' }],
+			});
+
+			const expectedResponse = [{ id: 1, fieldC: 'valueC' }];
+
+			const result = await execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('version', 0);
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'projectId',
+				0,
+				undefined,
+				{
+					extractValue: true,
+				},
+			);
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('table', 0, undefined, {
+				extractValue: true,
+			});
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('returnAll', 0);
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('limit', 0);
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('options', 0, {});
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				mockExecuteFunctions,
+				'GET',
+				'/api/v3/data/base1/table1/records',
+				{},
+				{
+					fields: 'fieldC,fieldD',
+					limit: 50,
+				},
+			);
+			expect(result).toEqual([[expectedResponse]]);
+		});
 	});
 
 	describe('returnAll', () => {
