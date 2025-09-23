@@ -46,7 +46,7 @@ describe('AiWorkflowBuilderService', () => {
 	let mockChatAnthropic: ChatAnthropic;
 	let mockTracingClient: TracingClient;
 	let mockMemorySaver: MemorySaver;
-	let mockPushService: any;
+	let mockOnCreditsUpdated: jest.Mock;
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
@@ -151,10 +151,8 @@ describe('AiWorkflowBuilderService', () => {
 
 		anthropicClaudeSonnet4Mock.mockResolvedValue(mockChatAnthropic);
 
-		// Mock push service
-		mockPushService = {
-			sendToUsers: jest.fn(),
-		};
+		// Mock onCreditsUpdated callback
+		mockOnCreditsUpdated = jest.fn();
 
 		// Create service instance
 		service = new AiWorkflowBuilderService(
@@ -162,7 +160,7 @@ describe('AiWorkflowBuilderService', () => {
 			mockClient,
 			mockLogger,
 			'https://n8n.example.com',
-			mockPushService,
+			mockOnCreditsUpdated,
 		);
 	});
 
@@ -173,7 +171,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockClient,
 				mockLogger,
 				'https://test.com',
-				mockPushService,
+				mockOnCreditsUpdated,
 			);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
@@ -482,7 +480,7 @@ describe('AiWorkflowBuilderService', () => {
 			});
 		});
 
-		it('should send updateBuilderCredits websocket event after markBuilderSuccess', async () => {
+		it('should call onCreditsUpdated callback after markBuilderSuccess', async () => {
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
 
@@ -491,17 +489,8 @@ describe('AiWorkflowBuilderService', () => {
 			// Call the onGenerationSuccess callback
 			await config.onGenerationSuccess!();
 
-			// Verify websocket event was sent
-			expect(mockPushService.sendToUsers).toHaveBeenCalledWith(
-				{
-					type: 'updateBuilderCredits',
-					data: {
-						creditsQuota: 10,
-						creditsClaimed: 1,
-					},
-				},
-				['test-user-id'],
-			);
+			// Verify callback was called with correct parameters
+			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
 		});
 
 		it('should not call markBuilderSuccess when using deprecated credentials', async () => {

@@ -16,9 +16,7 @@ import { anthropicClaudeSonnet4 } from '@/llm-config';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
-interface PushService {
-	sendToUsers(message: { type: string; data: unknown }, userIds: string[]): void;
-}
+type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -31,7 +29,7 @@ export class AiWorkflowBuilderService {
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceUrl?: string,
-		private readonly pushService?: PushService,
+		private readonly onCreditsUpdated?: OnCreditsUpdated,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
@@ -209,18 +207,9 @@ export class AiWorkflowBuilderService {
 				assert(user);
 				const creditsInfo = await this.client.markBuilderSuccess(user, authHeaders);
 
-				// Send websocket event with the actual credits info from the response
-				if (this.pushService && user.id && creditsInfo) {
-					this.pushService.sendToUsers(
-						{
-							type: 'updateBuilderCredits',
-							data: {
-								creditsQuota: creditsInfo.creditsQuota,
-								creditsClaimed: creditsInfo.creditsClaimed,
-							},
-						},
-						[user.id],
-					);
+				// Call the callback with the credits info from the response
+				if (this.onCreditsUpdated && user.id && creditsInfo) {
+					this.onCreditsUpdated(user.id, creditsInfo.creditsQuota, creditsInfo.creditsClaimed);
 				}
 			}
 		} catch (error: unknown) {

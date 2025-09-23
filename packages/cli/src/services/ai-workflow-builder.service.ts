@@ -47,12 +47,26 @@ export class WorkflowBuilderService {
 				});
 			}
 
+			// Create callback that uses the push service
+			const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+				this.push.sendToUsers(
+					{
+						type: 'updateBuilderCredits',
+						data: {
+							creditsQuota,
+							creditsClaimed,
+						},
+					},
+					[userId],
+				);
+			};
+
 			this.service = new AiWorkflowBuilderService(
 				this.nodeTypes,
 				client,
 				this.logger,
 				this.urlService.getInstanceBaseUrl(),
-				this.push,
+				onCreditsUpdated,
 			);
 		}
 		return this.service;
