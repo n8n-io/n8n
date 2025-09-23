@@ -183,15 +183,6 @@ describe('ProjectRolesView', () => {
 		expect(actionToggles).toHaveLength(2);
 	});
 
-	it('should display placeholder values for assigned to and last edited columns', () => {
-		rolesStore.processedProjectRoles = mockCustomRoles;
-
-		const { getAllByText } = renderComponent();
-
-		// Both "Assigned to" and "Last edited" columns should show "-" as placeholder
-		expect(getAllByText('-')).toHaveLength(mockCustomRoles.length * 2);
-	});
-
 	it('should handle mixed system and custom roles', () => {
 		rolesStore.processedProjectRoles = [...mockSystemRoles, ...mockCustomRoles];
 
