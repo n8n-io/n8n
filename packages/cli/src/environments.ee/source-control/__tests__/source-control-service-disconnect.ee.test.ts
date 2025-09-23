@@ -26,7 +26,6 @@ describe('SourceControlService - disconnect functionality', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 		);
 
 		(sourceControlService as any).sourceControlExportService = mockExportService;
@@ -62,7 +61,7 @@ describe('SourceControlService - disconnect functionality', () => {
 			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
 				branchName: '',
-				connectionType: 'ssh',
+				connectionType: 'https',
 			});
 			expect(mockExportService.deleteRepositoryFolder).toHaveBeenCalled();
 			expect(mockGitService.resetService).toHaveBeenCalled();
@@ -172,33 +171,6 @@ describe('SourceControlService - disconnect functionality', () => {
 			await expect(sourceControlService.disconnect()).rejects.toThrow(
 				'Failed to disconnect from source control',
 			);
-		});
-
-		it('should reset connection type to SSH by default', async () => {
-			const httpsPreferences: SourceControlPreferences = {
-				connectionType: 'https' as const,
-				repositoryUrl: 'https://github.com/user/repo.git',
-				connected: true,
-				branchName: 'main',
-				branchReadOnly: false,
-				branchColor: '#5296D6',
-				publicKey: '',
-				initRepo: false,
-				keyGeneratorType: 'ed25519',
-			};
-
-			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(httpsPreferences);
-			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
-			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
-			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
-
-			await sourceControlService.disconnect();
-
-			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
-				connected: false,
-				branchName: '',
-				connectionType: 'ssh',
-			});
 		});
 	});
 });
