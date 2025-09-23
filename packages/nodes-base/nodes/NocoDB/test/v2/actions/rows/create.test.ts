@@ -85,4 +85,70 @@ describe('NocoDB Rows Create Action', () => {
 		);
 		expect(result).toEqual([[[mockResponseData]]]);
 	});
+
+	it('should create a row with defineBelow and fieldsMapper', async () => {
+		const mockBase = 'base1';
+		const mockTable = 'table1';
+		const mockFieldsMapper = {
+			schema: [{ id: 'Title' }],
+			value: {
+				Title: 'Hello world',
+			},
+		};
+		const mockColumnsToInsert = {
+			Title: 'Hello world',
+		};
+		const mockResponseData = {
+			id: 1,
+			fields: mockColumnsToInsert,
+		};
+
+		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			if (paramName === 'projectId') return mockBase;
+			if (paramName === 'table') return mockTable;
+			if (paramName === 'dataToSend') return 'defineBelow';
+			if (paramName === 'fieldsMapper') return mockFieldsMapper;
+			return undefined;
+		});
+		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([
+			{
+				json: {},
+			},
+		]);
+		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data) => data);
+		(apiRequest.call as jest.Mock).mockResolvedValue({ records: [mockResponseData] });
+
+		const result = await execute.call(mockExecuteFunctions);
+
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
+			'projectId',
+			0,
+			undefined,
+			expect.anything(),
+		);
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
+			'table',
+			0,
+			undefined,
+			expect.anything(),
+		);
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('dataToSend', 0);
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
+			'fieldsMapper',
+			0,
+			expect.anything(),
+		);
+		expect(apiRequest.call).toHaveBeenCalledWith(
+			expect.anything(),
+			'POST',
+			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			[
+				{
+					fields: mockColumnsToInsert,
+				},
+			],
+			{},
+		);
+		expect(result).toEqual([[mockResponseData]]);
+	});
 });
