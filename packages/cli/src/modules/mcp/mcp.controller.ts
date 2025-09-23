@@ -17,7 +17,6 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
-	// Streaming endpoint: use usesTemplates to bypass send() wrapper
 	@Post('/http', { rateLimit: { limit: 100 }, apiKeyAuth: true, usesTemplates: true })
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
 		// Deny if MCP access is disabled
