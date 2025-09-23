@@ -9,6 +9,7 @@ import type { IUser } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
 /**
@@ -25,6 +26,7 @@ export class WorkflowBuilderService {
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly push: Push,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -50,6 +52,7 @@ export class WorkflowBuilderService {
 				client,
 				this.logger,
 				this.urlService.getInstanceBaseUrl(),
+				this.push,
 			);
 		}
 		return this.service;

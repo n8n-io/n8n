@@ -16,6 +16,10 @@ import { anthropicClaudeSonnet4 } from '@/llm-config';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
+interface PushService {
+	sendToUsers(message: { type: string; data: unknown }, userIds: string[]): void;
+}
+
 @Service()
 export class AiWorkflowBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
@@ -27,6 +31,7 @@ export class AiWorkflowBuilderService {
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceUrl?: string,
+		private readonly pushService?: PushService,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
@@ -203,6 +208,21 @@ export class AiWorkflowBuilderService {
 				assert(authHeaders, 'Auth headers must be set when AI Assistant Service client is used');
 				assert(user);
 				await this.client.markBuilderSuccess(user, authHeaders);
+
+				// After marking success, send websocket event with credits info
+				// Using hardcoded values as specified by the user
+				if (this.pushService && user.id) {
+					this.pushService.sendToUsers(
+						{
+							type: 'updateBuilderCredits',
+							data: {
+								creditsQuota: 10,
+								creditsClaimed: 1,
+							},
+						},
+						[user.id],
+					);
+				}
 			}
 		} catch (error: unknown) {
 			if (error instanceof Error) {

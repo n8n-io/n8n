@@ -46,6 +46,7 @@ describe('AiWorkflowBuilderService', () => {
 	let mockChatAnthropic: ChatAnthropic;
 	let mockTracingClient: TracingClient;
 	let mockMemorySaver: MemorySaver;
+	let mockPushService: any;
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
@@ -147,12 +148,18 @@ describe('AiWorkflowBuilderService', () => {
 
 		anthropicClaudeSonnet4Mock.mockResolvedValue(mockChatAnthropic);
 
+		// Mock push service
+		mockPushService = {
+			sendToUsers: jest.fn(),
+		};
+
 		// Create service instance
 		service = new AiWorkflowBuilderService(
 			mockNodeTypes,
 			mockClient,
 			mockLogger,
 			'https://n8n.example.com',
+			mockPushService,
 		);
 	});
 
@@ -163,6 +170,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockClient,
 				mockLogger,
 				'https://test.com',
+				mockPushService,
 			);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
@@ -469,6 +477,28 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockClient.markBuilderSuccess).toHaveBeenCalledWith(mockUser, {
 				Authorization: 'Bearer test-access-token',
 			});
+		});
+
+		it('should send updateBuilderCredits websocket event after markBuilderSuccess', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
+
+			// Call the onGenerationSuccess callback
+			await config.onGenerationSuccess!();
+
+			// Verify websocket event was sent
+			expect(mockPushService.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'updateBuilderCredits',
+					data: {
+						creditsQuota: 10,
+						creditsClaimed: 1,
+					},
+				},
+				['test-user-id'],
+			);
 		});
 
 		it('should not call markBuilderSuccess when using deprecated credentials', async () => {
