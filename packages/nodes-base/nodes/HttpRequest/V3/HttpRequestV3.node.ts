@@ -13,6 +13,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 	ICredentialDataDecryptedObject,
+	GenericValue,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -384,6 +385,21 @@ export class HttpRequestV3 implements INodeType {
 					});
 				}
 
+				const parametersToKeyValueAccumulate = async (
+					accumulator: IDataObject,
+					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+				) => {
+					if (accumulator[cur.name] && typeof accumulator[cur.name] === 'string') {
+						accumulator[cur.name] = [accumulator[cur.name], cur.value];
+					} else if (accumulator[cur.name]) {
+						(accumulator[cur.name] as GenericValue[])?.push(cur.value);
+					} else {
+						accumulator[cur.name] = cur.value;
+					}
+
+					return accumulator;
+				};
+
 				const parametersToKeyValue = async (
 					accumulator: { [key: string]: any },
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
@@ -487,7 +503,7 @@ export class HttpRequestV3 implements INodeType {
 				// Get parameters defined in the UI
 				if (sendQuery && queryParameters) {
 					if (specifyQuery === 'keypair') {
-						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
+						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValueAccumulate);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
 						try {
@@ -635,6 +651,8 @@ export class HttpRequestV3 implements INodeType {
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType,
 				});
+
+				console.log(JSON.stringify(requests.map((r) => r.options.qs)));
 
 				if (pagination && pagination.paginationMode !== 'off') {
 					let continueExpression = '={{false}}';
