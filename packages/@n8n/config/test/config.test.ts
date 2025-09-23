@@ -55,7 +55,7 @@ describe('GlobalConfig', () => {
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
 			warningThreshold: 45 * 1024 * 1024,
-			sizeCheckCacheDuration: 5000,
+			sizeCheckCacheDuration: 60000,
 		},
 		database: {
 			logging: {
