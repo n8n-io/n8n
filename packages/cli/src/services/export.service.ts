@@ -63,7 +63,7 @@ export class ExportService {
 		let totalTablesProcessed = 0;
 		let totalEntitiesExported = 0;
 		const pageSize = 500;
-		const entitiesPerFile = 10000;
+		const entitiesPerFile = 500;
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name

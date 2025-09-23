@@ -1,6 +1,6 @@
 import { type Logger } from '@n8n/backend-common';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { type DataSource } from '@n8n/typeorm';
+import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
 
@@ -23,6 +23,7 @@ describe('ImportService', () => {
 	let mockDataSource: DataSource;
 	let mockCredentialsRepository: CredentialsRepository;
 	let mockTagRepository: TagRepository;
+	let mockEntityManager: EntityManager;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -31,6 +32,12 @@ describe('ImportService', () => {
 		mockDataSource = mock<DataSource>();
 		mockCredentialsRepository = mock<CredentialsRepository>();
 		mockTagRepository = mock<TagRepository>();
+		mockEntityManager = mock<EntityManager>();
+
+		// Mock transaction method
+		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
+			return await callback(mockEntityManager);
+		});
 
 		importService = new ImportService(
 			mockLogger,
@@ -243,12 +250,12 @@ describe('ImportService', () => {
 				execute: jest.fn().mockResolvedValue({ affected: 5 }),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
 
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
-			await importService.truncateEntityTable('users');
+			await importService.truncateEntityTable('users', mockEntityManager);
 
 			expect(mockQueryBuilder.delete).toHaveBeenCalled();
 			expect(mockQueryBuilder.from).toHaveBeenCalledWith('users', 'users');
@@ -264,11 +271,11 @@ describe('ImportService', () => {
 				execute: jest.fn().mockResolvedValue({ affected: 3 }),
 			};
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'postgres' };
 
-			await importService.truncateEntityTable('workflows');
+			await importService.truncateEntityTable('workflows', mockEntityManager);
 
 			expect(mockQueryBuilder.delete).toHaveBeenCalled();
 			expect(mockQueryBuilder.from).toHaveBeenCalledWith('workflows', 'workflows');
@@ -281,7 +288,7 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'mysql' };
 
-			await expect(importService.truncateEntityTable('users')).rejects.toThrow(
+			await expect(importService.truncateEntityTable('users', mockEntityManager)).rejects.toThrow(
 				'Unsupported database type: mysql. Supported types: sqlite, postgres',
 			);
 		});
@@ -458,21 +465,14 @@ describe('ImportService', () => {
 		it('should import entities successfully', async () => {
 			const mockFiles = ['user.jsonl', 'workflow.jsonl'];
 
-			const mockQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
-			};
-
 			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock)
 				.mockResolvedValueOnce('{"id":1,"name":"User 1"}\n')
 				.mockResolvedValueOnce('{"id":1,"name":"Workflow 1"}\n');
 
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input');
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
 
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'\n🚀 Starting entity import from directory: /test/input',
@@ -489,25 +489,19 @@ describe('ImportService', () => {
 		it('should handle empty input directory', async () => {
 			(readdir as jest.Mock).mockResolvedValue([]);
 
-			await importService.importEntitiesFromFiles('/test/empty');
+			await importService.importEntitiesFromFiles('/test/empty', mockEntityManager);
 
 			expect(mockLogger.warn).toHaveBeenCalledWith('No entity files found in input directory');
 		});
 
 		it('should skip entities without metadata', async () => {
 			const mockFiles = ['user.jsonl', 'unknown.jsonl'];
-			const mockQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
-			};
 
 			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue('{"id":1,"name":"User 1"}\n');
-			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input');
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
 
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				'   ⚠️  No entity metadata found for unknown, skipping...',
@@ -519,7 +513,7 @@ describe('ImportService', () => {
 			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue(''); // Empty file
 
-			await importService.importEntitiesFromFiles('/test/input');
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
 
 			expect(mockLogger.info).toHaveBeenCalledWith('      Found 0 entities');
 		});
@@ -529,11 +523,11 @@ describe('ImportService', () => {
 		it('should disable foreign key constraints for SQLite', async () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
-			mockDataSource.query = jest.fn().mockResolvedValue([]);
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
 
-			await importService.disableForeignKeyConstraints();
+			await importService.disableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockDataSource.query).toHaveBeenCalledWith('PRAGMA foreign_keys = OFF;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = OFF;');
 			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = OFF;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints disabled');
 		});
@@ -541,11 +535,13 @@ describe('ImportService', () => {
 		it('should disable foreign key constraints for PostgreSQL', async () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'postgres' };
-			mockDataSource.query = jest.fn().mockResolvedValue([]);
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
 
-			await importService.disableForeignKeyConstraints();
+			await importService.disableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockDataSource.query).toHaveBeenCalledWith('SET session_replication_role = replica;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				'SET session_replication_role = replica;',
+			);
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				'Executing: SET session_replication_role = replica;',
 			);
@@ -557,11 +553,11 @@ describe('ImportService', () => {
 		it('should enable foreign key constraints for SQLite', async () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
-			mockDataSource.query = jest.fn().mockResolvedValue([]);
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
 
-			await importService.enableForeignKeyConstraints();
+			await importService.enableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockDataSource.query).toHaveBeenCalledWith('PRAGMA foreign_keys = ON;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = ON;');
 			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = ON;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints re-enabled');
 		});
@@ -569,11 +565,13 @@ describe('ImportService', () => {
 		it('should enable foreign key constraints for PostgreSQL', async () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'postgres' };
-			mockDataSource.query = jest.fn().mockResolvedValue([]);
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
 
-			await importService.enableForeignKeyConstraints();
+			await importService.enableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockDataSource.query).toHaveBeenCalledWith('SET session_replication_role = DEFAULT;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				'SET session_replication_role = DEFAULT;',
+			);
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				'Executing: SET session_replication_role = DEFAULT;',
 			);
@@ -654,6 +652,110 @@ describe('ImportService', () => {
 				httpBasicAuth: { id: 'existing', name: 'Existing' },
 				oAuth2Api: { id: 'cred1', name: 'String Credential' },
 			});
+		});
+	});
+
+	describe('importEntities', () => {
+		it('should call transaction with correct parameters', async () => {
+			const mockEntityMetadatas = [
+				{ name: 'User', tableName: 'user' },
+				{ name: 'Workflow', tableName: 'workflow' },
+			];
+
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			mockDataSource.options = { type: 'sqlite' };
+
+			// Mock the transaction method to just call the callback
+			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
+				const mockManager = {
+					query: jest.fn().mockResolvedValue([]),
+					insert: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
+					createQueryBuilder: jest.fn().mockReturnValue({
+						delete: jest.fn().mockReturnThis(),
+						from: jest.fn().mockReturnThis(),
+						execute: jest.fn().mockResolvedValue({ affected: 5 }),
+					}),
+				};
+				return await callback(mockManager);
+			});
+
+			// Mock the other methods
+			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(true);
+			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
+
+			await importService.importEntities('/test/input', false);
+
+			expect(mockDataSource.transaction).toHaveBeenCalled();
+			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user', 'workflow']);
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+		});
+
+		it('should handle truncation when truncateTables is true', async () => {
+			const mockEntityMetadatas = [
+				{ name: 'User', tableName: 'user' },
+				{ name: 'Workflow', tableName: 'workflow' },
+			];
+
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			mockDataSource.options = { type: 'sqlite' };
+
+			// Mock the transaction method
+			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
+				const mockManager = {
+					query: jest.fn().mockResolvedValue([]),
+					insert: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
+					createQueryBuilder: jest.fn().mockReturnValue({
+						delete: jest.fn().mockReturnThis(),
+						from: jest.fn().mockReturnThis(),
+						execute: jest.fn().mockResolvedValue({ affected: 5 }),
+					}),
+				};
+				return await callback(mockManager);
+			});
+
+			// Mock the other methods
+			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'truncateEntityTable').mockResolvedValue();
+			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
+
+			await importService.importEntities('/test/input', true);
+
+			expect(mockDataSource.transaction).toHaveBeenCalled();
+			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.truncateEntityTable).toHaveBeenCalledTimes(2);
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+		});
+
+		it('should skip import when tables are not empty and truncateTables is false', async () => {
+			const mockEntityMetadatas = [{ name: 'User', tableName: 'user' }];
+
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
+			mockDataSource.options = { type: 'sqlite' };
+
+			// Mock the transaction method
+			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
+				const mockManager = {
+					query: jest.fn().mockResolvedValue([]),
+				};
+				return await callback(mockManager);
+			});
+
+			// Mock the other methods
+			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user']);
+			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(false);
+			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
+
+			await importService.importEntities('/test/input', false);
+
+			expect(mockDataSource.transaction).toHaveBeenCalled();
+			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user']);
+			expect(importService.importEntitiesFromFiles).not.toHaveBeenCalled();
 		});
 	});
 });

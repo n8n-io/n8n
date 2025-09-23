@@ -35,40 +35,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		this.logger.info(`📁 Input directory: ${inputDir}`);
 		this.logger.info(`🗑️  Truncate tables: ${truncateTables}`);
 
-		const importService = Container.get(ImportService);
-
-		await importService.disableForeignKeyConstraints();
-
-		try {
-			const tableNames = await importService.getTableNamesForImport(inputDir);
-
-			if (truncateTables) {
-				this.logger.info('\n🗑️  Truncating tables before import...');
-
-				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
-
-				for (const tableName of tableNames) {
-					await importService.truncateEntityTable(tableName);
-				}
-
-				this.logger.info('✅ All tables truncated successfully');
-			}
-
-			if (!truncateTables) {
-				if (!(await importService.areAllEntityTablesEmpty(tableNames))) {
-					this.logger.info(
-						'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
-					);
-					return;
-				}
-			}
-
-			// Import entities from the specified directory
-			await importService.importEntitiesFromFiles(inputDir);
-			this.logger.info('✅ Task completed successfully!');
-		} finally {
-			await importService.enableForeignKeyConstraints();
-		}
+		await Container.get(ImportService).importEntities(inputDir, truncateTables);
 	}
 
 	catch(error: Error) {

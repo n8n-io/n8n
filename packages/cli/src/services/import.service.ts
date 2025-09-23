@@ -9,7 +9,7 @@ import {
 	TagRepository,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -197,7 +197,7 @@ export class ImportService {
 	 * @param entityName - Name of the entity to truncate
 	 * @returns Promise that resolves when the table is truncated
 	 */
-	async truncateEntityTable(tableName: string): Promise<void> {
+	async truncateEntityTable(tableName: string, transactionManager: EntityManager): Promise<void> {
 		this.logger.info(`🗑️  Truncating table: ${tableName}`);
 
 		const dbType = this.dataSource.options.type;
@@ -207,7 +207,7 @@ export class ImportService {
 				dbType.toLowerCase(),
 			)
 		) {
-			await this.dataSource.createQueryBuilder().delete().from(tableName, tableName).execute();
+			await transactionManager.createQueryBuilder().delete().from(tableName, tableName).execute();
 		} else {
 			throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
 		}
@@ -306,12 +306,49 @@ export class ImportService {
 		return entities;
 	}
 
+	async importEntities(inputDir: string, truncateTables: boolean) {
+		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
+			await this.disableForeignKeyConstraints(transactionManager);
+
+			const tableNames = await this.getTableNamesForImport(inputDir);
+
+			if (truncateTables) {
+				this.logger.info('\n🗑️  Truncating tables before import...');
+
+				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
+
+				for (const tableName of tableNames) {
+					await this.truncateEntityTable(tableName, transactionManager);
+				}
+
+				this.logger.info('✅ All tables truncated successfully');
+			}
+
+			if (!truncateTables) {
+				if (!(await this.areAllEntityTablesEmpty(tableNames))) {
+					this.logger.info(
+						'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
+					);
+					return;
+				}
+			}
+
+			// Import entities from the specified directory
+			await this.importEntitiesFromFiles(inputDir, transactionManager);
+
+			await this.enableForeignKeyConstraints(transactionManager);
+		});
+	}
+
 	/**
 	 * Import entities from JSONL files into the database
 	 * @param inputDir - Directory containing exported entity files
 	 * @returns Promise that resolves when all entities are imported
 	 */
-	async importEntitiesFromFiles(inputDir: string): Promise<void> {
+	async importEntitiesFromFiles(
+		inputDir: string,
+		transactionManager: EntityManager,
+	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
 		const entityFiles = await this.getEntityFiles(inputDir);
@@ -351,12 +388,7 @@ export class ImportService {
 				this.logger.info(`      Found ${entities.length} entities`);
 
 				if (entities.length > 0) {
-					await this.dataSource
-						.createQueryBuilder()
-						.insert()
-						.into(tableName)
-						.values(entities)
-						.execute();
+					await transactionManager.insert(tableName, entities);
 					entityCount += entities.length;
 				}
 			}
@@ -391,17 +423,17 @@ export class ImportService {
 		}
 	}
 
-	async disableForeignKeyConstraints() {
+	async disableForeignKeyConstraints(transactionManager: EntityManager) {
 		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
 		this.logger.debug(`Executing: ${disableCommand}`);
-		await this.dataSource.query(disableCommand);
+		await transactionManager.query(disableCommand);
 		this.logger.info('✅ Foreign key constraints disabled');
 	}
 
-	async enableForeignKeyConstraints() {
+	async enableForeignKeyConstraints(transactionManager: EntityManager) {
 		const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
 		this.logger.debug(`Executing: ${enableCommand}`);
-		await this.dataSource.query(enableCommand);
+		await transactionManager.query(enableCommand);
 		this.logger.info('✅ Foreign key constraints re-enabled');
 	}
 }

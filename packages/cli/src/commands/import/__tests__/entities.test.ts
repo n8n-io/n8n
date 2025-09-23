@@ -25,21 +25,13 @@ describe('ImportEntitiesCommand', () => {
 				error: jest.fn(),
 			};
 
-			// Mock service methods
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user', 'workflow']);
-			mockImportService.areAllEntityTablesEmpty.mockResolvedValue(true);
-			mockImportService.importEntitiesFromFiles.mockResolvedValue(undefined);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
+			// Mock service method - now uses transaction-based approach
+			mockImportService.importEntities.mockResolvedValue(undefined);
 
 			await command.run();
 
-			// Verify service calls
-			expect(mockImportService.disableForeignKeyConstraints).toHaveBeenCalled();
-			expect(mockImportService.getTableNamesForImport).toHaveBeenCalledWith('./outputs');
-			expect(mockImportService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user', 'workflow']);
-			expect(mockImportService.importEntitiesFromFiles).toHaveBeenCalledWith('./outputs');
-			expect(mockImportService.enableForeignKeyConstraints).toHaveBeenCalled();
+			// Verify service call with transaction-based approach
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false);
 		});
 
 		it('should import entities with custom input directory', async () => {
@@ -55,16 +47,11 @@ describe('ImportEntitiesCommand', () => {
 				error: jest.fn(),
 			};
 
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['settings']);
-			mockImportService.areAllEntityTablesEmpty.mockResolvedValue(true);
-			mockImportService.importEntitiesFromFiles.mockResolvedValue(undefined);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
+			mockImportService.importEntities.mockResolvedValue(undefined);
 
 			await command.run();
 
-			expect(mockImportService.getTableNamesForImport).toHaveBeenCalledWith('/custom/path');
-			expect(mockImportService.importEntitiesFromFiles).toHaveBeenCalledWith('/custom/path');
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('/custom/path', false);
 		});
 
 		it('should truncate tables when truncateTables flag is true', async () => {
@@ -80,96 +67,12 @@ describe('ImportEntitiesCommand', () => {
 				error: jest.fn(),
 			};
 
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user', 'workflow', 'settings']);
-			mockImportService.truncateEntityTable.mockResolvedValue(undefined);
-			mockImportService.importEntitiesFromFiles.mockResolvedValue(undefined);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
+			mockImportService.importEntities.mockResolvedValue(undefined);
 
 			await command.run();
 
-			// Verify truncation calls
-			expect(mockImportService.truncateEntityTable).toHaveBeenCalledWith('user');
-			expect(mockImportService.truncateEntityTable).toHaveBeenCalledWith('workflow');
-			expect(mockImportService.truncateEntityTable).toHaveBeenCalledWith('settings');
-			expect(mockImportService.truncateEntityTable).toHaveBeenCalledTimes(3);
-
-			// Should not check if tables are empty when truncating
-			expect(mockImportService.areAllEntityTablesEmpty).not.toHaveBeenCalled();
-		});
-
-		it('should skip import when tables are not empty and truncateTables is false', async () => {
-			const command = new ImportEntitiesCommand();
-			// @ts-expect-error Protected property
-			command.flags = {
-				inputDir: './outputs',
-				truncateTables: false,
-			};
-			// @ts-expect-error Protected property
-			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
-			};
-
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user', 'workflow']);
-			mockImportService.areAllEntityTablesEmpty.mockResolvedValue(false);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
-
-			await command.run();
-
-			// Should not import when tables are not empty
-			expect(mockImportService.importEntitiesFromFiles).not.toHaveBeenCalled();
-		});
-
-		it('should handle empty table names list', async () => {
-			const command = new ImportEntitiesCommand();
-			// @ts-expect-error Protected property
-			command.flags = {
-				inputDir: './outputs',
-				truncateTables: false,
-			};
-			// @ts-expect-error Protected property
-			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
-			};
-
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue([]);
-			mockImportService.areAllEntityTablesEmpty.mockResolvedValue(true);
-			mockImportService.importEntitiesFromFiles.mockResolvedValue(undefined);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
-
-			await command.run();
-
-			expect(mockImportService.areAllEntityTablesEmpty).toHaveBeenCalledWith([]);
-			expect(mockImportService.importEntitiesFromFiles).toHaveBeenCalledWith('./outputs');
-		});
-
-		it('should always enable foreign key constraints in finally block', async () => {
-			const command = new ImportEntitiesCommand();
-			// @ts-expect-error Protected property
-			command.flags = {
-				inputDir: './outputs',
-				truncateTables: false,
-			};
-			// @ts-expect-error Protected property
-			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
-			};
-
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user']);
-			mockImportService.areAllEntityTablesEmpty.mockResolvedValue(true);
-			mockImportService.importEntitiesFromFiles.mockRejectedValue(new Error('Import failed'));
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
-
-			await expect(command.run()).rejects.toThrow('Import failed');
-
-			// Should still enable foreign key constraints even when import fails
-			expect(mockImportService.enableForeignKeyConstraints).toHaveBeenCalled();
+			// Verify service call with truncation enabled
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', true);
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -185,18 +88,15 @@ describe('ImportEntitiesCommand', () => {
 				error: jest.fn(),
 			};
 
-			mockImportService.disableForeignKeyConstraints.mockRejectedValue(
-				new Error('Database connection failed'),
-			);
+			mockImportService.importEntities.mockRejectedValue(new Error('Database connection failed'));
 
 			await expect(command.run()).rejects.toThrow('Database connection failed');
 
-			// When disableForeignKeyConstraints fails, the finally block doesn't execute
-			// because the call is outside the try block
-			expect(mockImportService.enableForeignKeyConstraints).not.toHaveBeenCalled();
+			// Verify service was called
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false);
 		});
 
-		it('should handle truncation errors', async () => {
+		it('should handle import errors with transactions', async () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.flags = {
@@ -209,43 +109,12 @@ describe('ImportEntitiesCommand', () => {
 				error: jest.fn(),
 			};
 
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user', 'workflow']);
-			mockImportService.truncateEntityTable
-				.mockResolvedValueOnce(undefined) // First truncation succeeds
-				.mockRejectedValueOnce(new Error('Truncation failed')); // Second truncation fails
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
+			mockImportService.importEntities.mockRejectedValue(new Error('Transaction failed'));
 
-			await expect(command.run()).rejects.toThrow('Truncation failed');
+			await expect(command.run()).rejects.toThrow('Transaction failed');
 
-			// Should still enable foreign key constraints
-			expect(mockImportService.enableForeignKeyConstraints).toHaveBeenCalled();
-		});
-
-		it('should handle table emptiness check errors', async () => {
-			const command = new ImportEntitiesCommand();
-			// @ts-expect-error Protected property
-			command.flags = {
-				inputDir: './outputs',
-				truncateTables: false,
-			};
-			// @ts-expect-error Protected property
-			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
-			};
-
-			mockImportService.disableForeignKeyConstraints.mockResolvedValue(undefined);
-			mockImportService.getTableNamesForImport.mockResolvedValue(['user']);
-			mockImportService.areAllEntityTablesEmpty.mockRejectedValue(
-				new Error('Database query failed'),
-			);
-			mockImportService.enableForeignKeyConstraints.mockResolvedValue(undefined);
-
-			await expect(command.run()).rejects.toThrow('Database query failed');
-
-			// Should still enable foreign key constraints
-			expect(mockImportService.enableForeignKeyConstraints).toHaveBeenCalled();
+			// Verify service was called with truncation enabled
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', true);
 		});
 	});
 
