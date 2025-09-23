@@ -2,11 +2,11 @@ import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowListItem } from '@/Interface';
-import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { updateMcpSettings } from '@/features/mcpAccess/mcp.api';
 import { computed } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import { isWorkflowListItem } from '@/utils/typeGuards';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -18,28 +18,16 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		page = 1,
 		pageSize = 50,
 	): Promise<WorkflowListItem[]> {
-		const options = {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-		};
-		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
-			rootStore.restApiContext,
+		const workflows = await workflowsStore.fetchWorkflowsPage(
+			undefined, // projectId
+			page,
+			pageSize,
+			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
-			Object.keys(options).length ? options : undefined,
-			false,
+			false, // includeFolders
+			false, // includeAllVersions
 		);
-		workflowsStore.totalWorkflowCount = count;
-		data
-			.filter((item) => item.resource !== 'folder')
-			.forEach((item) => {
-				workflowsStore.addWorkflow({
-					...item,
-					nodes: [],
-					connections: {},
-					versionId: '',
-				});
-			});
-		return data.filter((item): item is WorkflowListItem => item.resource === 'workflow');
+		return workflows.filter(isWorkflowListItem);
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {

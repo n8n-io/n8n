@@ -561,6 +561,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active?: boolean;
 			isArchived?: boolean;
 			parentFolderId?: string;
+			availableInMCP?: boolean;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
