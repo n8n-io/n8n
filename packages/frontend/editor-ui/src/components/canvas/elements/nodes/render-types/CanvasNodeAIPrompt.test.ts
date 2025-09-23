@@ -97,24 +97,28 @@ describe('CanvasNodeAIPrompt', () => {
 			expect(textarea).toHaveAttribute('disabled');
 		});
 
-		it('should disable submit button when builder is streaming', () => {
+		it('should show stop button when builder is streaming', () => {
 			streaming.value = true;
 			const { container } = renderComponent();
 
-			const submitButton = container.querySelector('button[type="submit"]');
-			expect(submitButton).toHaveAttribute('disabled');
+			// When streaming, the button changes to a stop button
+			const stopButton = container.querySelector('button.stopButton');
+			expect(stopButton).toBeTruthy();
+			// And send button should not be present
+			const sendButton = container.querySelector('button.sendButton');
+			expect(sendButton).toBeFalsy();
 		});
 
 		it('should disable submit button when prompt is empty', () => {
 			const { container } = renderComponent();
 
-			const submitButton = container.querySelector('button[type="submit"]');
-			expect(submitButton).toHaveAttribute('disabled');
+			const sendButton = container.querySelector('button.sendButton');
+			expect(sendButton).toHaveAttribute('disabled');
 		});
 	});
 
 	describe('form submission', () => {
-		it('should submit form on Cmd+Enter keyboard shortcut', async () => {
+		it('should submit on Enter keyboard shortcut', async () => {
 			const { container } = renderComponent();
 			const textarea = container.querySelector('textarea');
 
@@ -123,8 +127,8 @@ describe('CanvasNodeAIPrompt', () => {
 			// Type in textarea
 			await fireEvent.update(textarea, 'Test prompt');
 
-			// Fire Cmd+Enter
-			await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+			// Fire Enter (without modifiers - N8nPromptInput submits on plain Enter)
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			await waitFor(() => {
 				expect(openChat).toHaveBeenCalled();
@@ -138,11 +142,12 @@ describe('CanvasNodeAIPrompt', () => {
 
 		it('should not submit when prompt is empty', async () => {
 			const { container } = renderComponent();
-			const form = container.querySelector('form');
+			const textarea = container.querySelector('textarea');
 
-			if (!form) throw new Error('Form not found');
+			if (!textarea) throw new Error('Textarea not found');
 
-			await fireEvent.submit(form);
+			// Try to submit with empty prompt
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(openChat).not.toHaveBeenCalled();
 		});
@@ -151,13 +156,12 @@ describe('CanvasNodeAIPrompt', () => {
 			streaming.value = true;
 			const { container } = renderComponent();
 			const textarea = container.querySelector('textarea');
-			const form = container.querySelector('form');
 
-			if (!textarea || !form) throw new Error('Elements not found');
+			if (!textarea) throw new Error('Textarea not found');
 
 			// Even with content, submission should be blocked
 			await fireEvent.update(textarea, 'Test prompt');
-			await fireEvent.submit(form);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(openChat).not.toHaveBeenCalled();
 		});
@@ -165,12 +169,11 @@ describe('CanvasNodeAIPrompt', () => {
 		it('should open AI assistant panel and send message on submit', async () => {
 			const { container } = renderComponent();
 			const textarea = container.querySelector('textarea');
-			const form = container.querySelector('form');
 
-			if (!textarea || !form) throw new Error('Elements not found');
+			if (!textarea) throw new Error('Textarea not found');
 
 			await fireEvent.update(textarea, 'Test workflow prompt');
-			await fireEvent.submit(form);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			await waitFor(() => {
 				expect(openChat).toHaveBeenCalled();
@@ -186,12 +189,11 @@ describe('CanvasNodeAIPrompt', () => {
 			isNewWorkflow.value = true;
 			const { container } = renderComponent();
 			const textarea = container.querySelector('textarea');
-			const form = container.querySelector('form');
 
-			if (!textarea || !form) throw new Error('Elements not found');
+			if (!textarea) throw new Error('Textarea not found');
 
 			await fireEvent.update(textarea, 'Test prompt');
-			await fireEvent.submit(form);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			await waitFor(() => {
 				expect(saveCurrentWorkflow).toHaveBeenCalled();
