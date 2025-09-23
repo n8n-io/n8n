@@ -245,7 +245,7 @@ defineExpose({
 			<N8nScrollArea
 				:class="$style.scrollAreaWrapper"
 				:max-height="`${textAreaMaxHeight}px`"
-				type="hover"
+				type="auto"
 			>
 				<textarea
 					ref="textareaRef"
