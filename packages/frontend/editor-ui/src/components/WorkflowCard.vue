@@ -69,7 +69,6 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
-	'workflow:toggle-mcp-access': [value: { id: string; enabled: boolean }];
 	'action:move-to-folder': [
 		value: {
 			id: string;
@@ -95,6 +94,11 @@ const foldersStore = useFoldersStore();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
+
+// We use this to optimistically update the MCP status in the UI
+// without needing to modify the workflow prop directly.
+// null means we haven't changed it yet
+const mcpToggleStatus = ref<boolean | null>(null);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -214,6 +218,13 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const isAvailableInMCP = computed(() => {
+	if (mcpToggleStatus.value === null) {
+		return props.data.settings?.availableInMCP ?? false;
+	}
+	return mcpToggleStatus.value;
+});
+
 const isSomeoneElsesWorkflow = computed(
 	() =>
 		props.data.homeProject?.type !== ProjectTypes.Team &&
@@ -298,11 +309,21 @@ async function onAction(action: string) {
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
-			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: true });
+			await toggleMCPAccess(true);
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
-			emit('workflow:toggle-mcp-access', { id: props.data.id, enabled: false });
+			await toggleMCPAccess(false);
 			break;
+	}
+}
+
+async function toggleMCPAccess(enabled: boolean) {
+	try {
+		await workflowsStore.updateWorkflowSetting(props.data.id, 'availableInMCP', enabled);
+		mcpToggleStatus.value = enabled;
+	} catch (error) {
+		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
+		return;
 	}
 }
 
@@ -477,10 +498,10 @@ const tags = computed(
 			</span>
 			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				<span v-if="props.isMcpEnabled && data.settings?.availableInMCP">|</span>
+				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
 			</span>
 			<span
-				v-show="props.isMcpEnabled && data.settings?.availableInMCP"
+				v-show="props.isMcpEnabled && isAvailableInMCP"
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
 				data-test-id="workflow-card-mcp"
 			>
