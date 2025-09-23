@@ -172,50 +172,18 @@ const v4Options: INodeProperties = {
 			],
 		},
 		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 			displayName: 'Fields',
 			name: 'fields',
-			type: 'fixedCollection',
+			type: 'multiOptions',
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 			description: 'The select fields of the returned rows',
 			typeOptions: {
-				multipleValues: true,
+				loadOptionsMethod: 'getFields',
+				loadOptionsDependsOn: ['base.value', 'table.value'],
 			},
 			default: [],
 			placeholder: 'Add field',
-			options: [
-				{
-					name: 'items',
-					displayName: 'Items',
-					values: [
-						{
-							displayName: 'Field Name or ID',
-							name: 'field',
-							type: 'resourceLocator',
-							description: 'Name of the field to select on',
-							default: { mode: 'list', value: '' },
-							typeOptions: {
-								loadOptionsDependsOn: ['table.value'],
-							},
-							modes: [
-								{
-									displayName: 'From List',
-									name: 'list',
-									type: 'list',
-									typeOptions: {
-										searchListMethod: 'getFields',
-										searchable: true,
-									},
-								},
-								{
-									displayName: 'ID',
-									name: 'id',
-									type: 'string',
-									placeholder: 'c9xxmrtn2wfe39l',
-								},
-							],
-						},
-					],
-				},
-			],
 		},
 		{
 			displayName: 'Sort',
@@ -411,13 +379,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			}
 			if (qs.fields) {
-				if (version === 3) {
-					qs.fields = (qs.fields as IDataObject[]).join(',');
-				} else {
-					qs.fields = ((qs.fields as IDataObject).items as IDataObject[])
-						.map((field: IDataObject) => (field.field as IDataObject).value)
-						.join(',');
-				}
+				qs.fields = (qs.fields as IDataObject[]).join(',');
 			}
 			if (qs.viewId && (qs.viewId as IDataObject).value) {
 				qs.viewId = (qs.viewId as IDataObject).value;
