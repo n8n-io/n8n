@@ -152,7 +152,10 @@ export async function getTables(
 	}
 }
 
-export async function getViews(this: ILoadOptionsFunctions) {
+export async function getViews(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const version = this.getNodeParameter('version', 0) as number;
 	const baseId = this.getNodeParameter('projectId', 0, {
 		extractValue: true,
@@ -176,33 +179,37 @@ export async function getViews(this: ILoadOptionsFunctions) {
 					? `/api/v2/meta/tables/${tableId}/views`
 					: `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+			let results: any[] = [];
 			if (version === 3) {
-				return {
-					results: responseData.list.map((i: IDataObject) => {
-						if (i.is_default) {
-							return {
-								name: 'Default View',
-								value: '',
-							};
-						}
+				results = responseData.list.map((i: IDataObject) => {
+					if (i.is_default) {
 						return {
-							name: i.title,
-							value: i.id,
-							url: constructUrl(i.id as string),
+							name: 'Default View',
+							value: '',
 						};
-					}),
-				};
+					}
+					return {
+						name: i.title,
+						value: i.id,
+						url: constructUrl(i.id as string),
+					};
+				});
 			} else {
-				return {
-					results: responseData.views.map((i: IDataObject) => {
-						return {
-							name: i.title,
-							value: i.id,
-							url: constructUrl(i.id as string),
-						};
-					}),
-				};
+				results = responseData.views.map((i: IDataObject) => {
+					return {
+						name: i.title,
+						value: i.id,
+						url: constructUrl(i.id as string),
+					};
+				});
 			}
+
+			return {
+				results:
+					filter && filter !== ''
+						? results.filter((flt: any) => flt.name.includes(filter))
+						: results,
+			};
 		} catch (e) {
 			const message = e.messages?.[0] ?? '';
 			throw new NodeOperationError(
@@ -220,7 +227,10 @@ export async function getViews(this: ILoadOptionsFunctions) {
 	}
 }
 
-export async function getFields(this: ILoadOptionsFunctions) {
+export async function getFields(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const version = this.getNodeParameter('version', 0) as number;
 	if (version === 3) {
 		return { results: [] };
@@ -238,13 +248,18 @@ export async function getFields(this: ILoadOptionsFunctions) {
 			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 
+			const results = responseData.fields.map((i: IDataObject) => {
+				return {
+					name: i.title,
+					value: i.id,
+				};
+			});
+
 			return {
-				results: responseData.fields.map((i: IDataObject) => {
-					return {
-						name: i.title,
-						value: i.id,
-					};
-				}),
+				results:
+					filter && filter !== ''
+						? results.filter((flt: any) => flt.name.includes(filter))
+						: results,
 			};
 		} catch (e) {
 			const message = e.messages?.[0] ?? '';
@@ -264,7 +279,10 @@ export async function getFields(this: ILoadOptionsFunctions) {
 }
 
 // This only supports using the table ID
-export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: string) {
+export async function getTriggerFields(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	// version supported is only 4
 	const workspaceId = this.getNodeParameter('workspaceId', 0, {
 		extractValue: true,
@@ -317,14 +335,20 @@ export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: str
 	}
 }
 
-export async function getDownloadFields(this: ILoadOptionsFunctions, filter?: string) {
+export async function getDownloadFields(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const { results } = await getDownloadFieldsId.call(this, filter);
 	return {
 		results: results.map((field: any) => ({ name: field.name, value: field.name })),
 	};
 }
 
-export async function getDownloadFieldsId(this: ILoadOptionsFunctions, filter?: string) {
+export async function getDownloadFieldsId(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const version = this.getNodeParameter('version', 0) as number;
 
 	try {
@@ -355,7 +379,10 @@ export async function getDownloadFieldsId(this: ILoadOptionsFunctions, filter?: 
 	}
 }
 
-export async function getLinkFieldsId(this: ILoadOptionsFunctions, filter?: string) {
+export async function getLinkFieldsId(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const version = this.getNodeParameter('version', 0) as number;
 
 	try {
@@ -386,7 +413,9 @@ export async function getLinkFieldsId(this: ILoadOptionsFunctions, filter?: stri
 	}
 }
 
-export async function getRelatedTableFields(this: ILoadOptionsFunctions) {
+export async function getRelatedTableFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodeListSearchResult> {
 	const version = this.getNodeParameter('version', 0) as number;
 	if (version === 3) {
 		return { results: [] };
