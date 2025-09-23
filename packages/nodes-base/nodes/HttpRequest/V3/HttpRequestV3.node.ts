@@ -389,6 +389,7 @@ export class HttpRequestV3 implements INodeType {
 				) => {
 					const isQueryArrayType = cur.name.endsWith('[]');
 					const name = isQueryArrayType ? cur.name.slice(0, -2) : cur.name;
+					if (name === '') return accumulator;
 					if (cur.parameterType === 'formBinaryData') {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
