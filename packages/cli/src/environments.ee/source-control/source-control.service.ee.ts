@@ -212,9 +212,6 @@ export class SourceControlService {
 			await this.initGitService();
 		}
 		try {
-			const currentBranch = this.sourceControlPreferencesService.getBranchName();
-			await this.gitService.fetch();
-			await this.gitService.setBranch(currentBranch);
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
