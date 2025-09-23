@@ -134,6 +134,7 @@ export function useWorkflowExtraction() {
 		selectionChildrenVariables: Map<string, string>,
 		startNodeName: string,
 		returnNodeName: string,
+		forcePassthrough: boolean,
 	): WorkflowDataCreate {
 		const newConnections = Object.fromEntries(
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
@@ -218,14 +219,14 @@ export function useWorkflowExtraction() {
 				]
 			: [];
 		const triggerParameters =
-			selectionVariables.size > 0
+			forcePassthrough || selectionVariables.size === 0
 				? {
+						inputSource: 'passthrough',
+					}
+				: {
 						workflowInputs: {
 							values: [...selectionVariables.keys().map((k) => ({ name: k, type: 'any' }))],
 						},
-					}
-				: {
-						inputSource: 'passthrough',
 					};
 
 		const triggerNode: INode = {
@@ -455,7 +456,7 @@ export function useWorkflowExtraction() {
 					.filter((x) => x !== null)
 			: [];
 
-		const { nodes, variables } = extractReferencesInNodeExpressions(
+		const { nodes, variables, forcePassthrough } = extractReferencesInNodeExpressions(
 			subGraph,
 			allNodeNames,
 			startNodeName,
@@ -483,6 +484,7 @@ export function useWorkflowExtraction() {
 			afterVariables,
 			startNodeName,
 			returnNodeName,
+			forcePassthrough,
 		);
 		const createdWorkflow = await tryCreateWorkflow(workflowData);
 		if (createdWorkflow === null) return false;
@@ -503,6 +505,20 @@ export function useWorkflowExtraction() {
 		);
 
 		return true;
+	}
+
+	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User started nodes to sub-workflow extraction', {
+			node_count: nodeCount,
+			success,
+		});
+	}
+
+	function trackExtractWorkflow(nodeCount: number, success: boolean) {
+		telemetry.track('User extracted nodes to sub-workflow', {
+			node_count: nodeCount,
+			success,
+		});
 	}
 
 	/**
@@ -526,23 +542,9 @@ export function useWorkflowExtraction() {
 	 *
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
-	async function extractWorkflow(nodeIds: string[]) {
+	function extractWorkflow(nodeIds: string[]) {
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);
-	}
-
-	function trackStartExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User started nodes to sub-workflow extraction', {
-			node_count: nodeCount,
-			success,
-		});
-	}
-
-	function trackExtractWorkflow(nodeCount: number, success: boolean) {
-		telemetry.track('User extracted nodes to sub-workflow', {
-			node_count: nodeCount,
-			success,
-		});
 	}
 
 	return {

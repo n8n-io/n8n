@@ -742,5 +742,68 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+
+		it('should extract "fieldToSplitOut" constant fields in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: 'foo,bar',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([
+				['foo', '$json.foo'],
+				['bar', '$json.bar'],
+			]);
+			expect(result.forcePassthrough).toBe(false);
+		});
+
+		it('should extract "fieldToSplitOut" constant expression in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: '={{ foo,bar }}',
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([]);
+			expect(result.forcePassthrough).toBe(true);
+		});
+
+		it('should extract "fieldToSplitOut" expression in n8n-nodes-base.splitOut', () => {
+			nodes = [
+				{
+					parameters: {
+						fieldToSplitOut: "={{ $('B').item.json.foo }}",
+					},
+					type: 'n8n-nodes-base.splitOut',
+					typeVersion: 1,
+					position: [200, 200],
+					id: 'splitOutNodeId',
+					name: 'A',
+				},
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([['foo', "$('B').item.json.foo"]]);
+			expect(result.forcePassthrough).toBe(true);
+		});
 	});
 });

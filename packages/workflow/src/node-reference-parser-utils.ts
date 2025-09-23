@@ -46,6 +46,8 @@ const ITEM_TO_DATA_ACCESSORS = [
 	/^item/,
 ];
 
+const SPLIT_OUT_NODE_TYPE = 'n8n-nodes-base.splitOut';
+
 // These we safely can convert to a normal argument
 const ITEM_ACCESSORS = ['params', 'isExecuted'];
 
@@ -532,6 +534,9 @@ export function extractReferencesInNodeExpressions(
 	const parameterTreeMappingByNode = new Map<string, ParameterExtractMapping>();
 	// This is used to track all candidates for change, necessary for deduplication
 	const allData = [];
+	// Additional mappings that should contribute to sub-workflow inputs (e.g. Split Out 'fieldToSplitOut')
+	const extraVariableCandidates: ExpressionMapping[] = [];
+	let forcePassthrough = false;
 
 	for (const node of subGraph) {
 		const [parameterMapping, allMappings] = applyParameterMapping(node.parameters, (s) =>
@@ -545,6 +550,40 @@ export function extractReferencesInNodeExpressions(
 		);
 		parameterTreeMappingByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
+
+		if (node.type === SPLIT_OUT_NODE_TYPE) {
+			const raw = node.parameters?.fieldToSplitOut;
+			if (typeof raw === 'string' && raw.trim() !== '') {
+				const trimmed = raw.trim();
+				const isExpression = trimmed.startsWith('=');
+
+				// Expressions in Split Out 'fieldToSplitOut' parameters must force passthrough mode,
+				// as the value of this expression might refer to fields that are not used elsewhere,
+				// and we have no way of knowing what fields the user might want to split out when
+				// the node is run and the expression is evaluated.
+				if (isExpression) {
+					forcePassthrough = true;
+				}
+
+				// Parameter value is a CSV of fields to split out.
+				// Create synthetic $json expressions for each field
+				const fields = isExpression
+					? [trimmed]
+					: trimmed.split(',').map((field) => `={{$json.${field.trim()}}}`);
+
+				for (const expression of fields) {
+					const mappingsFromField = parseReferencingExpressions(
+						expression,
+						nodeRegexps,
+						nodeNames,
+						insertedStartName,
+						graphInputNodeNames?.includes(node.name) ?? false,
+					);
+
+					extraVariableCandidates.push(...mappingsFromField);
+				}
+			}
+		}
 	}
 
 	////
@@ -552,7 +591,7 @@ export function extractReferencesInNodeExpressions(
 	////
 
 	const subGraphNodeNames = new Set(subGraphNames);
-	const dataFromOutsideSubgraph = allData.filter(
+	const dataFromOutsideSubgraph = [...allData, ...extraVariableCandidates].filter(
 		// `nodeNameInExpression` being absent implies direct access via `$json` or `$binary`
 		(x) => !x.nodeNameInExpression || !subGraphNodeNames.has(x.nodeNameInExpression),
 	);
@@ -588,6 +627,17 @@ export function extractReferencesInNodeExpressions(
 		output.push(result);
 	}
 
+	for (const candidate of extraVariableCandidates) {
+		const key = originalExpressionMap.get(candidate.originalExpression);
+		if (!key) continue;
+		const canonical = triggerArgumentMap.get(key);
+		if (!canonical) continue;
+
+		if (!allUsedMappings.some((u) => u.replacementName === canonical.replacementName)) {
+			allUsedMappings.push(canonical);
+		}
+	}
+
 	const variables = new Map(allUsedMappings.map((m) => [m.replacementName, m.originalExpression]));
-	return { nodes: output, variables };
+	return { nodes: output, variables, forcePassthrough };
 }
