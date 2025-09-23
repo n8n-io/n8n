@@ -105,6 +105,7 @@ describe('GlobalConfig', () => {
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
 			},
 		},
 		userManagement: {
