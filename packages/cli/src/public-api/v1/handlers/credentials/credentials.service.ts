@@ -233,6 +233,21 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 					propertyConstraint = { type: 'number', maximum: _cnd.lte };
 				} else if ('regex' in _cnd) {
 					propertyConstraint = { type: 'string', pattern: _cnd.regex };
+				} else if ('startsWith' in _cnd) {
+					propertyConstraint = {
+						type: 'string',
+						pattern: `^${_cnd.startsWith.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+					};
+				} else if ('endsWith' in _cnd) {
+					propertyConstraint = {
+						type: 'string',
+						pattern: `${_cnd.endsWith.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+					};
+				} else if ('includes' in _cnd) {
+					propertyConstraint = {
+						type: 'string',
+						pattern: _cnd.includes.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+					};
 				} else {
 					// Fallback for unknown operators
 					propertyConstraint = { const: conditionValue };
