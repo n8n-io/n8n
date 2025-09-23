@@ -54,34 +54,31 @@ describe('PKCE Flow', () => {
 			) => {
 				const { expectClientSecret = false, expectCodeVerifier = true } = options;
 
-				return (
-					nock(config.baseUrl)
-						.post('/login/oauth/access_token')
-						.once()
-						// @ts-expect-error - uri parameter required by nock but unused
-						.reply(200, function (this: nock.ReplyFnContext, uri: string, requestBody: string) {
-							// Verify PKCE parameters are included correctly
-							if (expectCodeVerifier) {
-								expect(requestBody).toContain('code_verifier=test_code_verifier');
-							}
+				return nock(config.baseUrl)
+					.post('/login/oauth/access_token')
+					.once()
+					.reply(200, function (this: nock.ReplyFnContext, _uri: string, requestBody: string) {
+						// Verify PKCE parameters are included correctly
+						if (expectCodeVerifier) {
+							expect(requestBody).toContain('code_verifier=test_code_verifier');
+						}
 
-							expect(requestBody).toContain('grant_type=authorization_code');
+						expect(requestBody).toContain('grant_type=authorization_code');
 
-							// For confidential clients, credentials are in Basic Auth header
-							if (expectClientSecret) {
-								expect(this.req.headers.authorization).toMatch(/^Basic /);
-							} else {
-								// For public clients, no authorization header but client_id may be in body
-								expect(this.req.headers.authorization).toBeUndefined();
-							}
+						// For confidential clients, credentials are in Basic Auth header
+						if (expectClientSecret) {
+							expect(this.req.headers.authorization).toMatch(/^Basic /);
+						} else {
+							// For public clients, no authorization header but client_id may be in body
+							expect(this.req.headers.authorization).toBeUndefined();
+						}
 
-							return {
-								access_token: config.accessToken,
-								refresh_token: config.refreshToken,
-								token_type: 'Bearer',
-							};
-						})
-				);
+						return {
+							access_token: config.accessToken,
+							refresh_token: config.refreshToken,
+							token_type: 'Bearer',
+						};
+					});
 			};
 
 			it('should exchange authorization code with PKCE code_verifier for public client (no client_secret)', async () => {
@@ -124,8 +121,7 @@ describe('PKCE Flow', () => {
 				const nockScope = nock(config.baseUrl)
 					.post('/login/oauth/access_token')
 					.once()
-					// @ts-expect-error - uri parameter required by nock but unused
-					.reply(200, function (this: nock.ReplyFnContext, uri: string, requestBody: string) {
+					.reply(200, function (this: nock.ReplyFnContext, _uri: string, requestBody: string) {
 						// Verify refresh token parameters
 						expect(requestBody).toContain(`refresh_token=${config.refreshToken}`);
 						expect(requestBody).toContain('grant_type=refresh_token');
