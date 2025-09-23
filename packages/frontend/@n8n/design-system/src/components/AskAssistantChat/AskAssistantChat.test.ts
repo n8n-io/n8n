@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 
 import AskAssistantChat from './AskAssistantChat.vue';
@@ -981,6 +982,93 @@ describe('AskAssistantChat', () => {
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
 			expect(wrapper.container.textContent).not.toContain('Quick reply');
+		});
+	});
+
+	describe('onSendMessage', () => {
+		it('should emit message and clear input when N8nPromptInput submits', async () => {
+			let inputValue = '';
+
+			interface N8nPromptInputProps {
+				modelValue?: string;
+				placeholder?: string;
+				disabled?: boolean;
+				streaming?: boolean;
+				maxLength?: number;
+			}
+
+			const wrapper = mount(AskAssistantChat, {
+				global: {
+					directives: { n8nHtml },
+					stubs: {
+						...Object.fromEntries(stubs.map((stub) => [stub, true])),
+						N8nPromptInput: {
+							name: 'N8nPromptInput',
+							props: ['modelValue', 'placeholder', 'disabled', 'streaming', 'maxLength'],
+							emits: ['update:modelValue', 'submit', 'stop'],
+							setup(
+								props: N8nPromptInputProps,
+								{
+									emit,
+									expose,
+								}: {
+									emit: (event: string, ...args: unknown[]) => void;
+									expose: (exposed: Record<string, unknown>) => void;
+								},
+							) {
+								const focusInput = vi.fn();
+
+								// Expose the focusInput method
+								expose({ focusInput });
+
+								return {
+									handleSubmit: () => emit('submit'),
+									updateValue: (e: Event) => {
+										const target = e.target as HTMLTextAreaElement;
+										inputValue = target.value;
+										emit('update:modelValue', target.value);
+									},
+								};
+							},
+							template: `
+								<div data-test-id="chat-input" class="prompt-input-stub">
+									<textarea :value="modelValue" @input="updateValue"></textarea>
+									<button @click="handleSubmit">Send</button>
+								</div>
+							`,
+						},
+					},
+				},
+				props: {
+					user: { firstName: 'Test', lastName: 'User' },
+				},
+			});
+
+			// Set the input value directly through the textarea
+			const textarea = wrapper.find('[data-test-id="chat-input"] textarea');
+			await textarea.setValue('Test message');
+
+			// Trigger the input event to update the v-model
+			await textarea.trigger('input');
+
+			// Find and click the send button to trigger submit
+			const sendButton = wrapper.find('[data-test-id="chat-input"] button');
+			await sendButton.trigger('click');
+
+			// Verify message was emitted with the correct value
+			expect(wrapper.emitted('message')).toBeTruthy();
+			const messageEvents = wrapper.emitted('message');
+			expect(messageEvents?.[0]).toEqual(['Test message']);
+
+			// Wait for Vue to process the state update
+			await wrapper.vm.$nextTick();
+
+			// The component should have cleared the textInputValue
+			// Check that the textarea value reflects this
+			const updatedTextarea = wrapper.find('[data-test-id="chat-input"] textarea');
+			expect(updatedTextarea.element.value).toBe('');
+
+			wrapper.unmount();
 		});
 	});
 });
