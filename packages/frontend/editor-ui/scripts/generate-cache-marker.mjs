@@ -23,29 +23,33 @@ function generateWeekMarker() {
 	// ISO 8601 week numbering implementation
 	// Week 1 is the first week that contains at least 4 days of the new year
 	// This is equivalent to the week containing the first Thursday of the year
+	// The ISO week-year may differ from calendar year around year boundaries
 
-	// Get Thursday of the current week (ISO weeks run Monday to Sunday)
+	// Find Thursday of the current week (ISO weeks run Monday to Sunday)
 	const currentThursday = new Date(now);
-	const daysFromMonday = (now.getDay() + 6) % 7; // Convert Sunday=0 to Sunday=6, Monday=0
-	const daysToThursday = 3 - daysFromMonday;
-	currentThursday.setDate(now.getDate() + daysToThursday);
+	const dayOfWeek = (now.getDay() + 6) % 7; // Convert to Monday=0, Sunday=6
+	currentThursday.setDate(now.getDate() - dayOfWeek + 3); // Move to Thursday
 
-	// The week-year is the year of the Thursday in this week
-	const weekYear = currentThursday.getFullYear();
+	// The ISO week-year is the calendar year of the Thursday in this week
+	const isoWeekYear = currentThursday.getFullYear();
 
-	// Find the first Thursday of the week-year (this defines Week 1)
-	const jan4 = new Date(weekYear, 0, 4); // January 4th is always in Week 1
-	const firstThursday = new Date(jan4);
-	const jan4DaysFromMonday = (jan4.getDay() + 6) % 7;
-	const daysToFirstThursday = 3 - jan4DaysFromMonday;
-	firstThursday.setDate(jan4.getDate() + daysToFirstThursday);
+	// Find January 4th of the ISO week-year (always in Week 1 by definition)
+	const jan4 = new Date(isoWeekYear, 0, 4);
 
-	// Calculate week number by counting weeks between first Thursday and current Thursday
+	// Find the Monday of Week 1 (the week containing January 4th)
+	const jan4DayOfWeek = (jan4.getDay() + 6) % 7; // Convert to Monday=0, Sunday=6
+	const week1Monday = new Date(jan4);
+	week1Monday.setDate(jan4.getDate() - jan4DayOfWeek);
+
+	// Find Monday of the current week
+	const currentMonday = new Date(now);
+	currentMonday.setDate(now.getDate() - dayOfWeek);
+
+	// Calculate week number by counting complete weeks between the two Mondays
 	const msInWeek = 7 * 24 * 60 * 60 * 1000;
-	const weekNumber =
-		Math.floor((currentThursday.getTime() - firstThursday.getTime()) / msInWeek) + 1;
+	const weekNumber = Math.floor((currentMonday.getTime() - week1Monday.getTime()) / msInWeek) + 1;
 
-	return `${weekYear}-W${weekNumber.toString().padStart(2, '0')}`;
+	return `${isoWeekYear}-W${weekNumber.toString().padStart(2, '0')}`;
 }
 
 async function writeCacheMarker() {
