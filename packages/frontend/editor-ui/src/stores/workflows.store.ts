@@ -1563,6 +1563,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (tasksData?.[existingRunIndex]) {
 			tasksData.splice(existingRunIndex, 1, pushData.data);
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
