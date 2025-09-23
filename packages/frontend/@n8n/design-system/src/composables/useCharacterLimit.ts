@@ -25,18 +25,10 @@ export function useCharacterLimit({
 
 	const isAtLimit = computed(() => characterCount.value >= maxLength.value);
 
-	const limitText = (text: string): string => {
-		if (text.length > maxLength.value) {
-			return text.substring(0, maxLength.value);
-		}
-		return text;
-	};
-
 	return {
 		characterCount,
 		remainingCharacters,
 		isOverLimit,
 		isAtLimit,
-		limitText,
 	};
 }
