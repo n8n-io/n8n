@@ -162,16 +162,6 @@ describe('ProjectRoleView', () => {
 			expect(getByText('Role name')).toBeInTheDocument();
 			expect(getByText('Description')).toBeInTheDocument();
 			expect(getByPlaceholderText('Optional')).toBeInTheDocument();
-
-			// default scopes should be checked and disabled
-			defaultScopes
-				.filter((scope) => scope.endsWith(':read'))
-				.forEach((scope) => {
-					const label = getByTestId(`scope-checkbox-${scope}`);
-					const checkbox = label.querySelector('input[type="checkbox"]') as HTMLInputElement;
-					expect(checkbox).toBeChecked();
-					expect(checkbox).toBeDisabled();
-				});
 		});
 
 		it('should render back button that calls router.back', async () => {

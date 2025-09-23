@@ -83,15 +83,13 @@ const project = (['read', 'update', 'delete'] as const).map(
 const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `folder:${action}` as const,
 );
-const workflow = (['read', 'execute', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+const workflow = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
 	(action) => `workflow:${action}` as const,
 );
 const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
 	(action) => `credential:${action}` as const,
 );
-const sourceControl = (['pull', 'push', 'manage'] as const).map(
-	(action) => `sourceControl:${action}` as const,
-);
+const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
 
 const scopeTypes = ['project', 'folder', 'workflow', 'credential', 'sourceControl'] as const;
 
@@ -109,6 +107,14 @@ function toggleScope(scope: string) {
 		form.value.scopes.splice(index, 1);
 	} else {
 		form.value.scopes.push(scope);
+	}
+
+	if (scope.endsWith(':read')) {
+		toggleScope(scope.replace(':read', ':list'));
+	}
+
+	if (scope === 'workflow:update') {
+		toggleScope('workflow:execute');
 	}
 }
 
