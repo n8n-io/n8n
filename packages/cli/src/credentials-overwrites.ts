@@ -34,12 +34,13 @@ export class CredentialsOverwrites {
 			return null;
 		}
 
+		const expectedAuthorizationHeaderValue = `Bearer ${endpointAuthToken.trim()}`;
+
 		return (req: Request, res: Response, next: NextFunction) => {
-			if (req.headers.authorization === `Bearer ${endpointAuthToken.trim()}`) {
-				next();
-			} else {
-				res.status(401).send('Unauthorized');
+			if (req.headers.authorization !== expectedAuthorizationHeaderValue) {
+				return res.status(401).send('Unauthorized');
 			}
+			next();
 		};
 	}
 
