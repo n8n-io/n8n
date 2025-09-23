@@ -1,8 +1,7 @@
-/* eslint-disable unused-imports/no-unused-imports */
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/linkrows/unlink';
-import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
+import { apiRequest } from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport/index', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport/index');
