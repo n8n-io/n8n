@@ -59,6 +59,7 @@ import {
 	UserError,
 	OperationalError,
 } from 'n8n-workflow';
+import { SPLIT_IN_BATCHES_NODE_TYPE } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
@@ -1552,6 +1553,31 @@ export class WorkflowExecute {
 		});
 		if (workflowIssues !== null) {
 			throw new WorkflowHasIssuesError();
+		}
+
+		// Structural guard: SplitInBatches "done" output directly wired to its own input
+		this.assertNoDefiniteInfiniteLoops(workflow);
+	}
+
+	private assertNoDefiniteInfiniteLoops(workflow: Workflow): void {
+		for (const nodeName in workflow.nodes) {
+			const node = workflow.nodes[nodeName];
+			if (node.type !== SPLIT_IN_BATCHES_NODE_TYPE) continue;
+
+			const bySource = workflow.connectionsBySourceNode[node.name];
+			if (!bySource) continue;
+			const main = bySource[NodeConnectionTypes.Main];
+			if (!main) continue;
+			const doneOutput = main[0]; // output index 0 corresponds to 'done'
+			if (!doneOutput) continue;
+
+			for (const c of doneOutput ?? []) {
+				if (c.node === node.name) {
+					throw new OperationalError(
+						'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input, which causes an infinite loop. Disconnect the "done" output from this node\'s input.',
+					);
+				}
+			}
 		}
 	}
 
