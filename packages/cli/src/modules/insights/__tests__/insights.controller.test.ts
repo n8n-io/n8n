@@ -4,6 +4,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
@@ -156,6 +158,32 @@ describe('InsightsController', () => {
 				timeSaved: { deviation: 5, unit: 'minute', value: 10 },
 			});
 		});
+
+		it('should throw a BadRequestError when endDate is before startDate', async () => {
+			await expect(
+				controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+					projectId: 'test-project',
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
+
+		it('should throw a BadRequestError when endDate is not provided and startDate is provided', async () => {
+			await expect(
+				controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
 	});
 
 	describe('getInsightsByWorkflow', () => {
@@ -289,6 +317,36 @@ describe('InsightsController', () => {
 
 			expect(response).toEqual({ count: 3, data: mockRows });
 		});
+
+		it('should throw a BadRequestError when endDate is before startDate', async () => {
+			await expect(
+				controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
+
+		it('should throw a BadRequestError when endDate is not provided and startDate is provided', async () => {
+			await expect(
+				controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					skip: 0,
+					take: 5,
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
 	});
 
 	describe('getInsightsByTime', () => {
@@ -417,6 +475,32 @@ describe('InsightsController', () => {
 				},
 			]);
 		});
+
+		it('should throw a BadRequestError when endDate is before startDate', async () => {
+			await expect(
+				controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
+
+		it('should throw a BadRequestError when endDate is not provided and startDate is provided', async () => {
+			await expect(
+				controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					projectId: 'test-project',
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
 	});
 
 	describe('getTimeSavedInsightsByTime', () => {
@@ -498,6 +582,32 @@ describe('InsightsController', () => {
 					},
 				},
 			]);
+		});
+
+		it('should throw a BadRequestError when endDate is before startDate', async () => {
+			await expect(
+				controller.getTimeSavedInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					endDate: new Date('2025-06-01'),
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
+		});
+
+		it('should throw a BadRequestError when endDate is not provided and startDate is provided', async () => {
+			await expect(
+				controller.getTimeSavedInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate: new Date('2025-06-10'),
+					projectId: 'test-project',
+				}),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'endDate is required and must be after or equal to startDate when startDate is provided',
+				),
+			);
 		});
 	});
 });
