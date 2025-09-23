@@ -15,16 +15,6 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
-			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [208, 0],
-			"id": "13c4cd69-14ed-41d7-a65f-dc034cfd8316",
-			"name": "Code in JavaScript"
-		},
-		{
-			"parameters": {
 				"options": {}
 			},
 			"type": "n8n-nodes-base.respondToWebhook",
@@ -39,17 +29,6 @@
 			"main": [
 				[
 					{
-						"node": "Code in JavaScript",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Code in JavaScript": {
-			"main": [
-				[
-					{
 						"node": "Respond to Webhook",
 						"type": "main",
 						"index": 0
@@ -58,8 +37,5 @@
 			]
 		}
 	},
-	"pinData": {},
-	"meta": {
-		"instanceId": "c0eda2ee62dc0e7e8288317ffba83079dda1ea0d80d2eaa966e6d217327a763e"
-	}
+	"pinData": {}
 }
