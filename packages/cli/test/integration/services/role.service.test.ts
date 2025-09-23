@@ -1,13 +1,15 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
-import { RoleRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 import {
@@ -23,6 +25,9 @@ let roleService: RoleService;
 let roleRepository: RoleRepository;
 let license: License;
 let licenseState: LicenseState;
+let userRepository: UserRepository;
+let projectRepository: ProjectRepository;
+let projectService: ProjectService;
 
 const ALL_ROLES_SET = ALL_ROLES.global.concat(
 	ALL_ROLES.project,
@@ -38,6 +43,9 @@ beforeAll(async () => {
 	license = Container.get(License);
 	licenseState = Container.get(LicenseState);
 	licenseState.setLicenseProvider(license);
+	userRepository = Container.get(UserRepository);
+	projectRepository = Container.get(ProjectRepository);
+	projectService = Container.get(ProjectService);
 });
 
 afterAll(async () => {
@@ -1087,6 +1095,62 @@ describe('RoleService', () => {
 			// Verify system role still exists
 			const stillExistsRole = await roleRepository.findBySlug(systemRole.slug);
 			expect(stillExistsRole).toBeDefined();
+		});
+
+		it('should throw error when trying to delete role globally assigned to users', async () => {
+			//
+			// ARRANGE
+			//
+
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+
+			// Create a user and assign the role to them
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(BadRequestError);
+			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
+				'Cannot delete role assigned to users',
+			);
+		});
+
+		it('should throw error when trying to delete role assigned to users on project', async () => {
+			//
+			// ARRANGE
+			//
+
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+			});
+
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+
+			// Create a user and assign the project role to them
+			const user = await createMember();
+			await userRepository.save(user);
+			await projectService.addUser(project.id, { userId: user.id, role: roleInUse.slug });
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(BadRequestError);
+			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
+				'Cannot delete role assigned to users',
+			);
 		});
 	});
 
