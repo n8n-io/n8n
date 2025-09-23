@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -113,6 +114,8 @@ export class Telemetry {
 				ip: '0.0.0.0',
 			},
 		});
+
+		usePostHog().capture(event, updatedProperties);
 	}
 
 	page(route: RouteLocation) {

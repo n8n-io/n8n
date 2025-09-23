@@ -180,6 +180,12 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	const capture = (event: string, properties: IDataObject) => {
+		if (typeof window.posthog?.capture === 'function') {
+			window.posthog.capture(event, properties);
+		}
+	};
+
 	return {
 		init,
 		isFeatureEnabled,
@@ -188,6 +194,7 @@ export const usePostHog = defineStore('posthog', () => {
 		reset,
 		identify,
 		setMetadata,
+		capture,
 		overrides,
 	};
 });

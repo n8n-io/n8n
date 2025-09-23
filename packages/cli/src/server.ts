@@ -156,6 +156,8 @@ export class Server extends AbstractServer {
 			await import('@/controllers/telemetry.controller');
 		}
 
+		await import('@/controllers/posthog.controller');
+
 		// ----------------------------------------
 		// OIDC
 		// ----------------------------------------
