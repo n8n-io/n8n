@@ -40,6 +40,7 @@ describe('CredentialsOverwrites', () => {
 			logger,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		await credentialsOverwrites.init();
@@ -66,6 +67,7 @@ describe('CredentialsOverwrites', () => {
 				logger,
 				mock(),
 				mock(),
+				mock(),
 			);
 			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
 			expect(middleware).toBeNull();
@@ -77,6 +79,7 @@ describe('CredentialsOverwrites', () => {
 				globalConfig,
 				credentialTypes,
 				logger,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -105,6 +108,7 @@ describe('CredentialsOverwrites', () => {
 					globalConfig,
 					credentialTypes,
 					logger,
+					mock(),
 					mock(),
 					mock(),
 				);
@@ -237,6 +241,7 @@ describe('CredentialsOverwrites', () => {
 				globalConfig,
 				credentialTypes,
 				logger,
+				mock(),
 				mock(),
 				mock(),
 			);

@@ -10,6 +10,7 @@ import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { FrontendService } from './services/frontend.service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
@@ -25,22 +26,24 @@ export class CredentialsOverwrites {
 		private readonly logger: Logger,
 		private readonly settings: SettingsRepository,
 		private readonly cipher: Cipher,
+		private readonly frontendService: FrontendService,
 	) {}
 
 	async init() {
 		const data = this.globalConfig.credentials.overwrite.data;
 		if (data) {
+			this.logger.debug('Loading overwrite credentials from static envvar');
 			const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
 				errorMessage: 'The credentials-overwrite is not valid JSON.',
 			});
 
 			await this.setData(overwriteData, false);
-			return;
 		}
 
 		const persistence = this.globalConfig.credentials.overwrite.persistence;
 
 		if (persistence) {
+			this.logger.debug('Loading overwrite credentials from database');
 			await this.loadOverwriteDataFromDB();
 		}
 	}
@@ -52,6 +55,7 @@ export class CredentialsOverwrites {
 		if (this.reloading) return;
 		try {
 			this.reloading = true;
+			this.logger.debug('Loading overwrite credentials from DB');
 			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
 
 			if (data) {
@@ -65,6 +69,7 @@ export class CredentialsOverwrites {
 		} catch (error) {
 			this.logger.error('Error loading overwrite credentials', { error });
 		} finally {
+			this.logger.debug('Loaded overwrite credentials from DB');
 			this.reloading = false;
 		}
 	}
@@ -81,7 +86,7 @@ export class CredentialsOverwrites {
 		const setting = this.settings.create({
 			key: CREDENTIALS_OVERWRITE_KEY,
 			value: data,
-			loadOnStartup: true,
+			loadOnStartup: false,
 		});
 		await this.settings.save(setting);
 
@@ -125,6 +130,8 @@ export class CredentialsOverwrites {
 		if (storeInDb && this.globalConfig.credentials.overwrite.persistence) {
 			await this.saveOverwriteDataToDB(overwriteData, true);
 		}
+
+		await this.frontendService?.generateTypes();
 	}
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
