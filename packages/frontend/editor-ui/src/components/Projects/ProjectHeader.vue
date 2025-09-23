@@ -381,7 +381,7 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing-m);
+	padding-bottom: var(--spacing-l);
 	min-height: var(--spacing-3xl);
 }
 

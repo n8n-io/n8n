@@ -493,6 +493,9 @@ onMounted(() => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
+			<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
+				{{ i18n.baseText('projects.settings.info') }}
+			</N8nText>
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
@@ -530,10 +533,34 @@ onMounted(() => {
 					:maxlength="512"
 					:autosize="true"
 					data-test-id="project-settings-description-input"
+					:class="$style['project-description-input']"
 					@enter="onSubmit"
 					@input="onTextInput"
 					@validate="isValid = $event"
 				/>
+			</fieldset>
+			<!-- Action buttons moved directly under description to only affect name/description -->
+			<fieldset :class="$style.buttons">
+				<div>
+					<small v-if="isDirty" class="mr-2xs">{{
+						i18n.baseText('projects.settings.message.unsavedChanges')
+					}}</small>
+					<N8nButton
+						:disabled="!isDirty"
+						type="secondary"
+						native-type="button"
+						class="mr-2xs"
+						data-test-id="project-settings-cancel-button"
+						@click.stop.prevent="onCancel"
+						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
+					>
+				</div>
+				<N8nButton
+					:disabled="!isDirty || !isValid"
+					type="primary"
+					data-test-id="project-settings-save-button"
+					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
+				>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
@@ -577,30 +604,7 @@ onMounted(() => {
 					/>
 				</div>
 			</fieldset>
-			<fieldset :class="$style.buttons">
-				<div>
-					<small v-if="isDirty" class="mr-2xs">{{
-						i18n.baseText('projects.settings.message.unsavedChanges')
-					}}</small>
-					<N8nButton
-						:disabled="!isDirty"
-						type="secondary"
-						native-type="button"
-						class="mr-2xs"
-						data-test-id="project-settings-cancel-button"
-						@click.stop.prevent="onCancel"
-						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
-					>
-				</div>
-				<N8nButton
-					:disabled="!isDirty || !isValid"
-					type="primary"
-					data-test-id="project-settings-save-button"
-					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
-				>
-			</fieldset>
 			<fieldset>
-				<hr class="mb-2xl" />
 				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 				<small>{{ i18n.baseText('projects.settings.danger.message') }}</small>
 				<br />
@@ -640,14 +644,16 @@ onMounted(() => {
 		width: 100%;
 		max-width: var(--content-container-width);
 		padding: 0 var(--spacing-2xl);
+		/* Narrower fields for name/description */
+		--project-field-width: 560px;
 
 		fieldset {
-			padding-bottom: var(--spacing-2xl);
+			padding-bottom: var(--spacing-xl);
 
 			label {
 				display: block;
 				margin-bottom: var(--spacing-xs);
-				font-size: var(--font-size-xl);
+				font-size: var(--font-size-s);
 			}
 		}
 	}
@@ -665,7 +671,7 @@ onMounted(() => {
 
 .buttons {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	align-items: center;
 }
 
@@ -681,9 +687,19 @@ onMounted(() => {
 .project-name {
 	display: flex;
 	gap: var(--spacing-2xs);
+	max-width: var(--project-field-width);
 
 	.project-name-input {
 		flex: 1;
 	}
+}
+
+.project-description-input {
+	max-width: var(--project-field-width);
+}
+
+/* Ensure textarea uses regular UI font, not monospace */
+.project-description-input :global(textarea) {
+	font-family: var(--font-family);
 }
 </style>
