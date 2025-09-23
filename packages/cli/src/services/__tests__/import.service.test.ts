@@ -128,7 +128,8 @@ describe('ImportService', () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest.fn().mockResolvedValue({ count: '0' }),
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([]),
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
@@ -136,8 +137,9 @@ describe('ImportService', () => {
 			const result = await importService.isTableEmpty('users');
 
 			expect(result).toBe(true);
-			expect(mockQueryBuilder.select).toHaveBeenCalledWith('COUNT(*)', 'count');
+			expect(mockQueryBuilder.select).toHaveBeenCalledWith('1');
 			expect(mockQueryBuilder.from).toHaveBeenCalledWith('users', 'users');
+			expect(mockQueryBuilder.limit).toHaveBeenCalledWith(1);
 			expect(mockLogger.debug).toHaveBeenCalledWith('Table users has 0 rows');
 		});
 
@@ -145,7 +147,8 @@ describe('ImportService', () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest.fn().mockResolvedValue({ count: '5' }),
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([{ id: 1 }]),
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
@@ -153,14 +156,18 @@ describe('ImportService', () => {
 			const result = await importService.isTableEmpty('users');
 
 			expect(result).toBe(false);
-			expect(mockLogger.debug).toHaveBeenCalledWith('Table users has 5 rows');
+			expect(mockQueryBuilder.select).toHaveBeenCalledWith('1');
+			expect(mockQueryBuilder.from).toHaveBeenCalledWith('users', 'users');
+			expect(mockQueryBuilder.limit).toHaveBeenCalledWith(1);
+			expect(mockLogger.debug).toHaveBeenCalledWith('Table users has 1 rows');
 		});
 
 		it('should handle database errors gracefully', async () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockRejectedValue(new Error('Database connection failed')),
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
@@ -180,7 +187,8 @@ describe('ImportService', () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest.fn().mockResolvedValue({ count: '0' }),
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest.fn().mockResolvedValue([]),
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
@@ -196,10 +204,11 @@ describe('ImportService', () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest
 					.fn()
-					.mockResolvedValueOnce({ count: '0' }) // users table is empty
-					.mockResolvedValueOnce({ count: '5' }), // workflows table has data
+					.mockResolvedValueOnce([]) // users table is empty
+					.mockResolvedValueOnce([{ id: 1 }]), // workflows table has data
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
@@ -225,10 +234,19 @@ describe('ImportService', () => {
 			const mockQueryBuilder = {
 				select: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
-				getRawOne: jest
+				limit: jest.fn().mockReturnThis(),
+				getRawMany: jest
 					.fn()
-					.mockResolvedValueOnce({ count: '3' }) // users table has data
-					.mockResolvedValueOnce({ count: '7' }), // workflows table has data
+					.mockResolvedValueOnce([{ id: 1 }, { id: 2 }, { id: 3 }]) // users table has data
+					.mockResolvedValueOnce([
+						{ id: 1 },
+						{ id: 2 },
+						{ id: 3 },
+						{ id: 4 },
+						{ id: 5 },
+						{ id: 6 },
+						{ id: 7 },
+					]), // workflows table has data
 			};
 
 			mockDataSource.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);

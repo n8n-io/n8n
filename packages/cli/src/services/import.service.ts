@@ -146,12 +146,13 @@ export class ImportService {
 		try {
 			const result = await this.dataSource
 				.createQueryBuilder()
-				.select('COUNT(*)', 'count')
+				.select('1')
 				.from(tableName, tableName)
-				.getRawOne<{ count: string }>();
+				.limit(1)
+				.getRawMany();
 
-			this.logger.debug(`Table ${tableName} has ${result?.count} rows`);
-			return result?.count === '0';
+			this.logger.debug(`Table ${tableName} has ${result.length} rows`);
+			return result.length === 0;
 		} catch (error: unknown) {
 			this.logger.error(`Failed to check if table ${tableName} is empty:`, { error });
 			throw new Error(`Unable to check table ${tableName}`);
@@ -222,30 +223,34 @@ export class ImportService {
 	 */
 	async getTableNamesForImport(inputDir: string): Promise<string[]> {
 		const files = await readdir(inputDir);
-		const entityNames = new Set<string>();
+		const entityTableNamesMap: Record<string, string> = {};
 
 		for (const file of files) {
 			if (file.endsWith('.jsonl')) {
 				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				entityNames.add(entityName);
+				// Exclude migrations from regular entity import
+				if (entityName === 'migrations') {
+					continue;
+				}
+
+				if (entityTableNamesMap[entityName]) {
+					continue;
+				}
+
+				const entityMetadata = this.dataSource.entityMetadatas.find(
+					(meta) => meta.name.toLowerCase() === entityName,
+				);
+
+				if (!entityMetadata) {
+					this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
+					continue;
+				}
+
+				entityTableNamesMap[entityName] = entityMetadata.tableName;
 			}
 		}
 
-		// Convert entity names to table names using entity metadata
-		const tableNames: string[] = [];
-		for (const entityName of entityNames) {
-			const entityMetadata = this.dataSource.entityMetadatas.find(
-				(meta) => meta.name.toLowerCase() === entityName,
-			);
-
-			if (entityMetadata) {
-				tableNames.push(entityMetadata.tableName);
-			} else {
-				this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
-			}
-		}
-
-		return tableNames;
+		return Object.values(entityTableNamesMap);
 	}
 
 	/**
@@ -317,20 +322,18 @@ export class ImportService {
 
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
-				for (const tableName of tableNames) {
-					await this.truncateEntityTable(tableName, transactionManager);
-				}
+				await Promise.all(
+					tableNames.map((tableName) => this.truncateEntityTable(tableName, transactionManager)),
+				);
 
 				this.logger.info('✅ All tables truncated successfully');
 			}
 
-			if (!truncateTables) {
-				if (!(await this.areAllEntityTablesEmpty(tableNames))) {
-					this.logger.info(
-						'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
-					);
-					return;
-				}
+			if (!truncateTables && !(await this.areAllEntityTablesEmpty(tableNames))) {
+				this.logger.info(
+					'\n🗑️  Not all tables are empty, skipping import, you can use --truncateTables to truncate tables before import if needed',
+				);
+				return;
 			}
 
 			// Import entities from the specified directory
@@ -359,43 +362,45 @@ export class ImportService {
 		}
 
 		this.logger.info(`📋 Found ${entityFiles.size} entity types to import:`);
-		for (const [entityName, files] of entityFiles) {
-			this.logger.info(`   • ${entityName}: ${files.length} file(s)`);
-		}
 
 		let totalEntitiesImported = 0;
 
-		for (const [entityName, files] of entityFiles) {
-			this.logger.info(`\n📊 Importing ${entityName} entities...`);
+		await Promise.all(
+			Array.from(entityFiles.entries()).map(async ([entityName, files]) => {
+				this.logger.info(`   • ${entityName}: ${files.length} file(s)`);
+				this.logger.info(`\n📊 Importing ${entityName} entities...`);
 
-			const entityMetadata = this.dataSource.entityMetadatas.find(
-				(meta) => meta.name.toLowerCase() === entityName,
-			);
+				const entityMetadata = this.dataSource.entityMetadatas.find(
+					(meta) => meta.name.toLowerCase() === entityName,
+				);
 
-			if (!entityMetadata) {
-				this.logger.warn(`   ⚠️  No entity metadata found for ${entityName}, skipping...`);
-				continue;
-			}
-
-			const tableName = entityMetadata.tableName;
-			this.logger.info(`   📋 Target table: ${tableName}`);
-
-			let entityCount = 0;
-			for (const filePath of files) {
-				this.logger.info(`   📁 Reading file: ${path.basename(filePath)}`);
-
-				const entities = await this.readEntityFile(filePath);
-				this.logger.info(`      Found ${entities.length} entities`);
-
-				if (entities.length > 0) {
-					await transactionManager.insert(tableName, entities);
-					entityCount += entities.length;
+				if (!entityMetadata) {
+					this.logger.warn(`   ⚠️  No entity metadata found for ${entityName}, skipping...`);
+					return;
 				}
-			}
 
-			this.logger.info(`   ✅ Completed ${entityName}: ${entityCount} entities imported`);
-			totalEntitiesImported += entityCount;
-		}
+				const tableName = entityMetadata.tableName;
+				this.logger.info(`   📋 Target table: ${tableName}`);
+
+				let entityCount = 0;
+				await Promise.all(
+					files.map(async (filePath) => {
+						this.logger.info(`   📁 Reading file: ${path.basename(filePath)}`);
+
+						const entities = await this.readEntityFile(filePath);
+						this.logger.info(`      Found ${entities.length} entities`);
+
+						if (entities.length > 0) {
+							await transactionManager.insert(tableName, entities);
+							entityCount += entities.length;
+						}
+					}),
+				);
+
+				this.logger.info(`   ✅ Completed ${entityName}: ${entityCount} entities imported`);
+				totalEntitiesImported += entityCount;
+			}),
+		);
 
 		this.logger.info('\n📊 Import Summary:');
 		this.logger.info(`   Total entities imported: ${totalEntitiesImported}`);
