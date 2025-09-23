@@ -87,7 +87,10 @@ export class ControllerRegistry {
 				...(route.skipAuth
 					? []
 					: ([
-							this.authService.createAuthMiddleware(route.allowSkipMFA),
+							this.authService.createAuthMiddleware({
+								allowSkipMFA: route.allowSkipMFA,
+								allowSkipPreviewAuth: route.allowSkipPreviewAuth,
+							}),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),
