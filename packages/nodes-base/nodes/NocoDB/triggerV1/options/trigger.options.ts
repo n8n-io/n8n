@@ -91,7 +91,7 @@ export const TriggerOptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description:
-			'The field to watch for trigger to occur. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Created or Last Modified Time field that will be used to determine which record to return and whether the trigger will execute. If the table do not have Create or Last Modified Time, please create one for it to appear on the list. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: ['table.value'],
 		},
