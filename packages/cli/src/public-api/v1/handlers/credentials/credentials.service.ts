@@ -194,28 +194,22 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 
 	Object.entries(conditionalProperties).forEach(([dependantName, dependentProps]) => {
 		// Group properties by their condition values
-		const conditionGroups: { [key: string]: INodeProperties[] } = {};
+		const conditionGroups = new Map<any, INodeProperties[]>();
 
 		dependentProps.forEach((prop) => {
 			const displayOptionsValues = prop.displayOptions?.show?.[dependantName];
 			if (displayOptionsValues && Array.isArray(displayOptionsValues)) {
 				displayOptionsValues.forEach((conditionValue) => {
-					const key =
-						typeof conditionValue === 'object' && conditionValue !== null
-							? JSON.stringify(conditionValue)
-							: String(conditionValue);
-					if (!conditionGroups[key]) {
-						conditionGroups[key] = [];
+					if (!conditionGroups.has(conditionValue)) {
+						conditionGroups.set(conditionValue, []);
 					}
-					conditionGroups[key].push(prop);
+					conditionGroups.get(conditionValue)!.push(prop);
 				});
 			}
 		});
 
 		// Create conditional schemas for each condition value
-		Object.entries(conditionGroups).forEach(([conditionKey, props]) => {
-			const conditionValue = conditionKey.startsWith('{') ? JSON.parse(conditionKey) : conditionKey;
-
+		conditionGroups.forEach((props, conditionValue) => {
 			// Generate appropriate schema constraint based on condition type
 			let propertyConstraint: any;
 			if (
@@ -262,9 +256,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			};
 
 			// Add properties that should be available for this condition
-			const uniqueProps = Array.from(new Set(props.map((p) => p.name))).map(
-				(name) => props.find((p) => p.name === name)!,
-			);
+			const uniqueProps = Array.from(new Map(props.map((p) => [p.name, p])).values());
 			uniqueProps.forEach((prop) => {
 				if (prop.type === 'options') {
 					conditionSchema.then.properties[prop.name] = {
