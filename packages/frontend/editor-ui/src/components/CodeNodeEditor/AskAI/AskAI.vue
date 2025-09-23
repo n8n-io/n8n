@@ -381,6 +381,9 @@ onMounted(() => {
 	position: relative;
 }
 .help {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 	text-decoration: underline;
 	margin-left: auto;
 	color: #909399;
