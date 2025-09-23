@@ -662,7 +662,7 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('updateNodeExecutionData', () => {
+	describe('updateNodeExecutionPayload', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				id: 'test-execution',
@@ -693,7 +693,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should replace run data at the matched index in the execution data', () => {
-			workflowsStore.updateNodeExecutionData({
+			workflowsStore.updateNodeExecutionPayload({
 				executionId: 'test-execution',
 				nodeName: 'n0',
 				data: createTestTaskData({
@@ -719,7 +719,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not modify execution data if there is no matched index in execution data', () => {
-			workflowsStore.updateNodeExecutionData({
+			workflowsStore.updateNodeExecutionPayload({
 				executionId: 'test-execution',
 				nodeName: 'n0',
 				data: createTestTaskData({
@@ -745,7 +745,7 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('updateNodeExecution', () => {
+	describe('updateNodeExecutionStatus', () => {
 		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
 		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
 		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
@@ -758,7 +758,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should throw error if not initialized', () => {
-			expect(() => workflowsStore.updateNodeExecution(successEvent)).toThrowError();
+			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).toThrowError();
 		});
 
 		it('should add node success run data', () => {
@@ -769,7 +769,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecution(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -798,7 +798,7 @@ describe('useWorkflowsStore', () => {
 			getNodeType.mockReturnValue(getMockEditFieldsNode());
 
 			// ACT
-			workflowsStore.updateNodeExecution(errorEvent);
+			workflowsStore.updateNodeExecutionStatus(errorEvent);
 			await flushPromises();
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
@@ -881,7 +881,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecution(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
@@ -934,7 +934,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEventWithExecutionIndex);
+			workflowsStore.updateNodeExecutionPayload(successEventWithExecutionIndex);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,

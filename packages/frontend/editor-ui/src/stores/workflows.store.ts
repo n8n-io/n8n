@@ -1556,7 +1556,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		];
 	}
 
-	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
+	function updateNodeExecutionPayload(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		const tasksData = workflowExecutionData.value?.data?.resultData.runData[pushData.nodeName];
 		const existingRunIndex =
 			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
@@ -1566,7 +1566,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function updateNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): void {
+	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -2048,8 +2048,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue,
 		setNodeParameters,
 		setLastNodeParameters,
-		updateNodeExecutionData,
-		updateNodeExecution,
+		updateNodeExecutionPayload,
+		updateNodeExecutionStatus,
 		clearNodeExecutionData,
 		pinDataByNodeName,
 		activeNode,
