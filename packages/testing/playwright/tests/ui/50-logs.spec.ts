@@ -250,6 +250,9 @@ test.describe('Logs', () => {
 			.getAttribute('href');
 		await n8n.ndv.clickBackToCanvasButton();
 
+		// [CAT-1454] Assert that no duplicate logs added at this point
+		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+
 		// Trigger the webhook
 		const response = await n8n.page.request.get(webhookUrl!);
 		expect(response.status()).toBe(200);

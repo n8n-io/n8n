@@ -28,6 +28,7 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
+	IExecutionsStopData,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -1556,6 +1557,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
+		const tasksData = workflowExecutionData.value?.data?.resultData.runData[pushData.nodeName];
+		const existingRunIndex =
+			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
+
+		if (tasksData?.[existingRunIndex]) {
+			tasksData.splice(existingRunIndex, 1, pushData.data);
+		}
+	}
+
+	function updateNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -2026,6 +2037,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeParameters,
 		setLastNodeParameters,
 		updateNodeExecutionData,
+		updateNodeExecution,
 		clearNodeExecutionData,
 		pinDataByNodeName,
 		activeNode,
