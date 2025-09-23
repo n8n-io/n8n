@@ -1,12 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { SettingsRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
+import { Request, Response, NextFunction } from 'express';
+import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { Request, Response, NextFunction } from 'express';
+
+const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
 @Service()
 export class CredentialsOverwrites {
@@ -18,13 +23,71 @@ export class CredentialsOverwrites {
 		private readonly globalConfig: GlobalConfig,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly logger: Logger,
-	) {
-		const data = globalConfig.credentials.overwrite.data;
-		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
-			errorMessage: 'The credentials-overwrite is not valid JSON.',
-		});
+		private readonly settings: SettingsRepository,
+		private readonly cipher: Cipher,
+	) {}
 
-		this.setData(overwriteData);
+	async init() {
+		const data = this.globalConfig.credentials.overwrite.data;
+		if (data) {
+			const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
+				errorMessage: 'The credentials-overwrite is not valid JSON.',
+			});
+
+			await this.setData(overwriteData, false);
+			return;
+		}
+
+		const persistence = this.globalConfig.credentials.overwrite.persistence;
+
+		if (persistence) {
+			await this.loadOverwriteDataFromDB();
+		}
+	}
+
+	private reloading = false;
+
+	@OnPubSubEvent('reload-overwrite-credentials')
+	async loadOverwriteDataFromDB() {
+		if (this.reloading) return;
+		try {
+			this.reloading = true;
+			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
+
+			if (data) {
+				const decryptedData = this.cipher.decrypt(data.value);
+				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
+					errorMessage: 'The credentials-overwrite is not valid JSON.',
+				});
+
+				await this.setData(overwriteData, false);
+			}
+		} catch (error) {
+			this.logger.error('Error loading overwrite credentials', { error });
+		} finally {
+			this.reloading = false;
+		}
+	}
+
+	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
+		if (this.globalConfig.credentials.overwrite.persistence) {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
+		}
+	}
+
+	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
+		const data = this.cipher.encrypt(JSON.stringify(overwriteData));
+		const setting = this.settings.create({
+			key: CREDENTIALS_OVERWRITE_KEY,
+			value: data,
+			loadOnStartup: true,
+		});
+		await this.settings.save(setting);
+
+		if (broadcast) {
+			await this.broadcastReloadOverwriteCredentialsCommand();
+		}
 	}
 
 	getOverwriteEndpointMiddleware() {
@@ -45,7 +108,7 @@ export class CredentialsOverwrites {
 		};
 	}
 
-	setData(overwriteData: ICredentialsOverwrite) {
+	async setData(overwriteData: ICredentialsOverwrite, storeInDb: boolean = true) {
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
@@ -57,6 +120,10 @@ export class CredentialsOverwrites {
 			if (overwrites && Object.keys(overwrites).length) {
 				this.overwriteData[type] = overwrites;
 			}
+		}
+
+		if (storeInDb && this.globalConfig.credentials.overwrite.persistence) {
+			await this.saveOverwriteDataToDB(overwriteData, true);
 		}
 	}
 

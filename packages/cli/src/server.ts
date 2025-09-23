@@ -313,7 +313,7 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						Container.get(CredentialsOverwrites).setData(body);
+						await Container.get(CredentialsOverwrites).setData(body, true);
 
 						await frontendService?.generateTypes();
 

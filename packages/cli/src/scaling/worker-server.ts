@@ -120,9 +120,9 @@ export class WorkerServer {
 				this.app.use(`/${endpoint}`, overwriteEndpointMiddleware);
 			}
 
-			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
-				this.handleOverwrites(req, res),
-			);
+			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, async (req, res) => {
+				await this.handleOverwrites(req, res);
+			});
 		}
 
 		if (metrics) {
@@ -142,7 +142,7 @@ export class WorkerServer {
 			: res.status(503).send({ status: 'error' });
 	}
 
-	private handleOverwrites(
+	private async handleOverwrites(
 		req: express.Request<{}, {}, ICredentialsOverwrite>,
 		res: express.Response,
 	) {
@@ -156,7 +156,7 @@ export class WorkerServer {
 			return;
 		}
 
-		this.credentialsOverwrites.setData(req.body);
+		await this.credentialsOverwrites.setData(req.body, true);
 
 		this.overwritesLoaded = true;
 

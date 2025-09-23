@@ -17,7 +17,7 @@ describe('CredentialsOverwrites', () => {
 	const logger = mock<Logger>();
 	let credentialsOverwrites: CredentialsOverwrites;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		jest.resetAllMocks();
 
 		globalConfig.credentials.overwrite.data = JSON.stringify({
@@ -34,7 +34,15 @@ describe('CredentialsOverwrites', () => {
 			.calledWith(testCredentialType.name)
 			.mockReturnValue([parentCredentialType.name]);
 
-		credentialsOverwrites = new CredentialsOverwrites(globalConfig, credentialTypes, logger);
+		credentialsOverwrites = new CredentialsOverwrites(
+			globalConfig,
+			credentialTypes,
+			logger,
+			mock(),
+			mock(),
+		);
+
+		await credentialsOverwrites.init();
 	});
 
 	describe('constructor', () => {
@@ -56,6 +64,8 @@ describe('CredentialsOverwrites', () => {
 				globalConfig,
 				credentialTypes,
 				logger,
+				mock(),
+				mock(),
 			);
 			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
 			expect(middleware).toBeNull();
@@ -67,6 +77,8 @@ describe('CredentialsOverwrites', () => {
 				globalConfig,
 				credentialTypes,
 				logger,
+				mock(),
+				mock(),
 			);
 			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
 			expect(typeof middleware).toBe('function');
@@ -93,6 +105,8 @@ describe('CredentialsOverwrites', () => {
 					globalConfig,
 					credentialTypes,
 					logger,
+					mock(),
+					mock(),
 				);
 				middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
 			});
@@ -149,9 +163,9 @@ describe('CredentialsOverwrites', () => {
 	});
 
 	describe('setData', () => {
-		it('should reset resolvedTypes when setting new data', () => {
+		it('should reset resolvedTypes when setting new data', async () => {
 			const newData = { test: { token: 'test-token' } };
-			credentialsOverwrites.setData(newData);
+			await credentialsOverwrites.setData(newData);
 
 			expect(credentialsOverwrites.getAll()).toEqual(newData);
 		});
@@ -204,7 +218,7 @@ describe('CredentialsOverwrites', () => {
 			expect(credentialsOverwrites['resolvedTypes']).toEqual(['parent', 'test']);
 		});
 
-		it('should merge overwrites from parent types', () => {
+		it('should merge overwrites from parent types', async () => {
 			credentialTypes.getByName.mockImplementation((credentialType) => {
 				if (credentialType === 'childType')
 					return mock<ICredentialType>({ extends: ['parentType1', 'parentType2'] });
@@ -223,8 +237,11 @@ describe('CredentialsOverwrites', () => {
 				globalConfig,
 				credentialTypes,
 				logger,
+				mock(),
+				mock(),
 			);
 
+			await credentialsOverwrites.init();
 			const result = credentialsOverwrites.getOverwrites('childType');
 
 			expect(result).toEqual({
