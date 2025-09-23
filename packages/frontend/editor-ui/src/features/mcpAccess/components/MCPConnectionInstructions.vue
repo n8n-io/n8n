@@ -19,27 +19,31 @@ const i18n = useI18n();
 // mcp.json value that's to be copied
 const connectionString = computed(() => {
 	return `
-		{
-		  "mcpServers": {
-		    "n8n-mcp": {
-		      "command": "npx",
-		      "args": [
-		        "-y",
-		        "supergateway",
-		        "--streamableHttp",
-		        "${props.baseUrl}${MCP_ENDPOINT}",
-		        "--header",
-		        "authorization:Bearer <YOUR_N8N_API_KEY>"
-		      ]
-		    }
-		  }
-		}
-		`;
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "supergateway",
+        "--streamableHttp",
+        "${props.baseUrl}${MCP_ENDPOINT}",
+        "--header",
+        "authorization:Bearer <YOUR_N8N_API_KEY>"
+      ]
+    }
+  }
+}
+`;
 });
 
 // formatted code block for markdown component
 const connectionCode = computed(() => {
 	return `\`\`\`json${connectionString.value}\`\`\``;
+});
+
+const fullServerUrl = computed(() => {
+	return props.baseUrl + MCP_ENDPOINT;
 });
 </script>
 
@@ -59,14 +63,14 @@ const connectionCode = computed(() => {
 						{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
 					</span>
 					<span :class="$style.url">
-						<code>{{ props.baseUrl + MCP_ENDPOINT }}</code>
+						<code>{{ fullServerUrl }}</code>
 						<n8n-button
 							v-if="isSupported"
 							type="tertiary"
 							:icon="copied ? 'check' : 'copy'"
 							:square="true"
 							:class="$style['copy-url-button']"
-							@click="copy(props.baseUrl + MCP_ENDPOINT)"
+							@click="copy(fullServerUrl)"
 						/>
 					</span>
 				</div>
