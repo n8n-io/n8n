@@ -24,6 +24,11 @@ describe('ExportService', () => {
 		mockLogger = mock<Logger>();
 		mockDataSource = mock<DataSource>();
 
+		// Mock the driver.escape method
+		mockDataSource.driver = {
+			escape: jest.fn((identifier: string) => `"${identifier}"`),
+		} as any;
+
 		exportService = new ExportService(mockLogger, mockDataSource);
 	});
 
@@ -248,7 +253,7 @@ describe('ExportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 
-		it('should handle file splitting at 10,000 entities correctly', async () => {
+		it('should handle file splitting at 500 entities correctly', async () => {
 			const outputDir = '/test/output';
 			const largePage = Array.from({ length: 500 }, (_, i) => ({
 				id: i + 1,
@@ -260,9 +265,9 @@ describe('ExportService', () => {
 			(mkdir as jest.Mock).mockResolvedValue(undefined);
 			(appendFile as jest.Mock).mockResolvedValue(undefined);
 
-			// Mock database queries - simulate 25 pages of 500 entities each (12,500 total)
-			// This should create 2 files: user.jsonl (10,000 entities) and user.2.jsonl (2,500 entities)
-			for (let i = 0; i < 25; i++) {
+			// Mock database queries - simulate 3 pages of 500 entities each (1,500 total)
+			// This should create 3 files: user.jsonl (500 entities), user.2.jsonl (500 entities), user.3.jsonl (500 entities)
+			for (let i = 0; i < 3; i++) {
 				jest.mocked(mockDataSource.query).mockResolvedValueOnce(largePage);
 			}
 			jest.mocked(mockDataSource.query).mockResolvedValue([]); // Final empty result
@@ -270,27 +275,31 @@ describe('ExportService', () => {
 			await exportService.exportEntities(outputDir);
 
 			// Verify file splitting logic
-			expect(appendFile).toHaveBeenCalledTimes(25);
+			expect(appendFile).toHaveBeenCalledTimes(3);
 
-			// First 20 calls should go to user.jsonl (10,000 entities)
-			for (let i = 0; i < 20; i++) {
-				expect(appendFile).toHaveBeenNthCalledWith(
-					i + 1,
-					'/test/output/user.jsonl',
-					expect.any(String),
-					'utf8',
-				);
-			}
+			// First call should go to user.jsonl (500 entities)
+			expect(appendFile).toHaveBeenNthCalledWith(
+				1,
+				'/test/output/user.jsonl',
+				expect.any(String),
+				'utf8',
+			);
 
-			// Next 5 calls should go to user.2.jsonl (2,500 entities)
-			for (let i = 20; i < 25; i++) {
-				expect(appendFile).toHaveBeenNthCalledWith(
-					i + 1,
-					'/test/output/user.2.jsonl',
-					expect.any(String),
-					'utf8',
-				);
-			}
+			// Second call should go to user.2.jsonl (500 entities)
+			expect(appendFile).toHaveBeenNthCalledWith(
+				2,
+				'/test/output/user.2.jsonl',
+				expect.any(String),
+				'utf8',
+			);
+
+			// Third call should go to user.3.jsonl (500 entities)
+			expect(appendFile).toHaveBeenNthCalledWith(
+				3,
+				'/test/output/user.3.jsonl',
+				expect.any(String),
+				'utf8',
+			);
 		});
 
 		it('should handle database errors gracefully', async () => {
