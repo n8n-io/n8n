@@ -19,7 +19,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
 
-import type { IDependency, IJsonSchema } from '../../../types';
+import type { IJsonSchema } from '../../../types';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });

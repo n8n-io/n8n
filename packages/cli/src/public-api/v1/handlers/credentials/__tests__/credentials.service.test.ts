@@ -60,8 +60,12 @@ describe('CredentialsService', () => {
 				enum: [false], // boolean false as dependant value
 			});
 
-			expect((condition.then as any).required).toEqual(['field3']);
-			expect((condition.else as any).not.required).toEqual(['field3']);
+			expect(
+				(condition.then as any).allOf.some((req: any) => req.required?.includes('field3')),
+			).toBe(true);
+			expect(
+				(condition.else as any).allOf.some((req: any) => req.not?.required?.includes('field3')),
+			).toBe(true);
 		});
 
 		it('should generate correct schema for JWT credential fields with proper required fields', () => {
