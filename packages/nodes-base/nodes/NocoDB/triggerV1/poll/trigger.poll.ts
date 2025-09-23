@@ -43,15 +43,24 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 
 		if (qs.sort) {
 			const properties = (qs.sort as IDataObject).property as Array<{
-				field: string;
+				field: {
+					value: string;
+				};
 				direction: string;
 			}>;
-			qs.sort = properties
-				.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
-				.join(',');
+			qs.sort = JSON.stringify(
+				properties.map((prop) => {
+					return {
+						field: prop.field.value,
+						direction: prop.direction,
+					};
+				}),
+			);
 		}
 		if (qs.fields) {
-			qs.fields = (qs.fields as IDataObject[]).join(',');
+			qs.fields = ((qs.fields as IDataObject).items as IDataObject[])
+				.map((field: IDataObject) => (field.field as IDataObject).value)
+				.join(',');
 		}
 		if (this.getMode() !== 'manual') {
 			const clause = `("${triggerFieldName}",gte,exactDate,"${startDate}")~and("${triggerFieldName}",lt,exactDate,"${endDate}")`;

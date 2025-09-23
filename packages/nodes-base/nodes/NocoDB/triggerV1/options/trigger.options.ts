@@ -161,14 +161,48 @@ export const TriggerOptions: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
+				type: 'fixedCollection',
+				description: 'The select fields of the returned rows',
 				typeOptions: {
 					multipleValues: true,
-					multipleValueButtonText: 'Add Field',
 				},
 				default: [],
-				placeholder: 'Name',
-				description: 'The select fields of the returned rows',
+				placeholder: 'Add field',
+				options: [
+					{
+						name: 'items',
+						displayName: 'Items',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'field',
+								type: 'resourceLocator',
+								description: 'Name of the field to select on',
+								default: { mode: 'list', value: '' },
+								typeOptions: {
+									loadOptionsDependsOn: ['table.value'],
+								},
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										type: 'list',
+										typeOptions: {
+											searchListMethod: 'getFields',
+											searchable: true,
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'c9xxmrtn2wfe39l',
+									},
+								],
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Sort',
@@ -186,11 +220,31 @@ export const TriggerOptions: INodeProperties[] = [
 						displayName: 'Property',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
-								type: 'string',
-								default: '',
-								description: 'Name of the field to sort on',
+								type: 'resourceLocator',
+								description: 'Name of the field to select on',
+								default: { mode: 'list', value: '' },
+								typeOptions: {
+									loadOptionsDependsOn: ['table.value'],
+								},
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										type: 'list',
+										typeOptions: {
+											searchListMethod: 'getFields',
+											searchable: true,
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'c9xxmrtn2wfe39l',
+									},
+								],
 							},
 							{
 								displayName: 'Direction',
