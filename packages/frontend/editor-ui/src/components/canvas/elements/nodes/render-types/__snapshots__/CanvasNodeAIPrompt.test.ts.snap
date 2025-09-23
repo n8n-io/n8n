@@ -10,7 +10,7 @@ exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
       <!-- Warning banner when character limit is reached -->
       <!--v-if-->
       <!-- Single line mode: input and button side by side -->
-      <div class="singleLineWrapper"><textarea class="singleLineTextarea" placeholder="Ask n8n to build..." rows="1"></textarea>
+      <div class="singleLineWrapper"><textarea class="singleLineTextarea" placeholder="Ask n8n to build..." maxlength="1000" rows="1"></textarea>
         <div class="inlineActions"><button class="button button primary mini disabled withIcon square sendButton sendButton" disabled="" aria-disabled="true" aria-live="polite"><span class="icon"><svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="arrow-up"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12l7-7l7 7m-7 7V5"></path></svg></span>
             <!--v-if-->
           </button></div>
