@@ -39,6 +39,6 @@ export class AiBuilderChatRequestDto extends Z.class({
 				})
 				.optional(),
 		}),
-		useDeprecatedCredentials: z.boolean(),
+		useDeprecatedCredentials: z.boolean().default(false),
 	}),
 }) {}
