@@ -156,19 +156,18 @@ onMounted(async () => {
 				</n8n-text>
 			</div>
 			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
-				<N8nTooltip :disabled="isOwner" placement="top">
-					<template #content>
-						<span>{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}</span>
-					</template>
-					<div>
-						<el-switch
-							:model-value="mcpStore.mcpAccessEnabled"
-							size="large"
-							data-test-id="mcp-access-toggle"
-							:disabled="!isOwner"
-							@update:model-value="onUpdateMCPEnabled"
-						/>
-					</div>
+				<N8nTooltip
+					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
+					:disabled="isOwner"
+					placement="top"
+				>
+					<el-switch
+						:model-value="mcpStore.mcpAccessEnabled"
+						size="large"
+						data-test-id="mcp-access-toggle"
+						:disabled="!isOwner"
+						@update:model-value="onUpdateMCPEnabled"
+					/>
 				</N8nTooltip>
 			</div>
 		</div>
@@ -183,7 +182,7 @@ onMounted(async () => {
 				</n8n-heading>
 				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
 			</div>
-			<div :class="$style['workflow-list-container']">
+			<div :class="$style['workflow-list-container']" data-test-id="mcp-workflow-list">
 				<div v-if="workflowsLoading">
 					<n8n-loading
 						v-if="workflowsLoading"
@@ -207,12 +206,13 @@ onMounted(async () => {
 					</div>
 					<n8n-action-box
 						v-if="availableWorkflows.length === 0"
-						data-test-id="empty-shared-action-box"
+						data-test-id="empty-workflow-list-box"
 						:heading="i18n.baseText('settings.mcp.empty.title')"
 						:description="i18n.baseText('settings.mcp.empty.description')"
 					/>
 					<N8nDataTableServer
 						v-else
+						data-test-id="mcp-workflow-table"
 						:headers="tableHeaders"
 						:items="availableWorkflows"
 						:items-length="availableWorkflows.length"
@@ -229,7 +229,7 @@ onMounted(async () => {
 								:theme="'text'"
 								:class="$style['table-link']"
 							>
-								{{ item.name }}
+								<n8n-text data-test-id="mcp-workflow-name">{{ item.name }}</n8n-text>
 								<n8n-icon
 									icon="external-link"
 									:class="$style['link-icon']"
@@ -241,12 +241,15 @@ onMounted(async () => {
 							<span v-if="item.parentFolder" :class="$style['folder-cell']">
 								<n8n-link
 									v-if="item.homeProject"
+									data-test-id="mcp-workflow-folder-link"
 									:to="`/projects/${item.homeProject.id}/folders/${item.parentFolder.id}/workflows`"
 									:theme="'text'"
 									:class="$style['table-link']"
 									:new-window="true"
 								>
-									{{ item.parentFolder.name }}
+									<n8n-text data-test-id="mcp-workflow-folder-name">
+										{{ item.parentFolder.name }}
+									</n8n-text>
 									<n8n-icon
 										icon="external-link"
 										:class="$style['link-icon']"
@@ -255,14 +258,17 @@ onMounted(async () => {
 								</n8n-link>
 								<span v-else>
 									<n8n-icon v-if="item.parentFolder" icon="folder" :size="16" color="text-light" />
-									{{ item.parentFolder.name }}
+									<n8n-text data-test-id="mcp-workflow-folder-name">
+										{{ item.parentFolder.name }}
+									</n8n-text>
 								</span>
 							</span>
-							<span v-else>-</span>
+							<n8n-text v-else data-test-id="mcp-workflow-no-folder">-</n8n-text>
 						</template>
 						<template #[`item.homeProject`]="{ item }">
 							<span v-if="item.homeProject" :class="$style['folder-cell']">
 								<n8n-link
+									data-test-id="mcp-workflow-project-link"
 									:to="
 										router.resolve({
 											name: VIEWS.PROJECTS_WORKFLOWS,
@@ -278,7 +284,9 @@ onMounted(async () => {
 										:icon="getProjectIcon(item)"
 										:border-less="true"
 									/>
-									{{ getProjectName(item) }}
+									<n8n-text data-test-id="mcp-workflow-project-name">
+										{{ getProjectName(item) }}
+									</n8n-text>
 									<n8n-icon
 										icon="external-link"
 										:class="$style['link-icon']"
@@ -286,7 +294,7 @@ onMounted(async () => {
 									></n8n-icon>
 								</n8n-link>
 							</span>
-							<span v-else>-</span>
+							<n8n-text v-else data-test-id="mcp-workflow-no-project">-</n8n-text>
 						</template>
 						<template #[`item.active`]="{ item }">
 							<n8n-icon
