@@ -17,13 +17,6 @@ const i18n = useI18n();
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
 
 const hasCustomName = computed(() => props.nodeName !== props.nodeTypeName);
-const docsLabel = computed(() => {
-	if (!hasCustomName.value) {
-		return i18n.baseText('nodeSettings.docs');
-	}
-
-	return `${props.nodeTypeName} ${i18n.baseText('nodeSettings.docs')}`;
-});
 
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
@@ -48,7 +41,7 @@ function onRename(newNodeName: string) {
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>
-						{{ docsLabel }}
+						{{ i18n.baseText('nodeSettings.docs') }}
 					</N8nText>
 					<N8nIcon icon="external-link" />
 				</span>
