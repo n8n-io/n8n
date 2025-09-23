@@ -72,7 +72,7 @@ export async function replyToEmail(
 		'/gmail/v1/users/me/profile',
 	)) as GmailUserProfile;
 
-	let to: string[] = [];
+	const to: string[] = [];
 	const replyToSenderOnly =
 		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
 	const replyToRecipientsOnly =
@@ -90,7 +90,8 @@ export async function replyToEmail(
 	};
 
 	for (const header of payload.headers) {
-		if ((header.name || '').toLowerCase() === 'from') {
+		const headerName = (header.name || '').toLowerCase();
+		if (headerName === 'from' && !replyToRecipientsOnly) {
 			const from = header.value;
 			if (from.includes('<') && from.includes('>')) {
 				to.push(from);
@@ -99,14 +100,10 @@ export async function replyToEmail(
 			}
 		}
 
-		if ((header.name || '').toLowerCase() === 'to' && !replyToSenderOnly) {
+		if (headerName === 'to' && !replyToSenderOnly) {
 			const toEmails = header.value;
 			toEmails.split(',').forEach(prepareEmailString);
 		}
-	}
-
-	if (replyToRecipientsOnly) {
-		to = to.filter((email) => !email.includes(emailAddress));
 	}
 
 	let from = '';

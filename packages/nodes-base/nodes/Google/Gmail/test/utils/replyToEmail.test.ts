@@ -370,8 +370,9 @@ describe('replyToEmail', () => {
 				headers: [
 					{ name: 'Subject', value: 'Original Subject' },
 					{ name: 'Message-ID', value: '<original@example.com>' },
-					{ name: 'From', value: 'John Doe <john@example.com>' },
-					{ name: 'To', value: 'recipient@example.com, user@gmail.com' },
+					// user@gmail.com - current user, user_from@gmail.com - sender that should be excluded
+					{ name: 'From', value: '<user_from@gmail.com>' },
+					{ name: 'To', value: 'recipient@example.com,user@gmail.com' },
 				],
 			},
 		};
@@ -385,8 +386,13 @@ describe('replyToEmail', () => {
 
 		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0);
 
-		// The current user's email should be filtered out during email preparation
 		expect(mockedGoogleApiRequest).toHaveBeenCalledTimes(3);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				to: '<user_from@gmail.com>, <recipient@example.com>',
+			}),
+		);
 	});
 
 	test('should handle missing subject header', async () => {
