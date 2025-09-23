@@ -900,7 +900,10 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
  *
  * @param err the error being handled
  */
-export function _privateGetWebhookErrorMessage(err: unknown, webhookType: 'Form' | 'Webhook'): string {
+export function _privateGetWebhookErrorMessage(
+	err: unknown,
+	webhookType: 'Form' | 'Webhook',
+): string {
 	// if workflow started manually, show an actual error message
 	if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
 		return err.message;

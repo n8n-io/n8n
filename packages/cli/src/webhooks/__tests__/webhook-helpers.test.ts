@@ -459,7 +459,7 @@ describe('getWebhookErrorMessage', () => {
 		const err = new WorkflowConfigurationError(workflowStartNode, new Error('test'));
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toEqual(err.message);
 	});
-	
+
 	it('should obfuscate other errors', () => {
 		const err = new NodeOperationError(workflowStartNode, new Error('test'));
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
