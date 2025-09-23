@@ -58,9 +58,7 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 			);
 		}
 		if (qs.fields) {
-			qs.fields = ((qs.fields as IDataObject).items as IDataObject[])
-				.map((field: IDataObject) => (field.field as IDataObject).value)
-				.join(',');
+			qs.fields = (qs.fields as IDataObject[]).join(',');
 		}
 		if (this.getMode() !== 'manual') {
 			const clause = `("${triggerFieldName}",gte,exactDate,"${startDate}")~and("${triggerFieldName}",lt,exactDate,"${endDate}")`;
