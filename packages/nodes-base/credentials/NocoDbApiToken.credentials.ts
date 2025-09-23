@@ -21,11 +21,23 @@ export class NocoDbApiToken implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Cloud NocoDB',
+			name: 'isCloudNocoDb',
+			type: 'boolean',
+			// cannot be true due to existing creds will also be set to true
+			default: false,
+		},
+		{
 			displayName: 'Host',
 			name: 'host',
 			type: 'string',
 			default: '',
 			placeholder: 'http(s)://localhost:8080',
+			displayOptions: {
+				show: {
+					isCloudNocoDb: [false],
+				},
+			},
 		},
 	];
 
@@ -40,7 +52,7 @@ export class NocoDbApiToken implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.host }}',
+			baseURL: '={{ $credentials.isCloudNocoDb ? "https://app.nocodb.com" : $credentials.host }}',
 			url: '/api/v1/auth/user/me',
 		},
 	};
