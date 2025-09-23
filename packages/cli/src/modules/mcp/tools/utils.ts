@@ -14,7 +14,7 @@ export const getWebhookDetails = async (
 	webhookNodes: INode[],
 	baseUrl: string,
 	isWorkflowActive: boolean,
-	crednetialsService: CredentialsService,
+	credentialsService: CredentialsService,
 ): Promise<string> => {
 	if (webhookNodes.length === 0) {
 		return 'This workflow does not have a trigger node that can be executed via MCP.';
@@ -35,14 +35,14 @@ export const getWebhookDetails = async (
 						'\n\t - This webhook requires basic authentication with a username and password that should be provided by the user.';
 					break;
 				case 'headerAuth': {
-					const headerAuthDetails = await getHeaderAuthDetails(user, node, crednetialsService);
+					const headerAuthDetails = await getHeaderAuthDetails(user, node, credentialsService);
 					if (headerAuthDetails) {
 						credentialsInfo = headerAuthDetails;
 					}
 					break;
 				}
 				case 'jwtAuth': {
-					const jwtDetails = await getJWTAuthDetails(user, node, crednetialsService);
+					const jwtDetails = await getJWTAuthDetails(user, node, credentialsService);
 					if (jwtDetails) {
 						credentialsInfo = jwtDetails;
 					}
@@ -85,7 +85,7 @@ const getHeaderAuthDetails = async (
 	const id = node.credentials?.httpHeaderAuth?.id;
 	if (!id) return null;
 
-	const creds = await credentialsService.getOne(user, id, true);
+	const creds = await credentialsService.getOne(user, id, false);
 	if (hasHttpHeaderAuthDecryptedData(creds)) {
 		return `\n\t - This webhook requires a header with name "${creds.data.name}" and a value that should be provided by the user.`;
 	}
@@ -100,7 +100,7 @@ const getJWTAuthDetails = async (
 	const id = node.credentials?.jwtAuth?.id;
 	if (!id) return null;
 	try {
-		const creds = await credentialsService.getOne(user, id, true);
+		const creds = await credentialsService.getOne(user, id, false);
 		if (hasJwtSecretDecryptedData(creds)) {
 			return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
 		} else if (hasJwtPemKeyDecryptedData(creds)) {

@@ -35,9 +35,9 @@ export class McpController {
 			});
 			res.on('close', () => {
 				void transport.close();
-				void server?.close();
+				void server.close();
 			});
-			await server?.connect(transport);
+			await server.connect(transport);
 			await transport.handleRequest(req, res, req.body);
 		} catch (error) {
 			this.logger.error('Error handling MCP request', { error });
