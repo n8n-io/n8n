@@ -114,7 +114,10 @@ describe('AiWorkflowBuilderService', () => {
 			accessToken: 'test-access-token',
 		});
 		(mockClient.getApiProxyBaseUrl as jest.Mock).mockReturnValue('https://api.example.com');
-		(mockClient.markBuilderSuccess as jest.Mock).mockResolvedValue(undefined);
+		(mockClient.markBuilderSuccess as jest.Mock).mockResolvedValue({
+			creditsQuota: 10,
+			creditsClaimed: 1,
+		});
 
 		// Mock logger
 		mockLogger = mock<Logger>();

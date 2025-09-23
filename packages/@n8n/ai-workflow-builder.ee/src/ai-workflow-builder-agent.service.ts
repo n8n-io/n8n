@@ -207,17 +207,16 @@ export class AiWorkflowBuilderService {
 			if (this.client) {
 				assert(authHeaders, 'Auth headers must be set when AI Assistant Service client is used');
 				assert(user);
-				await this.client.markBuilderSuccess(user, authHeaders);
+				const creditsInfo = await this.client.markBuilderSuccess(user, authHeaders);
 
-				// After marking success, send websocket event with credits info
-				// Using hardcoded values as specified by the user
-				if (this.pushService && user.id) {
+				// Send websocket event with the actual credits info from the response
+				if (this.pushService && user.id && creditsInfo) {
 					this.pushService.sendToUsers(
 						{
 							type: 'updateBuilderCredits',
 							data: {
-								creditsQuota: 10,
-								creditsClaimed: 1,
+								creditsQuota: creditsInfo.creditsQuota,
+								creditsClaimed: creditsInfo.creditsClaimed,
 							},
 						},
 						[user.id],
