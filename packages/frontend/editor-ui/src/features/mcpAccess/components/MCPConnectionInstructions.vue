@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 
@@ -17,23 +17,25 @@ const { copy, copied, isSupported } = useClipboard();
 const i18n = useI18n();
 
 // mcp.json value that's to be copied
-const connectionString = ref(`
-{
-  "mcpServers": {
-    "n8n-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "supergateway",
-        "--streamableHttp",
-        "${props.baseUrl}${MCP_ENDPOINT}",
-        "--header",
-        "authorization:<YOUR_N8N_API_KEY>"
-      ]
-    }
-  }
-}
-`);
+const connectionString = computed(() => {
+	return `
+		{
+		  "mcpServers": {
+		    "n8n-mcp": {
+		      "command": "npx",
+		      "args": [
+		        "-y",
+		        "supergateway",
+		        "--streamableHttp",
+		        "${props.baseUrl}${MCP_ENDPOINT}",
+		        "--header",
+		        "authorization:<YOUR_N8N_API_KEY>"
+		      ]
+		    }
+		  }
+		}
+		`;
+});
 
 // formatted code block for markdown component
 const connectionCode = computed(() => {
@@ -96,9 +98,9 @@ const connectionCode = computed(() => {
 			</n8n-info-accordion>
 		</div>
 		<n8n-text size="small" class="mt-m">
-			{{ i18n.baseText('settins.mcp.instructions.docs.part1') }}
+			{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
 			<a :href="DOCS_URL" target="_blank">
-				{{ i18n.baseText('settins.mcp.instructions.docs.part2') }}
+				{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
 			</a>
 		</n8n-text>
 	</div>

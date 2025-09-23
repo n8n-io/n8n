@@ -178,7 +178,7 @@ onMounted(async () => {
 		>
 			<div>
 				<n8n-heading size="medium" :bold="true">
-					{{ i18n.baseText('setings.mcp.connection.info.heading') }}
+					{{ i18n.baseText('settings.mcp.connection.info.heading') }}
 				</n8n-heading>
 				<MCPConnectionInstructions :base-url="rootStore.urlBaseEditor" />
 			</div>
