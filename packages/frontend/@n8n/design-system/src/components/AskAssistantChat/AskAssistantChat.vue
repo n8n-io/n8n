@@ -185,7 +185,6 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (sendDisabled.value) return;
 	emit('message', textInputValue.value);
 	textInputValue.value = '';
 }
