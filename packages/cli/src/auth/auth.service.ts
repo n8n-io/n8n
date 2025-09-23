@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -140,16 +140,18 @@ export class AuthService {
 		try {
 			const apiKey = this.extractAPIKeyFromHeader(headerValue);
 
-			const user = await this.getUserForApiKey(apiKey);
-			if (user.disabled) {
+			const keyOwner = await this.userRepository.findByAPIKey(apiKey);
+
+			if (!keyOwner) {
+				response.status(401).json({ status: 'error', message: 'Invalid API key' });
+				return;
+			}
+
+			if (keyOwner.disabled) {
 				response.status(403).json({ status: 'error', message: 'User is disabled' });
 				return;
 			}
-			if (user.isPending) {
-				response.status(403).json({ status: 'error', message: 'User is pending' });
-				return;
-			}
-			req.user = user;
+			req.user = keyOwner;
 
 			// If API key looks like a JWT, verify it to ensure it's not expired
 			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
@@ -176,22 +178,6 @@ export class AuthService {
 				response.status(500).json({ status: 'error', message: 'Internal server error' });
 			}
 		}
-	}
-
-	private async getUserForApiKey(apiKey: string) {
-		const keyOwner = await this.userRepository
-			.createQueryBuilder('user')
-			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
-			.leftJoinAndSelect('user.role', 'role')
-			.leftJoinAndSelect('role.scopes', 'scopes')
-			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select(['user', 'role', 'scopes'])
-			.getOne();
-
-		if (!keyOwner) {
-			throw new AuthError('Unauthorized');
-		}
-		return keyOwner;
 	}
 
 	clearCookie(res: Response) {
