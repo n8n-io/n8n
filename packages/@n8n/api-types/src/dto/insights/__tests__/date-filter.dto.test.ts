@@ -13,8 +13,39 @@ describe('InsightsDateFilterDto', () => {
 				request: {
 					dateRange: 'week', // Using a valid option from the provided list
 				},
+				parsedResult: {},
+			},
+			{
+				name: 'valid startDate and endDate (as strings)',
+				request: {
+					startDate: '2025-01-01',
+					endDate: '2025-01-31',
+				},
 				parsedResult: {
-					dateRange: 'week',
+					startDate: new Date('2025-01-01'),
+					endDate: new Date('2025-01-31'),
+				},
+			},
+			{
+				name: 'valid startDate and endDate (as ISO strings)',
+				request: {
+					startDate: '2025-01-01T00:00:00Z',
+					endDate: '2025-01-31T23:59:59Z',
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01T00:00:00Z'),
+					endDate: new Date('2025-01-31T23:59:59Z'),
+				},
+			},
+			{
+				name: 'valid startDate and endDate (as timestamps)',
+				request: {
+					startDate: new Date('2025-01-01').getTime(),
+					endDate: new Date('2025-01-31').getTime(),
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01'),
+					endDate: new Date('2025-01-31'),
 				},
 			},
 			{
@@ -38,6 +69,44 @@ describe('InsightsDateFilterDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
+				name: 'invalid startDate format',
+				request: {
+					startDate: '2025-13-01', // Invalid month
+					endDate: '2025-13-31', // Invalid month
+				},
+				expectedErrorPath: ['startDate', 'endDate'],
+			},
+			{
+				name: 'startDate is an invalid timestamp',
+				request: {
+					startDate: NaN,
+				},
+				expectedErrorPath: ['startDate'],
+			},
+			{
+				name: 'endDate is an invalid timestamp',
+				request: {
+					endDate: NaN,
+					projectId: 'validProjectId',
+				},
+				expectedErrorPath: ['endDate'],
+			},
+			{
+				name: 'startDate is an invalid ISO string',
+				request: {
+					startDate: 'invalid--date',
+				},
+				expectedErrorPath: ['startDate'],
+			},
+			{
+				name: 'endDate is an invalid ISO string',
+				request: {
+					startDate: '2025-01-01',
+					endDate: 'not-a-date',
+				},
+				expectedErrorPath: ['endDate'],
+			},
+			{
 				name: 'invalid dateRange value',
 				request: {
 					dateRange: 'invalid-value',
@@ -50,6 +119,16 @@ describe('InsightsDateFilterDto', () => {
 					projectId: 10,
 				},
 				expectedErrorPath: ['projectId'],
+			},
+			{
+				name: 'all fields invalid',
+				request: {
+					dateRange: 'invalid-value',
+					startDate: '2025-13-01', // Invalid month
+					endDate: 'not-a-date',
+					projectId: 10,
+				},
+				expectedErrorPath: ['dateRange', 'startDate', 'endDate', 'projectId'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = InsightsDateFilterDto.safeParse(request);
