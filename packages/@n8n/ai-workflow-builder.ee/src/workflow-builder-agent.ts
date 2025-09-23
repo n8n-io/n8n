@@ -207,7 +207,7 @@ export class WorkflowBuilderAgent {
 
 			// Call success callback when agent finishes without tool calls (successful generation)
 			if (this.onGenerationSuccess) {
-				void this.onGenerationSuccess().catch((error) => {
+				void Promise.resolve(this.onGenerationSuccess()).catch((error) => {
 					this.logger?.warn('Failed to execute onGenerationSuccess callback', { error });
 				});
 			}
