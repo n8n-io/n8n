@@ -1,5 +1,5 @@
 import uniq from 'lodash/uniq';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
@@ -18,6 +18,14 @@ export async function replyToEmail(
 	options: IDataObject,
 	itemIndex: number,
 ) {
+	if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option.',
+			{ itemIndex },
+		);
+	}
+
 	let qs: IDataObject = {};
 
 	let cc = '';

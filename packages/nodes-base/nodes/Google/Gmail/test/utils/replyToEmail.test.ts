@@ -269,8 +269,8 @@ describe('replyToEmail', () => {
 				headers: [
 					{ name: 'Subject', value: 'Original Subject' },
 					{ name: 'Message-ID', value: '<original@example.com>' },
-					{ name: 'From', value: 'John Doe <john@example.com>' },
-					{ name: 'To', value: 'recipient1@example.com, user@gmail.com, recipient2@example.com' },
+					{ name: 'From', value: '<john@example.com>' },
+					{ name: 'To', value: 'recipient1@example.com,user@gmail.com,recipient2@example.com' },
 				],
 			},
 		};
@@ -302,8 +302,7 @@ describe('replyToEmail', () => {
 		// Should not include the current user's email address
 		expect(mockedEncodeEmail).toHaveBeenCalledWith(
 			expect.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				to: expect.not.stringContaining('user@gmail.com'),
+				to: '<recipient1@example.com>, <recipient2@example.com>',
 			}),
 		);
 	});
