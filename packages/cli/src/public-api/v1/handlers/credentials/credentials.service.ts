@@ -199,31 +199,73 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		dependentProps.forEach((prop) => {
 			const displayOptionsValues = prop.displayOptions?.show?.[dependantName];
 			if (displayOptionsValues && Array.isArray(displayOptionsValues)) {
-				const conditionValue = displayOptionsValues[0];
-				const key = String(conditionValue);
-				if (!conditionGroups[key]) {
-					conditionGroups[key] = [];
-				}
-				conditionGroups[key].push(prop);
+				displayOptionsValues.forEach((conditionValue) => {
+					const key =
+						typeof conditionValue === 'object' && conditionValue !== null
+							? JSON.stringify(conditionValue)
+							: String(conditionValue);
+					if (!conditionGroups[key]) {
+						conditionGroups[key] = [];
+					}
+					conditionGroups[key].push(prop);
+				});
 			}
 		});
 
 		// Create conditional schemas for each condition value
-		Object.entries(conditionGroups).forEach(([conditionValue, props]) => {
+		Object.entries(conditionGroups).forEach(([conditionKey, props]) => {
+			const conditionValue = conditionKey.startsWith('{') ? JSON.parse(conditionKey) : conditionKey;
+
+			// Generate appropriate schema constraint based on condition type
+			let propertyConstraint: any;
+			if (
+				typeof conditionValue === 'object' &&
+				conditionValue !== null &&
+				'_cnd' in conditionValue
+			) {
+				// Handle advanced DisplayCondition objects with operators
+				const { _cnd } = conditionValue as DisplayCondition;
+				if ('eq' in _cnd) {
+					propertyConstraint = { const: _cnd.eq };
+				} else if ('not' in _cnd) {
+					propertyConstraint = { not: { const: _cnd.not } };
+				} else if ('gt' in _cnd) {
+					propertyConstraint = { type: 'number', minimum: _cnd.gt, exclusiveMinimum: true };
+				} else if ('gte' in _cnd) {
+					propertyConstraint = { type: 'number', minimum: _cnd.gte };
+				} else if ('lt' in _cnd) {
+					propertyConstraint = { type: 'number', maximum: _cnd.lt, exclusiveMaximum: true };
+				} else if ('lte' in _cnd) {
+					propertyConstraint = { type: 'number', maximum: _cnd.lte };
+				} else if ('regex' in _cnd) {
+					propertyConstraint = { type: 'string', pattern: _cnd.regex };
+				} else {
+					// Fallback for unknown operators
+					propertyConstraint = { const: conditionValue };
+				}
+			} else {
+				// Simple value condition
+				propertyConstraint = { const: conditionValue };
+			}
+
 			const conditionSchema: any = {
 				if: {
 					properties: {
-						[dependantName]: { const: conditionValue },
+						[dependantName]: propertyConstraint,
 					},
+					required: [dependantName],
 				},
 				then: {
 					properties: {},
-					additionalProperties: false,
+					required: [],
 				},
 			};
 
 			// Add properties that should be available for this condition
-			props.forEach((prop) => {
+			const uniqueProps = Array.from(new Set(props.map((p) => p.name))).map(
+				(name) => props.find((p) => p.name === name)!,
+			);
+			uniqueProps.forEach((prop) => {
 				if (prop.type === 'options') {
 					conditionSchema.then.properties[prop.name] = {
 						type: 'string',
@@ -234,9 +276,16 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 						type: prop.type,
 					};
 				}
+
+				// Add to required if property is required
+				if (prop.required) {
+					conditionSchema.then.required.push(prop.name);
+				}
 			});
 
-			allOfConditions.push(conditionSchema);
+			if (Object.keys(conditionSchema.then.properties).length > 0) {
+				allOfConditions.push(conditionSchema);
+			}
 		});
 	});
 
