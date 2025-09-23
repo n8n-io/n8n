@@ -2,9 +2,11 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { AddResource } from './components/AddResource';
+import { ResourceCard } from './components/ResourceCard';
 
 export class WorkflowsPage extends BasePage {
 	readonly addResource = new AddResource(this.page);
+	readonly resourceCard = new ResourceCard(this.page);
 
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
