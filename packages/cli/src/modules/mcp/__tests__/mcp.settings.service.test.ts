@@ -18,10 +18,10 @@ describe('McpSettingsService', () => {
 	});
 
 	describe('getEnabled', () => {
-		test('returns true by default when no setting exists', async () => {
+		test('returns false by default when no setting exists', async () => {
 			findByKey.mockResolvedValue(null);
 
-			await expect(service.getEnabled()).resolves.toBe(true);
+			await expect(service.getEnabled()).resolves.toBe(false);
 			expect(findByKey).toHaveBeenCalledWith('mcp.access.enabled');
 		});
 

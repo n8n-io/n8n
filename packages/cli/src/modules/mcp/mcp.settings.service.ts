@@ -9,8 +9,8 @@ export class McpSettingsService {
 
 	async getEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(KEY);
-		// Enabled by default
-		if (!row) return true;
+		// Disabled by default
+		if (!row) return false;
 		return row.value === 'true';
 	}
 
