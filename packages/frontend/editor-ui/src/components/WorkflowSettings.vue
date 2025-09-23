@@ -782,7 +782,6 @@ onBeforeUnmount(() => {
 								ref="inputField"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
-								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
 							></el-switch>
@@ -855,7 +854,6 @@ onBeforeUnmount(() => {
 								ref="inputField"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="workflowSettings.availableInMCP ?? false"
-								active-color="#13ce66"
 								data-test-id="workflow-settings-available-in-mcp"
 								@update:model-value="toggleAvailableInMCP"
 							></el-switch>
