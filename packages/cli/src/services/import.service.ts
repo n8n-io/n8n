@@ -227,7 +227,10 @@ export class ImportService {
 		for (const file of files) {
 			if (file.endsWith('.jsonl')) {
 				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				entityNames.add(entityName);
+				// Exclude migrations from regular entity import
+				if (entityName !== 'migrations') {
+					entityNames.add(entityName);
+				}
 			}
 		}
 
@@ -246,6 +249,99 @@ export class ImportService {
 		}
 
 		return tableNames;
+	}
+
+	/**
+	 * Validates that the migrations in the import data match the target database
+	 * @param inputDir - Directory containing exported entity files
+	 * @returns Promise that resolves if migrations match, throws error if they don't
+	 */
+	async validateMigrations(inputDir: string): Promise<void> {
+		const migrationsFilePath = path.join(inputDir, 'migrations.jsonl');
+
+		try {
+			// Check if migrations file exists
+			await readFile(migrationsFilePath, 'utf8');
+		} catch (error) {
+			throw new Error(
+				'Migrations file not found. Cannot proceed with import without migration validation.',
+			);
+		}
+
+		// Read and parse migrations from file
+		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
+		const importMigrations = migrationsFileContent
+			.trim()
+			.split('\n')
+			.filter((line) => line.trim())
+			.map((line) => JSON.parse(line));
+
+		if (importMigrations.length === 0) {
+			this.logger.info('No migrations found in import data');
+			return;
+		}
+
+		// Find the latest migration in import data
+		const latestImportMigration = importMigrations.reduce((latest, current) => {
+			const currentTimestamp = parseInt(current.timestamp || current.id || '0');
+			const latestTimestamp = parseInt(latest.timestamp || latest.id || '0');
+			return currentTimestamp > latestTimestamp ? current : latest;
+		});
+
+		this.logger.info(
+			`Latest migration in import data: ${latestImportMigration.name} (timestamp: ${latestImportMigration.timestamp || latestImportMigration.id})`,
+		);
+
+		// Get migrations from target database
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const migrationsTableName = `${tablePrefix}migrations`;
+
+		try {
+			const dbMigrations = await this.dataSource.query(
+				`SELECT * FROM ${this.dataSource.driver.escape(migrationsTableName)} ORDER BY timestamp DESC LIMIT 1`,
+			);
+
+			if (dbMigrations.length === 0) {
+				throw new Error(
+					'Target database has no migrations. Cannot import data from a different migration state.',
+				);
+			}
+
+			const latestDbMigration = dbMigrations[0];
+			this.logger.info(
+				`Latest migration in target database: ${latestDbMigration.name} (timestamp: ${latestDbMigration.timestamp})`,
+			);
+
+			// Compare timestamps
+			const importTimestamp = parseInt(
+				latestImportMigration.timestamp || latestImportMigration.id || '0',
+			);
+			const dbTimestamp = parseInt(latestDbMigration.timestamp || '0');
+
+			if (importTimestamp !== dbTimestamp) {
+				throw new Error(
+					`Migration mismatch detected. Import data latest migration: ${latestImportMigration.name} (${importTimestamp}) ` +
+						`does not match target database latest migration: ${latestDbMigration.name} (${dbTimestamp}). ` +
+						`Cannot import data from different migration states.`,
+				);
+			}
+
+			this.logger.info(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.message.includes('Migration mismatch detected') ||
+					error.message.includes('Target database has no migrations'))
+			) {
+				throw error;
+			}
+			// If we can't query the migrations table, it might not exist or be accessible
+			this.logger.warn(
+				'Could not validate migrations against target database. Proceeding with import...',
+			);
+		}
 	}
 
 	/**
@@ -307,6 +403,9 @@ export class ImportService {
 	}
 
 	async importEntities(inputDir: string, truncateTables: boolean) {
+		// Validate migrations before starting the import process
+		await this.validateMigrations(inputDir);
+
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 

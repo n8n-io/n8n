@@ -667,6 +667,9 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
+			// Mock validateMigrations
+			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
+
 			// Mock the transaction method to just call the callback
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
 				const mockManager = {
@@ -705,6 +708,9 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
+			// Mock validateMigrations
+			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
+
 			// Mock the transaction method
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
 				const mockManager = {
@@ -740,6 +746,9 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
+			// Mock validateMigrations
+			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
+
 			// Mock the transaction method
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
 				const mockManager = {
@@ -759,6 +768,134 @@ describe('ImportService', () => {
 			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user']);
 			expect(importService.importEntitiesFromFiles).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validateMigrations', () => {
+		beforeEach(() => {
+			// Mock DataSource options for migrations table
+			// @ts-expect-error Protected property
+			mockDataSource.options = { entityPrefix: '' };
+
+			// Mock the driver.escape method
+			mockDataSource.driver = {
+				escape: jest.fn((identifier: string) => `"${identifier}"`),
+			} as any;
+		});
+
+		it('should throw error when migrations file does not exist', async () => {
+			jest.mocked(readFile).mockRejectedValue(new Error('File not found'));
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migrations file not found. Cannot proceed with import without migration validation.',
+			);
+		});
+
+		it('should handle empty migrations file', async () => {
+			jest.mocked(readFile).mockResolvedValue('');
+
+			await importService.validateMigrations('/test/input');
+
+			expect(mockLogger.info).toHaveBeenCalledWith('No migrations found in import data');
+		});
+
+		it('should validate migrations match successfully', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000' },
+				{ name: 'Migration2', timestamp: '2000' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations('/test/input');
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: Migration2 (timestamp: 2000)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in target database: Migration2 (timestamp: 2000)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should throw error when migrations do not match', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000' },
+				{ name: 'Migration2', timestamp: '2000' },
+			];
+			const dbMigrations = [{ name: 'Migration1', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration mismatch detected. Import data latest migration: Migration2 (2000) does not match target database latest migration: Migration1 (1000). Cannot import data from different migration states.',
+			);
+		});
+
+		it('should handle database with no migrations', async () => {
+			const importMigrations = [{ name: 'Migration1', timestamp: '1000' }];
+
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(importMigrations[0]));
+			jest.mocked(mockDataSource.query).mockResolvedValue([]);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Target database has no migrations. Cannot import data from a different migration state.',
+			);
+
+			// Verify that the database query was called
+			expect(mockDataSource.query).toHaveBeenCalledWith(
+				'SELECT * FROM "migrations" ORDER BY timestamp DESC LIMIT 1',
+			);
+		});
+
+		it('should handle database query errors gracefully', async () => {
+			const importMigrations = [{ name: 'Migration1', timestamp: '1000' }];
+
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(importMigrations[0]));
+			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database error'));
+
+			await importService.validateMigrations('/test/input');
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Could not validate migrations against target database. Proceeding with import...',
+			);
+		});
+
+		it('should handle migrations with id field instead of timestamp', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', id: '1000' },
+				{ name: 'Migration2', id: '2000' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations('/test/input');
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: Migration2 (timestamp: 2000)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
 		});
 	});
 });
