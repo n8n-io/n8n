@@ -289,7 +289,7 @@ export class ImportService {
 		});
 
 		this.logger.info(
-			`Latest migration in import data: ${latestImportMigration.name} (timestamp: ${latestImportMigration.timestamp || latestImportMigration.id})`,
+			`Latest migration in import data: ${latestImportMigration.name} (timestamp: ${latestImportMigration.timestamp || latestImportMigration.id}, id: ${latestImportMigration.id})`,
 		);
 
 		// Get migrations from target database
@@ -309,19 +309,42 @@ export class ImportService {
 
 			const latestDbMigration = dbMigrations[0];
 			this.logger.info(
-				`Latest migration in target database: ${latestDbMigration.name} (timestamp: ${latestDbMigration.timestamp})`,
+				`Latest migration in target database: ${latestDbMigration.name} (timestamp: ${latestDbMigration.timestamp}, id: ${latestDbMigration.id})`,
 			);
 
-			// Compare timestamps
+			// Compare timestamps, names, and IDs for comprehensive validation
 			const importTimestamp = parseInt(
 				latestImportMigration.timestamp || latestImportMigration.id || '0',
 			);
 			const dbTimestamp = parseInt(latestDbMigration.timestamp || '0');
+			const importName = latestImportMigration.name;
+			const dbName = latestDbMigration.name;
+			const importId = latestImportMigration.id;
+			const dbId = latestDbMigration.id;
 
+			// Check timestamp match
 			if (importTimestamp !== dbTimestamp) {
 				throw new Error(
-					`Migration mismatch detected. Import data latest migration: ${latestImportMigration.name} (${importTimestamp}) ` +
-						`does not match target database latest migration: ${latestDbMigration.name} (${dbTimestamp}). ` +
+					`Migration timestamp mismatch. Import data: ${importName} (${importTimestamp}) ` +
+						`does not match target database: ${dbName} (${dbTimestamp}). ` +
+						`Cannot import data from different migration states.`,
+				);
+			}
+
+			// Check name match
+			if (importName !== dbName) {
+				throw new Error(
+					`Migration name mismatch. Import data: ${importName} ` +
+						`does not match target database: ${dbName}. ` +
+						`Cannot import data from different migration states.`,
+				);
+			}
+
+			// Check ID match (if both have IDs)
+			if (importId && dbId && importId !== dbId) {
+				throw new Error(
+					`Migration ID mismatch. Import data: ${importName} (id: ${importId}) ` +
+						`does not match target database: ${dbName} (id: ${dbId}). ` +
 						`Cannot import data from different migration states.`,
 				);
 			}
@@ -332,7 +355,9 @@ export class ImportService {
 		} catch (error) {
 			if (
 				error instanceof Error &&
-				(error.message.includes('Migration mismatch detected') ||
+				(error.message.includes('Migration timestamp mismatch') ||
+					error.message.includes('Migration name mismatch') ||
+					error.message.includes('Migration ID mismatch') ||
 					error.message.includes('Target database has no migrations'))
 			) {
 				throw error;

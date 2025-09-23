@@ -801,10 +801,10 @@ describe('ImportService', () => {
 
 		it('should validate migrations match successfully', async () => {
 			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000' },
-				{ name: 'Migration2', timestamp: '2000' },
+				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
+				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
 			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000' }];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
 
 			jest
 				.mocked(readFile)
@@ -816,10 +816,10 @@ describe('ImportService', () => {
 			await importService.validateMigrations('/test/input');
 
 			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in import data: Migration2 (timestamp: 2000)',
+				'Latest migration in import data: Migration2 (timestamp: 2000, id: migration2)',
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in target database: Migration2 (timestamp: 2000)',
+				'Latest migration in target database: Migration2 (timestamp: 2000, id: migration2)',
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'✅ Migration validation passed - import data matches target database migration state',
@@ -841,7 +841,7 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration mismatch detected. Import data latest migration: Migration2 (2000) does not match target database latest migration: Migration1 (1000). Cannot import data from different migration states.',
+				'Migration timestamp mismatch. Import data: Migration2 (2000) does not match target database: Migration1 (1000). Cannot import data from different migration states.',
 			);
 		});
 
@@ -879,7 +879,7 @@ describe('ImportService', () => {
 				{ name: 'Migration1', id: '1000' },
 				{ name: 'Migration2', id: '2000' },
 			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000' }];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: '2000' }];
 
 			jest
 				.mocked(readFile)
@@ -891,10 +891,51 @@ describe('ImportService', () => {
 			await importService.validateMigrations('/test/input');
 
 			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in import data: Migration2 (timestamp: 2000)',
+				'Latest migration in import data: Migration2 (timestamp: 2000, id: 2000)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in target database: Migration2 (timestamp: 2000, id: 2000)',
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should throw error when migration names do not match', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000' },
+				{ name: 'Migration2', timestamp: '2000' },
+			];
+			const dbMigrations = [{ name: 'DifferentMigration', timestamp: '2000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration name mismatch. Import data: Migration2 does not match target database: DifferentMigration. Cannot import data from different migration states.',
+			);
+		});
+
+		it('should throw error when migration IDs do not match', async () => {
+			const importMigrations = [
+				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
+				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
+			];
+			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'different_id' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(
+					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
+				);
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
+				'Migration ID mismatch. Import data: Migration2 (id: migration2) does not match target database: Migration2 (id: different_id). Cannot import data from different migration states.',
 			);
 		});
 	});
