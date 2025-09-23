@@ -288,8 +288,7 @@ export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: str
 
 			const results = responseData
 				.filter((field: any) => {
-					// TODO: include formula with return type datetime
-					return ['DateTime', 'CreatedTime', 'LastModifiedTime'].includes(field.type);
+					return ['CreatedTime', 'LastModifiedTime'].includes(field.type);
 				})
 				.map((i: IDataObject) => ({
 					name: i.title,
