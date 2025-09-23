@@ -465,6 +465,7 @@ describe('useWorkflowsStore', () => {
 		it('should set the workflow name correctly', () => {
 			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
 			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
+			expect(workflowsStore.workflowObject.name).toBe('New Workflow Name');
 		});
 	});
 
@@ -479,6 +480,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+			expect(workflowsStore.workflowObject.active).toBe(true);
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
@@ -526,6 +528,7 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow.active = true;
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflowObject.active).toBe(false);
 		});
 	});
 

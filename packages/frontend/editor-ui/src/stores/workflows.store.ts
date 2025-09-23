@@ -721,6 +721,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			uiStore.stateIsDirty = true;
 		}
 		workflow.value.name = data.newName;
+		workflowObject.value.name = workflow.value.name;
 
 		if (
 			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
@@ -865,6 +866,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setActive(active: boolean) {
 		workflow.value.active = active;
+		workflowObject.value.active = workflow.value.active;
 	}
 
 	function setIsArchived(isArchived: boolean) {
