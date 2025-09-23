@@ -5,7 +5,7 @@ import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
@@ -327,8 +327,17 @@ export class AiWorkflowBuilderService {
 		return { sessions };
 	}
 
-	async getBuilderInstanceCredits(user: IUser) {
-		assert(this.client, 'AI Assistant client is not setup');
-		return await this.client.getBuilderInstanceCredits(user);
+	async getBuilderInstanceCredits(
+		user: IUser,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		if (this.client) {
+			return await this.client.getBuilderInstanceCredits(user);
+		}
+
+		// if using env variables directly instead of ai proxy service
+		return {
+			creditsQuota: -1,
+			creditsClaimed: 0,
+		};
 	}
 }

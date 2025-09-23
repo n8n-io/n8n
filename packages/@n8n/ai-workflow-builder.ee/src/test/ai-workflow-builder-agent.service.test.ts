@@ -678,12 +678,15 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockClient.getBuilderInstanceCredits).toHaveBeenCalledWith(mockUser);
 		});
 
-		it('should throw error when client is not configured', async () => {
+		it('should return default values when client is not configured', async () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
 
-			await expect(serviceWithoutClient.getBuilderInstanceCredits(mockUser)).rejects.toThrow(
-				'AI Assistant client is not setup',
-			);
+			const result = await serviceWithoutClient.getBuilderInstanceCredits(mockUser);
+
+			expect(result).toEqual({
+				creditsQuota: -1,
+				creditsClaimed: 0,
+			});
 		});
 	});
 });
