@@ -146,12 +146,12 @@ const icon = computed<IconName>(() => {
 	cursor: pointer;
 	outline: none;
 	border: none;
-	height: var(--spacing-m);
-	width: var(--spacing-m);
+	height: var(--spacing-s);
+	width: var(--spacing-s);
 	border-radius: var(--border-radius-small);
 	position: absolute;
-	left: 5px;
-	top: 5px;
+	left: 6px;
+	top: 7px;
 	padding: 0;
 	opacity: 0;
 	z-index: 100;
@@ -198,10 +198,10 @@ const icon = computed<IconName>(() => {
 .sidebarItemIdent::before {
 	content: '';
 	position: absolute;
-	bottom: -1px;
+	top: -2px;
 	left: -1px;
 	width: 1px;
-	height: 1px;
+	height: 2px;
 	background-color: var(--color-foreground-light);
 }
 </style>
