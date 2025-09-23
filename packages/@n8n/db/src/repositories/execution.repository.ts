@@ -398,7 +398,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				},
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
-			// Updated processed count
 			processed += batch.length;
 		}
 	}
