@@ -4,6 +4,8 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 
 const MCP_ENDPOINT = 'rest/mcp-control/http';
+// TODO: Update once docs page is ready
+const DOCS_URL = 'https://docs.n8n.io/';
 
 type Props = {
 	baseUrl: string;
@@ -93,6 +95,12 @@ const connectionCode = computed(() => {
 				</template>
 			</n8n-info-accordion>
 		</div>
+		<n8n-text size="small" class="mt-m">
+			{{ i18n.baseText('settins.mcp.instructions.docs.part1') }}
+			<a :href="DOCS_URL" target="_blank">
+				{{ i18n.baseText('settins.mcp.instructions.docs.part2') }}
+			</a>
+		</n8n-text>
 	</div>
 </template>
 
