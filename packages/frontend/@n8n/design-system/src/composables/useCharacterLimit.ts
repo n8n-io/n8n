@@ -10,7 +10,6 @@ interface UseCharacterLimitReturn {
 	remainingCharacters: ComputedRef<number>;
 	isOverLimit: ComputedRef<boolean>;
 	isAtLimit: ComputedRef<boolean>;
-	limitText: (text: string) => string;
 }
 
 export function useCharacterLimit({
