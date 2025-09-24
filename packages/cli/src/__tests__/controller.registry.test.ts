@@ -6,7 +6,14 @@ jest.mock('@n8n/backend-common', () => {
 });
 
 import type { GlobalConfig } from '@n8n/config';
-import { ControllerRegistryMetadata, Param, Get, Licensed, RestController } from '@n8n/decorators';
+import {
+	ApiController,
+	ControllerRegistryMetadata,
+	Param,
+	Get,
+	Licensed,
+	RestController,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express from 'express';
 import { mock } from 'jest-mock-extended';
@@ -21,7 +28,10 @@ import type { SuperAgentTest } from '@test-integration/types';
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
-	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
+	const globalConfig = mock<GlobalConfig>({
+		endpoints: { rest: 'rest' },
+		publicApi: { path: 'api' },
+	});
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
 	let agent: SuperAgentTest;
@@ -153,6 +163,30 @@ describe('ControllerRegistry', () => {
 			const { headers, body } = await agent.get('/rest/test/args/1234').expect(200);
 			expect(headers.testing).toBe('true');
 			expect(body.data).toEqual({ url: '/args/1234', id: '1234' });
+		});
+	});
+
+	describe('Endpoint groups', () => {
+		@ApiController('/integration')
+		// @ts-expect-error tsc complains about unused class
+		class ApiTestController {
+			@Get('/info')
+			info() {
+				return { source: 'api' };
+			}
+		}
+
+		beforeEach(() => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should mount API controllers under the public API prefix', async () => {
+			await agent.get('/api/integration/info').expect(200);
+		});
+
+		it('should not mount API controllers under the REST prefix', async () => {
+			await agent.get('/rest/integration/info').expect(404);
 		});
 	});
 });

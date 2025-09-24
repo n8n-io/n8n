@@ -20,6 +20,7 @@ describe('@RestController Decorator', () => {
 
 		const metadata = controllerRegistryMetadata.getControllerMetadata(TestController as Controller);
 		expect(metadata.basePath).toBe('/');
+		expect(metadata.endpointGroup).toBe('rest');
 		expect(Container.has(TestController)).toBe(true);
 	});
 
@@ -29,6 +30,7 @@ describe('@RestController Decorator', () => {
 
 		const metadata = controllerRegistryMetadata.getControllerMetadata(TestController as Controller);
 		expect(metadata.basePath).toBe('/test');
+		expect(metadata.endpointGroup).toBe('rest');
 		expect(Container.has(TestController)).toBe(true);
 	});
 

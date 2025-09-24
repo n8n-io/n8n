@@ -26,6 +26,7 @@ describe('ControllerRegistryMetadata', () => {
 
 			expect(metadata).toEqual({
 				basePath: '/',
+				endpointGroup: 'rest',
 				middlewares: [],
 				routes: expect.any(Map),
 			});
@@ -43,6 +44,7 @@ describe('ControllerRegistryMetadata', () => {
 
 			expect(metadata).toBe(initialMetadata);
 			expect(metadata.basePath).toBe('/api');
+			expect(metadata.endpointGroup).toBe('rest');
 			expect(metadata.middlewares).toEqual(['auth']);
 		});
 	});
@@ -115,6 +117,7 @@ describe('ControllerRegistryMetadata', () => {
 
 		const retrievedMetadata = registry.getControllerMetadata(TestController);
 		expect(retrievedMetadata.basePath).toBe('/test-api');
+		expect(retrievedMetadata.endpointGroup).toBe('rest');
 		expect(retrievedMetadata.middlewares).toEqual(['global']);
 
 		expect(retrievedMetadata.routes.size).toBe(2);
