@@ -561,6 +561,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active?: boolean;
 			isArchived?: boolean;
 			parentFolderId?: string;
+			availableInMCP?: boolean;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
@@ -1722,6 +1723,57 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	// Update a single workflow setting key while preserving existing settings
+	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
+		id: string,
+		key: K,
+		value: IWorkflowSettings[K],
+	): Promise<IWorkflowDb> {
+		// Determine current settings and versionId for the target workflow
+		let currentSettings: IWorkflowSettings = {} as IWorkflowSettings;
+		let currentVersionId = '';
+		const isCurrentWorkflow = id === workflow.value.id;
+
+		if (isCurrentWorkflow) {
+			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
+			currentVersionId = workflow.value.versionId;
+		} else {
+			const cached = workflowsById.value[id];
+			if (cached && cached.versionId) {
+				currentSettings = cached.settings ?? ({} as IWorkflowSettings);
+				currentVersionId = cached.versionId;
+			} else {
+				const fetched = await fetchWorkflow(id);
+				currentSettings = fetched.settings ?? ({} as IWorkflowSettings);
+				currentVersionId = fetched.versionId;
+			}
+		}
+
+		const newSettings: IWorkflowSettings = {
+			...(currentSettings ?? ({} as IWorkflowSettings)),
+			[key]: value,
+		};
+
+		const updated = await updateWorkflow(id, {
+			versionId: currentVersionId,
+			settings: newSettings,
+		});
+
+		// Update local store state to reflect the change
+		if (isCurrentWorkflow) {
+			setWorkflowVersionId(updated.versionId);
+			setWorkflowSettings(updated.settings ?? {});
+		} else if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				settings: updated.settings,
+				versionId: updated.versionId,
+			};
+		}
+
+		return updated;
+	}
+
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (startRunData.workflowData.settings === null) {
 			startRunData.workflowData.settings = undefined;
@@ -2033,6 +2085,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,
+		updateWorkflowSetting,
 		runWorkflow,
 		removeTestWebhook,
 		fetchExecutionDataById,
