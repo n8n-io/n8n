@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { execute } from '../../../../v2/actions/base/getAll';
+import { execute } from '../../../../v2/actions/base/getAll.operation';
 import { apiRequest } from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport/index', () => {
