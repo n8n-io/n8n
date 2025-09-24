@@ -269,6 +269,7 @@ defineExpose({
 					[$style.focused]: isFocused,
 					[$style.multiline]: isMultiline,
 					[$style.disabled]: disabled || streaming || hasNoCredits,
+					[$style.withBottomBorder]: !!showCredits,
 				},
 			]"
 			:style="containerStyle"
@@ -378,17 +379,21 @@ defineExpose({
 	flex-direction: column;
 	background: var(--color-background-xlight);
 	border: none;
-	border-bottom: var(--border-base);
 	border-radius: var(--border-radius-large);
 	transition:
 		border-color 0.2s ease,
 		box-shadow 0.2s ease;
 	padding: var(--spacing-2xs);
 	box-sizing: border-box;
+	border-bottom: 1px transparent solid;
+
+	&.withBottomBorder {
+		border-bottom: var(--border-base);
+	}
 
 	&.focused {
-		border-bottom: 1px transparent solid;
 		box-shadow: 0 0 0 1px var(--color-secondary);
+		border-bottom: 1px transparent solid;
 	}
 
 	&.multiline {

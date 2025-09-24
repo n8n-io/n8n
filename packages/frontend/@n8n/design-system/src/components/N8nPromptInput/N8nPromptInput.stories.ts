@@ -1,6 +1,7 @@
 import type { Meta, StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref } from 'vue';
+
 import N8nPromptInput from './N8nPromptInput.vue';
 
 export default {
@@ -258,9 +259,6 @@ const AllStatesTemplate: StoryFn = () => ({
 		</div>
 	`,
 });
-
-export const AllStates: StoryFn = AllStatesTemplate.bind({});
-AllStates.storyName = 'All States';
 
 // Credit Tracking Stories
 export const WithCreditsAndLink: StoryFn = Template.bind({});
