@@ -297,10 +297,12 @@ export class Server extends AbstractServer {
 				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
 			}
 
+			const authenticationEnforced = overwriteEndpointMiddleware !== null;
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
-					if (!this.presetCredentialsLoaded) {
+					// If authentication is enforced we can allow multiple overwrites
+					if (!this.presetCredentialsLoaded || authenticationEnforced) {
 						const body = req.body as ICredentialsOverwrite;
 
 						if (req.contentType !== 'application/json') {
