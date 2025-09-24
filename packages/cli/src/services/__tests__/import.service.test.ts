@@ -839,7 +839,6 @@ describe('ImportService', () => {
 
 		it('should throw error when target database has no migrations', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 
 			jest
@@ -858,7 +857,6 @@ describe('ImportService', () => {
 
 		it('should throw error when migration timestamps do not match', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: '002', name: 'TestMigration', timestamp: '2000' }];
 
@@ -881,7 +879,6 @@ describe('ImportService', () => {
 
 		it('should throw error when migration names do not match', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'ImportMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: '001', name: 'DbMigration', timestamp: '1000' }];
 
@@ -897,7 +894,6 @@ describe('ImportService', () => {
 
 		it('should throw error when migration IDs do not match', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: '002', name: 'TestMigration', timestamp: '1000' }];
 
@@ -913,7 +909,6 @@ describe('ImportService', () => {
 
 		it('should pass validation when migrations match exactly', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 
@@ -937,7 +932,6 @@ describe('ImportService', () => {
 
 		it('should throw error when migration IDs have different formats', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: 1, name: 'TestMigration', timestamp: '1000' }];
 
@@ -953,7 +947,6 @@ describe('ImportService', () => {
 
 		it('should handle multiple migrations and find the latest one', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [
 				{ id: '001', name: 'FirstMigration', timestamp: '1000' },
 				{ id: '002', name: 'SecondMigration', timestamp: '2000' },
@@ -978,7 +971,6 @@ describe('ImportService', () => {
 
 		it('should handle migrations with only ID field (no timestamp)', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '1000', name: 'TestMigration' }];
 			const dbMigrations = [{ id: '1000', name: 'TestMigration', timestamp: '1000' }];
 
@@ -999,7 +991,6 @@ describe('ImportService', () => {
 
 		it('should handle database query errors gracefully', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 
 			jest
@@ -1014,7 +1005,6 @@ describe('ImportService', () => {
 
 		it('should handle migrations with table prefix', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 			const dbMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 
@@ -1039,7 +1029,6 @@ describe('ImportService', () => {
 
 		it('should handle migrations with mixed line endings', async () => {
 			const inputDir = '/test/input';
-			const migrationsFilePath = '/test/input/migrations.jsonl';
 			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
 
 			// Simulate file with mixed line endings

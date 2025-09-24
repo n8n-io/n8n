@@ -116,6 +116,8 @@ export class ExportService {
 		const pageSize = 500;
 		const entitiesPerFile = 500;
 
+		await this.exportMigrationsTable(outputDir);
+
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name
 			const tableName = metadata.tableName;
