@@ -8,7 +8,7 @@ export const operationFields: INodeProperties[] = [
 		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
-		default: '',
+		default: '0',
 		required: true,
 		description:
 			'Database to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -57,29 +57,12 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: '',
 		required: true,
 		description: 'ID of the row to update',
-	},
-	{
-		displayName: 'Row ID',
-		name: 'rowIdsAutoMap',
-		type: 'string',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				operation: ['batchUpdate'],
-				dataToSend: ['autoMapInputData'],
-			},
-		},
-		default: '',
-		required: true,
-		description:
-			'Row IDs to update. Provide one per input item. Required when auto-mapping input data.',
 	},
 
 	// ----------------------------------
@@ -181,7 +164,7 @@ export const operationFields: INodeProperties[] = [
 				dataToSend: ['defineBelow'],
 			},
 		},
-		default: {},
+		default: [],
 		options: [
 			{
 				name: 'rowValues',
@@ -245,6 +228,30 @@ export const operationFields: INodeProperties[] = [
 	//             delete
 	// ----------------------------------
 	{
+		displayName: 'Data to Send',
+		name: 'dataToSend',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data',
+				value: 'autoMapInputData',
+				description: 'Collect row IDs from input items automatically',
+			},
+			{
+				name: 'Define Below',
+				value: 'defineBelow',
+				description: 'Manually specify row IDs',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['batchDelete'],
+			},
+		},
+		default: 'defineBelow',
+		description: 'Choose whether to manually enter row IDs or map them from input data',
+	},
+	{
 		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'string',
@@ -269,9 +276,23 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['batchDelete'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		description: 'IDs of the rows to delete',
+	},
+	{
+		displayName: 'Property Containing Row ID',
+		name: 'rowIdProperty',
+		type: 'string',
+		default: 'id',
+		displayOptions: {
+			show: {
+				operation: ['batchDelete'],
+				dataToSend: ['autoMapInputData'],
+			},
+		},
+		description: 'Name of the property in each input item that contains the row ID',
 	},
 
 	// ----------------------------------

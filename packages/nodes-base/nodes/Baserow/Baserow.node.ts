@@ -202,6 +202,147 @@ export class Baserow implements INodeType {
 		const fields = await mapper.getTableFields.call(this, tableId, authHeader);
 		mapper.createMappings(fields);
 
+		if (operation === 'batchCreate') {
+			// ----------------------------------
+			//           batchCreate
+			// ----------------------------------
+
+			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_create_database_table_rows
+
+			const dataToSend = this.getNodeParameter('dataToSend', 0) as
+				| 'defineBelow'
+				| 'autoMapInputData';
+			const itemsPayload: IDataObject[] = [];
+
+			if (dataToSend === 'autoMapInputData') {
+				for (let i = 0; i < items.length; i++) {
+					const body: IDataObject = {};
+					const incomingKeys = Object.keys(items[i].json);
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+
+					for (const key of incomingKeys) {
+						if (inputDataToIgnore.includes(key)) continue;
+						body[key] = items[i].json[key];
+						mapper.namesToIds(body);
+					}
+					itemsPayload.push(body);
+				}
+			} else {
+				const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
+					fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
+				}>;
+				for (const row of rowsUi) {
+					const body: IDataObject = {};
+					for (const field of row.fieldsUi.fieldValues) {
+						body[`field_${field.fieldId}`] = field.fieldValue;
+					}
+					itemsPayload.push(body);
+				}
+			}
+
+			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
+			const response = await baserowApiRequest.call(this, 'POST', endpoint, authHeader, {
+				items: itemsPayload,
+			});
+
+			response.items.forEach((row: Row) => mapper.idsToNames(row));
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(response.items),
+				{ itemData: { item: 0 } },
+			);
+			returnData.push.apply(returnData, executionData);
+			return [returnData];
+		}
+
+		if (operation === 'batchUpdate') {
+			// ----------------------------------
+			//           batchUpdate
+			// ----------------------------------
+
+			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_update_database_table_rows
+
+			const dataToSend = this.getNodeParameter('dataToSend', 0) as
+				| 'defineBelow'
+				| 'autoMapInputData';
+			const itemsPayload: IDataObject[] = [];
+
+			if (dataToSend === 'autoMapInputData') {
+				for (let i = 0; i < items.length; i++) {
+					const body: IDataObject = {};
+					body.id = items[i].json.id;
+
+					const incomingKeys = Object.keys(items[i].json);
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+
+					for (const key of incomingKeys) {
+						if (inputDataToIgnore.includes(key)) continue;
+						body[key] = items[i].json[key];
+						mapper.namesToIds(body);
+					}
+					itemsPayload.push(body);
+				}
+			} else {
+				const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
+					id: string;
+					fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
+				}>;
+				for (const row of rowsUi) {
+					const body: IDataObject = { id: row.id };
+					for (const field of row.fieldsUi.fieldValues) {
+						body[`field_${field.fieldId}`] = field.fieldValue;
+					}
+					itemsPayload.push(body);
+				}
+			}
+
+			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
+			const response = await baserowApiRequest.call(this, 'PATCH', endpoint, authHeader, {
+				items: itemsPayload,
+			});
+
+			response.items.forEach((row: Row) => mapper.idsToNames(row));
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(response.items),
+				{ itemData: { item: 0 } },
+			);
+			returnData.push.apply(returnData, executionData);
+			return [returnData];
+		}
+
+		if (operation === 'batchDelete') {
+			// ----------------------------------
+			//           batchDelete
+			// ----------------------------------
+
+			// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_delete_database_table_rows
+
+			const dataToSend = this.getNodeParameter('dataToSend', 0) as
+				| 'defineBelow'
+				| 'autoMapInputData';
+			let ids: string[];
+
+			if (dataToSend === 'autoMapInputData') {
+				const propertyName = this.getNodeParameter('rowIdProperty', 0) as string;
+				ids = items.map((item) => {
+					return String(item.json[propertyName]);
+				});
+			} else {
+				ids = this.getNodeParameter('rowIds', 0) as string[];
+			}
+
+			const endpoint = `/api/database/rows/table/${tableId}/batch-delete/`;
+			await baserowApiRequest.call(this, 'POST', endpoint, authHeader, { items: ids });
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray([{ success: true, deleted: ids }]),
+				{ itemData: { item: 0 } },
+			);
+			returnData.push(...executionData);
+			return [returnData];
+		}
+
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (operation === 'getAll') {
@@ -310,56 +451,6 @@ export class Baserow implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push.apply(returnData, executionData);
-				} else if (operation === 'batchCreate') {
-					// ----------------------------------
-					//           batchCreate
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_create_database_table_rows
-
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as
-						| 'defineBelow'
-						| 'autoMapInputData';
-					const itemsPayload: IDataObject[] = [];
-
-					if (dataToSend === 'autoMapInputData') {
-						for (let i = 0; i < items.length; i++) {
-							const body: IDataObject = {};
-							const incomingKeys = Object.keys(items[i].json);
-							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-							const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-							for (const key of incomingKeys) {
-								if (inputDataToIgnore.includes(key)) continue;
-								body[key] = items[i].json[key];
-								mapper.namesToIds(body);
-							}
-							itemsPayload.push(body);
-						}
-					} else {
-						const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
-							fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
-						}>;
-						for (const row of rowsUi) {
-							const body: IDataObject = {};
-							for (const field of row.fieldsUi.fieldValues) {
-								body[`field_${field.fieldId}`] = field.fieldValue;
-							}
-							itemsPayload.push(body);
-						}
-					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-					const response = await baserowApiRequest.call(this, 'POST', endpoint, authHeader, {
-						items: itemsPayload,
-					});
-
-					response.items.forEach((row: Row) => mapper.idsToNames(row));
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.items),
-						{ itemData: { item: 0 } },
-					);
-					returnData.push.apply(returnData, executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//             update
@@ -407,59 +498,6 @@ export class Baserow implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push.apply(returnData, executionData);
-				} else if (operation === 'batchUpdate') {
-					// ----------------------------------
-					//           batchUpdate
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_update_database_table_rows
-
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as
-						| 'defineBelow'
-						| 'autoMapInputData';
-					const itemsPayload: IDataObject[] = [];
-
-					if (dataToSend === 'autoMapInputData') {
-						for (let i = 0; i < items.length; i++) {
-							const body: IDataObject = {};
-							body.id = this.getNodeParameter('rowId', i) as string;
-
-							const incomingKeys = Object.keys(items[i].json);
-							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-							const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-							for (const key of incomingKeys) {
-								if (inputDataToIgnore.includes(key)) continue;
-								body[key] = items[i].json[key];
-								mapper.namesToIds(body);
-							}
-							itemsPayload.push(body);
-						}
-					} else {
-						const rowsUi = this.getNodeParameter('rowsUi.rowValues', 0, []) as Array<{
-							id: string;
-							fieldsUi: { fieldValues: Array<{ fieldId: string; fieldValue: string }> };
-						}>;
-						for (const row of rowsUi) {
-							const body: IDataObject = { id: row.id };
-							for (const field of row.fieldsUi.fieldValues) {
-								body[`field_${field.fieldId}`] = field.fieldValue;
-							}
-							itemsPayload.push(body);
-						}
-					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-					const response = await baserowApiRequest.call(this, 'PATCH', endpoint, authHeader, {
-						items: itemsPayload,
-					});
-
-					response.items.forEach((row: Row) => mapper.idsToNames(row));
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.items),
-						{ itemData: { item: 0 } },
-					);
-					returnData.push.apply(returnData, executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//             delete
@@ -475,23 +513,6 @@ export class Baserow implements INodeType {
 					const executionData = this.helpers.constructExecutionMetaData(
 						[{ json: { success: true } }],
 						{ itemData: { item: i } },
-					);
-					returnData.push.apply(returnData, executionData);
-				} else if (operation === 'batchDelete') {
-					// ----------------------------------
-					//           batchDelete
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#tag/Database-table-rows/operation/batch_delete_database_table_rows
-
-					const ids = this.getNodeParameter('rowIds', 0) as string[];
-
-					const endpoint = `/api/database/rows/table/${tableId}/batch-delete/`;
-					await baserowApiRequest.call(this, 'POST', endpoint, authHeader, { items: ids });
-
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray([{ success: true, deleted: ids }]),
-						{ itemData: { item: 0 } },
 					);
 					returnData.push.apply(returnData, executionData);
 				}
