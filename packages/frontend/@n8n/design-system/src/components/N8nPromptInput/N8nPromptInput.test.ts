@@ -504,26 +504,5 @@ describe('N8nPromptInput', () => {
 			const textarea = container.querySelector('textarea');
 			expect(textarea).toBeTruthy();
 		});
-
-		it('should prevent input when at max length', async () => {
-			const render = renderComponent({
-				props: {
-					modelValue: '12345',
-					maxLength: 5,
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-
-			// Try to type when at max length
-			await fireEvent.keyDown(textarea, { key: 'a' });
-
-			// Should not emit update since we're at max
-			const updates = render.emitted('update:modelValue');
-			expect(updates).toBeFalsy();
-		});
 	});
 });

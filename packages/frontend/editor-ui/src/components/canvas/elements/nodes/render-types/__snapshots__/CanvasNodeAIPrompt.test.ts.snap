@@ -14,7 +14,7 @@ exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
       <!-- Use ScrollArea when content exceeds max height -->
       <div dir="ltr" style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;" class="scrollAreaRoot scrollAreaWrapper">
         <div data-reka-scroll-area-viewport="" style="overflow-x: hidden; overflow-y: hidden; max-height: 72px;" class="viewport" tabindex="0">
-          <div><textarea class="multilineTextarea" style="height: 36px; overflow-y: hidden;" placeholder="Ask n8n to build..." maxlength="1000"></textarea></div>
+          <div><textarea class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas" style="height: 36px; overflow-y: hidden;" placeholder="Ask n8n to build..." maxlength="1000"></textarea></div>
         </div>
         <style>
           /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */
