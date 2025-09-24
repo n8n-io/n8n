@@ -2,9 +2,9 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import * as base from './actions/base';
-import * as linkrows from './actions/linkrows';
-import * as rows from './actions/rows';
+import * as base from './actions/base/base.resource';
+import * as linkrows from './actions/linkrows/linkrows.resource';
+import * as rows from './actions/rows/rows.resource';
 
 export const authentication: INodeProperties = {
 	displayName: 'Authentication',

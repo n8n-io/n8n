@@ -1,13 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-export * as list from './list';
-export * as link from './link';
-export * as unlink from './unlink';
+export * as list from './list.operation';
+export * as link from './link.operation';
+export * as unlink from './unlink.operation';
 
-import * as linkAction from './link';
-import * as listAction from './list';
-import * as unlinkAction from './unlink';
+import * as linkAction from './link.operation';
+import * as listAction from './list.operation';
+import * as unlinkAction from './unlink.operation';
 
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
