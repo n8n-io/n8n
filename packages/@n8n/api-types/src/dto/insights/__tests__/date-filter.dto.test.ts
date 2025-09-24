@@ -13,7 +13,9 @@ describe('InsightsDateFilterDto', () => {
 				request: {
 					dateRange: 'week', // Using a valid option from the provided list
 				},
-				parsedResult: {},
+				parsedResult: {
+					dateRange: 'week',
+				},
 			},
 			{
 				name: 'valid startDate and endDate (as strings)',
