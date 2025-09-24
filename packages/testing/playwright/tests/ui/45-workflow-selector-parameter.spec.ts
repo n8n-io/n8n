@@ -1,10 +1,11 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
 test.describe('Workflow Selector Parameter @db:reset', () => {
-	test.beforeEach(async ({ n8n }) => {
+	async function setupSubWorkflows(n8n: n8nPage) {
 		const subWorkflows = [
 			{ file: 'Test_Subworkflow_Get_Weather.json', name: 'Get_Weather' },
 			{ file: 'Test_Subworkflow_Search_DB.json', name: 'Search_DB' },
@@ -14,6 +15,10 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.importWorkflow(file, name);
 		}
+	}
+
+	test.beforeEach(async ({ n8n }) => {
+		await setupSubWorkflows(n8n);
 
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
