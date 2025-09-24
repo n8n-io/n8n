@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType } from 'n8n-workflow';
@@ -44,6 +45,105 @@ describe('CredentialsOverwrites', () => {
 					password: 'pass',
 					username: 'user',
 				},
+			});
+		});
+	});
+
+	describe('getOverwriteEndpointMiddleware', () => {
+		it('should return null if endpointAuthToken is not provided', () => {
+			globalConfig.credentials.overwrite.endpointAuthToken = '';
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+			);
+			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
+			expect(middleware).toBeNull();
+		});
+
+		it('should return a middleware function, if endpointAuthToken is provided', () => {
+			globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+			);
+			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
+			expect(typeof middleware).toBe('function');
+		});
+
+		describe('middleware', () => {
+			let next: () => void;
+			let send: () => void;
+			let status: () => {
+				send: () => void;
+			};
+			let middleware: null | ((req: Request, res: Response, next: NextFunction) => void);
+			beforeEach(() => {
+				globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
+				next = jest.fn();
+				send = jest.fn();
+				status = jest.fn().mockImplementation(() => {
+					return {
+						send,
+					};
+				});
+
+				const localCredentialsOverwrites = new CredentialsOverwrites(
+					globalConfig,
+					credentialTypes,
+					logger,
+				);
+				middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
+			});
+
+			it('should call next with correct credentials', () => {
+				middleware!(
+					{
+						headers: {
+							authorization: `Bearer ${globalConfig.credentials.overwrite.endpointAuthToken}`,
+						},
+					} as any as Request,
+					{
+						status,
+					} as any as Response,
+					next,
+				);
+				expect(next).toHaveBeenCalled();
+				expect(status).not.toHaveBeenCalled();
+				expect(send).not.toHaveBeenCalled();
+			});
+
+			it('should respond with 401 with invalid token', () => {
+				middleware!(
+					{
+						headers: {
+							authorization: 'Bearer invalid-token',
+						},
+					} as any as Request,
+					{
+						status,
+					} as any as Response,
+					next,
+				);
+				expect(next).not.toHaveBeenCalled();
+				expect(status).toHaveBeenCalledWith(401);
+				expect(send).toHaveBeenCalled();
+			});
+
+			it('should respond with 401 without token', () => {
+				middleware!(
+					{
+						headers: {},
+					} as any as Request,
+					{
+						status,
+					} as any as Response,
+					next,
+				);
+				expect(next).not.toHaveBeenCalled();
+				expect(status).toHaveBeenCalledWith(401);
+				expect(send).toHaveBeenCalled();
 			});
 		});
 	});
