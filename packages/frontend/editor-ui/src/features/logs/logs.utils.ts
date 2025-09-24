@@ -10,7 +10,6 @@ import {
 	type Workflow,
 	type INode,
 	type ISourceData,
-	type INodeExecutionData,
 	parseErrorMetadata,
 	type RelatedExecution,
 } from 'n8n-workflow';
@@ -504,7 +503,7 @@ export function extractBotResponse(
 		responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 	} else {
 		// Check all output branches for response data, not just the first one
-		const mainOutputs = get(nodeResponseData, 'data.main') as INodeExecutionData[][] | undefined;
+		const mainOutputs = get(nodeResponseData, 'data.main');
 		let text: string | undefined;
 
 		if (mainOutputs && Array.isArray(mainOutputs)) {

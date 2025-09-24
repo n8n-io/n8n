@@ -157,7 +157,6 @@ export function useChatMessaging({
 			?.responseMode;
 		if (responseMode === 'responseNodes') return;
 
-		debugger;
 		const chatMessage = executionResultData.value
 			? extractBotResponse(
 					executionResultData.value,

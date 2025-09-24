@@ -547,7 +547,6 @@ describe('extractWebhookLastNodeResponse', () => {
 		});
 
 		it('should return entries from first non-empty branch only', async () => {
-			const branch1Data = { item: 'from-first' };
 			const branch2Data = { item: 'from-second' };
 			const branch3Data = { item: 'from-third' };
 			lastNodeTaskData.data = {
