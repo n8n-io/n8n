@@ -412,6 +412,7 @@ defineExpose({
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
 				:max-length="maxLength"
+				:refocus-after-send="true"
 				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				data-test-id="chat-input"
 				@submit="onSendMessage"

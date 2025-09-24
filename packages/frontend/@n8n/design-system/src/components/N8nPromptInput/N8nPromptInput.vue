@@ -14,6 +14,7 @@ export interface N8nPromptInputProps {
 	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
+	refocusAfterSend?: boolean;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
@@ -24,6 +25,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	minLines: 1,
 	streaming: false,
 	disabled: false,
+	refocusAfterSend: false,
 });
 
 const emit = defineEmits<{
@@ -154,12 +156,16 @@ async function refocusTextArea() {
 
 async function handleSubmit() {
 	emit('submit');
-	await refocusTextArea();
+	if (props.refocusAfterSend) {
+		await refocusTextArea();
+	}
 }
 
 async function handleStop() {
 	emit('stop');
-	await refocusTextArea();
+	if (props.refocusAfterSend) {
+		await refocusTextArea();
+	}
 }
 
 async function handleKeyDown(event: KeyboardEvent) {

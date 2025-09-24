@@ -89,12 +89,13 @@ describe('CanvasNodeAIPrompt', () => {
 	});
 
 	describe('disabled state', () => {
-		it('should disable textarea when builder is streaming', () => {
+		it('should NOT disable textarea when builder is streaming', () => {
 			streaming.value = true;
 			const { container } = renderComponent();
 
 			const textarea = container.querySelector('textarea');
-			expect(textarea).toHaveAttribute('disabled');
+			// Textarea should remain enabled during streaming
+			expect(textarea).not.toHaveAttribute('disabled');
 		});
 
 		it('should show stop button when builder is streaming', () => {
