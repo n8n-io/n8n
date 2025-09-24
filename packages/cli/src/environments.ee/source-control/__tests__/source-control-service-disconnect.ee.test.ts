@@ -62,6 +62,7 @@ describe('SourceControlService - disconnect functionality', () => {
 				connected: false,
 				branchName: '',
 				connectionType: 'https',
+				repositoryUrl: '',
 			});
 			expect(mockExportService.deleteRepositoryFolder).toHaveBeenCalled();
 			expect(mockGitService.resetService).toHaveBeenCalled();
@@ -92,6 +93,7 @@ describe('SourceControlService - disconnect functionality', () => {
 				connected: false,
 				branchName: '',
 				connectionType: 'ssh',
+				repositoryUrl: '',
 			});
 			expect(mockExportService.deleteRepositoryFolder).toHaveBeenCalled();
 			expect(mockGitService.resetService).toHaveBeenCalled();
@@ -122,6 +124,7 @@ describe('SourceControlService - disconnect functionality', () => {
 				connected: false,
 				branchName: '',
 				connectionType: 'ssh',
+				repositoryUrl: '',
 			});
 			expect(mockExportService.deleteRepositoryFolder).toHaveBeenCalled();
 			expect(mockGitService.resetService).toHaveBeenCalled();
