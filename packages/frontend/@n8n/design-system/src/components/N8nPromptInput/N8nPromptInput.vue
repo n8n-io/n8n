@@ -265,79 +265,86 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		ref="containerRef"
-		:class="[
-			$style.container,
-			{
-				[$style.focused]: isFocused,
-				[$style.multiline]: isMultiline,
-				[$style.disabled]: disabled || streaming || hasNoCredits,
-			},
-		]"
-		:style="containerStyle"
-	>
-		<!-- Warning banner when character limit is reached -->
-		<N8nCallout v-if="showWarningBanner" icon="info" theme="warning" :class="$style.warningCallout">
-			{{ characterLimitMessage }}
-		</N8nCallout>
-
-		<!-- Single line mode: input and button side by side -->
-		<div v-if="!isMultiline" :class="$style.singleLineWrapper">
-			<textarea
-				ref="textareaRef"
-				v-model="textValue"
-				:class="$style.singleLineTextarea"
-				:placeholder="placeholder"
-				:disabled="disabled || streaming || hasNoCredits"
-				:maxlength="maxLength"
-				rows="1"
-				@keydown="handleKeyDown"
-				@focus="handleFocus"
-				@blur="handleBlur"
-				@input="adjustHeight"
-			/>
-			<div :class="$style.inlineActions">
-				<N8nSendStopButton
-					:streaming="streaming"
-					:disabled="sendDisabled"
-					@send="handleSubmit"
-					@stop="handleStop"
-				/>
-			</div>
-		</div>
-
-		<!-- Multiline mode: textarea full width with button below -->
-		<template v-else>
-			<!-- Use ScrollArea when content exceeds max height -->
-			<N8nScrollArea
-				:class="$style.scrollAreaWrapper"
-				:max-height="`${textAreaMaxHeight}px`"
-				type="auto"
+	<div :class="$style.wrapper">
+		<div
+			ref="containerRef"
+			:class="[
+				$style.container,
+				{
+					[$style.focused]: isFocused,
+					[$style.multiline]: isMultiline,
+					[$style.disabled]: disabled || streaming || hasNoCredits,
+				},
+			]"
+			:style="containerStyle"
+		>
+			<!-- Warning banner when character limit is reached -->
+			<N8nCallout
+				v-if="showWarningBanner"
+				icon="info"
+				theme="warning"
+				:class="$style.warningCallout"
 			>
+				{{ characterLimitMessage }}
+			</N8nCallout>
+
+			<!-- Single line mode: input and button side by side -->
+			<div v-if="!isMultiline" :class="$style.singleLineWrapper">
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
-					:class="$style.multilineTextarea"
-					:style="textareaStyle"
+					:class="$style.singleLineTextarea"
 					:placeholder="placeholder"
 					:disabled="disabled || streaming || hasNoCredits"
 					:maxlength="maxLength"
+					rows="1"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"
 					@input="adjustHeight"
 				/>
-			</N8nScrollArea>
-			<div :class="$style.bottomActions">
-				<N8nSendStopButton
-					:streaming="streaming"
-					:disabled="sendDisabled"
-					@send="handleSubmit"
-					@stop="handleStop"
-				/>
+				<div :class="$style.inlineActions">
+					<N8nSendStopButton
+						:streaming="streaming"
+						:disabled="sendDisabled"
+						@send="handleSubmit"
+						@stop="handleStop"
+					/>
+				</div>
 			</div>
-		</template>
+
+			<!-- Multiline mode: textarea full width with button below -->
+			<template v-else>
+				<!-- Use ScrollArea when content exceeds max height -->
+				<N8nScrollArea
+					:class="$style.scrollAreaWrapper"
+					:max-height="`${textAreaMaxHeight}px`"
+					type="auto"
+				>
+					<textarea
+						ref="textareaRef"
+						v-model="textValue"
+						:class="$style.multilineTextarea"
+						:style="textareaStyle"
+						:placeholder="placeholder"
+						:disabled="disabled || streaming || hasNoCredits"
+						:maxlength="maxLength"
+						@keydown="handleKeyDown"
+						@focus="handleFocus"
+						@blur="handleBlur"
+						@input="adjustHeight"
+					/>
+				</N8nScrollArea>
+				<div :class="$style.bottomActions">
+					<N8nSendStopButton
+						:streaming="streaming"
+						:disabled="sendDisabled"
+						@send="handleSubmit"
+						@stop="handleStop"
+					/>
+				</div>
+			</template>
+		</div>
 
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
@@ -373,12 +380,19 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.wrapper {
+	background: var(--color-background-base);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-large);
+}
+
 .container {
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	background: var(--color-background-xlight);
-	border: 1px solid var(--color-foreground-base);
+	border: none;
+	border-bottom: var(--border-base);
 	border-radius: var(--border-radius-large);
 	transition:
 		border-color 0.2s ease,
@@ -387,8 +401,8 @@ defineExpose({
 	box-sizing: border-box;
 
 	&.focused {
-		border-color: var(--color-secondary);
-		box-shadow: 0 0 0 1px var(--color-secondary-tint-2);
+		border-bottom: 1px transparent solid;
+		box-shadow: 0 0 0 1px var(--color-secondary);
 	}
 
 	&.multiline {
@@ -487,10 +501,11 @@ defineExpose({
 	align-items: center;
 	justify-content: space-between;
 	padding: var(--spacing-2xs) var(--spacing-xs);
-	background: var(--color-background-base);
-	border-top: 1px solid var(--color-foreground-base);
-	border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
-	margin: 0 calc(-1 * var(--spacing-2xs)) calc(-1 * var(--spacing-2xs));
+	border: none;
+	margin-top: -1px;
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 .creditsInfoWrapper {
