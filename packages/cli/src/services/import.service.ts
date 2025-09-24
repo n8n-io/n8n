@@ -187,13 +187,17 @@ export class ImportService {
 	}
 
 	/**
-	 * Get list of table names that will be imported from the input directory
+	 * Get import metadata including table names and entity files
 	 * @param inputDir - Directory containing exported entity files
-	 * @returns Array of table names that have corresponding files
+	 * @returns Object containing table names and entity files grouped by entity name
 	 */
-	async getTableNamesForImport(inputDir: string): Promise<string[]> {
+	async getImportMetadata(inputDir: string): Promise<{
+		tableNames: string[];
+		entityFiles: Record<string, string[]>;
+	}> {
 		const files = await readdir(inputDir);
 		const entityTableNamesMap: Record<string, string> = {};
+		const entityFiles: Record<string, string[]> = {};
 
 		for (const file of files) {
 			if (file.endsWith('.jsonl')) {
@@ -203,48 +207,32 @@ export class ImportService {
 					continue;
 				}
 
-				if (entityTableNamesMap[entityName]) {
-					continue;
+				// Build table names map (only need to do this once per entity)
+				if (!entityTableNamesMap[entityName]) {
+					const entityMetadata = this.dataSource.entityMetadatas.find(
+						(meta) => meta.name.toLowerCase() === entityName,
+					);
+
+					if (!entityMetadata) {
+						this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
+						continue;
+					}
+
+					entityTableNamesMap[entityName] = entityMetadata.tableName;
 				}
 
-				const entityMetadata = this.dataSource.entityMetadatas.find(
-					(meta) => meta.name.toLowerCase() === entityName,
-				);
-
-				if (!entityMetadata) {
-					this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
-					continue;
+				// Build entity files map (only for entities with valid metadata)
+				if (!entityFiles[entityName]) {
+					entityFiles[entityName] = [];
 				}
-
-				entityTableNamesMap[entityName] = entityMetadata.tableName;
+				entityFiles[entityName].push(path.join(inputDir, file));
 			}
 		}
 
-		return Object.values(entityTableNamesMap);
-	}
-
-	/**
-	 * Get list of entity files from the input directory
-	 * @param inputDir - Directory containing exported entity files
-	 * @returns Array of entity file paths grouped by entity name
-	 */
-	async getEntityFiles(inputDir: string): Promise<Map<string, string[]>> {
-		const files = await readdir(inputDir);
-		const entityFiles = new Map<string, string[]>();
-
-		// Group files by entity name (e.g., "user.jsonl", "user.2.jsonl" -> "user")
-		for (const file of files) {
-			if (file.endsWith('.jsonl')) {
-				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				if (!entityFiles.has(entityName)) {
-					entityFiles.set(entityName, []);
-				}
-
-				entityFiles.get(entityName)!.push(path.join(inputDir, file));
-			}
-		}
-
-		return entityFiles;
+		return {
+			tableNames: Object.values(entityTableNamesMap),
+			entityFiles,
+		};
 	}
 
 	/**
@@ -287,7 +275,10 @@ export class ImportService {
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 
-			const tableNames = await this.getTableNamesForImport(inputDir);
+			// Get import metadata after migration validation
+			const importMetadata = await this.getImportMetadata(inputDir);
+			const { tableNames, entityFiles } = importMetadata;
+			const entityNames = Object.keys(entityFiles);
 
 			if (truncateTables) {
 				this.logger.info('\n🗑️  Truncating tables before import...');
@@ -311,7 +302,7 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager);
+			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
@@ -320,27 +311,31 @@ export class ImportService {
 	/**
 	 * Import entities from JSONL files into the database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param transactionManager - TypeORM transaction manager
+	 * @param entityNames - Array of entity names to import
+	 * @param entityFiles - Record of entity names to their file paths
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
 		inputDir: string,
 		transactionManager: EntityManager,
+		entityNames: string[],
+		entityFiles: Record<string, string[]>,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
-		const entityFiles = await this.getEntityFiles(inputDir);
-
-		if (entityFiles.size === 0) {
+		if (entityNames.length === 0) {
 			this.logger.warn('No entity files found in input directory');
 			return;
 		}
 
-		this.logger.info(`📋 Found ${entityFiles.size} entity types to import:`);
+		this.logger.info(`📋 Found ${entityNames.length} entity types to import:`);
 
 		let totalEntitiesImported = 0;
 
 		await Promise.all(
-			Array.from(entityFiles.entries()).map(async ([entityName, files]) => {
+			entityNames.map(async (entityName) => {
+				const files = entityFiles[entityName];
 				this.logger.info(`   • ${entityName}: ${files.length} file(s)`);
 				this.logger.info(`\n📊 Importing ${entityName} entities...`);
 
@@ -378,7 +373,7 @@ export class ImportService {
 
 		this.logger.info('\n📊 Import Summary:');
 		this.logger.info(`   Total entities imported: ${totalEntitiesImported}`);
-		this.logger.info(`   Entity types processed: ${entityFiles.size}`);
+		this.logger.info(`   Entity types processed: ${entityNames.length}`);
 		this.logger.info('✅ Import completed successfully!');
 	}
 

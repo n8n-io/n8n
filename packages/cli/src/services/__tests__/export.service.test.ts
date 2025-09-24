@@ -2,57 +2,50 @@ import { type Logger } from '@n8n/backend-common';
 import { ExportService } from '../export.service';
 import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile } from 'fs/promises';
+import { mock } from 'jest-mock-extended';
 
 // Mock fs/promises
-jest.mock('fs/promises', () => ({
-	mkdir: jest.fn(),
-	rm: jest.fn(),
-	readdir: jest.fn(),
-	appendFile: jest.fn(),
-}));
+jest.mock('fs/promises');
 
 // Mock validateDbTypeForExportEntities
 jest.mock('@/utils/validate-database-type', () => ({
 	validateDbTypeForExportEntities: jest.fn(),
 }));
 
+// Mock @n8n/db
+jest.mock('@n8n/db', () => ({
+	DataSource: mock<DataSource>(),
+}));
+
 describe('ExportService', () => {
 	let exportService: ExportService;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockDataSource: jest.Mocked<DataSource>;
+	let mockLogger: Logger;
+	let mockDataSource: DataSource;
 
 	beforeEach(() => {
-		mockLogger = {
-			info: jest.fn(),
-			debug: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as any;
+		jest.clearAllMocks();
 
-		mockDataSource = {
-			entityMetadatas: [
-				{
-					name: 'User',
-					tableName: 'user',
-					columns: [
-						{ databaseName: 'id' },
-						{ databaseName: 'email' },
-						{ databaseName: 'firstName' },
-					],
-				},
-				{
-					name: 'Workflow',
-					tableName: 'workflow_entity',
-					columns: [{ databaseName: 'id' }, { databaseName: 'name' }, { databaseName: 'active' }],
-				},
-			],
-			options: {
-				type: 'sqlite',
+		mockLogger = mock<Logger>();
+		mockDataSource = mock<DataSource>();
+
+		// Set up the required DataSource properties
+		// @ts-expect-error Accessing private property for testing
+		mockDataSource.entityMetadatas = [
+			{
+				name: 'User',
+				tableName: 'user',
+				columns: [{ databaseName: 'id' }, { databaseName: 'email' }, { databaseName: 'firstName' }],
 			},
-			driver: {
-				escape: jest.fn((identifier: string) => `"${identifier}"`),
+			{
+				name: 'Workflow',
+				tableName: 'workflow_entity',
+				columns: [{ databaseName: 'id' }, { databaseName: 'name' }, { databaseName: 'active' }],
 			},
-			query: jest.fn(),
+		];
+		// @ts-expect-error Accessing private property for testing
+		mockDataSource.options = { type: 'sqlite' };
+		mockDataSource.driver = {
+			escape: jest.fn((identifier: string) => `"${identifier}"`),
 		} as any;
 
 		exportService = new ExportService(mockLogger, mockDataSource);

@@ -241,8 +241,8 @@ describe('ImportService', () => {
 		});
 	});
 
-	describe('getTableNamesForImport', () => {
-		it('should return table names for valid entity files', async () => {
+	describe('getImportMetadata', () => {
+		it('should return complete import metadata for valid entity files', async () => {
 			const mockFiles = ['user.jsonl', 'workflow.jsonl', 'settings.jsonl', 'other.txt'];
 			const mockEntityMetadatas = [
 				{ name: 'User', tableName: 'user' },
@@ -254,9 +254,16 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user', 'workflow', 'settings']);
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow', 'settings'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+					settings: ['/test/input/settings.jsonl'],
+				},
+			});
 			expect(readdir).toHaveBeenCalledWith('/test/input');
 		});
 
@@ -271,9 +278,15 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user', 'workflow']);
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 		});
 
 		it('should skip entities without metadata', async () => {
@@ -284,9 +297,14 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user']);
+			expect(result).toEqual({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				'⚠️  No entity metadata found for unknown, skipping...',
 			);
@@ -297,40 +315,52 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = [];
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual([]);
-		});
-	});
-
-	describe('getEntityFiles', () => {
-		it('should group entity files by entity name', async () => {
-			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'workflow.jsonl', 'other.txt'];
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
-
-			const result = await importService.getEntityFiles('/test/input');
-
-			expect(result.size).toBe(2);
-			expect(result.get('user')).toEqual(['/test/input/user.jsonl', '/test/input/user.2.jsonl']);
-			expect(result.get('workflow')).toEqual(['/test/input/workflow.jsonl']);
-		});
-
-		it('should handle empty directory', async () => {
-			(readdir as jest.Mock).mockResolvedValue([]);
-
-			const result = await importService.getEntityFiles('/test/input');
-
-			expect(result.size).toBe(0);
+			expect(result).toEqual({
+				tableNames: [],
+				entityFiles: {},
+			});
 		});
 
 		it('should ignore non-jsonl files', async () => {
 			const mockFiles = ['user.jsonl', 'workflow.txt', 'settings.json', 'data.csv'];
+			const mockEntityMetadatas = [{ name: 'User', tableName: 'user' }];
+
 			(readdir as jest.Mock).mockResolvedValue(mockFiles);
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getEntityFiles('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result.size).toBe(1);
-			expect(result.get('user')).toEqual(['/test/input/user.jsonl']);
+			expect(result).toEqual({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
+		});
+
+		it('should exclude migrations from import metadata', async () => {
+			const mockFiles = ['user.jsonl', 'migrations.jsonl', 'workflow.jsonl'];
+			const mockEntityMetadatas = [
+				{ name: 'User', tableName: 'user' },
+				{ name: 'Workflow', tableName: 'workflow' },
+			];
+
+			(readdir as jest.Mock).mockResolvedValue(mockFiles);
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 		});
 	});
 
@@ -419,7 +449,15 @@ describe('ImportService', () => {
 
 			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'\n🚀 Starting entity import from directory: /test/input',
@@ -434,33 +472,28 @@ describe('ImportService', () => {
 		});
 
 		it('should handle empty input directory', async () => {
-			(readdir as jest.Mock).mockResolvedValue([]);
-
-			await importService.importEntitiesFromFiles('/test/empty', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/empty', mockEntityManager, [], {});
 
 			expect(mockLogger.warn).toHaveBeenCalledWith('No entity files found in input directory');
 		});
 
 		it('should skip entities without metadata', async () => {
-			const mockFiles = ['user.jsonl', 'unknown.jsonl'];
-
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue('{"id":1,"name":"User 1"}\n');
 			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager, ['user'], {
+				user: ['/test/input/user.jsonl'],
+			});
 
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				'   ⚠️  No entity metadata found for unknown, skipping...',
-			);
+			expect(mockLogger.info).toHaveBeenCalledWith('   ✅ Completed user: 1 entities imported');
 		});
 
 		it('should handle empty entity files', async () => {
-			const mockFiles = ['user.jsonl'];
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue(''); // Empty file
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager, ['user'], {
+				user: ['/test/input/user.jsonl'],
+			});
 
 			expect(mockLogger.info).toHaveBeenCalledWith('      Found 0 entities');
 		});
@@ -629,16 +662,30 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(true);
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', false);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user', 'workflow']);
-			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalledWith(
+				'/test/input',
+				expect.any(Object),
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 		});
 
 		it('should handle truncation when truncateTables is true', async () => {
@@ -667,16 +714,30 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'truncateEntityTable').mockResolvedValue();
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', true);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.truncateEntityTable).toHaveBeenCalledTimes(2);
-			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalledWith(
+				'/test/input',
+				expect.any(Object),
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 		});
 
 		it('should skip import when tables are not empty and truncateTables is false', async () => {
@@ -696,14 +757,19 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(false);
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', false);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user']);
 			expect(importService.importEntitiesFromFiles).not.toHaveBeenCalled();
 		});
