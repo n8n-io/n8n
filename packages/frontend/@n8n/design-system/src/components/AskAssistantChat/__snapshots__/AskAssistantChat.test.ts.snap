@@ -2413,7 +2413,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       data-test-id="chat-input-wrapper"
     >
       <div
-        class="container disabled ignore-key-press-node-creator ignore-key-press-canvas"
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
         style="min-height: 40px;"
       >
@@ -2425,7 +2425,6 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         >
           <textarea
             class="singleLineTextarea"
-            disabled=""
             maxlength="1000"
             placeholder="Enter your response..."
             rows="1"
