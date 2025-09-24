@@ -9,6 +9,7 @@ import type {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { DataToSendOption, RowCreateUpdateOptions } from './create_update.description';
+import { JSONSafeParse } from '../../helpers';
 import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -105,9 +106,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 							continue;
 						}
 						try {
-							fields.value[schema.id] = JSON.parse(fields.value[schema.id]);
+							fields.value[schema.id] = JSONSafeParse(fields.value[schema.id]);
 						} catch {
-							fields.value[schema.id] = JSON.parse(fields.value[schema.id].replace(/'/g, '"'));
+							fields.value[schema.id] = JSONSafeParse(fields.value[schema.id].replace(/'/g, '"'));
 						}
 					}
 					newItem.fields = fields?.value;
