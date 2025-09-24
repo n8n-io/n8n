@@ -6,6 +6,7 @@ import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nLink from '../N8nLink';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
@@ -130,12 +131,6 @@ const creditsTooltipContent = computed(() => {
 const hasNoCredits = computed(() => {
 	return showCredits.value && creditsRemaining.value === 0;
 });
-
-const handleGetMoreCredits = () => {
-	if (props.plansPageUrl) {
-		window.open(props.plansPageUrl, '_blank');
-	}
-};
 
 const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
 	if (!isMultiline.value) {
@@ -355,26 +350,17 @@ defineExpose({
 			>
 				<div :class="$style.creditsInfoWrapper">
 					<span
-						:class="[$style.creditsInfo, { [$style.noCredits]: hasNoCredits }]"
 						v-n8n-html="creditsInfo"
+						:class="[$style.creditsInfo, { [$style.noCredits]: hasNoCredits }]"
 					></span>
 					<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
 				</div>
 			</N8nTooltip>
-			<N8nTooltip v-if="!plansPageUrl" :content="tooltipContent" placement="top">
-				<button :class="$style.getMoreButton" @click="handleGetMoreCredits">
+			<N8nTooltip :disabled="!!plansPageUrl" :content="tooltipContent" placement="top">
+				<N8nLink :href="plansPageUrl" target="_blank" size="small" color="text-base" theme="text">
 					{{ t('promptInput.getMore') }}
-				</button>
+				</N8nLink>
 			</N8nTooltip>
-			<a
-				v-else
-				:href="plansPageUrl"
-				target="_blank"
-				:class="$style.getMoreLink"
-				@click.prevent="handleGetMoreCredits"
-			>
-				{{ t('promptInput.getMore') }}
-			</a>
 		</div>
 	</div>
 </template>
@@ -523,24 +509,9 @@ defineExpose({
 
 .getMoreButton,
 .getMoreLink {
-	font-size: var(--font-size-xs);
-	color: var(--color-primary);
-	background: none;
-	border: none;
-	padding: 0;
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 	cursor: pointer;
-	text-decoration: none;
-	font-family: var(--font-family);
-	transition: color 0.2s ease;
-
-	&:hover {
-		color: var(--color-primary-shade-1);
-		text-decoration: underline;
-	}
-
-	&:active {
-		color: var(--color-primary-shade-1);
-	}
 }
 
 .infoPopper {
