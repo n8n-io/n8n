@@ -114,7 +114,7 @@ describe('ExportService', () => {
 
 			jest
 				.mocked(readdir)
-				.mockResolvedValueOnce(existingFiles) // For clearExistingEntityFiles
+				.mockResolvedValueOnce(existingFiles as any) // For clearExistingEntityFiles
 				.mockResolvedValueOnce([]); // For subsequent calls
 			jest.mocked(mockDataSource.query).mockResolvedValue([]);
 
@@ -242,7 +242,7 @@ describe('ExportService', () => {
 			const outputDir = '/test/output';
 			const existingFiles = ['user.jsonl', 'user.2.jsonl', 'workflow.jsonl', 'other.txt'];
 
-			jest.mocked(readdir).mockResolvedValue(existingFiles);
+			jest.mocked(readdir).mockResolvedValue(existingFiles as any);
 
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
@@ -256,7 +256,7 @@ describe('ExportService', () => {
 		it('should handle no existing files gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(readdir).mockResolvedValue(['other.txt']);
+			jest.mocked(readdir).mockResolvedValue(['other.txt'] as any);
 
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
@@ -278,7 +278,7 @@ describe('ExportService', () => {
 		it('should handle file deletion errors gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(readdir).mockResolvedValue(['user.jsonl']);
+			jest.mocked(readdir).mockResolvedValue(['user.jsonl'] as any);
 			jest.mocked(rm).mockRejectedValue(new Error('File in use'));
 
 			// @ts-expect-error Accessing private method for testing
