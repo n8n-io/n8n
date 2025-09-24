@@ -146,7 +146,7 @@ describe('WorkflowFactory', () => {
 
 			expect(workflow).toMatchInlineSnapshot(`
 				{
-				  "active": false,
+				  "active": true,
 				  "connections": {
 				    "transform1": {
 				      "main": [
@@ -261,7 +261,7 @@ describe('WorkflowFactory', () => {
 
 			expect(workflow).toMatchInlineSnapshot(`
 				{
-				  "active": false,
+				  "active": true,
 				  "connections": {
 				    "trigger": {
 				      "main": [
