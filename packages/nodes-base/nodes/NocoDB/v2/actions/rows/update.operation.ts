@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
-import { DataToSendOption, RowCreateUpdateOptions } from './create_update.options';
+import { DataToSendOption, RowCreateUpdateOptions } from './create_update.description';
 import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = updateDisplayOptions(
