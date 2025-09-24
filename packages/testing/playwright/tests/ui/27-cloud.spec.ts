@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/base';
 import basePlanData from '../../fixtures/plan-data-trial.json';
+import type { n8nPage } from '../../pages/n8nPage';
 import type { TestRequirements } from '../../Types';
 
 const fiveDaysFromNow = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
@@ -42,16 +43,25 @@ const subsequentVisitRequirements: TestRequirements = {
 	},
 };
 
+const setupCloudTest = async (
+	n8n: n8nPage,
+	setupRequirements: (requirements: TestRequirements) => Promise<void>,
+	requirements: TestRequirements,
+) => {
+	await setupRequirements(requirements);
+	await n8n.page.waitForLoadState();
+};
+
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Banner', () => {
 		test('should not render trial banner on first visit', async ({ n8n, setupRequirements }) => {
-			await setupRequirements(firstVisitRequirements);
+			await setupCloudTest(n8n, setupRequirements, firstVisitRequirements);
 			await n8n.start.fromBlankCanvas();
 			await expect(n8n.sideBar.getTrialBanner()).toBeHidden();
 		});
 
 		test('should render trial banner on subsequent visits', async ({ n8n, setupRequirements }) => {
-			await setupRequirements(subsequentVisitRequirements);
+			await setupCloudTest(n8n, setupRequirements, subsequentVisitRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
@@ -61,7 +71,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 	test.describe('Admin Home', () => {
 		test('should show admin button', async ({ n8n, setupRequirements }) => {
-			await setupRequirements(cloudTrialRequirements);
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
@@ -74,7 +84,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await setupRequirements(cloudTrialRequirements);
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toApiSettings();
 
 			await n8n.page.waitForLoadState();
@@ -91,7 +101,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 		}) => {
 			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
 
-			await setupRequirements(cloudTrialRequirements);
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
 
 			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeHidden();
@@ -104,7 +114,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 		}) => {
 			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
-			await setupRequirements(cloudTrialRequirements);
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
 
 			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeVisible();
@@ -117,7 +127,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 		}) => {
 			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
-			await setupRequirements(cloudTrialRequirements);
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
 
 			await n8n.workflows.clickEasyAiWorkflowCard();
