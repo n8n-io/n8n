@@ -61,6 +61,8 @@ const clientSecret = ref('');
 
 const discoveryEndpoint = ref('');
 
+const prompt = ref<'login' | 'none' | 'consent' | 'select_account' | 'create'>('select_account');
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const ipsOptions = ref([
@@ -241,6 +243,7 @@ const getOidcConfig = async () => {
 	clientId.value = config.clientId;
 	clientSecret.value = config.clientSecret;
 	discoveryEndpoint.value = config.discoveryEndpoint;
+	prompt.value = config.prompt;
 };
 
 async function loadOidcConfig() {
@@ -263,7 +266,8 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.clientId === clientId.value &&
 		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled
+		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+		ssoStore.oidcConfig?.prompt === prompt.value
 	);
 });
 
@@ -289,6 +293,7 @@ async function onOidcSettingsSave() {
 			clientId: clientId.value,
 			clientSecret: clientSecret.value,
 			discoveryEndpoint: discoveryEndpoint.value,
+			prompt: prompt.value,
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 		});
 
@@ -491,6 +496,24 @@ async function onOidcSettingsSave() {
 						>The client Secret you received when registering your application with your
 						provider</small
 					>
+				</div>
+				<div :class="$style.group">
+					<label>OIDC Prompt</label>
+					<N8nSelect
+						:model-value="prompt"
+						data-test-id="oidc-prompt"
+						@update:model-value="
+							(v: 'create' | 'none' | 'login' | 'consent' | 'select_account') => (prompt = v)
+						"
+					>
+						<N8nOption
+							v-for="option in ['none', 'login', 'consent', 'select_account', 'create']"
+							:key="option"
+							data-test-id="source-control-status-filter-option"
+							:value="option"
+						/>
+					</N8nSelect>
+					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 				</div>
 				<div :class="$style.group">
 					<el-switch
