@@ -56,6 +56,16 @@ COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
 
+# --- INICIO DEL CÓDIGO AÑADIDO ---
+# Instalar git y el nodo de puppeteer
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+RUN npm install -g n8n-nodes-puppeteer
+USER node
+# --- FIN DEL CÓDIGO AÑADIDO ---
+
 RUN cd /usr/local/lib/node_modules/n8n && \
 		npm rebuild sqlite3 && \
 		ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
