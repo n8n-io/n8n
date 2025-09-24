@@ -65,4 +65,5 @@ jobs:
         run: pnpm test:mysql --testTimeout 120000
 
       - name: Print logs
+        if: always()
         run: cat .github/mysql/log/general.log
