@@ -37,6 +37,7 @@ export const LICENSE_FEATURES = {
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
 	CUSTOM_ROLES: 'feat:customRoles',
+	AI_BUILDER: 'feat:aiBuilder',
 } as const;
 
 export const LICENSE_QUOTAS = {

@@ -8,7 +8,7 @@ import {
 	AiSessionRetrievalRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -39,6 +39,7 @@ export class AiController {
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
+	@Licensed('feat:aiBuilder')
 	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
@@ -208,6 +209,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiBuilder')
 	@Post('/sessions', { rateLimit: { limit: 100 } })
 	async getSessions(
 		req: AuthenticatedRequest,
@@ -223,6 +225,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiBuilder')
 	@Get('/build/credits')
 	async getBuilderCredits(
 		req: AuthenticatedRequest,
