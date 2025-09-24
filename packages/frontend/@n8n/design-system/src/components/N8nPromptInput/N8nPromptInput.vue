@@ -75,8 +75,8 @@ function adjustHeight() {
 	const wasMultiline = isMultiline.value;
 	const singleLineHeight = 24;
 
-	// If text is empty, revert to single-line mode
-	if (!textValue.value || textValue.value.trim() === '') {
+	// If text is completely empty (not just whitespace), revert to single-line mode
+	if (!textValue.value || textValue.value === '') {
 		isMultiline.value = false;
 		textareaHeight.value = singleLineHeight;
 		if (textareaRef.value) {
