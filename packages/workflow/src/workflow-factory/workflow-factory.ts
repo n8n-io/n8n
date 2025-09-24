@@ -301,18 +301,9 @@ export class WorkflowFactory<TNodeNames extends string = never> {
 	 * Creates a deep clone of the current factory instance
 	 */
 	private clone(): WorkflowFactory<TNodeNames> {
-		// Deep clone the state using structuredClone
 		const clonedState = structuredClone(this.state);
 
-		// Create new factory with reconstructed Maps
-		return new WorkflowFactory(
-			{
-				nodes: clonedState.nodes,
-				connections: clonedState.connections,
-				settings: clonedState.settings,
-			},
-			this.nodeIdGenerator,
-		);
+		return new WorkflowFactory(clonedState, this.nodeIdGenerator);
 	}
 
 	/**
