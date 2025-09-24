@@ -142,59 +142,59 @@ const {
 					@click="handleSelect ? handleSelect(item.id) : undefined"
 					:level="1"
 				/>
+				<N8nPopoverReka
+					@update:open="(state) => (subMenuOpen = state)"
+					:open="subMenuOpen"
+					align="start"
+					side="top"
+					:offset="4"
+				>
+					<template #trigger>
+						<SidebarItem
+							:item="{
+								id: 'help',
+								label: 'Help',
+								type: 'other',
+								icon: 'circle-help',
+							}"
+						/>
+					</template>
+					<template #content>
+						<div class="sidebarSubMenuPopover">
+							<div v-for="item in helpItems" :key="item.id" class="sidebarSubMenuSection">
+								<N8nText
+									v-if="!isCustomMenuItem(item)"
+									class="sidebarSubMenuSectionHeader"
+									size="small"
+									bold
+									color="text-light"
+									>{{ item.label }}</N8nText
+								>
+								<div
+									v-if="!isCustomMenuItem(item)"
+									v-for="subItem in item.children"
+									:key="subItem.id"
+								>
+									<component
+										v-if="isCustomMenuItem(subItem)"
+										:is="subItem.component"
+										v-bind="subItem.props || {}"
+									/>
+									<SidebarItem
+										v-else
+										:item="subItem"
+										@click="handleSelect ? handleSelect(subItem.id) : undefined"
+										:ariaLabel="`Go to ${subItem.label}`"
+									/>
+								</div>
+							</div>
+						</div>
+					</template>
+				</N8nPopoverReka>
 			</div>
 		</nav>
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
-		<div class="sidebarHelpArea">
-			<N8nPopoverReka
-				@update:open="(state) => (subMenuOpen = state)"
-				:open="subMenuOpen"
-				align="start"
-			>
-				<template #trigger>
-					<N8nIconButton
-						icon-size="large"
-						size="xmini"
-						icon="circle-help"
-						type="secondary"
-						text
-						square
-					/>
-				</template>
-				<template #content>
-					<div class="sidebarSubMenuPopover">
-						<div v-for="item in helpItems" :key="item.id" class="sidebarSubMenuSection">
-							<N8nText
-								v-if="!isCustomMenuItem(item)"
-								class="sidebarSubMenuSectionHeader"
-								size="small"
-								bold
-								color="text-light"
-								>{{ item.label }}</N8nText
-							>
-							<div
-								v-if="!isCustomMenuItem(item)"
-								v-for="subItem in item.children"
-								:key="subItem.id"
-							>
-								<component
-									v-if="isCustomMenuItem(subItem)"
-									:is="subItem.component"
-									v-bind="subItem.props || {}"
-								/>
-								<SidebarItem
-									v-else
-									:item="subItem"
-									@click="handleSelect ? handleSelect(subItem.id) : undefined"
-									:ariaLabel="`Go to ${subItem.label}`"
-								/>
-							</div>
-						</div>
-					</div>
-				</template>
-			</N8nPopoverReka>
-		</div>
 	</N8nResizeWrapper>
 	<div
 		v-if="state === 'hidden' || state === 'peak'"
@@ -353,17 +353,6 @@ const {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
-}
-
-.sidebarHelpArea {
-	position: relative;
-	padding: var(--spacing-2xs);
-	background-color: var(--color-foreground-xlight);
-	border-top: var(--border-base);
-	border-color: var(--color-foreground-light);
-	display: flex;
-	gap: var(--spacing-2xs);
-	justify-content: flex-end;
 }
 
 .userName {

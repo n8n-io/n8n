@@ -25,6 +25,14 @@ interface Props {
 	 * The preferred alignment against the trigger. May change when collisions occur.
 	 */
 	align?: 'start' | 'center' | 'end';
+	/**
+	 * The side of the trigger to render against when open.
+	 */
+	side?: 'top' | 'right' | 'bottom' | 'left';
+	/**
+	 * The distance in pixels from the trigger to the popover.
+	 */
+	offset?: number;
 }
 
 interface Emits {
@@ -38,6 +46,8 @@ const props = withDefaults(defineProps<Props>(), {
 	enableScrolling: true,
 	scrollType: 'hover',
 	align: undefined,
+	side: 'bottom',
+	offset: 5,
 });
 
 const emit = defineEmits<Emits>();
@@ -49,7 +59,12 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="bottom" :align="align" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent
+				:side="side"
+				:align="align"
+				:side-offset="offset"
+				:class="$style.popoverContent"
+			>
 				<N8nScrollArea
 					v-if="enableScrolling"
 					:max-height="props.maxHeight"

@@ -191,7 +191,7 @@ const icon = computed<IconName>(() => {
 	width: 0.5rem;
 	min-width: 0.5rem;
 	align-self: stretch;
-	margin-left: 0.75rem;
+	margin-left: 13.75px;
 	border-left: 1px solid var(--color-foreground-light);
 }
 
