@@ -1,23 +1,23 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-export * as count from './count';
-export * as get from './get';
-export * as search from './search';
-export * as create from './create';
-export * as delete from './delete';
-export * as update from './update';
-export * as upload from './upload';
-export * as upsert from './upsert';
+export * as count from './count.operation';
+export * as get from './get.operation';
+export * as search from './search.operation';
+export * as create from './create.operation';
+export * as delete from './delete.operation';
+export * as update from './update.operation';
+export * as upload from './upload.operation';
+export * as upsert from './upsert.operation';
 
-import * as countAction from './count';
-import * as createAction from './create';
-import * as deleteAction from './delete';
-import * as getAction from './get';
-import * as searchAction from './search';
-import * as updateAction from './update';
-import * as uploadAction from './upload';
-import * as upsertAction from './upsert';
+import * as countAction from './count.operation';
+import * as createAction from './create.operation';
+import * as deleteAction from './delete.operation';
+import * as getAction from './get.operation';
+import * as searchAction from './search.operation';
+import * as updateAction from './update.operation';
+import * as uploadAction from './upload.operation';
+import * as upsertAction from './upsert.operation';
 
 export const description: INodeProperties[] = updateDisplayOptions(
 	{

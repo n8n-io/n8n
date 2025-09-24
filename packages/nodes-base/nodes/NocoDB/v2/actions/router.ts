@@ -1,8 +1,8 @@
 import { type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
-import * as base from './base';
-import * as linkrows from './linkrows';
-import * as rows from './rows';
+import * as base from './base/base.resource';
+import * as linkrows from './linkrows/linkrows.resource';
+import * as rows from './rows/rows.resource';
 import { v0200Execute } from './v0200Execute';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

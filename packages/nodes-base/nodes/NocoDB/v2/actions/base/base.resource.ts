@@ -2,10 +2,11 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import * as get from './get';
-import * as getAll from './getAll';
-export * as get from './get';
-export * as getAll from './getAll';
+import * as get from './get.operation';
+import * as getAll from './getAll.operation';
+
+export * as get from './get.operation';
+export * as getAll from './getAll.operation';
 
 export const description: INodeProperties[] = updateDisplayOptions(
 	{
