@@ -130,4 +130,59 @@ describe('ProjectController (members endpoints)', () => {
 		});
 		expect(res.status).toHaveBeenCalledWith(204);
 	});
+
+	it('returns 201 with conflicts body when some users added and some conflicted', async () => {
+		// Arrange
+		const projectId = 'p4';
+		const added = [{ userId: 'u4', role: 'project:viewer' as const }];
+		const conflicts = [
+			{
+				userId: 'u5',
+				currentRole: 'project:viewer' as const,
+				requestedRole: 'project:editor' as const,
+			},
+		];
+
+		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+			project: { id: projectId, name: 'Project' },
+			added,
+			conflicts,
+		});
+
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u4', role: { slug: 'project:viewer' } },
+			{ userId: 'u5', role: { slug: 'project:viewer' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.addProjectUsers(req, res, projectId, {
+			relations: [...added, { userId: 'u5', role: 'project:editor' }],
+		} as any);
+
+		// Assert: 201 with conflicts body
+		expect(res.status).toHaveBeenCalledWith(201);
+		expect(res.json).toHaveBeenCalledWith({ conflicts });
+
+		// Mailer is called for newly added sharees
+		expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+			sharer: req.user,
+			newSharees: added,
+			project: { id: projectId, name: 'Project' },
+		});
+
+		// Telemetry event has full members list
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u4', role: 'project:viewer' },
+				{ userId: 'u5', role: 'project:viewer' },
+			],
+			projectId,
+		});
+	});
 });

@@ -677,7 +677,7 @@ describe('PATCH /projects/:projectId', () => {
 					role: ProjectRole;
 				}>,
 			});
-			expect(addResp.status === 200 || addResp.status === 201).toBe(true);
+			expect(addResp.status).toBe(201);
 
 			// External secrets cache must be cleared for credentials owned by teamProject1
 			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);

@@ -610,12 +610,15 @@ export class ProjectService {
 		return await this.projectRepository.getProjectCounts();
 	}
 
-	/** Type guard for assignable project role slugs */
+	/**
+	 * Type guard for assignable project role slugs.
+	 *
+	 * Custom project roles are supported. We consider any slug that:
+	 * - starts with the `project:` prefix, and
+	 * - is not the personal owner role
+	 * to be an assignable project role.
+	 */
 	private isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
-		return (
-			slug === PROJECT_ADMIN_ROLE_SLUG ||
-			slug === PROJECT_EDITOR_ROLE_SLUG ||
-			slug === PROJECT_VIEWER_ROLE_SLUG
-		);
+		return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
 	}
 }

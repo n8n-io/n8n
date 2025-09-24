@@ -222,7 +222,9 @@ export class ProjectController {
 		@Param('projectId') projectId: string,
 	) {
 		const { name, icon, description } = payload;
-		// Only update scalar settings on this endpoint. Member updates are handled by dedicated endpoints.
+		// NOTE: This endpoint only updates scalar settings (name, icon, description).
+		// Any `relations` included in the request payload are intentionally ignored.
+		// Member management now happens via dedicated endpoints under `/projects/:projectId/users`.
 		if (name || icon || description) {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
@@ -257,7 +259,12 @@ export class ProjectController {
 				projectId,
 			});
 
-			if (added.length > 0) return res.status(201).send();
+			// Response semantics:
+			// - If at least one user was added, return 201. When there are also conflicts, include them in the body.
+			// - If no users were added but conflicts exist, return 409 with conflicts.
+			if (added.length > 0) {
+				return conflicts.length > 0 ? res.status(201).json({ conflicts }) : res.status(201).send();
+			}
 			if (conflicts.length > 0) return res.status(409).json({ conflicts });
 			return res.status(200).send();
 		} catch (e) {
