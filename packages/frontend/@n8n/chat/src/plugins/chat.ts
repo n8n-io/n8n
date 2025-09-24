@@ -269,7 +269,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				id: `${index}`,
 				text: message.kwargs.content,
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
-				timestamp: new Date(),
+				// Don't add timestamps to loaded messages since we don't have real timestamp data
 			}));
 
 			if (messages.value.length) {
