@@ -135,21 +135,26 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 			() => workflowsStore.workflowExecutionResultDataLastUpdate,
 			() => workflowsStore.workflowExecutionStartedData,
 		],
-		([executionId], [previousExecutionId]) => {
-			state.value =
-				workflowsStore.workflowExecutionData === null
-					? undefined
-					: {
-							response: copyExecutionData(workflowsStore.workflowExecutionData),
-							startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
-						};
+		useThrottleFn(
+			([executionId], [previousExecutionId]) => {
+				state.value =
+					workflowsStore.workflowExecutionData === null
+						? undefined
+						: {
+								response: copyExecutionData(workflowsStore.workflowExecutionData),
+								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
+							};
 
-			if (executionId !== previousExecutionId) {
-				// Reset sub workflow data when top-level execution changes
-				subWorkflowExecData.value = {};
-				subWorkflows.value = {};
-			}
-		},
+				if (executionId !== previousExecutionId) {
+					// Reset sub workflow data when top-level execution changes
+					subWorkflowExecData.value = {};
+					subWorkflows.value = {};
+				}
+			},
+			updateInterval,
+			true,
+			true,
+		),
 		{ immediate: true },
 	);
 
