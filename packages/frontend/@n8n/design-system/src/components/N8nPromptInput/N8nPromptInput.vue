@@ -372,7 +372,7 @@ defineExpose({
 
 <style lang="scss" module>
 .wrapper {
-	background: var(--color-background-base);
+	background: var(--color-background-light);
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-large);
 }
