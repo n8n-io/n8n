@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { execute } from '../../../../v2/actions/rows/search';
+import { execute } from '../../../../v2/actions/rows/search.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport/index', () => {
@@ -43,9 +43,7 @@ describe('NocoDB Rows Search Action', () => {
 					if (name === 'options') {
 						return {
 							where: '(name,eq,test)',
-							fields: {
-								items: [{ field: { value: 'fieldA' } }, { field: { value: 'fieldB' } }],
-							},
+							fields: ['fieldA', 'fieldB'],
 						};
 					}
 					return undefined;
@@ -102,9 +100,7 @@ describe('NocoDB Rows Search Action', () => {
 					if (name === 'limit') return 50;
 					if (name === 'options') {
 						return {
-							fields: {
-								items: [{ field: { value: 'fieldC' } }, { field: { value: 'fieldD' } }],
-							},
+							fields: ['fieldC', 'fieldD'],
 						};
 					}
 					return undefined;

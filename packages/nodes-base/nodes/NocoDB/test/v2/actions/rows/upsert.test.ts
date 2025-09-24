@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { execute } from '../../../../v2/actions/rows/upsert';
+import { execute } from '../../../../v2/actions/rows/upsert.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport/index', () => {
