@@ -63,13 +63,6 @@ Object.defineProperty(global, 'crypto', {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
-import { createAddNodeTool } from '@/tools/add-node.tool';
-import { createConnectNodesTool } from '@/tools/connect-nodes.tool';
-import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
-import { createNodeDetailsTool } from '@/tools/node-details.tool';
-import { createNodeSearchTool } from '@/tools/node-search.tool';
-import { createRemoveNodeTool } from '@/tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from '@/tools/update-node-parameters.tool';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
@@ -139,93 +132,6 @@ describe('WorkflowBuilderAgent', () => {
 		};
 
 		agent = new WorkflowBuilderAgent(config);
-	});
-
-	describe('getTools', () => {
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
-
-		it('should return all required tools with correct parameters', () => {
-			const tools = WorkflowBuilderAgent.getTools({
-				parsedNodeTypes,
-				logger: mockLogger,
-				llmComplexTask: mockLlmComplex,
-				instanceUrl: 'https://example.com',
-			});
-
-			// Verify tool count and structure
-			expect(tools).toHaveLength(7);
-			expect(tools.map((t) => t.tool.name)).toEqual([
-				'node_search',
-				'node_details',
-				'add_node',
-				'connect_nodes',
-				'remove_node',
-				'update_node_parameters',
-				'get_node_parameter',
-			]);
-
-			// Verify each tool creation function was called correctly
-			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
-			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
-			expect(createRemoveNodeTool).toHaveBeenCalledWith(mockLogger);
-			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
-				parsedNodeTypes,
-				mockLlmComplex,
-				mockLogger,
-				'https://example.com',
-			);
-			expect(createGetNodeParameterTool).toHaveBeenCalledWith();
-		});
-
-		it('should handle optional parameters correctly', () => {
-			// Test without logger and instanceUrl
-			WorkflowBuilderAgent.getTools({
-				parsedNodeTypes,
-				llmComplexTask: mockLlmComplex,
-			});
-
-			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
-			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
-			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
-				parsedNodeTypes,
-				mockLlmComplex,
-				undefined,
-				undefined,
-			);
-		});
-	});
-
-	describe('generateThreadId', () => {
-		beforeEach(() => {
-			mockRandomUUID.mockReset();
-		});
-
-		it('should generate thread ID with workflowId and userId', () => {
-			const workflowId = 'workflow-123';
-			const userId = 'user-456';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			expect(threadId).toBe('workflow-workflow-123-user-user-456');
-		});
-
-		it('should generate thread ID with workflowId but without userId', () => {
-			const workflowId = 'workflow-123';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId);
-			expect(threadId).toMatch(/^workflow-workflow-123-user-\d+$/);
-		});
-
-		it('should generate random UUID when no workflowId provided', () => {
-			const mockUuid = 'test-uuid-1234-5678-9012';
-			mockRandomUUID.mockReturnValue(mockUuid);
-
-			const threadId = WorkflowBuilderAgent.generateThreadId();
-
-			expect(mockRandomUUID).toHaveBeenCalled();
-			expect(threadId).toBe(mockUuid);
-		});
 	});
 
 	describe('chat method', () => {
