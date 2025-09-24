@@ -293,9 +293,8 @@ export class SplitInBatchesV4 implements INodeType {
 				if (!likelyStuck && newCount <= maxExecutions * 2) return;
 			}
 
-			// Clean up before throwing error
-			SplitInBatchesV4.executionCounters.delete(globalKey);
-			SplitInBatchesV4.breachCounters.delete(globalKey);
+			// Clean up all counters before throwing error to avoid stale state
+			SplitInBatchesV4.resetExecutionCount(executeFunctions);
 			throw new NodeOperationError(
 				executeFunctions.getNode(),
 				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the calculated limit of ${maxExecutions} (expected ~${expectedBatches} batches). ` +
