@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
+import { URL_CLOUD_NOCODB } from '../helpers/constants';
+
 interface IAttachment {
 	url: string;
 	title: string;
@@ -40,7 +42,7 @@ export async function apiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	const baseUrl = credentials.host as string;
+	const baseUrl = credentials.isCloudNocoDb ? URL_CLOUD_NOCODB : (credentials.host as string);
 
 	query = query ?? {};
 	uri =
