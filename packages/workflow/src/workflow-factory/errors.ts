@@ -4,7 +4,7 @@
 export class WorkflowBuilderError extends Error {
 	constructor(message: string) {
 		super(message);
-		this.name = 'WorkflowBuilderError';
+		this.name = this.constructor.name;
 
 		if (Error.captureStackTrace) {
 			Error.captureStackTrace(this, WorkflowBuilderError);
