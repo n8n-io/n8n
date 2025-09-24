@@ -265,6 +265,13 @@ const v4Options: INodeProperties = {
 			default: '',
 			description: 'The number of pages to skip from the beginning',
 		},
+		{
+			displayName: 'Shuffle',
+			name: 'shuffle',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to shuffle the results',
+		},
 	],
 };
 
@@ -383,6 +390,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 			if (qs.viewId && (qs.viewId as IDataObject).value) {
 				qs.viewId = (qs.viewId as IDataObject).value;
+			}
+			if (qs.shuffle) {
+				qs.shuffle = 1;
 			}
 
 			if (returnAll) {
