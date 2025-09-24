@@ -40,8 +40,11 @@ export interface RouteMetadata {
 	args: Arg[];
 }
 
+export type EndpointGroup = 'rest' | 'api';
+
 export interface ControllerMetadata {
 	basePath: `/${string}`;
+	endpointGroup: EndpointGroup;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }
