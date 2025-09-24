@@ -82,6 +82,9 @@
     "typescript": "*",
     "zx": "^8.1.4"
   },
+  "dependencies": {
+    "n8n-nodes-puppeteer": "*"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "sqlite3"
