@@ -1916,6 +1916,22 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
+export interface IWorkflowValidationWarning {
+	node: string;
+	type: 'cycle' | 'splitInBatchesDoneLoop' | 'workflowTooLarge' | 'validationError';
+	message: string;
+	details?: {
+		nodePath?: string[];
+		outputIndex?: number;
+		connectionType?: string;
+	};
+}
+
+export interface IWorkflowValidationResult {
+	warnings: IWorkflowValidationWarning[];
+	isValid: boolean;
+}
+
 export type ThemeIconColor =
 	| 'gray'
 	| 'black'
@@ -2713,6 +2729,7 @@ export interface IWorkflowSettings {
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
 	availableInMCP?: boolean;
+	validateWorkflowStructure?: boolean;
 }
 
 export interface WorkflowFEMeta {
