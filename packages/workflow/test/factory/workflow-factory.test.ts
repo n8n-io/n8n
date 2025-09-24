@@ -101,7 +101,7 @@ describe('WorkflowFactory', () => {
 				        },
 				      },
 				      "position": [
-				        200,
+				        300,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.set",
@@ -114,7 +114,7 @@ describe('WorkflowFactory', () => {
 				        "respondWith": "firstIncomingItem",
 				      },
 				      "position": [
-				        400,
+				        600,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.respondToWebhook",
@@ -206,7 +206,7 @@ describe('WorkflowFactory', () => {
 				      "name": "transform1",
 				      "parameters": {},
 				      "position": [
-				        200,
+				        300,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.set",
@@ -217,7 +217,7 @@ describe('WorkflowFactory', () => {
 				      "name": "transform2",
 				      "parameters": {},
 				      "position": [
-				        400,
+				        600,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.set",
@@ -228,7 +228,7 @@ describe('WorkflowFactory', () => {
 				      "name": "merge",
 				      "parameters": {},
 				      "position": [
-				        600,
+				        900,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.code",
@@ -294,7 +294,7 @@ describe('WorkflowFactory', () => {
 				      "name": "transform",
 				      "parameters": {},
 				      "position": [
-				        200,
+				        300,
 				        0,
 				      ],
 				      "type": "n8n-nodes-base.set",

@@ -12,7 +12,7 @@ export interface NodePosition {
  */
 export function calculateNextPosition(nodeCount: number): NodePosition {
 	return {
-		x: nodeCount * 200,
+		x: nodeCount * 300,
 		y: 0,
 	};
 }
