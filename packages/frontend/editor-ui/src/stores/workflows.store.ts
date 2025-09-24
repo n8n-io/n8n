@@ -1608,7 +1608,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function updateNodeExecutionPayload(pushData: PushPayload<'nodeExecuteAfterData'>): void {
+	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		const tasksData = workflowExecutionData.value?.data?.resultData.runData[pushData.nodeName];
 		const existingRunIndex =
 			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
@@ -2101,7 +2101,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue,
 		setNodeParameters,
 		setLastNodeParameters,
-		updateNodeExecutionPayload,
+		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
 		pinDataByNodeName,

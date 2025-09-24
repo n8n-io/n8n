@@ -663,7 +663,7 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('updateNodeExecutionPayload', () => {
+	describe('updateNodeExecutionRunData', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				id: 'test-execution',
@@ -694,7 +694,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should replace run data at the matched index in the execution data', () => {
-			workflowsStore.updateNodeExecutionPayload({
+			workflowsStore.updateNodeExecutionRunData({
 				executionId: 'test-execution',
 				nodeName: 'n0',
 				data: createTestTaskData({
@@ -720,7 +720,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not modify execution data if there is no matched index in execution data', () => {
-			workflowsStore.updateNodeExecutionPayload({
+			workflowsStore.updateNodeExecutionRunData({
 				executionId: 'test-execution',
 				nodeName: 'n0',
 				data: createTestTaskData({
