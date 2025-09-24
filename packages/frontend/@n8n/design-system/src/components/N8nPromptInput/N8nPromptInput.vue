@@ -3,8 +3,11 @@ import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
 import N8nSendStopButton from './N8nSendStopButton.vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
+import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
@@ -13,6 +16,9 @@ export interface N8nPromptInputProps {
 	maxLinesBeforeScroll?: number;
 	streaming?: boolean;
 	disabled?: boolean;
+	creditsQuota?: number;
+	creditsClaimed?: number;
+	plansPageUrl?: string;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
@@ -22,6 +28,9 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	maxLinesBeforeScroll: 6,
 	streaming: false,
 	disabled: false,
+	creditsQuota: undefined,
+	creditsClaimed: undefined,
+	plansPageUrl: undefined,
 });
 
 const emit = defineEmits<{
@@ -31,6 +40,8 @@ const emit = defineEmits<{
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 }>();
+
+const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
@@ -50,12 +61,81 @@ const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 
 const showWarningBanner = computed(() => isAtLimit.value);
 const sendDisabled = computed(
-	() => !textValue.value.trim() || props.streaming || props.disabled || isOverLimit.value,
+	() =>
+		!textValue.value.trim() ||
+		props.streaming ||
+		props.disabled ||
+		isOverLimit.value ||
+		creditsRemaining.value === 0,
 );
 
 const containerStyle = computed(() => {
 	return { minHeight: isMultiline.value ? '80px' : '40px' };
 });
+
+const creditsRemaining = computed(() => {
+	if (props.creditsQuota === undefined || props.creditsClaimed === undefined) {
+		return undefined;
+	}
+	return props.creditsQuota - props.creditsClaimed;
+});
+
+const showCredits = computed(() => {
+	return props.creditsQuota !== undefined && props.creditsClaimed !== undefined;
+});
+
+const creditsInfo = computed(() => {
+	if (!showCredits.value || creditsRemaining.value === undefined) return '';
+	return t('promptInput.creditsInfo', {
+		remaining: creditsRemaining.value,
+		total: props.creditsQuota,
+	});
+});
+
+const tooltipContent = computed(() => {
+	if (!showCredits.value || props.plansPageUrl) return '';
+	return t('promptInput.askAdminToUpgrade');
+});
+
+const characterLimitMessage = computed(() => {
+	return t('promptInput.characterLimitReached', { limit: props.maxLength });
+});
+
+const getNextMonth = () => {
+	const now = new Date();
+	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+	const options: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+	return nextMonth.toLocaleDateString('en-US', options);
+};
+
+const creditsTooltipContent = computed(() => {
+	if (!showCredits.value) return '';
+
+	const nextMonthDate = getNextMonth();
+
+	const lines = [
+		t('promptInput.remainingCredits', {
+			count: creditsRemaining.value || 0,
+		}),
+		t('promptInput.monthlyCredits', {
+			count: props.creditsQuota || 0,
+		}),
+		t('promptInput.creditsRenew', { date: nextMonthDate }),
+		t('promptInput.creditsExpire', { date: nextMonthDate }),
+	];
+
+	return lines.join('<br />');
+});
+
+const hasNoCredits = computed(() => {
+	return showCredits.value && creditsRemaining.value === 0;
+});
+
+const handleGetMoreCredits = () => {
+	if (props.plansPageUrl) {
+		window.open(props.plansPageUrl, '_blank');
+	}
+};
 
 const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
 	if (!isMultiline.value) {
@@ -192,14 +272,14 @@ defineExpose({
 			{
 				[$style.focused]: isFocused,
 				[$style.multiline]: isMultiline,
-				[$style.disabled]: disabled || streaming,
+				[$style.disabled]: disabled || streaming || hasNoCredits,
 			},
 		]"
 		:style="containerStyle"
 	>
 		<!-- Warning banner when character limit is reached -->
 		<N8nCallout v-if="showWarningBanner" icon="info" theme="warning" :class="$style.warningCallout">
-			You've reached the {{ maxLength }} character limit
+			{{ characterLimitMessage }}
 		</N8nCallout>
 
 		<!-- Single line mode: input and button side by side -->
@@ -209,7 +289,7 @@ defineExpose({
 				v-model="textValue"
 				:class="$style.singleLineTextarea"
 				:placeholder="placeholder"
-				:disabled="disabled || streaming"
+				:disabled="disabled || streaming || hasNoCredits"
 				:maxlength="maxLength"
 				rows="1"
 				@keydown="handleKeyDown"
@@ -241,7 +321,7 @@ defineExpose({
 					:class="$style.multilineTextarea"
 					:style="textareaStyle"
 					:placeholder="placeholder"
-					:disabled="disabled || streaming"
+					:disabled="disabled || streaming || hasNoCredits"
 					:maxlength="maxLength"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
@@ -258,6 +338,37 @@ defineExpose({
 				/>
 			</div>
 		</template>
+
+		<!-- Credits bar below input -->
+		<div v-if="showCredits" :class="$style.creditsBar">
+			<N8nTooltip
+				:content="creditsTooltipContent"
+				:popper-class="$style.infoPopper"
+				placement="top"
+			>
+				<div :class="$style.creditsInfoWrapper">
+					<span
+						:class="[$style.creditsInfo, { [$style.noCredits]: hasNoCredits }]"
+						v-n8n-html="creditsInfo"
+					></span>
+					<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
+				</div>
+			</N8nTooltip>
+			<N8nTooltip v-if="!plansPageUrl" :content="tooltipContent" placement="top">
+				<button :class="$style.getMoreButton" @click="handleGetMoreCredits">
+					{{ t('promptInput.getMore') }}
+				</button>
+			</N8nTooltip>
+			<a
+				v-else
+				:href="plansPageUrl"
+				target="_blank"
+				:class="$style.getMoreLink"
+				@click.prevent="handleGetMoreCredits"
+			>
+				{{ t('promptInput.getMore') }}
+			</a>
+		</div>
 	</div>
 </template>
 
@@ -368,6 +479,67 @@ defineExpose({
 	gap: var(--spacing-3xs);
 	padding: var(--spacing-2xs) 0 var(--spacing-2xs) var(--spacing-2xs);
 	margin-top: auto;
+}
+
+// Credits bar below input
+.creditsBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	background: var(--color-background-base);
+	border-top: 1px solid var(--color-foreground-base);
+	border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
+	margin: 0 calc(-1 * var(--spacing-2xs)) calc(-1 * var(--spacing-2xs));
+}
+
+.creditsInfoWrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	cursor: pointer;
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+
+	b {
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+.getMoreButton,
+.getMoreLink {
+	font-size: var(--font-size-xs);
+	color: var(--color-primary);
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	text-decoration: none;
+	font-family: var(--font-family);
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: var(--color-primary-shade-1);
+		text-decoration: underline;
+	}
+
+	&:active {
+		color: var(--color-primary-shade-1);
+	}
+}
+
+.infoPopper {
+	min-width: 200px;
+	line-height: 18px;
+
+	b {
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+// No credits danger styling
+.noCredits {
+	color: var(--color-danger) !important;
 }
 
 // Common styles

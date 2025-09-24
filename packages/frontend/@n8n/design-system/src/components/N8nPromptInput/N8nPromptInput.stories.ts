@@ -25,6 +25,15 @@ export default {
 		disabled: {
 			control: 'boolean',
 		},
+		creditsQuota: {
+			control: 'number',
+		},
+		creditsClaimed: {
+			control: 'number',
+		},
+		plansPageUrl: {
+			control: 'text',
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -37,6 +46,7 @@ const methods = {
 	onStop: action('stop'),
 	onFocus: action('focus'),
 	onBlur: action('blur'),
+	onGetMoreCredits: action('get-more-credits'),
 };
 
 const Template: StoryFn = (args) => ({
@@ -55,6 +65,7 @@ const Template: StoryFn = (args) => ({
 				@stop="onStop"
 				@focus="onFocus"
 				@blur="onBlur"
+				@get-more-credits="onGetMoreCredits"
 			/>
 			<div style="margin-top: 20px; color: var(--color-text-base); font-size: var(--font-size-s);">
 				Current value: {{ inputValue }}
@@ -250,3 +261,101 @@ const AllStatesTemplate: StoryFn = () => ({
 
 export const AllStates: StoryFn = AllStatesTemplate.bind({});
 AllStates.storyName = 'All States';
+
+// Credit Tracking Stories
+export const WithCreditsAndLink: StoryFn = Template.bind({});
+WithCreditsAndLink.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsClaimed: 31,
+	plansPageUrl: 'https://n8n.io/pricing',
+};
+WithCreditsAndLink.storyName = 'With Credits and Plans Link';
+
+export const WithCreditsNoLink: StoryFn = Template.bind({});
+WithCreditsNoLink.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsClaimed: 127,
+};
+WithCreditsNoLink.storyName = 'With Credits (No Link - Shows Tooltip)';
+
+export const LowCredits: StoryFn = Template.bind({});
+LowCredits.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsClaimed: 145,
+	plansPageUrl: 'https://n8n.io/pricing',
+};
+LowCredits.storyName = 'Low Credits Remaining';
+
+export const NoCreditsRemaining: StoryFn = Template.bind({});
+NoCreditsRemaining.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsClaimed: 150,
+	plansPageUrl: 'https://n8n.io/pricing',
+};
+NoCreditsRemaining.storyName = 'No Credits Remaining';
+
+const CreditsInteractiveTemplate: StoryFn = (args) => ({
+	components: { N8nPromptInput },
+	setup() {
+		const inputValue = ref('');
+		const creditsClaimed = ref(args.creditsClaimed || 0);
+		const creditsQuota = ref(args.creditsQuota || 150);
+
+		const handleSubmit = () => {
+			if (inputValue.value.trim() && creditsClaimed.value < creditsQuota.value) {
+				creditsClaimed.value++;
+				inputValue.value = '';
+			}
+			action('submit')();
+		};
+
+		return {
+			args,
+			inputValue,
+			creditsClaimed,
+			creditsQuota,
+			handleSubmit,
+			onStop: methods.onStop,
+			onFocus: methods.onFocus,
+			onBlur: methods.onBlur,
+			onGetMoreCredits: methods.onGetMoreCredits,
+		};
+	},
+	template: `
+		<div style="max-width: 600px; margin: 20px;">
+			<div style="margin-bottom: 20px; padding: 20px; background: var(--color-background-base); border-radius: var(--border-radius-base);">
+				<h3 style="color: var(--color-text-dark); margin-bottom: 10px;">Credits Tracking Demo</h3>
+				<p style="color: var(--color-text-base); margin-bottom: 10px;">
+					Each message consumes 1 credit. Credits renew at the beginning of next month.
+				</p>
+				<p style="color: var(--color-text-light); font-size: var(--font-size-s);">
+					Credits used: {{ creditsClaimed }} / {{ creditsQuota }}
+				</p>
+			</div>
+			<n8n-prompt-input
+				v-bind="args"
+				v-model="inputValue"
+				:credits-quota="creditsQuota"
+				:credits-claimed="creditsClaimed"
+				@submit="handleSubmit"
+				@stop="onStop"
+				@focus="onFocus"
+				@blur="onBlur"
+				@get-more-credits="onGetMoreCredits"
+			/>
+		</div>
+	`,
+});
+
+export const CreditsInteractive: StoryFn = CreditsInteractiveTemplate.bind({});
+CreditsInteractive.args = {
+	placeholder: 'Type a message (uses 1 credit)...',
+	creditsQuota: 150,
+	creditsClaimed: 119,
+	plansPageUrl: 'https://n8n.io/pricing',
+};
+CreditsInteractive.storyName = 'Credits Interactive Demo';
