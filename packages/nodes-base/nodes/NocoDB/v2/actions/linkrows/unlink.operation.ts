@@ -122,6 +122,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				} else {
 					if (['string', 'number'].includes(typeof linkId)) {
 						body.push({ id: linkId });
+					} else {
+						body.push(linkId);
 					}
 				}
 			}
