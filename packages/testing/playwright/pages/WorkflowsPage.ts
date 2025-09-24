@@ -29,6 +29,14 @@ export class WorkflowsPage extends BasePage {
 		return this.page.getByTestId('new-workflow-card');
 	}
 
+	getEasyAiWorkflowCard() {
+		return this.page.getByTestId('easy-ai-workflow-card');
+	}
+
+	async clickEasyAiWorkflowCard() {
+		await this.clickByTestId('easy-ai-workflow-card');
+	}
+
 	async clearSearch() {
 		await this.clickByTestId('resources-list-search');
 		await this.page.getByTestId('resources-list-search').clear();
