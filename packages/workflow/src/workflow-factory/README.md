@@ -7,7 +7,7 @@ A TypeScript-first builder for programmatically creating n8n workflows with full
 ### Basic Webhook to Response Workflow
 
 ```typescript
-import { WorkflowFactory } from "n8n-workflow/factory"
+import { WorkflowFactory } from "n8n-workflow/workflow-factory"
 
 const workflow = WorkflowFactory
   .create({
