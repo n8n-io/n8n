@@ -19,7 +19,6 @@ import { UserService } from '@/services/user.service';
 
 import { AuthController } from '../auth.controller';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { before } from 'node:test';
 
 jest.mock('@/auth');
 
