@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 import { ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { DATA_TYPE_ICON_MAP } from '@/constants';
 
 export function useDataSchema() {
 	function getSchema(
@@ -293,18 +294,18 @@ export type RenderEmpty = {
 
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
-const icons: { [key: string]: IconName } = {
-	object: 'box',
-	array: 'list',
-	['string']: 'case-upper',
+const icons = {
+	object: DATA_TYPE_ICON_MAP.object,
+	array: DATA_TYPE_ICON_MAP.array,
+	['string']: DATA_TYPE_ICON_MAP.string,
 	null: 'case-upper',
-	['number']: 'hash',
-	['boolean']: 'square-check',
+	['number']: DATA_TYPE_ICON_MAP.number,
+	['boolean']: DATA_TYPE_ICON_MAP.boolean,
 	function: 'code',
 	bigint: 'calculator',
 	symbol: 'sun',
 	['undefined']: 'ban',
-} as const;
+} satisfies Record<string, IconName>;
 
 const getIconBySchemaType = (type: Schema['type']): IconName => icons[type];
 

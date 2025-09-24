@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -10,10 +11,12 @@ import {
 	TEST_NODE_MULTI_MODE,
 	TEST_NODE_SINGLE_MODE,
 	TEST_NODE_NO_CREDENTIALS,
+	TEST_NODE_URL_REDIRECT,
 	TEST_PARAMETER_ADD_RESOURCE,
 	TEST_PARAMETER_MULTI_MODE,
 	TEST_PARAMETER_SINGLE_MODE,
 	TEST_PARAMETER_SKIP_CREDENTIALS_CHECK,
+	TEST_PARAMETER_URL_REDIRECT,
 } from './ResourceLocator.test.constants';
 
 vi.mock('vue-router', async () => {
@@ -43,7 +46,11 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
+// Mock window.open
+vi.spyOn(window, 'open').mockImplementation(() => null);
+
 let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 const renderComponent = createComponentRenderer(ResourceLocator, {
 	props: {
@@ -74,6 +81,8 @@ describe('ResourceLocator', () => {
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ displayName: 'Test Node' });
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProjectId = 'test-project-123';
 	});
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -432,5 +441,35 @@ describe('ResourceLocator', () => {
 				},
 			],
 		]);
+	});
+
+	it('opens URL in new tab when add resource button is clicked with URL configuration', async () => {
+		const windowOpenSpy = vi.spyOn(window, 'open');
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_URL_REDIRECT,
+				path: `parameters.${TEST_PARAMETER_URL_REDIRECT.name}`,
+				node: TEST_NODE_URL_REDIRECT,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('rlc-input'));
+
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'/projects/test-project-123/datatables/new',
+			'_blank',
+		);
+
+		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
 	});
 });
