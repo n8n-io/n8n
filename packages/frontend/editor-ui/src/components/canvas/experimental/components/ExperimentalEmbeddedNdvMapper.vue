@@ -14,6 +14,7 @@ import {
 	useEventListener,
 } from '@vueuse/core';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
 
@@ -52,12 +53,14 @@ function handleFocusIn() {
 
 function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
 	if (
-		!(event.target instanceof Node && reference?.contains(event.target)) &&
-		!(event.target instanceof Node && contentElRef.value?.contains(event.target)) &&
-		!(event.relatedTarget instanceof Node && contentElRef.value?.contains(event.relatedTarget))
+		isEventTargetContainedBy(event.target, reference) ||
+		isEventTargetContainedBy(event.target, contentElRef) ||
+		isEventTargetContainedBy(event.relatedTarget, contentElRef)
 	) {
-		state.value = { isOpen: false };
+		return;
 	}
+
+	state.value = { isOpen: false };
 }
 
 watch(isHovered, (hovered) => {
