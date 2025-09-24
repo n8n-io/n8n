@@ -8,7 +8,7 @@ import type {
 import { WorkflowBuilderError } from './errors';
 import type { ConnectionOptions, ConnectOptions } from './types/connections';
 import type { SupportedNodeTypes, NodeParametersFor } from './types/factory';
-import type { WorkflowSettings } from './types/workflow';
+import type { WorkflowOpts } from './types/workflow';
 import { generateNodeId } from './utils/id-generator';
 import { calculateNextPosition } from './utils/positioning';
 
@@ -18,7 +18,7 @@ import { calculateNextPosition } from './utils/positioning';
 interface WorkflowFactoryState {
 	readonly nodes: Map<string, INode>;
 	readonly connections: Map<string, Array<{ target: string; options: ConnectionOptions }>>;
-	readonly settings: WorkflowSettings;
+	readonly settings: WorkflowOpts;
 }
 
 /**
@@ -53,7 +53,7 @@ export class WorkflowFactory<TNodeNames extends string = never> {
 	 * });
 	 * ```
 	 */
-	static create(settings?: WorkflowSettings, nodeIdGenerator?: () => string): WorkflowFactory {
+	static create(settings?: WorkflowOpts, nodeIdGenerator?: () => string): WorkflowFactory {
 		return new WorkflowFactory({ settings }, nodeIdGenerator);
 	}
 
@@ -69,7 +69,7 @@ export class WorkflowFactory<TNodeNames extends string = never> {
 	 *   .withSettings({ name: 'Updated Workflow', active: true });
 	 * ```
 	 */
-	withSettings(settings: WorkflowSettings): WorkflowFactory<TNodeNames> {
+	withSettings(settings: WorkflowOpts): WorkflowFactory<TNodeNames> {
 		const factory = this.clone();
 		Object.assign(factory.state.settings, settings);
 		return factory;

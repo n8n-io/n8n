@@ -1,3 +1,3 @@
 export type { SupportedNodeTypes, NodeParametersFor } from './factory';
-export type { WorkflowSettings } from './workflow';
+export type { WorkflowOpts } from './workflow';
 export type { ConnectionOptions, ConnectOptions } from './connections';

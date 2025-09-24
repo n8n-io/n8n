@@ -1,7 +1,7 @@
 /**
- * Workflow settings configuration
+ * Workflow configuration
  */
-export interface WorkflowSettings {
+export interface WorkflowOpts {
 	/** Workflow name */
 	name?: string;
 	/** Execution order version (default: v1) */
@@ -16,6 +16,4 @@ export interface WorkflowSettings {
 	timezone?: string;
 	/** Whether workflow is active (default: true) */
 	active?: boolean;
-	/** Whether to enable pin data */
-	pinData?: boolean;
 }
