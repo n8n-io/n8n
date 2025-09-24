@@ -63,7 +63,9 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 	});
 
 	const updateInterval = computed(() =>
-		(entries.value?.length ?? 0) > 1 ? LOGS_EXECUTION_DATA_THROTTLE_DURATION : 0,
+		(Object.keys(execData.value?.data?.resultData.runData ?? {}).length ?? 0) > 1
+			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
+			: 0,
 	);
 
 	function resetExecutionData() {
