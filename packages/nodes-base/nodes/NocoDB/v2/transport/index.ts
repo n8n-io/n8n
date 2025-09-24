@@ -103,10 +103,10 @@ export async function apiRequestAllItems(
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.offset += QUERY_LIMIT;
 		if (version === 4 && 'records' in responseData) {
-			returnData.push.apply(returnData, responseData.records.slice(0, QUERY_LIMIT));
+			returnData.push.apply(returnData, responseData.records);
 			continueFetch = !!responseData.next;
 		} else if ('list' in responseData) {
-			returnData.push.apply(returnData, responseData.list.slice(0, QUERY_LIMIT));
+			returnData.push.apply(returnData, responseData.list);
 			continueFetch = !responseData.pageInfo.isLastPage;
 		}
 	} while (continueFetch);
