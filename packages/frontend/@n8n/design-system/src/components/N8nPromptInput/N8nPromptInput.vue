@@ -192,7 +192,7 @@ defineExpose({
 			{
 				[$style.focused]: isFocused,
 				[$style.multiline]: isMultiline,
-				[$style.disabled]: disabled || streaming,
+				[$style.disabled]: disabled,
 			},
 		]"
 		:style="containerStyle"
@@ -209,7 +209,7 @@ defineExpose({
 				v-model="textValue"
 				:class="$style.singleLineTextarea"
 				:placeholder="placeholder"
-				:disabled="disabled || streaming"
+				:disabled="disabled"
 				:maxlength="maxLength"
 				rows="1"
 				@keydown="handleKeyDown"
@@ -241,7 +241,7 @@ defineExpose({
 					:class="$style.multilineTextarea"
 					:style="textareaStyle"
 					:placeholder="placeholder"
-					:disabled="disabled || streaming"
+					:disabled="disabled"
 					:maxlength="maxLength"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"

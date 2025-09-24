@@ -32,7 +32,7 @@ describe('N8nPromptInput', () => {
 			expect(textarea).toHaveAttribute('placeholder', 'Type your message here...');
 		});
 
-		it('should render streaming state', () => {
+		it('should render streaming state without disabling textarea', () => {
 			const { container } = renderComponent({
 				props: {
 					streaming: true,
@@ -42,7 +42,8 @@ describe('N8nPromptInput', () => {
 				},
 			});
 			const textarea = container.querySelector('textarea');
-			expect(textarea).toHaveAttribute('disabled');
+			// Textarea should NOT be disabled during streaming
+			expect(textarea).not.toHaveAttribute('disabled');
 			expect(container).toMatchSnapshot();
 		});
 	});

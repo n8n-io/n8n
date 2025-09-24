@@ -114,3 +114,59 @@ exports[`N8nPromptInput > rendering > should render streaming state 1`] = `
   </div>
 </div>
 `;
+
+exports[`N8nPromptInput > rendering > should render streaming state without disabling textarea 1`] = `
+<div>
+  <div
+    class="container"
+    style="min-height: 40px;"
+  >
+    <!-- Warning banner when character limit is reached -->
+    <!--v-if-->
+    <!-- Single line mode: input and button side by side -->
+    <div
+      class="singleLineWrapper"
+    >
+      <textarea
+        class="singleLineTextarea"
+        maxlength="1000"
+        placeholder=""
+        rows="1"
+      />
+      <div
+        class="inlineActions"
+      >
+        <button
+          aria-live="polite"
+          class="button button primary mini square stopButton stopButton"
+        >
+          <!--v-if-->
+          
+          <div
+            class="stopIcon"
+          >
+            <svg
+              fill="currentColor"
+              height="10"
+              overflow="hidden"
+              viewBox="0 0 10 10"
+              width="10"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                height="10"
+                rx="2"
+                ry="2"
+                width="10"
+                x="0"
+                y="0"
+              />
+            </svg>
+          </div>
+          
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
