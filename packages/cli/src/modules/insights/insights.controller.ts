@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { keyRangeToDays } from './insights.constants';
 import { InsightsService } from './insights.service';
 
 export class ForbiddenError extends Error {
@@ -46,12 +47,13 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
+		const { startDate, endDate } = this.getDefaultDateFilters(query);
 		this.validateStartEndDate(query);
 		this.getMaxAgeInDaysAndGranularity(query);
 
 		return await this.insightsService.getInsightsSummary({
-			startDate: query.startDate ?? this.getDefaultStartDate(query),
-			endDate: query.endDate,
+			startDate,
+			endDate,
 			projectId: query.projectId,
 		});
 	}
@@ -121,44 +123,60 @@ export class InsightsController {
 		})) as RestrictedInsightsByTime[];
 	}
 
-	private validateStartEndDate(payload: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		// TODO: allow the endDate to be empty. When startDate is not provided we'll consider that endDate is now
-		// TODO: validate that the startDate is in the past
+	private validateStartEndDate(dateFilters: { startDate?: Date; endDate?: Date }) {
+		const inThePast = (date?: Date) => !date || date <= new Date();
+		const dateInThePastSchema = z.coerce
+			.date()
+			.optional()
+			.refine(inThePast, { message: 'must be in the past' });
 
 		const schema = z
 			.object({
-				startDate: z.coerce.date().optional(),
-				endDate: z.coerce.date().optional(),
+				startDate: dateInThePastSchema,
+				endDate: dateInThePastSchema,
 			})
 			.refine(
 				(data) => {
-					if (data.startDate) {
-						return data.endDate && data.startDate <= data.endDate;
+					if (data.startDate && data.endDate) {
+						return data.startDate <= data.endDate;
 					}
 					return true;
 				},
 				{
-					message:
-						'endDate is required and must be after or equal to startDate when startDate is provided',
+					message: 'endDate must be the same as or after startDate',
 					path: ['endDate'],
 				},
 			);
 
-		const result = schema.safeParse(payload);
+		const result = schema.safeParse(dateFilters);
 		if (!result.success) {
 			throw new BadRequestError(result.error.errors.map(({ message }) => message).join(' '));
 		}
 	}
 
-	private getDefaultStartDate(query: InsightsDateFilterDto) {
+	/**
+	 * When the `startDate` is not provided, we default to the last 7 days.
+	 * When the `endDate` is not provided, we default to today.
+	 */
+	private getDefaultDateFilters(query: InsightsDateFilterDto): { startDate: Date; endDate: Date } {
+		const today = DateTime.now().startOf('day').toJSDate();
+
+		// For backward compatibility, if dateRange is provided it will take precedence over startDate and endDate
 		if (query.dateRange) {
-			const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
-			return DateTime.now()
-				.minus({ days: dateRangeAndMaxAgeInDays.maxAgeInDays })
-				.startOf('day')
-				.toJSDate();
+			const maxAgeInDays = keyRangeToDays[query.dateRange];
+			return {
+				startDate: DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate(),
+				endDate: today,
+			};
 		}
 
-		return DateTime.now().minus({ days: 7 }).startOf('day').toJSDate();
+		if (!query.startDate) {
+			return {
+				startDate: DateTime.now().minus({ days: 7 }).startOf('day').toJSDate(),
+				endDate: today,
+			};
+		}
+
+		return { startDate: query.startDate, endDate: query.endDate ?? today };
 	}
 }
