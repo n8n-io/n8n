@@ -307,9 +307,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const startRunData: IStartRunData = {
 				workflowData,
-				runData: !isPartialExecution
-					? undefined // if it's a full execution we don't want to send any run data
-					: (runData ?? undefined), // For partial execution, backend decides what run data to use and what to ignore.
+				runData: isPartialExecution
+					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
+					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
 			};
