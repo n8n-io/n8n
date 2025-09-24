@@ -428,6 +428,7 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	background-color: var(--color-background-light);
 }
 
 .header {
@@ -452,6 +453,7 @@ defineExpose({
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
+	border-bottom: 0;
 	position: relative;
 
 	pre,
@@ -471,6 +473,7 @@ defineExpose({
 	width: 100%;
 	height: 100%;
 	padding: var(--spacing-xs);
+	padding-bottom: var(--spacing-xl); // Extra padding for fade area
 	overflow-y: auto;
 
 	@supports not (selector(::-webkit-scrollbar)) {
@@ -543,11 +546,25 @@ defineExpose({
 }
 
 .inputWrapper {
-	padding: var(--spacing-xs);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
+	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	background-color: transparent;
 	width: 100%;
-	border-top: 0;
+	position: relative;
+	border-left: var(--border-base);
+	border-right: var(--border-base);
+
+	// Add a gradient fade from the chat to the input
+	&::before {
+		content: '';
+		position: absolute;
+		top: calc(-1 * var(--spacing-m));
+		left: 0;
+		right: var(--spacing-xs);
+		height: var(--spacing-m);
+		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		pointer-events: none;
+		z-index: 1;
+	}
 }
 
 .disabledInput {
