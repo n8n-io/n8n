@@ -144,7 +144,6 @@ describe('AiWorkflowBuilderService', () => {
 			(mockAgent.chat as jest.Mock).mockImplementation(async function* () {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
 			});
-			(MockedWorkflowBuilderAgent.generateThreadId as jest.Mock).mockReturnValue('test-thread-id');
 			return mockAgent;
 		});
 
@@ -546,7 +545,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(result.sessions).toHaveLength(1);
 			expect(result.sessions[0]).toMatchObject({
-				sessionId: 'test-thread-id',
+				sessionId: 'workflow-test-workflow-user-test-user-id',
 				lastUpdated: '2023-12-01T12:00:00Z',
 			});
 			expect(result.sessions[0].messages).toHaveLength(2);
@@ -658,7 +657,9 @@ describe('AiWorkflowBuilderService', () => {
 			const sessions = await service.getSessions(workflowId, mockUser);
 
 			expect(sessions.sessions).toHaveLength(1);
-			expect(sessions.sessions[0].sessionId).toBe('test-thread-id');
+			expect(sessions.sessions[0].sessionId).toBe(
+				'workflow-integration-test-workflow-user-test-user-id',
+			);
 		});
 	});
 });

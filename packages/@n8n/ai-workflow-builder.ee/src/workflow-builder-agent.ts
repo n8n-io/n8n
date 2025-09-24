@@ -24,6 +24,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
+import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
@@ -311,12 +312,6 @@ export class WorkflowBuilderAgent {
 		});
 	}
 
-	static generateThreadId(workflowId?: string, userId?: string) {
-		return workflowId
-			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
-			: crypto.randomUUID();
-	}
-
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
 		return (
 			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
@@ -361,7 +356,7 @@ export class WorkflowBuilderAgent {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,

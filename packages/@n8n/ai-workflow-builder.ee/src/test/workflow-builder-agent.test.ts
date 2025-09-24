@@ -134,35 +134,6 @@ describe('WorkflowBuilderAgent', () => {
 		agent = new WorkflowBuilderAgent(config);
 	});
 
-	describe('generateThreadId', () => {
-		beforeEach(() => {
-			mockRandomUUID.mockReset();
-		});
-
-		it('should generate thread ID with workflowId and userId', () => {
-			const workflowId = 'workflow-123';
-			const userId = 'user-456';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			expect(threadId).toBe('workflow-workflow-123-user-user-456');
-		});
-
-		it('should generate thread ID with workflowId but without userId', () => {
-			const workflowId = 'workflow-123';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId);
-			expect(threadId).toMatch(/^workflow-workflow-123-user-\d+$/);
-		});
-
-		it('should generate random UUID when no workflowId provided', () => {
-			const mockUuid = 'test-uuid-1234-5678-9012';
-			mockRandomUUID.mockReturnValue(mockUuid);
-
-			const threadId = WorkflowBuilderAgent.generateThreadId();
-
-			expect(mockRandomUUID).toHaveBeenCalled();
-			expect(threadId).toBe(mockUuid);
-		});
-	});
-
 	describe('chat method', () => {
 		let mockPayload: ChatPayload;
 
