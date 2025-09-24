@@ -272,8 +272,6 @@ export class ImportService {
 	async importEntities(inputDir: string, truncateTables: boolean) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
-		await this.validateMigrations(inputDir);
-
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 

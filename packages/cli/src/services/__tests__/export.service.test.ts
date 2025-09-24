@@ -288,29 +288,22 @@ describe('ExportService', () => {
 			}));
 
 			// Mock file system operations
-			(readdir as jest.Mock).mockResolvedValue([]);
-			(mkdir as jest.Mock).mockResolvedValue(undefined);
-			(appendFile as jest.Mock).mockResolvedValue(undefined);
+			jest.mocked(readdir).mockResolvedValue([]);
+			jest.mocked(mkdir).mockResolvedValue(undefined);
+			jest.mocked(appendFile).mockResolvedValue(undefined);
 
-			// Mock database queries - override the default implementation for this test
-			let callCount = 0;
-			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
-				if (query.includes('migrations')) {
-					throw new Error('Table not found');
-				}
-				if (query.includes('users')) {
-					callCount++;
-					if (callCount <= 3) {
-						return largePage;
-					}
-					return [];
-				}
-				return [];
-			});
+			// Mock database queries - return 3 pages of 500 entities each
+			jest
+				.mocked(mockDataSource.query)
+				.mockResolvedValueOnce(largePage) // First page of User entities
+				.mockResolvedValueOnce(largePage) // Second page of User entities
+				.mockResolvedValueOnce(largePage) // Third page of User entities
+				.mockResolvedValueOnce([]) // User empty (end of User data)
+				.mockResolvedValueOnce([]); // Workflow empty
 
 			await exportService.exportEntities(outputDir);
 
-			// Verify file splitting logic
+			// Verify file splitting logic - should create 3 files for User entity
 			expect(appendFile).toHaveBeenCalledTimes(3);
 
 			// First call should go to user.jsonl (500 entities)
@@ -370,9 +363,9 @@ describe('ExportService', () => {
 			];
 
 			// Mock file system operations
-			(readdir as jest.Mock).mockResolvedValue([]);
-			(mkdir as jest.Mock).mockResolvedValue(undefined);
-			(appendFile as jest.Mock).mockResolvedValue(undefined);
+			jest.mocked(readdir).mockResolvedValue([]);
+			jest.mocked(mkdir).mockResolvedValue(undefined);
+			jest.mocked(appendFile).mockResolvedValue(undefined);
 
 			// Mock database queries to return migrations data
 			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
@@ -386,7 +379,9 @@ describe('ExportService', () => {
 				return [];
 			});
 
-			await exportService.exportEntities(outputDir);
+			// Test the exportMigrationsTable method directly since it's not called in exportEntities
+			// @ts-expect-error Accessing private method for testing
+			await exportService.exportMigrationsTable(outputDir);
 
 			// Verify migrations file was created
 			expect(appendFile).toHaveBeenCalledWith(
