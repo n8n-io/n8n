@@ -14,15 +14,13 @@ export interface WebhookNodeParametersV2_1 {
 		noResponseBody?: boolean;
 		/** Whether to ignore bot requests */
 		ignoreBots?: boolean;
-		/** Whether to handle binary data */
-		binaryData?: boolean;
 		/** Whether to receive raw body data */
 		rawBody?: boolean;
 	};
 	/** Authentication method */
 	authentication?: 'none' | 'basicAuth' | 'headerAuth';
 	/** How to handle the response */
-	responseMode?: 'onReceived' | 'lastNode' | 'responseNode';
+	responseMode?: 'onReceived' | 'lastNode' | 'responseNode' | 'streaming';
 }
 
 /**
