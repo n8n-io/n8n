@@ -22,6 +22,8 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
+	hideLabel?: boolean;
+	size?: 'small' | 'medium' | 'large';
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
 
@@ -77,13 +79,13 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		<KeyboardShortcutTooltip
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
-			:disabled="executing"
+			:disabled="executing || hideLabel"
 		>
 			<N8nButton
 				:class="$style.button"
 				:loading="executing"
 				:disabled="disabled"
-				size="large"
+				:size="size ?? 'large'"
 				icon="flask-conical"
 				type="primary"
 				data-test-id="execute-workflow-button"

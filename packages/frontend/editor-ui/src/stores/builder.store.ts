@@ -27,6 +27,9 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useCredentialsStore } from './credentials.store';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -45,6 +48,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
+
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -370,6 +376,48 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	function setDefaultNodesCredentials(workflowData: WorkflowDataUpdate) {
+		// Set default credentials for new nodes if available
+		workflowData.nodes?.forEach((node) => {
+			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
+			if (hasCredentials) {
+				return;
+			}
+
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Try to find and set the first available credential
+			for (const credentialConfig of nodeType.credentials) {
+				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
+				// No credentials of this type exist, try the next one
+				if (!credentials || credentials.length === 0) {
+					continue;
+				}
+
+				// Found valid credentials - set them and exit the loop
+				const credential = credentials[0];
+
+				node.credentials = {
+					[credential.type]: {
+						id: credential.id,
+						name: credential.name,
+					},
+				};
+
+				const authField = getMainAuthField(nodeType);
+				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
+				if (authField && authType) {
+					node.parameters[authField.name] = authType.value;
+				}
+
+				break; // Exit loop after setting the first valid credential
+			}
+		});
+	}
+
 	function applyWorkflowUpdate(workflowJson: string) {
 		let workflowData: WorkflowDataUpdate;
 		try {
@@ -414,6 +462,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				return node;
 			});
 		}
+
+		setDefaultNodesCredentials(workflowData);
 
 		return {
 			success: true,

@@ -11,6 +11,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import ExecuteMessage from './ExecuteMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -38,7 +39,16 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
-
+const showExecuteMessage = computed(() => {
+	const builderUpdatedWorkflow = builderStore.chatMessages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	return (
+		!builderStore.streaming &&
+		workflowsStore.workflow.nodes.length > 0 &&
+		builderUpdatedWorkflow > -1
+	);
+});
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 
@@ -102,6 +112,10 @@ function trackWorkflowModifications() {
 
 		workflowUpdated.value = undefined;
 	}
+}
+
+function onWorkflowExecuted() {
+	builderStore.sendChatMessage({ text: 'Workflow executed' });
 }
 
 // Watch for workflow updates and apply them
@@ -199,6 +213,9 @@ watch(currentRoute, () => {
 		>
 			<template #header>
 				<slot name="header" />
+			</template>
+			<template #messagesFooter>
+				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
 				<n8n-text :class="$style.topText">{{
