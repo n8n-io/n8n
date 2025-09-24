@@ -31,7 +31,13 @@ import * as apiUtils from '@n8n/rest-api-client';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
-import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
@@ -657,7 +663,90 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('updateNodeExecutionData', () => {
+	describe('updateNodeExecutionRunData', () => {
+		beforeEach(() => {
+			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+				id: 'test-execution',
+				data: {
+					resultData: {
+						runData: {
+							n0: [
+								createTestTaskData({
+									executionIndex: 0,
+									executionStatus: 'success',
+									executionTime: 33,
+								}),
+								createTestTaskData({
+									executionIndex: 1,
+									executionStatus: 'success',
+									executionTime: 44,
+								}),
+								createTestTaskData({
+									executionIndex: 2,
+									executionStatus: 'running',
+									executionTime: undefined,
+								}),
+							],
+						},
+					},
+				},
+			});
+		});
+
+		it('should replace run data at the matched index in the execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 2,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('success');
+			expect(runData?.[2].executionTime).toBe(100);
+		});
+
+		it('should not modify execution data if there is no matched index in execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 3,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('running');
+			expect(runData?.[2].executionTime).toBe(undefined);
+		});
+	});
+
+	describe('updateNodeExecutionStatus', () => {
 		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
 		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
 		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
@@ -670,7 +759,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should throw error if not initialized', () => {
-			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
+			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).toThrowError();
 		});
 
 		it('should add node success run data', () => {
@@ -681,7 +770,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -710,7 +799,7 @@ describe('useWorkflowsStore', () => {
 			getNodeType.mockReturnValue(getMockEditFieldsNode());
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(errorEvent);
+			workflowsStore.updateNodeExecutionStatus(errorEvent);
 			await flushPromises();
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
@@ -793,7 +882,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
@@ -806,6 +895,7 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 		});
+
 		it('should replace existing placeholder task data in new log view', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
@@ -846,7 +936,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEventWithExecutionIndex);
+			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -1495,6 +1585,68 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
 			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
+		});
+	});
+
+	describe('markExecutionAsStopped', () => {
+		beforeEach(() => {
+			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+				status: 'running',
+				startedAt: new Date('2023-01-01T09:00:00Z'),
+				stoppedAt: undefined,
+				data: {
+					resultData: {
+						runData: {
+							node1: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'running' }),
+							],
+							node2: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'waiting' }),
+							],
+						},
+					},
+				},
+			});
+		});
+
+		it('should remove non successful node runs', () => {
+			workflowsStore.markExecutionAsStopped();
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+			expect(runData?.node1).toHaveLength(1);
+			expect(runData?.node1[0].executionStatus).toBe('success');
+			expect(runData?.node2).toHaveLength(1);
+			expect(runData?.node2[0].executionStatus).toBe('success');
+		});
+
+		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
+			workflowsStore.markExecutionAsStopped({
+				status: 'canceled',
+				startedAt: new Date('2023-01-01T10:00:00Z'),
+				stoppedAt: new Date('2023-01-01T10:05:00Z'),
+				mode: 'manual',
+			});
+
+			expect(workflowsStore.workflowExecutionData?.status).toBe('canceled');
+			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
+				new Date('2023-01-01T10:00:00Z'),
+			);
+			expect(workflowsStore.workflowExecutionData?.stoppedAt).toEqual(
+				new Date('2023-01-01T10:05:00Z'),
+			);
+		});
+
+		it('should not update execution data when stopData is not provided', () => {
+			workflowsStore.markExecutionAsStopped();
+
+			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
+			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
+				new Date('2023-01-01T09:00:00Z'),
+			);
+			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
 		});
 	});
 });
