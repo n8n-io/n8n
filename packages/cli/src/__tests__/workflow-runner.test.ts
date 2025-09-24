@@ -161,7 +161,6 @@ describe('run', () => {
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
-			runData: {},
 		});
 
 		// ACT
