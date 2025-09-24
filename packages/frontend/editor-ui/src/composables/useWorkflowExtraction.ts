@@ -89,6 +89,7 @@ export function useWorkflowExtraction() {
 		name: string,
 		position: [number, number],
 		variables: Map<string, string>,
+		forcePassthrough: boolean,
 	): Omit<INode, 'id'> {
 		return {
 			parameters: {
@@ -100,19 +101,21 @@ export function useWorkflowExtraction() {
 				workflowInputs: {
 					mappingMode: 'defineBelow',
 					value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
-					matchingColumns: [...variables.keys()],
-					schema: [
-						...variables.keys().map((x) => ({
-							id: x,
-							displayName: x,
-							required: false,
-							defaultMatch: false,
-							display: true,
-							canBeUsedToMatch: true,
-							removed: false,
-							// omitted type implicitly uses our `any` type
-						})),
-					],
+					matchingColumns: forcePassthrough ? [] : [...variables.keys()],
+					schema: forcePassthrough
+						? []
+						: [
+								...variables.keys().map((x) => ({
+									id: x,
+									displayName: x,
+									required: false,
+									defaultMatch: false,
+									display: true,
+									canBeUsedToMatch: true,
+									removed: false,
+									// omitted type implicitly uses our `any` type
+								})),
+							],
 					attemptToConvertTypes: false,
 					convertFieldsToString: true,
 				},
@@ -495,6 +498,7 @@ export function useWorkflowExtraction() {
 			executeWorkflowNodeName,
 			executeWorkflowPosition,
 			variables,
+			forcePassthrough,
 		);
 		await replaceSelectionWithNode(
 			executeWorkflowNode,
