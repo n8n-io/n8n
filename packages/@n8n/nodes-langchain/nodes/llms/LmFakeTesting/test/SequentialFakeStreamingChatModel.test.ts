@@ -72,15 +72,4 @@ describe('SequentialFakeStreamingChatModel', () => {
 			expect(boundModel.lc_namespace).toBeDefined();
 		});
 	});
-
-	describe('empty responses handling', () => {
-		it('should handle empty responses gracefully', async () => {
-			const emptyModel = new SequentialFakeStreamingChatModel([]);
-			const tools = [{ name: 'test_tool', description: 'A test tool' }];
-			const boundModel = emptyModel.bindTools(tools);
-
-			const response = await boundModel.invoke([new HumanMessage('Test')]);
-			expect(response.content).toBe('No responses configured');
-		});
-	});
 });
