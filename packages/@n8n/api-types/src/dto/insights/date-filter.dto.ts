@@ -10,5 +10,7 @@ const dateRange = z.enum(VALID_DATE_RANGE_OPTIONS).optional();
 
 export class InsightsDateFilterDto extends Z.class({
 	dateRange,
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
 	projectId: z.string().optional(),
 }) {}
