@@ -48,10 +48,10 @@ describe(useLogsExecutionData, () => {
 			expect(entries.value).toHaveLength(0);
 		});
 
-		it('should calculate entries if isEnabled is true', () => {
+		it('should calculate entries if isEnabled is true', async () => {
 			const { entries } = useLogsExecutionData(computed(() => true));
 
-			expect(entries.value).toHaveLength(1);
+			await waitFor(() => expect(entries.value).toHaveLength(1));
 		});
 	});
 
@@ -102,7 +102,7 @@ describe(useLogsExecutionData, () => {
 
 			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
-			expect(entries.value).toHaveLength(2);
+			await waitFor(() => expect(entries.value).toHaveLength(2));
 			expect(entries.value[1].children).toHaveLength(0);
 
 			await loadSubExecution(entries.value[1]);
@@ -133,6 +133,7 @@ describe(useLogsExecutionData, () => {
 
 			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
+			await waitFor(() => expect(entries.value).toHaveLength(2));
 			await loadSubExecution(entries.value[1]);
 
 			vi.advanceTimersByTime(1000);
