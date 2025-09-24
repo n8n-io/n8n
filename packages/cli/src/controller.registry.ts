@@ -41,10 +41,11 @@ export class ControllerRegistry {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
-		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
-			.replace(/\/+/g, '/')
-			.replace(/\/$/, '');
-		app.use(prefix, router);
+		const basePath = metadata.registerOnRootPath
+			? metadata.basePath
+			: `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`;
+		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
+		app.use(prefix === '' ? '/' : prefix, router);
 
 		const controller = Container.get(controllerClass) as Controller;
 		const controllerMiddlewares = metadata.middlewares.map(
