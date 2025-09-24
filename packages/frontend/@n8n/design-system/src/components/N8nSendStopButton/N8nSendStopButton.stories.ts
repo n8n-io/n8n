@@ -43,9 +43,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 				@send="onSend"
 				@stop="onStop"
 			/>
-			<span style="color: var(--color-text-base)">
-				{{ args.streaming ? 'Stop button (streaming)' : 'Send button' }}
-			</span>
 		</div>
 	`,
 	methods,
