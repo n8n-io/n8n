@@ -446,7 +446,6 @@ describe('SourceControlService', () => {
 		});
 
 		it('should reset the preferences', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'feature-branch',
@@ -455,10 +454,8 @@ describe('SourceControlService', () => {
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
 
-			// ACT
 			const result = await sourceControlService.disconnect();
 
-			// ASSERT
 			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
 				branchName: '',
@@ -469,7 +466,6 @@ describe('SourceControlService', () => {
 		});
 
 		it('should delete the repository folder', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'main',
@@ -478,15 +474,12 @@ describe('SourceControlService', () => {
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
 
-			// ACT
 			await sourceControlService.disconnect();
 
-			// ASSERT
 			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalledTimes(1);
 		});
 
 		it('should delete the HTTPS credentials when connection type is HTTPS', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'main',
@@ -495,15 +488,12 @@ describe('SourceControlService', () => {
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
 
-			// ACT
 			await sourceControlService.disconnect();
 
-			// ASSERT
 			expect(preferencesService.deleteHttpsCredentials).toHaveBeenCalledTimes(1);
 		});
 
 		it('should delete the SSH key pair when connection type is SSH and keepKeyPair is false', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'main',
@@ -512,15 +502,12 @@ describe('SourceControlService', () => {
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
 
-			// ACT
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
-			// ASSERT
 			expect(preferencesService.deleteKeyPair).toHaveBeenCalledTimes(1);
 		});
 
 		it('should not delete the SSH key pair when connection type is SSH and keepKeyPair is true', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'main',
@@ -529,15 +516,12 @@ describe('SourceControlService', () => {
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
 
-			// ACT
 			await sourceControlService.disconnect({ keepKeyPair: true });
 
-			// ASSERT
 			expect(preferencesService.deleteKeyPair).not.toHaveBeenCalled();
 		});
 
 		it('should set git client to null', async () => {
-			// ARRANGE
 			const mockPreferences = {
 				connected: true,
 				branchName: 'main',
