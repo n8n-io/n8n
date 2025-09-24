@@ -120,7 +120,6 @@ const onHeaderClick = () => {
 };
 const onShowFilter = (e: MouseEvent) => {
 	e.stopPropagation();
-	if (!isFilterable.value) return;
 	isFilterOpen.value = true;
 	props.params.showFilter(e.currentTarget as HTMLElement);
 };
