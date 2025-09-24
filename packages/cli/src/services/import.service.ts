@@ -17,12 +17,30 @@ import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 
 @Service()
 export class ImportService {
 	private dbCredentials: ICredentialsDb[] = [];
 
 	private dbTags: TagEntity[] = [];
+
+	private foreignKeyCommands: Record<'enable' | 'disable', Record<string, string>> = {
+		disable: {
+			sqlite: 'PRAGMA foreign_keys = OFF;',
+			'sqlite-pooled': 'PRAGMA foreign_keys = OFF;',
+			'sqlite-memory': 'PRAGMA foreign_keys = OFF;',
+			postgres: 'SET session_replication_role = replica;',
+			postgresql: 'SET session_replication_role = replica;',
+		},
+		enable: {
+			sqlite: 'PRAGMA foreign_keys = ON;',
+			'sqlite-pooled': 'PRAGMA foreign_keys = ON;',
+			'sqlite-memory': 'PRAGMA foreign_keys = ON;',
+			postgres: 'SET session_replication_role = DEFAULT;',
+			postgresql: 'SET session_replication_role = DEFAULT;',
+		},
+	};
 
 	constructor(
 		private readonly logger: Logger,
@@ -100,44 +118,6 @@ export class ImportService {
 	}
 
 	/**
-	 * Generate SQL command to disable foreign key constraints for the specified database type
-	 * @param dbType - Database type ('sqlite' or 'postgres')
-	 * @returns SQL command string to disable foreign key constraints
-	 */
-	generateForeignKeyDisableCommand(dbType: string): string {
-		switch (dbType.toLowerCase()) {
-			case 'sqlite':
-			case 'sqlite-pooled':
-			case 'sqlite-memory':
-				return 'PRAGMA foreign_keys = OFF;';
-			case 'postgres':
-			case 'postgresql':
-				return 'SET session_replication_role = replica;';
-			default:
-				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
-	}
-
-	/**
-	 * Generate SQL command to enable foreign key constraints for the specified database type
-	 * @param dbType - Database type ('sqlite' or 'postgres')
-	 * @returns SQL command string to enable foreign key constraints
-	 */
-	generateForeignKeyEnableCommand(dbType: string): string {
-		switch (dbType.toLowerCase()) {
-			case 'sqlite':
-			case 'sqlite-pooled':
-			case 'sqlite-memory':
-				return 'PRAGMA foreign_keys = ON;';
-			case 'postgres':
-			case 'postgresql':
-				return 'SET session_replication_role = DEFAULT;';
-			default:
-				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
-	}
-
-	/**
 	 * Check if a table is empty (has no rows)
 	 * @param tableName - Name of the table to check
 	 * @returns Promise that resolves to true if table is empty, false otherwise
@@ -201,17 +181,7 @@ export class ImportService {
 	async truncateEntityTable(tableName: string, transactionManager: EntityManager): Promise<void> {
 		this.logger.info(`🗑️  Truncating table: ${tableName}`);
 
-		const dbType = this.dataSource.options.type;
-
-		if (
-			['sqlite', 'sqlite-pooled', 'sqlite-memory', 'postgres', 'postgresql'].includes(
-				dbType.toLowerCase(),
-			)
-		) {
-			await transactionManager.createQueryBuilder().delete().from(tableName, tableName).execute();
-		} else {
-			throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
+		await transactionManager.createQueryBuilder().delete().from(tableName, tableName).execute();
 
 		this.logger.info(`   ✅ Table ${tableName} truncated successfully`);
 	}
@@ -312,6 +282,8 @@ export class ImportService {
 	}
 
 	async importEntities(inputDir: string, truncateTables: boolean) {
+		validateDbTypeForImportEntities(this.dataSource.options.type);
+
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 
@@ -431,14 +403,28 @@ export class ImportService {
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {
-		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
+		const disableCommand = this.foreignKeyCommands.disable[this.dataSource.options.type];
+
+		if (!disableCommand) {
+			throw new Error(
+				`Unsupported database type: ${this.dataSource.options.type}. Supported types: sqlite, postgres`,
+			);
+		}
+
 		this.logger.debug(`Executing: ${disableCommand}`);
 		await transactionManager.query(disableCommand);
 		this.logger.info('✅ Foreign key constraints disabled');
 	}
 
 	async enableForeignKeyConstraints(transactionManager: EntityManager) {
-		const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
+		const enableCommand = this.foreignKeyCommands.enable[this.dataSource.options.type];
+
+		if (!enableCommand) {
+			throw new Error(
+				`Unsupported database type: ${this.dataSource.options.type}. Supported types: sqlite, postgres`,
+			);
+		}
+
 		this.logger.debug(`Executing: ${enableCommand}`);
 		await transactionManager.query(enableCommand);
 		this.logger.info('✅ Foreign key constraints re-enabled');

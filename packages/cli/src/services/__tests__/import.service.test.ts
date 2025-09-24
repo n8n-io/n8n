@@ -47,82 +47,6 @@ describe('ImportService', () => {
 		);
 	});
 
-	describe('generateForeignKeyDisableCommand', () => {
-		it('should generate correct SQLite disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct SQLite pooled disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite-pooled');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct SQLite memory disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite-memory');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct PostgreSQL disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('postgres');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should generate correct PostgreSQL disable command with postgresql variant', () => {
-			const result = importService.generateForeignKeyDisableCommand('postgresql');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should handle case insensitive database types', () => {
-			const result = importService.generateForeignKeyDisableCommand('POSTGRES');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should throw error for unsupported database types', () => {
-			expect(() => {
-				importService.generateForeignKeyDisableCommand('mysql');
-			}).toThrow('Unsupported database type: mysql. Supported types: sqlite, postgres');
-		});
-	});
-
-	describe('generateForeignKeyEnableCommand', () => {
-		it('should generate correct SQLite enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct SQLite pooled enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite-pooled');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct SQLite memory enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite-memory');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct PostgreSQL enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('postgres');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should generate correct PostgreSQL enable command with postgresql variant', () => {
-			const result = importService.generateForeignKeyEnableCommand('postgresql');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should handle case insensitive database types', () => {
-			const result = importService.generateForeignKeyEnableCommand('POSTGRES');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should throw error for unsupported database types', () => {
-			expect(() => {
-				importService.generateForeignKeyEnableCommand('mysql');
-			}).toThrow('Unsupported database type: mysql. Supported types: sqlite, postgres');
-		});
-	});
-
 	describe('isTableEmpty', () => {
 		it('should return true for empty table', async () => {
 			const mockQueryBuilder = {
@@ -302,12 +226,17 @@ describe('ImportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('   ✅ Table workflows truncated successfully');
 		});
 
-		it('should throw error for unsupported database types', async () => {
-			// @ts-expect-error Protected property
-			mockDataSource.options = { type: 'mysql' };
+		it('should handle database errors gracefully', async () => {
+			const mockQueryBuilder = {
+				delete: jest.fn().mockReturnThis(),
+				from: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+			};
+
+			mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
 
 			await expect(importService.truncateEntityTable('users', mockEntityManager)).rejects.toThrow(
-				'Unsupported database type: mysql. Supported types: sqlite, postgres',
+				'Database connection failed',
 			);
 		});
 	});
