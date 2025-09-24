@@ -514,5 +514,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		applyWorkflowUpdate,
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
+		generatePlansPageUrl,
 	};
 });
