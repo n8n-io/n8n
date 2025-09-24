@@ -100,9 +100,12 @@ export class WorkflowApiHelper {
 	 */
 	async createWorkflowFromDefinition(
 		workflow: ImportableWorkflow,
-		options?: { webhookPrefix?: string; idLength?: number },
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const { webhookPath, webhookId } = this.makeWorkflowUnique(workflow, options);
+		const { makeUnique = true, ...rest } = options ?? {};
+		const { webhookPath, webhookId } = makeUnique
+			? this.makeWorkflowUnique(workflow, rest)
+			: { webhookPath: undefined, webhookId: undefined };
 		const createdWorkflow = await this.createWorkflow(workflow);
 		const workflowId: string = String(createdWorkflow.id);
 
@@ -121,7 +124,7 @@ export class WorkflowApiHelper {
 	 */
 	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number },
+		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const workflowDefinition: ImportableWorkflow = JSON.parse(
 			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),

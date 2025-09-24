@@ -20,7 +20,7 @@ export class TestEntryComposer {
 	 */
 	async fromBlankCanvas() {
 		await this.n8n.goHome();
-		await this.n8n.workflows.clickAddWorkflowButton();
+		await this.n8n.workflows.addResource.workflow();
 		// Verify we're on canvas
 		await this.n8n.canvas.canvasPane().isVisible();
 	}
