@@ -10,19 +10,21 @@ const props = defineProps<{
 	item: IMenuItem;
 	empty?: boolean;
 	level?: number;
-	click?: () => void;
-	mouseenter?: () => void;
 	open?: boolean;
 	ariaLabel?: string;
 }>();
 
+const emit = defineEmits<{
+	onClick: [];
+	mouseEnter: [];
+}>();
+
 function click(event: MouseEvent) {
+	console.log(event);
 	event.stopPropagation();
 	event.preventDefault();
-
-	if (typeof props.click === 'function') {
-		props.click();
-	}
+	console.log('click');
+	emit('onClick');
 }
 
 const to = computed(() => {
@@ -45,7 +47,7 @@ const icon = computed<IconName>(() => {
 </script>
 
 <template>
-	<div class="sidebarItemWrapper" @mouseenter="mouseenter">
+	<div class="sidebarItemWrapper" @mouseenter="emit('mouseEnter')">
 		<span
 			class="sidebarItemIdent"
 			v-if="level && level > 1"

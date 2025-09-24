@@ -14,19 +14,19 @@ const props = defineProps<{
 	topItems: IMenuElement[];
 	projectItems: IMenuElement[];
 	canCreateProject: boolean;
-	openProject: (id: string) => Promise<void>;
-	openFolder: (folderId: string) => Promise<void>;
 	showProjects: boolean;
 	bottomItems?: IMenuElement[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	helpItems: IMenuElement[];
-	handleSelect?: (key: string) => void;
 }>();
 
-defineEmits<{
-	createProject: void;
-	logout: void;
+const emit = defineEmits<{
+	createProject: [];
+	openProject: [id: string];
+	openFolder: [id: string];
+	handleSelect: [id: string];
+	logout: [];
 }>();
 
 const {
@@ -118,19 +118,23 @@ const {
 			:style="{ width: `${sidebarWidth}px` }"
 			@mouseleave="peakMouseOver"
 		>
-			<SidebarTree :items="topItems" :open-project="openProject" :open-folder="openFolder" />
+			<SidebarTree
+				:items="topItems"
+				@open-project="(id) => emit('openProject', id)"
+				@open-folder="(id) => emit('openFolder', id)"
+			/>
 			<template v-if="showProjects">
 				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
 				<SidebarProjectsEmpty
 					v-if="projectItems.length === 0"
 					:can-create="canCreateProject"
-					@create-project="$emit('createProject')"
+					@create-project="emit('createProject')"
 				/>
 				<template v-else>
 					<SidebarTree
 						:items="projectItems"
-						:open-project="openProject"
-						:open-folder="openFolder"
+						@open-project="(id) => emit('openProject', id)"
+						@open-folder="(id) => emit('openFolder', id)"
 					/>
 				</template>
 			</template>
@@ -139,7 +143,7 @@ const {
 					v-for="item in bottomItems"
 					:key="item.id"
 					:item="item as IMenuItem"
-					@click="handleSelect ? handleSelect(item.id) : undefined"
+					@on-click="emit('handleSelect', item.id)"
 					:level="1"
 				/>
 				<N8nPopoverReka
@@ -183,7 +187,7 @@ const {
 									<SidebarItem
 										v-else
 										:item="subItem"
-										@click="handleSelect ? handleSelect(subItem.id) : undefined"
+										@on-click="emit('handleSelect', subItem.id)"
 										:ariaLabel="`Go to ${subItem.label}`"
 									/>
 								</div>

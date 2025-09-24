@@ -6,9 +6,20 @@ import N8nText from '../N8nText';
 
 defineProps<{
 	items: IMenuElement[];
-	openProject?: (id: string) => Promise<void>;
-	openFolder?: (id: string) => Promise<void>;
 }>();
+
+const emit = defineEmits<{
+	openProject: [id: string];
+	openFolder: [id: string];
+}>();
+
+function mouseEnterItem(item: IMenuItem) {
+	if (item.type === 'project') {
+		emit('openProject', item.id);
+	} else if (item.type === 'folder') {
+		emit('openFolder', item.id);
+	}
+}
 </script>
 
 <template>
@@ -31,21 +42,18 @@ defineProps<{
 				</div>
 				<SidebarItem
 					v-else
-					:item="item.value as IMenuItem"
-					:key="item.value.id"
-					:mouseenter="
-						async () => {
-							if (item.value.type === 'project' && openProject) {
-								await openProject(item.value.id);
-							} else if (item.value.type === 'folder' && openFolder) {
-								await openFolder(item.value.id);
-							}
+					@mouse-enter="mouseEnterItem(item.value as IMenuItem)"
+					@on-click="
+						() => {
+							console.log('clicked tree');
+							handleToggle();
 						}
 					"
-					:click="() => handleToggle()"
+					:key="item.value.id"
 					:open="isExpanded"
 					:level="item.level"
 					:ariaLabel="`Open ${item.value.label}`"
+					:item="item.value as IMenuItem"
 				/>
 			</TreeItem>
 		</TreeVirtualizer>
