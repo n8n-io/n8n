@@ -382,9 +382,6 @@ watch(connectionType, () => {
 						</template>
 					</I18nT>
 				</n8n-notice>
-				<n8n-notice type="info" class="mt-s">
-					{{ locale.baseText('settings.sourceControl.httpsCredentialsNotice') }}
-				</n8n-notice>
 			</div>
 
 			<div
