@@ -56,7 +56,7 @@ export class CanvasComposer {
 	 */
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.page.getByTestId('menu-item').first().click();
-		await this.n8n.page.getByTestId('resources-list-item-workflow').first().click();
+		await this.n8n.workflows.cards.getWorkflows().first().click();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}

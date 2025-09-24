@@ -3,19 +3,28 @@ import type { TestRequirements } from '../../Types';
 
 const aiDisabledRequirements: TestRequirements = {
 	config: {
+		settings: {
+			aiAssistant: { enabled: false, setup: false },
+		},
 		features: { aiAssistant: false },
 	},
 };
 
 const aiEnabledRequirements: TestRequirements = {
 	config: {
-		features: { aiAssistant: true },
+		settings: {
+			aiAssistant: { enabled: true, setup: true },
+		},
+		features: { aiAssistant: true, setup: true },
 	},
 };
 
 const aiEnabledWithWorkflowRequirements: TestRequirements = {
 	config: {
-		features: { aiAssistant: true },
+		settings: {
+			aiAssistant: { enabled: true, setup: true },
+		},
+		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {
 		'ai_assistant_test_workflow.json': 'AI_Assistant_Test_Workflow',
@@ -39,6 +48,9 @@ const aiEnabledWithWorkflowRequirements: TestRequirements = {
 
 const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 	config: {
+		settings: {
+			aiAssistant: { enabled: true, setup: true },
+		},
 		features: { aiAssistant: true },
 	},
 	workflow: {
@@ -73,6 +85,9 @@ const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 
 const aiEnabledWithEndSessionRequirements: TestRequirements = {
 	config: {
+		settings: {
+			aiAssistant: { enabled: true, setup: true },
+		},
 		features: { aiAssistant: true },
 	},
 	workflow: {
