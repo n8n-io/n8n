@@ -84,7 +84,7 @@ function onRefreshSession() {
 	emit('refreshSession');
 }
 
-function onArrowKey({ currentInputValue, key }: ArrowKeyDownPayload) {
+function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 	const pastMessages = props.pastChatMessages;
 
 	// Exit if no messages
@@ -250,7 +250,7 @@ async function copySessionId() {
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
-				@arrow-key-down="onArrowKey"
+				@arrow-key-down="onArrowKeyDown"
 				@escape-key-down="onEscapeKey"
 			>
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
@@ -262,7 +262,7 @@ async function copySessionId() {
 							text
 							size="mini"
 							:disabled="previousMessageIndex === 0"
-							@click="onArrowKey({ currentInputValue: '', key: 'ArrowUp' })"
+							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
 						<N8nButton
 							title="Navigate to next message"
@@ -271,7 +271,7 @@ async function copySessionId() {
 							text
 							size="mini"
 							:disabled="previousMessageIndex === -1"
-							@click="onArrowKey({ currentInputValue: '', key: 'ArrowDown' })"
+							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
 						/>
 					</div>
 				</template>
