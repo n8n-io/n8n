@@ -73,11 +73,11 @@ test.describe('04 - Credentials', () => {
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(uniqueCredentialName);
 	});
 
-	test('add an existing credential from the NDV', async ({ n8n, api }) => {
+	test('add an existing credential from the NDV', async ({ n8n }) => {
 		const uniqueCredentialName = `credential-${nanoid()}`;
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: uniqueCredentialName,
 			type: 'notionApi',
 			data: {
