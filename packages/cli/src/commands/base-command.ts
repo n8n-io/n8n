@@ -124,8 +124,6 @@ export abstract class BaseCommand<F = never> {
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance
 		await Container.get(AuthRolesService).init();
 
-		Container.get(DeprecationService).warn();
-
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
