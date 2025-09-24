@@ -246,7 +246,7 @@ export async function v0200Execute(this: IExecuteFunctions): Promise<INodeExecut
 					}
 
 					if (qs.shuffle) {
-						qs.shuffle = Number(qs.shuffle);
+						qs.shuffle = 1;
 					}
 
 					if (returnAll) {
