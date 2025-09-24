@@ -353,7 +353,7 @@ export const CreditsInteractive: StoryFn = CreditsInteractiveTemplate.bind({});
 CreditsInteractive.args = {
 	placeholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
-	creditsClaimed: 119,
+	creditsClaimed: 148,
 	plansPageUrl: 'https://n8n.io/pricing',
 };
 CreditsInteractive.storyName = 'Credits Interactive Demo';

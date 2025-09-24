@@ -82,7 +82,11 @@ const creditsRemaining = computed(() => {
 });
 
 const showCredits = computed(() => {
-	return props.creditsQuota !== undefined && props.creditsClaimed !== undefined;
+	return (
+		props.creditsQuota !== undefined &&
+		props.creditsClaimed !== undefined &&
+		props.creditsQuota !== -1
+	);
 });
 
 const creditsInfo = computed(() => {

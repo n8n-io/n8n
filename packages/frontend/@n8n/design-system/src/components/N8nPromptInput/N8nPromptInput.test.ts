@@ -469,6 +469,54 @@ describe('N8nPromptInput', () => {
 		});
 	});
 
+	describe('credits bar', () => {
+		it('should hide credit bar when quota is -1', () => {
+			const { container } = renderComponent({
+				props: {
+					creditsQuota: -1,
+					creditsClaimed: 0,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			// Credit bar should not be rendered
+			const creditsBar = container.querySelector('.creditsBar');
+			expect(creditsBar).toBeFalsy();
+		});
+
+		it('should show credit bar when quota is a valid positive number', () => {
+			const { container } = renderComponent({
+				props: {
+					creditsQuota: 100,
+					creditsClaimed: 20,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			// Credit bar should be rendered
+			const creditsBar = container.querySelector('.creditsBar');
+			expect(creditsBar).toBeTruthy();
+		});
+	});
+
 	describe('edge cases', () => {
 		it('should handle very long single line text', () => {
 			const longText = 'a'.repeat(500);
