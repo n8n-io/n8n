@@ -202,9 +202,6 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
-	partialExecution: {
-		version: 1 | 2;
-	};
 	evaluation: {
 		quota: number;
 	};
