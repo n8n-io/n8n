@@ -10,6 +10,7 @@ import type { IUser, INodeTypes, INodeTypeDescription } from 'n8n-workflow';
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet4 } from '@/llm-config';
+import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
@@ -18,6 +19,7 @@ jest.mock('@langchain/anthropic');
 jest.mock('@langchain/langgraph');
 jest.mock('langsmith');
 jest.mock('@/workflow-builder-agent');
+jest.mock('@/session-manager.service');
 jest.mock('@/llm-config', () => ({
 	anthropicClaudeSonnet4: jest.fn(),
 }));
@@ -30,6 +32,9 @@ const MockedMemorySaver = MemorySaver as jest.MockedClass<typeof MemorySaver>;
 const MockedTracingClient = TracingClient as jest.MockedClass<typeof TracingClient>;
 const MockedWorkflowBuilderAgent = WorkflowBuilderAgent as jest.MockedClass<
 	typeof WorkflowBuilderAgent
+>;
+const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
+	typeof SessionManagerService
 >;
 
 const anthropicClaudeSonnet4Mock = anthropicClaudeSonnet4 as jest.MockedFunction<
@@ -46,6 +51,7 @@ describe('AiWorkflowBuilderService', () => {
 	let mockChatAnthropic: ChatAnthropic;
 	let mockTracingClient: TracingClient;
 	let mockMemorySaver: MemorySaver;
+	let mockSessionManager: SessionManagerService;
 	let mockOnCreditsUpdated: jest.Mock;
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
@@ -138,6 +144,11 @@ describe('AiWorkflowBuilderService', () => {
 		mockMemorySaver = mock<MemorySaver>();
 		MockedMemorySaver.mockImplementation(() => mockMemorySaver);
 
+		// Mock SessionManagerService
+		mockSessionManager = mock<SessionManagerService>();
+		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
+		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
+
 		// Mock WorkflowBuilderAgent
 		MockedWorkflowBuilderAgent.mockImplementation(() => {
 			const mockAgent = mock<WorkflowBuilderAgent>();
@@ -174,12 +185,17 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(mockNodeTypes.getKnownTypes).toHaveBeenCalled();
+			expect(MockedSessionManagerService).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
+				mockLogger,
+			);
 		});
 
 		it('should initialize without optional dependencies', () => {
 			const testService = new AiWorkflowBuilderService(mockNodeTypes);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
+			expect(MockedSessionManagerService).toHaveBeenCalledWith(expect.any(Array), undefined);
 		});
 
 		it('should filter out ignored and hidden node types', () => {
@@ -391,8 +407,11 @@ describe('AiWorkflowBuilderService', () => {
 			expect(config).toHaveProperty('instanceUrl', 'https://n8n.example.com');
 			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer');
+			expect(config).toHaveProperty('checkpointer', mockMemorySaver);
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
 			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
+			// Verify checkpointer comes from SessionManagerService
+			expect(mockSessionManager.getCheckpointer).toHaveBeenCalled();
 		});
 
 		it('should create WorkflowBuilderAgent without tracer when no client', async () => {
@@ -408,13 +427,15 @@ describe('AiWorkflowBuilderService', () => {
 			// Verify WorkflowBuilderAgent was called
 			expect(MockedWorkflowBuilderAgent).toHaveBeenCalled();
 
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
+			const config =
+				MockedWorkflowBuilderAgent.mock.calls[MockedWorkflowBuilderAgent.mock.calls.length - 1][0];
 
 			// Verify key configuration properties
 			expect(config).toHaveProperty('parsedNodeTypes');
 			expect(config).toHaveProperty('instanceUrl', undefined);
 			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer', undefined);
+			expect(config).toHaveProperty('checkpointer');
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
 			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
 		});
@@ -517,29 +538,35 @@ describe('AiWorkflowBuilderService', () => {
 				{ role: 'assistant', type: 'message', text: 'Hi there!' },
 			]);
 
-			// Reset MemorySaver mock for each test
+			// Reset mocks for each test
 			(mockMemorySaver.getTuple as jest.Mock).mockReset();
+			(mockSessionManager.getSessions as jest.Mock).mockReset();
 		});
 
 		it('should return empty sessions when no workflowId provided', async () => {
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
 			const result = await service.getSessions(undefined, mockUser);
 
 			expect(result.sessions).toEqual([]);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(undefined, 'test-user-id');
 		});
 
 		it('should return session when workflowId exists', async () => {
 			const workflowId = 'test-workflow';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {
-						messages: [new HumanMessage('Hello'), new AIMessage('Hi there!')],
-					},
-					ts: '2023-12-01T12:00:00Z',
-				},
+			const mockSession = {
+				sessionId: 'workflow-test-workflow-user-test-user-id',
+				messages: [
+					{ role: 'user', type: 'message', text: 'Hello' },
+					{ role: 'assistant', type: 'message', text: 'Hi there!' },
+				],
+				lastUpdated: '2023-12-01T12:00:00Z',
 			};
 
-			// Mock the MemorySaver to return the checkpoint
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			// Mock SessionManagerService to return the session
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+				sessions: [mockSession],
+			});
 
 			const result = await service.getSessions(workflowId, mockUser);
 
@@ -549,76 +576,71 @@ describe('AiWorkflowBuilderService', () => {
 				lastUpdated: '2023-12-01T12:00:00Z',
 			});
 			expect(result.sessions[0].messages).toHaveLength(2);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 
 		it('should handle missing checkpoint gracefully', async () => {
 			const workflowId = 'non-existent-workflow';
 
-			// Mock the MemorySaver to throw an error
-			(mockMemorySaver.getTuple as jest.Mock).mockRejectedValue(new Error('Thread not found'));
+			// Mock SessionManagerService to return empty sessions
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
 
 			const result = await service.getSessions(workflowId, mockUser);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockLogger.debug).toHaveBeenCalledWith('No session found for workflow:', {
-				workflowId,
-				error: expect.any(Error),
-			});
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 
 		it('should handle checkpoint without messages', async () => {
 			const workflowId = 'test-workflow';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {},
-					ts: '2023-12-01T12:00:00Z',
-				},
+			const mockSession = {
+				sessionId: 'workflow-test-workflow-user-test-user-id',
+				messages: [],
+				lastUpdated: '2023-12-01T12:00:00Z',
 			};
 
-			// Mock the MemorySaver to return the checkpoint
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			// Mock SessionManagerService to return session with empty messages
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+				sessions: [mockSession],
+			});
 
 			const result = await service.getSessions(workflowId, mockUser);
 
 			expect(result.sessions).toHaveLength(1);
-			expect(result.sessions[0].messages).toEqual([
-				{ role: 'user', type: 'message', text: 'Hello' },
-				{ role: 'assistant', type: 'message', text: 'Hi there!' },
-			]);
+			expect(result.sessions[0].messages).toEqual([]);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 
 		it('should handle checkpoint with null messages', async () => {
 			const workflowId = 'test-workflow';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {
-						messages: null,
-					},
-					ts: '2023-12-01T12:00:00Z',
-				},
+			const mockSession = {
+				sessionId: 'workflow-test-workflow-user-test-user-id',
+				messages: [],
+				lastUpdated: '2023-12-01T12:00:00Z',
 			};
 
-			// Mock the MemorySaver to return the checkpoint
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			// Mock SessionManagerService to return session with empty messages
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+				sessions: [mockSession],
+			});
 
 			const result = await service.getSessions(workflowId, mockUser);
 
 			expect(result.sessions).toHaveLength(1);
-			expect(result.sessions[0].messages).toEqual([
-				{ role: 'user', type: 'message', text: 'Hello' },
-				{ role: 'assistant', type: 'message', text: 'Hi there!' },
-			]);
+			expect(result.sessions[0].messages).toEqual([]);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 
 		it('should work without user', async () => {
 			const workflowId = 'test-workflow';
 
-			// Mock the MemorySaver to throw an error
-			(mockMemorySaver.getTuple as jest.Mock).mockRejectedValue(new Error('Thread not found'));
+			// Mock SessionManagerService to return empty sessions
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
 
 			const result = await service.getSessions(workflowId);
 
 			expect(result.sessions).toEqual([]);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined);
 		});
 	});
 
@@ -637,21 +659,23 @@ describe('AiWorkflowBuilderService', () => {
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
 
-			// Mock the checkpointer to simulate that the session was saved
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {
-						messages: [
-							new HumanMessage('Create a workflow with HTTP request'),
-							new AIMessage('I will create a workflow with an HTTP request node for you.'),
-						],
+			// Mock the session to simulate that it was saved
+			const mockSession = {
+				sessionId: 'workflow-integration-test-workflow-user-test-user-id',
+				messages: [
+					{ role: 'user', content: 'Create a workflow with HTTP request' },
+					{
+						role: 'assistant',
+						content: 'I will create a workflow with an HTTP request node for you.',
 					},
-					ts: new Date().toISOString(),
-				},
+				],
+				lastUpdated: new Date().toISOString(),
 			};
 
-			// Mock the MemorySaver to simulate that the session was saved
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			// Mock SessionManagerService to return the session
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({
+				sessions: [mockSession],
+			});
 
 			// Then retrieve the session
 			const sessions = await service.getSessions(workflowId, mockUser);
@@ -660,6 +684,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(sessions.sessions[0].sessionId).toBe(
 				'workflow-integration-test-workflow-user-test-user-id',
 			);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 	});
 });
