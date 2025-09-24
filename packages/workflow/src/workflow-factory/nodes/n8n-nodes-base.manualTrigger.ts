@@ -3,9 +3,7 @@
 /**
  * Manual Trigger node parameters for version 1
  */
-export interface ManualTriggerNodeParametersV1 {
-	/** No specific parameters - manual trigger is basic */
-}
+export type ManualTriggerNodeParametersV1 = Record<string, never>;
 
 /**
  * Convenience alias for the latest manual trigger node parameters
