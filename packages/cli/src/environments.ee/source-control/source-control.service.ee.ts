@@ -124,6 +124,7 @@ export class SourceControlService {
 			await this.sourceControlPreferencesService.setPreferences({
 				connected: false,
 				branchName: '',
+				repositoryUrl: '',
 				connectionType: preferences.connectionType,
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
