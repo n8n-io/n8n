@@ -18,7 +18,9 @@ export function parseDate(
 	options: Partial<{ timezone: string; fromFormat: string }> = {},
 ): DateTime {
 	// Prioritize the user-provided timezone, but fall back to the workflow's default timezone.
-	const tz = options.timezone ?? this.getTimezone();
+	// Handle the 'default' sentinel by mapping it to the workflow timezone.
+	const tz =
+		options.timezone === 'default' ? this.getTimezone() : (options.timezone ?? this.getTimezone());
 
 	if (date === null || date === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Invalid date type');
@@ -46,9 +48,9 @@ export function parseDate(
 			throw new NodeOperationError(this.getNode(), 'Invalid numeric timestamp');
 		}
 
-		// Differentiate between seconds and milliseconds. Timestamps in seconds will have
-		// at most 10 digits until the year 2286.
-		if (ts < 1e10) {
+		// Differentiate between seconds and milliseconds using absolute magnitude.
+		// Timestamps in seconds will have absolute magnitude less than 1e10 until the year 2286.
+		if (Math.abs(ts) < 1e10) {
 			// seconds
 			parsedDate = DateTime.fromSeconds(ts, tz ? { zone: tz } : { zone: 'utc' });
 		} else {
