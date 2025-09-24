@@ -245,6 +245,36 @@ describe('SourceControlPreferencesService', () => {
 		});
 	});
 
+	describe('setPreferences', () => {
+		it('should not store https credentials in memory when provided in the new preferences', async () => {
+			const preferencesWithCredentials: Partial<SourceControlPreferences> = {
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/example/repo.git',
+				connectionType: 'https',
+				httpsUsername: 'testuser',
+				httpsPassword: 'testpassword',
+			};
+
+			const saveHttpsCredentialsSpy = jest.spyOn(service as any, 'saveHttpsCredentials');
+
+			const result = await service.setPreferences(preferencesWithCredentials);
+
+			// credentials should not be present in the returned preferences
+			expect(result.httpsUsername).toBeUndefined();
+			expect(result.httpsPassword).toBeUndefined();
+
+			// credentials should not be present in the internal state
+			const internalPreferences = service.getPreferences();
+			expect(internalPreferences.httpsUsername).toBeUndefined();
+			expect(internalPreferences.httpsPassword).toBeUndefined();
+
+			expect(saveHttpsCredentialsSpy).toHaveBeenCalledWith(
+				preferencesWithCredentials.httpsUsername,
+				preferencesWithCredentials.httpsPassword,
+			);
+		});
+	});
+
 	describe('getDecryptedHttpsCredentials', () => {
 		it('should log error when no https credentials in database and fallback to empty string', async () => {
 			// dont mock private method but mock result from settingsRepository
