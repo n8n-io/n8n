@@ -18,6 +18,7 @@ import { propertyNameFromExpression } from '@/utils/mappingUtils';
 import Draggable from 'vuedraggable';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 interface Props {
 	parameter: INodeProperties;
@@ -54,6 +55,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 });
 
 const ndvStore = useNDVStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
@@ -153,7 +155,12 @@ function optionSelected(action: string) {
 		</n8n-input-label>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="dropAreaContainer?.$el && node && expressionLocalResolveCtx?.inputNode"
+			v-if="
+				experimentalNdvStore.isNdvInFocusPanelEnabled &&
+				dropAreaContainer?.$el &&
+				node &&
+				expressionLocalResolveCtx?.inputNode
+			"
 			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx.inputNode.name"
