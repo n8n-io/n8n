@@ -89,9 +89,7 @@ test.describe('Projects', () => {
 
 		// Get Workflow Count
 
-		await expect(subn8n.page.locator('[data-test-id="resources-list-item-workflow"]')).toHaveCount(
-			2,
-		);
+		await expect(subn8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
 		// Assert that the sub-workflow is in the list
 		await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
@@ -100,7 +98,7 @@ test.describe('Projects', () => {
 		await subn8n.page.getByRole('link', { name: 'Credentials', exact: true }).click();
 
 		// Assert that the credential is in the list
-		await expect(subn8n.page.locator('[data-test-id="resources-list-item"]')).toHaveCount(1);
+		await expect(subn8n.credentials.cards.getCredentials()).toHaveCount(1);
 		await expect(subn8n.page.getByRole('heading', { name: 'Notion account' })).toBeVisible();
 	});
 
