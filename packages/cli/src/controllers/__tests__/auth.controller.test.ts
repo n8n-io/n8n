@@ -104,7 +104,7 @@ describe('AuthController', () => {
 			});
 		});
 
-		it('should not login members if "OIDC" is the authentication method', async () => {
+		it('should not allow members to login with email if "OIDC" is the authentication method', async () => {
 			const member = mock<User>({
 				id: '123',
 				role: { slug: 'global:member' },
@@ -142,7 +142,7 @@ describe('AuthController', () => {
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 		});
 
-		it('should login owners if "OIDC" is the authentication method', async () => {
+		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
 			config.set('userManagement.authenticationMethod', 'oidc');
 
 			const member = mock<User>({
