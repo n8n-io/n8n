@@ -281,20 +281,29 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async getPreviousAndCurrentPeriodTypeAggregates({
-		periodLengthInDays,
+		startDate,
+		endDate,
 		projectId,
-	}: { periodLengthInDays: number; projectId?: string }): Promise<
+	}: { projectId?: string; startDate: Date; endDate?: Date }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
 			total_value: string | number;
 		}>
 	> {
+		const today = DateTime.now().startOf('day');
+		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
+		const currentEnd = endDate ? DateTime.fromJSDate(endDate).startOf('day') : today.startOf('day');
+
+		const periodLengthInDays = currentEnd.diff(currentStart, 'days').days;
+		const daysToCurrentStart = today.diff(currentStart, 'days').days;
+		const daysToCurrentEnd = today.diff(currentEnd, 'days').days;
+
 		const cte = sql`
 			SELECT
-				${this.getAgeLimitQuery(periodLengthInDays)} AS current_start,
-				${this.getAgeLimitQuery(0)} AS current_end,
-				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
+				${this.getAgeLimitQuery(daysToCurrentStart)} AS current_start,
+				${this.getAgeLimitQuery(daysToCurrentEnd)} AS current_end,
+				${this.getAgeLimitQuery(daysToCurrentStart + periodLengthInDays)}  AS previous_start
 		`;
 
 		const rawRowsQuery = this.createQueryBuilder('insights')

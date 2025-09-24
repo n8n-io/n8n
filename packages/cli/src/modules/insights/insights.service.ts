@@ -61,11 +61,17 @@ export class InsightsService {
 	}
 
 	async getInsightsSummary({
-		periodLengthInDays,
+		startDate,
+		endDate,
 		projectId,
-	}: { periodLengthInDays: number; projectId?: string }): Promise<InsightsSummary> {
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate?: Date;
+	}): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
-			periodLengthInDays,
+			startDate,
+			endDate,
 			projectId,
 		});
 

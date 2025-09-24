@@ -7,6 +7,7 @@ import type {
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import { DateTime } from 'luxon';
 import type { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -46,10 +47,11 @@ export class InsightsController {
 		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
 		this.validateStartEndDate(query);
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
+		this.getMaxAgeInDaysAndGranularity(query);
 
 		return await this.insightsService.getInsightsSummary({
-			periodLengthInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
+			startDate: query.startDate ?? this.getDefaultStartDate(query),
+			endDate: query.endDate,
 			projectId: query.projectId,
 		});
 	}
@@ -120,6 +122,9 @@ export class InsightsController {
 	}
 
 	private validateStartEndDate(payload: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
+		// TODO: allow the endDate to be empty. When startDate is not provided we'll consider that endDate is now
+		// TODO: validate that the startDate is in the past
+
 		const schema = z
 			.object({
 				startDate: z.coerce.date().optional(),
@@ -143,5 +148,17 @@ export class InsightsController {
 		if (!result.success) {
 			throw new BadRequestError(result.error.errors.map(({ message }) => message).join(' '));
 		}
+	}
+
+	private getDefaultStartDate(query: InsightsDateFilterDto) {
+		if (query.dateRange) {
+			const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
+			return DateTime.now()
+				.minus({ days: dateRangeAndMaxAgeInDays.maxAgeInDays })
+				.startOf('day')
+				.toJSDate();
+		}
+
+		return DateTime.now().minus({ days: 7 }).startOf('day').toJSDate();
 	}
 }
