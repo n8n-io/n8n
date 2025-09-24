@@ -1,0 +1,22 @@
+name: Playwright Tests - Nightly
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - ci-containers-nightly
+
+jobs:
+  test-configurations:
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [standard, postgres]
+    name: Test ${{ matrix.config }}
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:${{ matrix.config }}
+    secrets: inherit
