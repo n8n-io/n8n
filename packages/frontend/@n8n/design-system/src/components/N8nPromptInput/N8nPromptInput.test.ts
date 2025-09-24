@@ -76,40 +76,45 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			const { container } = renderComponent({
-				props: {
-					modelValue: '',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
+			try {
+				const { container } = renderComponent({
+					props: {
+						modelValue: '',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
 
-			// Initially should be single-line
-			expect(container.querySelector('.singleLineWrapper')).toBeTruthy();
-			expect(container.querySelector('.multilineTextarea')).toBeFalsy();
+				// Initially should be single-line
+				expect(container.querySelector('.singleLineWrapper')).toBeTruthy();
+				expect(container.querySelector('.multilineTextarea')).toBeFalsy();
 
-			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+				const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
-			// Update the textarea value with newlines
-			textarea.value = 'Line 1\nLine 2\nLine 3';
+				// Update the textarea value with newlines
+				textarea.value = 'Line 1\nLine 2\nLine 3';
 
-			// Trigger the input event which calls adjustHeight
-			await fireEvent.input(textarea);
+				// Trigger the input event which calls adjustHeight
+				await fireEvent.input(textarea);
 
-			// Wait for Vue to update the DOM
-			await vi.waitFor(() => {
-				// After adjustHeight runs, should be in multiline mode
-				return container.querySelector('.multilineTextarea');
-			});
+				// Wait for Vue to update the DOM
+				await vi.waitFor(() => {
+					// After adjustHeight runs, should be in multiline mode
+					return container.querySelector('.multilineTextarea');
+				});
 
-			// Verify we're now in multiline mode
-			expect(container.querySelector('.multilineTextarea')).toBeTruthy();
-			expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
-
-			// Restore original descriptor
-			if (originalDescriptor) {
-				Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				// Verify we're now in multiline mode
+				expect(container.querySelector('.multilineTextarea')).toBeTruthy();
+				expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
+			} finally {
+				// Always restore original descriptor or delete the mock
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					// If there was no original descriptor, delete the mocked property
+					delete (HTMLTextAreaElement.prototype as any).scrollHeight;
+				}
 			}
 		});
 
