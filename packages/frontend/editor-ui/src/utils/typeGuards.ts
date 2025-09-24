@@ -22,7 +22,7 @@ import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { WorkflowListResource } from '@/Interface';
+import type { WorkflowListResource } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
