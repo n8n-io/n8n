@@ -11,6 +11,7 @@ export interface N8nPromptInputProps {
 	placeholder?: string;
 	maxLength?: number;
 	maxLinesBeforeScroll?: number;
+	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
 }
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	placeholder: '',
 	maxLength: 1000,
 	maxLinesBeforeScroll: 6,
+	minLines: 1,
 	streaming: false,
 	disabled: false,
 });
@@ -36,8 +38,12 @@ const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
-const textareaHeight = ref<number>(24);
-const isMultiline = ref(false);
+const singleLineHeight = 24;
+const lineHeight = 18; // Height per line in multiline mode
+const textareaHeight = ref<number>(
+	props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight,
+);
+const isMultiline = ref(props.minLines > 1);
 
 const textAreaMaxHeight = computed(() => {
 	return props.maxLinesBeforeScroll * 18;
@@ -73,14 +79,23 @@ function adjustHeight() {
 	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
-	const singleLineHeight = 24;
+	const minHeight = props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight;
 
-	// If text is completely empty (not just whitespace), revert to single-line mode
+	// If text is completely empty (not just whitespace), use minimum height
 	if (!textValue.value || textValue.value === '') {
-		isMultiline.value = false;
-		textareaHeight.value = singleLineHeight;
-		if (textareaRef.value) {
-			textareaRef.value.style.height = `${singleLineHeight}px`;
+		// Respect minLines prop
+		if (props.minLines > 1) {
+			isMultiline.value = true;
+			textareaHeight.value = minHeight;
+			if (textareaRef.value) {
+				textareaRef.value.style.height = `${minHeight}px`;
+			}
+		} else {
+			isMultiline.value = false;
+			textareaHeight.value = singleLineHeight;
+			if (textareaRef.value) {
+				textareaRef.value.style.height = `${singleLineHeight}px`;
+			}
 		}
 		return;
 	}
@@ -91,19 +106,20 @@ function adjustHeight() {
 	const scrollHeight = textareaRef.value.scrollHeight;
 
 	// Check if we need multiline mode
-	// Switch to multiline when text would wrap or when there's actual line breaks
-	const shouldBeMultiline = scrollHeight > singleLineHeight || textValue.value.includes('\n');
+	// Switch to multiline when text would wrap, when there's actual line breaks, or when minLines > 1
+	const shouldBeMultiline =
+		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
-	// Update height tracking
-	textareaHeight.value = scrollHeight;
+	// Update height tracking - use at least the minimum height
+	textareaHeight.value = Math.max(scrollHeight, minHeight);
 	isMultiline.value = shouldBeMultiline;
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
-		// For multiline, set exact scrollHeight
-		textareaRef.value.style.height = `${scrollHeight}px`;
+		// For multiline, set at least minHeight
+		textareaRef.value.style.height = `${Math.max(scrollHeight, minHeight)}px`;
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
@@ -184,10 +200,8 @@ function focusInput() {
 }
 
 onMounted(() => {
-	// Only adjust height if there's initial content
-	if (textValue.value) {
-		void nextTick(() => adjustHeight());
-	}
+	// Adjust height on mount to respect minLines or initial content
+	void nextTick(() => adjustHeight());
 });
 
 defineExpose({
