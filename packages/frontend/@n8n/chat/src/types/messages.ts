@@ -16,4 +16,5 @@ interface ChatMessageBase {
 	transparent?: boolean;
 	sender: 'user' | 'bot';
 	files?: File[];
+	timestamp?: Date;
 }

@@ -133,6 +133,7 @@ createChat({
 		},
 	},
 	enableStreaming: false,
+	showTimestamps: false,
 });
 ```
 
@@ -209,6 +210,11 @@ createChat({
 - Default: false
 - Description: Whether to enable streaming responses from the n8n workflow. If set to `true`, the chat will display responses as they are being generated, providing a more interactive experience. For this to work the workflow must be configured as well to return streaming responses.
 
+### `showTimestamps`
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to display timestamps for each message. When enabled, each message will show a relative timestamp (e.g., "Just now", "5m ago", "2h ago") that indicates when the message was sent or received.
+
 ## Customization
 The Chat window is entirely customizable using CSS variables.
 
@@ -261,6 +267,11 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--message--user--color: var(--chat--color-white);
 	--chat--message--user--border: none;
 	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
+
+	/* Timestamp styling */
+	--chat--timestamp--font-size: 0.75rem;
+	--chat--timestamp--color: #888;
+	--chat--timestamp--opacity: 0.7;
 
 	--chat--toggle--background: var(--chat--color-primary);
 	--chat--toggle--hover--background: var(--chat--color-primary-shade-50);

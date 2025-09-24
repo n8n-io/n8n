@@ -26,6 +26,7 @@ export const defaultOptions: ChatOptions = {
 	},
 	theme: {},
 	enableStreaming: false,
+	showTimestamps: false,
 };
 
 export const defaultMountingTarget = '#n8n-chat';
