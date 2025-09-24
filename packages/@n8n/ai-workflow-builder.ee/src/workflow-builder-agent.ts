@@ -19,19 +19,14 @@ import {
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
 } from '@/constants';
-import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
+import { SessionManagerService } from './session-manager.service';
+import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
@@ -58,6 +53,11 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 	};
+	/**
+	 * Calls AI Assistant Service using deprecated credentials and endpoints
+	 * These credentials/endpoints will soon be removed
+	 * As new implementation is rolled out and builder experiment is released
+	 */
 	useDeprecatedCredentials?: boolean;
 }
 
@@ -85,28 +85,8 @@ export class WorkflowBuilderAgent {
 		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
-	static getTools({
-		parsedNodeTypes,
-		logger,
-		llmComplexTask,
-		instanceUrl,
-	}: Pick<
-		WorkflowBuilderAgentConfig,
-		'parsedNodeTypes' | 'logger' | 'llmComplexTask' | 'instanceUrl'
-	>): BuilderTool[] {
-		return [
-			createNodeSearchTool(parsedNodeTypes),
-			createNodeDetailsTool(parsedNodeTypes),
-			createAddNodeTool(parsedNodeTypes),
-			createConnectNodesTool(parsedNodeTypes, logger),
-			createRemoveNodeTool(logger),
-			createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
-			createGetNodeParameterTool(),
-		];
-	}
-
 	private getBuilderTools(): BuilderTool[] {
-		return WorkflowBuilderAgent.getTools({
+		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
 			instanceUrl: this.instanceUrl,
 			llmComplexTask: this.llmComplexTask,
@@ -337,12 +317,6 @@ export class WorkflowBuilderAgent {
 		});
 	}
 
-	static generateThreadId(workflowId?: string, userId?: string) {
-		return workflowId
-			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
-			: crypto.randomUUID();
-	}
-
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
 		return (
 			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
@@ -387,7 +361,7 @@ export class WorkflowBuilderAgent {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
