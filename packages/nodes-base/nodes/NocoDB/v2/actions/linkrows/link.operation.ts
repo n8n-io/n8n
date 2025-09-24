@@ -98,6 +98,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				extractValue: true,
 			}) as IDataObject[];
 			body = [];
+
+			if (!linkIds?.length) {
+				throw new Error('Linked Row ID Value cannot be empty');
+			}
 			for (const linkId of linkIds) {
 				// if it comes from expression (input)
 				if (Array.isArray(linkId)) {
@@ -118,9 +122,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						body.push(linkId);
 					}
 				}
-			}
-			if (!linkIds?.length) {
-				throw new Error('Linked Row ID Value cannot be empty');
 			}
 
 			requestMethod = 'POST';
