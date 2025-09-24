@@ -17,6 +17,9 @@ const nodeCreatorFeature = new NodeCreator();
 describe('AI Assistant::enabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.enableAssistant();
+		cy.overrideSettings({
+			aiAssistant: { enabled: true, setup: true },
+		});
 		wf.actions.visit();
 	});
 

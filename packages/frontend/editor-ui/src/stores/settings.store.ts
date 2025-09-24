@@ -86,7 +86,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const publicApiPath = computed(() => api.value.path);
 
-	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
+	const isAiAssistantEnabled = computed(
+		() => settings.value.aiAssistant?.enabled && settings.value.aiAssistant?.setup,
+	);
 
 	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
 
