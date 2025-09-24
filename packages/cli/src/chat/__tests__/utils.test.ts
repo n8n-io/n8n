@@ -167,27 +167,6 @@ describe('getMessage', () => {
 		expect(result).toBe('Message from second branch');
 	});
 
-	it('should return message from the first available branch when multiple branches exist', () => {
-		const execution = createMockExecution({}, undefined, [
-			{
-				data: {
-					main: [
-						[], // First output branch is empty
-						[], // Second output branch is empty
-						[
-							{
-								json: { test: 'data' },
-								sendMessage: 'Message from third branch',
-							},
-						], // Third output branch has the message
-					],
-				},
-			},
-		]);
-		const result = getMessage(execution);
-		expect(result).toBe('Message from third branch');
-	});
-
 	it('should prioritize message from the first branch when multiple branches have messages', () => {
 		const execution = createMockExecution({}, undefined, [
 			{

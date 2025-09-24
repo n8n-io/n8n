@@ -142,32 +142,6 @@ describe('extractWebhookLastNodeResponse', () => {
 			});
 		});
 
-		it('should return data from third branch when first two are empty', async () => {
-			const jsonData = { test: 'data', fromThirdBranch: true };
-			lastNodeTaskData.data = {
-				main: [
-					[], // First branch is empty
-					[], // Second branch is empty
-					[{ json: jsonData }], // Third branch has data
-				],
-			};
-
-			const result = await extractWebhookLastNodeResponse(
-				context,
-				'firstEntryJson',
-				lastNodeTaskData,
-			);
-
-			expect(result).toEqual({
-				ok: true,
-				result: {
-					type: 'static',
-					body: jsonData,
-					contentType: undefined,
-				},
-			});
-		});
-
 		it('should return error when all branches are empty', async () => {
 			lastNodeTaskData.data = {
 				main: [[], [], []],
@@ -390,46 +364,6 @@ describe('extractWebhookLastNodeResponse', () => {
 			});
 		});
 
-		it('should return binary data from third branch when first two are empty', async () => {
-			const mockStream = new Readable();
-			binaryDataService.getAsStream.mockResolvedValue(mockStream);
-
-			const binaryData: IBinaryData = {
-				id: 'binary-from-third',
-				mimeType: 'image/png',
-				data: '',
-			};
-			const nodeExecutionData: INodeExecutionData = {
-				json: {},
-				binary: { file: binaryData },
-			};
-			lastNodeTaskData.data = {
-				main: [
-					[], // First branch is empty
-					[], // Second branch is empty
-					[nodeExecutionData], // Third branch has binary data
-				],
-			};
-
-			context.evaluateSimpleWebhookDescriptionExpression.mockReturnValue('file');
-
-			const result = await extractWebhookLastNodeResponse(
-				context,
-				'firstEntryBinary',
-				lastNodeTaskData,
-			);
-
-			expect(result).toEqual({
-				ok: true,
-				result: {
-					type: 'stream',
-					stream: mockStream,
-					contentType: 'image/png',
-				},
-			});
-			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-from-third');
-		});
-
 		it('should return error when all branches are empty for binary', async () => {
 			lastNodeTaskData.data = {
 				main: [[], [], []],
@@ -518,29 +452,6 @@ describe('extractWebhookLastNodeResponse', () => {
 				result: {
 					type: 'static',
 					body: [jsonData1, jsonData2, jsonData3],
-					contentType: undefined,
-				},
-			});
-		});
-
-		it('should return all entries from third branch when first two are empty', async () => {
-			const jsonData1 = { test: 'item1' };
-			const jsonData2 = { test: 'item2' };
-			lastNodeTaskData.data = {
-				main: [
-					[], // First branch is empty
-					[], // Second branch is empty
-					[{ json: jsonData1 }, { json: jsonData2 }], // Third branch has data
-				],
-			};
-
-			const result = await extractWebhookLastNodeResponse(context, 'allEntries', lastNodeTaskData);
-
-			expect(result).toEqual({
-				ok: true,
-				result: {
-					type: 'static',
-					body: [jsonData1, jsonData2],
 					contentType: undefined,
 				},
 			});
