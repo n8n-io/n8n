@@ -39,6 +39,7 @@ export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopoverReka';
 export { default as N8nPromptInput } from './N8nPromptInput';
 export { default as N8nPulse } from './N8nPulse';
+export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';

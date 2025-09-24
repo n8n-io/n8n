@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
-import N8nSendStopButton from './N8nSendStopButton.vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nSendStopButton from '../N8nSendStopButton';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
@@ -238,7 +238,7 @@ defineExpose({
 			theme="warning"
 			:class="$style.warningCallout"
 		>
-			{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength }) }}
+			{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength.toString() }) }}
 		</N8nCallout>
 
 		<!-- Single line mode: input and button side by side -->
