@@ -187,15 +187,9 @@ export class WorkflowExecute {
 		runData: IRunData,
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
-		destinationNodeName?: string,
+		destinationNodeName: string,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
-		// TODO: Refactor the call-site to make `destinationNodeName` a required
-		// after removing the old partial execution flow.
-		assert.ok(
-			destinationNodeName,
-			'a destinationNodeName is required for the new partial execution flow',
-		);
 		const originalDestination = destinationNodeName;
 
 		let destination = workflow.getNode(destinationNodeName);

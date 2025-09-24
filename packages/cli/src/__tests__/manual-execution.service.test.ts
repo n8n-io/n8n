@@ -347,23 +347,16 @@ describe('ManualExecutionService', () => {
 			);
 		});
 
-		it('should handle partial execution with provided runData, startNodes and no destinationNode', async () => {
-			const mockRunData = { node1: [{ data: { main: [[{ json: {} }]] } }] };
-			const startNodeName = 'node1';
+		it('should not call `runPartialWorkflow2` when destinationNode is undefined', async () => {
 			const data = mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'manual',
-				runData: mockRunData,
-				startNodes: [{ name: startNodeName }],
+				runData: { node1: [{ data: { main: [[{ json: {} }]] } }] },
+				startNodes: [{ name: 'node1' }],
 				destinationNode: undefined,
 				pinData: undefined,
 			});
 
-			const workflow = mock<Workflow>({
-				getNode: jest.fn((name) => {
-					if (name === startNodeName) return mock<INode>({ name: startNodeName });
-					return null;
-				}),
-			});
+			const workflow = mock<Workflow>();
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			const executionId = 'test-execution-id';
@@ -371,19 +364,15 @@ describe('ManualExecutionService', () => {
 			const mockRunPartialWorkflow = jest.fn().mockReturnValue('mockPartialReturn');
 			require('n8n-core').WorkflowExecute.mockImplementationOnce(() => ({
 				runPartialWorkflow2: mockRunPartialWorkflow,
-				processRunExecutionData: jest.fn(),
 			}));
 
-			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
-
-			expect(mockRunPartialWorkflow).toHaveBeenCalledWith(
-				workflow,
-				mockRunData,
-				data.pinData,
-				data.dirtyNodeNames,
-				data.destinationNode,
-				data.agentRequest,
+			await expect(
+				async () =>
+					await manualExecutionService.runManually(data, workflow, additionalData, executionId),
+			).rejects.toThrowError(
+				'a destinationNodeName is required for the new partial execution flow',
 			);
+			expect(mockRunPartialWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should handle partial execution', async () => {

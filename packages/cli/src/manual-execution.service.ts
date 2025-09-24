@@ -162,6 +162,11 @@ export class ManualExecutionService {
 				data.triggerToStartFrom,
 			);
 		} else {
+			a.ok(
+				data.destinationNode,
+				'a destinationNodeName is required for the new partial execution flow',
+			);
+
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes
