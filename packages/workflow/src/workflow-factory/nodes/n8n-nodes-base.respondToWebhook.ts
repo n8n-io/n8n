@@ -15,10 +15,17 @@ export interface RespondToWebhookNodeParametersV1_5 {
 		| 'binary';
 	/** Response body content */
 	responseBody?: string;
-	/** HTTP response status code */
-	responseCode?: number;
-	/** Custom response headers */
-	responseHeaders?: Record<string, string>;
+	options?: {
+		/** HTTP response status code */
+		responseCode?: number;
+		/** Custom response headers */
+		responseHeaders?: {
+			entries?: {
+				name?: string;
+				value?: string;
+			}[];
+		};
+	};
 }
 
 /**
