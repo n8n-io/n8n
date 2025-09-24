@@ -1,6 +1,7 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
+	IExecutionsStopData,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
@@ -476,12 +477,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
+		let stopData: IExecutionsStopData | undefined;
+
 		if (!executionId) {
 			return;
 		}
 
 		try {
-			await executionsStore.stopCurrentExecution(executionId);
+			stopData = await executionsStore.stopCurrentExecution(executionId);
 		} catch (error) {
 			// Execution stop might fail when the execution has already finished. Let's treat this here.
 			const execution = await workflowsStore.getExecution(executionId);
@@ -518,7 +521,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				async () => {
 					const execution = await workflowsStore.getExecution(executionId);
 					if (!['running', 'waiting'].includes(execution?.status as string)) {
-						workflowsStore.markExecutionAsStopped();
+						workflowsStore.markExecutionAsStopped(stopData);
 						return true;
 					}
 
@@ -529,7 +532,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			);
 
 			if (!markedAsStopped) {
-				workflowsStore.markExecutionAsStopped();
+				workflowsStore.markExecutionAsStopped(stopData);
 			}
 		}
 	}

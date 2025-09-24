@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import * as dataStoreApi from '@/features/dataStore/dataStore.api';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsApi from '@/api/workflows';
 import * as workflowsEEApi from '@/api/workflows.ee';
@@ -18,6 +19,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+
+export type ResourceCounts = {
+	credentials: number;
+	workflows: number;
+	dataTables: number;
+};
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -193,13 +200,18 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
-	const isProjectEmpty = async (projectId: string) => {
-		const [credentials, workflows] = await Promise.all([
+	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
+		const [credentials, workflows, dataTables] = await Promise.all([
 			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
+			dataStoreApi.fetchDataStoresApi(rootStore.restApiContext, projectId),
 		]);
 
-		return credentials.length === 0 && workflows.count === 0;
+		return {
+			credentials: credentials.length,
+			workflows: workflows.count,
+			dataTables: dataTables.count,
+		};
 	};
 
 	watch(
@@ -263,6 +275,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
-		isProjectEmpty,
+		getResourceCounts,
 	};
 });

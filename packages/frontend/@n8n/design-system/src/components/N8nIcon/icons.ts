@@ -3,6 +3,7 @@ import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
@@ -229,6 +230,7 @@ export const deprecatedIconSet = {
 	toolbox: Toolbox,
 	spinner: Spinner,
 	xmark: IconLucideX,
+	mcp: Mcp,
 
 	// fontAwesomeIcons
 	'caret-up': IconLucideChevronUp,
@@ -444,6 +446,7 @@ export const updatedIconSet = {
 	'node-power': NodePower,
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
+	mcp: Mcp,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
@@ -575,6 +578,7 @@ export const updatedIconSet = {
 	'refresh-cw': IconLucideRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
 	rss: IconLucideRss,
+	robot: IconLucideBot,
 	'satellite-dish': IconLucideSatelliteDish,
 	save: IconLucideSave,
 	scale: IconLucideScale,

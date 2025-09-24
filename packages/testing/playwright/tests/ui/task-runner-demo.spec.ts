@@ -10,7 +10,7 @@ import { test, expect } from '../../fixtures/base';
 test.describe('Task Runner Capability @capability:task-runner', () => {
 	test('should execute Javascript with task runner enabled', async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 
@@ -22,7 +22,7 @@ test.describe('Task Runner Capability @capability:task-runner', () => {
 
 	test('should execute Python with task runner enabled', async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in Python (Beta)', closeNDV: true });
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(

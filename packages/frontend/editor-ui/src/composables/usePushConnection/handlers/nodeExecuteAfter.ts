@@ -46,7 +46,7 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 		},
 	};
 
-	workflowsStore.updateNodeExecutionData(pushDataWithPlaceholderOutputData);
+	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
 	workflowsStore.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);
