@@ -38,6 +38,9 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
+const creditsQuota = computed(() => builderStore.creditsQuota);
+const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const plansPageUrl = computed(() => builderStore.plansPageUrl);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -191,6 +194,9 @@ watch(currentRoute, () => {
 			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:credits-quota="creditsQuota"
+			:credits-claimed="creditsClaimed"
+			:plans-page-url="plansPageUrl"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"

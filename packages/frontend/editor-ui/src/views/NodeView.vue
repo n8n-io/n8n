@@ -376,6 +376,9 @@ async function initializeRoute(force = false) {
 		return;
 	}
 
+	// Fetch builder credits when initializing the route
+	void builderStore.fetchBuilderCredits();
+
 	// Open node panel if the route has a corresponding action
 	if (route.query.action === 'addEvaluationTrigger') {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(

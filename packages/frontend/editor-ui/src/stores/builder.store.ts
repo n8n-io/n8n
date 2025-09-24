@@ -21,13 +21,16 @@ import { usePostHog } from './posthog.store';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions } from '@/api/ai';
+import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
 import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { useUsersStore } from '@/stores/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { N8N_PRICING_PAGE_URL } from '@/constants';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -40,6 +43,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
+	const creditsQuota = ref<number>(-1);
+	const creditsClaimed = ref<number>(0);
+	const plansPageUrl = ref<string>('');
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -50,6 +56,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const posthogStore = usePostHog();
+	const usersStore = useUsersStore();
+	const cloudPlanStore = useCloudPlanStore();
 
 	// Composables
 	const {
@@ -128,6 +136,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
+		await fetchBuilderCredits();
 		await loadSessions();
 	}
 
@@ -443,6 +452,33 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
 	}
 
+	async function fetchBuilderCredits() {
+		try {
+			const response = await getBuilderCredits(rootStore.restApiContext);
+			creditsQuota.value = response.creditsQuota;
+			creditsClaimed.value = response.creditsClaimed;
+			await generatePlansPageUrl();
+		} catch (error) {
+			// Keep default values on error
+		}
+	}
+
+	async function generatePlansPageUrl() {
+		let upgradeLink = N8N_PRICING_PAGE_URL;
+
+		if (usersStore.isInstanceOwner && settings.isCloudDeployment) {
+			upgradeLink = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+				redirectionPath: '/account/change-plan',
+			});
+		}
+
+		const url = new URL(upgradeLink);
+		url.searchParams.set('utm_campaign', 'ai-builder-credits');
+		url.searchParams.set('source', 'ai-builder');
+
+		plansPageUrl.value = url.toString();
+	}
+
 	// Public API
 	return {
 		// State
@@ -463,6 +499,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		trackingSessionId,
 		streamingAbortController,
 		initialGeneration,
+		creditsQuota,
+		creditsClaimed,
+		plansPageUrl,
 
 		// Methods
 		updateWindowWidth,
@@ -474,5 +513,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadSessions,
 		applyWorkflowUpdate,
 		getWorkflowSnapshot,
+		fetchBuilderCredits,
 	};
 });

@@ -31,6 +31,9 @@ interface Props {
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
 	maxLength?: number;
+	creditsQuota?: number;
+	creditsClaimed?: number;
+	plansPageUrl?: string;
 }
 
 const emit = defineEmits<{
@@ -412,6 +415,9 @@ defineExpose({
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
 				:max-length="maxLength"
+				:credits-quota="creditsQuota"
+				:credits-claimed="creditsClaimed"
+				:plans-page-url="plansPageUrl"
 				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				data-test-id="chat-input"
 				@submit="onSendMessage"

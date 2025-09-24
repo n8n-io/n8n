@@ -34,6 +34,9 @@ const isLoading = ref(false);
 
 // Computed properties
 const hasContent = computed(() => prompt.value.trim().length > 0);
+const creditsQuota = computed(() => builderStore.creditsQuota);
+const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const plansPageUrl = computed(() => builderStore.plansPageUrl);
 
 // Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
@@ -125,6 +128,9 @@ function onAddNodeClick() {
 				:streaming="builderStore.streaming"
 				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 				:max-lines-before-scroll="4"
+				:credits-quota="creditsQuota"
+				:credits-claimed="creditsClaimed"
+				:plans-page-url="plansPageUrl"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
 				@stop="builderStore.stopStreaming"
