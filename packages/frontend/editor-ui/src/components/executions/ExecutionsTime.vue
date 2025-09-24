@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
-	startTime: Date;
+	startTime: Date | string;
 }>();
 
 const i18n = useI18n();
@@ -15,7 +15,17 @@ const time = computed(() => {
 	if (!props.startTime) {
 		return '...';
 	}
-	const msPassed = nowTime.value - new Date(props.startTime).getTime();
+
+	// Handle both Date objects and ISO strings safely to prevent type errors
+	const startTimeMs =
+		props.startTime instanceof Date
+			? props.startTime.getTime()
+			: new Date(props.startTime).getTime();
+
+	// Fix for issue #19845: Prevent negative runtime display for long-running executions
+	// Use Math.max to ensure we never show negative time values
+	const msPassed = Math.max(0, nowTime.value - startTimeMs);
+
 	return i18n.displayTimer(msPassed);
 });
 

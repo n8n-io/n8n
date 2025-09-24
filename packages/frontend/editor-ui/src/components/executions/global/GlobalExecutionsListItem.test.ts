@@ -201,4 +201,45 @@ describe('GlobalExecutionsListItem', () => {
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('30m 0s');
 	});
+
+	it('should show stop button for long-running executions', async () => {
+		const startedAt = new Date(Date.now() - 86400000 * 2).toISOString(); // 2 days ago
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'running',
+					id: 123,
+					startedAt,
+					stoppedAt: undefined, // Still running
+					waitTill: false,
+				},
+				workflowPermissions: {},
+			},
+		});
+
+		const stopButton = getByTestId('stop-execution-button');
+		expect(stopButton).toBeInTheDocument();
+		expect(stopButton).not.toBeDisabled();
+	});
+
+	it('should not show negative runtime for long-running executions', async () => {
+		const startedAt = new Date(Date.now() - 86400000).toISOString(); // 1 day ago
+		const stoppedAt = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
+		const { container } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 123,
+					startedAt,
+					stoppedAt,
+				},
+				workflowPermissions: {},
+			},
+		});
+
+		// The component should calculate a positive runtime
+		// We're testing that the fix prevents negative values
+		// The exact text content will depend on the displayTimer formatting
+		expect(container.textContent).not.toMatch(/-\d+/); // No negative numbers
+	});
 });

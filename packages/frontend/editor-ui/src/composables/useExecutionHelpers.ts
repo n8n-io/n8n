@@ -56,11 +56,17 @@ export function useExecutionHelpers() {
 		if (!execution.status) execution.status = 'unknown';
 
 		if (execution.startedAt && execution.stoppedAt) {
-			const stoppedAt = execution.stoppedAt ? new Date(execution.stoppedAt).getTime() : Date.now();
-			status.runningTime = i18n.displayTimer(
-				stoppedAt - new Date(execution.startedAt).getTime(),
-				true,
-			);
+			// Calculate the stopped time (use current time if stoppedAt is missing)
+			const stoppedAtTime = execution.stoppedAt
+				? new Date(execution.stoppedAt).getTime()
+				: Date.now();
+			const startedAtTime = new Date(execution.startedAt).getTime();
+
+			// Fix for issue #19845: Prevent negative runtime display for long-running executions
+			// Use Math.max to ensure we never display negative time values
+			const runtimeMs = Math.max(0, stoppedAtTime - startedAtTime);
+
+			status.runningTime = i18n.displayTimer(runtimeMs, true);
 		}
 
 		return status;

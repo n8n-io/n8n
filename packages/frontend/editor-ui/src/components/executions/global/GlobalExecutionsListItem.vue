@@ -129,13 +129,18 @@ const formattedWaitTillDate = computed(() => {
 });
 
 const formattedStoppedAtDate = computed(() => {
-	return props.execution.stoppedAt
-		? locale.displayTimer(
-				new Date(props.execution.stoppedAt).getTime() -
-					new Date(props.execution.startedAt ?? props.execution.createdAt).getTime(),
-				true,
-			)
-		: '';
+	if (!props.execution.stoppedAt) {
+		return '';
+	}
+
+	// Fix for issue #19845: Prevent negative runtime display for long-running executions
+	const stoppedAtTime = new Date(props.execution.stoppedAt).getTime();
+	const startedAtTime = new Date(props.execution.startedAt ?? props.execution.createdAt).getTime();
+
+	// Use Math.max to ensure we never show negative time differences
+	const timeDifferenceMs = Math.max(0, stoppedAtTime - startedAtTime);
+
+	return locale.displayTimer(timeDifferenceMs, true);
 });
 
 function getStatusLabel(status: ExecutionStatus) {
