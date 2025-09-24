@@ -243,7 +243,7 @@ const getOidcConfig = async () => {
 	clientId.value = config.clientId;
 	clientSecret.value = config.clientSecret;
 	discoveryEndpoint.value = config.discoveryEndpoint;
-	prompt.value = config.prompt;
+	prompt.value = config.prompt ?? 'select_account';
 };
 
 async function loadOidcConfig() {
@@ -498,7 +498,7 @@ async function onOidcSettingsSave() {
 					>
 				</div>
 				<div :class="$style.group">
-					<label>OIDC Prompt</label>
+					<label>Prompt</label>
 					<N8nSelect
 						:model-value="prompt"
 						data-test-id="oidc-prompt"
@@ -509,7 +509,7 @@ async function onOidcSettingsSave() {
 						<N8nOption
 							v-for="option in ['none', 'login', 'consent', 'select_account', 'create']"
 							:key="option"
-							data-test-id="source-control-status-filter-option"
+							data-test-id="oidc-prompt-filter-option"
 							:value="option"
 						/>
 					</N8nSelect>
