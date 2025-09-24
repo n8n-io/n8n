@@ -17,7 +17,7 @@ class CredentialsOverwrite {
 	@Env('CREDENTIALS_OVERWRITE_ENDPOINT_AUTH_TOKEN')
 	endpointAuthToken: string = '';
 
-	/** Authentication token for the credentials overwrite endpoint. */
+	/** Enable persistence for credentials overwrites. */
 	@Env('CREDENTIALS_OVERWRITE_PERSISTENCE')
 	persistence: boolean = false;
 }

@@ -315,9 +315,7 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						await Container.get(CredentialsOverwrites).setData(body, true);
-
-						await frontendService?.generateTypes();
+						await Container.get(CredentialsOverwrites).setData(body, true, true);
 
 						this.presetCredentialsLoaded = true;
 

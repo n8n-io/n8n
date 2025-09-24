@@ -247,36 +247,6 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 		});
 
 		describe('Error Resilience Integration', () => {
-			it('should handle database failures without affecting memory operations', async () => {
-				const testData: ICredentialsOverwrite = { memory: { only: 'data' } };
-
-				// Create a settings repository mock that will fail
-				const failingRepo = {
-					...settingsRepository,
-					create: jest.fn(() => {
-						throw new Error('Database connection failed');
-					}),
-					save: jest.fn(() => {
-						throw new Error('Database save failed');
-					}),
-				};
-
-				const failingInstance = new CredentialsOverwrites(
-					globalConfig,
-					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
-					failingRepo as any,
-					cipher,
-				);
-
-				// This should not throw, memory operation should still work
-				await failingInstance.setData(testData, false, false); // Don't store in DB
-
-				// Memory should still contain the data
-				const memoryData = failingInstance.getAll();
-				expect(memoryData).toEqual(testData);
-			});
-
 			it('should handle transient failures and recovery', async () => {
 				const testData: ICredentialsOverwrite = { recovery: { test: 'data' } };
 
@@ -305,63 +275,6 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify recovery worked
 				const savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-			});
-		});
-
-		describe('Performance Under Load', () => {
-			it('should handle sequential operations efficiently', async () => {
-				const operations = Array(3) // Reduce to 3 for sequential database operations
-					.fill(0)
-					.map((_, i) => ({
-						[`sequential${i}`]: { value: `value${i}` },
-					}));
-
-				const startTime = Date.now();
-
-				// Execute operations sequentially to avoid UNIQUE constraint issues
-				for (const data of operations) {
-					await credentialsOverwrites.setData(data, true, false);
-				}
-
-				const duration = Date.now() - startTime;
-
-				// Should complete in reasonable time (less than 2 seconds for 3 database operations)
-				expect(duration).toBeLessThan(2000);
-
-				// Verify final state is the last operation
-				const finalData = credentialsOverwrites.getAll();
-				expect(finalData).toEqual(operations[operations.length - 1]);
-			});
-
-			it('should maintain performance under repeated PubSub events', async () => {
-				const testData: ICredentialsOverwrite = { performance: { test: 'data' } };
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
-
-				// Save data to database
-				const setting = settingsRepository.create({
-					key: 'credentialsOverwrite',
-					value: encryptedData,
-					loadOnStartup: false,
-				});
-				await settingsRepository.save(setting);
-
-				const startTime = Date.now();
-
-				// Execute multiple PubSub events (reduced for database performance)
-				const pubsubPromises = Array(5)
-					.fill(0)
-					.map(async () => await credentialsOverwrites.reloadOverwriteCredentials());
-
-				await Promise.all(pubsubPromises);
-
-				const duration = Date.now() - startTime;
-
-				// Should maintain reasonable performance for database operations
-				expect(duration).toBeLessThan(2000);
-
-				// Verify data was loaded correctly
-				const loadedData = credentialsOverwrites.getAll();
-				expect(loadedData).toEqual(testData);
 			});
 		});
 

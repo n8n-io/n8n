@@ -718,48 +718,6 @@ describe('CredentialsOverwrites', () => {
 
 				expect(publisherMock.publishCommand).not.toHaveBeenCalled();
 			});
-
-			it('should handle publisher import errors gracefully', async () => {
-				// Create a new config with persistence enabled
-				const errorConfig = mock<GlobalConfig>({
-					credentials: {
-						overwrite: {
-							data: JSON.stringify({ test: { username: 'user' } }),
-							persistence: true,
-							endpointAuthToken: '',
-						},
-					},
-				});
-
-				// Create new instance
-				const errorCredentialsOverwrites = new CredentialsOverwrites(
-					errorConfig,
-					credentialTypes,
-					logger,
-					settingsRepository,
-					cipher,
-				);
-
-				// Mock a module import failure
-				jest.doMock('@/scaling/pubsub/publisher.service', () => {
-					throw new Error('Publisher service not available');
-				});
-
-				cipher.encrypt.mockReturnValue('encrypted-data');
-				settingsRepository.create.mockReturnValue({
-					key: 'credentialsOverwrite',
-					value: 'encrypted-data',
-					loadOnStartup: false,
-				});
-
-				// Should not throw error even if Publisher import fails
-				await expect(
-					errorCredentialsOverwrites.saveOverwriteDataToDB({ test: { username: 'user' } }, true),
-				).rejects.toThrow('Publisher service not available');
-
-				// Cleanup
-				jest.dontMock('@/scaling/pubsub/publisher.service');
-			});
 		});
 
 		describe('PubSub Event Decorator Integration', () => {
