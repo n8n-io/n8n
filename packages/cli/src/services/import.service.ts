@@ -323,7 +323,9 @@ export class ImportService {
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
 				await Promise.all(
-					tableNames.map((tableName) => this.truncateEntityTable(tableName, transactionManager)),
+					tableNames.map(async (tableName) =>
+						this.truncateEntityTable(tableName, transactionManager),
+					),
 				);
 
 				this.logger.info('✅ All tables truncated successfully');
