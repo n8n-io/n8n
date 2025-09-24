@@ -28,7 +28,12 @@ jest.mock('simple-git', () => {
 });
 
 describe('SourceControlGitService', () => {
-	const sourceControlGitService = new SourceControlGitService(mock(), mock(), mock());
+	const mockSourceControlPreferencesService = mock<SourceControlPreferencesService>();
+	const sourceControlGitService = new SourceControlGitService(
+		mock(),
+		mock(),
+		mockSourceControlPreferencesService,
+	);
 
 	beforeEach(() => {
 		sourceControlGitService.git = simpleGit();
@@ -171,6 +176,35 @@ describe('SourceControlGitService', () => {
 				);
 				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('setGitCommand', () => {
+		it('should setup git client for https connection', async () => {
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'https',
+			} as never);
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+		});
+
+		it('should setup git client for ssh connection', async () => {
+			// @ts-expect-error required for testing
+			mockSourceControlPreferencesService['sshFolder'] = '.ssh';
+			mockSourceControlPreferencesService.getPrivateKeyPath.mockResolvedValue('private-key');
+			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+				connectionType: 'ssh',
+			} as never);
+
+			await sourceControlGitService.setGitCommand();
+
+			expect(mockGitInstance.env).toHaveBeenCalledWith(
+				'GIT_SSH_COMMAND',
+				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=no -i "private-key"',
+			);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 		});
 	});
 
