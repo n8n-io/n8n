@@ -78,12 +78,12 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const version = this.getNodeParameter('version', 0) as number;
+	const version = this.getNodeParameter('version', 0);
 
 	query = query ?? {};
 	const QUERY_LIMIT = 100;
 	query.limit = QUERY_LIMIT;
-	query.offset = query?.offset ? (query.offset as number) : 0;
+	query.offset = query?.offset ? Number(query.offset) : 0;
 	const returnData: IDataObject[] = [];
 
 	let responseData:
