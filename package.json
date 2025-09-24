@@ -87,6 +87,7 @@
       "sqlite3"
     ],
     "overrides": {
+      "ts-essentials": "7.0.3"
       "@azure/identity": "^4.3.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
