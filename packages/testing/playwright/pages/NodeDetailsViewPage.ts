@@ -892,10 +892,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('radio-button-expression').nth(index);
 	}
 
-	async setRLCValue(paramName: string, value: string): Promise<void> {
-		await this.getResourceLocatorModeSelector(paramName).click();
-  }
-  
 	getResourceLocatorModeSelectorInput(paramName: string) {
 		return this.getResourceLocatorModeSelector(paramName).locator('input');
 	}
