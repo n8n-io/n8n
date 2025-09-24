@@ -169,23 +169,22 @@ async function handleStop() {
 }
 
 async function handleKeyDown(event: KeyboardEvent) {
+	const hasModifier = event.ctrlKey || event.metaKey;
+	const isPrintableChar = event.key.length === 1 && !hasModifier;
+	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
+	const atMaxLength = characterCount.value >= props.maxLength;
+	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
+
 	// Prevent adding characters if at max length (but allow deletions/navigation)
-	if (
-		characterCount.value >= props.maxLength &&
-		event.key.length === 1 &&
-		!event.ctrlKey &&
-		!event.metaKey &&
-		event.key !== 'Backspace' &&
-		event.key !== 'Delete'
-	) {
+	if (atMaxLength && isPrintableChar && !isDeletionKey) {
 		event.preventDefault();
 		return;
 	}
 
-	if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+	// Submit on plain Enter (no Shift/Ctrl/Meta). If send disabled, don't submit.
+	if (isPlainEnter) {
 		event.preventDefault();
-		// prevent default key action, but if streaming don't submit
-		if (!props.streaming) {
+		if (!sendDisabled.value) {
 			await handleSubmit();
 		}
 	}
