@@ -7,7 +7,7 @@ export function parseDate(
 	date: string | number | Date | DateTime,
 	options: Partial<{ timezone: string; fromFormat: string }> = {},
 ): DateTime {
-	const tz = options.timezone;
+	const tz = options.timezone ?? this.getTimezone();
 
 	if (date === null || date === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Invalid date type');
@@ -21,7 +21,7 @@ export function parseDate(
 	}
 	// Native Date
 	else if (date instanceof Date) {
-		parsedDate = DateTime.fromJSDate(date, tz ? { zone: tz } : undefined);
+		parsedDate = DateTime.fromJSDate(date, tz ? { zone: tz } : { zone: 'utc' });
 	}
 	// Number / numeric string (timestamp)
 	else if (typeof date === 'number' || (!isNaN(Number(date)) && !options.fromFormat)) {
@@ -46,17 +46,17 @@ export function parseDate(
 			// Custom format
 			if (options.fromFormat) {
 				parsedDate = DateTime.fromFormat(dateStr, options.fromFormat, {
-					zone: tz || 'utc',
+					zone: tz ? tz : 'utc',
 					setZone: true,
 				});
 			}
 			// YYYY-MM-DD (date only)
 			else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-				parsedDate = DateTime.fromISO(dateStr, { zone: tz || 'utc' }).startOf('day');
+				parsedDate = DateTime.fromISO(dateStr, { zone: tz ? tz : 'utc' }).startOf('day');
 			}
 			// General ISO string
 			else {
-				parsedDate = DateTime.fromISO(dateStr, { zone: tz || 'utc' });
+				parsedDate = DateTime.fromISO(dateStr, { zone: tz ? tz : 'utc' });
 				if (!parsedDate.isValid) throw new Error('Invalid ISO string');
 			}
 		} catch {
