@@ -106,7 +106,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 							continue;
 						}
 						try {
-							fields.value[schema.id] = JSONSafeParse(fields.value[schema.id]);
+							fields.value[schema.id] = JSON.parse(fields.value[schema.id]);
 						} catch {
 							fields.value[schema.id] = JSONSafeParse(fields.value[schema.id].replace(/'/g, '"'));
 						}
