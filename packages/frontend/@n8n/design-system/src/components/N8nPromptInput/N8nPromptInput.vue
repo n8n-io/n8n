@@ -3,13 +3,14 @@ import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
 import N8nSendStopButton from './N8nSendStopButton.vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
+import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
-	placeholder?: string;
-	maxLength?: number;
+	inputPlaceholder?: string;
+	maxInputCharacterLength?: number;
 	maxLinesBeforeScroll?: number;
 	minLines?: number;
 	streaming?: boolean;
@@ -19,8 +20,8 @@ export interface N8nPromptInputProps {
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
-	placeholder: '',
-	maxLength: 1000,
+	inputPlaceholder: '',
+	maxInputCharacterLength: 1000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
@@ -35,6 +36,8 @@ const emit = defineEmits<{
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 }>();
+
+const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
@@ -53,7 +56,7 @@ const textAreaMaxHeight = computed(() => {
 
 const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
-	maxLength: toRef(props, 'maxLength'),
+	maxLength: toRef(props, 'maxInputCharacterLength'),
 });
 
 const showWarningBanner = computed(() => isAtLimit.value);
@@ -172,7 +175,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const hasModifier = event.ctrlKey || event.metaKey;
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
-	const atMaxLength = characterCount.value >= props.maxLength;
+	const atMaxLength = characterCount.value >= props.maxInputCharacterLength;
 	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
@@ -235,7 +238,7 @@ defineExpose({
 			theme="warning"
 			:class="$style.warningCallout"
 		>
-			You've reached the {{ maxLength }} character limit
+			{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength }) }}
 		</N8nCallout>
 
 		<!-- Single line mode: input and button side by side -->
@@ -248,9 +251,9 @@ defineExpose({
 					'ignore-key-press-node-creator',
 					'ignore-key-press-canvas',
 				]"
-				:placeholder="placeholder"
+				:placeholder="inputPlaceholder"
 				:disabled="disabled"
-				:maxlength="maxLength"
+				:maxlength="maxInputCharacterLength"
 				rows="1"
 				@keydown="handleKeyDown"
 				@focus="handleFocus"
@@ -284,9 +287,9 @@ defineExpose({
 						'ignore-key-press-canvas',
 					]"
 					:style="textareaStyle"
-					:placeholder="placeholder"
+					:placeholder="inputPlaceholder"
 					:disabled="disabled"
-					:maxlength="maxLength"
+					:maxlength="maxInputCharacterLength"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"

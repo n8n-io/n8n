@@ -419,10 +419,10 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:placeholder="placeholder || t('assistantChat.inputPlaceholder')"
+				:input-placeholder="placeholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
-				:max-length="maxLength"
+				:max-input-character-length="maxLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
 				@submit="onSendMessage"

@@ -22,7 +22,7 @@ describe('N8nPromptInput', () => {
 		it('should render with non-default placeholder', () => {
 			const { container } = renderComponent({
 				props: {
-					placeholder: 'Type your message here...',
+					inputPlaceholder: 'Type your message here...',
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -150,7 +150,7 @@ describe('N8nPromptInput', () => {
 				props: {
 					// Start at max length to trigger warning
 					modelValue: '1234567890',
-					maxLength: 10,
+					maxInputCharacterLength: 10,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -165,7 +165,7 @@ describe('N8nPromptInput', () => {
 		it('should set maxlength attribute on textarea', () => {
 			const { container } = renderComponent({
 				props: {
-					maxLength: 100,
+					maxInputCharacterLength: 100,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -180,7 +180,7 @@ describe('N8nPromptInput', () => {
 			const render = renderComponent({
 				props: {
 					modelValue: '',
-					maxLength: 5,
+					maxInputCharacterLength: 5,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -199,7 +199,7 @@ describe('N8nPromptInput', () => {
 			const render = renderComponent({
 				props: {
 					modelValue: '12345',
-					maxLength: 5,
+					maxInputCharacterLength: 5,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -482,7 +482,7 @@ describe('N8nPromptInput', () => {
 			const { container } = renderComponent({
 				props: {
 					modelValue: longText,
-					maxLength: 1000,
+					maxInputCharacterLength: 1000,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
