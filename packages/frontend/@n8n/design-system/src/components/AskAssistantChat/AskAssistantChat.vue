@@ -244,18 +244,22 @@ watch(
 // Setup ResizeObserver to maintain scroll position when input height changes
 let resizeObserver: ResizeObserver | null = null;
 let scrollLockActive = false;
+let scrollHandler: (() => void) | null = null;
 
 onMounted(() => {
 	if (inputWrapperRef.value && messagesRef.value && 'ResizeObserver' in window) {
 		// Track user scroll to determine if they want to stay at bottom
 		let userIsAtBottom = true;
 
-		// Monitor user scrolling
-		messagesRef.value.addEventListener('scroll', () => {
+		// Create scroll handler function so we can remove it later
+		scrollHandler = () => {
 			if (!scrollLockActive) {
 				userIsAtBottom = isScrolledToBottom();
 			}
-		});
+		};
+
+		// Monitor user scrolling
+		messagesRef.value.addEventListener('scroll', scrollHandler);
 
 		// Monitor input size changes
 		resizeObserver = new ResizeObserver(() => {
@@ -282,6 +286,13 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	// Remove scroll event listener to prevent memory leak
+	if (scrollHandler && messagesRef.value) {
+		messagesRef.value.removeEventListener('scroll', scrollHandler);
+		scrollHandler = null;
+	}
+
+	// Disconnect ResizeObserver
 	if (resizeObserver) {
 		resizeObserver.disconnect();
 		resizeObserver = null;

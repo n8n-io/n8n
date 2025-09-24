@@ -148,6 +148,9 @@ catalogs:
     '@vitejs/plugin-vue':
       specifier: ^5.2.4
       version: 5.2.4
+    '@vue/test-utils':
+      specifier: ^2.4.6
+      version: 2.4.6
     '@vue/tsconfig':
       specifier: ^0.7.0
       version: 0.7.0
@@ -2236,7 +2239,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.11)(jiti@1.21.7)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       '@vue/test-utils':
-        specifier: ^2.4.6
+        specifier: catalog:frontend
         version: 2.4.6
       autoprefixer:
         specifier: ^10.4.19
