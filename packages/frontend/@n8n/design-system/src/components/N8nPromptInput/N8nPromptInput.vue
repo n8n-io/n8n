@@ -243,7 +243,11 @@ defineExpose({
 			<textarea
 				ref="textareaRef"
 				v-model="textValue"
-				:class="$style.singleLineTextarea"
+				:class="[
+					$style.singleLineTextarea,
+					'ignore-key-press-node-creator',
+					'ignore-key-press-canvas',
+				]"
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:maxlength="maxLength"
@@ -274,7 +278,11 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
-					:class="$style.multilineTextarea"
+					:class="[
+						$style.multilineTextarea,
+						'ignore-key-press-node-creator',
+						'ignore-key-press-canvas',
+					]"
 					:style="textareaStyle"
 					:placeholder="placeholder"
 					:disabled="disabled"
