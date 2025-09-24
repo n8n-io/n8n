@@ -145,7 +145,6 @@ describe('AiWorkflowBuilderService', () => {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
 			});
 			(MockedWorkflowBuilderAgent.generateThreadId as jest.Mock).mockReturnValue('test-thread-id');
-			(MockedWorkflowBuilderAgent.getTools as jest.Mock).mockReturnValue([]);
 			return mockAgent;
 		});
 

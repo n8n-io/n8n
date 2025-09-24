@@ -16,6 +16,8 @@ import { anthropicClaudeSonnet4 } from '@/llm-config';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
+import { getBuilderToolsForDisplay } from './tools/builder-tools';
+
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 
 type LangchainMessage = AIMessage | HumanMessage | ToolMessage;
@@ -278,9 +280,6 @@ export class AiWorkflowBuilderService {
 	async getSessions(workflowId: string | undefined, user?: IUser) {
 		const userId = user?.id?.toString();
 
-		// Real credentials not needed here
-		const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel();
-
 		// For now, we'll return the current session if we have a workflowId
 		// MemorySaver doesn't expose a way to list all threads, so we'll need to
 		// track this differently if we want to list all sessions
@@ -308,11 +307,8 @@ export class AiWorkflowBuilderService {
 						sessionId: threadId,
 						messages: formatMessages(
 							messages,
-							WorkflowBuilderAgent.getTools({
-								parsedNodeTypes: this.parsedNodeTypes,
-								llmComplexTask: anthropicClaude,
-								logger: this.logger,
-								instanceUrl: this.instanceUrl,
+							getBuilderToolsForDisplay({
+								nodeTypes: this.parsedNodeTypes,
 							}),
 						),
 						lastUpdated: checkpoint.checkpoint.ts,

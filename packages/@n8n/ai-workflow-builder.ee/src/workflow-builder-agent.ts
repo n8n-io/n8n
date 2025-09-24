@@ -19,19 +19,13 @@ import {
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
 } from '@/constants';
-import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
+import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
@@ -85,28 +79,8 @@ export class WorkflowBuilderAgent {
 		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
-	static getTools({
-		parsedNodeTypes,
-		logger,
-		llmComplexTask,
-		instanceUrl,
-	}: Pick<
-		WorkflowBuilderAgentConfig,
-		'parsedNodeTypes' | 'logger' | 'llmComplexTask' | 'instanceUrl'
-	>): BuilderTool[] {
-		return [
-			createNodeSearchTool(parsedNodeTypes),
-			createNodeDetailsTool(parsedNodeTypes),
-			createAddNodeTool(parsedNodeTypes),
-			createConnectNodesTool(parsedNodeTypes, logger),
-			createRemoveNodeTool(logger),
-			createUpdateNodeParametersTool(parsedNodeTypes, llmComplexTask, logger, instanceUrl),
-			createGetNodeParameterTool(),
-		];
-	}
-
 	private getBuilderTools(): BuilderTool[] {
-		return WorkflowBuilderAgent.getTools({
+		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
 			instanceUrl: this.instanceUrl,
 			llmComplexTask: this.llmComplexTask,
