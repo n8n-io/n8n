@@ -209,7 +209,13 @@ defineExpose({
 		:style="containerStyle"
 	>
 		<!-- Warning banner when character limit is reached -->
-		<N8nCallout v-if="showWarningBanner" icon="info" theme="warning" :class="$style.warningCallout">
+		<N8nCallout
+			slim
+			v-if="showWarningBanner"
+			icon="info"
+			theme="warning"
+			:class="$style.warningCallout"
+		>
 			You've reached the {{ maxLength }} character limit
 		</N8nCallout>
 
@@ -307,7 +313,7 @@ defineExpose({
 }
 
 .warningCallout {
-	margin: 0 0 var(--spacing-xs) 0;
+	margin: 0 var(--spacing-3xs) var(--spacing-2xs) var(--spacing-3xs);
 }
 
 // Single line mode
@@ -361,7 +367,7 @@ defineExpose({
 	font-size: var(--font-size-2xs);
 	line-height: 18px;
 	color: var(--color-text-dark);
-	padding: var(--spacing-3xs) var(--spacing-2xs);
+	padding: var(--spacing-3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
