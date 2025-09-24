@@ -113,6 +113,13 @@ export class WorkerServer {
 		if (overwrites) {
 			const { endpoint } = this.globalConfig.credentials.overwrite;
 
+			const overwriteEndpointMiddleware =
+				this.credentialsOverwrites.getOverwriteEndpointMiddleware();
+
+			if (overwriteEndpointMiddleware) {
+				this.app.use(`/${endpoint}`, overwriteEndpointMiddleware);
+			}
+
 			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
 				this.handleOverwrites(req, res),
 			);

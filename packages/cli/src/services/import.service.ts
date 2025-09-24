@@ -17,12 +17,30 @@ import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 
 @Service()
 export class ImportService {
 	private dbCredentials: ICredentialsDb[] = [];
 
 	private dbTags: TagEntity[] = [];
+
+	private foreignKeyCommands: Record<'enable' | 'disable', Record<string, string>> = {
+		disable: {
+			sqlite: 'PRAGMA foreign_keys = OFF;',
+			'sqlite-pooled': 'PRAGMA foreign_keys = OFF;',
+			'sqlite-memory': 'PRAGMA foreign_keys = OFF;',
+			postgres: 'SET session_replication_role = replica;',
+			postgresql: 'SET session_replication_role = replica;',
+		},
+		enable: {
+			sqlite: 'PRAGMA foreign_keys = ON;',
+			'sqlite-pooled': 'PRAGMA foreign_keys = ON;',
+			'sqlite-memory': 'PRAGMA foreign_keys = ON;',
+			postgres: 'SET session_replication_role = DEFAULT;',
+			postgresql: 'SET session_replication_role = DEFAULT;',
+		},
+	};
 
 	constructor(
 		private readonly logger: Logger,
@@ -100,44 +118,6 @@ export class ImportService {
 	}
 
 	/**
-	 * Generate SQL command to disable foreign key constraints for the specified database type
-	 * @param dbType - Database type ('sqlite' or 'postgres')
-	 * @returns SQL command string to disable foreign key constraints
-	 */
-	generateForeignKeyDisableCommand(dbType: string): string {
-		switch (dbType.toLowerCase()) {
-			case 'sqlite':
-			case 'sqlite-pooled':
-			case 'sqlite-memory':
-				return 'PRAGMA foreign_keys = OFF;';
-			case 'postgres':
-			case 'postgresql':
-				return 'SET session_replication_role = replica;';
-			default:
-				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
-	}
-
-	/**
-	 * Generate SQL command to enable foreign key constraints for the specified database type
-	 * @param dbType - Database type ('sqlite' or 'postgres')
-	 * @returns SQL command string to enable foreign key constraints
-	 */
-	generateForeignKeyEnableCommand(dbType: string): string {
-		switch (dbType.toLowerCase()) {
-			case 'sqlite':
-			case 'sqlite-pooled':
-			case 'sqlite-memory':
-				return 'PRAGMA foreign_keys = ON;';
-			case 'postgres':
-			case 'postgresql':
-				return 'SET session_replication_role = DEFAULT;';
-			default:
-				throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
-	}
-
-	/**
 	 * Check if a table is empty (has no rows)
 	 * @param tableName - Name of the table to check
 	 * @returns Promise that resolves to true if table is empty, false otherwise
@@ -201,29 +181,23 @@ export class ImportService {
 	async truncateEntityTable(tableName: string, transactionManager: EntityManager): Promise<void> {
 		this.logger.info(`🗑️  Truncating table: ${tableName}`);
 
-		const dbType = this.dataSource.options.type;
-
-		if (
-			['sqlite', 'sqlite-pooled', 'sqlite-memory', 'postgres', 'postgresql'].includes(
-				dbType.toLowerCase(),
-			)
-		) {
-			await transactionManager.createQueryBuilder().delete().from(tableName, tableName).execute();
-		} else {
-			throw new Error(`Unsupported database type: ${dbType}. Supported types: sqlite, postgres`);
-		}
+		await transactionManager.createQueryBuilder().delete().from(tableName, tableName).execute();
 
 		this.logger.info(`   ✅ Table ${tableName} truncated successfully`);
 	}
 
 	/**
-	 * Get list of table names that will be imported from the input directory
+	 * Get import metadata including table names and entity files
 	 * @param inputDir - Directory containing exported entity files
-	 * @returns Array of table names that have corresponding files
+	 * @returns Object containing table names and entity files grouped by entity name
 	 */
-	async getTableNamesForImport(inputDir: string): Promise<string[]> {
+	async getImportMetadata(inputDir: string): Promise<{
+		tableNames: string[];
+		entityFiles: Record<string, string[]>;
+	}> {
 		const files = await readdir(inputDir);
 		const entityTableNamesMap: Record<string, string> = {};
+		const entityFiles: Record<string, string[]> = {};
 
 		for (const file of files) {
 			if (file.endsWith('.jsonl')) {
@@ -233,169 +207,32 @@ export class ImportService {
 					continue;
 				}
 
-				if (entityTableNamesMap[entityName]) {
-					continue;
-				}
-
-				const entityMetadata = this.dataSource.entityMetadatas.find(
-					(meta) => meta.name.toLowerCase() === entityName,
-				);
-
-				if (!entityMetadata) {
-					this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
-					continue;
-				}
-
-				entityTableNamesMap[entityName] = entityMetadata.tableName;
-			}
-		}
-
-		return Object.values(entityTableNamesMap);
-	}
-
-	/**
-	 * Validates that the migrations in the import data match the target database
-	 * @param inputDir - Directory containing exported entity files
-	 * @returns Promise that resolves if migrations match, throws error if they don't
-	 */
-	async validateMigrations(inputDir: string): Promise<void> {
-		const migrationsFilePath = path.join(inputDir, 'migrations.jsonl');
-
-		try {
-			// Check if migrations file exists
-			await readFile(migrationsFilePath, 'utf8');
-		} catch (error) {
-			throw new Error(
-				'Migrations file not found. Cannot proceed with import without migration validation.',
-			);
-		}
-
-		// Read and parse migrations from file
-		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = migrationsFileContent
-			.trim()
-			.split('\n')
-			.filter((line) => line.trim())
-			.map((line) => {
-				try {
-					return JSON.parse(line) as Record<string, unknown>;
-				} catch (error) {
-					throw new Error(
-						`Invalid JSON in migrations file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				// Build table names map (only need to do this once per entity)
+				if (!entityTableNamesMap[entityName]) {
+					const entityMetadata = this.dataSource.entityMetadatas.find(
+						(meta) => meta.name.toLowerCase() === entityName,
 					);
-				}
-			});
 
-		if (importMigrations.length === 0) {
-			this.logger.info('No migrations found in import data');
-			return;
-		}
+					if (!entityMetadata) {
+						this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
+						continue;
+					}
 
-		// Find the latest migration in import data
-		const latestImportMigration = importMigrations.reduce((latest, current) => {
-			const currentTimestamp = parseInt(String(current.timestamp || current.id || '0'));
-			const latestTimestamp = parseInt(String(latest.timestamp || latest.id || '0'));
-			return currentTimestamp > latestTimestamp ? current : latest;
-		});
-
-		this.logger.info(
-			`Latest migration in import data: ${String(latestImportMigration.name)} (timestamp: ${String(latestImportMigration.timestamp || latestImportMigration.id)}, id: ${String(latestImportMigration.id)})`,
-		);
-
-		// Get migrations from target database
-		const tablePrefix = this.dataSource.options.entityPrefix || '';
-		const migrationsTableName = `${tablePrefix}migrations`;
-
-		try {
-			const dbMigrations = await this.dataSource.query(
-				`SELECT * FROM ${this.dataSource.driver.escape(migrationsTableName)} ORDER BY timestamp DESC LIMIT 1`,
-			);
-
-			if (dbMigrations.length === 0) {
-				throw new Error(
-					'Target database has no migrations. Cannot import data from a different migration state.',
-				);
-			}
-
-			const latestDbMigration = dbMigrations[0];
-			this.logger.info(
-				`Latest migration in target database: ${latestDbMigration.name} (timestamp: ${latestDbMigration.timestamp}, id: ${latestDbMigration.id})`,
-			);
-
-			// Compare timestamps, names, and IDs for comprehensive validation
-			const importTimestamp = parseInt(
-				String(latestImportMigration.timestamp || latestImportMigration.id || '0'),
-			);
-			const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
-			const importName = latestImportMigration.name;
-			const dbName = latestDbMigration.name;
-			const importId = latestImportMigration.id;
-			const dbId = latestDbMigration.id;
-
-			// Check timestamp match
-			if (importTimestamp !== dbTimestamp) {
-				throw new Error(
-					`Migration timestamp mismatch. Import data: ${String(importName)} (${String(importTimestamp)}) does not match target database ${String(dbName)} (${String(dbTimestamp)}). Cannot import data from different migration states.`,
-				);
-			}
-
-			// Check name match
-			if (importName !== dbName) {
-				throw new Error(
-					`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
-				);
-			}
-
-			// Check ID match (if both have IDs)
-			if (importId && dbId && importId !== dbId) {
-				throw new Error(
-					`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
-				);
-			}
-
-			this.logger.info(
-				'✅ Migration validation passed - import data matches target database migration state',
-			);
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				(error.message.includes('Migration timestamp mismatch') ||
-					error.message.includes('Migration name mismatch') ||
-					error.message.includes('Migration ID mismatch') ||
-					error.message.includes('Target database has no migrations') ||
-					error.message.includes('Invalid JSON in migrations file'))
-			) {
-				throw error;
-			}
-			// If we can't query the migrations table, abort the import to prevent schema/data mismatch
-			throw new Error(
-				'Could not validate migrations against target database. Cannot proceed with import without migration validation to prevent schema/data mismatch.',
-			);
-		}
-	}
-
-	/**
-	 * Get list of entity files from the input directory
-	 * @param inputDir - Directory containing exported entity files
-	 * @returns Array of entity file paths grouped by entity name
-	 */
-	async getEntityFiles(inputDir: string): Promise<Map<string, string[]>> {
-		const files = await readdir(inputDir);
-		const entityFiles = new Map<string, string[]>();
-
-		// Group files by entity name (e.g., "user.jsonl", "user.2.jsonl" -> "user")
-		for (const file of files) {
-			if (file.endsWith('.jsonl')) {
-				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				if (!entityFiles.has(entityName)) {
-					entityFiles.set(entityName, []);
+					entityTableNamesMap[entityName] = entityMetadata.tableName;
 				}
 
-				entityFiles.get(entityName)!.push(path.join(inputDir, file));
+				// Build entity files map (only for entities with valid metadata)
+				if (!entityFiles[entityName]) {
+					entityFiles[entityName] = [];
+				}
+				entityFiles[entityName].push(path.join(inputDir, file));
 			}
 		}
 
-		return entityFiles;
+		return {
+			tableNames: Object.values(entityTableNamesMap),
+			entityFiles,
+		};
 	}
 
 	/**
@@ -433,13 +270,17 @@ export class ImportService {
 	}
 
 	async importEntities(inputDir: string, truncateTables: boolean) {
-		// Validate migrations before starting the import process
+		validateDbTypeForImportEntities(this.dataSource.options.type);
+
 		await this.validateMigrations(inputDir);
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 
-			const tableNames = await this.getTableNamesForImport(inputDir);
+			// Get import metadata after migration validation
+			const importMetadata = await this.getImportMetadata(inputDir);
+			const { tableNames, entityFiles } = importMetadata;
+			const entityNames = Object.keys(entityFiles);
 
 			if (truncateTables) {
 				this.logger.info('\n🗑️  Truncating tables before import...');
@@ -447,7 +288,9 @@ export class ImportService {
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
 				await Promise.all(
-					tableNames.map((tableName) => this.truncateEntityTable(tableName, transactionManager)),
+					tableNames.map(
+						async (tableName) => await this.truncateEntityTable(tableName, transactionManager),
+					),
 				);
 
 				this.logger.info('✅ All tables truncated successfully');
@@ -461,7 +304,7 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager);
+			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
@@ -470,27 +313,31 @@ export class ImportService {
 	/**
 	 * Import entities from JSONL files into the database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param transactionManager - TypeORM transaction manager
+	 * @param entityNames - Array of entity names to import
+	 * @param entityFiles - Record of entity names to their file paths
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
 		inputDir: string,
 		transactionManager: EntityManager,
+		entityNames: string[],
+		entityFiles: Record<string, string[]>,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
-		const entityFiles = await this.getEntityFiles(inputDir);
-
-		if (entityFiles.size === 0) {
+		if (entityNames.length === 0) {
 			this.logger.warn('No entity files found in input directory');
 			return;
 		}
 
-		this.logger.info(`📋 Found ${entityFiles.size} entity types to import:`);
+		this.logger.info(`📋 Found ${entityNames.length} entity types to import:`);
 
 		let totalEntitiesImported = 0;
 
 		await Promise.all(
-			Array.from(entityFiles.entries()).map(async ([entityName, files]) => {
+			entityNames.map(async (entityName) => {
+				const files = entityFiles[entityName];
 				this.logger.info(`   • ${entityName}: ${files.length} file(s)`);
 				this.logger.info(`\n📊 Importing ${entityName} entities...`);
 
@@ -528,7 +375,7 @@ export class ImportService {
 
 		this.logger.info('\n📊 Import Summary:');
 		this.logger.info(`   Total entities imported: ${totalEntitiesImported}`);
-		this.logger.info(`   Entity types processed: ${entityFiles.size}`);
+		this.logger.info(`   Entity types processed: ${entityNames.length}`);
 		this.logger.info('✅ Import completed successfully!');
 	}
 
@@ -553,14 +400,28 @@ export class ImportService {
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {
-		const disableCommand = this.generateForeignKeyDisableCommand(this.dataSource.options.type);
+		const disableCommand = this.foreignKeyCommands.disable[this.dataSource.options.type];
+
+		if (!disableCommand) {
+			throw new Error(
+				`Unsupported database type: ${this.dataSource.options.type}. Supported types: sqlite, postgres`,
+			);
+		}
+
 		this.logger.debug(`Executing: ${disableCommand}`);
 		await transactionManager.query(disableCommand);
 		this.logger.info('✅ Foreign key constraints disabled');
 	}
 
 	async enableForeignKeyConstraints(transactionManager: EntityManager) {
-		const enableCommand = this.generateForeignKeyEnableCommand(this.dataSource.options.type);
+		const enableCommand = this.foreignKeyCommands.enable[this.dataSource.options.type];
+
+		if (!enableCommand) {
+			throw new Error(
+				`Unsupported database type: ${this.dataSource.options.type}. Supported types: sqlite, postgres`,
+			);
+		}
+
 		this.logger.debug(`Executing: ${enableCommand}`);
 		await transactionManager.query(enableCommand);
 		this.logger.info('✅ Foreign key constraints re-enabled');

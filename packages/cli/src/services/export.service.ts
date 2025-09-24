@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
+import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
 @Service()
 export class ExportService {
@@ -95,6 +96,9 @@ export class ExportService {
 
 	async exportEntities(outputDir: string) {
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
+
+		validateDbTypeForExportEntities(this.dataSource.options.type);
+
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 
@@ -111,10 +115,6 @@ export class ExportService {
 		let totalEntitiesExported = 0;
 		const pageSize = 500;
 		const entitiesPerFile = 500;
-
-		// First export migrations table
-		const migrationsTableExported = await this.exportMigrationsTable(outputDir);
-		totalTablesProcessed += migrationsTableExported;
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name

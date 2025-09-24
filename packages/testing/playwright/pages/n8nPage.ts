@@ -9,6 +9,8 @@ import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
 import { InteractionsPage } from './InteractionsPage';
+import { MfaLoginPage } from './MfaLoginPage';
+import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
@@ -16,6 +18,7 @@ import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
+import { SignInPage } from './SignInPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
@@ -25,12 +28,14 @@ import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
+import { MfaComposer } from '../composables/MfaComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import type { ApiHelpers } from '../services/api-helper';
+import { BaseModal } from './components/BaseModal';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -45,6 +50,7 @@ export class n8nPage {
 	readonly demo: DemoPage;
 	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
+	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
@@ -58,17 +64,21 @@ export class n8nPage {
 	readonly credentials: CredentialsPage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
+	readonly signIn: SignInPage;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly mfaSetupModal: MfaSetupModal;
+	readonly modal: BaseModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly credentialsComposer: CredentialsComposer;
+	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly start: TestEntryComposer;
 
@@ -87,6 +97,7 @@ export class n8nPage {
 		this.demo = new DemoPage(page);
 		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
+		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
@@ -100,17 +111,20 @@ export class n8nPage {
 		this.credentials = new CredentialsPage(page);
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
+		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.mfaSetupModal = new MfaSetupModal(page);
+		this.modal = new BaseModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.credentialsComposer = new CredentialsComposer(this);
+		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.start = new TestEntryComposer(this);
 

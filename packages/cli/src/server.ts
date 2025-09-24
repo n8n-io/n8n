@@ -290,6 +290,13 @@ export class Server extends AbstractServer {
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
+			const overwriteEndpointMiddleware =
+				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
+
+			if (overwriteEndpointMiddleware) {
+				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+			}
+
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {

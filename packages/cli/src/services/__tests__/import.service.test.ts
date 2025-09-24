@@ -47,82 +47,6 @@ describe('ImportService', () => {
 		);
 	});
 
-	describe('generateForeignKeyDisableCommand', () => {
-		it('should generate correct SQLite disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct SQLite pooled disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite-pooled');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct SQLite memory disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('sqlite-memory');
-			expect(result).toBe('PRAGMA foreign_keys = OFF;');
-		});
-
-		it('should generate correct PostgreSQL disable command', () => {
-			const result = importService.generateForeignKeyDisableCommand('postgres');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should generate correct PostgreSQL disable command with postgresql variant', () => {
-			const result = importService.generateForeignKeyDisableCommand('postgresql');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should handle case insensitive database types', () => {
-			const result = importService.generateForeignKeyDisableCommand('POSTGRES');
-			expect(result).toBe('SET session_replication_role = replica;');
-		});
-
-		it('should throw error for unsupported database types', () => {
-			expect(() => {
-				importService.generateForeignKeyDisableCommand('mysql');
-			}).toThrow('Unsupported database type: mysql. Supported types: sqlite, postgres');
-		});
-	});
-
-	describe('generateForeignKeyEnableCommand', () => {
-		it('should generate correct SQLite enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct SQLite pooled enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite-pooled');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct SQLite memory enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('sqlite-memory');
-			expect(result).toBe('PRAGMA foreign_keys = ON;');
-		});
-
-		it('should generate correct PostgreSQL enable command', () => {
-			const result = importService.generateForeignKeyEnableCommand('postgres');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should generate correct PostgreSQL enable command with postgresql variant', () => {
-			const result = importService.generateForeignKeyEnableCommand('postgresql');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should handle case insensitive database types', () => {
-			const result = importService.generateForeignKeyEnableCommand('POSTGRES');
-			expect(result).toBe('SET session_replication_role = DEFAULT;');
-		});
-
-		it('should throw error for unsupported database types', () => {
-			expect(() => {
-				importService.generateForeignKeyEnableCommand('mysql');
-			}).toThrow('Unsupported database type: mysql. Supported types: sqlite, postgres');
-		});
-	});
-
 	describe('isTableEmpty', () => {
 		it('should return true for empty table', async () => {
 			const mockQueryBuilder = {
@@ -302,18 +226,23 @@ describe('ImportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('   ✅ Table workflows truncated successfully');
 		});
 
-		it('should throw error for unsupported database types', async () => {
-			// @ts-expect-error Protected property
-			mockDataSource.options = { type: 'mysql' };
+		it('should handle database errors gracefully', async () => {
+			const mockQueryBuilder = {
+				delete: jest.fn().mockReturnThis(),
+				from: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+			};
+
+			mockEntityManager.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
 
 			await expect(importService.truncateEntityTable('users', mockEntityManager)).rejects.toThrow(
-				'Unsupported database type: mysql. Supported types: sqlite, postgres',
+				'Database connection failed',
 			);
 		});
 	});
 
-	describe('getTableNamesForImport', () => {
-		it('should return table names for valid entity files', async () => {
+	describe('getImportMetadata', () => {
+		it('should return complete import metadata for valid entity files', async () => {
 			const mockFiles = ['user.jsonl', 'workflow.jsonl', 'settings.jsonl', 'other.txt'];
 			const mockEntityMetadatas = [
 				{ name: 'User', tableName: 'user' },
@@ -325,9 +254,16 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user', 'workflow', 'settings']);
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow', 'settings'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+					settings: ['/test/input/settings.jsonl'],
+				},
+			});
 			expect(readdir).toHaveBeenCalledWith('/test/input');
 		});
 
@@ -342,9 +278,15 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user', 'workflow']);
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 		});
 
 		it('should skip entities without metadata', async () => {
@@ -355,9 +297,14 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual(['user']);
+			expect(result).toEqual({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				'⚠️  No entity metadata found for unknown, skipping...',
 			);
@@ -368,40 +315,52 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.entityMetadatas = [];
 
-			const result = await importService.getTableNamesForImport('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result).toEqual([]);
-		});
-	});
-
-	describe('getEntityFiles', () => {
-		it('should group entity files by entity name', async () => {
-			const mockFiles = ['user.jsonl', 'user.2.jsonl', 'workflow.jsonl', 'other.txt'];
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
-
-			const result = await importService.getEntityFiles('/test/input');
-
-			expect(result.size).toBe(2);
-			expect(result.get('user')).toEqual(['/test/input/user.jsonl', '/test/input/user.2.jsonl']);
-			expect(result.get('workflow')).toEqual(['/test/input/workflow.jsonl']);
-		});
-
-		it('should handle empty directory', async () => {
-			(readdir as jest.Mock).mockResolvedValue([]);
-
-			const result = await importService.getEntityFiles('/test/input');
-
-			expect(result.size).toBe(0);
+			expect(result).toEqual({
+				tableNames: [],
+				entityFiles: {},
+			});
 		});
 
 		it('should ignore non-jsonl files', async () => {
 			const mockFiles = ['user.jsonl', 'workflow.txt', 'settings.json', 'data.csv'];
+			const mockEntityMetadatas = [{ name: 'User', tableName: 'user' }];
+
 			(readdir as jest.Mock).mockResolvedValue(mockFiles);
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
 
-			const result = await importService.getEntityFiles('/test/input');
+			const result = await importService.getImportMetadata('/test/input');
 
-			expect(result.size).toBe(1);
-			expect(result.get('user')).toEqual(['/test/input/user.jsonl']);
+			expect(result).toEqual({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
+		});
+
+		it('should exclude migrations from import metadata', async () => {
+			const mockFiles = ['user.jsonl', 'migrations.jsonl', 'workflow.jsonl'];
+			const mockEntityMetadatas = [
+				{ name: 'User', tableName: 'user' },
+				{ name: 'Workflow', tableName: 'workflow' },
+			];
+
+			(readdir as jest.Mock).mockResolvedValue(mockFiles);
+			// @ts-expect-error Protected property
+			mockDataSource.entityMetadatas = mockEntityMetadatas;
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 		});
 	});
 
@@ -490,7 +449,15 @@ describe('ImportService', () => {
 
 			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 
 			expect(mockLogger.info).toHaveBeenCalledWith(
 				'\n🚀 Starting entity import from directory: /test/input',
@@ -505,33 +472,28 @@ describe('ImportService', () => {
 		});
 
 		it('should handle empty input directory', async () => {
-			(readdir as jest.Mock).mockResolvedValue([]);
-
-			await importService.importEntitiesFromFiles('/test/empty', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/empty', mockEntityManager, [], {});
 
 			expect(mockLogger.warn).toHaveBeenCalledWith('No entity files found in input directory');
 		});
 
 		it('should skip entities without metadata', async () => {
-			const mockFiles = ['user.jsonl', 'unknown.jsonl'];
-
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue('{"id":1,"name":"User 1"}\n');
 			mockEntityManager.insert = jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] });
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager, ['user'], {
+				user: ['/test/input/user.jsonl'],
+			});
 
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				'   ⚠️  No entity metadata found for unknown, skipping...',
-			);
+			expect(mockLogger.info).toHaveBeenCalledWith('   ✅ Completed user: 1 entities imported');
 		});
 
 		it('should handle empty entity files', async () => {
-			const mockFiles = ['user.jsonl'];
-			(readdir as jest.Mock).mockResolvedValue(mockFiles);
 			(readFile as jest.Mock).mockResolvedValue(''); // Empty file
 
-			await importService.importEntitiesFromFiles('/test/input', mockEntityManager);
+			await importService.importEntitiesFromFiles('/test/input', mockEntityManager, ['user'], {
+				user: ['/test/input/user.jsonl'],
+			});
 
 			expect(mockLogger.info).toHaveBeenCalledWith('      Found 0 entities');
 		});
@@ -673,32 +635,6 @@ describe('ImportService', () => {
 		});
 	});
 
-	describe('replaceInvalidCreds', () => {
-		it('should handle error when replaceInvalidCredentials fails', async () => {
-			const mockWorkflow = {
-				nodes: [{ id: 'node1', credentials: { httpBasicAuth: 'invalid' } }],
-			};
-
-			// Mock replaceInvalidCredentials to throw an error
-			const mockReplaceInvalidCredentials = jest
-				.fn()
-				.mockRejectedValue(new Error('Credential replacement failed'));
-
-			// Mock the replaceInvalidCredentials function
-			jest.doMock('@/workflow-helpers', () => ({
-				replaceInvalidCredentials: mockReplaceInvalidCredentials,
-			}));
-
-			// @ts-expect-error Accessing private method for testing
-			await importService.replaceInvalidCreds(mockWorkflow);
-
-			// Verify error was logged
-			expect(mockLogger.error).toHaveBeenCalledWith('Failed to replace invalid credential', {
-				error: expect.any(Error),
-			});
-		});
-	});
-
 	describe('importEntities', () => {
 		it('should call transaction with correct parameters', async () => {
 			const mockEntityMetadatas = [
@@ -710,9 +646,6 @@ describe('ImportService', () => {
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
-
-			// Mock validateMigrations
-			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
 
 			// Mock the transaction method to just call the callback
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -729,16 +662,30 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(true);
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', false);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user', 'workflow']);
-			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalledWith(
+				'/test/input',
+				expect.any(Object),
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 		});
 
 		it('should handle truncation when truncateTables is true', async () => {
@@ -751,9 +698,6 @@ describe('ImportService', () => {
 			mockDataSource.entityMetadatas = mockEntityMetadatas;
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
-
-			// Mock validateMigrations
-			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
 
 			// Mock the transaction method
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -770,16 +714,30 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user', 'workflow']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user', 'workflow'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'truncateEntityTable').mockResolvedValue();
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', true);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.truncateEntityTable).toHaveBeenCalledTimes(2);
-			expect(importService.importEntitiesFromFiles).toHaveBeenCalled();
+			expect(importService.importEntitiesFromFiles).toHaveBeenCalledWith(
+				'/test/input',
+				expect.any(Object),
+				['user', 'workflow'],
+				{
+					user: ['/test/input/user.jsonl'],
+					workflow: ['/test/input/workflow.jsonl'],
+				},
+			);
 		});
 
 		it('should skip import when tables are not empty and truncateTables is false', async () => {
@@ -790,9 +748,6 @@ describe('ImportService', () => {
 			// @ts-expect-error Protected property
 			mockDataSource.options = { type: 'sqlite' };
 
-			// Mock validateMigrations
-			jest.spyOn(importService, 'validateMigrations').mockResolvedValue();
-
 			// Mock the transaction method
 			mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
 				const mockManager = {
@@ -802,287 +757,21 @@ describe('ImportService', () => {
 			});
 
 			// Mock the other methods
-			jest.spyOn(importService, 'getTableNamesForImport').mockResolvedValue(['user']);
+			jest.spyOn(importService, 'getImportMetadata').mockResolvedValue({
+				tableNames: ['user'],
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+			});
 			jest.spyOn(importService, 'areAllEntityTablesEmpty').mockResolvedValue(false);
 			jest.spyOn(importService, 'importEntitiesFromFiles').mockResolvedValue();
 
 			await importService.importEntities('/test/input', false);
 
 			expect(mockDataSource.transaction).toHaveBeenCalled();
-			expect(importService.getTableNamesForImport).toHaveBeenCalledWith('/test/input');
+			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user']);
 			expect(importService.importEntitiesFromFiles).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('validateMigrations', () => {
-		beforeEach(() => {
-			// Mock DataSource options for migrations table
-			// @ts-expect-error Protected property
-			mockDataSource.options = { entityPrefix: '' };
-
-			// Mock the driver.escape method
-			mockDataSource.driver = {
-				escape: jest.fn((identifier: string) => `"${identifier}"`),
-			} as any;
-		});
-
-		it('should throw error when migrations file does not exist', async () => {
-			jest.mocked(readFile).mockRejectedValue(new Error('File not found'));
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migrations file not found. Cannot proceed with import without migration validation.',
-			);
-		});
-
-		it('should handle empty migrations file', async () => {
-			jest.mocked(readFile).mockResolvedValue('');
-
-			await importService.validateMigrations('/test/input');
-
-			expect(mockLogger.info).toHaveBeenCalledWith('No migrations found in import data');
-		});
-
-		it('should validate migrations match successfully', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
-				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await importService.validateMigrations('/test/input');
-
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in import data: Migration2 (timestamp: 2000, id: migration2)',
-			);
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in target database: Migration2 (timestamp: 2000, id: migration2)',
-			);
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'✅ Migration validation passed - import data matches target database migration state',
-			);
-		});
-
-		it('should throw error when migrations do not match', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000' },
-				{ name: 'Migration2', timestamp: '2000' },
-			];
-			const dbMigrations = [{ name: 'Migration1', timestamp: '1000' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration timestamp mismatch. Import data: Migration2 (2000) does not match target database Migration1 (1000). Cannot import data from different migration states.',
-			);
-		});
-
-		it('should handle database with no migrations', async () => {
-			const importMigrations = [{ name: 'Migration1', timestamp: '1000' }];
-
-			jest.mocked(readFile).mockResolvedValue(JSON.stringify(importMigrations[0]));
-			jest.mocked(mockDataSource.query).mockResolvedValue([]);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Target database has no migrations. Cannot import data from a different migration state.',
-			);
-
-			// Verify that the database query was called
-			expect(mockDataSource.query).toHaveBeenCalledWith(
-				'SELECT * FROM "migrations" ORDER BY timestamp DESC LIMIT 1',
-			);
-		});
-
-		it('should abort import when database query errors occur', async () => {
-			const importMigrations = [{ name: 'Migration1', timestamp: '1000' }];
-
-			jest.mocked(readFile).mockResolvedValue(JSON.stringify(importMigrations[0]));
-			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database error'));
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Could not validate migrations against target database. Cannot proceed with import without migration validation to prevent schema/data mismatch.',
-			);
-		});
-
-		it('should handle migrations with id field instead of timestamp', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', id: '1000' },
-				{ name: 'Migration2', id: '2000' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: '2000' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await importService.validateMigrations('/test/input');
-
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in import data: Migration2 (timestamp: 2000, id: 2000)',
-			);
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'Latest migration in target database: Migration2 (timestamp: 2000, id: 2000)',
-			);
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'✅ Migration validation passed - import data matches target database migration state',
-			);
-		});
-
-		it('should throw error when migration names do not match', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000' },
-				{ name: 'Migration2', timestamp: '2000' },
-			];
-			const dbMigrations = [{ name: 'DifferentMigration', timestamp: '2000' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration name mismatch. Import data: Migration2 does not match target database DifferentMigration. Cannot import data from different migration states.',
-			);
-		});
-
-		it('should throw error when migration IDs do not match', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
-				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'different_id' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: Migration2 (id: migration2) does not match target database Migration2 (id: different_id). Cannot import data from different migration states.',
-			);
-		});
-
-		it('should throw error when migrations file contains invalid JSON', async () => {
-			jest.mocked(readFile).mockResolvedValue('invalid json\n{"valid": "json"}');
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Invalid JSON in migrations file:',
-			);
-		});
-
-		it('should handle non-Error objects in JSON parsing', async () => {
-			// Mock JSON.parse to throw a non-Error object
-			const originalJSONParse = JSON.parse;
-			JSON.parse = jest.fn().mockImplementation(() => {
-				throw 'String error'; // Non-Error object
-			});
-
-			jest.mocked(readFile).mockResolvedValue('invalid json');
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Invalid JSON in migrations file: Unknown error',
-			);
-
-			// Restore original JSON.parse
-			JSON.parse = originalJSONParse;
-		});
-
-		it('should handle migrations with both timestamp and id fields', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
-				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await importService.validateMigrations('/test/input');
-
-			// Should not throw an error
-			expect(mockLogger.info).toHaveBeenCalledWith(
-				'✅ Migration validation passed - import data matches target database migration state',
-			);
-		});
-
-		it('should handle migrations with missing timestamp but present id', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', id: 'migration1' },
-				{ name: 'Migration2', id: 'migration2' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration timestamp mismatch',
-			);
-		});
-
-		it('should handle migrations with null/undefined values', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: null, id: null },
-				{ name: 'Migration2', timestamp: undefined, id: undefined },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: '2000', id: 'migration2' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration timestamp mismatch',
-			);
-		});
-
-		it('should handle database migrations with null timestamp', async () => {
-			const importMigrations = [
-				{ name: 'Migration1', timestamp: '1000', id: 'migration1' },
-				{ name: 'Migration2', timestamp: '2000', id: 'migration2' },
-			];
-			const dbMigrations = [{ name: 'Migration2', timestamp: null, id: 'migration2' }];
-
-			jest
-				.mocked(readFile)
-				.mockResolvedValue(
-					JSON.stringify(importMigrations[0]) + '\n' + JSON.stringify(importMigrations[1]),
-				);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration timestamp mismatch',
-			);
 		});
 	});
 });

@@ -9,6 +9,7 @@ import {
 	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
+	registerModuleSettingsPages,
 } from '@/moduleInitializer/moduleInitializer';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -191,12 +192,18 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (settingsStore.isDataTableFeatureEnabled) {
-		const { sizeState } = await dataStoreStore.fetchDataStoreSize();
-		if (sizeState === 'error') {
-			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
-		} else if (sizeState === 'warn') {
-			uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
-		}
+		void dataStoreStore
+			.fetchDataStoreSize()
+			.then(({ quotaStatus }) => {
+				if (quotaStatus === 'error') {
+					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+				} else if (quotaStatus === 'warn') {
+					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to fetch data table limits:', error);
+			});
 	}
 
 	if (insightsStore.isSummaryEnabled) {
@@ -219,6 +226,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerModuleSettingsPages();
 
 	authenticatedFeaturesInitialized = true;
 }
