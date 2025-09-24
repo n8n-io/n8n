@@ -1,12 +1,12 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
-import { Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import { mock, mockClear } from 'jest-mock-extended';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { SessionManagerService } from '../session-manager.service';
-import * as streamProcessor from '../utils/stream-processor';
 import { getBuilderToolsForDisplay } from '../tools/builder-tools';
+import * as streamProcessor from '../utils/stream-processor';
 
 jest.mock('@langchain/langgraph');
 jest.mock('../utils/stream-processor');
@@ -332,7 +332,7 @@ describe('SessionManagerService', () => {
 				{
 					displayName: 'Custom Node',
 					name: 'custom.node',
-					group: ['custom'],
+					group: ['organization'],
 					version: 1,
 					description: 'Custom test node',
 					defaults: { name: 'Custom' },
