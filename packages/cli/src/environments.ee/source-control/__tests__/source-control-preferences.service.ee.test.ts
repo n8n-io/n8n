@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import { readFile, access, mkdir } from 'fs/promises';
@@ -13,11 +15,14 @@ jest.unmock('node:fs/promises');
 
 describe('SourceControlPreferencesService', () => {
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '' });
+	const mockCipher = mock<Cipher>();
+	const mockLogger = mock<Logger>();
+	const mockSettingsRepository = mock<SettingsRepository>();
 	const service = new SourceControlPreferencesService(
 		instanceSettings,
-		mock(),
-		mock(),
-		mock(),
+		mockLogger,
+		mockCipher,
+		mockSettingsRepository,
 		mock(),
 	);
 
@@ -237,6 +242,41 @@ describe('SourceControlPreferencesService', () => {
 			expect(tempFilePath2).toBe(tempFilePath1);
 			const fileContent = await readFile(tempFilePath2, 'utf8');
 			expect(fileContent).toBe(testKey);
+		});
+	});
+
+	describe('getDecryptedHttpsCredentials', () => {
+		it('should log error when no https credentials in database and fallback to empty string', async () => {
+			// dont mock private method but mock result from settingsRepository
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(null);
+
+			const result = await service.getDecryptedHttpsCredentials();
+
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				'Failed to get credentials for https environment: Failed to find https credentials in database',
+			);
+			expect(result).toEqual({ username: '', password: '' });
+		});
+
+		it('should return decrypted https credentials when present in database', async () => {
+			const encryptedCredentialsJsonString =
+				'{ "encryptedUsername": "encryptedUser", "encryptedPassword": "encryptedPass"}';
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(
+				Promise.resolve({
+					key: 'features.sourceControl.httpsCredentials',
+					value: encryptedCredentialsJsonString,
+					column: 'testing',
+					loadOnStartup: false,
+				}),
+			);
+			mockCipher.decrypt.mockImplementation((value) => `decrypted-${value}`);
+
+			const result = await service.getDecryptedHttpsCredentials();
+
+			expect(result).toEqual({
+				username: 'decrypted-encryptedUser',
+				password: 'decrypted-encryptedPass',
+			});
 		});
 	});
 });
