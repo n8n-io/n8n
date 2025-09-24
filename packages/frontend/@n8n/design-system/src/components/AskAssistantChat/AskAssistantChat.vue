@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -163,6 +163,7 @@ const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 
 const messagesRef = ref<HTMLDivElement | null>(null);
+const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
@@ -201,9 +202,29 @@ function scrollToBottom() {
 		});
 	}
 }
+
+function isScrolledToBottom(): boolean {
+	if (!messagesRef.value) return false;
+
+	const threshold = 10; // Allow for small rounding errors
+	const isAtBottom =
+		Math.abs(
+			messagesRef.value.scrollHeight - messagesRef.value.scrollTop - messagesRef.value.clientHeight,
+		) <= threshold;
+
+	return isAtBottom;
+}
+
+function scrollToBottomImmediate() {
+	if (messagesRef.value) {
+		messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+	}
+}
+
 watch(sendDisabled, () => {
 	promptInputRef.value?.focusInput();
 });
+
 watch(
 	() => props.messages,
 	async (messages) => {
@@ -219,6 +240,53 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// Setup ResizeObserver to maintain scroll position when input height changes
+let resizeObserver: ResizeObserver | null = null;
+let scrollLockActive = false;
+
+onMounted(() => {
+	if (inputWrapperRef.value && messagesRef.value && 'ResizeObserver' in window) {
+		// Track user scroll to determine if they want to stay at bottom
+		let userIsAtBottom = true;
+
+		// Monitor user scrolling
+		messagesRef.value.addEventListener('scroll', () => {
+			if (!scrollLockActive) {
+				userIsAtBottom = isScrolledToBottom();
+			}
+		});
+
+		// Monitor input size changes
+		resizeObserver = new ResizeObserver(() => {
+			// Only maintain scroll if user was at bottom
+			if (userIsAtBottom) {
+				scrollLockActive = true;
+				// Double RAF for layout stability
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						scrollToBottomImmediate();
+						// Check if we're still at bottom after auto-scroll
+						userIsAtBottom = isScrolledToBottom();
+						scrollLockActive = false;
+					});
+				});
+			}
+		});
+
+		resizeObserver.observe(inputWrapperRef.value);
+
+		// Start at bottom
+		scrollToBottomImmediate();
+	}
+});
+
+onUnmounted(() => {
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
+});
 
 // Expose focusInput method to parent components
 defineExpose({
@@ -329,6 +397,7 @@ defineExpose({
 			</div>
 		</div>
 		<div
+			ref="inputWrapperRef"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
