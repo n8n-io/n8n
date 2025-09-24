@@ -165,31 +165,45 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -350,32 +364,45 @@ exports[`AskAssistantChat > limits maximum input length when maxLength prop is s
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        maxlength="100"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="100"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1182,31 +1209,45 @@ Testing more code
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1367,31 +1408,45 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1643,32 +1698,46 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       class="inputWrapper disabledInput"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
+      <div
+        class="container disabled ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        disabled=""
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            disabled=""
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1853,31 +1922,45 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2118,31 +2201,45 @@ catch(e) {
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+      <div
+        class="container ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="sendButton"
+              disabled="true"
+              element="button"
+              icon="arrow-up"
+              iconsize="large"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2315,32 +2412,44 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      
-      <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
+      <div
+        class="container disabled ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
-        disabled=""
-        placeholder="Enter your response..."
-        rows="1"
-        wrap="hard"
-      />
-      <n8n-button-stub
-        active="false"
-        block="false"
-        class="sendButton"
-        data-test-id="send-message-button"
-        disabled="true"
-        element="button"
-        icon="send"
-        label=""
-        loading="false"
-        outline="false"
-        size="large"
-        square="true"
-        text="true"
-        type="primary"
-      />
-      
+        style="min-height: 40px;"
+      >
+        <!-- Warning banner when character limit is reached -->
+        <!--v-if-->
+        <!-- Single line mode: input and button side by side -->
+        <div
+          class="singleLineWrapper"
+        >
+          <textarea
+            class="singleLineTextarea"
+            disabled=""
+            maxlength="1000"
+            placeholder="Enter your response..."
+            rows="1"
+          />
+          <div
+            class="inlineActions"
+          >
+            <n8n-button-stub
+              active="false"
+              block="false"
+              class="stopButton"
+              disabled="false"
+              element="button"
+              label=""
+              loading="false"
+              outline="false"
+              size="mini"
+              square="true"
+              text="false"
+              type="primary"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

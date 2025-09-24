@@ -11,11 +11,10 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import N8nPromptInput from '../N8nPromptInput';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
-
-const MAX_CHAT_INPUT_HEIGHT = 100;
 
 interface Props {
 	user?: {
@@ -55,6 +54,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
+	maxLength: undefined,
+	placeholder: undefined,
 });
 
 function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -159,8 +160,8 @@ const lastMessageQuickReplies = computed(() => {
 });
 
 const textInputValue = ref<string>('');
+const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 
-const chatInput = ref<HTMLTextAreaElement | null>(null);
 const messagesRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
@@ -184,19 +185,8 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (sendDisabled.value) return;
 	emit('message', textInputValue.value);
 	textInputValue.value = '';
-	if (chatInput.value) {
-		chatInput.value.style.height = 'auto';
-	}
-}
-
-function growInput() {
-	if (!chatInput.value) return;
-	chatInput.value.style.height = 'auto';
-	const scrollHeight = chatInput.value.scrollHeight;
-	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
 function onRateMessage(feedback: RatingFeedback) {
@@ -212,7 +202,7 @@ function scrollToBottom() {
 	}
 }
 watch(sendDisabled, () => {
-	chatInput.value?.focus();
+	promptInputRef.value?.focusInput();
 });
 watch(
 	() => props.messages,
@@ -233,7 +223,7 @@ watch(
 // Expose focusInput method to parent components
 defineExpose({
 	focusInput: () => {
-		chatInput.value?.focus();
+		promptInputRef.value?.focusInput();
 	},
 });
 </script>
@@ -345,45 +335,19 @@ defineExpose({
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
 				<slot name="inputPlaceholder" />
 			</div>
-			<template v-else>
-				<textarea
-					ref="chatInput"
-					v-model="textInputValue"
-					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming || disabled }"
-					:disabled="sessionEnded || streaming || disabled"
-					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
-					rows="1"
-					wrap="hard"
-					:maxlength="maxLength"
-					data-test-id="chat-input"
-					@keydown.enter.exact.prevent="onSendMessage"
-					@input.prevent="growInput"
-					@keydown.stop
-				/>
-				<N8nButton
-					v-if="showStop && streaming"
-					:class="$style.stopButton"
-					icon="square"
-					size="large"
-					type="danger"
-					outline
-					square
-					data-test-id="send-message-button"
-					@click="emit('stop')"
-				/>
-				<N8nButton
-					v-else
-					:class="$style.sendButton"
-					icon="send"
-					:text="true"
-					size="large"
-					square
-					data-test-id="send-message-button"
-					:disabled="sendDisabled"
-					@click="onSendMessage"
-				/>
-			</template>
+			<N8nPromptInput
+				v-else
+				ref="promptInputRef"
+				v-model="textInputValue"
+				:placeholder="placeholder || t('assistantChat.inputPlaceholder')"
+				:disabled="sessionEnded || disabled"
+				:streaming="streaming"
+				:max-length="maxLength"
+				class="ignore-key-press-node-creator ignore-key-press-canvas"
+				data-test-id="chat-input"
+				@submit="onSendMessage"
+				@stop="emit('stop')"
+			/>
 		</div>
 	</div>
 </template>
@@ -395,9 +359,7 @@ defineExpose({
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 }
-:root .stopButton {
-	--button-border-color: transparent;
-}
+
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);
@@ -511,31 +473,11 @@ defineExpose({
 }
 
 .inputWrapper {
-	display: flex;
+	padding: var(--spacing-xs);
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
 	border-top: 0;
-
-	textarea {
-		border: none;
-		background-color: transparent;
-		width: 100%;
-		font-size: var(--spacing-xs);
-		padding: var(--spacing-xs);
-		outline: none;
-		color: var(--color-text-dark);
-		resize: none;
-		font-family: inherit;
-	}
-}
-
-.sendButton {
-	color: var(--color-text-base) !important;
-
-	&[disabled] {
-		color: var(--color-text-light) !important;
-	}
 }
 
 .disabledInput {
@@ -544,11 +486,6 @@ defineExpose({
 	* {
 		cursor: not-allowed;
 	}
-}
-
-textarea.disabled {
-	background-color: var(--color-foreground-base);
-	cursor: not-allowed;
 }
 
 .inputPlaceholder {
