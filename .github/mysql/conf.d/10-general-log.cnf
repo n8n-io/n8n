@@ -1,0 +1,9 @@
+[mysqld]
+# Send general log to a file
+log_output=FILE
+
+# Turn on the general log at startup
+general_log=ON
+
+# Where to write it (matches the mounted folder)
+general_log_file=/var/log/mysql/general.log

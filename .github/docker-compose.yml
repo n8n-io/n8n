@@ -17,6 +17,9 @@ services:
       - MYSQL_ROOT_PASSWORD=password
     ports:
       - 3306:3306
+    volumes:
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
+      - ./mysql/log:/var/log/mysql
     tmpfs:
       - /var/lib/mysql
 
