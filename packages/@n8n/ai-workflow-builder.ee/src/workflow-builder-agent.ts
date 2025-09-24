@@ -53,6 +53,11 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 	};
+	/**
+	 * Calls AI Assistant Service using deprecated credentials and endpoints
+	 * These credentials/endpoints will soon be removed
+	 * As new implementation is rolled out and builder experiment is released
+	 */
 	useDeprecatedCredentials?: boolean;
 }
 
