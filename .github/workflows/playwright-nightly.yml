@@ -4,34 +4,26 @@ on:
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
+    inputs:
+      image:
+        description: 'Docker image to test against'
+        required: false
+        default: 'n8nio/n8n:nightly'
+        type: string
   push:
     branches:
       - ci-containers-nightly
 
 jobs:
-  build-docker:
-    name: Build Docker Image
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup and Build Docker
-        uses: ./.github/actions/setup-nodejs-blacksmith
-        with:
-          build-command: pnpm build:docker
-          enable-docker-cache: true
-
   test-configurations:
     strategy:
       fail-fast: false
       matrix:
         config: [standard, postgres]
     name: Test ${{ matrix.config }}
-    needs: [build-docker]
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-pull
-      docker-image: n8nio/n8n:local
+      docker-image: ${{ github.event.inputs.image || 'n8nio/n8n:nightly' }}
       test-command: pnpm --filter=n8n-playwright test:container:${{ matrix.config }}
     secrets: inherit

@@ -68,6 +68,10 @@ jobs:
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
+      - name: Prepare Test Image
+        if: inputs.test-mode == 'docker-pull'
+        run: pnpm --filter=n8n-playwright prepare-test-image ${{ inputs.docker-image }}
+
       - name: Run Tests
         run: |
           ${{ inputs.test-command }} \
