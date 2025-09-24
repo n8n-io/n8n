@@ -130,15 +130,23 @@ watch(textValue, (newValue, oldValue) => {
 	}
 });
 
-function handleSubmit() {
+async function refocusTextArea() {
+	await nextTick();
+	await new Promise(requestAnimationFrame);
+	textareaRef.value?.focus();
+}
+
+async function handleSubmit() {
 	emit('submit');
+	await refocusTextArea();
 }
 
-function handleStop() {
+async function handleStop() {
 	emit('stop');
+	await refocusTextArea();
 }
 
-function handleKeyDown(event: KeyboardEvent) {
+async function handleKeyDown(event: KeyboardEvent) {
 	// Prevent adding characters if at max length (but allow deletions/navigation)
 	if (
 		characterCount.value >= props.maxLength &&
@@ -154,7 +162,10 @@ function handleKeyDown(event: KeyboardEvent) {
 
 	if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
 		event.preventDefault();
-		handleSubmit();
+		// prevent default key action, but if streaming don't submit
+		if (!props.streaming) {
+			await handleSubmit();
+		}
 	}
 }
 
