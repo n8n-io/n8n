@@ -2,11 +2,22 @@ import { DateTime } from 'luxon';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+/**
+ * Parses a date input into a Luxon DateTime object.
+ * Handles various formats including timestamps (seconds/milliseconds), native Date objects,
+ * ISO strings, and custom formats, with robust timezone support.
+ *
+ * @param date The date to parse (string, number, Date, or DateTime object).
+ * @param options Configuration for parsing, like timezone or a specific format.
+ * @returns A Luxon DateTime object.
+ * @throws An error if the date format is invalid or the type is unsupported.
+ */
 export function parseDate(
 	this: IExecuteFunctions,
 	date: string | number | Date | DateTime,
 	options: Partial<{ timezone: string; fromFormat: string }> = {},
 ): DateTime {
+	// Prioritize the user-provided timezone, but fall back to the workflow's default timezone.
 	const tz = options.timezone ?? this.getTimezone();
 
 	if (date === null || date === undefined) {
@@ -21,19 +32,27 @@ export function parseDate(
 	}
 	// Native Date
 	else if (date instanceof Date) {
+		// Default to UTC for native Date objects if no timezone is specified to ensure consistent behavior.
 		parsedDate = DateTime.fromJSDate(date, tz ? { zone: tz } : { zone: 'utc' });
 	}
 	// Number / numeric string (timestamp)
-	else if (typeof date === 'number' || (!isNaN(Number(date)) && !options.fromFormat)) {
+	// Treat input as a timestamp only if it's a number or a non-empty string containing digits without a custom format.
+	else if (
+		typeof date === 'number' ||
+		(typeof date === 'string' && /\d/.test(date) && !options.fromFormat && !isNaN(Number(date)))
+	) {
 		const ts = Number(date);
 		if (!Number.isFinite(ts)) {
 			throw new NodeOperationError(this.getNode(), 'Invalid numeric timestamp');
 		}
+
+		// Differentiate between seconds and milliseconds. Timestamps in seconds will have
+		// at most 10 digits until the year 2286.
 		if (ts < 1e10) {
-			// seconds (less than 10 billion)
+			// seconds
 			parsedDate = DateTime.fromSeconds(ts, tz ? { zone: tz } : { zone: 'utc' });
 		} else {
-			// milliseconds (10 billion or more)
+			// milliseconds
 			parsedDate = DateTime.fromMillis(ts, tz ? { zone: tz } : { zone: 'utc' });
 		}
 	}
@@ -49,9 +68,7 @@ export function parseDate(
 					zone: tz ? tz : 'utc',
 					setZone: true,
 				});
-			}
-			// YYYY-MM-DD (date only)
-			else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+			} else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
 				parsedDate = DateTime.fromISO(dateStr, { zone: tz ? tz : 'utc' }).startOf('day');
 			}
 			// General ISO string

@@ -2,7 +2,7 @@ import { parseDate } from './packages/nodes-base/nodes/DateTime/V2/GenericFuncti
 
 function testCase(label: string, input: any, options: any = {}): void {
 	try {
-		const result = parseDate.call({ getNode: () => ({ name: 'test' }) } as any, input, options);
+		const result = parseDate.call({ getNode: () => ({ name: 'test' }), getTimezone: () => 'UTC' } as any, input, options);
 		console.log(`✅ ${label}`);
 		console.log(`   Input: ${JSON.stringify(input)}  Options: ${JSON.stringify(options)}`);
 		console.log(`   ISO: ${result.toISO()}`);
