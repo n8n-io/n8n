@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+  workflow_dispatch:
 
 jobs:
   build:
