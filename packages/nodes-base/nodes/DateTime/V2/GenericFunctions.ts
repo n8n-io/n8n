@@ -29,12 +29,12 @@ export function parseDate(
 		if (!Number.isFinite(ts)) {
 			throw new NodeOperationError(this.getNode(), 'Invalid numeric timestamp');
 		}
-		if (ts < 1e12) {
-			// seconds
-			parsedDate = DateTime.fromSeconds(ts, tz ? { zone: tz } : undefined);
+		if (ts < 1e10) {
+			// seconds (less than 10 billion)
+			parsedDate = DateTime.fromSeconds(ts, tz ? { zone: tz } : { zone: 'utc' });
 		} else {
-			// milliseconds
-			parsedDate = DateTime.fromMillis(ts, tz ? { zone: tz } : undefined);
+			// milliseconds (10 billion or more)
+			parsedDate = DateTime.fromMillis(ts, tz ? { zone: tz } : { zone: 'utc' });
 		}
 	}
 	// String input
