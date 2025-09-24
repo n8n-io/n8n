@@ -113,7 +113,8 @@ describe('N8nPromptInput', () => {
 					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
 				} else {
 					// If there was no original descriptor, delete the mocked property
-					delete (HTMLTextAreaElement.prototype as any).scrollHeight;
+					// Use Reflect.deleteProperty for type-safe deletion
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
 				}
 			}
 		});
