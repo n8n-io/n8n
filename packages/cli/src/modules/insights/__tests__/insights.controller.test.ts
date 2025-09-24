@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -13,12 +14,6 @@ import { InsightsController } from '../insights.controller';
 
 beforeAll(async () => {
 	await testDb.init();
-	Container.set(
-		LicenseState,
-		mock<LicenseState>({
-			getInsightsMaxHistory: jest.fn().mockReturnValue(-1),
-		}),
-	);
 });
 
 afterAll(async () => {
@@ -30,13 +25,18 @@ describe('InsightsController', () => {
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().startOf('day').minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().startOf('day').toJSDate();
+	const licenseState = mock<LicenseState>();
 
-	beforeAll(async () => {
+	beforeAll(() => {
+		Container.set(LicenseState, licenseState);
 		controller = Container.get(InsightsController);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
+
+		licenseState.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
 	});
 
 	describe('getInsightsSummary', () => {
@@ -204,9 +204,9 @@ describe('InsightsController', () => {
 			});
 
 			it('should use the query dateRange filter in a backward compatible way', async () => {
+				// ARRANGE
 				const thirtyDaysAgo = DateTime.now().startOf('day').minus({ days: 30 }).toJSDate();
 
-				// ARRANGE
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
 					mockRepositoryResponse,
 				);
@@ -242,8 +242,10 @@ describe('InsightsController', () => {
 			});
 
 			it('should throw a BadRequestError when endDate is in the future', async () => {
+				// ARRANGE
 				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
 
+				// ACT & ASSERT
 				await expect(
 					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
 						startDate: new Date('2025-06-10'),
@@ -254,12 +256,65 @@ describe('InsightsController', () => {
 			});
 
 			it('should throw a BadRequestError when startDate is in the future', async () => {
+				// ARRANGE
 				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
+
+				// ACT & ASSERT
 				await expect(
 					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
 						startDate: futureDate,
 					}),
 				).rejects.toThrowError(new BadRequestError('must be in the past'));
+			});
+		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				// ARRANGE
+				licenseState.getInsightsMaxHistory.mockReturnValue(-1);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+					{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
+					{ period: 'current', type: TypeToNumber.success, total_value: 20 },
+				]);
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: new Date('2025-06-01T00:00:00Z'),
+						// same day as startDate to force 'hour' granularity
+						endDate: new Date('2025-06-01T00:00:00Z'),
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError('Hourly data is not available with your current license'),
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				// ARRANGE
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ days: 20 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(14);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+					{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
+					{ period: 'current', type: TypeToNumber.success, total_value: 20 },
+				]);
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: outOfRangeStart,
+						endDate,
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError(
+						'The selected date range exceeds the maximum history allowed by your license',
+					),
+				);
 			});
 		});
 	});

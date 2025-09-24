@@ -8,21 +8,15 @@ import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-ty
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
-import type { UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 import { keyRangeToDays } from './insights.constants';
 import { InsightsService } from './insights.service';
-
-export class ForbiddenError extends Error {
-	readonly httpStatusCode = 403;
-
-	readonly errorCode = 403;
-
-	readonly shouldReport = false;
-}
 
 @RestController('/insights')
 export class InsightsController {
@@ -47,9 +41,9 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
-		const { startDate, endDate } = this.getDefaultDateFilters(query);
-		this.validateStartEndDate(query);
-		this.getMaxAgeInDaysAndGranularity(query);
+		this.validateQueryDates(query);
+		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
 
 		return await this.insightsService.getInsightsSummary({
 			startDate,
@@ -66,7 +60,7 @@ export class InsightsController {
 		_res: Response,
 		@Query payload: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		this.validateStartEndDate(payload);
+		this.validateQueryDates(payload);
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity({
 			dateRange: payload.dateRange ?? 'week',
 		});
@@ -87,7 +81,7 @@ export class InsightsController {
 		_res: Response,
 		@Query payload: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		this.validateStartEndDate(payload);
+		this.validateQueryDates(payload);
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
 
 		// Cast to full insights by time type
@@ -110,7 +104,7 @@ export class InsightsController {
 		_res: Response,
 		@Query payload: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		this.validateStartEndDate(payload);
+		this.validateQueryDates(payload);
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
 
 		// Cast to restricted insights by time type
@@ -123,7 +117,7 @@ export class InsightsController {
 		})) as RestrictedInsightsByTime[];
 	}
 
-	private validateStartEndDate(dateFilters: { startDate?: Date; endDate?: Date }) {
+	private validateQueryDates(query: InsightsDateFilterDto) {
 		const inThePast = (date?: Date) => !date || date <= new Date();
 		const dateInThePastSchema = z.coerce
 			.date()
@@ -148,7 +142,7 @@ export class InsightsController {
 				},
 			);
 
-		const result = schema.safeParse(dateFilters);
+		const result = schema.safeParse(query);
 		if (!result.success) {
 			throw new BadRequestError(result.error.errors.map(({ message }) => message).join(' '));
 		}
@@ -158,7 +152,10 @@ export class InsightsController {
 	 * When the `startDate` is not provided, we default to the last 7 days.
 	 * When the `endDate` is not provided, we default to today.
 	 */
-	private getDefaultDateFilters(query: InsightsDateFilterDto): { startDate: Date; endDate: Date } {
+	private getSanitizedDateFilters(query: InsightsDateFilterDto): {
+		startDate: Date;
+		endDate: Date;
+	} {
 		const today = DateTime.now().startOf('day').toJSDate();
 
 		// For backward compatibility, if dateRange is provided it will take precedence over startDate and endDate
@@ -178,5 +175,17 @@ export class InsightsController {
 		}
 
 		return { startDate: query.startDate, endDate: query.endDate ?? today };
+	}
+
+	private checkDatesFiltersAgainstLicense(dateFilters: { startDate: Date; endDate: Date }) {
+		try {
+			this.insightsService.validateDateFiltersLicense(dateFilters);
+		} catch (error: unknown) {
+			if (error instanceof UserError) {
+				throw new ForbiddenError(error.message);
+			}
+
+			throw new InternalServerError();
+		}
 	}
 }

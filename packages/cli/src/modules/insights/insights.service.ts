@@ -1,7 +1,8 @@
-import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
+import { type InsightsDateRange, type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
@@ -242,6 +243,49 @@ export class InsightsService {
 		}
 
 		return { ...dateRange, maxAgeInDays: keyRangeToDays[dateRangeKey] };
+	}
+
+	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
+		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
+		const differenceInDays = currentEnd.diff(currentStart, 'days').days;
+
+		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
+
+		const maxHistoryInDays =
+			this.licenseState.getInsightsMaxHistory() === -1
+				? Number.MAX_SAFE_INTEGER
+				: this.licenseState.getInsightsMaxHistory();
+		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
+
+		if (granularity === 'hour' && !isHourlyDateLicensed) {
+			throw new UserError('Hourly data is not available with your current license');
+		}
+
+		if (maxHistoryInDays < differenceInDays) {
+			throw new UserError(
+				'The selected date range exceeds the maximum history allowed by your license',
+			);
+		}
+	}
+
+	private getDateFiltersGranularity({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): PeriodUnit {
+		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
+		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
+		const differenceInDays = currentEnd.diff(currentStart, 'days').days;
+
+		if (differenceInDays === 0) {
+			return 'hour';
+		}
+
+		if (differenceInDays <= 30) {
+			return 'day';
+		}
+
+		return 'week';
 	}
 
 	/**
