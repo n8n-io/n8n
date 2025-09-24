@@ -17,7 +17,6 @@ import {
 	getFolderCards,
 	getFolderEmptyState,
 	getHomeProjectBreadcrumb,
-	getListBreadcrumbItem,
 	getListBreadcrumbs,
 	getMainBreadcrumbsEllipsis,
 	getMainBreadcrumbsEllipsisMenuItems,
