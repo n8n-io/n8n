@@ -28,6 +28,7 @@ import type {
 	NodeMetadataMap,
 	IExecutionFlattedResponse,
 	WorkflowListResource,
+	IExecutionsStopData,
 } from '@/Interface';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type {
@@ -561,6 +562,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active?: boolean;
 			isArchived?: boolean;
 			parentFolderId?: string;
+			availableInMCP?: boolean;
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
@@ -1555,7 +1557,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		];
 	}
 
-	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
+	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
@@ -1582,7 +1584,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			// If we process items in paralell on subnodes we get several placeholder taskData items.
+			// If we process items in parallel on subnodes we get several placeholder taskData items.
 			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
 			const existingRunIndex = tasksData.findIndex(
 				(item) => item.executionIndex === data.executionIndex,
@@ -1603,6 +1605,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 
 			void trackNodeExecution(pushData);
+		}
+	}
+
+	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
+		const tasksData = workflowExecutionData.value?.data?.resultData.runData[pushData.nodeName];
+		const existingRunIndex =
+			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
+
+		if (tasksData?.[existingRunIndex]) {
+			tasksData.splice(existingRunIndex, 1, pushData.data);
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
@@ -1720,6 +1733,57 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		return updatedWorkflow;
+	}
+
+	// Update a single workflow setting key while preserving existing settings
+	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
+		id: string,
+		key: K,
+		value: IWorkflowSettings[K],
+	): Promise<IWorkflowDb> {
+		// Determine current settings and versionId for the target workflow
+		let currentSettings: IWorkflowSettings = {} as IWorkflowSettings;
+		let currentVersionId = '';
+		const isCurrentWorkflow = id === workflow.value.id;
+
+		if (isCurrentWorkflow) {
+			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
+			currentVersionId = workflow.value.versionId;
+		} else {
+			const cached = workflowsById.value[id];
+			if (cached && cached.versionId) {
+				currentSettings = cached.settings ?? ({} as IWorkflowSettings);
+				currentVersionId = cached.versionId;
+			} else {
+				const fetched = await fetchWorkflow(id);
+				currentSettings = fetched.settings ?? ({} as IWorkflowSettings);
+				currentVersionId = fetched.versionId;
+			}
+		}
+
+		const newSettings: IWorkflowSettings = {
+			...(currentSettings ?? ({} as IWorkflowSettings)),
+			[key]: value,
+		};
+
+		const updated = await updateWorkflow(id, {
+			versionId: currentVersionId,
+			settings: newSettings,
+		});
+
+		// Update local store state to reflect the change
+		if (isCurrentWorkflow) {
+			setWorkflowVersionId(updated.versionId);
+			setWorkflowSettings(updated.settings ?? {});
+		} else if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				settings: updated.settings,
+				versionId: updated.versionId,
+			};
+		}
+
+		return updated;
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -1845,19 +1909,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function markExecutionAsStopped() {
+	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
+		workflowExecutionStartedData.value = undefined;
 
 		clearPopupWindowState();
 
-		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
+		if (!workflowExecutionData.value) {
+			return;
+		}
+
+		const runData = workflowExecutionData.value.data?.resultData.runData ?? {};
+
 		for (const nodeName in runData) {
 			runData[nodeName] = runData[nodeName].filter(
 				({ executionStatus }) => executionStatus === 'success',
 			);
+		}
+
+		if (stopData) {
+			workflowExecutionData.value.status = stopData.status;
+			workflowExecutionData.value.startedAt = stopData.startedAt;
+			workflowExecutionData.value.stoppedAt = stopData.stoppedAt;
 		}
 	}
 
@@ -2025,7 +2101,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue,
 		setNodeParameters,
 		setLastNodeParameters,
-		updateNodeExecutionData,
+		updateNodeExecutionRunData,
+		updateNodeExecutionStatus,
 		clearNodeExecutionData,
 		pinDataByNodeName,
 		activeNode,
@@ -2033,6 +2110,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,
+		updateWorkflowSetting,
 		runWorkflow,
 		removeTestWebhook,
 		fetchExecutionDataById,
