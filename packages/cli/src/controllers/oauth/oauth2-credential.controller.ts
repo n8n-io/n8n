@@ -171,7 +171,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
-			redirectUri: `${this.baseUrl}/callback`,
+			redirectUri: `${this.baseUrl}/oauth2-credential/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
