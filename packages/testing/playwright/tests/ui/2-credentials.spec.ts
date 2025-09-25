@@ -21,19 +21,19 @@ test.describe('Credentials', () => {
 		await expect(n8n.credentials.cards.getCredential(credentialName)).toBeVisible();
 	});
 
-	test('should sort credentials', async ({ n8n, api }) => {
+	test('should sort credentials', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProject();
 		const credentialA = `A Credential ${nanoid()}`;
 		const credentialZ = `Z Credential ${nanoid()}`;
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: credentialA,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
 			projectId,
 		});
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: credentialZ,
 			type: 'trelloApi',
 			data: { apiKey: 'test_api_key', apiToken: 'test_api_token' },
@@ -89,19 +89,19 @@ test.describe('Credentials', () => {
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 	});
 
-	test('should show multiple credential types in the same dropdown', async ({ n8n, api }) => {
+	test('should show multiple credential types in the same dropdown', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		const serviceAccountCredentialName2 = `OAuth2 Credential ${nanoid()}`;
 		const serviceAccountCredentialName = `Service Account Credential ${nanoid()}`;
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: serviceAccountCredentialName2,
 			type: 'googleApi',
 			data: { email: 'test@service.com', privateKey: 'test_key' },
 			projectId,
 		});
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: serviceAccountCredentialName,
 			type: 'googleApi',
 			data: { email: 'test@service.com', privateKey: 'test_key' },
@@ -230,11 +230,11 @@ test.describe('Credentials', () => {
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(editedName);
 	});
 
-	test('should set a default credential when adding nodes', async ({ n8n, api }) => {
+	test('should set a default credential when adding nodes', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		const credentialName = `My awesome Notion account ${nanoid()}`;
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: credentialName,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
@@ -245,16 +245,16 @@ test.describe('Credentials', () => {
 		await n8n.canvas.addNode('Notion', { action: 'Append a block' });
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 
-		const credentials = await api.credentialApi.getCredentials();
+		const credentials = await n8n.api.credentialApi.getCredentials();
 		const credential = credentials.find((c) => c.name === credentialName);
-		await api.credentialApi.deleteCredential(credential!.id);
+		await n8n.api.credentialApi.deleteCredential(credential!.id);
 	});
 
-	test('should set a default credential when editing a node', async ({ n8n, api }) => {
+	test('should set a default credential when editing a node', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		const credentialName = `My awesome Notion account ${nanoid()}`;
 
-		await api.credentialApi.createCredential({
+		await n8n.api.credentialApi.createCredential({
 			name: credentialName,
 			type: 'notionApi',
 			data: { apiKey: '1234567890' },
@@ -268,9 +268,9 @@ test.describe('Credentials', () => {
 		await n8n.ndv.selectOptionInParameterDropdown('nodeCredentialType', 'Notion API');
 		await expect(n8n.ndv.getCredentialSelect()).toHaveValue(credentialName);
 
-		const credentials = await api.credentialApi.getCredentials();
+		const credentials = await n8n.api.credentialApi.getCredentials();
 		const credential = credentials.find((c) => c.name === credentialName);
-		await api.credentialApi.deleteCredential(credential!.id);
+		await n8n.api.credentialApi.deleteCredential(credential!.id);
 	});
 
 	test('should setup generic authentication for HTTP node', async ({ n8n }) => {
@@ -296,10 +296,9 @@ test.describe('Credentials', () => {
 
 	test('should not show OAuth redirect URL section when OAuth2 credentials are overridden', async ({
 		n8n,
-		page,
 	}) => {
 		// Mock credential types response to simulate admin override
-		await page.route('**/rest/types/credentials.json', async (route) => {
+		await n8n.page.route('**/rest/types/credentials.json', async (route) => {
 			const response = await route.fetch();
 			const json = await response.json();
 
@@ -329,11 +328,8 @@ test.describe('Credentials', () => {
 		await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 	});
 
-	test('ADO-2583 should show notifications above credential modal overlay', async ({
-		n8n,
-		page,
-	}) => {
-		await page.route('**/rest/credentials', async (route) => {
+	test('ADO-2583 should show notifications above credential modal overlay', async ({ n8n }) => {
+		await n8n.page.route('**/rest/credentials', async (route) => {
 			if (route.request().method() === 'POST') {
 				await route.abort('failed');
 			} else {
@@ -354,7 +350,7 @@ test.describe('Credentials', () => {
 		await expect(errorNotification).toBeVisible();
 		await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
-		const modalOverlay = page.locator('.el-overlay').first();
+		const modalOverlay = n8n.page.locator('.el-overlay').first();
 		await expect(errorNotification).toHaveCSS('z-index', '2100');
 		await expect(modalOverlay).toHaveCSS('z-index', '2001');
 	});
