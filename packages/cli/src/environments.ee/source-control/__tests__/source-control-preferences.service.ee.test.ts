@@ -276,16 +276,12 @@ describe('SourceControlPreferencesService', () => {
 	});
 
 	describe('getDecryptedHttpsCredentials', () => {
-		it('should log error when no https credentials in database and fallback to empty string', async () => {
-			// dont mock private method but mock result from settingsRepository
+		it('should throw error when no https credentials in database', async () => {
 			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(null);
 
-			const result = await service.getDecryptedHttpsCredentials();
-
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to get credentials for https environment: Failed to find https credentials in database',
+			await expect(service.getDecryptedHttpsCredentials()).rejects.toThrow(
+				'No credentials found for https connection',
 			);
-			expect(result).toEqual({ username: '', password: '' });
 		});
 
 		it('should return decrypted https credentials when present in database', async () => {

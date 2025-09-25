@@ -96,29 +96,20 @@ export class SourceControlPreferencesService {
 			'features.sourceControl.httpsCredentials',
 		);
 
-		if (!dbSetting?.value)
-			throw new UnexpectedError('Failed to find https credentials in database');
+		if (!dbSetting?.value) throw new UnexpectedError('No credentials found for https connection');
 
 		type HttpsCredentials = { encryptedUsername: string; encryptedPassword: string };
 
-		return jsonParse<HttpsCredentials | null>(dbSetting.value, { fallbackValue: null });
+		return jsonParse<HttpsCredentials>(dbSetting.value);
 	}
 
-	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string } | null> {
-		try {
-			const credentials = await this.getHttpsCredentialsFromDatabase();
+	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string }> {
+		const credentials = await this.getHttpsCredentialsFromDatabase();
 
-			if (credentials) {
-				return {
-					username: this.cipher.decrypt(credentials.encryptedUsername),
-					password: this.cipher.decrypt(credentials.encryptedPassword),
-				};
-			}
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error(`Failed to get credentials for https environment: ${error.message}`);
-		}
-		return { username: '', password: '' };
+		return {
+			username: this.cipher.decrypt(credentials.encryptedUsername),
+			password: this.cipher.decrypt(credentials.encryptedPassword),
+		};
 	}
 
 	async saveHttpsCredentials(username: string, password: string): Promise<void> {

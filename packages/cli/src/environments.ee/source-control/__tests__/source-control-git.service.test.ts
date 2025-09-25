@@ -78,10 +78,7 @@ describe('SourceControlGitService', () => {
 		});
 
 		describe('repository URL authorization', () => {
-			it('should use original URL for SSH connection type', async () => {
-				/**
-				 * Arrange
-				 */
+			it('should set repositoryUrl URL for SSH connection type', async () => {
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 				const originUrl = 'git@github.com:user/repo.git';
@@ -101,30 +98,21 @@ describe('SourceControlGitService', () => {
 				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
 				gitService.git = git;
 
-				/**
-				 * Act
-				 */
 				await gitService.initRepository(prefs, user);
 
-				/**
-				 * Assert
-				 */
 				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
 				expect(mockPreferencesService.getDecryptedHttpsCredentials).not.toHaveBeenCalled();
 			});
 
-			it('should add credentials to HTTPS URL when connection type is https', async () => {
-				/**
-				 * Arrange
-				 */
+			it('should set repositoryUrl URL for HTTPS connection type', async () => {
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const credentials = { username: 'testuser', password: 'test:pass#word' };
 				mockPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(credentials);
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-				const expectedUrl = 'https://testuser:test%3Apass%23word@github.com/user/repo.git';
+				const originUrl = 'https://github.com/user/repo.git';
 				const prefs = mock<SourceControlPreferences>({
-					repositoryUrl: 'https://github.com/user/repo.git',
+					repositoryUrl: originUrl,
 					connectionType: 'https',
 					branchName: 'main',
 				});
@@ -139,24 +127,21 @@ describe('SourceControlGitService', () => {
 				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
 				gitService.git = git;
 
-				/**
-				 * Act
-				 */
 				await gitService.initRepository(prefs, user);
 
-				/**
-				 * Assert
-				 */
-				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
-				expect(addRemoteSpy).toHaveBeenCalledWith('origin', expectedUrl);
+				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
 			});
 
 			it('should throw error when HTTPS connection type is specified but no credentials found', async () => {
-				/**
-				 * Arrange
-				 */
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
-				mockPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(null);
+				const errorMessage = 'Error';
+				mockPreferencesService.getDecryptedHttpsCredentials.mockRejectedValue(
+					new Error(errorMessage),
+				);
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl: 'https://github.com/user/repo.git',
+				} as never);
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 				const prefs = mock<SourceControlPreferences>({
@@ -168,12 +153,7 @@ describe('SourceControlGitService', () => {
 				const git = mock<SimpleGit>();
 				gitService.git = git;
 
-				/**
-				 * Act & Assert
-				 */
-				await expect(gitService.initRepository(prefs, user)).rejects.toThrow(
-					'HTTPS connection type specified but no credentials found',
-				);
+				await expect(gitService.initRepository(prefs, user)).rejects.toThrow(errorMessage);
 				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
 			});
 		});
@@ -181,13 +161,30 @@ describe('SourceControlGitService', () => {
 
 	describe('setGitCommand', () => {
 		it('should setup git client for https connection', async () => {
+			const credentials = { username: 'testuser', password: 'testpass' };
 			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
 				connectionType: 'https',
+				repositoryUrl: 'https://github.com/user/repo.git',
 			} as never);
+			mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+				credentials,
+			);
+
+			// Clear previous calls to simpleGit
+			(simpleGit as jest.Mock).mockClear();
 
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+			const expectedCredentialScript = `!f() { echo "username=${credentials.username}"; echo "password=${credentials.password}"; }; f`;
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					binary: 'git',
+					maxConcurrentProcesses: 6,
+					trimmed: false,
+					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+				}),
+			);
 		});
 
 		it('should setup git client for ssh connection', async () => {
