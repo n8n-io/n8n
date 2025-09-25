@@ -7,7 +7,4 @@ export async function builderCreditsUpdated(event: BuilderCreditsPushMessage): P
 	// Update the builder store with new credits values
 	builderStore.creditsQuota = event.data.creditsQuota;
 	builderStore.creditsClaimed = event.data.creditsClaimed;
-
-	// Regenerate the plans page URL with updated credits
-	await builderStore.generatePlansPageUrl();
 }

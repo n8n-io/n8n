@@ -33,7 +33,7 @@ interface Props {
 	maxLength?: number;
 	creditsQuota?: number;
 	creditsClaimed?: number;
-	plansPageUrl?: string;
+	onUpgradeClick: () => void;
 }
 
 const emit = defineEmits<{
@@ -417,7 +417,7 @@ defineExpose({
 				:max-length="maxLength"
 				:credits-quota="creditsQuota"
 				:credits-claimed="creditsClaimed"
-				:plans-page-url="plansPageUrl"
+				:on-upgrade-click="onUpgradeClick"
 				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				data-test-id="chat-input"
 				@submit="onSendMessage"

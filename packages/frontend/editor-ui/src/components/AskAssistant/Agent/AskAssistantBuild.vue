@@ -11,6 +11,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const emit = defineEmits<{
 	close: [];
@@ -24,6 +25,7 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
@@ -40,7 +42,6 @@ const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsClaimed = computed(() => builderStore.creditsClaimed);
-const plansPageUrl = computed(() => builderStore.plansPageUrl);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -196,7 +197,7 @@ watch(currentRoute, () => {
 			:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:credits-quota="creditsQuota"
 			:credits-claimed="creditsClaimed"
-			:plans-page-url="plansPageUrl"
+			:on-upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"

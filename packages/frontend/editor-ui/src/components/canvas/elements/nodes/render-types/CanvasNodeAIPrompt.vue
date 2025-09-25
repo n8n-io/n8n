@@ -6,6 +6,7 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -26,6 +27,7 @@ const workflowsStore = useWorkflowsStore();
 
 // Services
 const workflowSaver = useWorkflowSaving({ router });
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Component state
 const prompt = ref('');
@@ -36,7 +38,6 @@ const isLoading = ref(false);
 const hasContent = computed(() => prompt.value.trim().length > 0);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsClaimed = computed(() => builderStore.creditsClaimed);
-const plansPageUrl = computed(() => builderStore.plansPageUrl);
 
 // Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
@@ -130,7 +131,7 @@ function onAddNodeClick() {
 				:max-lines-before-scroll="4"
 				:credits-quota="creditsQuota"
 				:credits-claimed="creditsClaimed"
-				:plans-page-url="plansPageUrl"
+				:on-upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
 				@stop="builderStore.stopStreaming"

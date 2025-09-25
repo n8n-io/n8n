@@ -19,7 +19,7 @@ export interface N8nPromptInputProps {
 	disabled?: boolean;
 	creditsQuota?: number;
 	creditsClaimed?: number;
-	plansPageUrl?: string;
+	onUpgradeClick: () => void;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
@@ -31,7 +31,6 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	disabled: false,
 	creditsQuota: undefined,
 	creditsClaimed: undefined,
-	plansPageUrl: undefined,
 });
 
 const emit = defineEmits<{
@@ -95,11 +94,6 @@ const creditsInfo = computed(() => {
 		remaining: creditsRemaining.value,
 		total: props.creditsQuota,
 	});
-});
-
-const tooltipContent = computed(() => {
-	if (!showCredits.value || props.plansPageUrl) return '';
-	return t('promptInput.askAdminToUpgrade');
 });
 
 const characterLimitMessage = computed(() => {
@@ -361,11 +355,9 @@ defineExpose({
 					<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
 				</div>
 			</N8nTooltip>
-			<N8nTooltip :disabled="!!plansPageUrl" :content="tooltipContent" placement="top">
-				<N8nLink :href="plansPageUrl" target="_blank" size="small" color="text-base" theme="text">
-					{{ t('promptInput.getMore') }}
-				</N8nLink>
-			</N8nTooltip>
+			<N8nLink size="small" color="text-base" theme="text" @click="onUpgradeClick">
+				{{ t('promptInput.getMore') }}
+			</N8nLink>
 		</div>
 	</div>
 </template>

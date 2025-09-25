@@ -32,8 +32,8 @@ export default {
 		creditsClaimed: {
 			control: 'number',
 		},
-		plansPageUrl: {
-			control: 'text',
+		onUpgradeClick: {
+			action: 'onUpgradeClick',
 		},
 	},
 	parameters: {
@@ -47,7 +47,7 @@ const methods = {
 	onStop: action('stop'),
 	onFocus: action('focus'),
 	onBlur: action('blur'),
-	onGetMoreCredits: action('get-more-credits'),
+	onUpgradeClick: action('onUpgradeClick'),
 };
 
 const Template: StoryFn = (args) => ({
@@ -66,7 +66,7 @@ const Template: StoryFn = (args) => ({
 				@stop="onStop"
 				@focus="onFocus"
 				@blur="onBlur"
-				@get-more-credits="onGetMoreCredits"
+				@onUpgradeClick="onUpgradeClick"
 			/>
 			<div style="margin-top: 20px; color: var(--color-text-base); font-size: var(--font-size-s);">
 				Current value: {{ inputValue }}
@@ -261,29 +261,29 @@ const AllStatesTemplate: StoryFn = () => ({
 });
 
 // Credit Tracking Stories
-export const WithCreditsAndLink: StoryFn = Template.bind({});
-WithCreditsAndLink.args = {
+export const WithCreditsAndUpgrade: StoryFn = Template.bind({});
+WithCreditsAndUpgrade.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsClaimed: 31,
-	plansPageUrl: 'https://n8n.io/pricing',
+	onUpgradeClick: () => action('onUpgradeClick')('Upgrade clicked'),
 };
-WithCreditsAndLink.storyName = 'With Credits and Plans Link';
+WithCreditsAndUpgrade.storyName = 'With Credits and Upgrade Button';
 
-export const WithCreditsNoLink: StoryFn = Template.bind({});
-WithCreditsNoLink.args = {
+export const WithCreditsNoUpgrade: StoryFn = Template.bind({});
+WithCreditsNoUpgrade.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsClaimed: 127,
 };
-WithCreditsNoLink.storyName = 'With Credits (No Link - Shows Tooltip)';
+WithCreditsNoUpgrade.storyName = 'With Credits (No Upgrade - Shows Tooltip)';
 
 export const LowCredits: StoryFn = Template.bind({});
 LowCredits.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsClaimed: 145,
-	plansPageUrl: 'https://n8n.io/pricing',
+	onUpgradeClick: () => action('onUpgradeClick')('Upgrade clicked - low credits'),
 };
 LowCredits.storyName = 'Low Credits Remaining';
 
@@ -292,7 +292,7 @@ NoCreditsRemaining.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsClaimed: 150,
-	plansPageUrl: 'https://n8n.io/pricing',
+	onUpgradeClick: () => action('onUpgradeClick')('Upgrade clicked - no credits'),
 };
 NoCreditsRemaining.storyName = 'No Credits Remaining';
 
@@ -320,7 +320,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 			onStop: methods.onStop,
 			onFocus: methods.onFocus,
 			onBlur: methods.onBlur,
-			onGetMoreCredits: methods.onGetMoreCredits,
+			onUpgradeClick: args.onUpgradeClick || methods.onUpgradeClick,
 		};
 	},
 	template: `
@@ -343,7 +343,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 				@stop="onStop"
 				@focus="onFocus"
 				@blur="onBlur"
-				@get-more-credits="onGetMoreCredits"
+				@onUpgradeClick="onUpgradeClick"
 			/>
 		</div>
 	`,
@@ -354,6 +354,6 @@ CreditsInteractive.args = {
 	placeholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
 	creditsClaimed: 148,
-	plansPageUrl: 'https://n8n.io/pricing',
+	onUpgradeClick: () => action('onUpgradeClick')('Upgrade clicked - interactive demo'),
 };
 CreditsInteractive.storyName = 'Credits Interactive Demo';
