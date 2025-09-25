@@ -88,6 +88,13 @@ export class RoleService {
 		if (role.systemRole) {
 			throw new BadRequestError('Cannot delete system roles');
 		}
+
+		// Check if any users is globally or project assigned to the role
+		const usersWithRole = await this.roleRepository.countUsersWithRole(role);
+		if (usersWithRole > 0) {
+			throw new BadRequestError('Cannot delete role assigned to users');
+		}
+
 		await this.roleRepository.removeBySlug(slug);
 
 		// Invalidate cache after role deletion

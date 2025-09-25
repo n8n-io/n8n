@@ -82,7 +82,7 @@ export function runMockWorkflowExecution({
 		},
 	};
 
-	cy.intercept('POST', '/rest/workflows/**/run?**', {
+	cy.intercept('POST', '/rest/workflows/**/run', {
 		statusCode: 201,
 		body: {
 			data: {
