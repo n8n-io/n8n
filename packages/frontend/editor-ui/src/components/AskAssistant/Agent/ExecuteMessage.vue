@@ -162,7 +162,7 @@ async function onExecute() {
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing-xs);
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-xs);
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
@@ -172,8 +172,8 @@ async function onExecute() {
 }
 
 .description {
-	margin: 0 0 var(--spacing-2xs) 0;
-	color: var(--color-text-base);
+	margin: 0;
+	color: var(--color-text-dark);
 	line-height: var(--font-line-height-regular);
 }
 
@@ -189,7 +189,6 @@ async function onExecute() {
 }
 
 .runButton {
-	margin-top: var(--spacing-2xs);
 	align-self: stretch;
 }
 </style>

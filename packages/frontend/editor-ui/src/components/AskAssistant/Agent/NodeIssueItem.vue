@@ -66,10 +66,15 @@ function handleEditClick() {
 	list-style: none;
 	display: flex;
 	align-items: center;
+	padding: var(--spacing-3xs) 0;
+	border-bottom: 1px solid var(--color-foreground-light);
 
-	&:not(:first-child) {
-		padding: var(--spacing-3xs) 0;
-		border-top: 1px solid var(--color-foreground-light);
+	&:first-child {
+		padding-top: 0;
+	}
+
+	&:last-child {
+		border-bottom: none;
 	}
 }
 
