@@ -12,5 +12,8 @@ export class UpdateProjectDto extends Z.class({
 	name: projectNameSchema.optional(),
 	icon: projectIconSchema.optional(),
 	description: projectDescriptionSchema.optional(),
-	relations: z.array(projectRelationSchema).optional(),
 }) {}
+
+export class UpdateProjectWithRelationsDto extends UpdateProjectDto {
+	relations = z.array(projectRelationSchema).optional();
+}

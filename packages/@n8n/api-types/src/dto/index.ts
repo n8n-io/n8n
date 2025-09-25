@@ -27,7 +27,7 @@ export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
-export { UpdateProjectDto } from './project/update-project.dto';
+export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
