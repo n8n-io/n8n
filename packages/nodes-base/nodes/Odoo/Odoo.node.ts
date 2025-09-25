@@ -383,6 +383,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined,
+								undefined, // domain filter only for custom resource
 								fields,
 							);
 						} else {
@@ -396,6 +397,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
+								undefined, // domain filter only for custom resource
 								fields,
 								limit,
 							);
@@ -482,7 +484,9 @@ export class Odoo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
-						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
+						const domain = this.getNodeParameter('domainFilterRequest', i, '') as string;
+						const filter = this.getNodeParameter('filterRequest', i, {}) as IOdooFilterOperations;
+
 						if (returnAll) {
 							responseData = await odooGetAll.call(
 								this,
@@ -493,10 +497,11 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								filter,
+								domain,
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i);
+							const limit = this.getNodeParameter('limit', i, 0);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -506,6 +511,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								filter,
+								domain,
 								fields,
 								limit,
 							);
@@ -594,6 +600,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined,
+								undefined, // domain filter only for custom resource
 								fields,
 							);
 						} else {
@@ -607,6 +614,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
+								undefined, // domain filter only for custom resource
 								fields,
 								limit,
 							);
@@ -699,6 +707,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined,
+								undefined, // domain filter only for custom resource
 								fields,
 							);
 						} else {
@@ -712,6 +721,7 @@ export class Odoo implements INodeType {
 								operation,
 								url,
 								undefined, // filters, only for custom resource
+								undefined, // domain filter only for custom resource
 								fields,
 								limit,
 							);

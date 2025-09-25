@@ -142,7 +142,20 @@ export const customResourceDescription: INodeProperties[] = [
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
 	},
-
+	{
+		displayName: 'Domain Filter',
+		name: 'domainFilterToggle',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description:
+			'Filter by domain using JSON syntax ["&" ["attribute", "=", false], ["attribute2", "=", "test"]]',
+	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
@@ -203,6 +216,7 @@ export const customResourceDescription: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				resource: ['custom'],
+				domainFilterToggle: [false],
 			},
 		},
 		options: [
@@ -281,6 +295,17 @@ export const customResourceDescription: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Domain Filter',
+		name: 'domainFilterRequest',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				domainFilterToggle: [true],
+			},
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:update                               */
