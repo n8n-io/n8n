@@ -128,11 +128,11 @@ export async function searchWorkflows(
 	const formattedWorkflows: SearchWorkflowsItem[] = (workflows as WorkflowEntity[]).map(
 		({ id, name, active, createdAt, updatedAt, triggerCount, nodes }) => ({
 			id,
-			name: name ?? null,
-			active: active ?? null,
-			createdAt: createdAt ? createdAt.toISOString() : null,
-			updatedAt: updatedAt ? updatedAt.toISOString() : null,
-			triggerCount: triggerCount ?? null,
+			name,
+			active,
+			createdAt: createdAt.toISOString(),
+			updatedAt: updatedAt.toISOString(),
+			triggerCount,
 			nodes: (nodes ?? []).map((node: INode) => ({ name: node.name, type: node.type })),
 		}),
 	);
