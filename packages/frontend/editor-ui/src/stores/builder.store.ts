@@ -100,20 +100,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		);
 	});
 
-	const hasNoCredits = computed(() => {
-		const showCredits =
-			creditsQuota.value !== undefined &&
-			creditsClaimed.value !== undefined &&
-			creditsQuota.value !== -1;
-
-		if (!showCredits) {
-			return false;
-		}
-
-		const remaining = creditsClaimed.value - creditsQuota.value;
-		return remaining >= 0 ? remaining : 0;
-	});
-
 	const toolMessages = computed(() => chatMessages.value.filter(isToolMessage));
 
 	const workflowMessages = computed(() => chatMessages.value.filter(isWorkflowUpdatedMessage));
@@ -499,7 +485,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration,
 		creditsQuota,
 		creditsClaimed,
-		hasNoCredits,
 
 		// Methods
 		updateWindowWidth,

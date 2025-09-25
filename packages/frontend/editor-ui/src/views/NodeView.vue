@@ -1915,7 +1915,6 @@ watch(
 		};
 
 		fallbackNodes.value =
-			!builderStore.hasNoCredits &&
 			builderStore.isAIBuilderEnabled &&
 			builderStore.isAssistantEnabled &&
 			builderStore.assistantMessages.length === 0
