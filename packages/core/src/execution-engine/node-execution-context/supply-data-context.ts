@@ -94,7 +94,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(inputData, node, itemIndex, propertyName, 0),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
