@@ -74,7 +74,10 @@ export function isSafeInteger(val: number) {
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
+
+		// Instead of using a custom function to check for safe integers, we can use Number.isSafeInteger directly
+		const values = Number.isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
+
 		acc[cur.field].push(values);
 		return acc;
 	}, {});
