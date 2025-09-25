@@ -123,7 +123,7 @@ function onAddNodeClick() {
 				:class="$style.promptInput"
 				:disabled="isLoading"
 				:streaming="builderStore.streaming"
-				:input-placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 				:max-lines-before-scroll="4"
 				:min-lines="2"
 				data-test-id="ai-builder-prompt"

@@ -9,8 +9,8 @@ import N8nSendStopButton from '../N8nSendStopButton';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
-	inputPlaceholder?: string;
-	maxInputCharacterLength?: number;
+	placeholder?: string;
+	maxLength?: number;
 	maxLinesBeforeScroll?: number;
 	minLines?: number;
 	streaming?: boolean;
@@ -20,8 +20,8 @@ export interface N8nPromptInputProps {
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
-	inputPlaceholder: '',
-	maxInputCharacterLength: 1000,
+	placeholder: '',
+	maxLength: 1000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
@@ -238,7 +238,7 @@ defineExpose({
 			theme="warning"
 			:class="$style.warningCallout"
 		>
-			{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength.toString() }) }}
+			{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 		</N8nCallout>
 
 		<!-- Single line mode: input and button side by side -->
@@ -251,9 +251,9 @@ defineExpose({
 					'ignore-key-press-node-creator',
 					'ignore-key-press-canvas',
 				]"
-				:placeholder="inputPlaceholder"
+				:placeholder="placeholder"
 				:disabled="disabled"
-				:maxlength="maxInputCharacterLength"
+				:maxlength="maxLength"
 				rows="1"
 				@keydown="handleKeyDown"
 				@focus="handleFocus"
@@ -287,9 +287,9 @@ defineExpose({
 						'ignore-key-press-canvas',
 					]"
 					:style="textareaStyle"
-					:placeholder="inputPlaceholder"
+					:placeholder="placeholder"
 					:disabled="disabled"
-					:maxlength="maxInputCharacterLength"
+					:maxlength="maxLength"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"
