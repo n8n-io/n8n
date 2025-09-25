@@ -29,7 +29,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'Notion-Version': '2022-02-22',
 			});
 		});
@@ -50,7 +50,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'Notion-Version': '2021-08-16',
 			});
 		});
@@ -71,7 +71,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'notion-version': '2021-08-16',
 			});
 		});
@@ -92,7 +92,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'notion-Version': '2021-08-16',
 			});
 		});
@@ -114,7 +114,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'X-Custom-Header': 'custom-value',
 				'notion-version': '2021-08-16',
 			});
@@ -133,7 +133,7 @@ describe('NotionApi Credential', () => {
 			const result = await notionApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers).toEqual({
-				Authorization: 'Bearer secret_test123456789 ',
+				Authorization: 'Bearer secret_test123456789',
 				'Notion-Version': '2022-02-22',
 			});
 		});
