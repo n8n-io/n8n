@@ -294,6 +294,7 @@ export class InsightsService {
 	}
 
 	/**
+	 * TODO: Remove
 	 * Returns the available date ranges with their license authorization and time granularity
 	 * when grouped by time.
 	 */

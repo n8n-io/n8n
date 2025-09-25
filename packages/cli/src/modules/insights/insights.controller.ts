@@ -22,18 +22,6 @@ import { InsightsService } from './insights.service';
 export class InsightsController {
 	constructor(private readonly insightsService: InsightsService) {}
 
-	/**
-	 * This method is used to transform the date range from the request payload into a maximum age in days.
-	 * It throws a ForbiddenError if the date range does not match the license insights max history
-	 */
-	private getMaxAgeInDaysAndGranularity(payload: InsightsDateFilterDto) {
-		try {
-			return this.insightsService.getMaxAgeInDaysAndGranularity(payload.dateRange ?? 'week');
-		} catch (error: unknown) {
-			throw new ForbiddenError((error as UserError).message);
-		}
-	}
-
 	@Get('/summary')
 	@GlobalScope('insights:list')
 	async getInsightsSummary(
