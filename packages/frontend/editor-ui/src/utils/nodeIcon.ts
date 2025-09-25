@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
 import { isNodePreviewKey } from '../components/Node/NodeCreator/utils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
 type NodeIconSourceFile = {
@@ -48,8 +49,29 @@ function prefixBaseUrl(url: string) {
 	return useRootStore().baseUrl + url;
 }
 
-export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSource | undefined {
+export function getNodeIconSource(
+	nodeType?: IconNodeType | string | null,
+): NodeIconSource | undefined {
 	if (!nodeType) return undefined;
+	if (typeof nodeType === 'string') {
+		const communityNode = useNodeTypesStore().communityNodeType(nodeType);
+		let url: string | null = null;
+		if (communityNode?.nodeDescription?.iconUrl) {
+			if (typeof communityNode.nodeDescription.iconUrl === 'string') {
+				url = communityNode.nodeDescription.iconUrl;
+			} else if (
+				communityNode.nodeDescription.iconUrl &&
+				typeof communityNode.nodeDescription.iconUrl === 'object'
+			) {
+				const themedUrl = getThemedValue(
+					communityNode.nodeDescription.iconUrl,
+					useUIStore().appliedTheme,
+				);
+				url = url ?? themedUrl;
+			}
+		}
+		return url ? { type: 'file', src: url } : undefined;
+	}
 	const createFileIconSource = (src: string): NodeIconSource => ({
 		type: 'file',
 		src,

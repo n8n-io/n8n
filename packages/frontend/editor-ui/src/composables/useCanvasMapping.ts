@@ -105,11 +105,8 @@ export function useCanvasMapping({
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
-		const icon = getNodeIconSource(
-			simulatedNodeTypeDescriptionByNodeId.value[node.id]
-				? simulatedNodeTypeDescriptionByNodeId.value[node.id]
-				: nodeType,
-		);
+		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
+		const icon = getNodeIconSource(source);
 
 		return {
 			type: CanvasNodeRenderType.Default,

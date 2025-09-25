@@ -7,6 +7,8 @@ import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useCanvas } from '@/composables/useCanvas';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 const {
 	size = 'large',
@@ -36,10 +38,13 @@ const {
 	runDataIterations,
 	isDisabled,
 	render,
+	notInstalled,
 } = useCanvasNode();
+const route = useRoute();
 const { isExecuting } = useCanvas();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
@@ -68,6 +73,16 @@ const commonClasses = computed(() => [
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
 		</div>
+	</div>
+	<div
+		v-else-if="notInstalled && !isDemoRoute"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-not-installed"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> Install the package to use this node </template>
+			<N8nIcon icon="hard-drive-download" :size="size" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="isNodeExecuting"
