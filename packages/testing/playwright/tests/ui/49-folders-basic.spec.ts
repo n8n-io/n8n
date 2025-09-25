@@ -1,42 +1,58 @@
 import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
-
-const FOLDER_NOTIFICATION = 'Folder created';
-
-// I'm going to move this into a composer.. just not sure which one yet!
-async function createFolder(n8n: n8nPage) {
-	const folderName = 'My Test Folder';
-	await n8n.workflows.addResource.folder();
-	await n8n.modal.fillInput(folderName);
-	await n8n.modal.clickButton('Create');
-	await n8n.notifications.closeNotificationByText(FOLDER_NOTIFICATION);
-	return folderName;
-}
 
 test.describe('Folders - Basic Operations', () => {
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.api.enableFeature('sharing');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.enableFeature('advancedPermissions');
-		await n8n.api.enableFeature('projectRole:admin');
-		await n8n.api.enableFeature('projectRole:editor');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
-	});
-
 	test('should create folder from the workflows page using addResource dropdown', async ({
 		n8n,
 	}) => {
 		await n8n.start.fromNewProject();
-		const folderName = await createFolder(n8n);
+		const folderName = await n8n.workflows.addFolder();
 		await expect(n8n.workflows.cards.getFolder(folderName)).toBeVisible();
 		await expect(n8n.workflows.cards.getFolders()).toHaveCount(1);
 	});
 
 	test('should create folder from inside a folder', async ({ n8n }) => {
-		await n8n.start.fromNewProject();
-		const folderName = await createFolder(n8n);
+		const projectId = await n8n.start.fromNewProject();
+		const folder = await n8n.api.projects.createFolder(projectId);
+		const folderName = folder.name;
 		await n8n.workflows.cards.openFolder(folderName);
-		const childFolderName = await createFolder(n8n);
+		const childFolderName = await n8n.workflows.addFolder();
+		await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
+	});
+
+	test('should create a folder from breadcrumbs', async ({ n8n }) => {
+		const projectId = await n8n.start.fromNewProject();
+		const folder = await n8n.api.projects.createFolder(projectId);
+		const folderName = folder.name;
+		await n8n.workflows.cards.openFolder(folderName);
+		// This opens the folder actions menu
+		await n8n.workflows.getFolderBreadcrumbsActions().click();
+
+		await n8n.workflows.getFolderBreadcrumbsAction('create').click();
+		const childFolderName = 'My Child Folder';
+		await n8n.workflows.fillFolderModal(childFolderName);
+
+		await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
+	});
+
+	test('should crate a folder from the list header button', async ({ n8n }) => {
+		const projectId = await n8n.start.fromNewProject();
+		await n8n.api.projects.createFolder(projectId);
+		await n8n.workflows.addFolderButton().click();
+		const childFolderName = 'My Child Folder';
+		await n8n.workflows.fillFolderModal(childFolderName);
+
+		await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
+	});
+
+	test('should create a folder from the card dropdown', async ({ n8n }) => {
+		const projectId = await n8n.start.fromNewProject();
+		const folder = await n8n.api.projects.createFolder(projectId);
+		const folderName = folder.name;
+		const folderCard = n8n.workflows.cards.getFolder(folderName);
+		await n8n.workflows.cards.openCardActions(folderCard);
+		await n8n.workflows.cards.getCardAction('create').click();
+		const childFolderName = 'My Child Folder';
+		await n8n.workflows.fillFolderModal(childFolderName);
 		await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
 	});
 });
