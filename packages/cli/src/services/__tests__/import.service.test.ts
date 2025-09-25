@@ -507,8 +507,8 @@ describe('ImportService', () => {
 
 			await importService.disableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = OFF;');
-			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = OFF;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = ON;');
+			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA defer_foreign_keys = ON;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints disabled');
 		});
 
@@ -537,8 +537,8 @@ describe('ImportService', () => {
 
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = ON;');
-			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = ON;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = OFF;');
+			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA defer_foreign_keys = OFF;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints re-enabled');
 		});
 

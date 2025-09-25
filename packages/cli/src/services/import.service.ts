@@ -27,16 +27,16 @@ export class ImportService {
 
 	private foreignKeyCommands: Record<'enable' | 'disable', Record<string, string>> = {
 		disable: {
-			sqlite: 'PRAGMA foreign_keys = OFF;',
-			'sqlite-pooled': 'PRAGMA foreign_keys = OFF;',
-			'sqlite-memory': 'PRAGMA foreign_keys = OFF;',
+			sqlite: 'PRAGMA defer_foreign_keys = ON;',
+			'sqlite-pooled': 'PRAGMA defer_foreign_keys = ON;',
+			'sqlite-memory': 'PRAGMA defer_foreign_keys = ON;',
 			postgres: 'SET session_replication_role = replica;',
 			postgresql: 'SET session_replication_role = replica;',
 		},
 		enable: {
-			sqlite: 'PRAGMA foreign_keys = ON;',
-			'sqlite-pooled': 'PRAGMA foreign_keys = ON;',
-			'sqlite-memory': 'PRAGMA foreign_keys = ON;',
+			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
+			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
+			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
 			postgres: 'SET session_replication_role = DEFAULT;',
 			postgresql: 'SET session_replication_role = DEFAULT;',
 		},
