@@ -119,14 +119,22 @@ export class SourceControlService {
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
+			const preferences = this.sourceControlPreferencesService.getPreferences();
+
 			await this.sourceControlPreferencesService.setPreferences({
 				connected: false,
 				branchName: '',
+				repositoryUrl: '',
+				connectionType: preferences.connectionType,
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
-			if (!options.keepKeyPair) {
+
+			if (preferences.connectionType === 'https') {
+				await this.sourceControlPreferencesService.deleteHttpsCredentials();
+			} else if (!options.keepKeyPair) {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
+
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
