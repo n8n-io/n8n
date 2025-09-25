@@ -82,7 +82,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 	methods: {
 		...methods,
-		handleUpdateModelValue(value) {
+		handleUpdateModelValue(value: string) {
 			this.val = value;
 			this.onUpdateModelValue(value);
 		},
@@ -195,7 +195,7 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 	},
 	methods: {
 		...methods,
-		handleUpdateModelValue(value) {
+		handleUpdateModelValue(value: string) {
 			this.val = value;
 			this.onUpdateModelValue(value);
 		},
