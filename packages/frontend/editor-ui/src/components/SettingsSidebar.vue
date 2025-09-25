@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import type { IMenuItem } from '@n8n/design-system';
+import { N8nIcon, N8nMenuItem, type IMenuItem } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -130,23 +130,20 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-menu :items="sidebarMenuItems">
-			<template #header>
-				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
-					<i class="mr-xs">
-						<n8n-icon icon="arrow-left" />
-					</i>
-					<n8n-heading size="large" :bold="true">{{ i18n.baseText('settings') }}</n8n-heading>
-				</div>
-			</template>
-			<template #menuSuffix>
-				<div :class="$style.versionContainer">
-					<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
-						{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-					</n8n-link>
-				</div>
-			</template>
-		</n8n-menu>
+		<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
+			<i>
+				<N8nIcon icon="arrow-left" />
+			</i>
+			<n8n-text bold>{{ i18n.baseText('settings') }}</n8n-text>
+		</div>
+		<div :class="$style.items">
+			<N8nMenuItem v-for="item in sidebarMenuItems" :item="item" />
+		</div>
+		<div :class="$style.versionContainer">
+			<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+				{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
+			</n8n-link>
+		</div>
 	</div>
 </template>
 
@@ -161,15 +158,25 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 }
 
 .returnButton {
-	padding: var(--spacing-s) var(--spacing-l);
+	padding: var(--spacing-xs);
 	cursor: pointer;
+	display: flex;
+	gap: var(--spacing-3xs);
+	align-items: center;
 	&:hover {
 		color: var(--color-primary);
 	}
 }
 
+.items {
+	display: flex;
+	flex-direction: column;
+
+	padding: 0 var(--spacing-3xs);
+}
+
 .versionContainer {
-	padding: var(--spacing-xs) var(--spacing-l);
+	padding: var(--spacing-xs);
 }
 
 @media screen and (max-height: 420px) {

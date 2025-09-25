@@ -472,7 +472,8 @@ const { width } = useElementSize(defNameRef);
 				</template>
 				<template v-else>
 					<div :class="$style.sidebar">
-						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+						<N8nMenuItem v-for="item in sidebarItems" :item="item" />
+						<!-- Just to add spacing at the bottom -->
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 						<template v-if="isTypeWebhook">

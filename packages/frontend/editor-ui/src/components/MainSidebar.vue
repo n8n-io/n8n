@@ -4,7 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import {
+	N8nNavigationDropdown,
+	N8nTooltip,
+	N8nLink,
+	N8nIconButton,
+	N8nMenuItem,
+} from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
@@ -274,6 +280,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 ]);
+
+const visibleMainMenuItems = computed(() =>
+	mainMenuItems.value.filter((item) => item.available !== false),
+);
+
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
@@ -521,7 +532,13 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</template>
 			</N8nNavigationDropdown>
 		</div>
-		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+
+		<N8nMenuItem
+			v-for="item in visibleMainMenuItems"
+			:item="item"
+			:collapsed="isCollapsed"
+			@select="handleSelect"
+		>
 			<template #header>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
@@ -578,7 +595,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</div>
 				</div>
 			</template>
-		</N8nMenu>
+		</N8nMenuItem>
 	</div>
 </template>
 

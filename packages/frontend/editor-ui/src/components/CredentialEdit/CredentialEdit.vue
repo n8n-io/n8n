@@ -35,7 +35,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/types/projects.types';
-import { N8nInlineTextEdit, N8nText, type IMenuItem } from '@n8n/design-system';
+import { N8nInlineTextEdit, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -1133,12 +1133,7 @@ const { width } = useElementSize(credNameRef);
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
-					<n8n-menu
-						mode="tabs"
-						:items="sidebarItems"
-						:transparent-background="true"
-						@select="onTabSelect"
-					></n8n-menu>
+					<N8nMenuItem v-for="item in sidebarItems" :item="item" />
 				</div>
 				<div
 					v-if="activeTab === 'connection' && credentialType"
