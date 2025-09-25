@@ -61,7 +61,22 @@ const clientSecret = ref('');
 
 const discoveryEndpoint = ref('');
 
-const prompt = ref<'login' | 'none' | 'consent' | 'select_account' | 'create'>('select_account');
+type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
+
+const prompt = ref<PromptType>('select_account');
+
+type PromptDescription = {
+	label: string;
+	value: PromptType;
+};
+
+const promptDescriptions: PromptDescription[] = [
+	{ label: 'Login (Force the user to log in)', value: 'login' },
+	{ label: 'None (Silent authentication	)', value: 'none' },
+	{ label: 'Consent (Ask the user to consent)', value: 'consent' },
+	{ label: 'Select Account (Allow the user to select an account)', value: 'select_account' },
+	{ label: 'Create (Ask the OP to show the registration page first)', value: 'create' },
+];
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
@@ -507,10 +522,11 @@ async function onOidcSettingsSave() {
 						"
 					>
 						<N8nOption
-							v-for="option in ['none', 'login', 'consent', 'select_account', 'create']"
-							:key="option"
+							v-for="option in promptDescriptions"
+							:key="option.value"
+							:label="option.label"
 							data-test-id="oidc-prompt-filter-option"
-							:value="option"
+							:value="option.value"
 						/>
 					</N8nSelect>
 					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
