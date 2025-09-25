@@ -7,7 +7,16 @@ type NodeMap = {
 	event: 'create' | 'delete' | 'get' | 'getAll' | 'update';
 	folder: 'create' | 'delete' | 'get' | 'getAll' | 'update';
 	folderMessage: 'getAll';
-	message: 'delete' | 'get' | 'getAll' | 'move' | 'update' | 'send' | 'reply' | 'sendAndWait';
+	message:
+		| 'createForward'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'move'
+		| 'update'
+		| 'send'
+		| 'reply'
+		| 'sendAndWait';
 	messageAttachment: 'add' | 'download' | 'getAll' | 'get';
 };
 
