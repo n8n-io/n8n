@@ -347,27 +347,36 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	async getInsightsByWorkflow({
 		startDate,
 		endDate,
-		maxAgeInDays,
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
 		projectId,
 	}: {
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
 		projectId?: string;
 		startDate: Date;
-		endDate?: Date;
+		endDate: Date;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+		const today = DateTime.now().startOf('day');
+		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
+		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
+
+		const daysToCurrentStart = today.diff(currentStart, 'days').days;
+		const daysToCurrentEnd = today.diff(currentEnd, 'days').days;
+
+		const cte = sql`
+			SELECT
+				${this.getAgeLimitQuery(daysToCurrentStart)} AS start_date,
+				${this.getAgeLimitQuery(daysToCurrentEnd)} AS end_date
+		`;
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
-			.addCommonTableExpression(cte, 'date_range')
+			.addCommonTableExpression(cte, 'date_ranges')
 			.select([
 				'metadata.workflowId AS "workflowId"',
 				'metadata.workflowName AS "workflowName"',
@@ -389,8 +398,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			])
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
-			.innerJoin('date_range', 'date_range', '1=1')
-			.where('insights.periodStart >= date_range.start_date')
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where('insights.periodStart >= date_ranges.start_date')
+			.andWhere('insights.periodStart <= date_ranges.end_date')
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
@@ -400,6 +410,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		if (projectId) {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
+
+		console.log(rawRowsQuery.getSql());
 
 		const count = (await rawRowsQuery.getRawMany()).length;
 		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();

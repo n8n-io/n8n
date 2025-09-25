@@ -156,7 +156,6 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
-		maxAgeInDays,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
@@ -171,12 +170,11 @@ export class InsightsService {
 		sortBy?: string;
 		projectId?: string;
 		startDate: Date;
-		endDate?: Date;
+		endDate: Date;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			startDate,
 			endDate,
-			maxAgeInDays,
 			skip,
 			take,
 			sortBy,
