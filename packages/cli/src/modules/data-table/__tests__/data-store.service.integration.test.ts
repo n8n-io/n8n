@@ -17,6 +17,7 @@ import { DataStoreValidationError } from '../errors/data-store-validation.error'
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
+	// a comment
 	await testModules.loadModules(['data-table']);
 	await testDb.init();
 	mockDataStoreSizeValidator();
