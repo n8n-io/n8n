@@ -103,30 +103,17 @@ export async function executionFinished(
 	uiStore.setProcessingExecutionResults(true);
 
 	let successToastAlreadyShown = false;
-	let execution: SimplifiedExecution | undefined;
-	if (data.rawData) {
-		const { executionId, workflowId, status, rawData } = data;
 
-		execution = {
-			id: executionId,
-			workflowId,
-			workflowData: workflowsStore.workflow,
-			data: parse(rawData),
-			status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
-			stoppedAt: new Date(),
-		};
-	} else {
-		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId);
-			successToastAlreadyShown = true;
-		}
+	if (data.status === 'success') {
+		handleExecutionFinishedSuccessfully(data.workflowId);
+		successToastAlreadyShown = true;
+	}
 
-		execution = await fetchExecutionData(data.executionId);
-		if (!execution) {
-			uiStore.setProcessingExecutionResults(false);
-			return;
-		}
+	const execution = await fetchExecutionData(data.executionId);
+
+	if (!execution) {
+		uiStore.setProcessingExecutionResults(false);
+		return;
 	}
 
 	const runExecutionData = getRunExecutionData(execution);
