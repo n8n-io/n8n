@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
-import Logo from '@/components/Logo/Logo.vue';
+import { N8nLogo } from '@n8n/design-system';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
@@ -196,7 +196,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" :release-channel="releaseChannel" />
+		<N8nLogo location="authView" :release-channel="releaseChannel" />
 		<n8n-card>
 			<div :class="$style.headerContainer">
 				<n8n-heading size="xlarge" color="text-dark">{{

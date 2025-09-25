@@ -31,7 +31,7 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import Logo from '@/components/Logo/Logo.vue';
+import { N8nLogo } from '@n8n/design-system';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
@@ -435,7 +435,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<Logo
+			<N8nLogo
 				location="sidebar"
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
@@ -463,7 +463,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						:class="$style.readOnlyEnvironmentIcon"
 					/>
 				</N8nTooltip>
-			</Logo>
+			</N8nLogo>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
