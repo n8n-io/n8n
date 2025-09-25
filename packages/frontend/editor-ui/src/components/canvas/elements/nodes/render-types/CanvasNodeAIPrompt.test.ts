@@ -13,7 +13,7 @@ const openChat = vi.fn();
 const sendChatMessage = vi.fn();
 const stopStreaming = vi.fn();
 const creditsQuota = ref(100);
-const creditsClaimed = ref(0);
+const creditsRemaining = ref(0);
 vi.mock('@/stores/builder.store', () => {
 	return {
 		useBuilderStore: vi.fn(() => ({
@@ -23,8 +23,8 @@ vi.mock('@/stores/builder.store', () => {
 			get creditsQuota() {
 				return creditsQuota.value;
 			},
-			get creditsClaimed() {
-				return creditsClaimed.value;
+			get creditsRemaining() {
+				return creditsRemaining.value;
 			},
 			openChat,
 			sendChatMessage,
@@ -106,7 +106,7 @@ vi.mock('@n8n/design-system/components/N8nPromptInput/N8nPromptInput.vue', () =>
 			'placeholder',
 			'maxLinesBeforeScroll',
 			'creditsQuota',
-			'creditsClaimed',
+			'creditsRemaining',
 			'onUpgradeClick',
 			'showAskOwnerTooltip',
 			'minLines',

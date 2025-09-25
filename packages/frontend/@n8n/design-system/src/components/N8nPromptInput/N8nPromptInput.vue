@@ -19,8 +19,8 @@ export interface N8nPromptInputProps {
 	streaming?: boolean;
 	disabled?: boolean;
 	creditsQuota?: number;
-	creditsClaimed?: number;
-	onUpgradeClick: () => void;
+	creditsRemaining?: number;
+	onUpgradeClick?: () => void;
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
 }
@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	streaming: false,
 	disabled: false,
 	creditsQuota: undefined,
-	creditsClaimed: undefined,
+	creditsRemaining: undefined,
 	showAskOwnerTooltip: false,
 	refocusAfterSend: false,
 });
@@ -76,34 +76,25 @@ const sendDisabled = computed(
 		props.streaming ||
 		props.disabled ||
 		isOverLimit.value ||
-		creditsRemaining.value === 0,
+		props.creditsRemaining === 0,
 );
 
 const containerStyle = computed(() => {
 	return { minHeight: isMultiline.value ? '80px' : '40px' };
 });
 
-const creditsRemaining = computed(() => {
-	if (props.creditsQuota === undefined || props.creditsClaimed === undefined) {
-		return undefined;
-	}
-	// in some edge cases one can claim more credits than allotted
-	const remaining = props.creditsQuota - props.creditsClaimed;
-	return remaining <= 0 ? 0 : remaining;
-});
-
 const showCredits = computed(() => {
 	return (
 		props.creditsQuota !== undefined &&
-		props.creditsClaimed !== undefined &&
+		props.creditsRemaining !== undefined &&
 		props.creditsQuota !== -1
 	);
 });
 
 const creditsInfo = computed(() => {
-	if (!showCredits.value || creditsRemaining.value === undefined) return '';
+	if (!showCredits.value || props.creditsRemaining === undefined) return '';
 	return t('promptInput.creditsInfo', {
-		remaining: creditsRemaining.value,
+		remaining: props.creditsRemaining,
 		total: props.creditsQuota,
 	});
 });
@@ -122,7 +113,7 @@ const creditsTooltipContent = computed(() => {
 
 	const lines = [
 		t('promptInput.remainingCredits', {
-			count: creditsRemaining.value ?? 0,
+			count: props.creditsRemaining ?? 0,
 		}),
 		t('promptInput.monthlyCredits', {
 			count: props.creditsQuota ?? 0,
@@ -135,7 +126,7 @@ const creditsTooltipContent = computed(() => {
 });
 
 const hasNoCredits = computed(() => {
-	return showCredits.value && creditsRemaining.value === 0;
+	return showCredits.value && props.creditsRemaining === 0;
 });
 
 const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
@@ -401,7 +392,7 @@ defineExpose({
 				:content="t('promptInput.askAdminToUpgrade')"
 				placement="top"
 			>
-				<N8nLink size="small" color="text-base" theme="text" @click="onUpgradeClick">
+				<N8nLink size="small" color="text-base" theme="text" @click="() => onUpgradeClick?.()">
 					{{ t('promptInput.getMore') }}
 				</N8nLink>
 			</N8nTooltip>

@@ -100,7 +100,7 @@ describe('AskAssistantBuild', () => {
 					assistantThinkingMessage: undefined,
 					workflowPrompt,
 					creditsQuota: -1,
-					creditsClaimed: 0,
+					creditsRemaining: 0,
 				},
 				[STORES.USERS]: {
 					currentUser: {
@@ -137,8 +137,8 @@ describe('AskAssistantBuild', () => {
 			get: vi.fn(() => (builderStore.$state as any).creditsQuota ?? -1),
 			configurable: true,
 		});
-		Object.defineProperty(builderStore, 'creditsClaimed', {
-			get: vi.fn(() => (builderStore.$state as any).creditsClaimed ?? 0),
+		Object.defineProperty(builderStore, 'creditsRemaining', {
+			get: vi.fn(() => (builderStore.$state as any).creditsRemaining ?? 0),
 			configurable: true,
 		});
 
@@ -1225,10 +1225,10 @@ describe('AskAssistantBuild', () => {
 	});
 
 	describe('metering functionality', () => {
-		it('should pass credits quota and claimed to AskAssistantChat component', () => {
+		it('should pass credits quota and remaining to AskAssistantChat component', () => {
 			(builderStore.$patch as any)({
 				creditsQuota: 100,
-				creditsClaimed: 25,
+				creditsRemaining: 75,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -1267,9 +1267,9 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should render with default credit values', () => {
-			// Default values should be -1 for quota and 0 for claimed
+			// Default values should be -1 for quota and 0 for remaining
 			expect((builderStore as any).creditsQuota).toBe(-1);
-			expect((builderStore as any).creditsClaimed).toBe(0);
+			expect((builderStore as any).creditsRemaining).toBe(0);
 
 			const { getByTestId } = renderComponent();
 			const chatComponent = getByTestId('ask-assistant-chat');
@@ -1282,12 +1282,12 @@ describe('AskAssistantBuild', () => {
 
 			// Initially with default values
 			expect((builderStore as any).creditsQuota).toBe(-1);
-			expect((builderStore as any).creditsClaimed).toBe(0);
+			expect((builderStore as any).creditsRemaining).toBe(0);
 
 			// Update credits
 			(builderStore.$patch as any)({
 				creditsQuota: 50,
-				creditsClaimed: 10,
+				creditsRemaining: 40,
 			});
 
 			await flushPromises();
@@ -1297,10 +1297,10 @@ describe('AskAssistantBuild', () => {
 
 			// Verify the store state values are updated
 			expect((builderStore.$state as any).creditsQuota).toBe(50);
-			expect((builderStore.$state as any).creditsClaimed).toBe(10);
+			expect((builderStore.$state as any).creditsRemaining).toBe(40);
 			// And the getters return the updated values
 			expect((builderStore as any).creditsQuota).toBe(50);
-			expect((builderStore as any).creditsClaimed).toBe(10);
+			expect((builderStore as any).creditsRemaining).toBe(40);
 		});
 	});
 });

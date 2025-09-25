@@ -40,8 +40,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
-	const creditsQuota = ref<number>(-1);
-	const creditsClaimed = ref<number>(0);
+	const creditsQuota = ref<number | undefined>();
+	const creditsClaimed = ref<number | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -107,6 +107,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
 	);
+
+	const creditsRemaining = computed(() => {
+		if (
+			creditsClaimed.value === undefined ||
+			creditsQuota.value === undefined ||
+			creditsQuota.value === -1
+		) {
+			return undefined;
+		}
+
+		// some edge cases could lead to claimed being higher than quota
+		const remaining = creditsQuota.value - creditsClaimed.value;
+		return remaining > 0 ? remaining : 0;
+	});
 
 	// Chat management functions
 	/**
@@ -456,8 +470,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		try {
 			const response = await getBuilderCredits(rootStore.restApiContext);
-			creditsQuota.value = response.creditsQuota;
-			creditsClaimed.value = response.creditsClaimed;
+			updateBuilderCredits(response.creditsQuota, response.creditsClaimed);
 		} catch (error) {
 			// Keep default values on error
 		}
@@ -489,7 +502,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		streamingAbortController,
 		initialGeneration,
 		creditsQuota: computed(() => creditsQuota.value),
-		creditsClaimed: computed(() => creditsClaimed.value),
+		creditsRemaining,
 
 		// Methods
 		updateWindowWidth,

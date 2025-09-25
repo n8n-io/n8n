@@ -41,7 +41,7 @@ const user = computed(() => ({
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
 const creditsQuota = computed(() => builderStore.creditsQuota);
-const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
@@ -196,7 +196,7 @@ watch(currentRoute, () => {
 			:show-stop="true"
 			:scroll-on-new-message="true"
 			:credits-quota="creditsQuota"
-			:credits-claimed="creditsClaimed"
+			:credits-remaining="creditsRemaining"
 			:on-upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"

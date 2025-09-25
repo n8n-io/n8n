@@ -288,7 +288,7 @@ export const WithCreditsAndUpgrade: StoryFn = Template.bind({});
 WithCreditsAndUpgrade.args = {
 	inputPlaceholder: 'Type your message here...',
 	creditsQuota: 150,
-	creditsClaimed: 31,
+	creditsRemaining: 119,
 	onUpgradeClick: () => {
 		action('onUpgradeClick')('Opening n8n pricing page');
 		window.open(
@@ -303,7 +303,7 @@ export const WithCreditsNoUpgrade: StoryFn = Template.bind({});
 WithCreditsNoUpgrade.args = {
 	inputPlaceholder: 'Type your message here...',
 	creditsQuota: 150,
-	creditsClaimed: 127,
+	creditsRemaining: 23,
 	onUpgradeClick: () => {
 		action('onUpgradeClick')('Opening n8n pricing page (non-owner)');
 		window.open(
@@ -319,7 +319,7 @@ export const LowCredits: StoryFn = Template.bind({});
 LowCredits.args = {
 	inputPlaceholder: 'Type your message here...',
 	creditsQuota: 150,
-	creditsClaimed: 145,
+	creditsRemaining: 5,
 	onUpgradeClick: () => {
 		action('onUpgradeClick')('Opening n8n pricing page (low credits)');
 		window.open(
@@ -334,7 +334,7 @@ export const NoCreditsRemaining: StoryFn = Template.bind({});
 NoCreditsRemaining.args = {
 	inputPlaceholder: 'Type your message here...',
 	creditsQuota: 150,
-	creditsClaimed: 150,
+	creditsRemaining: 0,
 	onUpgradeClick: () => {
 		action('onUpgradeClick')('Opening n8n pricing page (no credits)');
 		window.open(
@@ -349,12 +349,12 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 	components: { N8nPromptInput },
 	setup() {
 		const inputValue = ref('');
-		const creditsClaimed = ref(args.creditsClaimed || 0);
+		const creditsRemaining = ref(args.creditsRemaining || 150);
 		const creditsQuota = ref(args.creditsQuota || 150);
 
 		const handleSubmit = () => {
-			if (inputValue.value.trim() && creditsClaimed.value < creditsQuota.value) {
-				creditsClaimed.value++;
+			if (inputValue.value.trim() && creditsRemaining.value > 0) {
+				creditsRemaining.value--;
 				inputValue.value = '';
 			}
 			action('submit')();
@@ -363,7 +363,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 		return {
 			args,
 			inputValue,
-			creditsClaimed,
+			creditsRemaining,
 			creditsQuota,
 			handleSubmit,
 			onStop: methods.onStop,
@@ -380,14 +380,14 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 					Each message consumes 1 credit. Credits renew at the beginning of next month.
 				</p>
 				<p style="color: var(--color-text-light); font-size: var(--font-size-s);">
-					Credits used: {{ creditsClaimed }} / {{ creditsQuota }}
+					Credits remaining: {{ creditsRemaining }} / {{ creditsQuota }}
 				</p>
 			</div>
 			<n8n-prompt-input
 				v-bind="args"
 				v-model="inputValue"
 				:credits-quota="creditsQuota"
-				:credits-claimed="creditsClaimed"
+				:credits-remaining="creditsRemaining"
 				@submit="handleSubmit"
 				@stop="onStop"
 				@focus="onFocus"
@@ -402,7 +402,7 @@ export const CreditsInteractive: StoryFn = CreditsInteractiveTemplate.bind({});
 CreditsInteractive.args = {
 	inputPlaceholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
-	creditsClaimed: 148,
+	creditsRemaining: 2,
 	onUpgradeClick: () => {
 		action('onUpgradeClick')('Opening n8n pricing page (interactive demo)');
 		window.open(

@@ -31,8 +31,8 @@ interface Props {
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
 	creditsQuota?: number;
-	creditsClaimed?: number;
-	onUpgradeClick: () => void;
+	creditsRemaining?: number;
+	onUpgradeClick?: () => void;
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 }
@@ -427,7 +427,7 @@ defineExpose({
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
-				:credits-claimed="creditsClaimed"
+				:credits-remaining="creditsRemaining"
 				:on-upgrade-click="onUpgradeClick"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:max-length="maxCharacterLength"

@@ -39,7 +39,7 @@ const isLoading = ref(false);
 // Computed properties
 const hasContent = computed(() => prompt.value.trim().length > 0);
 const creditsQuota = computed(() => builderStore.creditsQuota);
-const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 // Static data
@@ -133,7 +133,7 @@ function onAddNodeClick() {
 				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 				:max-lines-before-scroll="4"
 				:credits-quota="creditsQuota"
-				:credits-claimed="creditsClaimed"
+				:credits-remaining="creditsRemaining"
 				:on-upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:min-lines="2"

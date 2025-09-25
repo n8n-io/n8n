@@ -481,7 +481,7 @@ describe('N8nPromptInput', () => {
 			const { container } = renderComponent({
 				props: {
 					creditsQuota: -1,
-					creditsClaimed: 0,
+					creditsRemaining: 0,
 				},
 				global: {
 					stubs: [
@@ -504,7 +504,7 @@ describe('N8nPromptInput', () => {
 			const { container } = renderComponent({
 				props: {
 					creditsQuota: 100,
-					creditsClaimed: 20,
+					creditsRemaining: 80,
 				},
 				global: {
 					stubs: [
