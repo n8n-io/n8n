@@ -248,12 +248,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
 		initialGeneration?: boolean;
+		type?: 'message' | 'execution';
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
-		const { text, source = 'chat', quickReplyType } = options;
+		const {
+			text,
+			source = 'chat',
+			quickReplyType,
+			errorMessage,
+			type = 'message',
+			errorNodeType,
+			executionStatus,
+		} = options;
 
 		// Set initial generation flag if provided
 		if (options.initialGeneration !== undefined) {
@@ -262,13 +274,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
-		telemetry.track('User submitted builder message', {
+		const trackingPayload: Record<string, string> = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
-		});
+			type,
+		};
+
+		if (type === 'execution') {
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
 
 		prepareForStreaming(text, messageId);
 

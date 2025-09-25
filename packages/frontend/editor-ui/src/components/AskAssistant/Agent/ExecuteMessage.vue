@@ -1,101 +1,87 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useI18n } from '@n8n/i18n';
 import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { type INodeIssueData, type INodeIssueTypes } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
 
-const emit = defineEmits<{
+import NodeIssueItem from './NodeIssueItem.vue';
+import { useLogsStore } from '@/stores/logs.store';
+import { isChatNode } from '@/utils/aiUtils';
+import { useToast } from '@/composables/useToast';
+
+interface Emits {
+	/** Emitted when workflow execution completes */
 	workflowExecuted: [];
-}>();
-
-const router = useRouter();
-const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
-const ndvStore = useNDVStore();
-
-const i18n = useI18n();
-const { runWorkflow } = useRunWorkflow({ router });
-
-const triggerNodes = computed(() => {
-	const filteredNodes = workflowsStore.workflow.nodes.filter((node) =>
-		nodeTypesStore.isTriggerNode(node.type),
-	);
-
-	return filteredNodes;
-});
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
-
-const nodesIssues = computed(() => {
-	const issues: INodeIssueData[] = [];
-	workflowsStore.workflow.nodes.forEach((node) => {
-		const nodeHasIssues = !!Object.keys(node.issues ?? {}).length;
-		const isConnected =
-			Object.keys(workflowsStore.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-			Object.keys(workflowsStore.incomingConnectionsByNodeName(node.name)).length > 0;
-
-		if (!node.disabled && isConnected && nodeHasIssues) {
-			Object.keys(node.issues ?? {}).forEach((issueKey) => {
-				if (!node?.issues?.[issueKey]) return;
-				const issueValue = node?.issues?.[issueKey];
-				const issueType = issueKey as INodeIssueTypes;
-				if (
-					issueType === 'parameters' &&
-					typeof issueValue === 'object' &&
-					!Array.isArray(issueValue)
-				) {
-					Object.keys(node?.issues?.[issueType] ?? {})?.forEach((paramIssue: string) => {
-						issues.push({
-							node: node.name,
-							type: issueType,
-							value: node?.issues?.[issueType]?.[paramIssue] as unknown as string,
-						});
-					});
-				}
-				if (
-					issueType === 'credentials' &&
-					typeof issueValue === 'object' &&
-					!Array.isArray(issueValue)
-				) {
-					Object.keys(node?.issues?.[issueType] ?? {})?.forEach((paramIssue: string) => {
-						issues.push({
-							node: node.name,
-							type: issueType,
-							value: node?.issues?.[issueType]?.[paramIssue] as unknown as string,
-						});
-					});
-				}
-			});
-		}
-	});
-
-	return issues;
-});
-
-function formatIssueMessage(issue: INodeIssueData['value']) {
-	if (Array.isArray(issue)) {
-		return issue.join(', ').replace(/\.$/, '');
-	}
-	return issue;
 }
 
-function getNodeType(nodeName: string) {
-	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
-	if (!node) return null;
+const emit = defineEmits<Emits>();
 
+// Initialize composables and stores
+const router = useRouter();
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+const i18n = useI18n();
+const logsStore = useLogsStore();
+const toast = useToast();
+
+// Workflow execution composable
+const { runWorkflow } = useRunWorkflow({ router });
+
+// Workflow validation from store
+const workflowIssues = computed(() =>
+	workflowsStore.workflowValidationIssues.filter((issue) =>
+		['credentials', 'parameters'].includes(issue.type),
+	),
+);
+const hasValidationIssues = computed(() => workflowIssues.value.length > 0);
+const formatIssueMessage = workflowsStore.formatIssueMessage;
+
+const triggerNodes = computed(() =>
+	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+);
+
+// Helper to get node type
+function getNodeTypeByName(nodeName: string) {
+	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
+
+	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);
 }
 
-async function onExecute() {
-	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName,
-	});
+// Reactive workflow state
+const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+/**
+ * Determines available trigger nodes for execution
+ * Excludes trigger nodes when there are validation issues to prevent dropdown rendering
+ */
+const availableTriggerNodes = computed(() => (hasValidationIssues.value ? [] : triggerNodes.value));
 
+async function onExecute() {
+	const selectedTriggerNode =
+		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
+	const selectedTriggerNodeType = workflowsStore.getNodeByName(selectedTriggerNode);
+
+	// If the selected trigger is a chat node, open logs panel instead of executing
+	// the execution will be handled by the chat node itself
+	if (isChatNode(selectedTriggerNodeType!)) {
+		toast.showMessage({
+			title: i18n.baseText('aiAssistant.builder.toast.title'),
+			message: i18n.baseText('aiAssistant.builder.toast.description'),
+			type: 'info',
+		});
+		logsStore.toggleOpen(true);
+	} else {
+		await runWorkflow({
+			triggerNode: workflowsStore.selectedTriggerNodeName,
+		});
+	}
+
+	// Watch for execution completion
 	const executionWatcher = watch(
 		() => workflowsStore.isWorkflowRunning,
 		(newVal, oldVal) => {
@@ -110,47 +96,46 @@ async function onExecute() {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<template v-if="nodesIssues.length > 0">
-			<p>{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}</p>
-			<TransitionGroup name="fade" tag="ul" :class="$style.pendingItems">
-				<li
-					v-for="issue in nodesIssues"
+	<div :class="$style.container" role="region" aria-label="Workflow execution panel">
+		<!-- Validation Issues Section -->
+		<template v-if="hasValidationIssues">
+			<p :class="$style.description">
+				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
+			</p>
+			<TransitionGroup
+				name="fade"
+				tag="ul"
+				:class="$style.issuesList"
+				role="list"
+				aria-label="Workflow validation issues"
+			>
+				<NodeIssueItem
+					v-for="issue in workflowIssues"
 					:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
-					:class="$style.nodeIssue"
-				>
-					<NodeIcon
-						:node-type="getNodeType(issue.node)"
-						:size="14"
-						:shrink="false"
-						:show-tooltip="true"
-						tooltip-position="left"
-						:class="$style.nodeIcon"
-					/>
-					<div :class="$style.issueMessage">
-						<span :class="$style.nodeName">{{ issue.node }}:</span>
-						{{ formatIssueMessage(issue.value) }}
-					</div>
-					<n8n-icon-button
-						:class="$style.editButton"
-						type="tertiary"
-						size="small"
-						:outline="true"
-						icon="pencil"
-						@click="ndvStore.setActiveNodeName(issue.node, 'other')"
-					/>
-				</li>
+					:issue="issue"
+					:get-node-type="getNodeTypeByName"
+					:format-issue-message="formatIssueMessage"
+				/>
 			</TransitionGroup>
 		</template>
-		<p v-else>{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssues') }}</p>
 
+		<!-- No Issues Section -->
+		<template v-else>
+			<p :class="$style.noIssuesMessage">
+				{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssues') }}
+			</p>
+		</template>
+
+		<!-- Execution Button -->
 		<CanvasRunWorkflowButton
-			:disabled="nodesIssues.length > 0"
+			:class="$style.runButton"
+			:disabled="hasValidationIssues"
 			:waiting-for-webhook="isExecutionWaitingForWebhook"
 			:hide-label="true"
 			:executing="isWorkflowRunning"
+			:include-chat-trigger="true"
 			size="medium"
-			:trigger-nodes="nodesIssues.length > 0 ? [] : triggerNodes"
+			:trigger-nodes="availableTriggerNodes"
 			:get-node-type="nodeTypesStore.getNodeType"
 			:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
 			@execute="onExecute"
@@ -160,6 +145,7 @@ async function onExecute() {
 </template>
 
 <style lang="scss" scoped>
+/* Fade transition animations for issue list */
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.5s ease;
@@ -178,39 +164,32 @@ async function onExecute() {
 	padding: var(--spacing-xs);
 	gap: var(--spacing-2xs);
 	background-color: var(--color-background-xlight);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-xlarge);
-	line-height: 1.6;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	line-height: var(--font-line-height-loose);
 	position: relative;
 	font-size: var(--font-size-2xs);
 }
-.nodeName {
-	font-weight: bold;
-	flex-shrink: 0;
-}
-.pendingItems {
-	margin: 0;
-}
-.nodeIssue {
-	list-style: none;
-	display: flex;
 
-	&:not(:first-child) {
-		padding: var(--spacing-3xs) 0;
-		border-top: 1px solid var(--color-foreground-light);
-	}
+.description {
+	margin: 0 0 var(--spacing-2xs) 0;
+	color: var(--color-text-base);
+	line-height: var(--font-line-height-regular);
 }
-.nodeIcon {
-	margin-right: var(--spacing-2xs);
-	margin-top: var(--spacing-4xs);
-	align-self: flex-start;
+
+.noIssuesMessage {
+	margin: 0;
+	color: var(--color-text-dark);
 }
-.editButton {
-	--button-border-color: transparent;
-	margin-left: auto;
-	align-self: center;
+
+.issuesList {
+	margin: 0;
+	padding: 0;
+	position: relative;
 }
-.issueMessage {
-	padding-right: var(--spacing-xs);
+
+.runButton {
+	margin-top: var(--spacing-2xs);
+	align-self: stretch;
 }
 </style>

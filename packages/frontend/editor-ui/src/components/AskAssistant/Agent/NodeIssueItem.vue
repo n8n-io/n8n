@@ -1,0 +1,100 @@
+<script setup lang="ts">
+import type { INodeTypeDescription } from 'n8n-workflow';
+// Types for node issues
+interface WorkflowNodeIssue {
+	node: string;
+	type: string;
+	value: string | string[];
+}
+import { useNDVStore } from '@/stores/ndv.store';
+
+interface Props {
+	/** The node issue to display */
+	issue: WorkflowNodeIssue;
+	/** Function to get node type information */
+	getNodeType: (nodeName: string) => INodeTypeDescription | null;
+	/** Function to format issue messages */
+	formatIssueMessage: (value: WorkflowNodeIssue['value']) => string;
+}
+
+const props = defineProps<Props>();
+
+const ndvStore = useNDVStore();
+
+/**
+ * Handle edit button click - opens the node in NDV for editing
+ */
+function handleEditClick() {
+	ndvStore.setActiveNodeName(props.issue.node, 'other');
+}
+</script>
+
+<template>
+	<li :class="$style.nodeIssue" role="listitem">
+		<!-- Node icon with tooltip -->
+		<NodeIcon
+			:node-type="getNodeType(issue.node)"
+			:size="14"
+			:shrink="false"
+			:show-tooltip="true"
+			tooltip-position="left"
+			:class="$style.nodeIcon"
+			:aria-label="`${issue.node} node`"
+		/>
+
+		<!-- Issue message -->
+		<div :class="$style.issueMessage" :aria-label="`Issue: ${formatIssueMessage(issue.value)}`">
+			<span :class="$style.nodeName">{{ issue.node }}:</span>
+			{{ formatIssueMessage(issue.value) }}
+		</div>
+
+		<!-- Edit button -->
+		<n8n-icon-button
+			:class="$style.editButton"
+			type="tertiary"
+			size="small"
+			:outline="true"
+			icon="pencil"
+			:aria-label="`Edit ${issue.node} node`"
+			@click="handleEditClick"
+		/>
+	</li>
+</template>
+
+<style lang="scss" module>
+.nodeIssue {
+	list-style: none;
+	display: flex;
+	align-items: center;
+
+	&:not(:first-child) {
+		padding: var(--spacing-3xs) 0;
+		border-top: 1px solid var(--color-foreground-light);
+	}
+}
+
+.nodeIcon {
+	margin-right: var(--spacing-2xs);
+	margin-top: var(--spacing-4xs);
+	flex-shrink: 0;
+	align-self: flex-start;
+}
+
+.nodeName {
+	font-weight: var(--font-weight-bold);
+	flex-shrink: 0;
+}
+
+.issueMessage {
+	flex: 1;
+	padding-right: var(--spacing-xs);
+	line-height: var(--font-line-height-regular);
+}
+
+.editButton {
+	--button-border-color: transparent;
+	margin-left: auto;
+	flex-shrink: 0;
+	align-self: center;
+}
+</style>

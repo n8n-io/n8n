@@ -24,13 +24,16 @@ const props = defineProps<{
 	disabled?: boolean;
 	hideLabel?: boolean;
 	size?: 'small' | 'medium' | 'large';
+	includeChatTrigger?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
 
 const i18n = useI18n();
 
 const selectableTriggerNodes = computed(() =>
-	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
+	props.triggerNodes.filter(
+		(node) => !node.disabled && (props.includeChatTrigger ? true : !isChatNode(node)),
+	),
 );
 const label = computed(() => {
 	if (!props.executing) {
@@ -45,7 +48,7 @@ const label = computed(() => {
 });
 const actions = computed(() =>
 	props.triggerNodes
-		.filter((node) => !isChatNode(node))
+		.filter((node) => (props.includeChatTrigger ? true : !isChatNode(node)))
 		.toSorted((a, b) => {
 			const [aX, aY] = a.position;
 			const [bX, bY] = b.position;

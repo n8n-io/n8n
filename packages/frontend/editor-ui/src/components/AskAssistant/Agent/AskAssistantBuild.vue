@@ -40,13 +40,13 @@ const user = computed(() => ({
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
-	const builderUpdatedWorkflow = builderStore.chatMessages.findLastIndex(
+	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
 		(msg) => msg.type === 'workflow-updated',
 	);
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflow > -1
+		builderUpdatedWorkflowMessageIndex > -1
 	);
 });
 async function onUserMessage(content: string) {
@@ -115,7 +115,28 @@ function trackWorkflowModifications() {
 }
 
 function onWorkflowExecuted() {
-	builderStore.sendChatMessage({ text: 'Workflow executed' });
+	const executionStatus = workflowsStore.workflowExecutionData?.status;
+	if (executionStatus !== 'success') {
+		const executionError = workflowsStore.workflowExecutionData?.data?.resultData.error?.message;
+		const errorNode = workflowsStore.workflowExecutionData?.data?.resultData.lastNodeExecuted;
+		const errorNodeType = workflowsStore.workflow.nodes.find((n) => n.name === errorNode)?.type;
+
+		builderStore.sendChatMessage({
+			text: `Workflow executed with an error: ${executionError}`,
+			type: 'execution',
+			errorMessage: executionError,
+			errorNodeType,
+			executionStatus,
+		});
+
+		return;
+	}
+
+	builderStore.sendChatMessage({
+		text: 'Workflow executed',
+		type: 'execution',
+		executionStatus,
+	});
 }
 
 // Watch for workflow updates and apply them
