@@ -1531,8 +1531,12 @@ export function useCanvasOperations() {
 			isCommunityPackageName(node.type) &&
 			!useNodeTypesStore().communityNodeType(node.type)?.isInstalled;
 
-		const isNotInstalledCommunitySourceNode = checkIsNotInstalledCommunityNode(sourceNode);
-		const isNotInstalledCommunityTargetNode = checkIsNotInstalledCommunityNode(targetNode);
+		const getNodeType = (node: INodeUi) => {
+			if (checkIsNotInstalledCommunityNode(node)) {
+				return nodeTypesStore.communityNodeType(node.type)?.nodeDescription;
+			}
+			return nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		};
 
 		if (sourceConnection.type !== targetConnection.type) {
 			return false;
@@ -1542,7 +1546,7 @@ export function useCanvasOperations() {
 			return false;
 		}
 
-		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+		const sourceNodeType = getNodeType(sourceNode);
 		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
 		if (!sourceWorkflowNode) {
 			return false;
@@ -1568,11 +1572,11 @@ export function useCanvasOperations() {
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
-		if (isMissingOutputConnection && !isNotInstalledCommunitySourceNode) {
+		if (isMissingOutputConnection) {
 			return false;
 		}
 
-		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+		const targetNodeType = getNodeType(targetNode);
 		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
 		if (!targetWorkflowNode) {
 			return false;
@@ -1616,7 +1620,7 @@ export function useCanvasOperations() {
 
 		const isMissingInputConnection =
 			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
-		if (isMissingInputConnection && !isNotInstalledCommunityTargetNode) {
+		if (isMissingInputConnection) {
 			return false;
 		}
 
