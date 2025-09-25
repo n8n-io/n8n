@@ -41,7 +41,15 @@ export class ControllerRegistry {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
-		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
+		let basePath = this.globalConfig.path;
+		if (basePath.endsWith('/')) {
+			basePath = basePath.slice(0, -1);
+		}
+		if (basePath.length > 0 && !basePath.startsWith('/')) {
+			basePath = '/' + basePath;
+		}
+
+		const prefix = `${basePath}/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
 			.replace(/\/+/g, '/')
 			.replace(/\/$/, '');
 		app.use(prefix, router);
