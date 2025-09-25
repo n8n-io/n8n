@@ -17,13 +17,6 @@ const i18n = useI18n();
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
 
 const hasCustomName = computed(() => props.nodeName !== props.nodeTypeName);
-const docsLabel = computed(() => {
-	if (!hasCustomName.value) {
-		return i18n.baseText('nodeSettings.docs');
-	}
-
-	return `${props.nodeTypeName} ${i18n.baseText('nodeSettings.docs')}`;
-});
 
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
@@ -45,26 +38,28 @@ function onRename(newNodeName: string) {
 				/>
 			</div>
 
+			<N8nText v-if="hasCustomName && !docsUrl" size="small" bold>
+				{{ nodeTypeName }}
+			</N8nText>
+		</div>
+
+		<div :class="$style.actions">
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>
-						{{ docsLabel }}
+						{{ i18n.baseText('nodeSettings.docs') }}
 					</N8nText>
 					<N8nIcon icon="external-link" />
 				</span>
 			</N8nLink>
 
-			<N8nText v-else-if="hasCustomName" size="small" bold>
-				{{ nodeTypeName }}
-			</N8nText>
+			<N8nTooltip>
+				<template #content>
+					{{ i18n.baseText('ndv.close.tooltip') }}
+				</template>
+				<N8nIconButton icon="x" type="tertiary" @click="emit('close')" />
+			</N8nTooltip>
 		</div>
-
-		<N8nTooltip>
-			<template #content>
-				{{ i18n.baseText('ndv.close.tooltip') }}
-			</template>
-			<N8nIconButton icon="x" type="tertiary" @click="emit('close')" />
-		</N8nTooltip>
 	</header>
 </template>
 
@@ -75,7 +70,7 @@ function onRename(newNodeName: string) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-3xs);
 	background: var(--color-background-xlight);
 }
 
@@ -84,6 +79,12 @@ function onRename(newNodeName: string) {
 	align-items: flex-end;
 	gap: var(--spacing-2xs);
 	margin-left: var(--spacing-2xs);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
 }
 
 .title {

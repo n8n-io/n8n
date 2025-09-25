@@ -21,6 +21,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 // Types
 
@@ -376,34 +377,47 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<N8nIcon icon="arrow-right-from-line" size="xlarge" />
 					</template>
 					<template #description>
-						<I18nT
-							tag="span"
-							:keypath="
-								isSubNodeType
-									? 'ndv.output.runNodeHintSubNode'
-									: 'ndv.output.noOutputData.v2.description'
-							"
-							scope="global"
-						>
-							<template #link>
-								<NodeExecuteButton
-									hide-icon
-									transparent
-									type="secondary"
-									:node-name="activeNode?.name ?? ''"
-									:label="
-										i18n.baseText(
-											isTriggerNode
-												? 'ndv.output.noOutputData.trigger.action'
-												: 'ndv.output.noOutputData.v2.action',
-										)
-									"
-									telemetry-source="inputs"
-									@execute="emit('execute')"
-								/>
-								<br />
-							</template>
-						</I18nT>
+						<N8nText size="small">
+							<I18nT
+								tag="span"
+								:keypath="
+									isSubNodeType
+										? 'ndv.output.runNodeHintSubNode'
+										: 'ndv.output.noOutputData.v2.description'
+								"
+								scope="global"
+							>
+								<template #link>
+									<NodeExecuteButton
+										hide-icon
+										transparent
+										type="secondary"
+										:node-name="activeNode?.name ?? ''"
+										:label="
+											i18n.baseText(
+												isTriggerNode
+													? 'ndv.output.noOutputData.trigger.action'
+													: 'ndv.output.noOutputData.v2.action',
+											)
+										"
+										telemetry-source="inputs"
+										@execute="emit('execute')"
+									/>
+									<br />
+								</template>
+								<template #mockDataLink>
+									<N8nText
+										v-if="canPinData && !isSubNodeType"
+										tag="a"
+										size="small"
+										color="primary"
+										@click="insertTestData"
+									>
+										{{ i18n.baseText('ndv.output.insertTestData') }}
+									</N8nText>
+								</template>
+							</I18nT>
+						</N8nText>
 					</template>
 				</NDVEmptyState>
 			</template>

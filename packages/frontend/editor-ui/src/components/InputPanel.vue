@@ -479,19 +479,21 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			>
 				<NDVEmptyState v-if="nodeNotRunMessageVariant === 'simple'">
 					<template #description>
-						<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
-							<template #link>
-								<NodeExecuteButton
-									:class="$style.executeButton"
-									size="large"
-									:node-name="nodeNameToExecute"
-									:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
-									text
-									telemetry-source="inputs"
-									hide-icon
-								/>
-							</template>
-						</I18nT>
+						<N8nText size="small">
+							<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+								<template #link>
+									<NodeExecuteButton
+										:class="$style.executeButton"
+										size="large"
+										:node-name="nodeNameToExecute"
+										:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+										text
+										telemetry-source="inputs"
+										hide-icon
+									/>
+								</template>
+							</I18nT>
+						</N8nText>
 					</template>
 				</NDVEmptyState>
 
@@ -504,23 +506,25 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<N8nIcon icon="arrow-right-to-line" size="xlarge" />
 						</template>
 						<template #description>
-							<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
-								<template #link>
-									<NodeExecuteButton
-										hide-icon
-										transparent
-										type="secondary"
-										:node-name="nodeNameToExecute"
-										:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
-										:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
-										tooltip-placement="bottom"
-										telemetry-source="inputs"
-										data-test-id="execute-previous-node"
-										@execute="onNodeExecute"
-									/>
-									<br />
-								</template>
-							</I18nT>
+							<N8nText size="small">
+								<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
+									<template #link>
+										<NodeExecuteButton
+											hide-icon
+											transparent
+											type="secondary"
+											:node-name="nodeNameToExecute"
+											:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
+											:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+											tooltip-placement="bottom"
+											telemetry-source="inputs"
+											data-test-id="execute-previous-node"
+											@execute="onNodeExecute"
+										/>
+										<br />
+									</template>
+								</I18nT>
+							</N8nText>
 						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
@@ -534,17 +538,19 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</template>
 
 						<template #description>
-							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
-								<template #link>
-									<a
-										href="#"
-										data-test-id="switch-to-mapping-mode-link"
-										@click.prevent="onInputModeChange('mapping')"
-									>
-										{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}
-									</a>
-								</template>
-							</I18nT>
+							<N8nText size="small">
+								<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
+									<template #link>
+										<a
+											href="#"
+											data-test-id="switch-to-mapping-mode-link"
+											@click.prevent="onInputModeChange('mapping')"
+										>
+											{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}
+										</a>
+									</template>
+								</I18nT>
+							</N8nText>
 						</template>
 					</NDVEmptyState>
 				</template>
@@ -618,17 +624,19 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<WireMeUp />
 					</template>
 					<template #description>
-						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
-							<template #link>
-								<a
-									href="https://docs.n8n.io/workflows/connections/"
-									target="_blank"
-									@click="onConnectionHelpClick"
-								>
-									{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
-								</a>
-							</template>
-						</I18nT>
+						<N8nText size="small">
+							<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
+								<template #link>
+									<a
+										href="https://docs.n8n.io/workflows/connections/"
+										target="_blank"
+										@click="onConnectionHelpClick"
+									>
+										{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
+									</a>
+								</template>
+							</I18nT>
+						</N8nText>
 					</template>
 				</NDVEmptyState>
 
