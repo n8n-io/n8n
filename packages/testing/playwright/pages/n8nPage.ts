@@ -29,6 +29,7 @@ import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
+import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
@@ -80,6 +81,7 @@ export class n8nPage {
 	readonly credentialsComposer: CredentialsComposer;
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
+	readonly ndvComposer: NodeDetailsViewComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
@@ -126,6 +128,7 @@ export class n8nPage {
 		this.credentialsComposer = new CredentialsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
+		this.ndvComposer = new NodeDetailsViewComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers
