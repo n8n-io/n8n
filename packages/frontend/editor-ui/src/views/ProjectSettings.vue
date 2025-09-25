@@ -8,7 +8,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { type ResourceCounts, useProjectsStore } from '@/stores/projects.store';
 import type { Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
@@ -49,7 +49,11 @@ const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const isValid = ref(false);
-const isCurrentProjectEmpty = ref(true);
+const resourceCounts = ref<ResourceCounts>({
+	credentials: -1,
+	dataTables: -1,
+	workflows: -1,
+});
 const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	name: '',
 	description: '',
@@ -346,9 +350,7 @@ const onDelete = async () => {
 	await projectsStore.getAvailableProjects();
 
 	if (projectsStore.currentProjectId) {
-		isCurrentProjectEmpty.value = await projectsStore.isProjectEmpty(
-			projectsStore.currentProjectId,
-		);
+		resourceCounts.value = await projectsStore.getResourceCounts(projectsStore.currentProjectId);
 	}
 
 	dialogVisible.value = true;
@@ -607,7 +609,7 @@ onMounted(() => {
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
-			:is-current-project-empty="isCurrentProjectEmpty"
+			:resource-counts="resourceCounts"
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>

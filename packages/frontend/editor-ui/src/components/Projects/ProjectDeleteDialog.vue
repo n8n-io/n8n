@@ -3,11 +3,12 @@ import { ref, computed } from 'vue';
 import type { Project, ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
+import type { ResourceCounts } from '@/stores/projects.store';
 
 type Props = {
 	currentProject: Project | null;
 	projects: ProjectListItem[];
-	isCurrentProjectEmpty: boolean;
+	resourceCounts: ResourceCounts;
 };
 
 const props = defineProps<Props>();
@@ -21,13 +22,20 @@ const locale = useI18n();
 const selectedProject = ref<ProjectSharingData | null>(null);
 const operation = ref<'transfer' | 'wipe' | null>(null);
 const wipeConfirmText = ref('');
+const hasMovableResources = computed(
+	() =>
+		props.resourceCounts.credentials +
+			props.resourceCounts.workflows +
+			props.resourceCounts.dataTables >
+		0,
+);
 const isValid = computed(() => {
 	const expectedWipeConfirmation = locale.baseText(
 		'projects.settings.delete.question.wipe.placeholder',
 	);
 
 	return (
-		props.isCurrentProjectEmpty ||
+		!hasMovableResources.value ||
 		(operation.value === 'transfer' && !!selectedProject.value) ||
 		(operation.value === 'wipe' && wipeConfirmText.value === expectedWipeConfirmation)
 	);
@@ -53,12 +61,12 @@ const onDelete = () => {
 				interpolate: { projectName: props.currentProject?.name ?? '' },
 			})
 		"
-		width="500"
+		width="650"
 	>
-		<n8n-text v-if="isCurrentProjectEmpty" color="text-base">{{
+		<n8n-text v-if="!hasMovableResources" color="text-base">{{
 			locale.baseText('projects.settings.delete.message.empty')
 		}}</n8n-text>
-		<div v-else>
+		<div v-else-if="hasMovableResources">
 			<n8n-text color="text-base">{{
 				locale.baseText('projects.settings.delete.message')
 			}}</n8n-text>

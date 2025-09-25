@@ -872,12 +872,21 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
 	}
 
-	async setRLCValue(paramName: string, value: string): Promise<void> {
+	getResourceLocatorModeSelectorInput(paramName: string) {
+		return this.getResourceLocatorModeSelector(paramName).locator('input');
+	}
+
+	getResourceLocatorErrorMessage(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+	}
+
+	getResourceLocatorAddCredentials(paramName: string) {
+		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+	}
+
+	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
-
-		const visibleOptions = this.page.locator('.el-popper:visible .el-select-dropdown__item');
-		await visibleOptions.last().click();
-
+		await this.page.getByTestId('mode-id').nth(index).click();
 		const input = this.getResourceLocatorInput(paramName).locator('input');
 		await input.fill(value);
 	}
@@ -972,5 +981,18 @@ export class NodeDetailsViewPage extends BasePage {
 
 		// Step 3: Set the parameter value
 		await this.setupHelper.setParameter(parameterName, parameterValue);
+	}
+
+	async setInvalidExpression({
+		fieldName,
+		invalidExpression,
+	}: {
+		fieldName: string;
+		invalidExpression?: string;
+	}): Promise<void> {
+		await this.activateParameterExpressionEditor(fieldName);
+		const editor = this.getInlineExpressionEditorInput(fieldName);
+		await editor.click();
+		await this.page.keyboard.type(invalidExpression ?? '{{ invalid_expression');
 	}
 }
