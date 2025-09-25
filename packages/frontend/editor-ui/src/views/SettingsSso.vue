@@ -61,6 +61,30 @@ const clientSecret = ref('');
 
 const discoveryEndpoint = ref('');
 
+type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
+
+const prompt = ref<PromptType>('select_account');
+
+const handlePromptChange = (value: PromptType) => {
+	prompt.value = value;
+};
+
+type PromptDescription = {
+	label: string;
+	value: PromptType;
+};
+
+const promptDescriptions: PromptDescription[] = [
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.login'), value: 'login' },
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.none'), value: 'none' },
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.consent'), value: 'consent' },
+	{
+		label: i18n.baseText('settings.sso.settings.oidc.prompt.select_account'),
+		value: 'select_account',
+	},
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
+];
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const ipsOptions = ref([
@@ -241,6 +265,7 @@ const getOidcConfig = async () => {
 	clientId.value = config.clientId;
 	clientSecret.value = config.clientSecret;
 	discoveryEndpoint.value = config.discoveryEndpoint;
+	prompt.value = config.prompt ?? 'select_account';
 };
 
 async function loadOidcConfig() {
@@ -263,7 +288,8 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.clientId === clientId.value &&
 		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled
+		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+		ssoStore.oidcConfig?.prompt === prompt.value
 	);
 });
 
@@ -289,6 +315,7 @@ async function onOidcSettingsSave() {
 			clientId: clientId.value,
 			clientSecret: clientSecret.value,
 			discoveryEndpoint: discoveryEndpoint.value,
+			prompt: prompt.value,
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 		});
 
@@ -491,6 +518,23 @@ async function onOidcSettingsSave() {
 						>The client Secret you received when registering your application with your
 						provider</small
 					>
+				</div>
+				<div :class="$style.group">
+					<label>Prompt</label>
+					<N8nSelect
+						:model-value="prompt"
+						data-test-id="oidc-prompt"
+						@update:model-value="handlePromptChange"
+					>
+						<N8nOption
+							v-for="option in promptDescriptions"
+							:key="option.value"
+							:label="option.label"
+							data-test-id="oidc-prompt-filter-option"
+							:value="option.value"
+						/>
+					</N8nSelect>
+					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 				</div>
 				<div :class="$style.group">
 					<el-switch

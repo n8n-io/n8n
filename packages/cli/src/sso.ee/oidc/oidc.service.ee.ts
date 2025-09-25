@@ -1,4 +1,4 @@
-import type { OidcConfigDto } from '@n8n/api-types';
+import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -37,9 +37,13 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientSecret: '',
 	discoveryEndpoint: '',
 	loginEnabled: false,
+	prompt: 'select_account',
 };
 
-type OidcRuntimeConfig = Pick<OidcConfigDto, 'clientId' | 'clientSecret' | 'loginEnabled'> & {
+type OidcRuntimeConfig = Pick<
+	OidcConfigDto,
+	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt'
+> & {
 	discoveryEndpoint: URL;
 };
 
@@ -170,11 +174,13 @@ export class OidcService {
 		const state = this.generateState();
 		const nonce = this.generateNonce();
 
+		const prompt = this.oidcConfig.prompt;
+
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope: 'openid email profile',
-			prompt: 'select_account',
+			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
 		});
@@ -334,7 +340,7 @@ export class OidcService {
 
 		if (configFromDB) {
 			try {
-				const oidcConfig = jsonParse<OidcConfigDto>(configFromDB.value);
+				const oidcConfig = OidcConfigDto.parse(jsonParse<OidcConfigDto>(configFromDB.value));
 
 				if (oidcConfig.discoveryEndpoint === '') return undefined;
 
