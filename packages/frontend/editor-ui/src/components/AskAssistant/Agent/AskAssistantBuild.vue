@@ -42,6 +42,7 @@ const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -198,6 +199,7 @@ watch(currentRoute, () => {
 			:credits-quota="creditsQuota"
 			:credits-claimed="creditsClaimed"
 			:on-upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"

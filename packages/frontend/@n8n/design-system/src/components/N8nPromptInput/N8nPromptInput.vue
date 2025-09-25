@@ -20,6 +20,7 @@ export interface N8nPromptInputProps {
 	creditsQuota?: number;
 	creditsClaimed?: number;
 	onUpgradeClick: () => void;
+	showAskOwnerTooltip?: boolean;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	disabled: false,
 	creditsQuota: undefined,
 	creditsClaimed: undefined,
+	showAskOwnerTooltip: false,
 });
 
 const emit = defineEmits<{
@@ -355,9 +357,15 @@ defineExpose({
 					<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
 				</div>
 			</N8nTooltip>
-			<N8nLink size="small" color="text-base" theme="text" @click="onUpgradeClick">
-				{{ t('promptInput.getMore') }}
-			</N8nLink>
+			<N8nTooltip
+				:disabled="!showAskOwnerTooltip"
+				:content="t('promptInput.askAdminToUpgrade')"
+				placement="top"
+			>
+				<N8nLink size="small" color="text-base" theme="text" @click="onUpgradeClick">
+					{{ t('promptInput.getMore') }}
+				</N8nLink>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

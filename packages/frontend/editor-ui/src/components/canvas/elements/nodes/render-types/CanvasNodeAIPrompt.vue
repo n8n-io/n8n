@@ -10,6 +10,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useUsersStore } from '@/stores/users.store';
 import { MODAL_CONFIRM, NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@/constants/workflowSuggestions';
@@ -24,6 +25,7 @@ const telemetry = useTelemetry();
 const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
 const workflowsStore = useWorkflowsStore();
+const usersStore = useUsersStore();
 
 // Services
 const workflowSaver = useWorkflowSaving({ router });
@@ -38,6 +40,7 @@ const isLoading = ref(false);
 const hasContent = computed(() => prompt.value.trim().length > 0);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsClaimed = computed(() => builderStore.creditsClaimed);
+const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 // Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
@@ -132,6 +135,7 @@ function onAddNodeClick() {
 				:credits-quota="creditsQuota"
 				:credits-claimed="creditsClaimed"
 				:on-upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
+				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
 				@stop="builderStore.stopStreaming"

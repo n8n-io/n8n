@@ -447,6 +447,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	async function fetchBuilderCredits() {
+		const releaseExperimentVariant = posthogStore.getVariant(
+			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
+		);
+		if (releaseExperimentVariant !== WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+			return;
+		}
+
 		try {
 			const response = await getBuilderCredits(rootStore.restApiContext);
 			creditsQuota.value = response.creditsQuota;
