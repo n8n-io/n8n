@@ -96,10 +96,9 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Easy AI workflow experiment', () => {
 		test('should not show option to take you to the easy AI workflow if experiment is control', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
@@ -109,10 +108,9 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 		test('should show option to take you to the easy AI workflow if experiment is variant', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
@@ -122,10 +120,9 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 		test('should show default instructions if free AI credits experiment is control', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
