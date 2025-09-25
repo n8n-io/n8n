@@ -50,7 +50,7 @@ interface CreateAuthMiddlewareOptions {
 	allowSkipPreviewAuth?: boolean;
 	/**
 	 * If true, the middleware will check for an API key in the Authorization header
-	*/
+	 */
 	apiKeyAuth?: boolean;
 }
 
@@ -89,7 +89,11 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth, apiKeyAuth }: CreateAuthMiddlewareOptions) {
+	createAuthMiddleware({
+		allowSkipMFA,
+		allowSkipPreviewAuth,
+		apiKeyAuth,
+	}: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
 			if (apiKeyAuth) {
