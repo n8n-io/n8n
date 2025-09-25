@@ -9,6 +9,21 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+type WebhookCredentialRequirement =
+	| { type: 'none' }
+	| { type: 'basic' }
+	| { type: 'header'; headerName: string }
+	| { type: 'jwt'; variant: 'secret' | 'keys' };
+
+type WebhookNodeDetails = {
+	nodeName: string;
+	baseUrl: string;
+	path: string;
+	httpMethod: string;
+	responseModeDescription: string;
+	credentials: WebhookCredentialRequirement;
+};
+
 /**
  * Creates a detailed textual description of the webhook triggers in a workflow, including URLs, methods, authentication, and response modes.
  * This helps MCP clients understand how craft a request to trigger the workflow.
@@ -30,64 +45,101 @@ export const getWebhookDetails = async (
 		return 'This workflow does not have a trigger node that can be executed via MCP.';
 	}
 
-	let triggerNotice = 'This workflow is triggered by the following webhook(s):\n\n';
+	const nodeDetails = await Promise.all(
+		webhookNodes.map((node) =>
+			collectWebhookNodeDetails(user, node, baseUrl, isWorkflowActive, credentialsService),
+		),
+	);
 
-	const webhookPromises = webhookNodes.map(async (node, index) => {
-		let credentialsInfo: string | null = null;
-		if (node.parameters.authentication) {
-			const authType =
-				typeof node.parameters.authentication === 'string'
-					? node.parameters.authentication
-					: undefined;
-			switch (authType) {
-				case 'basicAuth':
-					credentialsInfo =
-						'\n\t - This webhook requires basic authentication with a username and password that should be provided by the user.';
-					break;
-				case 'headerAuth': {
-					const headerAuthDetails = await getHeaderAuthDetails(user, node, credentialsService);
-					if (headerAuthDetails) {
-						credentialsInfo = headerAuthDetails;
-					}
-					break;
-				}
-				case 'jwtAuth': {
-					const jwtDetails = await getJWTAuthDetails(user, node, credentialsService);
-					if (jwtDetails) {
-						credentialsInfo = jwtDetails;
-					}
-					break;
-				}
-			}
-		}
-
-		const responseModeDetails = getResponseModeDescription(node);
-		const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
-		const httpMethod =
-			typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
-
-		return `
-				<trigger ${index + 1}>
-				\t - Node name: ${node.name}
-				\t - Base URL: ${baseUrl}
-				\t - PATH: ${isWorkflowActive ? '/webhook/' : '/webhook-test/'}${pathParam}
-				\t - HTTP Method: ${httpMethod}
-				\t - Response Mode: ${responseModeDetails}
-				${
-					credentialsInfo
-						? `\t - Credentials: ${credentialsInfo}`
-						: '\t - No credentials required for this webhook.'
-				}
-				</trigger ${index + 1}>`;
-	});
-
-	const webhookResults = await Promise.all(webhookPromises);
-	triggerNotice += webhookResults.join('\n\n');
-
-	return triggerNotice;
+	return formatWebhookDetails(nodeDetails);
 };
 
-const getHeaderAuthDetails = async (
+const collectWebhookNodeDetails = async (
+	user: User,
+	node: INode,
+	baseUrl: string,
+	isWorkflowActive: boolean,
+	credentialsService: CredentialsService,
+): Promise<WebhookNodeDetails> => {
+	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
+	const httpMethod =
+		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
+
+	return {
+		nodeName: node.name,
+		baseUrl,
+		path: `${isWorkflowActive ? '/webhook/' : '/webhook-test/'}${pathParam}`,
+		httpMethod,
+		responseModeDescription: getResponseModeDescription(node),
+		credentials: await resolveCredentialRequirement(user, node, credentialsService),
+	};
+};
+
+const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
+	const header = 'This workflow is triggered by the following webhook(s):\n\n';
+	const triggers = details
+		.map((detail, index) => formatTriggerDescription(detail, index))
+		.join('\n\n');
+	return header + triggers;
+};
+
+const formatTriggerDescription = (detail: WebhookNodeDetails, index: number): string => `
+				<trigger ${index + 1}>
+				\t - Node name: ${detail.nodeName}
+				\t - Base URL: ${detail.baseUrl}
+				\t - PATH: ${detail.path}
+				\t - HTTP Method: ${detail.httpMethod}
+				\t - Response Mode: ${detail.responseModeDescription}
+				${formatCredentialRequirement(detail.credentials)}
+				</trigger ${index + 1}>`;
+
+const formatCredentialRequirement = (requirement: WebhookCredentialRequirement): string => {
+	switch (requirement.type) {
+		case 'basic':
+			return '\t - Credentials: \n\t - This webhook requires basic authentication with a username and password that should be provided by the user.';
+		case 'header':
+			return `\t - Credentials: \n\t - This webhook requires a header with name "${requirement.headerName}" and a value that should be provided by the user.`;
+		case 'jwt':
+			if (requirement.variant === 'secret') {
+				return '\t - Credentials: \n\t - This webhook requires a JWT secret that should be provided by the user.';
+			}
+			return '\t - Credentials: \n\t - This webhook requires JWT private and public keys that should be provided by the user.';
+		default:
+			return '\t - No credentials required for this webhook.';
+	}
+};
+
+const resolveCredentialRequirement = async (
+	user: User,
+	node: INode,
+	credentialsService: CredentialsService,
+): Promise<WebhookCredentialRequirement> => {
+	const authType =
+		typeof node.parameters.authentication === 'string' ? node.parameters.authentication : undefined;
+
+	switch (authType) {
+		case 'basicAuth':
+			return { type: 'basic' };
+		case 'headerAuth': {
+			const headerName = await getHeaderAuthName(user, node, credentialsService);
+			if (headerName) {
+				return { type: 'header', headerName };
+			}
+			break;
+		}
+		case 'jwtAuth': {
+			const variant = await getJWTAuthVariant(user, node, credentialsService);
+			if (variant) {
+				return { type: 'jwt', variant };
+			}
+			break;
+		}
+	}
+
+	return { type: 'none' };
+};
+
+const getHeaderAuthName = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
@@ -97,24 +149,24 @@ const getHeaderAuthDetails = async (
 
 	const creds = await credentialsService.getOne(user, id, true);
 	if (hasHttpHeaderAuthDecryptedData(creds)) {
-		return `\n\t - This webhook requires a header with name "${creds.data.name}" and a value that should be provided by the user.`;
+		return creds.data.name;
 	}
 	return null;
 };
 
-const getJWTAuthDetails = async (
+const getJWTAuthVariant = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
-): Promise<string | null> => {
+): Promise<'secret' | 'keys' | null> => {
 	const id = node.credentials?.jwtAuth?.id;
 	if (!id) return null;
 	try {
 		const creds = await credentialsService.getOne(user, id, true);
 		if (hasJwtSecretDecryptedData(creds)) {
-			return '\n\t - This webhook requires a JWT secret that should be provided by the user.';
+			return 'secret';
 		} else if (hasJwtPemKeyDecryptedData(creds)) {
-			return '\n\t - This webhook requires JWT private and public keys that should be provided by the user.';
+			return 'keys';
 		}
 	} catch {
 		return null;
