@@ -557,7 +557,7 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getByRole } = renderView();
+			const { getAllByRole } = renderView();
 
 			// Wait for component to mount and initialize
 			await waitFor(() => {
@@ -566,7 +566,7 @@ describe('SettingsSso View', () => {
 
 			// Wait for component to mount and initialize local state from store
 			await waitFor(() => {
-				const protocolSelect = getByRole('combobox');
+				const protocolSelect = getAllByRole('combobox')[0];
 				// Check that the dropdown shows OIDC (reflecting store state)
 				expect(protocolSelect).toHaveDisplayValue('OIDC');
 			});
