@@ -3,7 +3,7 @@ name: Test Postgres and MySQL schemas
 on:
   push:
     branches:
-      - ck_dt_ci_exp
+      - dt_ci_yml_only
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
