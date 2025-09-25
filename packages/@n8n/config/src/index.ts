@@ -20,7 +20,6 @@ import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
-import { PartialExecutionsConfig } from './configs/partial-executions.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -155,9 +154,6 @@ export class GlobalConfig {
 
 	@Nested
 	tags: TagsConfig;
-
-	@Nested
-	partialExecutions: PartialExecutionsConfig;
 
 	@Nested
 	workflowHistory: WorkflowHistoryConfig;

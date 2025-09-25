@@ -53,6 +53,10 @@ export class ProjectSettingsPage extends BasePage {
 		await expect(searchInput).toHaveValue(expectedValue);
 	}
 
+	getTitle() {
+		return this.page.getByTestId('project-name');
+	}
+
 	// Robust value assertions on inner form controls
 	getNameInput() {
 		return this.page.locator('#projectName input');
@@ -78,9 +82,5 @@ export class ProjectSettingsPage extends BasePage {
 	async expectMembersSelectIsVisible() {
 		const select = this.page.getByTestId('project-members-select');
 		await expect(select).toBeVisible();
-	}
-
-	async waitForProjectSettingsRestResponse() {
-		await this.waitForRestResponse(/\/rest\/projects\/[^/]+$/, 'GET');
 	}
 }

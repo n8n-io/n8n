@@ -1,3 +1,5 @@
+from src.errors import TaskCancelledError, TaskRuntimeError, SecurityViolationError
+
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
 BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
@@ -33,6 +35,7 @@ EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
 EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
 EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
 EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
+SIGTERM_EXIT_CODE = -15
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -64,6 +67,12 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
+IGNORED_ERROR_TYPES = (
+    TaskRuntimeError,
+    TaskCancelledError,
+    SecurityViolationError,
+    SyntaxError,
+)
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
