@@ -68,19 +68,15 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 }
 
 export function isSafeInteger(val: number) {
-	return !isNaN(val) && val > Number.MIN_VALUE && val < Number.MAX_VALUE;
+	//used MIN_SAFE_INTEGER and MAX_SAFE_INTEGER instead of MIN_VALUE and MAX_VALUE to avoid edge cases
+	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
 }
 
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-
-		// Instead of using a custom function to check for safe integers, we can use Number.isSafeInteger directly along with checking for NaN
-		if (cur.values !== '' && cur.values !== null && cur.values !== undefined) {
-			const values = Number.isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-
-			acc[cur.field].push(values);
-		}
+		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
+		acc[cur.field].push(values);
 
 		return acc;
 	}, {});
