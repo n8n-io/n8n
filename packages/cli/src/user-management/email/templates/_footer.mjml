@@ -3,5 +3,5 @@
 <mj-spacer height="16px" />
 <mj-text font-size="14px" color="#909398" font-weight="300" >
   n8n GmbH, Novalisstraße 10, 10115 Berlin, Germany<br />
-  ©2025 n8n GmbH, all rights reserved<br />
+  ©{{ currentYear }} n8n GmbH, all rights reserved<br />
 </mj-text>
