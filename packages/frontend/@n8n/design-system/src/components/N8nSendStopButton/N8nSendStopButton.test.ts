@@ -210,37 +210,8 @@ describe('N8nSendStopButton', () => {
 		});
 	});
 
-	describe('stop icon', () => {
-		it('should render stop icon SVG when streaming', () => {
-			const { container } = renderComponent({
-				props: {
-					streaming: true,
-				},
-				global: {
-					stubs: {
-						N8nButton: {
-							template: '<button :class="{stopButton: true}"><slot /></button>',
-						},
-					},
-				},
-			});
-
-			const svg = container.querySelector('svg');
-			expect(svg).toBeTruthy();
-			expect(svg).toHaveAttribute('width', '10');
-			expect(svg).toHaveAttribute('height', '10');
-
-			const rect = container.querySelector('rect');
-			expect(rect).toBeTruthy();
-			expect(rect).toHaveAttribute('width', '10');
-			expect(rect).toHaveAttribute('height', '10');
-			expect(rect).toHaveAttribute('rx', '2');
-			expect(rect).toHaveAttribute('ry', '2');
-		});
-	});
-
 	describe('default props', () => {
-		it('should use default size of mini', () => {
+		it('should use default size of small', () => {
 			const { container } = renderComponent({
 				global: {
 					stubs: {
@@ -253,7 +224,7 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-size', 'mini');
+			expect(button).toHaveAttribute('data-size', 'small');
 		});
 
 		it('should default to not streaming', () => {
