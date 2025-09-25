@@ -12,7 +12,12 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeOperationError, fileTypeFromMimeType, ApplicationError } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	fileTypeFromMimeType,
+	ApplicationError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -50,10 +55,18 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 	return await Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
+/**
+ * Check if object is a binary data
+ */
 function isBinaryData(obj: unknown): obj is IBinaryData {
 	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
 }
 
+/**
+ * If parameterData is a string, returns the binary data the given item index and
+ * property name from the input data.
+ * Else if parameterData is a binary data object, returns the binary data object.
+ */
 export function assertBinaryData(
 	inputData: ITaskDataConnections,
 	node: INode,
@@ -104,15 +117,26 @@ export function assertBinaryData(
 }
 
 /**
- * Returns binary data buffer for given item index and property name.
+ * If parameterData is a string, returns the binary data buffer for the given item index and
+ * property name from the input data.
+ * Else returns the binary data buffer for the given binary data object.
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
 	itemIndex: number,
-	propertyName: string,
+	parameterData: string | IBinaryData,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
+	let binaryData: IBinaryData;
+
+	if (isBinaryData(parameterData)) {
+		binaryData = parameterData;
+	} else if (typeof parameterData === 'string') {
+		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else {
+		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+	}
+
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
