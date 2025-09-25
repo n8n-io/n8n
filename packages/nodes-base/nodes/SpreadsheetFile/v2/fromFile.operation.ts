@@ -1,8 +1,8 @@
 import { parse as createCSVParser } from 'csv-parse';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Sheet2JSONOpts, WorkBook, ParsingOptions } from 'xlsx';
-import { read as xlsxRead, readFile as xlsxReadFile, utils as xlsxUtils } from 'xlsx';
+import type { Sheet2JSONOpts, ParsingOptions } from 'xlsx';
+import { read as xlsxRead, utils as xlsxUtils } from 'xlsx';
 
 import { binaryProperty, fromFileOptions } from '../description';
 
@@ -121,20 +121,21 @@ export async function execute(
 					parser.end();
 				}
 			} else {
-				let workbook: WorkBook;
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
 				if (options.readAsString) xlsxOptions.type = 'string';
 
-				if (binaryData.id) {
-					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-					workbook = xlsxReadFile(binaryPath, xlsxOptions);
-				} else {
-					const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-					workbook = xlsxRead(
-						options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
-						xlsxOptions,
-					);
-				}
+				const getXlsxBuffer = async () => {
+					if (binaryData.id) {
+						const stream = await this.helpers.getBinaryStream(binaryData.id);
+						const buffer = await this.helpers.binaryToBuffer(stream);
+						return buffer;
+					} else {
+						return Buffer.from(binaryData.data, BINARY_ENCODING);
+					}
+				};
+				const buffer = await getXlsxBuffer();
+				const data = options.readAsString ? buffer.toString() : buffer;
+				const workbook = xlsxRead(data, xlsxOptions);
 
 				if (workbook.SheetNames.length === 0) {
 					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', {
