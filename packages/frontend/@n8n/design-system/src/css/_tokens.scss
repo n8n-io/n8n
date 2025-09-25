@@ -3,13 +3,13 @@
 @mixin theme {
 	--color-primary-h: var(--h-primary);
 	--color-primary-s: var(--s-primary);
-	--color-primary-l: 68%;
+	--color-primary-l: 44%;
 
 	// Primary tokens
 
 	// Primary
 	--color-primary-shade-1: var(--p-color-primary-420);
-	--color-primary: var(--p-color-primary-320);
+	--color-primary: var(--p-color-primary-570);
 	--color-primary-tint-1: var(--p-color-primary-120);
 	--color-primary-tint-2: var(--p-color-primary-070);
 	--color-primary-tint-3: var(--p-color-primary-030);
