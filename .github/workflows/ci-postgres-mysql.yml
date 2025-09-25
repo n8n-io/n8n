@@ -70,7 +70,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: sleep 5s && pnpm test:mysql --testTimeout 120000
+        run: pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres - Run ${{ matrix.run }}
