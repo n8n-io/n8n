@@ -24,7 +24,8 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
         <button
           aria-disabled="true"
           aria-live="polite"
-          class="button button primary mini disabled withIcon square sendButton sendButton"
+          class="button button primary small disabled withIcon square sendButton sendButton"
+          data-test-id="send-message-button"
           disabled=""
         >
           <span
@@ -81,19 +82,23 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
       >
         <button
           aria-live="polite"
-          class="button button primary mini square stopButton stopButton"
+          class="button button primary small withIcon square stopButton stopButton"
+          data-test-id="send-message-button"
         >
-          <!--v-if-->
-          
-          <div
-            class="stopIcon"
+          <span
+            class="icon"
           >
             <svg
+              aria-hidden="true"
+              class="n8n-icon"
+              data-icon="filled-square"
               fill="currentColor"
-              height="10"
+              focusable="false"
+              height="12px"
               overflow="hidden"
+              role="img"
               viewBox="0 0 10 10"
-              width="10"
+              width="12px"
               xmlns="http://www.w3.org/2000/svg"
             >
               <rect
@@ -101,12 +106,10 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
                 rx="2"
                 ry="2"
                 width="10"
-                x="0"
-                y="0"
               />
             </svg>
-          </div>
-          
+          </span>
+          <!--v-if-->
         </button>
       </div>
     </div>

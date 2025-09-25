@@ -32,7 +32,7 @@ exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
         <!--v-if-->
         <!--v-if-->
       </div>
-      <div class="bottomActions"><button class="button button primary small disabled withIcon square sendButton sendButton" disabled="" aria-disabled="true" aria-live="polite"><span class="icon"><svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="arrow-up"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12l7-7l7 7m-7 7V5"></path></svg></span>
+      <div class="bottomActions"><button class="button button primary small disabled withIcon square sendButton sendButton" disabled="" aria-disabled="true" aria-live="polite" data-test-id="send-message-button"><span class="icon"><svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="arrow-up"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12l7-7l7 7m-7 7V5"></path></svg></span>
           <!--v-if-->
         </button></div>
     </div>

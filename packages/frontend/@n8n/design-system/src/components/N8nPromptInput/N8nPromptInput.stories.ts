@@ -11,10 +11,10 @@ export default {
 		modelValue: {
 			control: 'text',
 		},
-		inputPlaceholder: {
+		placeholder: {
 			control: 'text',
 		},
-		maxInputCharacterLength: {
+		maxLength: {
 			control: 'number',
 		},
 		maxLinesBeforeScroll: {
@@ -57,8 +57,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		<div style="width: 500px; max-width: 100%;">
 			<n8n-prompt-input
 				v-bind="args"
-				v-model="val"
-				@update:modelValue="onUpdateModelValue"
+				:modelValue="val"
+				@update:modelValue="handleUpdateModelValue"
 				@submit="onSubmit"
 				@stop="onStop"
 				@focus="onFocus"
@@ -68,77 +68,83 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	`,
 	data() {
 		return {
-			val: this.modelValue || '',
+			val: this.args.modelValue || '',
 		};
 	},
 	watch: {
-		modelValue(newVal) {
-			this.val = newVal;
+		args: {
+			handler(newArgs) {
+				if (newArgs.modelValue !== undefined) {
+					this.val = newArgs.modelValue;
+				}
+			},
+			deep: true,
+			immediate: true,
 		},
 	},
-	methods,
+	methods: {
+		...methods,
+		handleUpdateModelValue(value: string) {
+			this.val = value;
+			this.onUpdateModelValue(value);
+		},
+	},
 });
 
 export const Default = Template.bind({});
 Default.args = {
-	inputPlaceholder: 'Type your message here...',
-	maxInputCharacterLength: 1000,
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
 };
 
 export const SingleLine = Template.bind({});
 SingleLine.args = {
-	inputPlaceholder: 'Type your message here...',
-	maxInputCharacterLength: 1000,
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
 	minLines: 1,
 };
 
 export const MultiLine = Template.bind({});
 MultiLine.args = {
-	inputPlaceholder: 'Type your message here...',
-	maxInputCharacterLength: 1000,
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
 	minLines: 3,
 };
 
 export const Streaming = Template.bind({});
 Streaming.args = {
 	modelValue: 'This is currently being processed...',
-	inputPlaceholder: 'Type your message here...',
+	placeholder: 'Type your message here...',
 	streaming: true,
-	maxInputCharacterLength: 1000,
+	maxLength: 1000,
 };
 
 export const Disabled = Template.bind({});
 Disabled.args = {
-	inputPlaceholder: 'This input is disabled',
+	placeholder: 'This input is disabled',
 	disabled: true,
-	maxInputCharacterLength: 1000,
+	maxLength: 1000,
 };
 
 export const WithInitialText = Template.bind({});
 WithInitialText.args = {
 	modelValue:
 		'Hello, this is some initial text that spans multiple lines\nto show how the component handles existing content.',
-	inputPlaceholder: 'Type your message here...',
-	maxInputCharacterLength: 1000,
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
 };
 
 export const AtCharacterLimit = Template.bind({});
 AtCharacterLimit.args = {
-	modelValue: 'This message is exactly at the character limit!',
-	inputPlaceholder: 'Type your message here...',
-	maxInputCharacterLength: 48,
-};
-
-export const WithShortLimit = Template.bind({});
-WithShortLimit.args = {
-	inputPlaceholder: 'Max 50 characters...',
-	maxInputCharacterLength: 50,
+	modelValue: 'This message is exactly at the character limit!!',
+	placeholder: 'Type your message here...',
+	maxLength: 48,
 };
 
 export const WithRefocusAfterSend = Template.bind({});
 WithRefocusAfterSend.args = {
-	inputPlaceholder: 'Input will refocus after send...',
-	maxInputCharacterLength: 1000,
+	placeholder: 'Input will refocus after send...',
+	maxLength: 1000,
 	refocusAfterSend: true,
 };
 
@@ -153,9 +159,9 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 			<div style="width: 500px; max-width: 100%; margin-bottom: 20px;">
 				<n8n-prompt-input
 					v-bind="args"
-					v-model="val"
+					:modelValue="val"
 					:streaming="streaming"
-					@update:modelValue="onUpdateModelValue"
+					@update:modelValue="handleUpdateModelValue"
 					@submit="handleSubmit"
 					@stop="handleStop"
 					@focus="onFocus"
@@ -164,7 +170,7 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 			</div>
 			<div style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
 				<p><strong>Current value:</strong> {{ val }}</p>
-				<p><strong>Character count:</strong> {{ val.length }} / {{ args.maxInputCharacterLength }}</p>
+				<p><strong>Character count:</strong> {{ val.length }} / {{ args.maxLength }}</p>
 				<p><strong>Streaming:</strong> {{ streaming }}</p>
 				<button @click="streaming = !streaming" style="margin-top: 10px;">
 					Toggle Streaming (Current: {{ streaming ? 'ON' : 'OFF' }})
@@ -174,17 +180,27 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 	`,
 	data() {
 		return {
-			val: this.modelValue || '',
+			val: this.args.modelValue || '',
 			streaming: false,
 		};
 	},
 	watch: {
-		modelValue(newVal) {
-			this.val = newVal;
+		args: {
+			handler(newArgs) {
+				if (newArgs.modelValue !== undefined) {
+					this.val = newArgs.modelValue;
+				}
+			},
+			deep: true,
+			immediate: true,
 		},
 	},
 	methods: {
 		...methods,
+		handleUpdateModelValue(value: string) {
+			this.val = value;
+			this.onUpdateModelValue(value);
+		},
 		handleSubmit() {
 			this.onSubmit();
 			// Simulate processing
@@ -204,8 +220,8 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const Interactive = InteractiveTemplate.bind({});
 Interactive.args = {
-	inputPlaceholder: 'Type a message and press Enter to send...',
-	maxInputCharacterLength: 500,
+	placeholder: 'Type a message and press Enter to send...',
+	maxLength: 500,
 	refocusAfterSend: true,
 };
 
@@ -221,10 +237,11 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 				<h3>Single Line (minLines: 1)</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
-						v-model="val1"
-						:input-placeholder="'Single line input...'"
+						:modelValue="val1"
+						@update:modelValue="val1 = $event"
+						:placeholder="'Single line input...'"
 						:min-lines="1"
-						:max-input-character-length="1000"
+						:max-length="1000"
 					/>
 				</div>
 			</div>
@@ -232,10 +249,11 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 				<h3>Two Lines (minLines: 2)</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
-						v-model="val2"
-						:input-placeholder="'Two line input...'"
+						:modelValue="val2"
+						@update:modelValue="val2 = $event"
+						:placeholder="'Two line input...'"
 						:min-lines="2"
-						:max-input-character-length="1000"
+						:max-length="1000"
 					/>
 				</div>
 			</div>
@@ -243,10 +261,11 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 				<h3>Three Lines (minLines: 3)</h3>
 				<div style="width: 500px; max-width: 100%;">
 					<n8n-prompt-input
-						v-model="val3"
-						:input-placeholder="'Three line input...'"
+						:modelValue="val3"
+						@update:modelValue="val3 = $event"
+						:placeholder="'Three line input...'"
 						:min-lines="3"
-						:max-input-character-length="1000"
+						:max-length="1000"
 					/>
 				</div>
 			</div>
