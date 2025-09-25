@@ -293,29 +293,39 @@ export const keysToLowercase = <T>(headers: T) => {
  * @returns The formatted private key.
  */
 export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
-	let regex = /(PRIVATE KEY|CERTIFICATE)/;
-	if (keyIsPublic) {
-		regex = /(PUBLIC KEY)/;
+	return formatPEM(privateKey, keyIsPublic ? ['PUBLIC KEY'] : ['PRIVATE KEY', 'CERTIFICATE']);
+}
+
+/**
+ * Formats a PEM string by removing unnecessary whitespace and adding line breaks.
+ * @param raw - The raw PEM string to format.
+ * @param validTypes - The valid types of PEM string to format.
+ * @returns The formatted PEM string.
+ */
+export function formatPEM(raw: string, validTypes: string[]): string {
+	const regex = new RegExp(`(${validTypes.join('|')})`);
+	if (!raw || /\n/.test(raw)) {
+		return raw;
 	}
-	if (!privateKey || /\n/.test(privateKey)) {
-		return privateKey;
-	}
-	let formattedPrivateKey = '';
-	const parts = privateKey.split('-----').filter((item) => item !== '');
-	parts.forEach((part) => {
+
+	let formattedPEM = '';
+	const parts = raw.split('-----').filter((item) => item !== '');
+
+	for (let part of parts) {
 		if (regex.test(part)) {
-			formattedPrivateKey += `-----${part}-----`;
+			formattedPEM += `-----${part}-----`;
 		} else {
 			const passRegex = /Proc-Type|DEK-Info/;
 			if (passRegex.test(part)) {
 				part = part.replace(/:\s+/g, ':');
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+				formattedPEM += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
 			} else {
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+				formattedPEM += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
 			}
 		}
-	});
-	return formattedPrivateKey;
+	}
+
+	return formattedPEM;
 }
 
 /**
