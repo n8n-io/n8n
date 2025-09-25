@@ -27,14 +27,14 @@ interface Props {
 	loadingMessage?: string;
 	sessionId?: string;
 	title?: string;
-	placeholder?: string;
+	inputPlaceholder?: string;
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
-	maxLength?: number;
 	creditsQuota?: number;
 	creditsClaimed?: number;
 	onUpgradeClick: () => void;
 	showAskOwnerTooltip?: boolean;
+	maxCharacterLength?: number;
 }
 
 const emit = defineEmits<{
@@ -58,8 +58,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
-	maxLength: undefined,
-	placeholder: undefined,
+	maxCharacterLength: undefined,
+	inputPlaceholder: undefined,
 });
 
 function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -423,15 +423,15 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:input-placeholder="placeholder || t('assistantChat.inputPlaceholder')"
+				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
-				:max-input-character-length="maxLength"
 				:credits-quota="creditsQuota"
 				:credits-claimed="creditsClaimed"
 				:on-upgrade-click="onUpgradeClick"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				class="ignore-key-press-node-creator ignore-key-press-canvas"
+				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
 				@submit="onSendMessage"

@@ -12,8 +12,8 @@ import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
-	inputPlaceholder?: string;
-	maxInputCharacterLength?: number;
+	placeholder?: string;
+	maxLength?: number;
 	maxLinesBeforeScroll?: number;
 	minLines?: number;
 	streaming?: boolean;
@@ -27,8 +27,8 @@ export interface N8nPromptInputProps {
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
-	inputPlaceholder: '',
-	maxInputCharacterLength: 1000,
+	placeholder: '',
+	maxLength: 1000,
 	maxLinesBeforeScroll: 6,
 	minLines: 1,
 	streaming: false,
@@ -66,7 +66,7 @@ const textAreaMaxHeight = computed(() => {
 
 const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
-	maxLength: toRef(props, 'maxInputCharacterLength'),
+	maxLength: toRef(props, 'maxLength'),
 });
 
 const showWarningBanner = computed(() => isAtLimit.value);
@@ -243,7 +243,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const hasModifier = event.ctrlKey || event.metaKey;
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
-	const atMaxLength = characterCount.value >= props.maxInputCharacterLength;
+	const atMaxLength = characterCount.value >= props.maxLength;
 	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
@@ -302,13 +302,13 @@ defineExpose({
 		>
 			<!-- Warning banner when character limit is reached -->
 			<N8nCallout
-				v-if="showWarningBanner"
 				slim
+				v-if="showWarningBanner"
 				icon="info"
 				theme="warning"
 				:class="$style.warningCallout"
 			>
-				{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength.toString() }) }}
+				{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 			</N8nCallout>
 
 			<!-- Single line mode: input and button side by side -->
@@ -321,9 +321,9 @@ defineExpose({
 						'ignore-key-press-node-creator',
 						'ignore-key-press-canvas',
 					]"
-					:placeholder="hasNoCredits ? '' : inputPlaceholder"
+					:placeholder="hasNoCredits ? '' : placeholder"
 					:disabled="disabled || hasNoCredits"
-					:maxlength="maxInputCharacterLength"
+					:maxlength="maxLength"
 					rows="1"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
@@ -357,9 +357,9 @@ defineExpose({
 							'ignore-key-press-canvas',
 						]"
 						:style="textareaStyle"
-						:placeholder="hasNoCredits ? '' : inputPlaceholder"
+						:placeholder="hasNoCredits ? '' : placeholder"
 						:disabled="disabled || hasNoCredits"
-						:maxlength="maxInputCharacterLength"
+						:maxlength="maxLength"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
@@ -376,6 +376,7 @@ defineExpose({
 				</div>
 			</template>
 		</div>
+
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
 			<N8nTooltip
