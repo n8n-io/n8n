@@ -2,6 +2,11 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+/**
+ * Handles instance-level MCP access.
+ * Runs MCP server and exposes endpoints for MCP clients to connect to.
+ * Requires MCP access to be enabled in settings and a valid API key.
+ */
 @BackendModule({ name: 'mcp' })
 export class McpModule implements ModuleInterface {
 	async init() {

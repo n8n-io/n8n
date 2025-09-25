@@ -9,6 +9,16 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+/**
+ * Creates a detailed textual description of the webhook triggers in a workflow, including URLs, methods, authentication, and response modes.
+ * This helps MCP clients understand how craft a request to trigger the workflow.
+ * @param user
+ * @param webhookNodes
+ * @param baseUrl
+ * @param isWorkflowActive
+ * @param credentialsService
+ * @returns A detailed string description of the webhook triggers in the workflow.
+ */
 export const getWebhookDetails = async (
 	user: User,
 	webhookNodes: INode[],
