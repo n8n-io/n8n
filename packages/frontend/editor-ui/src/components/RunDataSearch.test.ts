@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataSearch from '@/components/RunDataSearch.vue';
 
@@ -186,5 +187,36 @@ describe('RunDataSearch', () => {
 
 		expect(previousButton).toHaveFocus();
 		expect(searchInput).not.toHaveFocus();
+	});
+
+	it('should remain open when text is cleared by typing to the input', async () => {
+		const { getByRole, container } = renderComponent({
+			pinia,
+			props: { modelValue: 'test' },
+		});
+
+		const input = getByRole<HTMLInputElement>('textbox');
+
+		await userEvent.click(input);
+		expect(container.querySelector('.ioSearchOpened')).toBeInTheDocument();
+
+		await userEvent.clear(input);
+		await nextTick();
+		expect(container.querySelector('.ioSearchOpened')).toBeInTheDocument();
+	});
+
+	it('should close itself when modelValue prop is updated to be an empty string', async () => {
+		const { getByRole, container, rerender } = renderComponent({
+			pinia,
+			props: { modelValue: 'test' },
+		});
+
+		const input = getByRole<HTMLInputElement>('textbox');
+
+		await userEvent.click(input);
+		expect(container.querySelector('.ioSearchOpened')).toBeInTheDocument();
+
+		await rerender({ modelValue: '' });
+		expect(container.querySelector('.ioSearchOpened')).not.toBeInTheDocument();
 	});
 });
