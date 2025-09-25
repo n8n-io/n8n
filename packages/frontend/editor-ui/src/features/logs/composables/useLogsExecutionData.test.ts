@@ -2,7 +2,7 @@ import { setActivePinia } from 'pinia';
 import { useLogsExecutionData } from './useLogsExecutionData';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nodeTypes } from '../__test__/data';
@@ -42,16 +42,18 @@ describe(useLogsExecutionData, () => {
 			);
 		});
 
-		it('should not calculate entries isEnabled is false', () => {
+		it('should not calculate entries isEnabled is false', async () => {
 			const { entries } = useLogsExecutionData(computed(() => false));
 
+			await waitAllPromises();
 			expect(entries.value).toHaveLength(0);
 		});
 
 		it('should calculate entries if isEnabled is true', async () => {
 			const { entries } = useLogsExecutionData(computed(() => true));
 
-			await waitFor(() => expect(entries.value).toHaveLength(1));
+			await waitAllPromises();
+			expect(entries.value).toHaveLength(1);
 		});
 	});
 
