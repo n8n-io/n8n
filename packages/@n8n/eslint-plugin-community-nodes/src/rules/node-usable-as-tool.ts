@@ -10,10 +10,11 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure node classes have usableAsTool property set to true',
+			description: 'Ensure node classes have usableAsTool property',
 		},
 		messages: {
-			missingUsableAsTool: 'Node class should have usableAsTool property set to true',
+			missingUsableAsTool:
+				'Node class should have usableAsTool property. When in doubt, set it to true.',
 		},
 		fixable: 'code',
 		schema: [],
