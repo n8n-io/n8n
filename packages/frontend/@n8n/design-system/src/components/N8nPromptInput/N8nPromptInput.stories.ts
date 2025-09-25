@@ -286,7 +286,7 @@ DifferentSizes.args = {};
 // Credit Tracking Stories
 export const WithCreditsAndUpgrade: StoryFn = Template.bind({});
 WithCreditsAndUpgrade.args = {
-	inputPlaceholder: 'Type your message here...',
+	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 119,
 	onUpgradeClick: () => {
@@ -301,7 +301,7 @@ WithCreditsAndUpgrade.storyName = 'With Credits and Upgrade Button';
 
 export const WithCreditsNoUpgrade: StoryFn = Template.bind({});
 WithCreditsNoUpgrade.args = {
-	inputPlaceholder: 'Type your message here...',
+	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 23,
 	onUpgradeClick: () => {
@@ -317,7 +317,7 @@ WithCreditsNoUpgrade.storyName = 'With Credits (Shows Ask Admin Tooltip)';
 
 export const LowCredits: StoryFn = Template.bind({});
 LowCredits.args = {
-	inputPlaceholder: 'Type your message here...',
+	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 5,
 	onUpgradeClick: () => {
@@ -332,7 +332,7 @@ LowCredits.storyName = 'Low Credits Remaining';
 
 export const NoCreditsRemaining: StoryFn = Template.bind({});
 NoCreditsRemaining.args = {
-	inputPlaceholder: 'Type your message here...',
+	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 0,
 	onUpgradeClick: () => {
@@ -400,7 +400,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 
 export const CreditsInteractive: StoryFn = CreditsInteractiveTemplate.bind({});
 CreditsInteractive.args = {
-	inputPlaceholder: 'Type a message (uses 1 credit)...',
+	placeholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
 	creditsRemaining: 2,
 	onUpgradeClick: () => {
