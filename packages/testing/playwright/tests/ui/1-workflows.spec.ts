@@ -30,7 +30,7 @@ test.describe('Workflows', () => {
 	test('should create a new workflow using add workflow button and save successfully', async ({
 		n8n,
 	}) => {
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;
@@ -52,17 +52,17 @@ test.describe('Workflows', () => {
 
 		// Search for specific workflow
 		await n8n.workflows.searchWorkflows(specificName);
-		await expect(n8n.workflows.getWorkflowByName(specificName)).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow(specificName)).toBeVisible();
 
 		// Search with partial term
 		await n8n.workflows.clearSearch();
 		await n8n.workflows.searchWorkflows(uniqueId);
-		await expect(n8n.workflows.getWorkflowItems()).toHaveCount(2);
+		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
 		// Search for non-existent
 		await n8n.workflows.clearSearch();
 		await n8n.workflows.searchWorkflows('NonExistentWorkflow123');
-		await expect(n8n.workflows.getWorkflowItems()).toHaveCount(0);
+		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 		await expect(n8n.page.getByText('No workflows found')).toBeVisible();
 	});
 
@@ -76,7 +76,7 @@ test.describe('Workflows', () => {
 		await n8n.workflowComposer.createWorkflow();
 		await n8n.goHome();
 
-		const workflow = n8n.workflows.getWorkflowByName(workflowName);
+		const workflow = n8n.workflows.cards.getWorkflow(workflowName);
 		await n8n.workflows.archiveWorkflow(workflow);
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.ARCHIVED)).toBeVisible();
 
@@ -96,7 +96,7 @@ test.describe('Workflows', () => {
 		await n8n.workflowComposer.createWorkflow();
 		await n8n.goHome();
 
-		const workflow = n8n.workflows.getWorkflowByName(workflowName);
+		const workflow = n8n.workflows.cards.getWorkflow(workflowName);
 		await n8n.workflows.archiveWorkflow(workflow);
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.ARCHIVED)).toBeVisible();
 
@@ -122,7 +122,7 @@ test.describe('Workflows', () => {
 		await n8n.goHome();
 		await n8n.workflows.filterByTag(tags[0]);
 
-		await expect(n8n.workflows.getWorkflowByName(uniqueIdForTagged)).toBeVisible();
+		await expect(n8n.workflows.cards.getWorkflow(uniqueIdForTagged)).toBeVisible();
 	});
 
 	test('should preserve search and filters in URL', async ({ n8n }) => {
@@ -144,7 +144,7 @@ test.describe('Workflows', () => {
 
 		await expect(n8n.workflows.getSearchBar()).toHaveValue('Tagged');
 		await expect(
-			n8n.workflows.getWorkflowByName(`My Tagged Workflow ${uniqueIdForTagged}`),
+			n8n.workflows.cards.getWorkflow(`My Tagged Workflow ${uniqueIdForTagged}`),
 		).toBeVisible();
 	});
 

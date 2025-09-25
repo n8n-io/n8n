@@ -178,7 +178,7 @@ describe('run', () => {
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+		jest.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -193,6 +193,7 @@ describe('run', () => {
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
+			runData: undefined,
 		});
 
 		// ACT

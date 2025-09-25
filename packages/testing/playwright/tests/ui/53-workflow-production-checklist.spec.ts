@@ -5,7 +5,7 @@ const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 test.describe('Workflow Production Checklist', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 	});
 
 	test('should show suggested actions automatically when workflow is first activated', async ({
