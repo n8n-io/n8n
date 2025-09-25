@@ -69,9 +69,7 @@ class ContainerClass {
 	 * @throws {DIError} If circular dependencies are detected or if the type is not injectable
 	 */
 	get<T>(type: ServiceIdentifier<T>): T {
-		console.log('this', JSON.stringify(this));
 		const { resolutionStack } = this;
-		console.log('instances', JSON.stringify(instances));
 		const metadata = instances.get(type) as Metadata<T>;
 		if (!metadata) {
 			// Special case: Allow undefined returns for non-decorated constructor params
@@ -98,7 +96,6 @@ class ContainerClass {
 				}
 				return this.get(paramType);
 			});
-			console.log('dependencies', dependencies);
 
 			if (metadata?.factory) {
 				instance = metadata.factory(...dependencies);
