@@ -50,6 +50,7 @@ export interface FrontendSettings {
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	allowPersonalProjectWorkflowActivation: boolean;
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;

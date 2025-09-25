@@ -115,6 +115,7 @@ export const defaultSettings: FrontendSettings = {
 		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
+	allowPersonalProjectWorkflowActivation: false,
 	workflowTagsDisabled: false,
 	variables: {
 		limit: -1,
