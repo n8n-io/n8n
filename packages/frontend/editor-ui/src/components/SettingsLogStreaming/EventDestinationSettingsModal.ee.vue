@@ -472,7 +472,12 @@ const { width } = useElementSize(defNameRef);
 				</template>
 				<template v-else>
 					<div :class="$style.sidebar">
-						<N8nMenuItem v-for="item in sidebarItems" :item="item" />
+						<N8nMenuItem
+							v-for="item in sidebarItems"
+							:item="item"
+							:active="activeTab === item.id"
+							@on-click="() => onTabSelect(item.id)"
+						/>
 						<!-- Just to add spacing at the bottom -->
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">

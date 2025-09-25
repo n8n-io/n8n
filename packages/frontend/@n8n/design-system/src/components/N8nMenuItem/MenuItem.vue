@@ -8,6 +8,7 @@ import { IMenuItem } from '@n8n/design-system/types';
 
 const props = defineProps<{
 	item: IMenuItem;
+	active?: boolean;
 	empty?: boolean;
 	level?: number;
 	open?: boolean;
@@ -16,14 +17,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	onClick: [];
+	toggleDropdown: [];
 	mouseEnter: [];
 }>();
-
-function click(event: MouseEvent) {
-	event.stopPropagation();
-	event.preventDefault();
-	emit('onClick');
-}
 
 const to = computed(() => {
 	if (props.item.route) {
@@ -34,6 +30,12 @@ const to = computed(() => {
 	}
 	return undefined;
 });
+
+function toggleDropdown(event: Event) {
+	event.preventDefault();
+	event.stopPropagation();
+	emit('toggleDropdown');
+}
 
 const icon = computed<IconName>(() => {
 	if (props.item.type === 'folder') {
@@ -56,7 +58,13 @@ const icon = computed<IconName>(() => {
 			v-for="level in new Array(level - 1)"
 			:key="level"
 		/>
-		<N8nRoute :to="to" class="sidebarItem" :aria-label="props.ariaLabel">
+		<N8nRoute
+			:to="to"
+			class="sidebarItem"
+			:class="{ active }"
+			:aria-label="props.ariaLabel"
+			@click="emit('onClick')"
+		>
 			<div v-if="item.icon" class="sidebarItemIcon" :class="{ other: item.type === 'other' }">
 				<span
 					v-if="
@@ -72,7 +80,7 @@ const icon = computed<IconName>(() => {
 			<button
 				v-if="item.children"
 				class="sidebarItemDropdown"
-				@click="click"
+				@click="toggleDropdown"
 				:aria-label="ariaLabel"
 			>
 				<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
@@ -90,7 +98,8 @@ const icon = computed<IconName>(() => {
 	margin-bottom: 2px;
 }
 
-.router-link-active {
+.router-link-active,
+.active {
 	background-color: var(--color-foreground-light);
 }
 

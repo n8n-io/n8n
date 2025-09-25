@@ -537,6 +537,7 @@ async function loadCurrentCredential() {
 }
 
 function onTabSelect(tab: string) {
+	console.log('onTabSelect', tab);
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
 	const activeNode: INode | null = ndvStore.activeNode;
@@ -1133,7 +1134,13 @@ const { width } = useElementSize(credNameRef);
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
-					<N8nMenuItem v-for="item in sidebarItems" :item="item" />
+					<N8nMenuItem
+						v-for="item in sidebarItems"
+						:item="item"
+						:key="item.id"
+						:active="activeTab === item.id"
+						@on-click="() => onTabSelect(item.id)"
+					/>
 				</div>
 				<div
 					v-if="activeTab === 'connection' && credentialType"
