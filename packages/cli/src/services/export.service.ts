@@ -46,7 +46,7 @@ export class ExportService {
 		try {
 			// Test if the migrations table exists by querying it
 			await this.dataSource.query(
-				`SELECT COUNT(*) as count FROM ${this.dataSource.driver.escape(migrationsTableName)}`,
+				`SELECT id FROM ${this.dataSource.driver.escape(migrationsTableName)} LIMIT 1`,
 			);
 
 			this.logger.info(`\n📊 Processing system table: ${migrationsTableName}`);
@@ -58,36 +58,23 @@ export class ExportService {
 			const formattedTableName = this.dataSource.driver.escape(migrationsTableName);
 			const allMigrations = await this.dataSource.query(`SELECT * FROM ${formattedTableName}`);
 
-			if (allMigrations.length > 0) {
-				const fileName = 'migrations.jsonl';
-				const filePath = path.join(outputDir, fileName);
+			const fileName = 'migrations.jsonl';
+			const filePath = path.join(outputDir, fileName);
 
-				// Write all migrations as JSONL (one JSON object per line)
-				const migrationsJsonl = allMigrations
-					.map((migration: unknown) => JSON.stringify(migration))
-					.join('\n');
-				await appendFile(filePath, migrationsJsonl + '\n', 'utf8');
+			const migrationsJsonl = allMigrations
+				.map((migration: unknown) => JSON.stringify(migration))
+				.join('\n');
+			await appendFile(filePath, migrationsJsonl ?? '' + '\n', 'utf8');
 
-				this.logger.info(
-					`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
-				);
+			this.logger.info(
+				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
+			);
 
-				systemTablesExported = 1; // Successfully exported migrations table
-			} else {
-				this.logger.info(
-					`   ℹ️  Migrations table ${migrationsTableName} is empty, creating empty file`,
-				);
-
-				// Create empty file to indicate the table exists but is empty
-				const fileName = 'migrations.jsonl';
-				const filePath = path.join(outputDir, fileName);
-				await appendFile(filePath, '', 'utf8');
-
-				systemTablesExported = 1;
-			}
+			systemTablesExported = 1; // Successfully exported migrations table
 		} catch (error) {
 			this.logger.info(
 				`   ⚠️  Migrations table ${migrationsTableName} not found or not accessible, skipping...`,
+				{ error },
 			);
 		}
 

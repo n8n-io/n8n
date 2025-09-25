@@ -999,7 +999,7 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
 
 			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
-				'Could not validate migrations against target database. Cannot proceed with import without migration validation to prevent schema/data mismatch.',
+				'Database connection failed',
 			);
 		});
 
