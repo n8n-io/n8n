@@ -16,19 +16,14 @@ import type {
 	IDataObject,
 	IExecuteData,
 	INode,
-	INodeConnections,
 	INodeExecutionData,
 	IPairedItemData,
 	IPinData,
 	IRun,
 	IRunData,
-	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
-	ITaskDataConnectionsSource,
 	ITaskMetadata,
-	IWaitingForExecution,
-	IWaitingForExecutionSource,
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
@@ -36,7 +31,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	CloseFunction,
-	StartNodeData,
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
@@ -184,168 +178,6 @@ export class WorkflowExecute {
 		return workflow.settings.executionOrder !== 'v1';
 	}
 
-	/**
-	 * Executes the given workflow but only
-	 *
-	 * @param {Workflow} workflow The workflow to execute
-	 * @param {string[]} startNodes Nodes to start execution from
-	 * @param {string} destinationNode Node to stop execution at
-	 */
-	// IMPORTANT: Do not add "async" to this function, it will then convert the
-	//            PCancelable to a regular Promise and does so not allow canceling
-	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
-	runPartialWorkflow(
-		workflow: Workflow,
-		runData: IRunData,
-		startNodes: StartNodeData[],
-		destinationNode?: string,
-		pinData?: IPinData,
-	): PCancelable<IRun> {
-		let incomingNodeConnections: INodeConnections | undefined;
-		let connection: IConnection;
-
-		// Increment currentExecutionIndex based on previous run
-		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
-
-		this.status = 'running';
-
-		const runIndex = 0;
-		let runNodeFilter: string[] | undefined;
-
-		// Initialize the nodeExecutionStack and waitingExecution with
-		// the data from runData
-		const nodeExecutionStack: IExecuteData[] = [];
-		const waitingExecution: IWaitingForExecution = {};
-		const waitingExecutionSource: IWaitingForExecutionSource = {};
-		for (const startNode of startNodes) {
-			incomingNodeConnections = workflow.connectionsByDestinationNode[startNode.name];
-
-			const incomingData: INodeExecutionData[][] = [];
-			let incomingSourceData: ITaskDataConnectionsSource | null = null;
-
-			if (incomingNodeConnections === undefined) {
-				incomingData.push([
-					{
-						json: {},
-					},
-				]);
-			} else {
-				// Get the data of the incoming connections
-				incomingSourceData = { main: [] };
-				for (const connections of incomingNodeConnections.main) {
-					if (!connections) {
-						continue;
-					}
-					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
-						connection = connections[inputIndex];
-
-						const node = workflow.getNode(connection.node);
-
-						if (node?.disabled) continue;
-
-						if (node && pinData && pinData[node.name]) {
-							incomingData.push(pinData[node.name]);
-						} else {
-							if (!runData[connection.node]) {
-								continue;
-							}
-							const nodeIncomingData =
-								runData[connection.node]?.[runIndex]?.data?.[connection.type]?.[connection.index];
-							if (nodeIncomingData) {
-								incomingData.push(nodeIncomingData);
-							}
-						}
-
-						incomingSourceData.main.push(startNode.sourceData ?? { previousNode: connection.node });
-					}
-				}
-			}
-
-			const executeData: IExecuteData = {
-				node: workflow.getNode(startNode.name) as INode,
-				data: {
-					main: incomingData,
-				},
-				source: incomingSourceData,
-			};
-
-			nodeExecutionStack.push(executeData);
-
-			if (destinationNode) {
-				// Check if the destinationNode has to be added as waiting
-				// because some input data is already fully available
-				incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
-				if (incomingNodeConnections !== undefined) {
-					for (const connections of incomingNodeConnections.main) {
-						if (!connections) {
-							continue;
-						}
-						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
-							connection = connections[inputIndex];
-
-							if (waitingExecution[destinationNode] === undefined) {
-								waitingExecution[destinationNode] = {};
-								waitingExecutionSource[destinationNode] = {};
-							}
-							if (waitingExecution[destinationNode][runIndex] === undefined) {
-								waitingExecution[destinationNode][runIndex] = {};
-								waitingExecutionSource[destinationNode][runIndex] = {};
-							}
-							if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
-								waitingExecution[destinationNode][runIndex][connection.type] = [];
-								waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
-							}
-
-							if (runData[connection.node] !== undefined) {
-								// Input data exists so add as waiting
-								// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
-								waitingExecution[destinationNode][runIndex][connection.type].push(
-									runData[connection.node][runIndex].data![connection.type][connection.index],
-								);
-								waitingExecutionSource[destinationNode][runIndex][connection.type].push({
-									previousNode: connection.node,
-									previousNodeOutput: connection.index || undefined,
-									previousNodeRun: runIndex || undefined,
-								} as ISourceData);
-							} else {
-								waitingExecution[destinationNode][runIndex][connection.type].push(null);
-								waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
-							}
-						}
-					}
-				}
-
-				// Only run the parent nodes and no others
-				runNodeFilter = workflow
-					.getParentNodes(destinationNode)
-					.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
-
-				runNodeFilter.push(destinationNode);
-			}
-		}
-
-		this.runExecutionData = {
-			startData: {
-				destinationNode,
-				runNodeFilter,
-			},
-			resultData: {
-				runData,
-				pinData,
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack,
-				metadata: {},
-				waitingExecution,
-				waitingExecutionSource,
-			},
-		};
-
-		return this.processRunExecutionData(workflow);
-	}
-
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
@@ -355,15 +187,9 @@ export class WorkflowExecute {
 		runData: IRunData,
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
-		destinationNodeName?: string,
+		destinationNodeName: string,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
-		// TODO: Refactor the call-site to make `destinationNodeName` a required
-		// after removing the old partial execution flow.
-		assert.ok(
-			destinationNodeName,
-			'a destinationNodeName is required for the new partial execution flow',
-		);
 		const originalDestination = destinationNodeName;
 
 		let destination = workflow.getNode(destinationNodeName);
