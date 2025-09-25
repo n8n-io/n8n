@@ -163,8 +163,6 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: {
-		/** @deprecated */
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
@@ -188,24 +186,19 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
-		/** @deprecated */
-		maxAgeInDays,
-		periodUnit,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
 		projectId,
 		startDate,
 		endDate,
 	}: {
-		maxAgeInDays: number;
-		periodUnit: PeriodUnit;
 		insightTypes?: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
 	}) {
+		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
-			maxAgeInDays,
 			periodUnit,
 			insightTypes,
 			projectId,

@@ -64,11 +64,7 @@ export class InsightsController {
 		const { startDate, endDate } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
 
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity({
-			dateRange: query.dateRange ?? 'week',
-		});
 		return await this.insightsService.getInsightsByWorkflow({
-			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,
@@ -90,13 +86,9 @@ export class InsightsController {
 		const { startDate, endDate } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
 
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
-
 		// Cast to full insights by time type
 		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
-			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
-			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			projectId: query.projectId,
 			startDate,
 			endDate,
@@ -118,13 +110,9 @@ export class InsightsController {
 		const { startDate, endDate } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
 
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
-
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
 		return (await this.insightsService.getInsightsByTime({
-			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
-			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			insightTypes: ['time_saved_min'],
 			projectId: query.projectId,
 			startDate,
