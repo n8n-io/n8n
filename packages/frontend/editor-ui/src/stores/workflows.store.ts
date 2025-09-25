@@ -289,7 +289,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
 
-	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
+	const getPastChatMessages = computed(() => chatMessages.value);
 
 	/**
 	 * This section contains functions migrated from the workflow class
