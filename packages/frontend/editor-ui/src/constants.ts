@@ -354,6 +354,7 @@ export const DATA_TYPE_ICON_MAP = {
 	date: 'calendar',
 	array: 'list',
 	object: 'box',
+	file: 'file',
 } satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
@@ -1030,3 +1031,6 @@ export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
 
 export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
 export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
+
+export const BINARY_DATA_ACCESS_TOOLTIP =
+	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";
