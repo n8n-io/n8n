@@ -48,6 +48,20 @@ const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v0', value: 'v0 (legacy)' },
 	{ key: 'v1', value: 'v1 (recommended)' },
 ]);
+const executionPriorityOptions = ref<Array<{ key: 'low' | 'medium' | 'high'; value: string }>>([
+	{
+		key: 'low',
+		value: i18n.baseText('workflowSettings.executionPriority.options.low'),
+	},
+	{
+		key: 'medium',
+		value: i18n.baseText('workflowSettings.executionPriority.options.medium'),
+	},
+	{
+		key: 'high',
+		value: i18n.baseText('workflowSettings.executionPriority.options.high'),
+	},
+]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
@@ -528,6 +542,31 @@ onBeforeUnmount(() => {
 						>
 							<N8nOption
 								v-for="option in executionOrderOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</el-col>
+				</el-row>
+
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						{{ i18n.baseText('workflowSettings.executionPriority') }}
+					</el-col>
+					<el-col :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="workflowSettings.queuePriority"
+							:placeholder="i18n.baseText('workflowSettings.executionPriorityPlaceholder')"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-execution-priority"
+						>
+							<N8nOption
+								v-for="option in executionPriorityOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"

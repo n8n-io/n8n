@@ -282,6 +282,18 @@ describe('enqueueExecution', () => {
 		jest.unmock('@/scaling/scaling.service');
 	});
 
+	// Test-only helper to call the private method without sprinkling ts-ignore comments
+	const callPrivateEnqueue = (
+		...args: Parameters<
+			(typeof runner)['enqueueExecution'] extends (...a: infer P) => any ? (...a: P) => any : never
+		>
+	) =>
+		(
+			runner as unknown as {
+				enqueueExecution: (...a: any[]) => ReturnType<(typeof runner)['enqueueExecution']>;
+			}
+		).enqueueExecution(...(args as any[]));
+
 	it('should setup queue when scalingService is not initialized', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
@@ -296,10 +308,89 @@ describe('enqueueExecution', () => {
 		// so that Jest does not move on to tear down the suite until the PCancelable settles
 		addJob.mockRejectedValueOnce(error);
 
-		// @ts-expect-error Private method
-		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+		await expect(callPrivateEnqueue('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['high', 1],
+		['medium', 50],
+		['low', 100],
+	] as const)('should map queuePriority %s -> priority %d', async (priority, expected) => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], settings: { queuePriority: priority } },
+			executionData: undefined,
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+		await expect(callPrivateEnqueue('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+		expect(addJob).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ priority: expected }),
+		);
+	});
+
+	it('should fallback to realtime mapping when queuePriority has an unknown value', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			// @ts-expect-error simulate invalid string coming from an external client
+			workflowData: { nodes: [], settings: { queuePriority: 'High' } },
+			executionData: undefined,
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+		// When realtime is truthy, fallback should be 50
+		await expect(
+			callPrivateEnqueue('1', 'workflow-xyz', data, undefined, true),
+		).rejects.toThrowError(error);
+		expect(addJob).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ priority: 50 }),
+		);
+	});
+
+	it('should fallback to realtime true -> priority 50 when queuePriority is unset', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+		await expect(
+			callPrivateEnqueue('1', 'workflow-xyz', data, undefined, true),
+		).rejects.toThrowError(error);
+		expect(addJob).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ priority: 50 }),
+		);
+	});
+
+	it('should fallback to realtime false -> priority 100 when queuePriority is unset', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+		await expect(
+			callPrivateEnqueue('1', 'workflow-xyz', data, undefined, false),
+		).rejects.toThrowError(error);
+		expect(addJob).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ priority: 100 }),
+		);
 	});
 });
 
