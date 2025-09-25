@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
 import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +16,7 @@ const rolesStore = useRolesStore();
 const router = useRouter();
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
+const message = useMessage();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -189,6 +191,40 @@ function setPreset(slug: string) {
 	form.value.scopes = preset.scopes;
 }
 
+async function deleteRole() {
+	if (!initialState?.value) return;
+	const deleteConfirmed = await message.confirm(
+		`Are you sure that you want to delete '${initialState.value.displayName}' permanently? This action cannot be undone.`,
+		`Delete "${initialState.value.displayName}"?`,
+		{
+			type: 'warning',
+			confirmButtonText: 'Delete',
+			cancelButtonText: 'Cancel',
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await rolesStore.deleteProjectRole(initialState.value.slug);
+
+		const index = rolesStore.roles.project.findIndex(
+			(role) => role.slug === initialState.value?.slug,
+		);
+		if (index !== -1) {
+			rolesStore.roles.project.splice(index, 1);
+		}
+
+		showMessage({ title: 'Role deleted', type: 'success' });
+		router.back();
+	} catch (error) {
+		showError(error, 'Error deleting role');
+		return;
+	}
+}
+
 const displayNameValidationRules = [
 	{ name: 'REQUIRED' },
 	{ name: 'MIN_LENGTH', config: { minimum: 2 } },
@@ -283,6 +319,20 @@ const displayNameValidationRules = [
 					/>
 				</div>
 			</div>
+		</div>
+
+		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
+			<N8nHeading tag="h2" class="mb-2xs">Danger zone</N8nHeading>
+			<N8nText tag="p" class="mb-s">
+				<template v-if="initialState?.usedByUsers">
+					You can’t delete this role while it’s assigned to {{ initialState.usedByUsers }} users.
+					Unassign it from all users first.
+				</template>
+				<template v-else> Deleting a role is permanent. This can’t be undone. </template>
+			</N8nText>
+			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole"
+				>Delete role</N8nButton
+			>
 		</div>
 	</div>
 </template>
