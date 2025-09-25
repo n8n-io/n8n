@@ -54,899 +54,899 @@ describe('dataStore', () => {
 		await dataStoreService.deleteDataStoreAll();
 	});
 
-	// describe('createDataStore', () => {
-	// 	it('should create a columns table and a user table if columns are provided', async () => {
-	// 		const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStoreWithColumns',
-	// 			columns: [{ name: 'foo', type: 'string' }],
-	// 		});
-
-	// 		await expect(dataStoreService.getColumns(dataTableId, project1.id)).resolves.toEqual([
-	// 			{
-	// 				name: 'foo',
-	// 				type: 'string',
-	// 				index: 0,
-	// 				dataTableId,
-	// 				id: expect.any(String),
-	// 				createdAt: expect.any(Date),
-	// 				updatedAt: expect.any(Date),
-	// 			},
-	// 		]);
-
-	// 		// Select the column from user table to check for its existence
-	// 		const userTableName = toTableName(dataTableId);
-	// 		const rows = await dataStoreRepository.manager
-	// 			.createQueryBuilder()
-	// 			.select('foo')
-	// 			.from(userTableName, userTableName)
-	// 			.limit(1)
-	// 			.getRawMany();
-
-	// 		expect(rows).toEqual([]);
-	// 	});
-
-	// 	it('should create a user table and a columns table even if columns are not provided', async () => {
-	// 		const name = 'dataStore';
-
-	// 		// ACT
-	// 		const result = await dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-	// 		const { id: dataStoreId } = result;
-
-	// 		await expect(dataStoreService.getColumns(dataStoreId, project1.id)).resolves.toEqual([]);
-
-	// 		const userTableName = toTableName(dataStoreId);
-	// 		const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-	// 		try {
-	// 			const table = await queryRunner.getTable(userTableName);
-	// 			const columnNames = table?.columns.map((col) => col.name);
-
-	// 			expect(columnNames).toEqual(expect.arrayContaining(['id', 'createdAt', 'updatedAt']));
-	// 		} finally {
-	// 			await queryRunner.release();
-	// 		}
-	// 	});
-
-	// 	it('should succeed even if the name exists in a different project', async () => {
-	// 		const name = 'dataStore';
-
-	// 		await dataStoreService.createDataStore(project2.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		// ACT
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
-	// 		expect(created?.id).toBe(dataStoreId);
-	// 	});
-
-	// 	it('should populate the project relation when creating a data store', async () => {
-	// 		const name = 'dataStore';
-
-	// 		// ACT
-	// 		const { project } = await dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		// ASSERT
-	// 		expect(project.id).toBe(project1.id);
-	// 		expect(project.name).toBe(project1.name);
-	// 	});
-
-	// 	it('should return an error if name/project combination already exists', async () => {
-	// 		const name = 'dataStore';
-
-	// 		// ARRANGE
-	// 		await dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		// ACT
-	// 		const result = dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNameConflictError);
-	// 	});
-	// });
-
-	// describe('updateDataStore', () => {
-	// 	it('should succeed when renaming to an available name', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId, updatedAt } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'myDataStore1',
-	// 			columns: [],
-	// 		});
-
-	// 		// ACT
-	// 		// Wait to get second difference
-	// 		await new Promise((resolve) => setTimeout(resolve, 1001));
-
-	// 		const result = await dataStoreService.updateDataStore(dataStoreId, project1.id, {
-	// 			name: 'aNewName',
-	// 		});
-
-	// 		// ASSERT
-	// 		expect(result).toEqual(true);
-
-	// 		const updated = await dataStoreRepository.findOneBy({ id: dataStoreId });
-	// 		expect(updated?.name).toBe('aNewName');
-	// 		expect(updated?.updatedAt.getTime()).toBeGreaterThan(updatedAt.getTime());
-	// 	});
-
-	// 	it('should fail when renaming a non-existent data store', async () => {
-	// 		// ACT
-	// 		const result = dataStoreService.updateDataStore('this is not an id', project1.id, {
-	// 			name: 'aNewName',
-	// 		});
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNotFoundError);
-	// 	});
-
-	// 	it('should fail when renaming to a taken name', async () => {
-	// 		// ARRANGE
-	// 		const name = 'myDataStoreOld';
-	// 		await dataStoreService.createDataStore(project1.id, {
-	// 			name,
-	// 			columns: [],
-	// 		});
-
-	// 		const { id: dataStoreNewId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'myDataStoreNew',
-	// 			columns: [],
-	// 		});
-
-	// 		// ACT
-	// 		const result = dataStoreService.updateDataStore(dataStoreNewId, project1.id, { name });
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNameConflictError);
-	// 	});
-	// });
-
-	// describe('deleteDataStore', () => {
-	// 	it('should succeed with deleting a store', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'myDataStore1',
-	// 			columns: [],
-	// 		});
-
-	// 		// ACT
-	// 		const result = await dataStoreService.deleteDataStore(dataStoreId, project1.id);
-	// 		const userTableName = toTableName(dataStoreId);
-
-	// 		// ASSERT
-	// 		expect(result).toEqual(true);
-
-	// 		const deletedDatastore = await dataStoreRepository.findOneBy({ id: dataStoreId });
-	// 		expect(deletedDatastore).toBeNull();
-
-	// 		const queryUserTable = dataStoreRepository.manager
-	// 			.createQueryBuilder()
-	// 			.select()
-	// 			.from(userTableName, userTableName)
-	// 			.getMany();
-	// 		await expect(queryUserTable).rejects.toBeDefined();
-	// 	});
-
-	// 	it('should fail when deleting a non-existent id', async () => {
-	// 		// ACT
-	// 		const result = dataStoreService.deleteDataStore('this is not an id', project1.id);
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNotFoundError);
-	// 	});
-	// });
-
-	// describe('addColumn', () => {
-	// 	it('should succeed with adding columns to a non-empty table as well as to a user table', async () => {
-	// 		const existingColumns: CreateDataStoreColumnDto[] = [{ name: 'myColumn0', type: 'string' }];
-
-	// 		const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStoreWithColumns',
-	// 			columns: existingColumns,
-	// 		});
-
-	// 		const columns: AddDataStoreColumnDto[] = [
-	// 			{ name: 'myColumn1', type: 'string' },
-	// 			{ name: 'myColumn2', type: 'number' },
-	// 			{ name: 'myColumn3', type: 'number' },
-	// 			{ name: 'myColumn4', type: 'date' },
-	// 		];
-	// 		for (const column of columns) {
-	// 			// ACT
-	// 			const result = await dataStoreService.addColumn(dataTableId, project1.id, column);
-	// 			// ASSERT
-	// 			expect(result).toMatchObject(column);
-	// 		}
-	// 		const columnResult = await dataStoreService.getColumns(dataTableId, project1.id);
-	// 		expect(columnResult).toEqual([
-	// 			expect.objectContaining({
-	// 				index: 0,
-	// 				dataTableId,
-	// 				name: 'myColumn0',
-	// 				type: 'string',
-	// 			}),
-	// 			expect.objectContaining({
-	// 				index: 1,
-	// 				dataTableId,
-	// 				name: 'myColumn1',
-	// 				type: 'string',
-	// 			}),
-	// 			expect.objectContaining({
-	// 				index: 2,
-	// 				dataTableId,
-	// 				name: 'myColumn2',
-	// 				type: 'number',
-	// 			}),
-	// 			expect.objectContaining({
-	// 				index: 3,
-	// 				dataTableId,
-	// 				name: 'myColumn3',
-	// 				type: 'number',
-	// 			}),
-	// 			expect.objectContaining({
-	// 				index: 4,
-	// 				dataTableId,
-	// 				name: 'myColumn4',
-	// 				type: 'date',
-	// 			}),
-	// 		]);
-
-	// 		const userTableName = toTableName(dataTableId);
-	// 		const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-	// 		try {
-	// 			const table = await queryRunner.getTable(userTableName);
-	// 			const columnNames = table?.columns.map((col) => col.name);
-
-	// 			expect(columnNames).toEqual(
-	// 				expect.arrayContaining([
-	// 					'id',
-	// 					'createdAt',
-	// 					'updatedAt',
-	// 					'myColumn0',
-	// 					'myColumn1',
-	// 					'myColumn2',
-	// 					'myColumn3',
-	// 					'myColumn4',
-	// 				]),
-	// 			);
-	// 		} finally {
-	// 			await queryRunner.release();
-	// 		}
-	// 	});
-
-	// 	it('should succeed with adding columns to an empty table', async () => {
-	// 		const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [],
-	// 		});
-
-	// 		const columns: AddDataStoreColumnDto[] = [
-	// 			{ name: 'myColumn0', type: 'string' },
-	// 			{ name: 'myColumn1', type: 'number' },
-	// 		];
-	// 		for (const column of columns) {
-	// 			// ACT
-	// 			const result = await dataStoreService.addColumn(dataTableId, project1.id, column);
-	// 			// ASSERT
-	// 			expect(result).toMatchObject(column);
-	// 		}
-	// 		const columnResult = await dataStoreService.getColumns(dataTableId, project1.id);
-	// 		expect(columnResult.length).toBe(2);
-
-	// 		expect(columnResult).toEqual([
-	// 			expect.objectContaining({
-	// 				index: 0,
-	// 				dataTableId,
-	// 				name: 'myColumn0',
-	// 				type: 'string',
-	// 			}),
-	// 			expect.objectContaining({
-	// 				index: 1,
-	// 				dataTableId,
-	// 				name: 'myColumn1',
-	// 				type: 'number',
-	// 			}),
-	// 		]);
-
-	// 		const userTableName = toTableName(dataTableId);
-	// 		const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-	// 		try {
-	// 			const table = await queryRunner.getTable(userTableName);
-	// 			const columnNames = table?.columns.map((col) => col.name);
-
-	// 			expect(columnNames).toEqual(
-	// 				expect.arrayContaining(['id', 'createdAt', 'updatedAt', 'myColumn0', 'myColumn1']),
-	// 			);
-	// 		} finally {
-	// 			await queryRunner.release();
-	// 		}
-	// 	});
-
-	// 	it('should fail with adding two columns of the same name', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'myDataStore',
-	// 			columns: [
-	// 				{
-	// 					name: 'myColumn1',
-	// 					type: 'string',
-	// 				},
-	// 			],
-	// 		});
-
-	// 		// ACT
-	// 		const result = dataStoreService.addColumn(dataStoreId, project1.id, {
-	// 			name: 'myColumn1',
-	// 			type: 'number',
-	// 		});
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreColumnNameConflictError);
-	// 	});
-
-	// 	it('should fail with adding column of non-existent table', async () => {
-	// 		// ACT
-	// 		const result = dataStoreService.addColumn('this is not an id', project1.id, {
-	// 			name: 'myColumn1',
-	// 			type: 'number',
-	// 		});
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNotFoundError);
-	// 	});
-
-	// 	it('should succeed with adding column to table that already has rows and set null values for existing rows', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [
-	// 				{ name: 'name', type: 'string' },
-	// 				{ name: 'age', type: 'number' },
-	// 			],
-	// 		});
-
-	// 		const results = await dataStoreService.insertRows(
-	// 			dataStoreId,
-	// 			project1.id,
-	// 			[
-	// 				{ name: 'Alice', age: 30 },
-	// 				{ name: 'Bob', age: 25 },
-	// 				{ name: 'Charlie', age: 35 },
-	// 			],
-	// 			'id',
-	// 		);
-
-	// 		expect(results).toEqual([
-	// 			{
-	// 				id: 1,
-	// 			},
-	// 			{
-	// 				id: 2,
-	// 			},
-	// 			{
-	// 				id: 3,
-	// 			},
-	// 		]);
-
-	// 		// ACT
-	// 		const newColumn = await dataStoreService.addColumn(dataStoreId, project1.id, {
-	// 			name: 'email',
-	// 			type: 'string',
-	// 		});
-
-	// 		// ASSERT
-	// 		expect(newColumn).toMatchObject({ name: 'email', type: 'string' });
-
-	// 		// Verify the column was added to the metadata
-	// 		const columns = await dataStoreService.getColumns(dataStoreId, project1.id);
-	// 		expect(columns).toHaveLength(3);
-	// 		expect(columns.map((c) => c.name)).toEqual(['name', 'age', 'email']);
-
-	// 		// Verify existing rows now have null values for the new column
-	// 		const updatedData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-	// 		expect(updatedData.count).toBe(3);
-	// 		expect(updatedData.data).toEqual([
-	// 			expect.objectContaining({
-	// 				id: 1,
-	// 				name: 'Alice',
-	// 				age: 30,
-	// 				email: null,
-	// 			}),
-	// 			expect.objectContaining({
-	// 				id: 2,
-	// 				name: 'Bob',
-	// 				age: 25,
-	// 				email: null,
-	// 			}),
-	// 			expect.objectContaining({
-	// 				id: 3,
-	// 				name: 'Charlie',
-	// 				age: 35,
-	// 				email: null,
-	// 			}),
-	// 		]);
-
-	// 		// Verify we can insert new rows with the new column
-	// 		const newRow = await dataStoreService.insertRows(
-	// 			dataStoreId,
-	// 			project1.id,
-	// 			[{ name: 'David', age: 28, email: 'david@example.com' }],
-	// 			'id',
-	// 		);
-	// 		expect(newRow).toEqual([
-	// 			{
-	// 				id: 4,
-	// 			},
-	// 		]);
-
-	// 		const finalData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-	// 		expect(finalData.count).toBe(4);
-	// 		expect(finalData.data).toEqual([
-	// 			expect.objectContaining({
-	// 				id: 1,
-	// 				name: 'Alice',
-	// 				age: 30,
-	// 				email: null,
-	// 			}),
-	// 			expect.objectContaining({
-	// 				id: 2,
-	// 				name: 'Bob',
-	// 				age: 25,
-	// 				email: null,
-	// 			}),
-	// 			expect.objectContaining({
-	// 				id: 3,
-	// 				name: 'Charlie',
-	// 				age: 35,
-	// 				email: null,
-	// 			}),
-	// 			expect.objectContaining({
-	// 				id: 4,
-	// 				name: 'David',
-	// 				age: 28,
-	// 				email: 'david@example.com',
-	// 			}),
-	// 		]);
-	// 	});
-	// });
-
-	// describe('deleteColumn', () => {
-	// 	it('should succeed with deleting a column', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [],
-	// 		});
-
-	// 		const c1 = await dataStoreService.addColumn(dataTableId, project1.id, {
-	// 			name: 'myColumn1',
-	// 			type: 'string',
-	// 		});
-	// 		const c2 = await dataStoreService.addColumn(dataTableId, project1.id, {
-	// 			name: 'myColumn2',
-	// 			type: 'number',
-	// 		});
-
-	// 		// ACT
-	// 		const result = await dataStoreService.deleteColumn(dataTableId, project1.id, c1.id);
-
-	// 		// ASSERT
-	// 		expect(result).toEqual(true);
-
-	// 		const columns = await dataStoreService.getColumns(dataTableId, project1.id);
-	// 		expect(columns).toEqual([
-	// 			{
-	// 				index: 0,
-	// 				dataTableId,
-	// 				id: c2.id,
-	// 				name: 'myColumn2',
-	// 				type: 'number',
-	// 				createdAt: c2.createdAt,
-	// 				updatedAt: expect.any(Date),
-	// 			},
-	// 		]);
-	// 	});
-
-	// 	it('should fail when deleting unknown column', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [
-	// 				{
-	// 					name: 'myColumn1',
-	// 					type: 'string',
-	// 				},
-	// 			],
-	// 		});
-
-	// 		// ACT
-	// 		const result = dataStoreService.deleteColumn(dataStoreId, project1.id, 'thisIsNotAnId');
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreColumnNotFoundError);
-	// 	});
-
-	// 	it('should fail when deleting column from unknown table', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [],
-	// 		});
-	// 		const c1 = await dataStoreService.addColumn(dataStoreId, project1.id, {
-	// 			name: 'myColumn1',
-	// 			type: 'string',
-	// 		});
-
-	// 		// ACT
-	// 		const result = dataStoreService.deleteColumn('this is not an id', project1.id, c1.id);
-
-	// 		// ASSERT
-	// 		await expect(result).rejects.toThrow(DataStoreNotFoundError);
-	// 	});
-	// });
-
-	// describe('moveColumn', () => {
-	// 	it('should succeed with moving a column', async () => {
-	// 		// ARRANGE
-	// 		const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'dataStore',
-	// 			columns: [],
-	// 		});
-
-	// 		const c1 = await dataStoreService.addColumn(dataTableId, project1.id, {
-	// 			name: 'myColumn1',
-	// 			type: 'string',
-	// 		});
-	// 		const c2 = await dataStoreService.addColumn(dataTableId, project1.id, {
-	// 			name: 'myColumn2',
-	// 			type: 'number',
-	// 		});
-
-	// 		// ACT
-	// 		const result = await dataStoreService.moveColumn(dataTableId, project1.id, c2.id, {
-	// 			targetIndex: 0,
-	// 		});
-
-	// 		// ASSERT
-	// 		expect(result).toEqual(true);
-
-	// 		const columns = await dataStoreService.getColumns(dataTableId, project1.id);
-	// 		expect(columns).toMatchObject([
-	// 			{
-	// 				index: 0,
-	// 				dataTableId,
-	// 				id: c2.id,
-	// 				name: 'myColumn2',
-	// 				type: 'number',
-	// 			},
-	// 			{
-	// 				index: 1,
-	// 				dataTableId,
-	// 				id: c1.id,
-	// 				name: 'myColumn1',
-	// 				type: 'string',
-	// 			},
-	// 		]);
-	// 	});
-	// });
-
-	// describe('getManyAndCount', () => {
-	// 	it('correctly joins columns', async () => {
-	// 		// ARRANGE
-	// 		const columns: CreateDataStoreColumnDto[] = [
-	// 			{ name: 'myColumn1', type: 'string' },
-	// 			{ name: 'myColumn2', type: 'number' },
-	// 			{ name: 'myColumn3', type: 'number' },
-	// 			{ name: 'myColumn4', type: 'date' },
-	// 		];
-	// 		const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 			name: 'myDataStore',
-	// 			columns,
-	// 		});
-
-	// 		// ACT
-	// 		const result = await dataStoreService.getManyAndCount({
-	// 			filter: { projectId: project1.id, id: dataStoreId },
-	// 		});
-
-	// 		// ASSERT
-	// 		expect(result.count).toEqual(1);
-
-	// 		const resultColumns = result.data[0].columns;
-
-	// 		expect(resultColumns).toEqual(
-	// 			expect.arrayContaining([
-	// 				{
-	// 					id: expect.any(String),
-	// 					name: 'myColumn1',
-	// 					type: 'string',
-	// 					createdAt: expect.any(Date),
-	// 					updatedAt: expect.any(Date),
-	// 					index: 0,
-	// 				},
-	// 				{
-	// 					id: expect.any(String),
-	// 					name: 'myColumn2',
-	// 					type: 'number',
-	// 					createdAt: expect.any(Date),
-	// 					updatedAt: expect.any(Date),
-	// 					index: 1,
-	// 				},
-	// 				{
-	// 					id: expect.any(String),
-	// 					name: 'myColumn3',
-	// 					type: 'number',
-	// 					createdAt: expect.any(Date),
-	// 					updatedAt: expect.any(Date),
-	// 					index: 2,
-	// 				},
-	// 				{
-	// 					id: expect.any(String),
-	// 					name: 'myColumn4',
-	// 					type: 'date',
-	// 					createdAt: expect.any(Date),
-	// 					updatedAt: expect.any(Date),
-	// 					index: 3,
-	// 				},
-	// 			]),
-	// 		);
-
-	// 		for (let i = 1; i < resultColumns.length; i++) {
-	// 			expect(new Date(resultColumns[i].updatedAt).getTime()).toBeGreaterThanOrEqual(
-	// 				new Date(resultColumns[i - 1].updatedAt).getTime(),
-	// 			);
-	// 		}
-	// 	});
-
-	// 	describe('sorts as expected', () => {
-	// 		it('sorts by name', async () => {
-	// 			// ARRANGE
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds2',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds1',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds3',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const nameAsc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'name:asc',
-	// 			});
-	// 			const nameDesc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'name:desc',
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(nameAsc.data.map((x) => x.name)).toEqual(['ds1', 'ds2', 'ds3']);
-	// 			expect(nameDesc.data.map((x) => x.name)).toEqual(['ds3', 'ds2', 'ds1']);
-	// 		});
-
-	// 		it('sorts by createdAt', async () => {
-	// 			// ARRANGE
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds0',
-	// 				columns: [],
-	// 			});
-
-	// 			// Wait to get seconds difference
-	// 			await new Promise((resolve) => setTimeout(resolve, 1001));
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds1',
-	// 				columns: [],
-	// 			});
-
-	// 			// Wait to get seconds difference
-	// 			await new Promise((resolve) => setTimeout(resolve, 1001));
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds2',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const createdAsc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'createdAt:asc',
-	// 			});
-	// 			const createdDesc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'createdAt:desc',
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(createdAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
-	// 			expect(createdDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
-	// 		});
-
-	// 		it('sorts by updatedAt', async () => {
-	// 			// ARRANGE
-	// 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds1',
-	// 				columns: [],
-	// 			});
-
-	// 			// Wait to get seconds difference
-	// 			await new Promise((resolve) => setTimeout(resolve, 1001));
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'ds2',
-	// 				columns: [],
-	// 			});
-
-	// 			// Wait to get seconds difference
-	// 			await new Promise((resolve) => setTimeout(resolve, 1001));
-	// 			await dataStoreService.updateDataStore(dataStoreId, project1.id, { name: 'ds1Updated' });
-
-	// 			// ACT
-	// 			const updatedAsc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'updatedAt:asc',
-	// 			});
-
-	// 			const updatedDesc = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 				sortBy: 'updatedAt:desc',
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(updatedAsc.data.map((x) => x.name)).toEqual(['ds2', 'ds1Updated']);
-	// 			expect(updatedDesc.data.map((x) => x.name)).toEqual(['ds1Updated', 'ds2']);
-	// 		});
-	// 	});
-
-	// 	describe('filters as expected', () => {
-	// 		it('filters by name', async () => {
-	// 			// ARRANGE
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore1',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore2',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore3',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const filtered = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id, name: 'dataStore2' },
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(filtered.count).toBe(1);
-	// 			expect(filtered.data[0].name).toBe('dataStore2');
-	// 		});
-
-	// 		it('filters by multiple names (AND)', async () => {
-	// 			// ARRANGE
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore1',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore2',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore3',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const filtered = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id, name: ['Store3', 'data'] },
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(filtered.count).toBe(1);
-	// 			expect(filtered.data.map((x) => x.name).sort()).toEqual(['dataStore3']);
-	// 		});
-
-	// 		it('filters by id', async () => {
-	// 			// ARRANGE
-	// 			const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore1',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore2',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const filtered = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id, id: ds1Id },
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(filtered.count).toBe(1);
-	// 			expect(filtered.data[0].id).toBe(ds1Id);
-	// 		});
-
-	// 		it('filters by multiple ids (OR)', async () => {
-	// 			// ARRANGE
-	// 			const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore1',
-	// 				columns: [],
-	// 			});
-	// 			const { id: ds2Id } = await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore2',
-	// 				columns: [],
-	// 			});
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore3',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const filtered = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id, id: [ds1Id, ds2Id] },
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(filtered.count).toBe(2);
-	// 			expect(filtered.data.map((x) => x.id).sort()).toEqual([ds1Id, ds2Id].sort());
-	// 		});
-
-	// 		it('filters by projectId', async () => {
-	// 			// ARRANGE
-	// 			await dataStoreService.createDataStore(project1.id, {
-	// 				name: 'dataStore1',
-	// 				columns: [],
-	// 			});
-
-	// 			await dataStoreService.createDataStore(project2.id, {
-	// 				name: 'dataStore2',
-	// 				columns: [],
-	// 			});
-
-	// 			// ACT
-	// 			const filtered1 = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project1.id },
-	// 			});
-	// 			const filtered2 = await dataStoreService.getManyAndCount({
-	// 				filter: { projectId: project2.id },
-	// 			});
-
-	// 			// ASSERT
-	// 			expect(filtered1.count).toBe(1);
-	// 			expect(filtered1.data[0].name).toBe('dataStore1');
-	// 			expect(filtered2.count).toBe(1);
-	// 			expect(filtered2.data[0].name).toBe('dataStore2');
-	// 		});
-	// 	});
-	// });
+	describe('createDataStore', () => {
+		it('should create a columns table and a user table if columns are provided', async () => {
+			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStoreWithColumns',
+				columns: [{ name: 'foo', type: 'string' }],
+			});
+
+			await expect(dataStoreService.getColumns(dataTableId, project1.id)).resolves.toEqual([
+				{
+					name: 'foo',
+					type: 'string',
+					index: 0,
+					dataTableId,
+					id: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+
+			// Select the column from user table to check for its existence
+			const userTableName = toTableName(dataTableId);
+			const rows = await dataStoreRepository.manager
+				.createQueryBuilder()
+				.select('foo')
+				.from(userTableName, userTableName)
+				.limit(1)
+				.getRawMany();
+
+			expect(rows).toEqual([]);
+		});
+
+		it('should create a user table and a columns table even if columns are not provided', async () => {
+			const name = 'dataStore';
+
+			// ACT
+			const result = await dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+			const { id: dataStoreId } = result;
+
+			await expect(dataStoreService.getColumns(dataStoreId, project1.id)).resolves.toEqual([]);
+
+			const userTableName = toTableName(dataStoreId);
+			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
+
+				expect(columnNames).toEqual(expect.arrayContaining(['id', 'createdAt', 'updatedAt']));
+			} finally {
+				await queryRunner.release();
+			}
+		});
+
+		it('should succeed even if the name exists in a different project', async () => {
+			const name = 'dataStore';
+
+			await dataStoreService.createDataStore(project2.id, {
+				name,
+				columns: [],
+			});
+
+			// ACT
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+
+			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
+			expect(created?.id).toBe(dataStoreId);
+		});
+
+		it('should populate the project relation when creating a data store', async () => {
+			const name = 'dataStore';
+
+			// ACT
+			const { project } = await dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+
+			// ASSERT
+			expect(project.id).toBe(project1.id);
+			expect(project.name).toBe(project1.name);
+		});
+
+		it('should return an error if name/project combination already exists', async () => {
+			const name = 'dataStore';
+
+			// ARRANGE
+			await dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+
+			// ACT
+			const result = dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNameConflictError);
+		});
+	});
+
+	describe('updateDataStore', () => {
+		it('should succeed when renaming to an available name', async () => {
+			// ARRANGE
+			const { id: dataStoreId, updatedAt } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore1',
+				columns: [],
+			});
+
+			// ACT
+			// Wait to get second difference
+			await new Promise((resolve) => setTimeout(resolve, 1001));
+
+			const result = await dataStoreService.updateDataStore(dataStoreId, project1.id, {
+				name: 'aNewName',
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const updated = await dataStoreRepository.findOneBy({ id: dataStoreId });
+			expect(updated?.name).toBe('aNewName');
+			expect(updated?.updatedAt.getTime()).toBeGreaterThan(updatedAt.getTime());
+		});
+
+		it('should fail when renaming a non-existent data store', async () => {
+			// ACT
+			const result = dataStoreService.updateDataStore('this is not an id', project1.id, {
+				name: 'aNewName',
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+
+		it('should fail when renaming to a taken name', async () => {
+			// ARRANGE
+			const name = 'myDataStoreOld';
+			await dataStoreService.createDataStore(project1.id, {
+				name,
+				columns: [],
+			});
+
+			const { id: dataStoreNewId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStoreNew',
+				columns: [],
+			});
+
+			// ACT
+			const result = dataStoreService.updateDataStore(dataStoreNewId, project1.id, { name });
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNameConflictError);
+		});
+	});
+
+	describe('deleteDataStore', () => {
+		it('should succeed with deleting a store', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore1',
+				columns: [],
+			});
+
+			// ACT
+			const result = await dataStoreService.deleteDataStore(dataStoreId, project1.id);
+			const userTableName = toTableName(dataStoreId);
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const deletedDatastore = await dataStoreRepository.findOneBy({ id: dataStoreId });
+			expect(deletedDatastore).toBeNull();
+
+			const queryUserTable = dataStoreRepository.manager
+				.createQueryBuilder()
+				.select()
+				.from(userTableName, userTableName)
+				.getMany();
+			await expect(queryUserTable).rejects.toBeDefined();
+		});
+
+		it('should fail when deleting a non-existent id', async () => {
+			// ACT
+			const result = dataStoreService.deleteDataStore('this is not an id', project1.id);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+	});
+
+	describe('addColumn', () => {
+		it('should succeed with adding columns to a non-empty table as well as to a user table', async () => {
+			const existingColumns: CreateDataStoreColumnDto[] = [{ name: 'myColumn0', type: 'string' }];
+
+			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStoreWithColumns',
+				columns: existingColumns,
+			});
+
+			const columns: AddDataStoreColumnDto[] = [
+				{ name: 'myColumn1', type: 'string' },
+				{ name: 'myColumn2', type: 'number' },
+				{ name: 'myColumn3', type: 'number' },
+				{ name: 'myColumn4', type: 'date' },
+			];
+			for (const column of columns) {
+				// ACT
+				const result = await dataStoreService.addColumn(dataTableId, project1.id, column);
+				// ASSERT
+				expect(result).toMatchObject(column);
+			}
+			const columnResult = await dataStoreService.getColumns(dataTableId, project1.id);
+			expect(columnResult).toEqual([
+				expect.objectContaining({
+					index: 0,
+					dataTableId,
+					name: 'myColumn0',
+					type: 'string',
+				}),
+				expect.objectContaining({
+					index: 1,
+					dataTableId,
+					name: 'myColumn1',
+					type: 'string',
+				}),
+				expect.objectContaining({
+					index: 2,
+					dataTableId,
+					name: 'myColumn2',
+					type: 'number',
+				}),
+				expect.objectContaining({
+					index: 3,
+					dataTableId,
+					name: 'myColumn3',
+					type: 'number',
+				}),
+				expect.objectContaining({
+					index: 4,
+					dataTableId,
+					name: 'myColumn4',
+					type: 'date',
+				}),
+			]);
+
+			const userTableName = toTableName(dataTableId);
+			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
+
+				expect(columnNames).toEqual(
+					expect.arrayContaining([
+						'id',
+						'createdAt',
+						'updatedAt',
+						'myColumn0',
+						'myColumn1',
+						'myColumn2',
+						'myColumn3',
+						'myColumn4',
+					]),
+				);
+			} finally {
+				await queryRunner.release();
+			}
+		});
+
+		it('should succeed with adding columns to an empty table', async () => {
+			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+
+			const columns: AddDataStoreColumnDto[] = [
+				{ name: 'myColumn0', type: 'string' },
+				{ name: 'myColumn1', type: 'number' },
+			];
+			for (const column of columns) {
+				// ACT
+				const result = await dataStoreService.addColumn(dataTableId, project1.id, column);
+				// ASSERT
+				expect(result).toMatchObject(column);
+			}
+			const columnResult = await dataStoreService.getColumns(dataTableId, project1.id);
+			expect(columnResult.length).toBe(2);
+
+			expect(columnResult).toEqual([
+				expect.objectContaining({
+					index: 0,
+					dataTableId,
+					name: 'myColumn0',
+					type: 'string',
+				}),
+				expect.objectContaining({
+					index: 1,
+					dataTableId,
+					name: 'myColumn1',
+					type: 'number',
+				}),
+			]);
+
+			const userTableName = toTableName(dataTableId);
+			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
+
+				expect(columnNames).toEqual(
+					expect.arrayContaining(['id', 'createdAt', 'updatedAt', 'myColumn0', 'myColumn1']),
+				);
+			} finally {
+				await queryRunner.release();
+			}
+		});
+
+		it('should fail with adding two columns of the same name', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore',
+				columns: [
+					{
+						name: 'myColumn1',
+						type: 'string',
+					},
+				],
+			});
+
+			// ACT
+			const result = dataStoreService.addColumn(dataStoreId, project1.id, {
+				name: 'myColumn1',
+				type: 'number',
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreColumnNameConflictError);
+		});
+
+		it('should fail with adding column of non-existent table', async () => {
+			// ACT
+			const result = dataStoreService.addColumn('this is not an id', project1.id, {
+				name: 'myColumn1',
+				type: 'number',
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+
+		it('should succeed with adding column to table that already has rows and set null values for existing rows', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			const results = await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+					{ name: 'Charlie', age: 35 },
+				],
+				'id',
+			);
+
+			expect(results).toEqual([
+				{
+					id: 1,
+				},
+				{
+					id: 2,
+				},
+				{
+					id: 3,
+				},
+			]);
+
+			// ACT
+			const newColumn = await dataStoreService.addColumn(dataStoreId, project1.id, {
+				name: 'email',
+				type: 'string',
+			});
+
+			// ASSERT
+			expect(newColumn).toMatchObject({ name: 'email', type: 'string' });
+
+			// Verify the column was added to the metadata
+			const columns = await dataStoreService.getColumns(dataStoreId, project1.id);
+			expect(columns).toHaveLength(3);
+			expect(columns.map((c) => c.name)).toEqual(['name', 'age', 'email']);
+
+			// Verify existing rows now have null values for the new column
+			const updatedData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(updatedData.count).toBe(3);
+			expect(updatedData.data).toEqual([
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Charlie',
+					age: 35,
+					email: null,
+				}),
+			]);
+
+			// Verify we can insert new rows with the new column
+			const newRow = await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ name: 'David', age: 28, email: 'david@example.com' }],
+				'id',
+			);
+			expect(newRow).toEqual([
+				{
+					id: 4,
+				},
+			]);
+
+			const finalData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(finalData.count).toBe(4);
+			expect(finalData.data).toEqual([
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Charlie',
+					age: 35,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 4,
+					name: 'David',
+					age: 28,
+					email: 'david@example.com',
+				}),
+			]);
+		});
+	});
+
+	describe('deleteColumn', () => {
+		it('should succeed with deleting a column', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+
+			const c1 = await dataStoreService.addColumn(dataTableId, project1.id, {
+				name: 'myColumn1',
+				type: 'string',
+			});
+			const c2 = await dataStoreService.addColumn(dataTableId, project1.id, {
+				name: 'myColumn2',
+				type: 'number',
+			});
+
+			// ACT
+			const result = await dataStoreService.deleteColumn(dataTableId, project1.id, c1.id);
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const columns = await dataStoreService.getColumns(dataTableId, project1.id);
+			expect(columns).toEqual([
+				{
+					index: 0,
+					dataTableId,
+					id: c2.id,
+					name: 'myColumn2',
+					type: 'number',
+					createdAt: c2.createdAt,
+					updatedAt: expect.any(Date),
+				},
+			]);
+		});
+
+		it('should fail when deleting unknown column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{
+						name: 'myColumn1',
+						type: 'string',
+					},
+				],
+			});
+
+			// ACT
+			const result = dataStoreService.deleteColumn(dataStoreId, project1.id, 'thisIsNotAnId');
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreColumnNotFoundError);
+		});
+
+		it('should fail when deleting column from unknown table', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+			const c1 = await dataStoreService.addColumn(dataStoreId, project1.id, {
+				name: 'myColumn1',
+				type: 'string',
+			});
+
+			// ACT
+			const result = dataStoreService.deleteColumn('this is not an id', project1.id, c1.id);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+	});
+
+	describe('moveColumn', () => {
+		it('should succeed with moving a column', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+
+			const c1 = await dataStoreService.addColumn(dataTableId, project1.id, {
+				name: 'myColumn1',
+				type: 'string',
+			});
+			const c2 = await dataStoreService.addColumn(dataTableId, project1.id, {
+				name: 'myColumn2',
+				type: 'number',
+			});
+
+			// ACT
+			const result = await dataStoreService.moveColumn(dataTableId, project1.id, c2.id, {
+				targetIndex: 0,
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const columns = await dataStoreService.getColumns(dataTableId, project1.id);
+			expect(columns).toMatchObject([
+				{
+					index: 0,
+					dataTableId,
+					id: c2.id,
+					name: 'myColumn2',
+					type: 'number',
+				},
+				{
+					index: 1,
+					dataTableId,
+					id: c1.id,
+					name: 'myColumn1',
+					type: 'string',
+				},
+			]);
+		});
+	});
+
+	describe('getManyAndCount', () => {
+		it('correctly joins columns', async () => {
+			// ARRANGE
+			const columns: CreateDataStoreColumnDto[] = [
+				{ name: 'myColumn1', type: 'string' },
+				{ name: 'myColumn2', type: 'number' },
+				{ name: 'myColumn3', type: 'number' },
+				{ name: 'myColumn4', type: 'date' },
+			];
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore',
+				columns,
+			});
+
+			// ACT
+			const result = await dataStoreService.getManyAndCount({
+				filter: { projectId: project1.id, id: dataStoreId },
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(1);
+
+			const resultColumns = result.data[0].columns;
+
+			expect(resultColumns).toEqual(
+				expect.arrayContaining([
+					{
+						id: expect.any(String),
+						name: 'myColumn1',
+						type: 'string',
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+						index: 0,
+					},
+					{
+						id: expect.any(String),
+						name: 'myColumn2',
+						type: 'number',
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+						index: 1,
+					},
+					{
+						id: expect.any(String),
+						name: 'myColumn3',
+						type: 'number',
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+						index: 2,
+					},
+					{
+						id: expect.any(String),
+						name: 'myColumn4',
+						type: 'date',
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
+						index: 3,
+					},
+				]),
+			);
+
+			for (let i = 1; i < resultColumns.length; i++) {
+				expect(new Date(resultColumns[i].updatedAt).getTime()).toBeGreaterThanOrEqual(
+					new Date(resultColumns[i - 1].updatedAt).getTime(),
+				);
+			}
+		});
+
+		describe('sorts as expected', () => {
+			it('sorts by name', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds2',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds3',
+					columns: [],
+				});
+
+				// ACT
+				const nameAsc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'name:asc',
+				});
+				const nameDesc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'name:desc',
+				});
+
+				// ASSERT
+				expect(nameAsc.data.map((x) => x.name)).toEqual(['ds1', 'ds2', 'ds3']);
+				expect(nameDesc.data.map((x) => x.name)).toEqual(['ds3', 'ds2', 'ds1']);
+			});
+
+			it('sorts by createdAt', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds0',
+					columns: [],
+				});
+
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds1',
+					columns: [],
+				});
+
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds2',
+					columns: [],
+				});
+
+				// ACT
+				const createdAsc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'createdAt:asc',
+				});
+				const createdDesc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'createdAt:desc',
+				});
+
+				// ASSERT
+				expect(createdAsc.data.map((x) => x.name)).toEqual(['ds0', 'ds1', 'ds2']);
+				expect(createdDesc.data.map((x) => x.name)).toEqual(['ds2', 'ds1', 'ds0']);
+			});
+
+			it('sorts by updatedAt', async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+					name: 'ds1',
+					columns: [],
+				});
+
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'ds2',
+					columns: [],
+				});
+
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
+				await dataStoreService.updateDataStore(dataStoreId, project1.id, { name: 'ds1Updated' });
+
+				// ACT
+				const updatedAsc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'updatedAt:asc',
+				});
+
+				const updatedDesc = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+					sortBy: 'updatedAt:desc',
+				});
+
+				// ASSERT
+				expect(updatedAsc.data.map((x) => x.name)).toEqual(['ds2', 'ds1Updated']);
+				expect(updatedDesc.data.map((x) => x.name)).toEqual(['ds1Updated', 'ds2']);
+			});
+		});
+
+		describe('filters as expected', () => {
+			it('filters by name', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, name: 'dataStore2' },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data[0].name).toBe('dataStore2');
+			});
+
+			it('filters by multiple names (AND)', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, name: ['Store3', 'data'] },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data.map((x) => x.name).sort()).toEqual(['dataStore3']);
+			});
+
+			it('filters by id', async () => {
+				// ARRANGE
+				const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, id: ds1Id },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data[0].id).toBe(ds1Id);
+			});
+
+			it('filters by multiple ids (OR)', async () => {
+				// ARRANGE
+				const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+				const { id: ds2Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, id: [ds1Id, ds2Id] },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(2);
+				expect(filtered.data.map((x) => x.id).sort()).toEqual([ds1Id, ds2Id].sort());
+			});
+
+			it('filters by projectId', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project2.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				// ACT
+				const filtered1 = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+				});
+				const filtered2 = await dataStoreService.getManyAndCount({
+					filter: { projectId: project2.id },
+				});
+
+				// ASSERT
+				expect(filtered1.count).toBe(1);
+				expect(filtered1.data[0].name).toBe('dataStore1');
+				expect(filtered2.count).toBe(1);
+				expect(filtered2.data[0].name).toBe('dataStore2');
+			});
+		});
+	});
 
 	describe('insertRows', () => {
 		it('inserts rows into an existing table', async () => {
