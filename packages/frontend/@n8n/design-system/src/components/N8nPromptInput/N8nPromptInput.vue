@@ -262,6 +262,7 @@ defineExpose({
 			/>
 			<div :class="$style.inlineActions">
 				<N8nSendStopButton
+					data-test-id="send-message-button"
 					:streaming="streaming"
 					:disabled="sendDisabled"
 					@send="handleSubmit"
@@ -298,6 +299,7 @@ defineExpose({
 			</N8nScrollArea>
 			<div :class="$style.bottomActions">
 				<N8nSendStopButton
+					data-test-id="send-message-button"
 					:streaming="streaming"
 					:disabled="sendDisabled"
 					@send="handleSubmit"
