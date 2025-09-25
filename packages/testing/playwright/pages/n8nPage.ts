@@ -35,6 +35,7 @@ import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import type { ApiHelpers } from '../services/api-helper';
+import { BaseModal } from './components/BaseModal';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -70,6 +71,7 @@ export class n8nPage {
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
+	readonly modal: BaseModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -111,11 +113,11 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
+		this.modal = new BaseModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

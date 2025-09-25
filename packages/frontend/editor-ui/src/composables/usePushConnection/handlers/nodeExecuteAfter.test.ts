@@ -37,14 +37,14 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event);
 
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.removeExecutingNode).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.removeExecutingNode).toHaveBeenCalledWith('Test Node');
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
 		// Verify the placeholder data structure
-		const updateCall = workflowsStore.updateNodeExecutionData.mock.calls[0][0];
+		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [
 				Array.from({ length: 2 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -77,7 +77,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event);
 
-		const updateCall = workflowsStore.updateNodeExecutionData.mock.calls[0][0];
+		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [
 				Array.from({ length: 3 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -112,7 +112,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event);
 
-		const updateCall = workflowsStore.updateNodeExecutionData.mock.calls[0][0];
+		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [],
 		});
@@ -138,7 +138,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event);
 
-		const updateCall = workflowsStore.updateNodeExecutionData.mock.calls[0][0];
+		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.executionId).toBe('exec-1');
 		expect(updateCall.nodeName).toBe('Test Node');
 		expect(updateCall.data.executionTime).toBe(100);
@@ -178,7 +178,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event);
 
-		const updateCall = workflowsStore.updateNodeExecutionData.mock.calls[0][0];
+		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		// Should only contain main connection, invalid_connection should be filtered out
 		expect(updateCall.data.data).toEqual({
 			main: [

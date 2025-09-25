@@ -7,7 +7,8 @@ const DESTINATION_NAMES = {
 
 const MODAL_MAX_WIDTH = 500;
 
-test.describe('Log Streaming Settings @db:reset', () => {
+test.describe('Log Streaming Settings', () => {
+	test.describe.configure({ mode: 'serial' });
 	test.describe('unlicensed', () => {
 		test.beforeEach(async ({ api }) => {
 			await api.disableFeature('logStreaming');

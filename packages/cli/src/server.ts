@@ -337,7 +337,7 @@ export class Server extends AbstractServer {
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
-				authService.createAuthMiddleware(true),
+				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 					res.sendFile(path.substring(1), {

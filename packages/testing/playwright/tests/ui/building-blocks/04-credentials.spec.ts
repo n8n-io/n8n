@@ -16,7 +16,7 @@ test.describe('04 - Credentials', () => {
 				closeDialog: false,
 			},
 		);
-		await expect(n8n.credentials.getCredentialByName(credentialName)).toBeVisible();
+		await expect(n8n.credentials.cards.getCredential(credentialName)).toBeVisible();
 	});
 
 	test('composer: createFromNdv creates credential for node', async ({ n8n }) => {
@@ -53,7 +53,7 @@ test.describe('04 - Credentials', () => {
 		await n8n.credentials.createCredentialFromCredentialPicker('Notion API', {
 			apiKey: '1234567890',
 		});
-		await expect(n8n.credentials.credentialCards).toHaveCount(1);
+		await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
 	});
 
 	test('create a new credential from the NDV', async ({ n8n }) => {

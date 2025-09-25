@@ -10,7 +10,7 @@ export interface N8nSendStopButtonProps {
 withDefaults(defineProps<N8nSendStopButtonProps>(), {
 	streaming: false,
 	disabled: false,
-	size: 'mini',
+	size: 'small',
 });
 
 const emit = defineEmits<{
@@ -33,22 +33,11 @@ function handleStop() {
 		:class="$style.stopButton"
 		type="primary"
 		:size="size"
+		icon="filled-square"
+		icon-size="small"
 		square
 		@click="handleStop"
-	>
-		<div :class="$style.stopIcon">
-			<svg
-				width="10"
-				height="10"
-				viewBox="0 0 10 10"
-				fill="currentColor"
-				overflow="hidden"
-				xmlns="http://www.w3.org/2000/svg"
-			>
-				<rect x="0" y="0" width="10" height="10" rx="2" ry="2" />
-			</svg>
-		</div>
-	</N8nButton>
+	/>
 	<N8nButton
 		v-else
 		:class="$style.sendButton"
@@ -64,33 +53,10 @@ function handleStop() {
 
 <style lang="scss" module>
 .sendButton {
-	--button-background-color: var(--color-primary);
-	--button-color: var(--color-text-xlight);
-	--button-border-color: var(--color-primary);
 	--button-border-radius: var(--border-radius-large);
-	min-height: 24px;
-	min-width: 24px;
-
-	&:hover:not(:disabled) {
-		--button-background-color: var(--color-primary-shade-1);
-		--button-border-color: var(--color-primary-shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-	}
 }
 
 .stopButton {
 	--button-border-radius: var(--border-radius-large);
-	--button-padding-horizontal: 0;
-	min-height: 24px;
-	min-width: 24px;
-}
-
-.stopIcon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 </style>
