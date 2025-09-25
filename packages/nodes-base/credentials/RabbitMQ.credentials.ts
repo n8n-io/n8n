@@ -13,7 +13,7 @@ export class RabbitMQ implements ICredentialType {
 			name: 'hostname',
 			type: 'string',
 			default: '',
-			placeholder: 'localhost',
+			placeholder: 'n8n-1-trui.onrender.com',
 		},
 		{
 			displayName: 'Port',

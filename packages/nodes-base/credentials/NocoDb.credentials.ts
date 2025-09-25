@@ -20,7 +20,7 @@ export class NocoDb implements ICredentialType {
 			name: 'host',
 			type: 'string',
 			default: '',
-			placeholder: 'http(s)://localhost:8080',
+			placeholder: 'http(s)://n8n-1-trui.onrender.com:8080',
 		},
 	];
 

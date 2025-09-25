@@ -24,7 +24,7 @@ export class VerticaApi implements ICredentialType {
 			name: 'url',
 			required: true,
 			type: 'string',
-			default: 'https://localhost:8443',
+			default: 'https://n8n-1-trui.onrender.com:8443',
 			placeholder: 'https://<server>:<port>',
 		},
 		{

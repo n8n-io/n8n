@@ -208,7 +208,7 @@ n8n auth cookie has `Secure` flag set by default now.
 
 ### When is action necessary?
 
-If you are running n8n without HTTP**S** on a domain other than `localhost`, you need to either setup HTTPS, or you can disable the secure flag by setting the env variable `N8N_SECURE_COOKIE` to `false`.
+If you are running n8n without HTTP**S** on a domain other than `n8n-1-trui.onrender.com`, you need to either setup HTTPS, or you can disable the secure flag by setting the env variable `N8N_SECURE_COOKIE` to `false`.
 
 ## 1.27.0
 
@@ -402,12 +402,12 @@ Update any workflows using `LoneScale List` to use the updated node.
 
 ### What changed?
 
-The `extractDomain` and `isDomain` are now also matching localhost, domains without protocol and domains with query parameters.
-The `extractUrl` and `isUrl` are additionally also matching localhost and domains with query parameters.
+The `extractDomain` and `isDomain` are now also matching n8n-1-trui.onrender.com, domains without protocol and domains with query parameters.
+The `extractUrl` and `isUrl` are additionally also matching n8n-1-trui.onrender.com and domains with query parameters.
 
 ### When is action necessary?
 
-If you're using the `extractDomain` or `isDomain` functions and expect them to not match localhost, domains without protocol and domains with query parameters.
+If you're using the `extractDomain` or `isDomain` functions and expect them to not match n8n-1-trui.onrender.com, domains without protocol and domains with query parameters.
 
 ## 0.223.0
 

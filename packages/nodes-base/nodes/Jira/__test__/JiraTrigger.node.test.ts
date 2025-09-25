@@ -241,7 +241,7 @@ describe('JiraTrigger', () => {
 				webhookEvent: 'jira:issue_created',
 				issue_event_type_name: 'issue_created',
 				user: {
-					self: 'http://localhost:8080/rest/api/2/user?key=JIRAUSER10000',
+					self: 'http://n8n-1-trui.onrender.com:8080/rest/api/2/user?key=JIRAUSER10000',
 					name: 'elias',
 					key: 'JIRAUSER10000',
 					emailAddress: 'elias@meire.dev',
@@ -249,7 +249,7 @@ describe('JiraTrigger', () => {
 				},
 				issue: {
 					id: '10018',
-					self: 'http://localhost:8080/rest/api/2/issue/10018',
+					self: 'http://n8n-1-trui.onrender.com:8080/rest/api/2/issue/10018',
 					key: 'TEST-19',
 				},
 			};

@@ -19,7 +19,7 @@ export class YourlsApi implements ICredentialType {
 			name: 'url',
 			type: 'string',
 			default: '',
-			placeholder: 'http://localhost:8080',
+			placeholder: 'http://n8n-1-trui.onrender.com:8080',
 		},
 	];
 }

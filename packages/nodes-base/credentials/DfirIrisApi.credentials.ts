@@ -26,7 +26,7 @@ export class DfirIrisApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
-			placeholder: 'e.g. https://localhost',
+			placeholder: 'e.g. https://n8n-1-trui.onrender.com',
 			description:
 				'The API endpoints are reachable on the same Address and port as the web interface.',
 			required: true,

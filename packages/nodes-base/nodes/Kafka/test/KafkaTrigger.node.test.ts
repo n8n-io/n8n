@@ -31,7 +31,7 @@ describe('KafkaTrigger Node', () => {
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
 
 	beforeEach(() => {
-		let mockEachMessage: jest.Mocked<EachMessageHandler> = jest.fn(async () => {});
+		let mockEachMessage: jest.Mocked<EachMessageHandler> = jest.fn(async () => { });
 		mockConsumerConnect = jest.fn();
 		mockConsumerSubscribe = jest.fn();
 		mockConsumerRun = jest.fn(({ eachMessage }: ConsumerRunConfig) => {
@@ -95,7 +95,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
@@ -104,7 +104,7 @@ describe('KafkaTrigger Node', () => {
 
 		expect(Kafka).toHaveBeenCalledWith({
 			clientId: 'n8n-kafka',
-			brokers: ['localhost:9092'],
+			brokers: ['n8n-1-trui.onrender.com:9092'],
 			ssl: false,
 			logLevel: logLevel.ERROR,
 		});
@@ -143,7 +143,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: true,
 				authentication: true,
@@ -155,7 +155,7 @@ describe('KafkaTrigger Node', () => {
 
 		expect(Kafka).toHaveBeenCalledWith({
 			clientId: 'n8n-kafka',
-			brokers: ['localhost:9092'],
+			brokers: ['n8n-1-trui.onrender.com:9092'],
 			ssl: true,
 			logLevel: logLevel.ERROR,
 			sasl: {
@@ -177,7 +177,7 @@ describe('KafkaTrigger Node', () => {
 					},
 				},
 				credential: {
-					brokers: 'localhost:9092',
+					brokers: 'n8n-1-trui.onrender.com:9092',
 					clientId: 'n8n-kafka',
 					ssl: false,
 					authentication: true,
@@ -194,12 +194,12 @@ describe('KafkaTrigger Node', () => {
 					topic: 'test-topic',
 					groupId: 'test-group',
 					useSchemaRegistry: true,
-					schemaRegistryUrl: 'http://localhost:8081',
+					schemaRegistryUrl: 'http://n8n-1-trui.onrender.com:8081',
 					options: { parallelProcessing: true },
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
@@ -212,7 +212,7 @@ describe('KafkaTrigger Node', () => {
 		});
 
 		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'http://localhost:8081',
+			host: 'http://n8n-1-trui.onrender.com:8081',
 		});
 		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
 		expect(emit).toHaveBeenCalledWith([
@@ -243,7 +243,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
@@ -274,7 +274,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
@@ -323,7 +323,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,
@@ -357,7 +357,7 @@ describe('KafkaTrigger Node', () => {
 				},
 			},
 			credential: {
-				brokers: 'localhost:9092',
+				brokers: 'n8n-1-trui.onrender.com:9092',
 				clientId: 'n8n-kafka',
 				ssl: false,
 				authentication: false,

@@ -32,12 +32,12 @@ describe('createMessage', () => {
 			{
 				label: 'Yes',
 				style: 'primary',
-				url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 			},
 			{
 				label: 'No',
 				style: 'secondary',
-				url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+				url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 			},
 		],
 	};
@@ -62,8 +62,8 @@ describe('createMessage', () => {
 				text: {
 					body:
 						'Please approve an option:\n\n' +
-						'*Yes:*\n_http://localhost/waiting-webhook/nodeID?approved=true&signature=abc_\n\n' +
-						'*No:*\n_http://localhost/waiting-webhook/nodeID?approved=false&signature=abc_\n\n',
+						'*Yes:*\n_http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc_\n\n' +
+						'*No:*\n_http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,
@@ -79,7 +79,7 @@ describe('createMessage', () => {
 				{
 					label: 'Confirm',
 					style: '',
-					url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+					url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 				},
 			],
 		};
@@ -98,7 +98,7 @@ describe('createMessage', () => {
 			body: {
 				messaging_product: 'whatsapp',
 				text: {
-					body: 'Choose an option:\n\n*Confirm:*\n_http://localhost/waiting-webhook/nodeID?approved=true&signature=abc_\n\n',
+					body: 'Choose an option:\n\n*Confirm:*\n_http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,

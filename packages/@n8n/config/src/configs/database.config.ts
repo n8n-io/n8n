@@ -58,7 +58,7 @@ class PostgresConfig {
 
 	/** Postgres database host */
 	@Env('DB_POSTGRESDB_HOST')
-	host: string = 'localhost';
+	host: string = 'n8n-1-trui.onrender.com';
 
 	/** Postgres database password */
 	@Env('DB_POSTGRESDB_PASSWORD')
@@ -100,7 +100,7 @@ class MysqlConfig {
 
 	/** MySQL database host */
 	@Env('DB_MYSQLDB_HOST')
-	host: string = 'localhost';
+	host: string = 'n8n-1-trui.onrender.com';
 
 	/** MySQL database password */
 	@Env('DB_MYSQLDB_PASSWORD')

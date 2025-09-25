@@ -26,7 +26,7 @@ export class TheHiveApi implements ICredentialType {
 			default: '',
 			type: 'string',
 			description: 'The URL of TheHive instance',
-			placeholder: 'https://localhost:9000',
+			placeholder: 'https://n8n-1-trui.onrender.com:9000',
 		},
 		{
 			displayName: 'API Version',

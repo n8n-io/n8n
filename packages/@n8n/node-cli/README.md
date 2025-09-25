@@ -93,7 +93,7 @@ n8n-node dev [--external-n8n] [--custom-user-folder <value>]
 | `--custom-user-folder <path>` | Folder to use to store user-specific n8n data (default: `~/.n8n-node-cli`) |
 
 This command:
-- Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
+- Starts n8n on `https://n8n-1-trui.onrender.com` (unless using `--external-n8n`)
 - Links your node to n8n's custom nodes directory (`~/.n8n-node-cli/.n8n/custom`)
 - Rebuilds on file changes for live preview
 - Watches for changes in your `src/` directory
@@ -180,11 +180,11 @@ The recommended workflow using the scaffolding tool:
    ```bash
    npm run dev
    ```
-   - Starts n8n on `http://localhost:5678`
+   - Starts n8n on `https://n8n-1-trui.onrender.com`
    - Links your node automatically
    - Rebuilds on file changes
 
-3. **Test your node** at `http://localhost:5678`
+3. **Test your node** at `https://n8n-1-trui.onrender.com`
 
 4. **Lint your code**:
    ```bash

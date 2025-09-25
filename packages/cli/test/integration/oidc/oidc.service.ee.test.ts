@@ -253,7 +253,7 @@ describe('OIDC service', () => {
 		expect(authUrl.url.pathname).toEqual('/auth');
 		expect(authUrl.url.searchParams.get('client_id')).toEqual('test-client-id');
 		expect(authUrl.url.searchParams.get('redirect_uri')).toEqual(
-			'http://localhost:5678/rest/sso/oidc/callback',
+			'https://n8n-1-trui.onrender.com/rest/sso/oidc/callback',
 		);
 		expect(authUrl.url.searchParams.get('response_type')).toEqual('code');
 		expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile');
@@ -269,25 +269,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token',
-				id_token: 'mock-id-token',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token',
+					id_token: 'mock-id-token',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -315,25 +315,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-1',
-				id_token: 'mock-id-token-1',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-1',
+					id_token: 'mock-id-token-1',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 			state;
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -353,25 +353,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-2',
-				id_token: 'mock-id-token-2',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-1',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-2',
+					id_token: 'mock-id-token-2',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-1',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -391,25 +391,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-2',
-				id_token: 'mock-id-token-2',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-3',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-2',
+					id_token: 'mock-id-token-2',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-3',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -429,25 +429,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-2',
-				id_token: 'mock-id-token-2',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-3',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-2',
+					id_token: 'mock-id-token-2',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-3',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -466,25 +466,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-invalid',
-				id_token: 'mock-id-token-invalid',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-invalid',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-invalid',
+					id_token: 'mock-id-token-invalid',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-invalid',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -511,25 +511,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-multi',
-				id_token: 'mock-id-token-multi',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-multi',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-multi',
+					id_token: 'mock-id-token-multi',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-multi',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -547,19 +547,19 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-2',
-				id_token: 'mock-id-token-2',
-				token_type: 'bearer',
-				claims: () => {
-					return undefined; // Simulating no claims
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-2',
+					id_token: 'mock-id-token-2',
+					token_type: 'bearer',
+					claims: () => {
+						return undefined; // Simulating no claims
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -578,7 +578,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=invalid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=invalid-code&state=${state.plaintext}`,
 			);
 
 			// Mock authorizationCodeGrant to throw an error
@@ -606,19 +606,19 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-claims-error',
-				id_token: 'mock-id-token-claims-error',
-				token_type: 'bearer',
-				claims: (() => {
-					throw new Error('Failed to extract claims');
-				}) as any,
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-claims-error',
+					id_token: 'mock-id-token-claims-error',
+					token_type: 'bearer',
+					claims: (() => {
+						throw new Error('Failed to extract claims');
+					}) as any,
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
@@ -635,25 +635,25 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				`https://n8n-1-trui.onrender.com/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers = {
-				access_token: 'mock-access-token-userinfo-error',
-				id_token: 'mock-id-token-userinfo-error',
-				token_type: 'bearer',
-				claims: () => {
-					return {
-						sub: 'mock-subject-userinfo-error',
-						iss: 'https://example.com/auth/realms/n8n',
-						aud: 'test-client-id',
-						iat: Math.floor(Date.now() / 1000) - 1000,
-						exp: Math.floor(Date.now() / 1000) + 3600,
-					} as mocked_oidc_client.IDToken;
-				},
-				expiresIn: () => 3600,
-			} as mocked_oidc_client.TokenEndpointResponse &
+					access_token: 'mock-access-token-userinfo-error',
+					id_token: 'mock-id-token-userinfo-error',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-userinfo-error',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
 			// Reset and setup mocks in the right order

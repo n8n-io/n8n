@@ -200,7 +200,7 @@ function parseForwardedHeader(forwardedHeader: string): { host?: string; proto?:
 /**
  * Extracts protocol and normalized host from an origin URL using native URL class.
  *
- * @param origin The origin URL (e.g., "https://example.com", "http://localhost:3000")
+ * @param origin The origin URL (e.g., "https://example.com", "http://n8n-1-trui.onrender.com:3000")
  * @returns Object with protocol and normalized host, or null if invalid
  */
 function parseOrigin(origin: string): { protocol: 'http' | 'https'; host: string } | null {

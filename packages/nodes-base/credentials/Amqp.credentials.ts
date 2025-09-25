@@ -12,7 +12,7 @@ export class Amqp implements ICredentialType {
 			displayName: 'Hostname',
 			name: 'hostname',
 			type: 'string',
-			placeholder: 'e.g. localhost',
+			placeholder: 'e.g. n8n-1-trui.onrender.com',
 			default: '',
 		},
 		{

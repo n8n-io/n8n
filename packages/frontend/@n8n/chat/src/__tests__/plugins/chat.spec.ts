@@ -34,7 +34,7 @@ describe('ChatPlugin', () => {
 
 		// Setup default options
 		mockOptions = {
-			webhookUrl: 'http://localhost:5678/webhook',
+			webhookUrl: 'https://n8n-1-trui.onrender.com/webhook',
 			chatInputKey: 'message',
 			chatSessionKey: 'sessionId',
 			enableStreaming: false,
@@ -121,7 +121,7 @@ describe('ChatPlugin', () => {
 
 		it('should handle errors during message sending', async () => {
 			vi.mocked(api.sendMessage).mockRejectedValueOnce(new Error('Network error'));
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
 			await chatStore.sendMessage('Hello bot!');
 
@@ -223,7 +223,7 @@ describe('ChatPlugin', () => {
 
 		it('should handle streaming errors', async () => {
 			vi.mocked(api.sendMessageStreaming).mockRejectedValueOnce(new Error('Stream error'));
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
 			await chatStore.sendMessage('Stream this!');
 

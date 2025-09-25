@@ -107,7 +107,7 @@ describe('SAML Login Flow', () => {
 		(isSamlLicensedAndEnabled as jest.Mock).mockReturnValue(true);
 
 		// Mock URL service
-		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n-1-trui.onrender.com');
 	});
 
 	test('Should issue cookie with MFA flag set to true on successful SAML login', async () => {
@@ -128,7 +128,7 @@ describe('SAML Login Flow', () => {
 			user,
 			authenticationMethod: 'saml',
 		});
-		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
+		expect(res.redirect).toHaveBeenCalledWith('https://n8n-1-trui.onrender.com/');
 	});
 
 	test('Should issue cookie with MFA flag set to true when onboarding is required', async () => {
@@ -145,7 +145,7 @@ describe('SAML Login Flow', () => {
 
 		// Verify that issueCookie was called with MFA flag set to true
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
-		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/saml/onboarding');
+		expect(res.redirect).toHaveBeenCalledWith('https://n8n-1-trui.onrender.com/saml/onboarding');
 	});
 
 	test('Should respect custom RelayState redirect URL', async () => {
@@ -162,6 +162,6 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: customRelayState });
 
 		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
-		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
+		expect(res.redirect).toHaveBeenCalledWith('https://n8n-1-trui.onrender.com/custom/redirect');
 	});
 });

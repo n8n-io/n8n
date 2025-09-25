@@ -15,51 +15,51 @@ afterEach(() => {
 it('should strip double quotes from string values', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '"America/Bogota"',
-		N8N_HOST: '"localhost"',
+		N8N_HOST: '"n8n-1-trui.onrender.com"',
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('America/Bogota');
-	expect(config.host).toBe('localhost');
+	expect(config.host).toBe('n8n-1-trui.onrender.com');
 });
 
 it('should strip single quotes from string values', () => {
 	process.env = {
 		GENERIC_TIMEZONE: "'America/Bogota'",
-		N8N_HOST: "'localhost'",
+		N8N_HOST: "'n8n-1-trui.onrender.com'",
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('America/Bogota');
-	expect(config.host).toBe('localhost');
+	expect(config.host).toBe('n8n-1-trui.onrender.com');
 });
 
 it('should trim whitespace from quoted values', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '  "America/Bogota"  ',
-		N8N_HOST: "  'localhost'  ",
+		N8N_HOST: "  'n8n-1-trui.onrender.com'  ",
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('America/Bogota');
-	expect(config.host).toBe('localhost');
+	expect(config.host).toBe('n8n-1-trui.onrender.com');
 });
 
 it('should trim whitespace from unquoted values', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '  America/Bogota  ',
-		N8N_HOST: '  localhost  ',
+		N8N_HOST: '  n8n-1-trui.onrender.com  ',
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('America/Bogota');
-	expect(config.host).toBe('localhost');
+	expect(config.host).toBe('n8n-1-trui.onrender.com');
 });
 
 it('should leave mismatched quotes unchanged', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '"America/Bogota\'',
-		N8N_HOST: '\'localhost"',
+		N8N_HOST: '\'n8n-1-trui.onrender.com"',
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('"America/Bogota\'');
-	expect(config.host).toBe('\'localhost"');
+	expect(config.host).toBe('\'n8n-1-trui.onrender.com"');
 });
 
 it('should handle empty quotes', () => {
@@ -95,29 +95,29 @@ it('should handle values with spaces in quotes', () => {
 it('should handle nested quotes', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '"America/\'Bogota\'"',
-		N8N_HOST: '\'"localhost"\'',
+		N8N_HOST: '\'"n8n-1-trui.onrender.com"\'',
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe("America/'Bogota'");
-	expect(config.host).toBe('"localhost"');
+	expect(config.host).toBe('"n8n-1-trui.onrender.com"');
 });
 
 it('should handle only opening or closing quotes', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '"America/Bogota',
-		N8N_HOST: 'localhost"',
+		N8N_HOST: 'n8n-1-trui.onrender.com"',
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('"America/Bogota');
-	expect(config.host).toBe('localhost"');
+	expect(config.host).toBe('n8n-1-trui.onrender.com"');
 });
 
 it('should handle multiple quote pairs', () => {
 	process.env = {
 		GENERIC_TIMEZONE: '""America/Bogota""',
-		N8N_HOST: "''localhost''",
+		N8N_HOST: "''n8n-1-trui.onrender.com''",
 	};
 	const config = Container.get(GlobalConfig);
 	expect(config.generic.timezone).toBe('"America/Bogota"'); // should strip only outer quotes
-	expect(config.host).toBe("'localhost'");
+	expect(config.host).toBe("'n8n-1-trui.onrender.com'");
 });

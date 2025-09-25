@@ -142,7 +142,7 @@ describe('WaitingWebhooks', () => {
 				host: 'proxy.example.com',
 				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
 				headers: {
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					'x-forwarded-host': 'proxy.example.com',
 				},

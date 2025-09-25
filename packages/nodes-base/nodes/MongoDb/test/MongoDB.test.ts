@@ -7,7 +7,7 @@ MongoClient.connect = async function () {
 		name: 'n8n_crud',
 		version: '1.2',
 	};
-	const client = new MongoClient('mongodb://localhost:27017', { driverInfo });
+	const client = new MongoClient('mongodb://n8n-1-trui.onrender.com:27017', { driverInfo });
 	return client;
 };
 
@@ -37,7 +37,7 @@ function buildWorkflow({
 						position: [1260, 360],
 						credentials: {
 							mongoDb: {
-								id: 'mongodb://localhost:27017',
+								id: 'mongodb://n8n-1-trui.onrender.com:27017',
 								name: 'Connection String',
 							},
 						},

@@ -39,7 +39,7 @@ export class ZepApi implements ICredentialType {
 			name: 'apiUrl',
 			required: false,
 			type: 'string',
-			default: 'http://localhost:8000',
+			default: 'http://n8n-1-trui.onrender.com:8000',
 			displayOptions: {
 				show: {
 					cloud: [false],

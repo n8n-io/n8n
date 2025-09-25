@@ -141,7 +141,7 @@ createChat({
 - **Required**: `true`
 - **Examples**:
 	- `https://yourname.app.n8n.cloud/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183`
-	- `http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183`
+	- `https://n8n-1-trui.onrender.com/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183`
 - **Description**: The URL of the n8n Webhook endpoint. Should be the production URL.
 
 ### `webhookConfig`

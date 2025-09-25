@@ -98,7 +98,7 @@ describe('OAuth2CredentialController', () => {
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual(
-				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0%3D&scope=openid',
+				'https://example.domain/o/oauth2/v2/auth?client_id=test-client-id&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code&state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0%3D&scope=openid',
 			);
 			const state = new URL(authUri).searchParams.get('state');
 			expect(JSON.parse(Buffer.from(state!, 'base64').toString())).toEqual({
@@ -228,7 +228,7 @@ describe('OAuth2CredentialController', () => {
 			nock('https://example.domain')
 				.post(
 					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(403, { error: 'Code could not be exchanged' });
 
@@ -250,7 +250,7 @@ describe('OAuth2CredentialController', () => {
 			nock('https://example.domain')
 				.post(
 					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(403, '<html><body>Code could not be exchanged</body></html>', {
 					'Content-Type': 'text/html',
@@ -274,7 +274,7 @@ describe('OAuth2CredentialController', () => {
 			nock('https://example.domain')
 				.post(
 					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
 
@@ -283,7 +283,7 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
 				expect.objectContaining({
 					clientId: 'test-client-id',
-					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					redirectUri: 'https://n8n-1-trui.onrender.com/rest/oauth2-credential/callback',
 				}),
 			]);
 			const dataCaptor = captor();
@@ -322,7 +322,7 @@ describe('OAuth2CredentialController', () => {
 			nock('https://example.domain')
 				.post(
 					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
 
@@ -331,7 +331,7 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
 				expect.objectContaining({
 					clientId: 'test-client-id',
-					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					redirectUri: 'https://n8n-1-trui.onrender.com/rest/oauth2-credential/callback',
 				}),
 			]);
 			const dataCaptor = captor();
@@ -366,7 +366,7 @@ describe('OAuth2CredentialController', () => {
 			nock('https://example.domain')
 				.post(
 					'/token',
-					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fn8n-1-trui.onrender.com%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
 
@@ -375,7 +375,7 @@ describe('OAuth2CredentialController', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
 				expect.objectContaining({
 					clientId: 'test-client-id',
-					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					redirectUri: 'https://n8n-1-trui.onrender.com/rest/oauth2-credential/callback',
 				}),
 			]);
 			const dataCaptor = captor();

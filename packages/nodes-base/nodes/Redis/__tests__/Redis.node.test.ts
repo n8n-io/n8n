@@ -175,7 +175,7 @@ describe('Redis Node', () => {
 		const thisArg = mock<ICredentialTestFunctions>({});
 		const credentials = mock<ICredentialsDecrypted>({
 			data: {
-				host: 'localhost',
+				host: 'n8n-1-trui.onrender.com',
 				port: 6379,
 				user: 'username',
 				password: 'password',
@@ -184,7 +184,7 @@ describe('Redis Node', () => {
 		});
 		const redisOptions = {
 			socket: {
-				host: 'localhost',
+				host: 'n8n-1-trui.onrender.com',
 				port: 6379,
 				tls: false,
 				connectTimeout: 10000,
@@ -226,7 +226,7 @@ describe('Redis Node', () => {
 		it('should return success when connection is established with disabled TLS verification', async () => {
 			const credentialsWithTls = mock<ICredentialsDecrypted>({
 				data: {
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 6379,
 					ssl: true,
 					disableTlsVerification: true,
@@ -244,7 +244,7 @@ describe('Redis Node', () => {
 			});
 			expect(createClient).toHaveBeenCalledWith({
 				socket: {
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 6379,
 					tls: true,
 					rejectUnauthorized: false,

@@ -96,7 +96,7 @@ Requirements:
 ```sh
 pnpm build
 
-# Run tests against http://localhost:5678 with specified email and password
+# Run tests against https://n8n-1-trui.onrender.com with specified email and password
 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=password ./bin/n8n-benchmark run
 ```
 

@@ -70,11 +70,11 @@ const N8N_WORKER_WAIT_STRATEGY = Wait.forAll([
 export interface N8NConfig {
 	postgres?: boolean;
 	queueMode?:
-		| boolean
-		| {
-				mains?: number;
-				workers?: number;
-		  };
+	| boolean
+	| {
+		mains?: number;
+		workers?: number;
+	};
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: {
@@ -245,7 +245,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(loadBalancerContainer);
 
 		const loadBalancerPort = loadBalancerContainer.getMappedPort(80);
-		baseUrl = `http://localhost:${loadBalancerPort}`;
+		baseUrl = `http://n8n-1-trui.onrender.com:${loadBalancerPort}`;
 		environment = {
 			...environment,
 			WEBHOOK_URL: baseUrl,
@@ -265,7 +265,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 	} else {
 		const assignedPort = await getPort();
-		baseUrl = `http://localhost:${assignedPort}`;
+		baseUrl = `http://n8n-1-trui.onrender.com:${assignedPort}`;
 		environment = {
 			...environment,
 			WEBHOOK_URL: baseUrl,

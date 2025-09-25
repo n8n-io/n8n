@@ -102,7 +102,7 @@ export class GlobalConfig {
 
 	/** Host name n8n can be reached */
 	@Env('N8N_HOST')
-	host: string = 'localhost';
+	host: string = 'n8n-1-trui.onrender.com';
 
 	/** HTTP port n8n can be reached */
 	@Env('N8N_PORT')

@@ -32,8 +32,8 @@ describe('TaskRequester', () => {
 			['helpers.prepareBinaryData', [Buffer.from('data').toJSON(), 'filename', 'mimetype']],
 			['helpers.setBinaryDataBuffer', [{ data: '123' }, Buffer.from('data').toJSON()]],
 			['helpers.binaryToString', [Buffer.from('data').toJSON(), 'utf8']],
-			['helpers.httpRequest', [{ url: 'http://localhost' }]],
-			['helpers.request', [{ url: 'http://localhost' }]],
+			['helpers.httpRequest', [{ url: 'http://n8n-1-trui.onrender.com' }]],
+			['helpers.request', [{ url: 'http://n8n-1-trui.onrender.com' }]],
 		])('should handle %s rpc call', async (methodName, args) => {
 			const executeFunctions = set({}, methodName.split('.'), jest.fn());
 

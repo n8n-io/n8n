@@ -27,7 +27,7 @@ class RedisConfig {
 
 	/** Redis host for Bull queue. */
 	@Env('QUEUE_BULL_REDIS_HOST')
-	host: string = 'localhost';
+	host: string = 'n8n-1-trui.onrender.com';
 
 	/** Password to authenticate with Redis. */
 	@Env('QUEUE_BULL_REDIS_PASSWORD')

@@ -54,11 +54,11 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 
-		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
+		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://n8n-1-trui.onrender.com/waiting-webhook');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
 
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
-			'http://localhost/waiting-webhook/nodeID?approved=true&token=abc',
+			'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&token=abc',
 		);
 
 		const result = await discord.execute.call(mockExecuteFunctions);
@@ -78,7 +78,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 								label: 'Approve',
 								style: 5,
 								type: 2,
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true&token=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&token=abc',
 							},
 						],
 						type: 1,

@@ -19,7 +19,7 @@ pnpm stack:starter
 ```
 
 When started, you'll see:
-- **URL**: http://localhost:[random-port]
+- **URL**: http://n8n-1-trui.onrender.com:[random-port]
 
 
 ## Common Usage Patterns

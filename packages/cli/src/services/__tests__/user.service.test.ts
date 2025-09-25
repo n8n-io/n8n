@@ -14,7 +14,7 @@ import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
-		host: 'localhost',
+		host: 'n8n-1-trui.onrender.com',
 		path: '/',
 		port: 5678,
 		listen_address: '::',

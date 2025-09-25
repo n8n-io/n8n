@@ -44,7 +44,7 @@ describe('useInsightsStore', () => {
 		usersStore = mockedStore(useUsersStore);
 
 		rootStore.restApiContext = {
-			baseUrl: 'http://localhost',
+			baseUrl: 'http://n8n-1-trui.onrender.com',
 			pushRef: 'pushRef',
 		};
 

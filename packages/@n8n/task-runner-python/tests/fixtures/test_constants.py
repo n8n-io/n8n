@@ -1,6 +1,6 @@
 # Local task broker
 LOCAL_TASK_BROKER_PORT = 8080
-LOCAL_TASK_BROKER_URL = f"http://localhost:{LOCAL_TASK_BROKER_PORT}"
+LOCAL_TASK_BROKER_URL = f"http://n8n-1-trui.onrender.com:{LOCAL_TASK_BROKER_PORT}"
 LOCAL_TASK_BROKER_WS_PATH = "/runners/_ws"
 
 # Timing
@@ -10,4 +10,4 @@ GRACEFUL_SHUTDOWN_TIMEOUT = 1
 
 # Health check
 HEALTH_CHECK_PORT = 5679
-HEALTH_CHECK_URL = f"http://localhost:{HEALTH_CHECK_PORT}"
+HEALTH_CHECK_URL = f"http://n8n-1-trui.onrender.com:{HEALTH_CHECK_PORT}"

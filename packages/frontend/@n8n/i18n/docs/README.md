@@ -43,7 +43,7 @@ Version: 0.156.0
 Locale: de
 
 Editor is now accessible via:
-http://localhost:5678/
+https://n8n-1-trui.onrender.com/
 
 Press "o" to open in Browser.
 ```
@@ -479,7 +479,7 @@ cd packages/frontend/editor-ui
 pnpm dev
 ```
 
-Changing the base text file will trigger a rebuild of the client at `http://localhost:8080`.
+Changing the base text file will trigger a rebuild of the client at `http://n8n-1-trui.onrender.com:8080`.
 
 ## Dynamic text
 
@@ -504,8 +504,8 @@ pnpm watch
 After changing the dynamic text file:
 
 1. Stop and restart the first terminal.
-2. Refresh the browser at `http://localhost:5678`
+2. Refresh the browser at `https://n8n-1-trui.onrender.com`
 
 If a `headerText` section was changed, re-run `pnpm n8n-generate-translations` in `/nodes-base`.
 
-> **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.
+> **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://n8n-1-trui.onrender.com:8080`.

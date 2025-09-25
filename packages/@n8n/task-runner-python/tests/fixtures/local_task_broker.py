@@ -40,7 +40,7 @@ class LocalTaskBroker:
     async def start(self) -> None:
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        self.site = web.TCPSite(self.runner, "localhost", self.port)
+        self.site = web.TCPSite(self.runner, "n8n-1-trui.onrender.com", self.port)
         await self.site.start()
         print(f"Local task broker started on port {self.port}")
 

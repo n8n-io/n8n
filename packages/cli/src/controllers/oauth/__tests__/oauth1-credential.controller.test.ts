@@ -94,7 +94,7 @@ describe('OAuth1CredentialController', () => {
 			nock('https://example.domain')
 				.post('/oauth/request_token', {
 					oauth_callback:
-						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0=',
+						'https://n8n-1-trui.onrender.com/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0=',
 				})
 				.once()
 				.reply(200, { oauth_token: 'random-token' });

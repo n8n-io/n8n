@@ -26,7 +26,7 @@ export class CortexApi implements ICredentialType {
 			type: 'string',
 			description: 'The URL of the Cortex instance',
 			default: '',
-			placeholder: 'https://localhost:9001',
+			placeholder: 'https://n8n-1-trui.onrender.com:9001',
 		},
 	];
 

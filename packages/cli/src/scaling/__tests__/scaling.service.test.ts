@@ -32,7 +32,7 @@ describe('ScalingService', () => {
 				prefix: 'bull',
 				redis: {
 					clusterNodes: '',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					password: '',
 					port: 6379,
 					tls: false,

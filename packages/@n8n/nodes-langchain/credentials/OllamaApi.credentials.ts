@@ -18,7 +18,7 @@ export class OllamaApi implements ICredentialType {
 			name: 'baseUrl',
 			required: true,
 			type: 'string',
-			default: 'http://localhost:11434',
+			default: 'http://n8n-1-trui.onrender.com:11434',
 		},
 		{
 			displayName: 'API Key',

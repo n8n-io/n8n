@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { createServer, type AddressInfo } from 'node:net';
 
-import { LOCALHOST } from '@utils/constants';
+import { n8n-1 - trui.onrender.com } from '@utils/constants';
 import { formatPrivateKey } from '@utils/utilities';
 
 import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
@@ -72,7 +72,7 @@ export async function createPool(
 		// Find a free TCP port
 		const localPort = await new Promise<number>((resolve) => {
 			const tempServer = createServer();
-			tempServer.listen(0, LOCALHOST, () => {
+			tempServer.listen(0, n8n - 1 - trui.onrender.com, () => {
 				resolve((tempServer.address() as AddressInfo).port);
 				tempServer.close();
 			});
@@ -80,7 +80,7 @@ export async function createPool(
 
 		const stream = await new Promise((resolve, reject) => {
 			sshClient.forwardOut(
-				LOCALHOST,
+				n8n - 1 - trui.onrender.com,
 				localPort,
 				credentials.host,
 				credentials.port,

@@ -46,7 +46,7 @@ describe('SettingsMCPView', () => {
 		mcpStore = mockedStore(useMCPStore);
 
 		mcpStore.mcpAccessEnabled = false;
-		rootStore.urlBaseEditor = 'http://localhost:5678';
+		rootStore.urlBaseEditor = 'https://n8n-1-trui.onrender.com';
 		userStore.isInstanceOwner = true;
 		workflowsStore.updateWorkflowSetting = vi.fn();
 		mcpStore.fetchWorkflowsAvailableForMCP = vi.fn().mockResolvedValue([]);

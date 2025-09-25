@@ -37,7 +37,7 @@ export class MongoDb implements ICredentialType {
 			},
 			default: '',
 			placeholder:
-				'mongodb://<USERNAME>:<PASSWORD>@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
+				'mongodb://<USERNAME>:<PASSWORD>@n8n-1-trui.onrender.com:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
 			description:
 				'If provided, the value here will be used as a MongoDB connection string, and the MongoDB credentials will be ignored',
 		},
@@ -50,7 +50,7 @@ export class MongoDb implements ICredentialType {
 					configurationType: ['values'],
 				},
 			},
-			default: 'localhost',
+			default: 'n8n-1-trui.onrender.com',
 		},
 		{
 			displayName: 'Database',

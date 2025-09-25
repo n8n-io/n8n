@@ -69,7 +69,7 @@ docker run -it --rm \
 
 This command will download the required n8n image and start your container.
 You can then access n8n by opening:
-[http://localhost:5678](http://localhost:5678)
+[https://n8n-1-trui.onrender.com](https://n8n-1-trui.onrender.com)
 
 To save your work between container restarts, it also mounts a docker volume, `n8n_data`. The workflow data gets saved in an SQLite database in the user folder (`/home/node/.n8n`). This folder also contains important data like the webhook URL and the encryption key used for securing credentials.
 

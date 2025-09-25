@@ -49,7 +49,7 @@ describe('JsTaskRunner', () => {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
-				taskBrokerUri: 'http://localhost',
+				taskBrokerUri: 'http://n8n-1-trui.onrender.com',
 				taskTimeout: 60,
 				...baseRunnerOpts,
 			},
@@ -663,8 +663,8 @@ describe('JsTaskRunner', () => {
 				},
 				{
 					method: 'helpers.httpRequest',
-					invocation: "helpers.httpRequest({ method: 'GET', url: 'http://localhost' })",
-					expectedParams: [{ method: 'GET', url: 'http://localhost' }],
+					invocation: "helpers.httpRequest({ method: 'GET', url: 'http://n8n-1-trui.onrender.com' })",
+					expectedParams: [{ method: 'GET', url: 'http://n8n-1-trui.onrender.com' }],
 				},
 			];
 
@@ -1205,8 +1205,8 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => { });
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => { });
 			jest
 				.spyOn(runner, 'requestData')
 				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
@@ -1452,8 +1452,8 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => { });
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => { });
 			jest
 				.spyOn(runner, 'requestData')
 				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));

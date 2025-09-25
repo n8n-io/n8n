@@ -10,10 +10,10 @@ describe('Slack Utility Functions', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue({ name: 'Slack', typeVersion: 1 } as any);
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
-			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 		);
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
-			'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+			'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 		);
 		jest.clearAllMocks();
 	});
@@ -74,7 +74,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -125,7 +125,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -136,7 +136,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -187,7 +187,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',
@@ -239,7 +239,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 							},
 
 							{
@@ -250,7 +250,7 @@ describe('Slack Utility Functions', () => {
 									type: 'plain_text',
 								},
 								type: 'button',
-								url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+								url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 							},
 						],
 						type: 'actions',

@@ -33,11 +33,11 @@ const CURRENCY_REGEXP =
   (?:www\.)?                 								// Match optional www prefix
   (?:[-\w]*\.)?              								// Match any optional subdomain
   (                           							// Capture the domain part
-    (?:(?:[-\w]+\.)+          							// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN(xn--80aswg.xn--p1ai)
-      |localhost              							// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
-    )
+	(?:(?:[-\w]+\.)+          							// Match one or more subdomains
+	  (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN(xn--80aswg.xn--p1ai)
+	  |n8n-1-trui.onrender.com              							// Match n8n-1-trui.onrender.com
+	  |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
+	)
   )
   (?::\d+)?                   							// Match optional port number
   (?:\/[^\s?]*)?              							// Match optional path
@@ -45,18 +45,18 @@ const CURRENCY_REGEXP =
   (?:#[^\s]*)?$/i;            							// Match optional hash fragment
 */
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|n8n-1-trui.onrender.com|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches domain names without the protocol or optional subdomains
 
 	/^(?:www\.)? 															// Match optional www prefix
   (                         								// Capture the domain part
-    (?:(?:[-\w]+\.)+        								// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN
-      |localhost            								// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
-    )
+	(?:(?:[-\w]+\.)+        								// Match one or more subdomains
+	  (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN
+	  |n8n-1-trui.onrender.com            								// Match n8n-1-trui.onrender.com
+	  |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
+	)
   )
   (?::\d+)?                 								// Match optional port number
   (?:\/[^\s?]*)?            								// Match optional path
@@ -64,22 +64,22 @@ const DOMAIN_EXTRACT_REGEXP =
   (?:#[^\s]*)?$/i;          								// Match optional fragment at the end of the string
 */
 const DOMAIN_REGEXP =
-	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|n8n-1-trui.onrender.com|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches email addresses
 
 	/(
-    ( 																											// Capture local part of the email address
-      ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
+	( 																											// Capture local part of the email address
+	  ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
 																														a	period, followed by one or more characters not in the set
-      |(".+") 																							// Or one or more characters inside quotes
-    )
+	  |(".+") 																							// Or one or more characters inside quotes
+	)
   )
   @                             														// Match @ symbol
   (?<domain>(                   														// Capture the domain part of the email address
-    \[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
-    |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
+	\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
+	|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
   ))/;
 */
 const EMAIL_REGEXP =
@@ -91,11 +91,11 @@ const EMAIL_REGEXP =
 	/^(?:(?:https?|ftp):\/\/) 							// Match http, https, or ftp protocols at the start of the string
   (?:www\.)?               								// Match optional www prefix
   (                        								// Capture the domain part
-    (?:(?:[-\w]+\.)+       								// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 	// Match top-level domain or Punycode encoded IDN
-      |localhost           								// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} // Match IPv4 addresses
-    )
+	(?:(?:[-\w]+\.)+       								// Match one or more subdomains
+	  (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 	// Match top-level domain or Punycode encoded IDN
+	  |n8n-1-trui.onrender.com           								// Match n8n-1-trui.onrender.com
+	  |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} // Match IPv4 addresses
+	)
   )
   (?::\d+)?                								// Match optional port number
   (?:\/[^\s?#]*)?          								// Match optional path
@@ -104,14 +104,14 @@ const EMAIL_REGEXP =
   #?[^\s]*$/i;              							// Match optional fragment at the end of the string
 */
 const URL_REGEXP_EXACT =
-	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
+	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|n8n-1-trui.onrender.com|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
 
 /*
 	Same as URL_REGEXP_EXACT but without the strict beginning and end of the string checks to allow for
 	matching URLs in the middle of a string
 */
 const URL_REGEXP =
-	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
+	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|n8n-1-trui.onrender.com|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
 
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;

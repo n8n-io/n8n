@@ -129,7 +129,7 @@ export const databasesFields: INodeProperties[] = [
 		name: 'host',
 		type: 'string',
 		required: true,
-		placeholder: 'localhost:5432',
+		placeholder: 'n8n-1-trui.onrender.com:5432',
 		displayOptions: {
 			show: {
 				resource: ['databases'],

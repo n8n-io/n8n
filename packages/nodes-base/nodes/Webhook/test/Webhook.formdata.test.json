@@ -17,7 +17,9 @@
 	],
 	"connections": {
 		"Webhook": {
-			"main": [[]]
+			"main": [
+				[]
+			]
 		}
 	},
 	"trigger": {
@@ -25,15 +27,21 @@
 		"input": {
 			"json": {
 				"headers": {
-					"host": "localhost:5678",
+					"host": "n8n-1-trui.onrender.com",
 					"user-agent": "curl/8.2.0",
 					"accept": "*/*",
 					"content-length": "137",
 					"content-type": "multipart/form-data; boundary=--boundary"
 				},
-				"params": { "path": "test" },
+				"params": {
+					"path": "test"
+				},
 				"query": {},
-				"body": { "a": ["b"] }
+				"body": {
+					"a": [
+						"b"
+					]
+				}
 			}
 		}
 	},
@@ -42,16 +50,20 @@
 			{
 				"json": {
 					"headers": {
-						"host": "localhost:5678",
+						"host": "n8n-1-trui.onrender.com",
 						"user-agent": "curl/8.2.0",
 						"accept": "*/*",
 						"content-length": "137",
 						"content-type": "multipart/form-data; boundary=--boundary"
 					},
-					"params": { "path": "test" },
+					"params": {
+						"path": "test"
+					},
 					"query": {},
 					"body": {
-						"a": ["b"]
+						"a": [
+							"b"
+						]
 					}
 				}
 			}

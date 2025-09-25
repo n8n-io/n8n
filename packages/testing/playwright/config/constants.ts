@@ -1,4 +1,4 @@
-export const BACKEND_BASE_URL = 'http://localhost:5678';
+export const BACKEND_BASE_URL = 'https://n8n-1-trui.onrender.com';
 export const N8N_AUTH_COOKIE = 'n8n-auth';
 
 export const DEFAULT_USER_PASSWORD = 'PlaywrightTest123';

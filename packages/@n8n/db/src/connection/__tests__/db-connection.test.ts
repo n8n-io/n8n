@@ -23,7 +23,7 @@ describe('DbConnection', () => {
 	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
 		type: 'postgres',
-		host: 'localhost',
+		host: 'n8n-1-trui.onrender.com',
 		port: 5432,
 		username: 'user',
 		password: 'password',
@@ -101,7 +101,7 @@ describe('DbConnection', () => {
 		it('should clear the ping timer', async () => {
 			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 			// @ts-expect-error private property
-			dbConnection.pingTimer = setTimeout(() => {}, 1000);
+			dbConnection.pingTimer = setTimeout(() => { }, 1000);
 
 			await dbConnection.close();
 

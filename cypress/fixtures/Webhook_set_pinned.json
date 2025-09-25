@@ -47,7 +47,7 @@
     "Webhook": [
       {
         "headers": {
-          "host": "localhost:5678",
+          "host": "n8n-1-trui.onrender.com",
           "content-length": "37",
           "accept": "*/*",
           "content-type": "application/json",
@@ -59,7 +59,7 @@
           "here": "be",
           "dragons": true
         },
-        "webhookUrl": "http://localhost:5678/webhook-test/23fc3930-b8f9-41d9-89db-b647291a2201",
+        "webhookUrl": "https://n8n-1-trui.onrender.com/webhook-test/23fc3930-b8f9-41d9-89db-b647291a2201",
         "executionMode": "test"
       }
     ]

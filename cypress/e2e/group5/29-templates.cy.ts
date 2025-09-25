@@ -64,7 +64,7 @@ describe('Workflow templates', () => {
 	});
 
 	describe('For a custom template host', () => {
-		const hostname = 'random.domain';
+		const hostname = 'n8n-1-trui.onrender.com';
 		const categories = [
 			{ id: 1, name: 'Engineering' },
 			{ id: 2, name: 'Finance' },

@@ -358,7 +358,7 @@ describe('saml-validator', () => {
 		</Subject>
 		<Conditions NotBefore="2024-11-13T14:53:00.284Z" NotOnOrAfter="2024-11-13T15:58:00.284Z">
 			<AudienceRestriction>
-				<Audience>http://localhost:5678/rest/sso/saml/metadata</Audience>
+				<Audience>https://n8n-1-trui.onrender.com/rest/sso/saml/metadata</Audience>
 			</AudienceRestriction>
 		</Conditions>
 		<AttributeStatement>
@@ -453,7 +453,7 @@ describe('saml-validator', () => {
 							</Subject>
 							<Conditions NotBefore="2024-11-13T14:53:00.284Z" NotOnOrAfter="2023-11-13T15:58:00.284Z"> // Expired
 									<AudienceRestriction>
-											<Audience>http://localhost:5678/rest/sso/saml/metadata</Audience>
+											<Audience>https://n8n-1-trui.onrender.com/rest/sso/saml/metadata</Audience>
 									</AudienceRestriction>
 							</Conditions>
 					</Assertion>

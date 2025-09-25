@@ -7,7 +7,10 @@
 			"name": "When clicking ‘Execute workflow’",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [820, 360]
+			"position": [
+				820,
+				360
+			]
 		},
 		{
 			"parameters": {
@@ -28,7 +31,10 @@
 			"name": "Slack",
 			"type": "n8n-nodes-base.slack",
 			"typeVersion": 2.3,
-			"position": [1040, 360],
+			"position": [
+				1040,
+				360
+			],
 			"webhookId": "04c5e584-45f4-48d0-bcd2-0ecacecb0f53",
 			"credentials": {
 				"slackApi": {
@@ -43,7 +49,10 @@
 			"name": "No Operation, do nothing",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [1260, 360]
+			"position": [
+				1260,
+				360
+			]
 		}
 	],
 	"pinData": {
@@ -55,7 +64,7 @@
 					"ts": "1734322597.935429",
 					"bot_id": "B0382SHFM46",
 					"app_id": "A037UTP0Z39",
-					"text": "test message\n_Automated with this <http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
+					"text": "test message\n_Automated with this <https://n8n-1-trui.onrender.com/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
 					"team": "T0364MSFHV2",
 					"bot_profile": {
 						"id": "B0382SHFM46",
@@ -91,7 +100,7 @@
 										},
 										{
 											"type": "link",
-											"url": "http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
+											"url": "https://n8n-1-trui.onrender.com/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
 											"text": "n8n workflow",
 											"style": {
 												"italic": true
@@ -111,7 +120,7 @@
 					"ts": "1734322341.161179",
 					"bot_id": "B0382SHFM46",
 					"app_id": "A037UTP0Z39",
-					"text": "test message\n_Automated with this <http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
+					"text": "test message\n_Automated with this <https://n8n-1-trui.onrender.com/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd|n8n workflow>_",
 					"team": "T0364MSFHV2",
 					"bot_profile": {
 						"id": "B0382SHFM46",
@@ -147,7 +156,7 @@
 										},
 										{
 											"type": "link",
-											"url": "http://localhost:5678/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
+											"url": "https://n8n-1-trui.onrender.com/workflow/qJdEfiBgYLdfYOTs?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.slack_be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd",
 											"text": "n8n workflow",
 											"style": {
 												"italic": true

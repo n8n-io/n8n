@@ -46,7 +46,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
-			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 		);
 
 		const result = await microsoftTeamsV2.execute.call(mockExecuteFunctions);
@@ -61,7 +61,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 			{
 				body: {
 					content:
-						'my message<br><br><a href="http://localhost/waiting-webhook/nodeID?approved=true&signature=abc">Approve</a><br><br><em>This message was sent automatically with <a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams_instanceId">n8n</a></em>',
+						'my message<br><br><a href="http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc">Approve</a><br><br><em>This message was sent automatically with <a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams_instanceId">n8n</a></em>',
 					contentType: 'html',
 				},
 			},

@@ -25,7 +25,7 @@ export class SplunkApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			description: 'Protocol, domain and port',
-			placeholder: 'e.g. https://localhost:8089',
+			placeholder: 'e.g. https://n8n-1-trui.onrender.com:8089',
 			default: '',
 		},
 		{

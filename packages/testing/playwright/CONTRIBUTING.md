@@ -13,7 +13,7 @@ Add to your `/.vscode/settings.json`:
 ```json
 {
   "playwright.env": {
-    "N8N_BASE_URL": "http://localhost:5679",  // URL to test against (Don't use 5678 as that can wipe your dev instance DB)
+    "N8N_BASE_URL": "http://n8n-1-trui.onrender.com:5679",  // URL to test against (Don't use 5678 as that can wipe your dev instance DB)
     "SHOW_BROWSER": "true",                   // Show browser (useful with n8n.page.pause())
     "RESET_E2E_DB": "true"                    // Reset DB for fresh state
   }

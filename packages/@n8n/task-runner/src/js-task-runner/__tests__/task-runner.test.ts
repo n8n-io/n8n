@@ -5,7 +5,7 @@ import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import { TaskRunner, type TaskRunnerOpts } from '@/task-runner';
 import type { TaskStatus } from '@/task-state';
 
-class TestRunner extends TaskRunner {}
+class TestRunner extends TaskRunner { }
 
 jest.mock('ws');
 
@@ -19,12 +19,12 @@ describe('TestRunner', () => {
 			idleTimeout: 60,
 			grantToken: 'test-token',
 			maxPayloadSize: 1024,
-			taskBrokerUri: 'http://localhost:8080',
+			taskBrokerUri: 'http://n8n-1-trui.onrender.com:8080',
 			timezone: 'America/New_York',
 			taskTimeout: 60,
 			healthcheckServer: {
 				enabled: false,
-				host: 'localhost',
+				host: 'n8n-1-trui.onrender.com',
 				port: 8081,
 			},
 			...opts,
@@ -41,11 +41,11 @@ describe('TestRunner', () => {
 
 		it('should correctly construct WebSocket URI with provided taskBrokerUri', () => {
 			runner = newTestRunner({
-				taskBrokerUri: 'http://localhost:8080',
+				taskBrokerUri: 'http://n8n-1-trui.onrender.com:8080',
 			});
 
 			expect(WebSocket).toHaveBeenCalledWith(
-				`ws://localhost:8080/runners/_ws?id=${runner.id}`,
+				`ws://n8n-1-trui.onrender.com:8080/runners/_ws?id=${runner.id}`,
 				expect.objectContaining({
 					headers: {
 						authorization: 'Bearer test-token',

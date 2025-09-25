@@ -63,7 +63,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q https://n8n-1-trui.onrender.com/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -102,7 +102,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q https://n8n-1-trui.onrender.com/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10

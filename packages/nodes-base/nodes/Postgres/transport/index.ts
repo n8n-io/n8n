@@ -9,7 +9,7 @@ import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
-import { LOCALHOST } from '@utils/constants';
+import { n8n-1 - trui.onrender.com } from '@utils/constants';
 import { formatPrivateKey } from '@utils/utilities';
 
 import type {
@@ -131,14 +131,14 @@ export async function configurePostgres(
 			const proxy = withCleanupHandler(createServer(), abortController, this.logger);
 
 			const proxyPort = await new Promise<number>((resolve) => {
-				proxy.listen(0, LOCALHOST, () => {
+				proxy.listen(0, n8n - 1 - trui.onrender.com, () => {
 					resolve((proxy.address() as AddressInfo).port);
 				});
 			});
 
 			proxy.on('connection', (localSocket) => {
 				sshClient.forwardOut(
-					LOCALHOST,
+					n8n - 1 - trui.onrender.com,
 					localSocket.remotePort!,
 					credentials.host,
 					credentials.port,
@@ -157,7 +157,7 @@ export async function configurePostgres(
 			const db = pgp({
 				...dbConfig,
 				port: proxyPort,
-				host: LOCALHOST,
+				host: n8n - 1 - trui.onrender.com,
 			});
 
 			abortController.signal.addEventListener('abort', async () => {

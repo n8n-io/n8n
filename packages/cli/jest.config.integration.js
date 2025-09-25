@@ -2,7 +2,7 @@
 module.exports = {
 	...require('../../jest.config'),
 	testEnvironmentOptions: {
-		url: 'http://localhost/',
+		url: 'http://n8n-1-trui.onrender.com/',
 	},
 	globalSetup: '<rootDir>/test/setup.ts',
 	globalTeardown: '<rootDir>/test/teardown.ts',

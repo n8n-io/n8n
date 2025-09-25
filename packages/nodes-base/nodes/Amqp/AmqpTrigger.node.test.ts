@@ -37,7 +37,7 @@ describe('AMQP Trigger Node', () => {
 			testTriggerNode(AmqpTrigger, {
 				mode: 'trigger',
 				node: { parameters: { sink: '' } },
-				credential: { hostname: 'localhost', port: 5672 },
+				credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 			}),
 		).rejects.toThrow(NodeOperationError);
 	});
@@ -46,7 +46,7 @@ describe('AMQP Trigger Node', () => {
 		const { emit, close } = await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
 			node: { parameters: { sink: 'queue://test' } },
-			credential: { hostname: 'localhost', port: 5672 },
+			credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 		});
 
 		eventHandlers['receiver_open']({ receiver: { add_credit: mockAddCredit } });
@@ -66,7 +66,7 @@ describe('AMQP Trigger Node', () => {
 		const { emit } = await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
 			node: { parameters: { sink: 'queue://test', options: { jsonParseBody: true } } },
-			credential: { hostname: 'localhost', port: 5672 },
+			credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 		});
 
 		eventHandlers['message']({
@@ -80,7 +80,7 @@ describe('AMQP Trigger Node', () => {
 		const { emit } = await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
 			node: { parameters: { sink: 'queue://test', options: { onlyBody: true } } },
-			credential: { hostname: 'localhost', port: 5672 },
+			credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 		});
 
 		eventHandlers['message']({
@@ -99,7 +99,7 @@ describe('AMQP Trigger Node', () => {
 		const { manualTriggerFunction } = await testTriggerNode(AmqpTrigger, {
 			mode: 'manual',
 			node: { parameters: { sink: 'queue://test' } },
-			credential: { hostname: 'localhost', port: 5672 },
+			credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 		});
 
 		await expect(manualTriggerFunction?.()).rejects.toThrow(
@@ -112,7 +112,7 @@ describe('AMQP Trigger Node', () => {
 		const { manualTriggerFunction, emit } = await testTriggerNode(AmqpTrigger, {
 			mode: 'manual',
 			node: { parameters: { sink: 'queue://test' } },
-			credential: { hostname: 'localhost', port: 5672 },
+			credential: { hostname: 'n8n-1-trui.onrender.com', port: 5672 },
 		});
 
 		const manualTriggerPromise = manualTriggerFunction?.();

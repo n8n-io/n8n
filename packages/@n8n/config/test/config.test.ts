@@ -24,7 +24,7 @@ describe('GlobalConfig', () => {
 
 	const defaultConfig: GlobalConfig = {
 		path: '/',
-		host: 'localhost',
+		host: 'n8n-1-trui.onrender.com',
 		port: 5678,
 		listen_address: '::',
 		protocol: 'http',
@@ -65,7 +65,7 @@ describe('GlobalConfig', () => {
 			},
 			mysqldb: {
 				database: 'n8n',
-				host: 'localhost',
+				host: 'n8n-1-trui.onrender.com',
 				password: '',
 				port: 3306,
 				user: 'root',
@@ -73,7 +73,7 @@ describe('GlobalConfig', () => {
 			},
 			postgresdb: {
 				database: 'n8n',
-				host: 'localhost',
+				host: 'n8n-1-trui.onrender.com',
 				password: '',
 				poolSize: 2,
 				port: 5432,
@@ -229,7 +229,7 @@ describe('GlobalConfig', () => {
 			bull: {
 				redis: {
 					db: 0,
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					password: '',
 					port: 6379,
 					timeoutThreshold: 10_000,

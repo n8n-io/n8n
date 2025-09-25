@@ -190,7 +190,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			const { browser } = Bowser.parse(navigator.userAgent);
 			if (
 				location.protocol === 'http:' &&
-				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
+				(!['n8n-1-trui.onrender.com', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
 			) {
 				document.write(INSECURE_CONNECTION_WARNING);
 				return;

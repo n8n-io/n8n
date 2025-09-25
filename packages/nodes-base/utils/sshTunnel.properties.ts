@@ -32,7 +32,7 @@ export const sshTunnelProperties: INodeProperties[] = [
 		displayName: 'SSH Host',
 		name: 'sshHost',
 		type: 'string',
-		default: 'localhost',
+		default: 'n8n-1-trui.onrender.com',
 		displayOptions: {
 			show: {
 				sshTunnel: [true],

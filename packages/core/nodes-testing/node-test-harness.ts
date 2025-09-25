@@ -211,7 +211,7 @@ export class NodeTestHarness {
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			executionId: '1',
-			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+			webhookWaitingBaseUrl: 'http://n8n-1-trui.onrender.com/waiting-webhook',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,

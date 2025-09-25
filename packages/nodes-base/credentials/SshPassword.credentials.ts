@@ -14,7 +14,7 @@ export class SshPassword implements ICredentialType {
 			required: true,
 			type: 'string',
 			default: '',
-			placeholder: 'localhost',
+			placeholder: 'n8n-1-trui.onrender.com',
 		},
 		{
 			displayName: 'Port',

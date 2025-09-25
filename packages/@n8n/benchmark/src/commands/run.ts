@@ -23,7 +23,7 @@ export default class RunCommand extends Command {
 		}),
 		n8nBaseUrl: Flags.string({
 			description: 'The base URL for the n8n instance',
-			default: 'http://localhost:5678',
+			default: 'https://n8n-1-trui.onrender.com',
 			env: 'N8N_BASE_URL',
 		}),
 		n8nUserEmail: Flags.string({
@@ -93,9 +93,9 @@ export default class RunCommand extends Command {
 				tags,
 				resultsWebhook: flags.resultWebhookUrl
 					? {
-							url: flags.resultWebhookUrl,
-							authHeader: flags.resultWebhookAuthHeader,
-						}
+						url: flags.resultWebhookUrl,
+						authHeader: flags.resultWebhookAuthHeader,
+					}
 					: undefined,
 			}),
 			{

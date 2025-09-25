@@ -28,7 +28,7 @@ export class KibanaApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
-			placeholder: 'http://localhost:5601',
+			placeholder: 'http://n8n-1-trui.onrender.com:5601',
 		},
 		{
 			displayName: 'Username',

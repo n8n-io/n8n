@@ -90,7 +90,7 @@ npm run dev
 ```
 
 This command:
-- Starts n8n in development mode on `http://localhost:5678`
+- Starts n8n in development mode on `https://n8n-1-trui.onrender.com`
 - Enables hot reload for your node changes
 - Automatically includes your node in the n8n instance
 - Links your node to `~/.n8n-node-cli/.n8n/custom` for development
@@ -98,7 +98,7 @@ This command:
 
 ### 3. Test your node
 
-- Open n8n at `http://localhost:5678`
+- Open n8n at `https://n8n-1-trui.onrender.com`
 - Create a new workflow
 - Find your node in the node panel
 - Test parameters and functionality in real-time

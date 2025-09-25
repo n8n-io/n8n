@@ -6,7 +6,7 @@ import { getPostgresDataSource } from './postgres';
 
 describe('Postgres SSL settings', () => {
 	const credentials = mock<PostgresNodeCredentials>({
-		host: 'localhost',
+		host: 'n8n-1-trui.onrender.com',
 		port: 5432,
 		user: 'user',
 		password: 'password',

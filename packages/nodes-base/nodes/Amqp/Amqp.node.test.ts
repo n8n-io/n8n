@@ -33,7 +33,7 @@ jest.mock('rhea', () => ({
 
 describe('AMQP Node', () => {
 	const credentials = mock<ICredentialDataDecryptedObject>({
-		hostname: 'localhost',
+		hostname: 'n8n-1-trui.onrender.com',
 		port: 5672,
 		username: 'testuser',
 		password: 'testpass',

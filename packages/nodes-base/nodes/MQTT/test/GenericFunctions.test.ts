@@ -17,7 +17,7 @@ describe('createClient', () => {
 
 		const credentials = mock<MqttCredential>({
 			protocol: 'mqtt',
-			host: 'localhost',
+			host: 'n8n-1-trui.onrender.com',
 			port: 1883,
 			clean: true,
 			clientId: 'testClient',
@@ -30,7 +30,7 @@ describe('createClient', () => {
 		expect(client).toBeInstanceOf(MqttClient);
 		expect(client.options).toMatchObject({
 			protocol: 'mqtt',
-			host: 'localhost',
+			host: 'n8n-1-trui.onrender.com',
 			port: 1883,
 			clean: true,
 			clientId: 'testClient',
@@ -48,7 +48,7 @@ describe('createClient', () => {
 
 		const credentials: MqttCredential = {
 			protocol: 'mqtt',
-			host: 'localhost',
+			host: 'n8n-1-trui.onrender.com',
 			port: 1883,
 			clean: true,
 			clientId: 'testClientId',

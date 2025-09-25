@@ -52,14 +52,14 @@ describe('VectorStoreMongoDBAtlas', () => {
 		it('should reuse the same client when connection string is unchanged', async () => {
 			MockMongoClient.mockImplementation(() => mockClient1 as unknown as MongoClient);
 			mockContext.getCredentials.mockResolvedValue({
-				connectionString: 'mongodb://localhost:27017',
+				connectionString: 'mongodb://n8n-1-trui.onrender.com:27017',
 			});
 
 			const client1 = await getMongoClient(mockContext, 1.1);
 			const client2 = await getMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
-			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://localhost:27017', {
+			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://n8n-1-trui.onrender.com:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
 				driverInfo: {
 					name: 'n8n_vector',
@@ -79,7 +79,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 			).mockImplementationOnce(() => mockClient2 as unknown as MongoClient);
 			mockContext.getCredentials
 				.mockResolvedValueOnce({
-					connectionString: 'mongodb://localhost:27017',
+					connectionString: 'mongodb://n8n-1-trui.onrender.com:27017',
 				})
 				.mockResolvedValueOnce({
 					connectionString: 'mongodb://different-host:27017',
@@ -89,7 +89,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 			const client2 = await getMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(2);
-			expect(MockMongoClient).toHaveBeenNthCalledWith(1, 'mongodb://localhost:27017', {
+			expect(MockMongoClient).toHaveBeenNthCalledWith(1, 'mongodb://n8n-1-trui.onrender.com:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
 				driverInfo: {
 					name: 'n8n_vector',

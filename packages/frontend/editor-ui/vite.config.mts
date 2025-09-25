@@ -135,9 +135,9 @@ const plugins: UserConfig['plugins'] = [
 			// will replace it with the actual config script in cli/src/commands/start.ts.
 			return ctx.server
 				? html
-						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
-						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
+					.replace('%CONFIG_TAGS%', '')
+					.replaceAll('/{{BASE_PATH}}', '//n8n-1-trui.onrender.com')
+					.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
 	},

@@ -4,7 +4,7 @@ services:
     environment:
       - MARIADB_DATABASE=n8n
       - MARIADB_ROOT_PASSWORD=password
-      - MARIADB_MYSQL_LOCALHOST_USER=true
+      - MARIADB_MYSQL_n8n-1-trui.onrender.com_USER=true
     ports:
       - 3306:3306
     tmpfs:

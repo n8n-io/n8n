@@ -9,7 +9,10 @@
 			"name": "Webhook",
 			"type": "n8n-nodes-base.webhook",
 			"typeVersion": 2,
-			"position": [360, 220],
+			"position": [
+				360,
+				220
+			],
 			"webhookId": "9c778f2a-e882-46ed-a0e4-c8e2f76ccd65"
 		}
 	],
@@ -22,13 +25,13 @@
 					"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
 					"accept": "*/*",
 					"cookie": "n8n-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNiM2FhOTE5LWRhZDgtNDE5MS1hZWZiLTlhZDIwZTZkMjJjNiIsImhhc2giOiJ1ZVAxR1F3U2paIiwiaWF0IjoxNzI4OTE1NTQyLCJleHAiOjE3Mjk1MjAzNDJ9.fV02gpUnSiUoMxHwfB0npBjcjct7Mv9vGfj-jRTT3-I",
-					"host": "localhost:5678",
+					"host": "n8n-1-trui.onrender.com",
 					"accept-encoding": "gzip, deflate"
 				},
 				"params": {},
 				"query": {},
 				"body": {},
-				"webhookUrl": "http://localhost:5678/webhook-test/FwrbSiaua2Xmvn6-Z-7CQ",
+				"webhookUrl": "https://n8n-1-trui.onrender.com/webhook-test/FwrbSiaua2Xmvn6-Z-7CQ",
 				"executionMode": "test"
 			}
 		]

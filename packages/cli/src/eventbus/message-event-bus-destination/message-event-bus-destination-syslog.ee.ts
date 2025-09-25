@@ -21,8 +21,7 @@ export const isMessageEventBusDestinationSyslogOptions = (
 
 export class MessageEventBusDestinationSyslog
 	extends MessageEventBusDestination
-	implements MessageEventBusDestinationSyslogOptions
-{
+	implements MessageEventBusDestinationSyslogOptions {
 	client: syslog.Client;
 
 	expectedStatusCode?: number;
@@ -44,7 +43,7 @@ export class MessageEventBusDestinationSyslog
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
 		this.label = options.label ?? 'Syslog Server';
 
-		this.host = options.host ?? 'localhost';
+		this.host = options.host ?? 'n8n-1-trui.onrender.com';
 		this.port = options.port ?? 514;
 		this.protocol = options.protocol ?? 'udp';
 		this.facility = options.facility ?? syslog.Facility.Local0;

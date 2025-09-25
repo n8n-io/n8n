@@ -54,8 +54,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		oauthCallbackUrls: {},
 		n8nMetadata: {},
 		pushRef: randomString(10).toLowerCase(),
-		urlBaseWebhook: 'http://localhost:5678/',
-		urlBaseEditor: 'http://localhost:5678',
+		urlBaseWebhook: 'https://n8n-1-trui.onrender.com/',
+		urlBaseEditor: 'https://n8n-1-trui.onrender.com',
 		instanceId: '',
 		binaryDataMode: 'default',
 	});

@@ -12,7 +12,7 @@ export class MicrosoftSql implements ICredentialType {
 			displayName: 'Server',
 			name: 'server',
 			type: 'string',
-			default: 'localhost',
+			default: 'n8n-1-trui.onrender.com',
 		},
 		{
 			displayName: 'Database',

@@ -45,7 +45,7 @@ describe('TS Morph AST utils', () => {
 		it('should return nested object', () => {
 			const content = `
 export const config = {
-    database: { host: "localhost", port: "5432" },
+    database: { host: "n8n-1-trui.onrender.com", port: "5432" },
     cache: { ttl: "3600" }
 };`;
 			const sourceFile = createSourceFile(content);

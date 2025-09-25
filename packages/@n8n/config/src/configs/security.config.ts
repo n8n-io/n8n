@@ -27,7 +27,7 @@ export class SecurityConfig {
 
 	/**
 	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
-	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
+	 * Example: { "frame-ancestors": ["http://n8n-1-trui.onrender.com:3000"] }
 	 */
 	// TODO: create a new type that parses and validates this string into a strongly-typed object
 	@Env('N8N_CONTENT_SECURITY_POLICY')

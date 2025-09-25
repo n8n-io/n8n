@@ -192,7 +192,7 @@
       {
         "json": {
           "headers": {
-            "host": "localhost:5678",
+            "host": "n8n-1-trui.onrender.com",
             "user-agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "accept-language": "en-US,en;q=0.5",

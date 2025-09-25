@@ -28,41 +28,41 @@ describe('Webhook Helper Functions', () => {
 			webhooks: IWebhookDescription[] | undefined;
 			expected: IWebhookDescription | undefined;
 		}> = [
-			{
-				description: 'should return undefined for invalid webhook type',
-				name: 'invalid' as WebhookType,
-				webhooks: [
-					{
-						name: 'default',
-						httpMethod: 'POST',
-						path: 'webhook',
-					},
-				],
-				expected: undefined,
-			},
-			{
-				description: 'should return undefined when node has no webhooks',
-				name: 'default',
-				webhooks: undefined,
-				expected: undefined,
-			},
-			{
-				description: 'should return webhook description when webhook exists',
-				name: 'default',
-				webhooks: [
-					{
-						name: 'default',
-						httpMethod: 'POST',
-						path: 'webhook',
-					},
-				],
-				expected: {
-					name: 'default',
-					httpMethod: 'POST',
-					path: 'webhook',
+				{
+					description: 'should return undefined for invalid webhook type',
+					name: 'invalid' as WebhookType,
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'POST',
+							path: 'webhook',
+						},
+					],
+					expected: undefined,
 				},
-			},
-		];
+				{
+					description: 'should return undefined when node has no webhooks',
+					name: 'default',
+					webhooks: undefined,
+					expected: undefined,
+				},
+				{
+					description: 'should return webhook description when webhook exists',
+					name: 'default',
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'POST',
+							path: 'webhook',
+						},
+					],
+					expected: {
+						name: 'default',
+						httpMethod: 'POST',
+						path: 'webhook',
+					},
+				},
+			];
 		test.each(tests)('$description', ({ name, webhooks, expected }) => {
 			nodeType.description.webhooks = webhooks;
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
@@ -75,8 +75,8 @@ describe('Webhook Helper Functions', () => {
 	});
 
 	describe('getNodeWebhookUrl', () => {
-		const webhookBaseUrl = 'http://localhost:5678/webhook';
-		const webhookTestBaseUrl = 'http://localhost:5678/webhook-test';
+		const webhookBaseUrl = 'https://n8n-1-trui.onrender.com/webhook';
+		const webhookTestBaseUrl = 'https://n8n-1-trui.onrender.com/webhook-test';
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			webhookBaseUrl,
 			webhookTestBaseUrl,
@@ -93,35 +93,35 @@ describe('Webhook Helper Functions', () => {
 			isTest: boolean;
 			expected: string;
 		}> = [
-			{
-				description: 'should return webhook URL with path',
-				webhookPath: 'webhook',
-				webhookId: undefined,
-				isTest: false,
-				expected: `${webhookBaseUrl}/workflow-id/test-node/webhook`,
-			},
-			{
-				description: 'should handle path starting with /',
-				webhookPath: '/webhook',
-				webhookId: undefined,
-				isTest: false,
-				expected: `${webhookBaseUrl}/workflow-id/test-node/webhook`,
-			},
-			{
-				description: 'should return webhook URL with webhookId',
-				webhookPath: 'webhook',
-				webhookId: 'abc123',
-				isTest: false,
-				expected: `${webhookBaseUrl}/abc123/webhook`,
-			},
-			{
-				description: 'should return test webhook URL for test webhooks',
-				webhookPath: 'webhook',
-				webhookId: undefined,
-				isTest: true,
-				expected: `${webhookTestBaseUrl}/workflow-id/test-node/webhook`,
-			},
-		];
+				{
+					description: 'should return webhook URL with path',
+					webhookPath: 'webhook',
+					webhookId: undefined,
+					isTest: false,
+					expected: `${webhookBaseUrl}/workflow-id/test-node/webhook`,
+				},
+				{
+					description: 'should handle path starting with /',
+					webhookPath: '/webhook',
+					webhookId: undefined,
+					isTest: false,
+					expected: `${webhookBaseUrl}/workflow-id/test-node/webhook`,
+				},
+				{
+					description: 'should return webhook URL with webhookId',
+					webhookPath: 'webhook',
+					webhookId: 'abc123',
+					isTest: false,
+					expected: `${webhookBaseUrl}/abc123/webhook`,
+				},
+				{
+					description: 'should return test webhook URL for test webhooks',
+					webhookPath: 'webhook',
+					webhookId: undefined,
+					isTest: true,
+					expected: `${webhookTestBaseUrl}/workflow-id/test-node/webhook`,
+				},
+			];
 		test.each(tests)('$description', ({ webhookPath, webhookId, isTest, expected }) => {
 			node.webhookId = webhookId;
 			if (webhookPath) webhookDescription.path = webhookPath;

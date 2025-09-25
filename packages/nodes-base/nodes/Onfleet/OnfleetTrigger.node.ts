@@ -76,10 +76,10 @@ export class OnfleetTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				if (webhookUrl.includes('//localhost')) {
+				if (webhookUrl.includes('//n8n-1-trui.onrender.com')) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+						'The Webhook can not work on "n8n-1-trui.onrender.com". Please, either setup n8n on a custom domain or start with "--tunnel"!',
 					);
 				}
 				// Webhook name according to the field

@@ -66,7 +66,7 @@ jobs:
           working-directory: cypress
           install: false
           start: pnpm start
-          wait-on: 'http://localhost:5678'
+          wait-on: 'https://n8n-1-trui.onrender.com'
           wait-on-timeout: 120
           record: false
           spec: ${{ inputs.spec == 'e2e/*' && format('e2e/group{0}/**/*.cy.ts', matrix.containers) || inputs.spec }}

@@ -10,7 +10,7 @@ jest.mock('mssql');
 function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 	return mock<IExecuteFunctions>({
 		getCredentials: jest.fn().mockResolvedValue({
-			server: 'localhost',
+			server: 'n8n-1-trui.onrender.com',
 			database: 'testdb',
 			user: 'testuser',
 			password: 'testpass',

@@ -63,7 +63,7 @@ describe('Send and Wait utils tests', () => {
 			});
 
 			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
-				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 			);
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
@@ -75,7 +75,7 @@ describe('Send and Wait utils tests', () => {
 					{
 						label: 'Approve',
 						style: 'primary',
-						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				],
 			});
@@ -98,10 +98,10 @@ describe('Send and Wait utils tests', () => {
 			});
 
 			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
-				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+				'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 			);
 			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
-				'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+				'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 			);
 
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
@@ -112,12 +112,12 @@ describe('Send and Wait utils tests', () => {
 					{
 						label: 'Reject',
 						style: 'secondary',
-						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+						url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=false&signature=abc',
 					},
 					{
 						label: 'Approve',
 						style: 'primary',
-						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						url: 'http://n8n-1-trui.onrender.com/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				]),
 			);
@@ -140,7 +140,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://n8n-1-trui.onrender.com/testNodeId');
 		});
 
 		it('should create a valid email object', () => {

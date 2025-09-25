@@ -202,8 +202,8 @@ describe('Data Transformation Functions', () => {
 				evaluate('={{ "URL with Unicode: http://www.xn--80aswg.xn--j1amh".extractUrl() }}'),
 			).toEqual('http://www.xn--80aswg.xn--j1amh');
 			expect(
-				evaluate('={{ "Localhost URL: http://localhost:8080/test?x=1".extractUrl() }}'),
-			).toEqual('http://localhost:8080/test?x=1');
+				evaluate('={{ "n8n-1-trui.onrender.com URL: http://n8n-1-trui.onrender.com:8080/test?x=1".extractUrl() }}'),
+			).toEqual('http://n8n-1-trui.onrender.com:8080/test?x=1');
 			expect(
 				evaluate('={{ "IP URL: http://192.168.1.1:8000/path?q=value#frag".extractUrl() }}'),
 			).toEqual('http://192.168.1.1:8000/path?q=value#frag');
@@ -250,8 +250,8 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual(
 				'www.xn--80aswg.xn--j1amh',
 			);
-			expect(evaluate('={{ "https://localhost".extractDomain() }}')).toEqual('localhost');
-			expect(evaluate('={{ "https://localhost?test=123".extractDomain() }}')).toEqual('localhost');
+			expect(evaluate('={{ "https://n8n-1-trui.onrender.com".extractDomain() }}')).toEqual('n8n-1-trui.onrender.com');
+			expect(evaluate('={{ "https://n8n-1-trui.onrender.com?test=123".extractDomain() }}')).toEqual('n8n-1-trui.onrender.com');
 			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual(
 				'www.example_with_underscore.com',
 			);

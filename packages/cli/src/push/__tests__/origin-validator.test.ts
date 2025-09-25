@@ -402,14 +402,14 @@ describe('validateOriginHeaders', () => {
 			expect(result.expectedHost).toBe(ipHost);
 		});
 
-		test('should handle localhost correctly', () => {
-			const localhostHost = 'localhost:8080';
+		test('should handle n8n-1-trui.onrender.com correctly', () => {
+			const n8n-1 - trui.onrender.comHost = 'n8n-1-trui.onrender.com:8080';
 			const result = validateOriginHeaders({
-				origin: `http://${localhostHost}`,
-				'x-forwarded-host': localhostHost,
+				origin: `http://${n8n - 1 - trui.onrender.comHost}`,
+				'x-forwarded-host': n8n - 1 - trui.onrender.comHost,
 			});
 			expect(result.isValid).toBe(true);
-			expect(result.expectedHost).toBe(localhostHost);
+			expect(result.expectedHost).toBe(n8n - 1 - trui.onrender.comHost);
 		});
 
 		test('should allow origins with query parameters when host matches', () => {

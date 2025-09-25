@@ -94,7 +94,7 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'postgresdb';
 				dbConfig.postgresdb = {
 					database: 'test_db',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 5432,
 					user: 'postgres',
 					password: 'password',
@@ -119,7 +119,7 @@ describe('DbConnectionOptions', () => {
 					type: 'postgres',
 					...commonOptions,
 					database: 'test_db',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 5432,
 					username: 'postgres',
 					password: 'password',
@@ -153,7 +153,7 @@ describe('DbConnectionOptions', () => {
 			beforeEach(() => {
 				dbConfig.mysqldb = {
 					database: 'test_db',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 3306,
 					user: 'root',
 					password: 'password',
@@ -170,7 +170,7 @@ describe('DbConnectionOptions', () => {
 					type: 'mysql',
 					...commonOptions,
 					database: 'test_db',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 3306,
 					username: 'root',
 					password: 'password',
@@ -189,7 +189,7 @@ describe('DbConnectionOptions', () => {
 					type: 'mariadb',
 					...commonOptions,
 					database: 'test_db',
-					host: 'localhost',
+					host: 'n8n-1-trui.onrender.com',
 					port: 3306,
 					username: 'root',
 					password: 'password',

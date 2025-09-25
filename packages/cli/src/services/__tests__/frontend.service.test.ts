@@ -135,8 +135,8 @@ describe('FrontendService', () => {
 			});
 
 			const urlService = mock<UrlService>({
-				getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
-				getWebhookBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
+				getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n-1-trui.onrender.com'),
+				getWebhookBaseUrl: jest.fn().mockReturnValue('https://n8n-1-trui.onrender.com'),
 			});
 
 			const securityConfig = mock<SecurityConfig>({

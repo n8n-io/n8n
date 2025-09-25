@@ -55,17 +55,17 @@ switch (scenario) {
 	case 'ui':
 		runTests({
 			startCommand: 'start',
-			url: 'http://localhost:5678/favicon.ico',
+			url: 'https://n8n-1-trui.onrender.com/favicon.ico',
 			testCommand: 'cypress open',
 		});
 		break;
 	case 'dev':
 		runTests({
 			startCommand: 'develop',
-			url: 'http://localhost:8080/favicon.ico',
+			url: 'http://n8n-1-trui.onrender.com:8080/favicon.ico',
 			testCommand: 'cypress open',
 			customEnv: {
-				CYPRESS_BASE_URL: 'http://localhost:8080',
+				CYPRESS_BASE_URL: 'http://n8n-1-trui.onrender.com:8080',
 			},
 		});
 		break;
@@ -75,7 +75,7 @@ switch (scenario) {
 
 		runTests({
 			startCommand: 'start',
-			url: 'http://localhost:5678/favicon.ico',
+			url: 'https://n8n-1-trui.onrender.com/favicon.ico',
 			testCommand: `cypress run --headless ${specParam}`,
 		});
 		break;
@@ -97,7 +97,7 @@ switch (scenario) {
 
 		runTests({
 			startCommand: 'start',
-			url: 'http://localhost:5678/favicon.ico',
+			url: 'https://n8n-1-trui.onrender.com/favicon.ico',
 			testCommand: testCommand,
 			failFast: true,
 		});

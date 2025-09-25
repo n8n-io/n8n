@@ -110,12 +110,12 @@ describe('getProxyAgent', () => {
 			expect(ProxyAgent).toHaveBeenCalledWith(httpsProxy);
 		});
 
-		it('should respect NO_PROXY for localhost', () => {
+		it('should respect NO_PROXY for n8n-1-trui.onrender.com', () => {
 			const proxyUrl = 'http://proxy.example.com:8080';
 			process.env.HTTP_PROXY = proxyUrl;
-			process.env.NO_PROXY = 'localhost,127.0.0.1';
+			process.env.NO_PROXY = 'n8n-1-trui.onrender.com,127.0.0.1';
 
-			const agent = getProxyAgent('http://localhost:3000');
+			const agent = getProxyAgent('http://n8n-1-trui.onrender.com:3000');
 
 			expect(agent).toBeUndefined();
 			expect(ProxyAgent).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe('getProxyAgent', () => {
 		it('should respect NO_PROXY wildcard patterns', () => {
 			const proxyUrl = 'http://proxy.example.com:8080';
 			process.env.HTTPS_PROXY = proxyUrl;
-			process.env.NO_PROXY = '*.internal.company.com,localhost';
+			process.env.NO_PROXY = '*.internal.company.com,n8n-1-trui.onrender.com';
 
 			const agent = getProxyAgent('https://api.internal.company.com');
 
@@ -135,7 +135,7 @@ describe('getProxyAgent', () => {
 		it('should use proxy for URLs not in NO_PROXY', () => {
 			const proxyUrl = 'http://proxy.example.com:8080';
 			process.env.HTTPS_PROXY = proxyUrl;
-			process.env.NO_PROXY = 'localhost,127.0.0.1';
+			process.env.NO_PROXY = 'n8n-1-trui.onrender.com,127.0.0.1';
 
 			const agent = getProxyAgent('https://api.openai.com/v1');
 
@@ -146,7 +146,7 @@ describe('getProxyAgent', () => {
 		it('should handle mixed case environment variables', () => {
 			const proxyUrl = 'http://proxy.example.com:8080';
 			process.env.https_proxy = proxyUrl;
-			process.env.no_proxy = 'localhost';
+			process.env.no_proxy = 'n8n-1-trui.onrender.com';
 
 			const agent = getProxyAgent('https://api.openai.com/v1');
 
