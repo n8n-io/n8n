@@ -27,16 +27,16 @@ export class ImportService {
 
 	private foreignKeyCommands: Record<'enable' | 'disable', Record<string, string>> = {
 		disable: {
-			sqlite: 'PRAGMA foreign_keys = OFF;',
-			'sqlite-pooled': 'PRAGMA foreign_keys = OFF;',
-			'sqlite-memory': 'PRAGMA foreign_keys = OFF;',
+			sqlite: 'PRAGMA defer_foreign_keys = ON;',
+			'sqlite-pooled': 'PRAGMA defer_foreign_keys = ON;',
+			'sqlite-memory': 'PRAGMA defer_foreign_keys = ON;',
 			postgres: 'SET session_replication_role = replica;',
 			postgresql: 'SET session_replication_role = replica;',
 		},
 		enable: {
-			sqlite: 'PRAGMA foreign_keys = ON;',
-			'sqlite-pooled': 'PRAGMA foreign_keys = ON;',
-			'sqlite-memory': 'PRAGMA foreign_keys = ON;',
+			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
+			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
+			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
 			postgres: 'SET session_replication_role = DEFAULT;',
 			postgresql: 'SET session_replication_role = DEFAULT;',
 		},
@@ -272,6 +272,8 @@ export class ImportService {
 	async importEntities(inputDir: string, truncateTables: boolean) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		await this.validateMigrations(inputDir);
+
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
 
@@ -423,5 +425,109 @@ export class ImportService {
 		this.logger.debug(`Executing: ${enableCommand}`);
 		await transactionManager.query(enableCommand);
 		this.logger.info('✅ Foreign key constraints re-enabled');
+	}
+
+	/**
+	 * Validates that the migrations in the import data match the target database
+	 * @param inputDir - Directory containing exported entity files
+	 * @returns Promise that resolves if migrations match, throws error if they don't
+	 */
+	async validateMigrations(inputDir: string): Promise<void> {
+		const migrationsFilePath = path.join(inputDir, 'migrations.jsonl');
+
+		try {
+			// Check if migrations file exists
+			await readFile(migrationsFilePath, 'utf8');
+		} catch (error) {
+			throw new Error(
+				'Migrations file not found. Cannot proceed with import without migration validation.',
+			);
+		}
+
+		// Read and parse migrations from file
+		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
+		const importMigrations = migrationsFileContent
+			.trim()
+			.split('\n')
+			.filter((line) => line.trim())
+			.map((line) => {
+				try {
+					return JSON.parse(line) as Record<string, unknown>;
+				} catch (error) {
+					throw new Error(
+						`Invalid JSON in migrations file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					);
+				}
+			});
+
+		if (importMigrations.length === 0) {
+			this.logger.info('No migrations found in import data');
+			return;
+		}
+
+		// Find the latest migration in import data
+		const latestImportMigration = importMigrations.reduce((latest, current) => {
+			const currentTimestamp = parseInt(String(current.timestamp || current.id || '0'));
+			const latestTimestamp = parseInt(String(latest.timestamp || latest.id || '0'));
+			return currentTimestamp > latestTimestamp ? current : latest;
+		});
+
+		this.logger.info(
+			`Latest migration in import data: ${String(latestImportMigration.name)} (timestamp: ${String(latestImportMigration.timestamp || latestImportMigration.id)}, id: ${String(latestImportMigration.id)})`,
+		);
+
+		// Get migrations from target database
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const migrationsTableName = `${tablePrefix}migrations`;
+
+		const dbMigrations = await this.dataSource.query(
+			`SELECT * FROM ${this.dataSource.driver.escape(migrationsTableName)} ORDER BY timestamp DESC LIMIT 1`,
+		);
+
+		if (dbMigrations.length === 0) {
+			throw new Error(
+				'Target database has no migrations. Cannot import data from a different migration state.',
+			);
+		}
+
+		const latestDbMigration = dbMigrations[0];
+		this.logger.info(
+			`Latest migration in target database: ${latestDbMigration.name} (timestamp: ${latestDbMigration.timestamp}, id: ${latestDbMigration.id})`,
+		);
+
+		// Compare timestamps, names, and IDs for comprehensive validation
+		const importTimestamp = parseInt(
+			String(latestImportMigration.timestamp || latestImportMigration.id || '0'),
+		);
+		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
+		const importName = latestImportMigration.name;
+		const dbName = latestDbMigration.name;
+		const importId = latestImportMigration.id;
+		const dbId = latestDbMigration.id;
+
+		// Check timestamp match
+		if (importTimestamp !== dbTimestamp) {
+			throw new Error(
+				`Migration timestamp mismatch. Import data: ${String(importName)} (${String(importTimestamp)}) does not match target database ${String(dbName)} (${String(dbTimestamp)}). Cannot import data from different migration states.`,
+			);
+		}
+
+		// Check name match
+		if (importName !== dbName) {
+			throw new Error(
+				`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
+			);
+		}
+
+		// Check ID match (if both have IDs)
+		if (importId && dbId && importId !== dbId) {
+			throw new Error(
+				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
+			);
+		}
+
+		this.logger.info(
+			'✅ Migration validation passed - import data matches target database migration state',
+		);
 	}
 }
