@@ -405,7 +405,7 @@ defineExpose({
 	}
 
 	&.disabled {
-		background-color: var(--color-foreground-xlight);
+		background-color: var(--color-background-base);
 		cursor: not-allowed;
 
 		textarea {
