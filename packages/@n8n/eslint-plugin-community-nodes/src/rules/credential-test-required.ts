@@ -58,23 +58,21 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				const testProperty = findClassProperty(node, 'test');
 				if (testProperty) {
-					return; // Has test property, no error needed
+					return;
 				}
 
-				// Check if any node in the package tests this credential via testedBy
 				const nameProperty = findClassProperty(node, 'name');
 				if (!nameProperty) {
-					return; // Can't determine credential name
+					return;
 				}
 
 				const credentialName = getStringLiteralValue(nameProperty.value);
 				if (!credentialName) {
-					return; // Can't determine credential name
+					return;
 				}
 
 				const pkgDir = getPackageDir();
 				if (!pkgDir) {
-					// If we can't find package directory, fall back to original behavior
 					context.report({
 						node,
 						messageId: 'missingCredentialTest',
@@ -85,7 +83,6 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				// Check if all node usages of this credential have testedBy
 				const allUsagesTestedByNodes = areAllCredentialUsagesTestedByNodes(credentialName, pkgDir);
 				if (!allUsagesTestedByNodes) {
 					context.report({

@@ -50,8 +50,9 @@ function createNodeCode(options: {
 	name?: string;
 	displayName?: string;
 	credentials?: Array<string | { name: string; testedBy?: string }>;
+	extendsClass?: string;
 }): string {
-	const { name = 'myNode', displayName = 'My Node', credentials = [] } = options;
+	const { name = 'myNode', displayName = 'My Node', credentials = [], extendsClass } = options;
 
 	const credentialsArray = credentials
 		.map((cred) => {
@@ -63,11 +64,19 @@ function createNodeCode(options: {
 		})
 		.join(', ');
 
+	const classDeclaration = extendsClass
+		? `export class ${name.charAt(0).toUpperCase() + name.slice(1)} extends ${extendsClass}`
+		: `export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements INodeType`;
+
+	const descriptionProperty = extendsClass
+		? `description = {` // Extending classes might not need full INodeTypeDescription
+		: `description: INodeTypeDescription = {`;
+
 	return `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements INodeType {
-	description: INodeTypeDescription = {
+${classDeclaration} {
+	${descriptionProperty}
 		displayName: '${displayName}',
 		name: '${name}',
 		group: ['transform'],

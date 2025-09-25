@@ -12,7 +12,15 @@ function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: str
 }
 
 export function isNodeTypeClass(node: TSESTree.ClassDeclaration): boolean {
-	return implementsInterface(node, 'INodeType');
+	if (implementsInterface(node, 'INodeType')) {
+		return true;
+	}
+
+	if (node.superClass?.type === 'Identifier' && node.superClass.name === 'Node') {
+		return true;
+	}
+
+	return false;
 }
 
 export function isCredentialTypeClass(node: TSESTree.ClassDeclaration): boolean {
