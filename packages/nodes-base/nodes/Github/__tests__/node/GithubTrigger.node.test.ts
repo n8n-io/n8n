@@ -166,7 +166,7 @@ describe('GithubTrigger Node', () => {
 			);
 
 			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
-				/Insufficient permissions to create webhooks\. Please check your GitHub credentials/,
+				/Please check your access token has the required permissions/,
 			);
 		});
 	});

@@ -551,39 +551,35 @@ export class GithubTrigger implements INodeType {
 					}
 
 					if (error.httpCode === '403') {
-						try {
-							const authentication = this.getNodeParameter('authentication') as string;
-							
-							let permissionMessage = 'Insufficient permissions to create webhooks. ';
-							
-							if (authentication === 'accessToken') {
+						const authentication = this.getNodeParameter('authentication');
+						let permissionMessage = 'Insufficient permissions to create webhooks. ';
+						
+						if (authentication === 'accessToken') {
+							try {
 								const credentials = await this.getCredentials('githubApi');
-								const token = credentials.accessToken as string;
-								const isFineGrainedToken = token?.startsWith('github_pat_');
+								const accessToken = credentials.accessToken;
 								
-								if (isFineGrainedToken) {
+								// Type guard for string
+								if (typeof accessToken === 'string' && accessToken.startsWith('github_pat_')) {
 									permissionMessage += 'For fine-grained tokens, ensure you have "Webhooks: Write" permission for the repository.';
 								} else {
 									permissionMessage += 'For classic tokens, ensure you have "repo" or "admin:repo_hook" scope.';
 								}
-							} else {
-								// OAuth2 authentication
-								permissionMessage += 'For OAuth2 authentication, ensure your OAuth app has sufficient permissions to create webhooks.';
+							} catch (credentialError) {
+								// If credential fetching fails, provide generic access token guidance
+								permissionMessage += 'Please check your access token has the required permissions: "repo" scope for classic tokens or "Webhooks: Write" for fine-grained tokens.';
 							}
-							
-							throw new NodeOperationError(
-								this.getNode(),
-								permissionMessage,
-								{ level: 'warning' },
-							);
-						} catch (credentialError) {
-							// If credential fetching fails, fall back to generic message
-							throw new NodeOperationError(
-								this.getNode(),
-								'Insufficient permissions to create webhooks. Please check your GitHub credentials and ensure they have webhook creation permissions.',
-								{ level: 'warning' },
-							);
+						} else if (authentication === 'oAuth2') {
+							permissionMessage += 'For OAuth2 authentication, ensure your OAuth app has sufficient permissions to create webhooks.';
+						} else {
+							permissionMessage += 'Please check your GitHub credentials have webhook creation permissions.';
 						}
+						
+						throw new NodeOperationError(
+							this.getNode(),
+							permissionMessage,
+							{ level: 'warning' },
+						);
 					}
 
 					if (error.httpCode === '404') {
