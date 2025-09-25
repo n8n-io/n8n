@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { FrontendSettings } from '@n8n/api-types';
 import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
 
@@ -16,7 +15,7 @@ const props = defineProps<
 				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel: FrontendSettings['releaseChannel'];
+		releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	}
 >();
 
