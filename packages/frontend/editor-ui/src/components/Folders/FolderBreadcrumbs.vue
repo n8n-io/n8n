@@ -43,15 +43,28 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 // This will be used to filter out items that are already visible in the breadcrumbs
 const visibleIds = ref<Set<string>>(new Set());
 
-const currentProject = computed(
-	() => projectsStore.currentProject ?? projectsStore.personalProject,
-);
+// For shared context we do not show any folder breadcrumbs, only project badge
+const isSharedContext = computed(() => projectsStore.projectNavActiveId === 'shared');
+
+const currentProject = computed(() => {
+	// For shared context, return undefined to show "Shared with you"
+	if (isSharedContext.value) {
+		return undefined;
+	}
+	// Otherwise, fallback to personal project for new workflows
+	return projectsStore.currentProject ?? projectsStore.personalProject ?? undefined;
+});
 
 const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
+	if (!currentProject.value) {
+		return isSharedContext.value ? i18n.baseText('projects.menu.shared') : '';
+	}
+
+	if (currentProject.value.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
-	return currentProject.value?.name;
+
+	return currentProject.value.name;
 });
 
 const isDragging = computed(() => {
@@ -64,7 +77,7 @@ const hasMoreItems = computed(() => {
 
 const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	visibleIds.value.clear();
-	if (!props.currentFolder) return [];
+	if (!props.currentFolder || isSharedContext.value) return [];
 
 	const items: FolderPathItem[] = [];
 	// Only show parent folder if we are showing 2 levels of visible breadcrumbs
@@ -99,7 +112,12 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 });
 
 const fetchHiddenBreadCrumbsItems = async () => {
-	if (!projectName.value || !props.currentFolder?.parentFolder || !currentProject.value) {
+	if (
+		!projectName.value ||
+		!props.currentFolder?.parentFolder ||
+		isSharedContext.value ||
+		!currentProject.value
+	) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
 		try {
@@ -200,9 +218,10 @@ onBeforeUnmount(() => {
 			</template>
 		</n8n-breadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
-		<div v-else-if="currentProject" :class="$style['home-project']">
+		<div v-else-if="currentProject || isSharedContext" :class="$style['home-project']">
 			<ProjectBreadcrumb
 				:current-project="currentProject"
+				:is-shared="isSharedContext"
 				:is-dragging="isDragging"
 				@project-drop="onProjectDrop"
 				@project-hover="onProjectHover"

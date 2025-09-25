@@ -14,6 +14,7 @@ import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
 import type { TelemetryContext } from './types/telemetry';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -345,6 +346,16 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 	NodeConnectionTypes.Main,
 ];
 
+// Data Types
+export const DATA_TYPE_ICON_MAP = {
+	['string']: 'type',
+	['number']: 'hash',
+	['boolean']: 'square-check',
+	date: 'calendar',
+	array: 'list',
+	object: 'box',
+} satisfies Record<string, IconName>;
+
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
 export const WORK_AREA_KEY = 'workArea';
@@ -610,7 +621,6 @@ export const enum VIEWS {
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const TEST_PIN_DATA = [
 	{
@@ -773,7 +783,13 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_EXPERIMENT = {
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
@@ -820,7 +836,8 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_EXPERIMENT.name,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,

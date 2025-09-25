@@ -14,6 +14,6 @@ export type FieldEntry =
 	  }
 	| {
 			keyName: string;
-			condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+			condition?: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 			keyValue: DataStoreColumnJsType;
 	  };

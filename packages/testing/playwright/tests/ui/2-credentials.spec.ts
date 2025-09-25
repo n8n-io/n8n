@@ -17,8 +17,8 @@ test.describe('Credentials', () => {
 			{ name: credentialName, projectId },
 		);
 
-		await expect(n8n.credentials.credentialCards).toHaveCount(1);
-		await expect(n8n.credentials.getCredentialByName(credentialName)).toBeVisible();
+		await expect(n8n.credentials.cards.getCredentials()).toHaveCount(1);
+		await expect(n8n.credentials.cards.getCredential(credentialName)).toBeVisible();
 	});
 
 	test('should sort credentials', async ({ n8n, api }) => {
@@ -44,12 +44,12 @@ test.describe('Credentials', () => {
 		await n8n.credentials.clearSearch();
 		await n8n.credentials.sortByNameDescending();
 
-		const firstCardDescending = n8n.credentials.credentialCards.first();
+		const firstCardDescending = n8n.credentials.cards.getCredentials().first();
 		await expect(firstCardDescending).toContainText(credentialZ);
 
 		await n8n.credentials.sortByNameAscending();
 
-		const firstCardAscending = n8n.credentials.credentialCards.first();
+		const firstCardAscending = n8n.credentials.cards.getCredentials().first();
 		await expect(firstCardAscending).toContainText(credentialA);
 	});
 
@@ -343,8 +343,7 @@ test.describe('Credentials', () => {
 
 		const projectId = await n8n.start.fromNewProject();
 		await n8n.navigate.toCredentials(projectId);
-		await n8n.credentials.addResourceButton.click();
-		await n8n.credentials.actionCredentialButton.click();
+		await n8n.credentials.addResource.credential();
 		await n8n.credentials.selectCredentialType('Notion API');
 		await n8n.canvas.credentialModal.fillField('apiKey', '1234567890');
 

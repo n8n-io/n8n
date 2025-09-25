@@ -21,8 +21,7 @@ export class CredentialsComposer {
 		}
 
 		// Open the "new credential" chooser: open add resource -> credential
-		await this.n8n.credentials.addResourceButton.click();
-		await this.n8n.credentials.actionCredentialButton.click();
+		await this.n8n.credentials.addResource.credential();
 		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, fields, {
 			name: options?.name,
 			closeDialog: options?.closeDialog,
