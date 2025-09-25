@@ -46,8 +46,9 @@ export const getWebhookDetails = async (
 	}
 
 	const nodeDetails = await Promise.all(
-		webhookNodes.map((node) =>
-			collectWebhookNodeDetails(user, node, baseUrl, isWorkflowActive, credentialsService),
+		webhookNodes.map(
+			async (node) =>
+				await collectWebhookNodeDetails(user, node, baseUrl, isWorkflowActive, credentialsService),
 		),
 	);
 
