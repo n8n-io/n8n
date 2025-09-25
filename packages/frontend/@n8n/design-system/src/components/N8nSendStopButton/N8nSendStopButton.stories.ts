@@ -52,21 +52,21 @@ export const SendButton = Template.bind({});
 SendButton.args = {
 	streaming: false,
 	disabled: false,
-	size: 'mini',
+	size: 'small',
 };
 
 export const SendButtonDisabled = Template.bind({});
 SendButtonDisabled.args = {
 	streaming: false,
 	disabled: true,
-	size: 'mini',
+	size: 'small',
 };
 
 export const StopButton = Template.bind({});
 StopButton.args = {
 	streaming: true,
 	disabled: false,
-	size: 'mini',
+	size: 'small',
 };
 
 export const SmallSize = Template.bind({});
@@ -170,7 +170,7 @@ const InteractiveTemplate: StoryFn = () => ({
 		return {
 			streaming: false,
 			disabled: false,
-			size: 'mini' as const,
+			size: 'small' as const,
 			lastAction: 'None',
 		};
 	},

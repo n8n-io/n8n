@@ -107,7 +107,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['type', 'square', 'size'],
+							props: ['type', 'square', 'size', 'icon', 'iconSize'],
 							template: '<button @click="$emit(\'click\')" :class="{stopButton: true}"></button>',
 							emits: ['click'],
 						},
