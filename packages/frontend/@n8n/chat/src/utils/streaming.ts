@@ -8,6 +8,16 @@ export interface NodeRunData {
 	message: ChatMessageText;
 }
 
+export function createBotMessage(id?: string): ChatMessageText {
+	return {
+		id: id ?? uuidv4(),
+		type: 'text',
+		text: '',
+		sender: 'bot',
+		timestamp: new Date(),
+	};
+}
+
 /**
  * Manages the state of streaming messages for nodes.
  * This class is responsible for tracking the state of each run of nodes,
@@ -108,15 +118,6 @@ export class StreamingMessageManager {
 		this.runOrder = [];
 		this.activeRuns.clear();
 	}
-}
-
-export function createBotMessage(id?: string): ChatMessageText {
-	return {
-		id: id ?? uuidv4(),
-		type: 'text',
-		text: '',
-		sender: 'bot',
-	};
 }
 
 export function updateMessageInArray(

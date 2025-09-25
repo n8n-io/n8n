@@ -8,7 +8,7 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
-import { computed, ref, toRefs, onMounted } from 'vue';
+import { computed, ref, toRefs, onMounted, onUnmounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 
 import { useOptions } from '@n8n/chat/composables';
@@ -35,6 +35,7 @@ const { message } = toRefs(props);
 const { options } = useOptions();
 const messageContainer = ref<HTMLElement | null>(null);
 const fileSources = ref<Record<string, string>>({});
+const currentTime = ref(new Date());
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -46,6 +47,27 @@ const classes = computed(() => {
 		'chat-message-from-bot': message.value.sender === 'bot',
 		'chat-message-transparent': message.value.transparent === true,
 	};
+});
+
+const formattedTimestamp = computed(() => {
+	if (!message.value.timestamp) return null;
+
+	const timestamp = message.value.timestamp;
+	const now = currentTime.value;
+	const diffMs = now.getTime() - timestamp.getTime();
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMins / 60);
+	const diffDays = Math.floor(diffHours / 24);
+
+	if (diffDays > 0) {
+		return timestamp.toLocaleDateString();
+	} else if (diffHours > 0) {
+		return `${diffHours}h ago`;
+	} else if (diffMins > 0) {
+		return `${diffMins}m ago`;
+	} else {
+		return 'Just now';
+	}
 });
 
 const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
@@ -100,6 +122,16 @@ onMounted(async () => {
 			}
 		}
 	}
+
+	// Update timestamp every minute
+	const timer = setInterval(() => {
+		currentTime.value = new Date();
+	}, 60000);
+
+	// Clean up timer on unmount
+	onUnmounted(() => {
+		clearInterval(timer);
+	});
 });
 </script>
 
@@ -125,6 +157,9 @@ onMounted(async () => {
 				</div>
 			</div>
 		</slot>
+		<div v-if="formattedTimestamp && options.showTimestamps" class="chat-message-timestamp">
+			{{ formattedTimestamp }}
+		</div>
 	</div>
 </template>
 
@@ -223,6 +258,22 @@ onMounted(async () => {
 		flex-wrap: wrap;
 		gap: 0.25rem;
 		padding-top: 0.5rem;
+	}
+
+	.chat-message-timestamp {
+		font-size: var(--chat--timestamp--font-size, 0.75rem);
+		color: var(--chat--timestamp--color, #888);
+		margin-top: 0.25rem;
+		opacity: var(--chat--timestamp--opacity, 0.7);
+		font-style: italic;
+	}
+
+	&.chat-message-from-user .chat-message-timestamp {
+		text-align: right;
+	}
+
+	&.chat-message-from-bot .chat-message-timestamp {
+		text-align: left;
 	}
 }
 </style>

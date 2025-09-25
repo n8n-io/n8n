@@ -29,6 +29,7 @@ function createUserMessage(text: string, files: File[] = []): ChatMessage {
 		text,
 		sender: 'user',
 		files,
+		timestamp: new Date(),
 	};
 }
 
@@ -189,10 +190,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		const waitingForResponse = ref(false);
 
 		const initialMessages = computed<ChatMessage[]>(() =>
-			(options.initialMessages ?? []).map((text) => ({
+			(options.initialMessages ?? []).map((text, index) => ({
 				id: uuidv4(),
 				text,
 				sender: 'bot',
+				// Give initial messages older timestamps so they don't all show "Just now"
+				timestamp: new Date(Date.now() - (index + 1) * 60000), // Each message 1 minute older
 			})),
 		);
 
@@ -266,6 +269,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				id: `${index}`,
 				text: message.kwargs.content,
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
+				// Don't add timestamps to loaded messages since we don't have real timestamp data
 			}));
 
 			if (messages.value.length) {

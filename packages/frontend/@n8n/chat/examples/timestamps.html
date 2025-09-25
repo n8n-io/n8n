@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Chat with Timestamps Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .example {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .example h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .example p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        #chat-with-timestamps, #chat-without-timestamps {
+            height: 500px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>n8n Chat Timestamp Examples</h1>
+        
+        <div class="example">
+            <h2>Chat with Timestamps (Default)</h2>
+            <p>This example shows the chat with timestamps enabled (default behavior). Each message displays a relative timestamp like "Just now", "5m ago", etc.</p>
+            <div class="code-block">
+createChat({
+    webhookUrl: 'YOUR_WEBHOOK_URL',
+    target: '#chat-with-timestamps',
+    mode: 'fullscreen',
+    showTimestamps: true, // This is the default
+    initialMessages: [
+        'Hi there! 👋',
+        'Timestamps are enabled in this chat.'
+    ]
+});
+            </div>
+            <div id="chat-with-timestamps"></div>
+        </div>
+
+        <div class="example">
+            <h2>Chat without Timestamps</h2>
+            <p>This example shows the chat with timestamps disabled for a cleaner look.</p>
+            <div class="code-block">
+createChat({
+    webhookUrl: 'YOUR_WEBHOOK_URL',
+    target: '#chat-without-timestamps',
+    mode: 'fullscreen',
+    showTimestamps: false,
+    initialMessages: [
+        'Hi there! 👋',
+        'No timestamps in this chat for a cleaner appearance.'
+    ]
+});
+            </div>
+            <div id="chat-without-timestamps"></div>
+        </div>
+
+        <div class="example">
+            <h2>Custom Timestamp Styling</h2>
+            <p>You can customize the appearance of timestamps using CSS variables:</p>
+            <div class="code-block">
+/* Custom timestamp styling */
+:root {
+    --chat--timestamp--font-size: 0.7rem;
+    --chat--timestamp--color: #999;
+    --chat--timestamp--opacity: 0.8;
+}
+
+/* Different styles for user vs bot timestamps */
+.chat-message-from-user .chat-message-timestamp {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
+}
+
+.chat-message-from-bot .chat-message-timestamp {
+    text-align: left;
+    color: #666;
+    font-style: italic;
+}
+            </div>
+        </div>
+    </div>
+
+    <!-- Note: This is just an example file. You would need to include the actual n8n chat library -->
+    <script>
+        // Mock implementation for demonstration
+        console.log('This is an example file. Include the actual @n8n/chat library to use these examples.');
+        
+        // Example of how you would actually use it:
+        // import '@n8n/chat/style.css';
+        // import { createChat } from '@n8n/chat';
+        //
+        // createChat({
+        //     webhookUrl: 'YOUR_PRODUCTION_WEBHOOK_URL',
+        //     target: '#chat-with-timestamps',
+        //     mode: 'fullscreen',
+        //     showTimestamps: true
+        // });
+    </script>
+</body>
+</html>
