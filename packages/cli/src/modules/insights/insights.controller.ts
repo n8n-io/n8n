@@ -58,18 +58,23 @@ export class InsightsController {
 	async getInsightsByWorkflow(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: ListInsightsWorkflowQueryDto,
+		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		this.validateQueryDates(payload);
+		this.validateQueryDates(query);
+		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+
 		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity({
-			dateRange: payload.dateRange ?? 'week',
+			dateRange: query.dateRange ?? 'week',
 		});
 		return await this.insightsService.getInsightsByWorkflow({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
-			skip: payload.skip,
-			take: payload.take,
-			sortBy: payload.sortBy,
-			projectId: payload.projectId,
+			skip: query.skip,
+			take: query.take,
+			sortBy: query.sortBy,
+			projectId: query.projectId,
+			startDate,
+			endDate,
 		});
 	}
 
@@ -79,17 +84,22 @@ export class InsightsController {
 	async getInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: InsightsDateFilterDto,
+		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		this.validateQueryDates(payload);
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
+		this.validateQueryDates(query);
+		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
 
 		// Cast to full insights by time type
 		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
-			projectId: payload.projectId,
+			projectId: query.projectId,
+			startDate,
+			endDate,
 		})) as InsightsByTime[];
 	}
 
@@ -102,10 +112,13 @@ export class InsightsController {
 	async getTimeSavedInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: InsightsDateFilterDto,
+		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		this.validateQueryDates(payload);
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
+		this.validateQueryDates(query);
+		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
 
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
@@ -113,7 +126,9 @@ export class InsightsController {
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			insightTypes: ['time_saved_min'],
-			projectId: payload.projectId,
+			projectId: query.projectId,
+			startDate,
+			endDate,
 		})) as RestrictedInsightsByTime[];
 	}
 

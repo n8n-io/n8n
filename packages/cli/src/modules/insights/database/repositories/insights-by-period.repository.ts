@@ -284,7 +284,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate,
 		endDate,
 		projectId,
-	}: { projectId?: string; startDate: Date; endDate?: Date }): Promise<
+	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
@@ -293,7 +293,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	> {
 		const today = DateTime.now().startOf('day');
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
-		const currentEnd = endDate ? DateTime.fromJSDate(endDate).startOf('day') : today.startOf('day');
+		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
 
 		const periodLengthInDays = currentEnd.diff(currentStart, 'days').days;
 		const daysToCurrentStart = today.diff(currentStart, 'days').days;
@@ -345,6 +345,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async getInsightsByWorkflow({
+		startDate,
+		endDate,
 		maxAgeInDays,
 		skip = 0,
 		take = 20,
@@ -356,6 +358,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		take?: number;
 		sortBy?: string;
 		projectId?: string;
+		startDate: Date;
+		endDate?: Date;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
@@ -408,11 +412,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		periodUnit,
 		insightTypes,
 		projectId,
+		startDate,
+		endDate,
 	}: {
 		maxAgeInDays: number;
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
 		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
 		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
 
