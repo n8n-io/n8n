@@ -541,9 +541,17 @@ export class Wait extends Webhook {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return await new Promise((resolve) => {
+			return await new Promise((resolve, reject) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
+				context.onExecutionCancellation(() => {
+					clearTimeout(timer);
+					reject(
+						new NodeOperationError(
+							context.getNode(),
+							'[Wait node] Workflow execution was canceled.',
+						),
+					);
+				});
 			});
 		}
 
