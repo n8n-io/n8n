@@ -105,7 +105,7 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedSuccessfully(data.workflowId);
+		handleExecutionFinishedWithOther(successToastAlreadyShown);
 		successToastAlreadyShown = true;
 	}
 
@@ -345,16 +345,15 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(workflowId: string) {
+function handleExecutionFinishedSuccessfully(workflowName: string, message: string) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
-	const i18n = useI18n();
 
-	workflowHelpers.setDocumentTitle(workflowsStore.getWorkflowById(workflowId)?.name, 'IDLE');
+	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
 	workflowsStore.setActiveExecutionId(undefined);
 	toast.showMessage({
-		title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+		title: message,
 		type: 'success',
 	});
 }
@@ -369,8 +368,9 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.workflowObject;
+	const workflowName = workflowObject.name ?? '';
 
-	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
+	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
@@ -393,17 +393,17 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 				}),
 				type: 'success',
 			});
-		} else {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
-				type: 'success',
-			});
+		} else if (!successToastAlreadyShown) {
+			handleExecutionFinishedSuccessfully(
+				workflowName,
+				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
+			);
 		}
 	} else if (!successToastAlreadyShown) {
-		toast.showMessage({
-			title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
-			type: 'success',
-		});
+		handleExecutionFinishedSuccessfully(
+			workflowName,
+			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+		);
 	}
 }
 
