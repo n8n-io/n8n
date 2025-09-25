@@ -476,7 +476,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	function updateBuilderCredits(quota: number, claimed: number) {
+	function updateBuilderCredits(quota?: number, claimed?: number) {
 		creditsQuota.value = quota;
 		creditsClaimed.value = claimed;
 	}
