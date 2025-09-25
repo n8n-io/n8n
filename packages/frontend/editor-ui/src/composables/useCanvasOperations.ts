@@ -115,6 +115,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -1526,6 +1527,13 @@ export function useCanvasOperations() {
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
+		const checkIsNotInstalledCommunityNode = (node: INodeUi) =>
+			isCommunityPackageName(node.type) &&
+			!useNodeTypesStore().communityNodeType(node.type)?.isInstalled;
+
+		const isNotInstalledCommunitySourceNode = checkIsNotInstalledCommunityNode(sourceNode);
+		const isNotInstalledCommunityTargetNode = checkIsNotInstalledCommunityNode(targetNode);
+
 		if (sourceConnection.type !== targetConnection.type) {
 			return false;
 		}
@@ -1558,7 +1566,9 @@ export function useCanvasOperations() {
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceNodeOutputs.length;
 
-		if (!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType) {
+		const isMissingOutputConnection =
+			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
+		if (isMissingOutputConnection && !isNotInstalledCommunitySourceNode) {
 			return false;
 		}
 
@@ -1604,7 +1614,13 @@ export function useCanvasOperations() {
 
 		const targetNodeHasInputConnectionPortOfType = targetConnection.index < targetNodeInputs.length;
 
-		return targetNodeHasInputConnectionOfType && targetNodeHasInputConnectionPortOfType;
+		const isMissingInputConnection =
+			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
+		if (isMissingInputConnection && !isNotInstalledCommunityTargetNode) {
+			return false;
+		}
+
+		return true;
 	}
 
 	async function addConnections(
