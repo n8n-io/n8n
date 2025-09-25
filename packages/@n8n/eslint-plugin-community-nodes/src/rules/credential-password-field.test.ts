@@ -103,6 +103,54 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			name: 'OAuth2 credential with URL fields and proper client secret protection',
 			code: createOAuth2CredentialCode(true),
 		},
+		{
+			name: 'public key fields should not be flagged as sensitive',
+			code: createCredentialCode([
+				createProperty('Public Key', 'publicKey'),
+				createProperty('Client ID', 'clientId'),
+			]),
+		},
+		{
+			name: 'certificates should be flagged as sensitive (when properly configured)',
+			code: createCredentialCode([
+				createProperty('Certificate', 'certificate', { password: true }),
+				createProperty('CA Certificate', 'caCert', { password: true }),
+				createProperty('Client Certificate', 'clientCert', { password: true }),
+			]),
+		},
+		{
+			name: 'URL fields containing sensitive keywords should not be flagged',
+			code: createCredentialCode([
+				createProperty('Token URL', 'tokenUrl'),
+				createProperty('Authorization URL', 'authorizationUrl'),
+				createProperty('Access Token URL', 'accessTokenUrl'),
+			]),
+		},
+		{
+			name: 'ID fields containing sensitive keywords should not be flagged',
+			code: createCredentialCode([
+				createProperty('Access Key ID', 'accessKeyId'),
+				createProperty('Key ID', 'keyId'),
+				createProperty('User ID', 'userId'),
+			]),
+		},
+		{
+			name: 'file path and name fields should not be flagged',
+			code: createCredentialCode([
+				createProperty('Key File Path', 'keyPath'),
+				createProperty('Key File Name', 'keyFile'),
+				createProperty('Certificate Path', 'keyName'),
+			]),
+		},
+		{
+			name: 'should flag actual sensitive fields while ignoring false positives',
+			code: createCredentialCode([
+				createProperty('Private Key', 'privateKey', { password: true }),
+				createProperty('Public Key', 'publicKey'), // Should not be flagged
+				createProperty('Secret Token', 'secretToken', { password: true }),
+				createProperty('Client ID', 'clientId'), // Should not be flagged
+			]),
+		},
 	],
 	invalid: [
 		{
@@ -162,6 +210,21 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'accessToken' } }],
 			output: createCredentialCode([
 				createProperty('Access Token', 'accessToken', { password: true }),
+			]),
+		},
+		{
+			name: 'certificate fields should require password protection',
+			code: createCredentialCode([
+				createProperty('Certificate', 'certificate'),
+				createProperty('Client Certificate', 'clientCert'),
+			]),
+			errors: [
+				{ messageId: 'missingPasswordOption', data: { fieldName: 'certificate' } },
+				{ messageId: 'missingPasswordOption', data: { fieldName: 'clientCert' } },
+			],
+			output: createCredentialCode([
+				createProperty('Certificate', 'certificate', { password: true }),
+				createProperty('Client Certificate', 'clientCert', { password: true }),
 			]),
 		},
 	],

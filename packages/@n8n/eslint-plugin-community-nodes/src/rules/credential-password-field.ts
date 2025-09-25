@@ -7,49 +7,66 @@ import {
 	getBooleanLiteralValue,
 } from '../utils/index.js';
 
-// Common sensitive field name patterns
-const SENSITIVE_FIELD_PATTERNS = [
+const SENSITIVE_PATTERNS = [
 	'password',
-	'key',
 	'secret',
 	'token',
+	'cert',
+	'passphrase',
 	'apikey',
-	'accesstoken',
 	'secretkey',
 	'privatekey',
 	'authkey',
-	'passphrase',
 ];
 
-// URL fields that shouldn't be considered sensitive
-const URL_FIELD_PATTERNS = [
-	'url',
-	'uri',
-	'endpoint',
-	'baseurl',
-	'serverurl',
-	'authorizationurl',
-	'accesstokenurl',
-	'tokenurl',
-	'redirecturl',
-	'callbackurl',
-];
+const NON_SENSITIVE_PATTERNS = ['url', 'pub', 'id'];
 
-const isSensitiveFieldName = (name: string): boolean => {
+function isSensitiveFieldName(name: string): boolean {
 	const lowerName = name.toLowerCase();
 
-	const isUrlField = URL_FIELD_PATTERNS.some(
-		(pattern) => lowerName.includes(pattern) || lowerName.endsWith(pattern),
-	);
-
-	if (isUrlField) {
+	if (NON_SENSITIVE_PATTERNS.some((pattern) => lowerName.includes(pattern))) {
 		return false;
 	}
 
-	return SENSITIVE_FIELD_PATTERNS.some(
-		(pattern) => lowerName.includes(pattern) || lowerName.endsWith(pattern),
-	);
-};
+	return SENSITIVE_PATTERNS.some((pattern) => lowerName.includes(pattern));
+}
+
+function hasPasswordTypeOption(element: any): boolean {
+	const typeOptionsProperty = findObjectProperty(element, 'typeOptions');
+
+	if (typeOptionsProperty?.value?.type !== 'ObjectExpression') {
+		return false;
+	}
+
+	const passwordProperty = findObjectProperty(typeOptionsProperty.value, 'password');
+	const passwordValue = passwordProperty ? getBooleanLiteralValue(passwordProperty.value) : null;
+
+	return passwordValue === true;
+}
+
+function createPasswordFix(element: any, typeOptionsProperty: any) {
+	return function (fixer: any) {
+		if (typeOptionsProperty?.value?.type === 'ObjectExpression') {
+			const passwordProperty = findObjectProperty(typeOptionsProperty.value, 'password');
+
+			if (passwordProperty) {
+				return fixer.replaceText(passwordProperty.value, 'true');
+			}
+
+			if (typeOptionsProperty.value.properties.length > 0) {
+				const lastProperty =
+					typeOptionsProperty.value.properties[typeOptionsProperty.value.properties.length - 1];
+				return lastProperty ? fixer.insertTextAfter(lastProperty, ', password: true') : null;
+			} else {
+				const openBrace = typeOptionsProperty.value.range![0] + 1;
+				return fixer.insertTextAfterRange([openBrace, openBrace], ' password: true ');
+			}
+		}
+
+		const lastProperty = element.properties[element.properties.length - 1];
+		return fixer.insertTextAfter(lastProperty, ',\n\t\t\ttypeOptions: { password: true }');
+	};
+}
 
 export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -77,68 +94,29 @@ export const CredentialPasswordFieldRule = ESLintUtils.RuleCreator.withoutDocs({
 					return;
 				}
 
-				propertiesProperty.value.elements.forEach((element: any) => {
+				for (const element of propertiesProperty.value.elements) {
 					if (element?.type !== 'ObjectExpression') {
-						return;
+						continue;
 					}
 
 					const nameProperty = findObjectProperty(element, 'name');
 					const fieldName = nameProperty ? getStringLiteralValue(nameProperty.value) : null;
 
 					if (!fieldName || !isSensitiveFieldName(fieldName)) {
-						return;
+						continue;
 					}
 
-					const typeOptionsProperty = findObjectProperty(element, 'typeOptions');
-					let hasPasswordTypeOption = false;
+					if (!hasPasswordTypeOption(element)) {
+						const typeOptionsProperty = findObjectProperty(element, 'typeOptions');
 
-					if (typeOptionsProperty?.value?.type === 'ObjectExpression') {
-						const passwordProperty = findObjectProperty(typeOptionsProperty.value, 'password');
-						if (passwordProperty) {
-							const passwordValue = getBooleanLiteralValue(passwordProperty.value);
-							hasPasswordTypeOption = passwordValue === true;
-						}
-					}
-
-					if (!hasPasswordTypeOption) {
 						context.report({
 							node: element,
 							messageId: 'missingPasswordOption',
-							data: {
-								fieldName,
-							},
-							fix(fixer) {
-								if (typeOptionsProperty?.value?.type === 'ObjectExpression') {
-									const passwordProperty = findObjectProperty(
-										typeOptionsProperty.value,
-										'password',
-									);
-									if (passwordProperty) {
-										return fixer.replaceText(passwordProperty.value, 'true');
-									} else {
-										if (typeOptionsProperty.value.properties.length > 0) {
-											const lastProperty =
-												typeOptionsProperty.value.properties[
-													typeOptionsProperty.value.properties.length - 1
-												];
-											if (!lastProperty) return null;
-											return fixer.insertTextAfter(lastProperty, ', password: true');
-										} else {
-											const openBrace = typeOptionsProperty.value.range![0] + 1;
-											return fixer.insertTextAfterRange([openBrace, openBrace], ' password: true ');
-										}
-									}
-								} else {
-									const lastProperty = element.properties[element.properties.length - 1];
-									return fixer.insertTextAfter(
-										lastProperty,
-										',\n\t\t\ttypeOptions: { password: true }',
-									);
-								}
-							},
+							data: { fieldName },
+							fix: createPasswordFix(element, typeOptionsProperty),
 						});
 					}
-				});
+				}
 			},
 		};
 	},
