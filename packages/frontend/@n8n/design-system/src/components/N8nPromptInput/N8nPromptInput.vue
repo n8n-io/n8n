@@ -290,7 +290,7 @@ defineExpose({
 					ref="textareaRef"
 					v-model="textValue"
 					:class="$style.singleLineTextarea"
-					:placeholder="placeholder"
+					:placeholder="hasNoCredits ? '' : placeholder"
 					:disabled="disabled || streaming || hasNoCredits"
 					:maxlength="maxLength"
 					rows="1"
