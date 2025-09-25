@@ -27,6 +27,6 @@ export class ApiKey extends WithTimestampsAndStringId {
 	@Column({ type: String })
 	apiKey: string;
 
-	@Column({ type: String, default: 'public-api' })
+	@Column({ type: String, default: 'public-api', select: false })
 	audience: string;
 }
