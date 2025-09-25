@@ -61,7 +61,7 @@ export class ExportService {
 			const fileName = 'migrations.jsonl';
 			const filePath = path.join(outputDir, fileName);
 
-			const migrationsJsonl = allMigrations
+			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
 				.join('\n');
 			await appendFile(filePath, migrationsJsonl ?? '' + '\n', 'utf8');
