@@ -123,6 +123,10 @@ export class Github implements INodeType {
 						value: 'review',
 					},
 					{
+						name: 'Search',
+						value: 'search',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -476,6 +480,26 @@ export class Github implements INodeType {
 				default: 'dispatch',
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['search'],
+					},
+				},
+				options: [
+					{
+						name: 'Search Repositories',
+						value: 'searchRepositories',
+						description: 'Search repositories across all of GitHub',
+						action: 'Search repositories globally',
+					},
+				],
+				default: 'searchRepositories',
+			},
+			{
 				displayName:
 					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
 				name: 'webhookNotice',
@@ -549,6 +573,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					hide: {
 						operation: ['invite'],
+						resource: ['search'],
 					},
 				},
 			},
@@ -610,7 +635,7 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						resource: ['user', 'organization'],
+						resource: ['user', 'organization', 'search'],
 						operation: ['getRepositories'],
 					},
 				},
@@ -750,6 +775,119 @@ export class Github implements INodeType {
 					},
 				},
 				description: 'JSON object with input parameters for the workflow',
+			},
+
+			// ----------------------------------
+			//         search
+			// ----------------------------------
+
+			// ----------------------------------
+			//         search:searchRepositories
+			// ----------------------------------
+			{
+				displayName: 'Search Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['search'],
+						operation: ['searchRepositories'],
+					},
+				},
+				placeholder: 'language:javascript stars:>1000',
+				description:
+					'The search query. Supports GitHub search syntax like language:javascript, stars:>1000, etc.',
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sort',
+				type: 'options',
+				options: [
+					{
+						name: 'Best Match',
+						value: 'best-match',
+					},
+					{
+						name: 'Stars',
+						value: 'stars',
+					},
+					{
+						name: 'Forks',
+						value: 'forks',
+					},
+					{
+						name: 'Help Wanted Issues',
+						value: 'help-wanted-issues',
+					},
+					{
+						name: 'Updated',
+						value: 'updated',
+					},
+				],
+				default: 'best-match',
+				displayOptions: {
+					show: {
+						resource: ['search'],
+						operation: ['searchRepositories'],
+					},
+				},
+				description: 'The sort field',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'Descending',
+						value: 'desc',
+					},
+					{
+						name: 'Ascending',
+						value: 'asc',
+					},
+				],
+				default: 'desc',
+				displayOptions: {
+					show: {
+						resource: ['search'],
+						operation: ['searchRepositories'],
+					},
+				},
+				description: 'The sort order',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						resource: ['search'],
+						operation: ['searchRepositories'],
+					},
+				},
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 30,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				displayOptions: {
+					show: {
+						resource: ['search'],
+						operation: ['searchRepositories'],
+						returnAll: [false],
+					},
+				},
+				description: 'Max number of results to return (GitHub API limit: 100)',
 			},
 
 			// ----------------------------------
@@ -2161,6 +2299,7 @@ export class Github implements INodeType {
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
+			'search:searchRepositories',
 		];
 
 		// For Post
@@ -2231,7 +2370,7 @@ export class Github implements INodeType {
 				qs = {};
 
 				let owner = '';
-				if (fullOperation !== 'user:invite') {
+				if (fullOperation !== 'user:invite' && fullOperation !== 'search:searchRepositories') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2240,7 +2379,8 @@ export class Github implements INodeType {
 				if (
 					fullOperation !== 'user:getRepositories' &&
 					fullOperation !== 'user:invite' &&
-					fullOperation !== 'organization:getRepositories'
+					fullOperation !== 'organization:getRepositories' &&
+					fullOperation !== 'search:searchRepositories'
 				) {
 					repository = this.getNodeParameter('repository', i, '', { extractValue: true }) as string;
 				}
@@ -2651,6 +2791,35 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						endpoint = `/orgs/${owner}/repos`;
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
+					}
+				} else if (resource === 'search') {
+					if (operation === 'searchRepositories') {
+						// ----------------------------------
+						//         searchRepositories
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = '/search/repositories';
+
+						const query = this.getNodeParameter('query', i) as string;
+						const sort = this.getNodeParameter('sort', i) as string;
+						const order = this.getNodeParameter('order', i) as string;
+
+						qs.q = query;
+
+						// GitHub API doesn't accept 'best-match' as a sort parameter
+						// When sort is 'best-match', we omit the sort and order parameters
+						if (sort !== 'best-match') {
+							qs.sort = sort;
+							qs.order = order;
+						}
+
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
