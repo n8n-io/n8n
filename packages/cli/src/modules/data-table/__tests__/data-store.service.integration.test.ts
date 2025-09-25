@@ -46,6 +46,11 @@ describe('dataStore', () => {
 	let project2: Project;
 
 	beforeEach(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+		dataStoreService = Container.get(DataStoreService);
+		dataStoreRepository = Container.get(DataStoreRepository);
+		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
 	});
