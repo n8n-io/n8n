@@ -81,6 +81,7 @@ onBeforeUnmount(() => {
 	.chat-footer {
 		border-top: var(--chat--footer--border-top, 1px solid var(--chat--color-light-shade-100));
 		background: var(--chat--footer--background);
+		padding: var(--chat--footer--padding);
 		color: var(--chat--footer--color);
 	}
 }

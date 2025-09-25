@@ -254,6 +254,8 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 
 	if (chatStore.ws && waitingForChatResponse.value) {
 		await respondToChatNode(chatStore.ws, messageText);
+		// Emit event to reset message history navigation
+		chatEventBus.emit('messageSent');
 		return;
 	}
 
@@ -262,6 +264,9 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	if (response?.executionId) {
 		setupWebsocketConnection(response.executionId);
 	}
+
+	// Emit event to reset message history navigation
+	chatEventBus.emit('messageSent');
 
 	isSubmitting.value = false;
 }
@@ -290,6 +295,7 @@ function onFileRemove(file: File) {
 
 function onKeyDown(event: KeyboardEvent) {
 	if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+		console.log('Arrow key pressed:', event.key); // Debug
 		event.preventDefault();
 
 		emit('arrowKeyDown', {
@@ -322,7 +328,7 @@ function adjustTextAreaHeight() {
 </script>
 
 <template>
-	<div class="chat-input" :style="styleVars" @keydown.stop="onKeyDown">
+	<div class="chat-input" :style="styleVars">
 		<div class="chat-inputs">
 			<div v-if="$slots.leftPanel" class="chat-input-left-panel">
 				<slot name="leftPanel" />
@@ -334,6 +340,7 @@ function adjustTextAreaHeight() {
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
+				@keydown="onKeyDown"
 				@input="adjustTextAreaHeight"
 				@mousedown="adjustTextAreaHeight"
 				@focus="adjustTextAreaHeight"
