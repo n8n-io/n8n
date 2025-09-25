@@ -65,17 +65,24 @@ type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
 const prompt = ref<PromptType>('select_account');
 
+const handlePromptChange = (value: PromptType) => {
+	prompt.value = value;
+};
+
 type PromptDescription = {
 	label: string;
 	value: PromptType;
 };
 
 const promptDescriptions: PromptDescription[] = [
-	{ label: 'Login (Force the user to log in)', value: 'login' },
-	{ label: 'None (Silent authentication	)', value: 'none' },
-	{ label: 'Consent (Ask the user to consent)', value: 'consent' },
-	{ label: 'Select Account (Allow the user to select an account)', value: 'select_account' },
-	{ label: 'Create (Ask the OP to show the registration page first)', value: 'create' },
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.login'), value: 'login' },
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.none'), value: 'none' },
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.consent'), value: 'consent' },
+	{
+		label: i18n.baseText('settings.sso.settings.oidc.prompt.select_account'),
+		value: 'select_account',
+	},
+	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
@@ -517,9 +524,7 @@ async function onOidcSettingsSave() {
 					<N8nSelect
 						:model-value="prompt"
 						data-test-id="oidc-prompt"
-						@update:model-value="
-							(v: 'create' | 'none' | 'login' | 'consent' | 'select_account') => (prompt = v)
-						"
+						@update:model-value="handlePromptChange"
 					>
 						<N8nOption
 							v-for="option in promptDescriptions"
