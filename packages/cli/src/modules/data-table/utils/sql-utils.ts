@@ -1,4 +1,8 @@
-import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
+import {
+	dataStoreColumnNameSchema,
+	DATA_STORE_COLUMN_ERROR_MESSAGE,
+	type DataStoreCreateColumnSchema,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -68,9 +72,8 @@ function columnToWildcardAndType(
 	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
 }
 
-function isValidColumnName(name: string) {
-	// Only allow alphanumeric and underscore
-	return DATA_STORE_COLUMN_REGEX.test(name);
+export function isValidColumnName(name: string) {
+	return dataStoreColumnNameSchema.safeParse(name).success;
 }
 
 export function addColumnQuery(
@@ -80,7 +83,7 @@ export function addColumnQuery(
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
-		throw new UnexpectedError('bad column name');
+		throw new UnexpectedError(DATA_STORE_COLUMN_ERROR_MESSAGE);
 	}
 
 	const quotedTableName = quoteIdentifier(tableName, dbType);

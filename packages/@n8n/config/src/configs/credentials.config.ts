@@ -12,6 +12,10 @@ class CredentialsOverwrite {
 	/** Internal API endpoint to fetch overwritten credential types from. */
 	@Env('CREDENTIALS_OVERWRITE_ENDPOINT')
 	endpoint: string = '';
+
+	/** Authentication token for the credentials overwrite endpoint. */
+	@Env('CREDENTIALS_OVERWRITE_ENDPOINT_AUTH_TOKEN')
+	endpointAuthToken: string = '';
 }
 
 @Config

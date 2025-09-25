@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const executionsStore = useExecutionsStore();
+const projectsStore = useProjectsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
 const nodeViewDetailsOpened = ref(false);
@@ -75,6 +77,7 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
@@ -99,6 +102,7 @@ const loadExecution = () => {
 				executionMode: props.executionMode ?? '',
 				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
