@@ -39,6 +39,21 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+interface CreateAuthMiddlewareOptions {
+	/**
+	 * If true, MFA is not enforced
+	 */
+	allowSkipMFA: boolean;
+	/**
+	 * If true, authentication becomes optional in preview mode
+	 */
+	allowSkipPreviewAuth?: boolean;
+	/**
+	 * If true, the middleware will check for an API key in the Authorization header
+	*/
+	apiKeyAuth?: boolean;
+}
+
 @Service()
 export class AuthService {
 	// The browser-id check needs to be skipped on these endpoints
@@ -74,7 +89,7 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware(allowSkipMFA: boolean, apiKeyAuth: boolean = false) {
+	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth, apiKeyAuth }: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
 			if (apiKeyAuth) {
@@ -89,7 +104,6 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = this.mfaService.isMFAEnforced();
-
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
@@ -115,7 +129,11 @@ export class AuthService {
 				}
 			}
 
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const shouldSkipAuth = allowSkipPreviewAuth && isPreviewMode;
+
 			if (req.user) next();
+			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
 	}

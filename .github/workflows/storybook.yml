@@ -25,7 +25,8 @@ jobs:
       deployments: write
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-
+        with:
+          fetch-depth: 0
       - name: Setup Node.js
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
@@ -37,7 +38,9 @@ jobs:
           pnpm build:storybook
 
       - name: Setup Wrangler Pre-requisites
-        run: echo "ignore-workspace-root-check=true" >> .npmrc
+        run: |
+          echo "ignore-workspace-root-check=true" >> .npmrc
+          pnpm add --global wrangler
 
       - name: Deploy
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65

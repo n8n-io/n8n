@@ -67,6 +67,7 @@ const helpTexts = computed(() => ({
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 }));
+
 const defaultValues = ref({
 	timezone: 'America/New_York',
 	saveDataErrorExecution: 'all',
@@ -74,7 +75,10 @@ const defaultValues = ref({
 	saveExecutionProgress: false,
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
+	availableInMCP: false,
 });
+
+const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -383,6 +387,10 @@ const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
 };
 
+const toggleAvailableInMCP = () => {
+	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
+};
+
 const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
@@ -463,6 +471,9 @@ onMounted(async () => {
 	}
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
+	}
+	if (workflowSettingsData.availableInMCP === undefined) {
+		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
 
 	workflowSettings.value = workflowSettingsData;
@@ -771,7 +782,6 @@ onBeforeUnmount(() => {
 								ref="inputField"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
-								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
 							></el-switch>
@@ -826,6 +836,30 @@ onBeforeUnmount(() => {
 						</el-col>
 					</el-row>
 				</div>
+				<el-row v-if="isMCPEnabled" data-test-id="workflow-settings-available-in-mcp">
+					<el-col :span="10" :class="$style['setting-name']">
+						<label for="availableInMCP">
+							{{ i18n.baseText('workflowSettings.availableInMCP') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+								</template>
+								<n8n-icon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</el-col>
+					<el-col :span="14">
+						<div>
+							<el-switch
+								ref="inputField"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:model-value="workflowSettings.availableInMCP ?? false"
+								data-test-id="workflow-settings-available-in-mcp"
+								@update:model-value="toggleAvailableInMCP"
+							></el-switch>
+						</div>
+					</el-col>
+				</el-row>
 				<el-row>
 					<el-col :span="10" :class="$style['setting-name']">
 						<label for="timeSavedPerExecution">

@@ -33,6 +33,7 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
+	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
 	apiKeyAuth: boolean;
 	rateLimit?: boolean | RateLimit;

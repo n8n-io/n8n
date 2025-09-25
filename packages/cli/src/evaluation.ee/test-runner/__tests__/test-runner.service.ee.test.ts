@@ -463,7 +463,6 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
 			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
 			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
@@ -526,7 +525,6 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
@@ -700,7 +698,6 @@ describe('TestRunnerService', () => {
 						},
 					},
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -834,7 +831,6 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
-						partialExecutionVersion: 2,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
@@ -847,7 +843,6 @@ describe('TestRunnerService', () => {
 							},
 							manualData: {
 								userId: metadata.userId,
-								partialExecutionVersion: 2,
 								triggerToStartFrom: {
 									name: triggerNodeName,
 								},

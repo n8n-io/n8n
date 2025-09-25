@@ -815,6 +815,136 @@ describe('dataStore', () => {
 				expect(updatedDesc.data.map((x) => x.name)).toEqual(['ds1Updated', 'ds2']);
 			});
 		});
+
+		describe('filters as expected', () => {
+			it('filters by name', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, name: 'dataStore2' },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data[0].name).toBe('dataStore2');
+			});
+
+			it('filters by multiple names (AND)', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, name: ['Store3', 'data'] },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data.map((x) => x.name).sort()).toEqual(['dataStore3']);
+			});
+
+			it('filters by id', async () => {
+				// ARRANGE
+				const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, id: ds1Id },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(1);
+				expect(filtered.data[0].id).toBe(ds1Id);
+			});
+
+			it('filters by multiple ids (OR)', async () => {
+				// ARRANGE
+				const { id: ds1Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+				const { id: ds2Id } = await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore3',
+					columns: [],
+				});
+
+				// ACT
+				const filtered = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id, id: [ds1Id, ds2Id] },
+				});
+
+				// ASSERT
+				expect(filtered.count).toBe(2);
+				expect(filtered.data.map((x) => x.id).sort()).toEqual([ds1Id, ds2Id].sort());
+			});
+
+			it('filters by projectId', async () => {
+				// ARRANGE
+				await dataStoreService.createDataStore(project1.id, {
+					name: 'dataStore1',
+					columns: [],
+				});
+
+				await dataStoreService.createDataStore(project2.id, {
+					name: 'dataStore2',
+					columns: [],
+				});
+
+				// ACT
+				const filtered1 = await dataStoreService.getManyAndCount({
+					filter: { projectId: project1.id },
+				});
+				const filtered2 = await dataStoreService.getManyAndCount({
+					filter: { projectId: project2.id },
+				});
+
+				// ASSERT
+				expect(filtered1.count).toBe(1);
+				expect(filtered1.data[0].name).toBe('dataStore1');
+				expect(filtered2.count).toBe(1);
+				expect(filtered2.data[0].name).toBe('dataStore2');
+			});
+		});
 	});
 
 	describe('insertRows', () => {

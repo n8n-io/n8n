@@ -1,9 +1,4 @@
-import {
-	ImportWorkflowFromUrlDto,
-	ManualRunQueryDto,
-	ROLE,
-	TransferWorkflowBodyDto,
-} from '@n8n/api-types';
+import { ImportWorkflowFromUrlDto, ROLE, TransferWorkflowBodyDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
@@ -446,11 +441,7 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(
-		req: WorkflowRequest.ManualRun,
-		_res: unknown,
-		@Query query: ManualRunQueryDto,
-	) {
+	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
 		if (!req.body.workflowData.id) {
 			throw new UnexpectedError('You cannot execute a workflow without an ID');
 		}
@@ -474,7 +465,6 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'],
-			query.partialExecutionVersion,
 		);
 	}
 
