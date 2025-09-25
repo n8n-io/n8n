@@ -354,6 +354,7 @@ export const DATA_TYPE_ICON_MAP = {
 	date: 'calendar',
 	array: 'list',
 	object: 'box',
+	file: 'file',
 } satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
