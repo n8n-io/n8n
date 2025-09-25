@@ -551,23 +551,39 @@ export class GithubTrigger implements INodeType {
 					}
 
 					if (error.httpCode === '403') {
-						const credentials = await this.getCredentials('githubApi');
-						const token = credentials.accessToken as string;
-						const isFineGrainedToken = token?.startsWith('github_pat_');
-						
-						let permissionMessage = 'Insufficient permissions to create webhooks. ';
-						
-						if (isFineGrainedToken) {
-							permissionMessage += 'For fine-grained tokens, ensure you have "Webhooks: Write" permission for the repository.';
-						} else {
-							permissionMessage += 'For classic tokens, ensure you have "repo" or "admin:repo_hook" scope.';
+						try {
+							const authentication = this.getNodeParameter('authentication') as string;
+							
+							let permissionMessage = 'Insufficient permissions to create webhooks. ';
+							
+							if (authentication === 'accessToken') {
+								const credentials = await this.getCredentials('githubApi');
+								const token = credentials.accessToken as string;
+								const isFineGrainedToken = token?.startsWith('github_pat_');
+								
+								if (isFineGrainedToken) {
+									permissionMessage += 'For fine-grained tokens, ensure you have "Webhooks: Write" permission for the repository.';
+								} else {
+									permissionMessage += 'For classic tokens, ensure you have "repo" or "admin:repo_hook" scope.';
+								}
+							} else {
+								// OAuth2 authentication
+								permissionMessage += 'For OAuth2 authentication, ensure your OAuth app has sufficient permissions to create webhooks.';
+							}
+							
+							throw new NodeOperationError(
+								this.getNode(),
+								permissionMessage,
+								{ level: 'warning' },
+							);
+						} catch (credentialError) {
+							// If credential fetching fails, fall back to generic message
+							throw new NodeOperationError(
+								this.getNode(),
+								'Insufficient permissions to create webhooks. Please check your GitHub credentials and ensure they have webhook creation permissions.',
+								{ level: 'warning' },
+							);
 						}
-						
-						throw new NodeOperationError(
-							this.getNode(),
-							permissionMessage,
-							{ level: 'warning' },
-						);
 					}
 
 					if (error.httpCode === '404') {

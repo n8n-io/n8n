@@ -47,6 +47,7 @@ describe('GithubTrigger Node', () => {
 					if (name === 'repository') return 'some-repo';
 					if (name === 'events') return ['push'];
 					if (name === 'options') return { insecureSSL: false };
+					if (name === 'authentication') return 'accessToken';
 				}),
 				getWorkflowStaticData: () => webhookData,
 				getCredentials: jest.fn(),
@@ -130,6 +131,42 @@ describe('GithubTrigger Node', () => {
 
 			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
 				/classic tokens, ensure you have "repo" or "admin:repo_hook" scope/,
+			);
+		});
+
+		it('should provide specific error message for OAuth2 permission issues (403)', async () => {
+			mockThis.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'owner') return 'some-owner';
+				if (name === 'repository') return 'some-repo';
+				if (name === 'events') return ['push'];
+				if (name === 'options') return { insecureSSL: false };
+				if (name === 'authentication') return 'oAuth2';
+			});
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '403' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/OAuth2 authentication, ensure your OAuth app has sufficient permissions/,
+			);
+		});
+
+		it('should provide fallback error message if credential fetching fails (403)', async () => {
+			mockThis.getCredentials.mockRejectedValue(new Error('Credential error'));
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '403' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/Insufficient permissions to create webhooks\. Please check your GitHub credentials/,
 			);
 		});
 	});
