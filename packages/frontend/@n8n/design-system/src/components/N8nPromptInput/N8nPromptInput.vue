@@ -56,7 +56,7 @@ const textAreaMaxHeight = computed(() => {
 
 const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
-	maxLength: toRef(props, 'maxInputCharacterLength'),
+	maxLength: toRef(props, 'maxLength'),
 });
 
 const showWarningBanner = computed(() => isAtLimit.value);
@@ -175,7 +175,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const hasModifier = event.ctrlKey || event.metaKey;
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
-	const atMaxLength = characterCount.value >= props.maxInputCharacterLength;
+	const atMaxLength = characterCount.value >= props.maxLength;
 	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
