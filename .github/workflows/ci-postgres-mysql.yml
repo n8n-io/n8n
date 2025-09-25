@@ -67,17 +67,6 @@ jobs:
           compose-file: ./.github/docker-compose.yml
           services: mysql-8.4
 
-      - name: Wait for MySQL
-        run: |
-          for i in {1..30}; do
-            if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
-              echo "MySQL is ready"
-              break
-            fi
-            echo "Waiting for MySQL... ($i/30)"
-            sleep 2
-          done
-
       - name: Test MySQL
         working-directory: packages/cli
         run: pnpm test:mysql --testTimeout 120000
