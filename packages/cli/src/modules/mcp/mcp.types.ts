@@ -68,7 +68,3 @@ export type WorkflowDetailsResult = {
 	workflow: WorkflowDetailsWorkflow;
 	triggerInfo: string;
 };
-
-export type McpSettingsUpdateBody = {
-	mcpAccessEnabled: boolean;
-};

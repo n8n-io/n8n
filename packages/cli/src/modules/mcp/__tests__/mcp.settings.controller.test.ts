@@ -3,10 +3,10 @@ import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
-import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
+import { UpdateMcpSettingsDto } from '../update-mcp-settings.dto';
 
 const createReq = (body: unknown, roleSlug: string): AuthenticatedRequest =>
 	({ body, user: { role: { slug: roleSlug } } }) as unknown as AuthenticatedRequest;
@@ -36,14 +36,16 @@ describe('McpSettingsController', () => {
 	describe('updateSettings', () => {
 		test('prevents non-owners from updating MCP access', async () => {
 			const req = createReq({ mcpAccessEnabled: false }, 'member');
-			await expect(controller.updateSettings(req)).rejects.toBeInstanceOf(ForbiddenError);
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
+			await expect(controller.updateSettings(req, dto)).rejects.toBeInstanceOf(ForbiddenError);
 		});
 
 		test('disables MCP access correctly', async () => {
 			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_OWNER_ROLE.slug);
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 
-			const result = await controller.updateSettings(req);
+			const result = await controller.updateSettings(req, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 			expect(moduleRegistry.settings.set).toHaveBeenCalledWith('mcp', { mcpAccessEnabled: false });
@@ -52,21 +54,19 @@ describe('McpSettingsController', () => {
 
 		test('enables MCP access correctly', async () => {
 			const req = createReq({ mcpAccessEnabled: true }, GLOBAL_OWNER_ROLE.slug);
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 
-			const result = await controller.updateSettings(req);
+			const result = await controller.updateSettings(req, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.settings.set).toHaveBeenCalledWith('mcp', { mcpAccessEnabled: true });
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
-		test('handles invalid values correctly', async () => {
-			const req1 = createReq({}, GLOBAL_OWNER_ROLE.slug);
-			await expect(controller.updateSettings(req1)).rejects.toBeInstanceOf(BadRequestError);
-
-			const req2 = createReq({ mcpAccessEnabled: 'yes' }, GLOBAL_OWNER_ROLE.slug);
-			await expect(controller.updateSettings(req2)).rejects.toBeInstanceOf(BadRequestError);
+		test('requires boolean mcpAccessEnabled value', () => {
+			expect(() => new UpdateMcpSettingsDto({} as never)).toThrow();
+			expect(() => new UpdateMcpSettingsDto({ mcpAccessEnabled: 'yes' } as never)).toThrow();
 		});
 	});
 });
