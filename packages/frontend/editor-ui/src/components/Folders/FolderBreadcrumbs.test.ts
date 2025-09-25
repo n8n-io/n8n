@@ -125,18 +125,40 @@ describe('FolderBreadcrumbs', () => {
 		expect(queryByTestId('ellipsis')).not.toBeInTheDocument();
 	});
 
-	it('should render personal project as fallback', () => {
+	it('should use personal project as fallback and show folder breadcrumbs when currentProject is null', () => {
 		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = TEST_PROJECT;
 
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryAllByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER_CHILD,
+				visibleLevels: 2,
+			},
+		});
+
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(getByTestId('home-project')).toBeVisible();
+		// Should show folder breadcrumbs (parent + current folder)
+		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(2);
+	});
+
+	it('should not show folder breadcrumbs in shared context even with personal project available', () => {
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = TEST_PROJECT; // Should be ignored
+		projectsStore.projectNavActiveId = 'shared';
+
+		const { getByTestId, queryAllByTestId } = renderComponent({
 			props: {
 				currentFolder: TEST_FOLDER_CHILD,
 			},
 		});
-		// Now, parent folder should also be visible
+
+		// Should render project breadcrumb (shows "Shared with you")
 		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
 		expect(getByTestId('home-project')).toBeVisible();
+		// Should NOT show any folder breadcrumbs in shared context (even though folder has parent)
+		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(0);
 	});
 });

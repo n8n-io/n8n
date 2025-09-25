@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -11,11 +11,10 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import N8nPromptInput from '../N8nPromptInput';
 import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
-
-const MAX_CHAT_INPUT_HEIGHT = 100;
 
 interface Props {
 	user?: {
@@ -28,10 +27,10 @@ interface Props {
 	loadingMessage?: string;
 	sessionId?: string;
 	title?: string;
-	placeholder?: string;
+	inputPlaceholder?: string;
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
-	maxLength?: number;
+	maxCharacterLength?: number;
 }
 
 const emit = defineEmits<{
@@ -55,6 +54,8 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingMessage: undefined,
 	sessionId: undefined,
 	scrollOnNewMessage: false,
+	maxCharacterLength: undefined,
+	inputPlaceholder: undefined,
 });
 
 function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -159,9 +160,10 @@ const lastMessageQuickReplies = computed(() => {
 });
 
 const textInputValue = ref<string>('');
+const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 
-const chatInput = ref<HTMLTextAreaElement | null>(null);
 const messagesRef = ref<HTMLDivElement | null>(null);
+const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
@@ -184,19 +186,8 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (sendDisabled.value) return;
 	emit('message', textInputValue.value);
 	textInputValue.value = '';
-	if (chatInput.value) {
-		chatInput.value.style.height = 'auto';
-	}
-}
-
-function growInput() {
-	if (!chatInput.value) return;
-	chatInput.value.style.height = 'auto';
-	const scrollHeight = chatInput.value.scrollHeight;
-	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
 function onRateMessage(feedback: RatingFeedback) {
@@ -211,9 +202,29 @@ function scrollToBottom() {
 		});
 	}
 }
+
+function isScrolledToBottom(): boolean {
+	if (!messagesRef.value) return false;
+
+	const threshold = 10; // Allow for small rounding errors
+	const isAtBottom =
+		Math.abs(
+			messagesRef.value.scrollHeight - messagesRef.value.scrollTop - messagesRef.value.clientHeight,
+		) <= threshold;
+
+	return isAtBottom;
+}
+
+function scrollToBottomImmediate() {
+	if (messagesRef.value) {
+		messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+	}
+}
+
 watch(sendDisabled, () => {
-	chatInput.value?.focus();
+	promptInputRef.value?.focusInput();
 });
+
 watch(
 	() => props.messages,
 	async (messages) => {
@@ -230,10 +241,68 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+// Setup ResizeObserver to maintain scroll position when input height changes
+let resizeObserver: ResizeObserver | null = null;
+let scrollLockActive = false;
+let scrollHandler: (() => void) | null = null;
+
+onMounted(() => {
+	if (inputWrapperRef.value && messagesRef.value && 'ResizeObserver' in window) {
+		// Track user scroll to determine if they want to stay at bottom
+		let userIsAtBottom = true;
+
+		// Create scroll handler function so we can remove it later
+		scrollHandler = () => {
+			if (!scrollLockActive) {
+				userIsAtBottom = isScrolledToBottom();
+			}
+		};
+
+		// Monitor user scrolling
+		messagesRef.value.addEventListener('scroll', scrollHandler);
+
+		// Monitor input size changes
+		resizeObserver = new ResizeObserver(() => {
+			// Only maintain scroll if user was at bottom
+			if (userIsAtBottom) {
+				scrollLockActive = true;
+				// Double RAF for layout stability
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						scrollToBottomImmediate();
+						// Check if we're still at bottom after auto-scroll
+						userIsAtBottom = isScrolledToBottom();
+						scrollLockActive = false;
+					});
+				});
+			}
+		});
+
+		resizeObserver.observe(inputWrapperRef.value);
+
+		// Start at bottom
+		scrollToBottomImmediate();
+	}
+});
+
+onUnmounted(() => {
+	// Remove scroll event listener to prevent memory leak
+	if (scrollHandler && messagesRef.value) {
+		messagesRef.value.removeEventListener('scroll', scrollHandler);
+		scrollHandler = null;
+	}
+
+	// Disconnect ResizeObserver
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
+});
+
 // Expose focusInput method to parent components
 defineExpose({
 	focusInput: () => {
-		chatInput.value?.focus();
+		promptInputRef.value?.focusInput();
 	},
 });
 </script>
@@ -339,51 +408,26 @@ defineExpose({
 			</div>
 		</div>
 		<div
+			ref="inputWrapperRef"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
 				<slot name="inputPlaceholder" />
 			</div>
-			<template v-else>
-				<textarea
-					ref="chatInput"
-					v-model="textInputValue"
-					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming || disabled }"
-					:disabled="sessionEnded || streaming || disabled"
-					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
-					rows="1"
-					wrap="hard"
-					:maxlength="maxLength"
-					data-test-id="chat-input"
-					@keydown.enter.exact.prevent="onSendMessage"
-					@input.prevent="growInput"
-					@keydown.stop
-				/>
-				<N8nButton
-					v-if="showStop && streaming"
-					:class="$style.stopButton"
-					icon="square"
-					size="large"
-					type="danger"
-					outline
-					square
-					data-test-id="send-message-button"
-					@click="emit('stop')"
-				/>
-				<N8nButton
-					v-else
-					:class="$style.sendButton"
-					icon="send"
-					:text="true"
-					size="large"
-					square
-					data-test-id="send-message-button"
-					:disabled="sendDisabled"
-					@click="onSendMessage"
-				/>
-			</template>
+			<N8nPromptInput
+				v-else
+				ref="promptInputRef"
+				v-model="textInputValue"
+				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
+				:disabled="sessionEnded || disabled"
+				:streaming="streaming"
+				:max-length="maxCharacterLength"
+				:refocus-after-send="true"
+				data-test-id="chat-input"
+				@submit="onSendMessage"
+				@stop="emit('stop')"
+			/>
 		</div>
 	</div>
 </template>
@@ -394,10 +438,9 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	background-color: var(--color-background-light);
 }
-:root .stopButton {
-	--button-border-color: transparent;
-}
+
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);
@@ -420,6 +463,7 @@ defineExpose({
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
+	border-bottom: 0;
 	position: relative;
 
 	pre,
@@ -439,6 +483,7 @@ defineExpose({
 	width: 100%;
 	height: 100%;
 	padding: var(--spacing-xs);
+	padding-bottom: var(--spacing-xl); // Extra padding for fade area
 	overflow-y: auto;
 
 	@supports not (selector(::-webkit-scrollbar)) {
@@ -511,30 +556,24 @@ defineExpose({
 }
 
 .inputWrapper {
-	display: flex;
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
+	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	background-color: transparent;
 	width: 100%;
-	border-top: 0;
+	position: relative;
+	border-left: var(--border-base);
+	border-right: var(--border-base);
 
-	textarea {
-		border: none;
-		background-color: transparent;
-		width: 100%;
-		font-size: var(--spacing-xs);
-		padding: var(--spacing-xs);
-		outline: none;
-		color: var(--color-text-dark);
-		resize: none;
-		font-family: inherit;
-	}
-}
-
-.sendButton {
-	color: var(--color-text-base) !important;
-
-	&[disabled] {
-		color: var(--color-text-light) !important;
+	// Add a gradient fade from the chat to the input
+	&::before {
+		content: '';
+		position: absolute;
+		top: calc(-1 * var(--spacing-m));
+		left: 0;
+		right: var(--spacing-xs);
+		height: var(--spacing-m);
+		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		pointer-events: none;
+		z-index: 1;
 	}
 }
 
@@ -544,11 +583,6 @@ defineExpose({
 	* {
 		cursor: not-allowed;
 	}
-}
-
-textarea.disabled {
-	background-color: var(--color-foreground-base);
-	cursor: not-allowed;
 }
 
 .inputPlaceholder {

@@ -40,7 +40,12 @@ const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
 
-const previousMessageIndex = ref(0);
+// -1 is a special value meaning we are not navigating history,
+// 0 is the oldest message, pastChatMessages.length - 1 is the most recent message
+const previousMessageIndex = ref(-1);
+
+// Buffer to hold current input when navigating history
+const currentInputBuffer = ref('');
 
 const sessionIdText = computed(() =>
 	locale.baseText('chat.window.session.id', {
@@ -70,7 +75,8 @@ function reuseMessage(message: ChatMessageText) {
 }
 
 function sendMessage(message: string) {
-	previousMessageIndex.value = 0;
+	previousMessageIndex.value = -1;
+	currentInputBuffer.value = '';
 	emit('sendMessage', message);
 }
 
@@ -80,37 +86,31 @@ function onRefreshSession() {
 
 function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 	const pastMessages = props.pastChatMessages;
-	const isCurrentInputEmptyOrMatch =
-		currentInputValue.length === 0 || pastMessages.includes(currentInputValue);
 
-	if (isCurrentInputEmptyOrMatch && (key === 'ArrowUp' || key === 'ArrowDown')) {
-		// Exit if no messages
-		if (pastMessages.length === 0) return;
+	// Exit if no messages
+	if (pastMessages.length === 0) return;
 
+	// Reset navigation if input is empty (message was just sent)
+	if (currentInputValue.length === 0 && previousMessageIndex.value !== -1) {
+		previousMessageIndex.value = -1;
+		currentInputBuffer.value = '';
+	}
+
+	// Save current input if we're starting navigation
+	if (previousMessageIndex.value === -1 && currentInputValue.length > 0) {
+		currentInputBuffer.value = currentInputValue;
+	}
+
+	if (key === 'ArrowUp') {
 		// Temporarily blur to avoid cursor position issues
 		chatEventBus.emit('blurInput');
 
-		if (pastMessages.length === 1) {
-			previousMessageIndex.value = 0;
-		} else {
-			if (key === 'ArrowUp') {
-				if (currentInputValue.length === 0 && previousMessageIndex.value === 0) {
-					// Start with most recent message
-					previousMessageIndex.value = pastMessages.length - 1;
-				} else {
-					// Move backwards through history
-					previousMessageIndex.value =
-						previousMessageIndex.value === 0
-							? pastMessages.length - 1
-							: previousMessageIndex.value - 1;
-				}
-			} else if (key === 'ArrowDown') {
-				// Move forwards through history
-				previousMessageIndex.value =
-					previousMessageIndex.value === pastMessages.length - 1
-						? 0
-						: previousMessageIndex.value + 1;
-			}
+		if (previousMessageIndex.value === -1) {
+			// Start with most recent message (last in array)
+			previousMessageIndex.value = pastMessages.length - 1;
+		} else if (previousMessageIndex.value > 0) {
+			// Move backwards through history (older messages)
+			previousMessageIndex.value--;
 		}
 
 		// Get message at current index
@@ -119,12 +119,38 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 
 		// Refocus and move cursor to end
 		chatEventBus.emit('focusInput');
-	}
+	} else if (key === 'ArrowDown') {
+		// Only navigate if we're in history mode
+		if (previousMessageIndex.value === -1) return;
 
-	// Reset history navigation when typing new content that doesn't match history
-	if (!isCurrentInputEmptyOrMatch) {
-		previousMessageIndex.value = 0;
+		// Temporarily blur to avoid cursor position issues
+		chatEventBus.emit('blurInput');
+
+		if (previousMessageIndex.value < pastMessages.length - 1) {
+			// Move forward through history (newer messages)
+			previousMessageIndex.value++;
+			const selectedMessage = pastMessages[previousMessageIndex.value];
+			chatEventBus.emit('setInputValue', selectedMessage);
+		} else {
+			// Reached the end - restore original input or clear
+			previousMessageIndex.value = -1;
+			chatEventBus.emit('setInputValue', currentInputBuffer.value);
+			currentInputBuffer.value = '';
+		}
+
+		// Refocus and move cursor to end
+		chatEventBus.emit('focusInput');
 	}
+}
+
+function onEscapeKey() {
+	// Only handle escape if we're in history navigation mode
+	if (previousMessageIndex.value === -1) return;
+
+	// Exit history mode and restore original input
+	previousMessageIndex.value = -1;
+	chatEventBus.emit('setInputValue', currentInputBuffer.value);
+	currentInputBuffer.value = '';
 }
 
 async function copySessionId() {
@@ -225,6 +251,7 @@ async function copySessionId() {
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
 				@arrow-key-down="onArrowKeyDown"
+				@escape-key-down="onEscapeKey"
 			>
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
@@ -234,6 +261,7 @@ async function copySessionId() {
 							type="tertiary"
 							text
 							size="mini"
+							:disabled="previousMessageIndex === 0"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
 						<N8nButton
@@ -242,6 +270,7 @@ async function copySessionId() {
 							type="tertiary"
 							text
 							size="mini"
+							:disabled="previousMessageIndex === -1"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
 						/>
 					</div>

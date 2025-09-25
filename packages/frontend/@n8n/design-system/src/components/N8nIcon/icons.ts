@@ -2,6 +2,7 @@ import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import FilledSquare from './custom/filled-square.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
@@ -415,6 +416,7 @@ export const updatedIconSet = {
 	// custom icons
 	// NOTE: ensure to replace any colors with "currentColor" in SVG
 	'bolt-filled': BoltFilled,
+	'filled-square': FilledSquare,
 	'grip-lines-vertical': GripLinesVertical,
 	variable: IconLucideVariable,
 	'pop-out': PopOut,
