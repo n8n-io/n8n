@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 300],
-			"id": "5a1fb2b5-9262-4511-9247-727111edca0f",
+			"position": [176, 448],
+			"id": "a5e92a85-afca-47e8-a547-05b973674f93",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -23,13 +23,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 0],
-			"id": "28b998b4-0ff7-4abb-bd3f-e6d62eeacb51",
+			"position": [400, 64],
+			"id": "e435f9fd-16ee-4861-95b1-311d31d80007",
 			"name": "Page > Create",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -42,13 +42,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 200],
-			"id": "b32743c1-3f56-4ac0-8071-e3f4beb9af15",
+			"position": [400, 256],
+			"id": "b50e7cfd-c921-420e-9fa8-9c300411b5c4",
 			"name": "Page > Get",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -61,13 +61,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 400],
-			"id": "5e5eacfd-58cd-49e0-b129-46ae235ec139",
+			"position": [400, 448],
+			"id": "da3ffc22-ea1f-4fc2-bb77-9a2ef3f97cd5",
 			"name": "Page > Get Many",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -84,13 +84,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 600],
-			"id": "441a92ae-5c9f-411e-866c-dbb820950246",
+			"position": [400, 832],
+			"id": "73783471-a507-48ea-a8e0-39acad2cca8e",
 			"name": "Page > Update",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -98,449 +98,64 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 0],
-			"id": "840c6389-3a8e-43a2-bf51-cb463896e907",
+			"position": [624, 64],
+			"id": "ae8881c8-cb74-4cd9-8338-56d8959f1819",
 			"name": "Create Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 200],
-			"id": "b659b27b-fa95-4cbf-b80e-5956ea03ac83",
+			"position": [624, 256],
+			"id": "591204fd-7b8d-4bfb-8aee-543174be3388",
 			"name": "Get Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 400],
-			"id": "d33fbb73-4204-43db-a88c-0b00cd65de3f",
+			"position": [624, 448],
+			"id": "7274d0e6-8a04-4ae1-901d-edfc4f3385e5",
 			"name": "Get Many Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 600],
-			"id": "a50396a0-8838-4051-afa8-8ea13e4e75e4",
+			"position": [624, 832],
+			"id": "b2d7676c-ff25-4a51-b9c5-b0559769f488",
 			"name": "Update Response"
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"before": "2026-01-01T00:00:00"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [400, 640],
+			"id": "f0bece40-03a3-4c81-9c49-86d7c83679e8",
+			"name": "Page > Get Many (With Filters)",
+			"credentials": {
+				"wordpressApi": {
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [624, 640],
+			"id": "ad912385-2895-4319-8f3b-04a92e8cfe7d",
+			"name": "Get Many Response (With Filters)"
 		}
 	],
-	"pinData": {
-		"Create Response": [
-			{
-				"json": {
-					"id": 9,
-					"date": "2025-03-27T20:17:01",
-					"date_gmt": "2025-03-27T20:17:01",
-					"guid": {
-						"rendered": "https://myblog.com/?page_id=9",
-						"raw": "https://myblog.com/?page_id=9"
-					},
-					"modified": "2025-03-27T20:17:01",
-					"modified_gmt": "2025-03-27T20:17:01",
-					"password": "",
-					"slug": "",
-					"status": "draft",
-					"type": "page",
-					"link": "https://myblog.com/?page_id=9",
-					"title": {
-						"raw": "A new page",
-						"rendered": "A new page"
-					},
-					"content": {
-						"raw": "Some content",
-						"rendered": "<p>Some content</p>\n",
-						"protected": false,
-						"block_version": 0
-					},
-					"excerpt": {
-						"raw": "",
-						"rendered": "<p>Some content</p>\n",
-						"protected": false
-					},
-					"author": 1,
-					"featured_media": 0,
-					"parent": 0,
-					"menu_order": 1,
-					"comment_status": "closed",
-					"ping_status": "closed",
-					"template": "",
-					"meta": {
-						"footnotes": ""
-					},
-					"permalink_template": "https://myblog.com/%pagename%/",
-					"generated_slug": "a-new-page",
-					"class_list": ["post-9", "page", "type-page", "status-draft", "hentry"],
-					"_links": {
-						"self": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/9",
-								"targetHints": {
-									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
-								}
-							}
-						],
-						"collection": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages"
-							}
-						],
-						"about": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/types/page"
-							}
-						],
-						"author": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/users/1"
-							}
-						],
-						"replies": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/comments?post=9"
-							}
-						],
-						"version-history": [
-							{
-								"count": 0,
-								"href": "https://myblog.com/wp-json/wp/v2/pages/9/revisions"
-							}
-						],
-						"wp:attachment": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/media?parent=9"
-							}
-						],
-						"wp:action-publish": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/9"
-							}
-						],
-						"wp:action-unfiltered-html": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/9"
-							}
-						],
-						"wp:action-assign-author": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/9"
-							}
-						],
-						"curies": [
-							{
-								"name": "wp",
-								"href": "https://api.w.org/{rel}",
-								"templated": true
-							}
-						]
-					}
-				}
-			}
-		],
-		"Get Response": [
-			{
-				"json": {
-					"id": 2,
-					"date": "2025-03-27T18:05:01",
-					"date_gmt": "2025-03-27T18:05:01",
-					"guid": {
-						"rendered": "https://myblog.com/?page_id=2"
-					},
-					"modified": "2025-03-27T18:05:01",
-					"modified_gmt": "2025-03-27T18:05:01",
-					"slug": "sample-page",
-					"status": "publish",
-					"type": "page",
-					"link": "https://myblog.com/sample-page/",
-					"title": {
-						"rendered": "Sample Page"
-					},
-					"content": {
-						"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
-						"protected": false
-					},
-					"excerpt": {
-						"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
-						"protected": false
-					},
-					"author": 1,
-					"featured_media": 0,
-					"parent": 0,
-					"menu_order": 0,
-					"comment_status": "closed",
-					"ping_status": "open",
-					"template": "",
-					"meta": {
-						"footnotes": ""
-					},
-					"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
-					"_links": {
-						"self": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2",
-								"targetHints": {
-									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
-								}
-							}
-						],
-						"collection": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages"
-							}
-						],
-						"about": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/types/page"
-							}
-						],
-						"author": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/users/1"
-							}
-						],
-						"replies": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
-							}
-						],
-						"version-history": [
-							{
-								"count": 0,
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
-							}
-						],
-						"wp:attachment": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
-							}
-						],
-						"curies": [
-							{
-								"name": "wp",
-								"href": "https://api.w.org/{rel}",
-								"templated": true
-							}
-						]
-					}
-				}
-			}
-		],
-		"Get Many Response": [
-			{
-				"json": {
-					"id": 2,
-					"date": "2025-03-27T18:05:01",
-					"date_gmt": "2025-03-27T18:05:01",
-					"guid": {
-						"rendered": "https://myblog.com/?page_id=2"
-					},
-					"modified": "2025-03-27T18:05:01",
-					"modified_gmt": "2025-03-27T18:05:01",
-					"slug": "sample-page",
-					"status": "publish",
-					"type": "page",
-					"link": "https://myblog.com/sample-page/",
-					"title": {
-						"rendered": "Sample Page"
-					},
-					"content": {
-						"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
-						"protected": false
-					},
-					"excerpt": {
-						"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
-						"protected": false
-					},
-					"author": 1,
-					"featured_media": 0,
-					"parent": 0,
-					"menu_order": 0,
-					"comment_status": "closed",
-					"ping_status": "open",
-					"template": "",
-					"meta": {
-						"footnotes": ""
-					},
-					"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
-					"_links": {
-						"self": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2",
-								"targetHints": {
-									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
-								}
-							}
-						],
-						"collection": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages"
-							}
-						],
-						"about": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/types/page"
-							}
-						],
-						"author": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/users/1"
-							}
-						],
-						"replies": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
-							}
-						],
-						"version-history": [
-							{
-								"count": 0,
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
-							}
-						],
-						"wp:attachment": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
-							}
-						],
-						"curies": [
-							{
-								"name": "wp",
-								"href": "https://api.w.org/{rel}",
-								"templated": true
-							}
-						]
-					}
-				}
-			}
-		],
-		"Update Response": [
-			{
-				"json": {
-					"id": 2,
-					"date": "2025-03-27T18:05:01",
-					"date_gmt": "2025-03-27T18:05:01",
-					"guid": {
-						"rendered": "https://myblog.com/?page_id=2",
-						"raw": "https://myblog.com/?page_id=2"
-					},
-					"modified": "2025-03-27T20:21:11",
-					"modified_gmt": "2025-03-27T20:21:11",
-					"password": "",
-					"slug": "new-slug",
-					"status": "publish",
-					"type": "page",
-					"link": "https://myblog.com/new-slug/",
-					"title": {
-						"raw": "New Title",
-						"rendered": "New Title"
-					},
-					"content": {
-						"raw": "Updated Content",
-						"rendered": "<p>Updated Content</p>\n",
-						"protected": false,
-						"block_version": 0
-					},
-					"excerpt": {
-						"raw": "",
-						"rendered": "<p>Updated Content</p>\n",
-						"protected": false
-					},
-					"author": 1,
-					"featured_media": 0,
-					"parent": 0,
-					"menu_order": 0,
-					"comment_status": "closed",
-					"ping_status": "open",
-					"template": "",
-					"meta": {
-						"footnotes": ""
-					},
-					"permalink_template": "https://myblog.com/%pagename%/",
-					"generated_slug": "new-title",
-					"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
-					"_links": {
-						"self": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2",
-								"targetHints": {
-									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
-								}
-							}
-						],
-						"collection": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages"
-							}
-						],
-						"about": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/types/page"
-							}
-						],
-						"author": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/users/1"
-							}
-						],
-						"replies": [
-							{
-								"embeddable": true,
-								"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
-							}
-						],
-						"version-history": [
-							{
-								"count": 1,
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
-							}
-						],
-						"predecessor-version": [
-							{
-								"id": 10,
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions/10"
-							}
-						],
-						"wp:attachment": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
-							}
-						],
-						"wp:action-publish": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2"
-							}
-						],
-						"wp:action-unfiltered-html": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2"
-							}
-						],
-						"wp:action-assign-author": [
-							{
-								"href": "https://myblog.com/wp-json/wp/v2/pages/2"
-							}
-						],
-						"curies": [
-							{
-								"name": "wp",
-								"href": "https://api.w.org/{rel}",
-								"templated": true
-							}
-						]
-					}
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Execute workflow’": {
 			"main": [
@@ -564,6 +179,11 @@
 						"node": "Page > Update",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Page > Get Many (With Filters)",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -579,11 +199,11 @@
 				]
 			]
 		},
-		"Page > Update": {
+		"Page > Get": {
 			"main": [
 				[
 					{
-						"node": "Update Response",
+						"node": "Get Response",
 						"type": "main",
 						"index": 0
 					}
@@ -601,11 +221,22 @@
 				]
 			]
 		},
-		"Page > Get": {
+		"Page > Update": {
 			"main": [
 				[
 					{
-						"node": "Get Response",
+						"node": "Update Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Page > Get Many (With Filters)": {
+			"main": [
+				[
+					{
+						"node": "Get Many Response (With Filters)",
 						"type": "main",
 						"index": 0
 					}
@@ -613,15 +244,502 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
+	"pinData": {
+		"Create Response": [
+			{
+				"id": 9,
+				"date": "2025-03-27T20:17:01",
+				"date_gmt": "2025-03-27T20:17:01",
+				"guid": {
+					"rendered": "https://myblog.com/?page_id=9",
+					"raw": "https://myblog.com/?page_id=9"
+				},
+				"modified": "2025-03-27T20:17:01",
+				"modified_gmt": "2025-03-27T20:17:01",
+				"password": "",
+				"slug": "",
+				"status": "draft",
+				"type": "page",
+				"link": "https://myblog.com/?page_id=9",
+				"title": {
+					"raw": "A new page",
+					"rendered": "A new page"
+				},
+				"content": {
+					"raw": "Some content",
+					"rendered": "<p>Some content</p>\n",
+					"protected": false,
+					"block_version": 0
+				},
+				"excerpt": {
+					"raw": "",
+					"rendered": "<p>Some content</p>\n",
+					"protected": false
+				},
+				"author": 1,
+				"featured_media": 0,
+				"parent": 0,
+				"menu_order": 1,
+				"comment_status": "closed",
+				"ping_status": "closed",
+				"template": "",
+				"meta": {
+					"footnotes": ""
+				},
+				"permalink_template": "https://myblog.com/%pagename%/",
+				"generated_slug": "a-new-page",
+				"class_list": ["post-9", "page", "type-page", "status-draft", "hentry"],
+				"_links": {
+					"self": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/9",
+							"targetHints": {
+								"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+							}
+						}
+					],
+					"collection": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages"
+						}
+					],
+					"about": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/types/page"
+						}
+					],
+					"author": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/users/1"
+						}
+					],
+					"replies": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/comments?post=9"
+						}
+					],
+					"version-history": [
+						{
+							"count": 0,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/9/revisions"
+						}
+					],
+					"wp:attachment": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/media?parent=9"
+						}
+					],
+					"wp:action-publish": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/9"
+						}
+					],
+					"wp:action-unfiltered-html": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/9"
+						}
+					],
+					"wp:action-assign-author": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/9"
+						}
+					],
+					"curies": [
+						{
+							"name": "wp",
+							"href": "https://api.w.org/{rel}",
+							"templated": true
+						}
+					]
+				}
+			}
+		],
+		"Get Response": [
+			{
+				"id": 2,
+				"date": "2025-03-27T18:05:01",
+				"date_gmt": "2025-03-27T18:05:01",
+				"guid": {
+					"rendered": "https://myblog.com/?page_id=2"
+				},
+				"modified": "2025-03-27T18:05:01",
+				"modified_gmt": "2025-03-27T18:05:01",
+				"slug": "sample-page",
+				"status": "publish",
+				"type": "page",
+				"link": "https://myblog.com/sample-page/",
+				"title": {
+					"rendered": "Sample Page"
+				},
+				"content": {
+					"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
+					"protected": false
+				},
+				"excerpt": {
+					"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
+					"protected": false
+				},
+				"author": 1,
+				"featured_media": 0,
+				"parent": 0,
+				"menu_order": 0,
+				"comment_status": "closed",
+				"ping_status": "open",
+				"template": "",
+				"meta": {
+					"footnotes": ""
+				},
+				"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
+				"_links": {
+					"self": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2",
+							"targetHints": {
+								"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+							}
+						}
+					],
+					"collection": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages"
+						}
+					],
+					"about": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/types/page"
+						}
+					],
+					"author": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/users/1"
+						}
+					],
+					"replies": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
+						}
+					],
+					"version-history": [
+						{
+							"count": 0,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
+						}
+					],
+					"wp:attachment": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
+						}
+					],
+					"curies": [
+						{
+							"name": "wp",
+							"href": "https://api.w.org/{rel}",
+							"templated": true
+						}
+					]
+				}
+			}
+		],
+		"Get Many Response": [
+			{
+				"id": 2,
+				"date": "2025-03-27T18:05:01",
+				"date_gmt": "2025-03-27T18:05:01",
+				"guid": {
+					"rendered": "https://myblog.com/?page_id=2"
+				},
+				"modified": "2025-03-27T18:05:01",
+				"modified_gmt": "2025-03-27T18:05:01",
+				"slug": "sample-page",
+				"status": "publish",
+				"type": "page",
+				"link": "https://myblog.com/sample-page/",
+				"title": {
+					"rendered": "Sample Page"
+				},
+				"content": {
+					"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
+					"protected": false
+				},
+				"excerpt": {
+					"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
+					"protected": false
+				},
+				"author": 1,
+				"featured_media": 0,
+				"parent": 0,
+				"menu_order": 0,
+				"comment_status": "closed",
+				"ping_status": "open",
+				"template": "",
+				"meta": {
+					"footnotes": ""
+				},
+				"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
+				"_links": {
+					"self": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2",
+							"targetHints": {
+								"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+							}
+						}
+					],
+					"collection": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages"
+						}
+					],
+					"about": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/types/page"
+						}
+					],
+					"author": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/users/1"
+						}
+					],
+					"replies": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
+						}
+					],
+					"version-history": [
+						{
+							"count": 0,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
+						}
+					],
+					"wp:attachment": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
+						}
+					],
+					"curies": [
+						{
+							"name": "wp",
+							"href": "https://api.w.org/{rel}",
+							"templated": true
+						}
+					]
+				}
+			}
+		],
+		"Update Response": [
+			{
+				"id": 2,
+				"date": "2025-03-27T18:05:01",
+				"date_gmt": "2025-03-27T18:05:01",
+				"guid": {
+					"rendered": "https://myblog.com/?page_id=2",
+					"raw": "https://myblog.com/?page_id=2"
+				},
+				"modified": "2025-03-27T20:21:11",
+				"modified_gmt": "2025-03-27T20:21:11",
+				"password": "",
+				"slug": "new-slug",
+				"status": "publish",
+				"type": "page",
+				"link": "https://myblog.com/new-slug/",
+				"title": {
+					"raw": "New Title",
+					"rendered": "New Title"
+				},
+				"content": {
+					"raw": "Updated Content",
+					"rendered": "<p>Updated Content</p>\n",
+					"protected": false,
+					"block_version": 0
+				},
+				"excerpt": {
+					"raw": "",
+					"rendered": "<p>Updated Content</p>\n",
+					"protected": false
+				},
+				"author": 1,
+				"featured_media": 0,
+				"parent": 0,
+				"menu_order": 0,
+				"comment_status": "closed",
+				"ping_status": "open",
+				"template": "",
+				"meta": {
+					"footnotes": ""
+				},
+				"permalink_template": "https://myblog.com/%pagename%/",
+				"generated_slug": "new-title",
+				"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
+				"_links": {
+					"self": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2",
+							"targetHints": {
+								"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+							}
+						}
+					],
+					"collection": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages"
+						}
+					],
+					"about": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/types/page"
+						}
+					],
+					"author": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/users/1"
+						}
+					],
+					"replies": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
+						}
+					],
+					"version-history": [
+						{
+							"count": 1,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
+						}
+					],
+					"predecessor-version": [
+						{
+							"id": 10,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions/10"
+						}
+					],
+					"wp:attachment": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
+						}
+					],
+					"wp:action-publish": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2"
+						}
+					],
+					"wp:action-unfiltered-html": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2"
+						}
+					],
+					"wp:action-assign-author": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2"
+						}
+					],
+					"curies": [
+						{
+							"name": "wp",
+							"href": "https://api.w.org/{rel}",
+							"templated": true
+						}
+					]
+				}
+			}
+		],
+		"Get Many Response (With Filters)": [
+			{
+				"id": 2,
+				"date": "2025-03-27T18:05:01",
+				"date_gmt": "2025-03-27T18:05:01",
+				"guid": {
+					"rendered": "https://myblog.com/?page_id=2"
+				},
+				"modified": "2025-03-27T18:05:01",
+				"modified_gmt": "2025-03-27T18:05:01",
+				"slug": "sample-page",
+				"status": "publish",
+				"type": "page",
+				"link": "https://myblog.com/sample-page/",
+				"title": {
+					"rendered": "Sample Page"
+				},
+				"content": {
+					"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
+					"protected": false
+				},
+				"excerpt": {
+					"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
+					"protected": false
+				},
+				"author": 1,
+				"featured_media": 0,
+				"parent": 0,
+				"menu_order": 0,
+				"comment_status": "closed",
+				"ping_status": "open",
+				"template": "",
+				"meta": {
+					"footnotes": ""
+				},
+				"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
+				"_links": {
+					"self": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2",
+							"targetHints": {
+								"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+							}
+						}
+					],
+					"collection": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/pages"
+						}
+					],
+					"about": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/types/page"
+						}
+					],
+					"author": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/users/1"
+						}
+					],
+					"replies": [
+						{
+							"embeddable": true,
+							"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
+						}
+					],
+					"version-history": [
+						{
+							"count": 0,
+							"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
+						}
+					],
+					"wp:attachment": [
+						{
+							"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
+						}
+					],
+					"curies": [
+						{
+							"name": "wp",
+							"href": "https://api.w.org/{rel}",
+							"templated": true
+						}
+					]
+				}
+			}
+		]
 	},
-	"versionId": "b20521c7-44b4-430b-9dab-72488f7b2d02",
 	"meta": {
 		"templateCredsSetupCompleted": true,
-		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
-	},
-	"id": "QuWF8XwVEfFBCWjj",
-	"tags": []
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
+	}
 }
