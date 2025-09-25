@@ -699,25 +699,6 @@ describe('CredentialsOverwrites', () => {
 					command: 'reload-overwrite-credentials',
 				});
 			});
-
-			it('should skip publishing when persistence is disabled', async () => {
-				pubsubGlobalConfig.credentials.overwrite.persistence = false;
-
-				const overwriteData: ICredentialsOverwrite = {
-					test: { username: 'user' },
-				};
-
-				cipher.encrypt.mockReturnValue('encrypted-data');
-				settingsRepository.create.mockReturnValue({
-					key: 'credentialsOverwrite',
-					value: 'encrypted-data',
-					loadOnStartup: false,
-				});
-
-				await pubsubCredentialsOverwrites.saveOverwriteDataToDB(overwriteData, true);
-
-				expect(publisherMock.publishCommand).not.toHaveBeenCalled();
-			});
 		});
 
 		describe('PubSub Event Decorator Integration', () => {
@@ -983,14 +964,14 @@ describe('CredentialsOverwrites', () => {
 			);
 
 			// Spy on methods to verify call patterns
-			const setDataSpy = jest.spyOn(initCredentialsOverwrites, 'setData');
+			const setPlainDataSpy = jest.spyOn(initCredentialsOverwrites, 'setPlainData');
 			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
 			// Verify setData was called with correct parameters
-			expect(setDataSpy).toHaveBeenCalledWith(staticData, false, false);
-			expect(setDataSpy).toHaveBeenCalledTimes(1);
+			expect(setPlainDataSpy).toHaveBeenCalledWith(staticData);
+			expect(setPlainDataSpy).toHaveBeenCalledTimes(1);
 
 			// Verify loadOverwriteDataFromDB was NOT called
 			expect(loadFromDbSpy).not.toHaveBeenCalled();
@@ -998,7 +979,7 @@ describe('CredentialsOverwrites', () => {
 			// Verify database operations were not called
 			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
 
-			setDataSpy.mockRestore();
+			setPlainDataSpy.mockRestore();
 			loadFromDbSpy.mockRestore();
 		});
 
@@ -1082,27 +1063,30 @@ describe('CredentialsOverwrites', () => {
 			cipher.decrypt.mockReturnValue(JSON.stringify(dbData));
 
 			// Spy on methods
+			const setPlainDataSpy = jest.spyOn(initCredentialsOverwrites, 'setPlainData');
 			const setDataSpy = jest.spyOn(initCredentialsOverwrites, 'setData');
 			const loadFromDbSpy = jest.spyOn(initCredentialsOverwrites, 'loadOverwriteDataFromDB');
 
 			await initCredentialsOverwrites.init();
 
 			// Verify setData was called twice - once directly from init(), once from loadFromDB
-			expect(setDataSpy).toHaveBeenCalledTimes(2);
-			expect(setDataSpy).toHaveBeenNthCalledWith(1, staticData, false, false);
-			expect(setDataSpy).toHaveBeenNthCalledWith(2, dbData, false, false);
+			expect(setPlainDataSpy).toHaveBeenCalledTimes(2);
+			expect(setPlainDataSpy).toHaveBeenNthCalledWith(1, staticData);
+			expect(setPlainDataSpy).toHaveBeenNthCalledWith(2, dbData);
+			expect(setDataSpy).toHaveBeenCalledWith(dbData, false, false);
 
 			expect(loadFromDbSpy).toHaveBeenCalledWith(false);
 			expect(loadFromDbSpy).toHaveBeenCalledTimes(1);
 
 			// Verify correct order of operations (static setData first, then loadFromDB with its setData)
-			const firstSetDataCall = setDataSpy.mock.invocationCallOrder[0];
+			const firstSetDataCall = setPlainDataSpy.mock.invocationCallOrder[0];
 			const loadDbCall = loadFromDbSpy.mock.invocationCallOrder[0];
-			const secondSetDataCall = setDataSpy.mock.invocationCallOrder[1];
+			const secondSetDataCall = setPlainDataSpy.mock.invocationCallOrder[1];
 
 			expect(firstSetDataCall).toBeLessThan(loadDbCall);
 			expect(loadDbCall).toBeLessThan(secondSetDataCall);
 
+			setPlainDataSpy.mockRestore();
 			setDataSpy.mockRestore();
 			loadFromDbSpy.mockRestore();
 		});

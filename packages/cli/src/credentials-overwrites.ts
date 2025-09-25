@@ -35,7 +35,7 @@ export class CredentialsOverwrites {
 				errorMessage: 'The credentials-overwrite is not valid JSON.',
 			});
 
-			await this.setData(overwriteData, false, false);
+			this.setPlainData(overwriteData);
 		}
 
 		const persistence = this.globalConfig.credentials.overwrite.persistence;
@@ -71,16 +71,13 @@ export class CredentialsOverwrites {
 		} catch (error) {
 			this.logger.error('Error loading overwrite credentials', { error });
 		} finally {
-			this.logger.debug('Loaded overwrite credentials from DB');
 			this.reloading = false;
 		}
 	}
 
 	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
-		if (this.globalConfig.credentials.overwrite.persistence) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-			await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
-		}
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
 	}
 
 	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
@@ -115,11 +112,7 @@ export class CredentialsOverwrites {
 		};
 	}
 
-	async setData(
-		overwriteData: ICredentialsOverwrite,
-		storeInDb: boolean = true,
-		reloadFrontend: boolean = true,
-	) {
+	setPlainData(overwriteData: ICredentialsOverwrite) {
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
@@ -132,7 +125,14 @@ export class CredentialsOverwrites {
 				this.overwriteData[type] = overwrites;
 			}
 		}
+	}
 
+	async setData(
+		overwriteData: ICredentialsOverwrite,
+		storeInDb: boolean = true,
+		reloadFrontend: boolean = true,
+	) {
+		this.setPlainData(overwriteData);
 		if (storeInDb && this.globalConfig.credentials.overwrite.persistence) {
 			await this.saveOverwriteDataToDB(overwriteData, true);
 		}
