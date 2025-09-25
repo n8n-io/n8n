@@ -17,7 +17,6 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
-	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
@@ -149,7 +148,7 @@ export class Supabase implements INodeType {
 			const tableId = this.getNodeParameter('tableId', 0) as string;
 
 			if (operation === 'create') {
-				const records: IDataObject[] = [];
+				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -172,32 +171,35 @@ export class Supabase implements INodeType {
 							record[`${field.fieldId}`] = field.fieldValue;
 						}
 					}
-					records.push(record);
-				}
-				const endpoint = `/${tableId}`;
 
-				try {
-					const createdRows: IDataObject[] = await supabaseApiRequest.call(
-						this,
-						'POST',
-						endpoint,
-						records,
-					);
-					createdRows.forEach((row, i) => {
+					try {
+						const created = await supabaseApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							record,
+							{},
+							undefined,
+							{},
+							i,
+						);
+						const rowsArray = Array.isArray(created)
+							? (created as IDataObject[])
+							: [created as IDataObject];
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(row),
+							this.helpers.returnJsonArray(rowsArray),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-					});
-				} catch (error) {
-					if (this.continueOnFail()) {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.description }),
-							{ itemData: mapPairedItemsFrom(records) },
-						);
-						returnData.push(...executionData);
-					} else {
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+							continue;
+						}
 						throw error;
 					}
 				}
@@ -206,6 +208,7 @@ export class Supabase implements INodeType {
 			if (operation === 'delete') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
@@ -237,7 +240,9 @@ export class Supabase implements INodeType {
 					let rows;
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
+						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs, undefined, {}, i);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -262,6 +267,7 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
 					Object.assign(qs, data);
@@ -276,7 +282,9 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, {}, i);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -335,7 +343,17 @@ export class Supabase implements INodeType {
 					try {
 						let responseLength = 0;
 						do {
-							const newRows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+							// reset qs per pagination iteration to isolate headers/qs
+							const newRows = await supabaseApiRequest.call(
+								this,
+								'GET',
+								endpoint,
+								{},
+								qs,
+								undefined,
+								{},
+								i,
+							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
@@ -364,6 +382,7 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					qs = {};
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -414,7 +433,18 @@ export class Supabase implements INodeType {
 					let updatedRow;
 
 					try {
-						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
+						// reset qs per item to avoid leaking filters
+						qs = { ...qs };
+						updatedRow = await supabaseApiRequest.call(
+							this,
+							'PATCH',
+							endpoint,
+							record,
+							qs,
+							undefined,
+							{},
+							i,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
 							{ itemData: { item: i } },
