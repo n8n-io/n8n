@@ -231,18 +231,21 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		if (type === 'nodeExecuteAfterData') {
 			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
-			const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
-			const eventMb = toMb(eventSizeBytes);
-			const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
 
-			this.logger.warn(
-				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
-			);
-			// In case of nodeExecuteAfterData, we omit the message entirely. We
-			// already include the amount of items in the nodeExecuteAfter message,
-			// based on which the FE will construct placeholder data. The actual
-			// data is then fetched at the end of the execution.
-			return;
+			if (eventSizeBytes > MAX_PAYLOAD_SIZE_BYTES) {
+				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
+				const eventMb = toMb(eventSizeBytes);
+				const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
+
+				this.logger.warn(
+					`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+				);
+				// In case of nodeExecuteAfterData, we omit the message entirely. We
+				// already include the amount of items in the nodeExecuteAfter message,
+				// based on which the FE will construct placeholder data. The actual
+				// data is then fetched at the end of the execution.
+				return;
+			}
 		}
 
 		void this.publisher.publishCommand({
