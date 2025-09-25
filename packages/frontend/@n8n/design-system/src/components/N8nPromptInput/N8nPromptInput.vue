@@ -246,6 +246,7 @@ defineExpose({
 			<textarea
 				ref="textareaRef"
 				v-model="textValue"
+				data-test-id="chat-input-textarea"
 				:class="[
 					$style.singleLineTextarea,
 					'ignore-key-press-node-creator',
@@ -282,6 +283,7 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
+					data-test-id="chat-input-textarea"
 					:class="[
 						$style.multilineTextarea,
 						'ignore-key-press-node-creator',
