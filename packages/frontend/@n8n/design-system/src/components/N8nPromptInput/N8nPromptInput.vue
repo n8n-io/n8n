@@ -87,7 +87,9 @@ const creditsRemaining = computed(() => {
 	if (props.creditsQuota === undefined || props.creditsClaimed === undefined) {
 		return undefined;
 	}
-	return props.creditsQuota - props.creditsClaimed;
+	// in some edge cases one can claim more credits than allotted
+	const remaining = props.creditsQuota - props.creditsClaimed;
+	return remaining <= 0 ? 0 : remaining;
 });
 
 const showCredits = computed(() => {
