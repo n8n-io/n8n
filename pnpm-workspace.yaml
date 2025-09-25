@@ -65,6 +65,7 @@ catalogs:
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
+    '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4
