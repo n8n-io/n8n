@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
+import { JSONSafeParse } from '../../helpers';
 import { apiRequest } from '../../transport';
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -224,11 +225,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				let field: string | IDataObject[] = (existingData.fields as IDataObject)[uploadFieldName] as
 					| string
 					| IDataObject[];
+
+				if (field && typeof field === 'string') {
+					field = JSONSafeParse(field);
+					if (field && !Array.isArray(field)) {
+						throw new Error('Attachment value need to be an array');
+					}
+				}
+
 				if (!field) {
 					field = [];
-				}
-				if (typeof field === 'string') {
-					field = JSON.parse(field);
 				}
 				(field as IDataObject[]).push({
 					url,
