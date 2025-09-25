@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const {
 	state,
 	sidebarWidth,
-	panelIcon,
+
 	togglePeak,
 	peakSidebar,
 	onResizeStart,
@@ -105,7 +105,7 @@ const {
 				<N8nIconButton
 					icon-size="large"
 					size="mini"
-					:icon="panelIcon"
+					icon="panel-left"
 					type="secondary"
 					text
 					square

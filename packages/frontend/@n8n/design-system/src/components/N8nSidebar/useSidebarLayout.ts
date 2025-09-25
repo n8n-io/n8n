@@ -1,5 +1,5 @@
 import { useLocalStorage } from '@vueuse/core';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 const N8N_SIDEBAR_WIDTH_KEY = 'n8n-sidebar-width';
 const N8N_SIDEBAR_STATE_KEY = 'n8n-sidebar-state';
@@ -23,10 +23,6 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 	const isResizing = ref(false);
 
 	const subMenuOpen = ref(false);
-
-	const panelIcon = computed(() => {
-		return state.value === 'open' ? 'panel-left-close' : 'panel-left-open';
-	});
 
 	function toggleHidden() {
 		if (state.value === 'open' || state.value === 'peak') {
@@ -106,7 +102,6 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 		state,
 		sidebarWidth,
 		isResizing,
-		panelIcon,
 		subMenuOpen,
 		toggleHidden,
 		togglePeak,
