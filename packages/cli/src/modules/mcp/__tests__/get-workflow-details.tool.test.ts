@@ -7,7 +7,7 @@ import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-work
 import { CredentialsService } from '@/credentials/credentials.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-jest.mock('../tools/utils', () => ({
+jest.mock('../tools/webhook-utils', () => ({
 	getWebhookDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
 

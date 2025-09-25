@@ -8,7 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
-import { getWebhookDetails } from '../tools/utils';
+import { getWebhookDetails } from '../tools/webhook-utils';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
