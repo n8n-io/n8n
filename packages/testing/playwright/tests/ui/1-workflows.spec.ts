@@ -10,13 +10,13 @@ const NOTIFICATIONS = {
 };
 
 test.describe('Workflows', () => {
-	test.beforeEach(async ({ n8n, api }) => {
-		await api.enableFeature('sharing');
-		await api.enableFeature('folders');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-		await api.setMaxTeamProjectsQuota(-1);
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('sharing');
+		await n8n.api.enableFeature('folders');
+		await n8n.api.enableFeature('advancedPermissions');
+		await n8n.api.enableFeature('projectRole:admin');
+		await n8n.api.enableFeature('projectRole:editor');
+		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
