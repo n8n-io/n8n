@@ -419,8 +419,8 @@ defineExpose({
 		box-shadow 0.2s ease;
 	padding: var(--spacing-2xs);
 	box-sizing: border-box;
-	border-bottom: 1px transparent solid;
 
+	// if credit bar is showing
 	&.withBottomBorder {
 		border-bottom: var(--border-base);
 	}
@@ -527,10 +527,6 @@ defineExpose({
 	justify-content: space-between;
 	padding: var(--spacing-2xs) var(--spacing-xs);
 	border: none;
-	margin-top: -1px;
-	transition:
-		border-color 0.2s ease,
-		box-shadow 0.2s ease;
 }
 
 .creditsInfoWrapper {
@@ -546,13 +542,6 @@ defineExpose({
 	}
 }
 
-.getMoreButton,
-.getMoreLink {
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
-	cursor: pointer;
-}
-
 .infoPopper {
 	min-width: 200px;
 	line-height: 18px;
@@ -562,9 +551,8 @@ defineExpose({
 	}
 }
 
-// No credits danger styling
 .noCredits {
-	color: var(--color-danger) !important;
+	color: var(--color-danger);
 }
 
 // Common styles
