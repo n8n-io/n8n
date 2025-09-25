@@ -9,6 +9,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	useI18n: () => ({
 		baseText: vi.fn((key) => {
 			if (key === 'projects.menu.personal') return 'Personal';
+			if (key === 'projects.menu.shared') return 'Shared with you';
 			return key;
 		}),
 	}),
@@ -123,5 +124,67 @@ describe('ProjectBreadcrumb', () => {
 		});
 		await fireEvent.mouseUp(getByTestId('home-project'));
 		expect(emitted('projectDrop')).toBeFalsy();
+	});
+
+	describe('Shared context', () => {
+		it('renders shared project with share icon when isShared is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					isShared: true,
+				},
+			});
+			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
+			expect(getByTestId('project-label')).toHaveTextContent('Shared with you');
+		});
+
+		it('renders shared project even with currentProject provided when isShared is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					isShared: true,
+					currentProject: {
+						id: '1',
+						name: 'Some Project',
+						type: ProjectTypes.Personal,
+					} satisfies Partial<Project>,
+				},
+			});
+			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
+			expect(getByTestId('project-label')).toHaveTextContent('Shared with you');
+		});
+
+		it('generates correct link for shared project', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: true,
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/shared');
+		});
+
+		it('generates project link when not shared and currentProject exists', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: false,
+					currentProject: {
+						id: 'project-123',
+						name: 'My Project',
+						type: ProjectTypes.Team,
+					} satisfies Partial<Project>,
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/projects/project-123');
+		});
+
+		it('generates home link when not shared and no currentProject', () => {
+			const { container } = renderComponent({
+				props: {
+					isShared: false,
+				},
+			});
+			const link = container.querySelector('a');
+			expect(link).toHaveAttribute('href', '/home');
+		});
 	});
 });
