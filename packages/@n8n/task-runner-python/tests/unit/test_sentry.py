@@ -4,11 +4,11 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.config.sentry_config import SentryConfig
-from src.errors import TaskRuntimeError, TaskCancelledError, SecurityViolationError
 from src.sentry import TaskRunnerSentry, setup_sentry
 from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    IGNORED_ERROR_TYPES,
     LOG_SENTRY_MISSING,
     SENTRY_TAG_SERVER_TYPE_KEY,
     SENTRY_TAG_SERVER_TYPE_VALUE,
@@ -74,11 +74,7 @@ class TestTaskRunnerSentry:
 
     @pytest.mark.parametrize(
         "error_type",
-        [
-            TaskRuntimeError,
-            TaskCancelledError,
-            SecurityViolationError,
-        ],
+        IGNORED_ERROR_TYPES,
     )
     def test_filter_out_ignored_errors(self, sentry_config, error_type):
         sentry = TaskRunnerSentry(sentry_config)
