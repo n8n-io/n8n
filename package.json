@@ -54,7 +54,7 @@
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
-    "@types/node": "*",
+    "@types/node": "^20.17.57",
     "@types/supertest": "^6.0.3",
     "babel-plugin-transform-import-meta": "^2.3.2",
     "bundlemon": "^3.1.0",
@@ -76,10 +76,11 @@
     "run-script-os": "^1.0.7",
     "supertest": "^7.1.1",
     "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
     "turbo": "2.5.4",
-    "typescript": "*",
+    "typescript": "catalog:",
     "zx": "^8.1.4"
   },
   "pnpm": {

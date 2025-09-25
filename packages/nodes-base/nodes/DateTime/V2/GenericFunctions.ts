@@ -1,58 +1,98 @@
 import { DateTime } from 'luxon';
-import moment from 'moment-timezone';
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
+/**
+ * Parses a date input into a Luxon DateTime object.
+ * Handles various formats including timestamps (seconds/milliseconds), native Date objects,
+ * ISO strings, and custom formats, with robust timezone support.
+ *
+ * @param date The date to parse (string, number, Date, or DateTime object).
+ * @param options Configuration for parsing, like timezone or a specific format.
+ * @returns A Luxon DateTime object.
+ * @throws An error if the date format is invalid or the type is unsupported.
+ */
 export function parseDate(
 	this: IExecuteFunctions,
-	date: string | number | DateTime,
-	options: Partial<{
-		timezone: string;
-		fromFormat: string;
-	}> = {},
-) {
-	let parsedDate;
+	date: string | number | Date | DateTime,
+	options: Partial<{ timezone: string; fromFormat: string }> = {},
+): DateTime {
+	// Prioritize the user-provided timezone, but fall back to the workflow's default timezone.
+	// Handle the 'default' sentinel by mapping it to the workflow timezone.
+	const tz =
+		options.timezone === 'default' ? this.getTimezone() : (options.timezone ?? this.getTimezone());
 
+	if (date === null || date === undefined) {
+		throw new NodeOperationError(this.getNode(), 'Invalid date type');
+	}
+
+	let parsedDate: DateTime;
+
+	// Luxon DateTime
 	if (date instanceof DateTime) {
-		parsedDate = date;
-	} else {
-		// Check if the input is a number, don't convert to number if fromFormat is set
-		if (!Number.isNaN(Number(date)) && !options.fromFormat) {
-			//input is a number, convert to number in case it is a string formatted number
-			date = Number(date);
-			// check if the number is a timestamp in float format and convert to integer
-			if (!Number.isInteger(date)) {
-				date = date * 1000;
-			}
+		parsedDate = tz ? date.setZone(tz) : date;
+	}
+	// Native Date
+	else if (date instanceof Date) {
+		// Default to UTC for native Date objects if no timezone is specified to ensure consistent behavior.
+		parsedDate = DateTime.fromJSDate(date, tz ? { zone: tz } : { zone: 'utc' });
+	}
+	// Number / numeric string (timestamp)
+	// Treat input as a timestamp only if it's a number or a non-empty string containing digits without a custom format.
+	else if (
+		typeof date === 'number' ||
+		(typeof date === 'string' && /\d/.test(date) && !options.fromFormat && !isNaN(Number(date)))
+	) {
+		const ts = Number(date);
+		if (!Number.isFinite(ts)) {
+			throw new NodeOperationError(this.getNode(), 'Invalid numeric timestamp');
 		}
 
-		let timezone = options.timezone;
-		if (Number.isInteger(date)) {
-			const timestampLengthInMilliseconds1990 = 12;
-			// check if the number is a timestamp in seconds or milliseconds and create a moment object accordingly
-			if (date.toString().length < timestampLengthInMilliseconds1990) {
-				parsedDate = DateTime.fromSeconds(date as number);
-			} else {
-				parsedDate = DateTime.fromMillis(date as number);
-			}
+		// Differentiate between seconds and milliseconds using absolute magnitude.
+		// Timestamps in seconds will have absolute magnitude less than 1e10 until the year 2286.
+		if (Math.abs(ts) < 1e10) {
+			// seconds
+			parsedDate = DateTime.fromSeconds(ts, tz ? { zone: tz } : { zone: 'utc' });
 		} else {
-			if (!timezone && (date as string).includes('+')) {
-				const offset = (date as string).split('+')[1].slice(0, 2) as unknown as number;
-				timezone = `Etc/GMT-${offset * 1}`;
-			}
-
-			if (options.fromFormat) {
-				parsedDate = DateTime.fromFormat(date as string, options.fromFormat);
-			} else {
-				parsedDate = DateTime.fromISO(moment(date).toISOString());
-			}
+			// milliseconds
+			parsedDate = DateTime.fromMillis(ts, tz ? { zone: tz } : { zone: 'utc' });
 		}
+	}
+	// String input
+	else if (typeof date === 'string') {
+		const dateStr = date.trim();
+		if (!dateStr) throw new NodeOperationError(this.getNode(), 'Empty date string');
 
-		parsedDate = parsedDate.setZone(timezone || 'Etc/UTC');
-
-		if (parsedDate.invalidReason === 'unparsable') {
+		try {
+			// Custom format
+			if (options.fromFormat) {
+				parsedDate = DateTime.fromFormat(dateStr, options.fromFormat, {
+					zone: tz ? tz : 'utc',
+					setZone: true,
+				});
+			} else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+				parsedDate = DateTime.fromISO(dateStr, { zone: tz ? tz : 'utc' }).startOf('day');
+			}
+			// General ISO string
+			else {
+				parsedDate = DateTime.fromISO(dateStr, { zone: tz ? tz : 'utc' });
+				if (!parsedDate.isValid) throw new Error('Invalid ISO string');
+			}
+		} catch {
 			throw new NodeOperationError(this.getNode(), 'Invalid date format');
 		}
 	}
+	// Invalid type
+	else {
+		throw new NodeOperationError(this.getNode(), 'Invalid date type');
+	}
+
+	if (!parsedDate.isValid) {
+		throw new NodeOperationError(
+			this.getNode(),
+			parsedDate.invalidExplanation || 'Invalid date format',
+		);
+	}
+
 	return parsedDate;
 }
