@@ -9,6 +9,13 @@ on:
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Push to registries'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -26,7 +33,7 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
       - name: Login to GitHub Container Registry
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ghcr.io
@@ -34,6 +41,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -47,9 +55,9 @@ jobs:
           build-args: |
             NODE_VERSION=${{ matrix.node_version }}
           platforms: linux/amd64,linux/arm64
-          provenance: ${{ github.event_name == 'push' }}
-          sbom: ${{ github.event_name == 'push' }}
-          push: ${{ github.event_name == 'push' }}
+          provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}-${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}
