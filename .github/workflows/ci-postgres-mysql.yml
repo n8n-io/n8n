@@ -56,6 +56,8 @@ jobs:
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_WAIT_FOR_CONNECTION: true
       DB_MYSQLDB_CONNECTION_LIMIT: 1
+      DB_MYSQLDB_RECONNECT: false
+      DB_MYSQLDB_MAX: 1
       DB_MYSQLDB_TIMEOUT: 120000
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
