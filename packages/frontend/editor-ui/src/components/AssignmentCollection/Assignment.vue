@@ -12,6 +12,7 @@ import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 interface Props {
 	path: string;
@@ -176,7 +177,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 				<template v-if="!hideType" #middle>
 					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
 						<template #content>
-							{{ i18n.baseText('assignment.binaryDataTooltip') }}
+							{{ BINARY_DATA_ACCESS_TOOLTIP }}
 						</template>
 						<TypeSelect
 							:class="$style.select"

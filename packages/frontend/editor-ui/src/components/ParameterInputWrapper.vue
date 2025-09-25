@@ -20,7 +20,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
-import { useI18n } from '@n8n/i18n';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 type Props = {
 	parameter: INodeProperties;
@@ -61,7 +61,6 @@ const emit = defineEmits<{
 	textInput: [value: IUpdateInformation];
 }>();
 
-const i18n = useI18n();
 const ndvStore = useNDVStore();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -170,7 +169,7 @@ defineExpose({
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<N8nTooltip placement="left" :disabled="!expectsBinaryData">
 			<template #content>
-				{{ i18n.baseText('assignment.binaryDataTooltip') }}
+				{{ BINARY_DATA_ACCESS_TOOLTIP }}
 			</template>
 			<ParameterInput
 				ref="param"
