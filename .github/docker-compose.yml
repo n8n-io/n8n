@@ -19,6 +19,13 @@ services:
       - 3306:3306
     tmpfs:
       - /var/lib/mysql
+    options: >-
+      --health-cmd="mysqladmin ping"
+      --health-interval=10s
+      --health-timeout=5s
+      --health-retries=3
+      --wait_timeout=28800
+      --interactive_timeout=28800
 
   postgres:
     image: postgres:16
