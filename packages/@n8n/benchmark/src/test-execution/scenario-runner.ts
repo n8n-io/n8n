@@ -1,12 +1,12 @@
 import { sleep } from 'zx';
 
+import type { K6Executor } from './k6-executor';
+
 import { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 import type { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
 import type { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
 import { ScenarioDataImporter } from '@/test-execution/scenario-data-importer';
 import type { Scenario } from '@/types/scenario';
-
-import type { K6Executor } from './k6-executor';
 
 /**
  * Runs scenarios
@@ -47,16 +47,22 @@ export class ScenarioRunner {
 
 		console.log('Loading and importing data');
 		const testData = await this.dataLoader.loadDataForScenario(scenario);
-		await testDataImporter.importTestScenarioData(testData);
+		const { dataTableId } = await testDataImporter.importTestScenarioData(testData);
 
 		// Wait for 1s before executing the scenario to ensure that the workflows are activated.
 		// In multi-main mode it can take some time before the workflow becomes active.
 		await sleep(1000);
 
 		console.log('Executing scenario script');
-		await this.k6Executor.executeTestScenario(scenario, {
-			scenarioRunName,
-		});
+		await this.k6Executor.executeTestScenario(
+			{
+				...scenario,
+				dataTableId,
+			},
+			{
+				scenarioRunName,
+			},
+		);
 	}
 
 	/**
