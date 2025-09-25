@@ -884,6 +884,26 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocatorErrorMessage(paramName).locator('a');
 	}
 
+	getResourceLocatorSearch(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+	}
+
+	getParameterInputIssues() {
+		return this.page.getByTestId('parameter-issues');
+	}
+
+	getResourceLocatorItems() {
+		return this.page.getByTestId('rlc-item');
+	}
+
+	getAddResourceItem() {
+		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getExpressionModeToggle(index: number = 1) {
+		return this.page.getByTestId('radio-button-expression').nth(index);
+	}
+
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
 		await this.page.getByTestId('mode-id').nth(index).click();
