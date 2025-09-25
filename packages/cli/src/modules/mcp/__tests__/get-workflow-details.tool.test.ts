@@ -53,8 +53,8 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1' },
 			);
 
-			expect(payload.workflow.pinData).toBeUndefined();
-			expect(payload.workflow.nodes.every((n) => n.credentials === undefined)).toBe(true);
+			expect('pinData' in payload.workflow).toBe(false);
+			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.triggerInfo).toContain('Workflow is active and accessible');
 		});
