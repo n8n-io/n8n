@@ -106,6 +106,7 @@ describe('GlobalConfig', () => {
 				data: '{}',
 				endpoint: '',
 				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
