@@ -104,6 +104,9 @@ export class DeprecationService {
 			message:
 				'Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
 			checkValue: (value: string | undefined) => value === undefined || value === '',
+			disableIf: () =>
+				this.globalConfig.nodes.exclude.includes('n8n-nodes-base.git') ||
+				this.globalConfig.deployment.type === 'cloud',
 		},
 	];
 
