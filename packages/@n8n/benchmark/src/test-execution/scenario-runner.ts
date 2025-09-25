@@ -1,12 +1,12 @@
 import { sleep } from 'zx';
 
-import type { K6Executor } from './k6-executor';
-
 import { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 import type { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
 import type { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
 import { ScenarioDataImporter } from '@/test-execution/scenario-data-importer';
 import type { Scenario } from '@/types/scenario';
+
+import type { K6Executor } from './k6-executor';
 
 /**
  * Runs scenarios

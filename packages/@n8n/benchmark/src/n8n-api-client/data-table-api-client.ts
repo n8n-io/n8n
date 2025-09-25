@@ -1,6 +1,6 @@
-import type { AuthenticatedN8nApiClient } from './authenticated-n8n-api-client';
-
 import type { DataTable } from '@/n8n-api-client/n8n-api-client.types';
+
+import type { AuthenticatedN8nApiClient } from './authenticated-n8n-api-client';
 
 export class DataTableApiClient {
 	constructor(private readonly apiClient: AuthenticatedN8nApiClient) {}
