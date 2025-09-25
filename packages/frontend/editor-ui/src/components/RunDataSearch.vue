@@ -12,6 +12,10 @@ type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;
 	displayMode?: IRunDataDisplayMode;
+	/**
+	 * Keyboard shortcut for focusing search input.
+	 * Shortcut is disabled if not specified.
+	 */
 	shortcut?: SearchShortcut;
 };
 
@@ -27,6 +31,7 @@ const emit = defineEmits<{
 const props = withDefaults(defineProps<Props>(), {
 	paneType: 'output',
 	displayMode: 'schema',
+	shortcut: undefined,
 });
 
 const locale = useI18n();
@@ -111,6 +116,19 @@ const onBlur = () => {
 	}
 };
 
+function isTargetEditable(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) {
+		return false;
+	}
+
+	return (
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target.getAttribute('contentEditable') === 'true'
+	);
+}
+
 function getKeyboardActionToTrigger(event: KeyboardEvent): 'open' | 'cancel' | undefined {
 	if (opened.value && event.key === 'Escape') {
 		return 'cancel';
@@ -118,13 +136,7 @@ function getKeyboardActionToTrigger(event: KeyboardEvent): 'open' | 'cancel' | u
 
 	switch (props.shortcut) {
 		case '/': {
-			const isTargetFormElementOrEditable =
-				event.target instanceof HTMLInputElement ||
-				event.target instanceof HTMLTextAreaElement ||
-				event.target instanceof HTMLSelectElement ||
-				(event.target as HTMLElement)?.getAttribute?.('contentEditable') === 'true';
-
-			return event.key === '/' && !isTargetFormElementOrEditable ? 'open' : undefined;
+			return event.key === '/' && !isTargetEditable(event.target) ? 'open' : undefined;
 		}
 		case 'ctrl+f':
 			return event.key === 'f' && isCtrlKeyPressed(event) ? 'open' : undefined;
