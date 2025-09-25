@@ -502,8 +502,24 @@ export function extractBotResponse(
 	if (get(nodeResponseData, 'error')) {
 		responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 	} else {
-		const responseData = get(nodeResponseData, 'data.main[0][0].json');
-		const text = extractResponseText(responseData) ?? emptyText;
+		// Check all output branches for response data, not just the first one
+		const mainOutputs = get(nodeResponseData, 'data.main');
+		let text: string | undefined;
+
+		if (mainOutputs && Array.isArray(mainOutputs)) {
+			for (const branch of mainOutputs) {
+				if (branch?.[0]?.json) {
+					const responseData = branch[0].json;
+					text = extractResponseText(responseData);
+					if (text) {
+						break; // Found a valid response, stop searching
+					}
+				}
+			}
+		}
+
+		// Fall back to emptyText if no valid response found
+		text = text ?? emptyText;
 
 		if (!text) {
 			return undefined;

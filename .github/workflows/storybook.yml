@@ -38,7 +38,9 @@ jobs:
           pnpm build:storybook
 
       - name: Setup Wrangler Pre-requisites
-        run: echo "ignore-workspace-root-check=true" >> .npmrc
+        run: |
+          echo "ignore-workspace-root-check=true" >> .npmrc
+          pnpm add --global wrangler
 
       - name: Deploy
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
