@@ -28,7 +28,7 @@ export class McpSettingsController {
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
 		try {
-			this.moduleRegistry.settings.set('mcp', { mcpAccessEnabled: enabled });
+			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {
 			this.logger.warn('Failed to sync MCP settings to module registry', {
 				cause: error instanceof Error ? error.message : String(error),

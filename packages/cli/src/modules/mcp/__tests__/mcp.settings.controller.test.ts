@@ -44,11 +44,12 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_OWNER_ROLE.slug);
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
 
 			const result = await controller.updateSettings(req, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
-			expect(moduleRegistry.settings.set).toHaveBeenCalledWith('mcp', { mcpAccessEnabled: false });
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
@@ -56,11 +57,12 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: true }, GLOBAL_OWNER_ROLE.slug);
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: true });
 
 			const result = await controller.updateSettings(req, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
-			expect(moduleRegistry.settings.set).toHaveBeenCalledWith('mcp', { mcpAccessEnabled: true });
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
