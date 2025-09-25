@@ -151,8 +151,8 @@ describe('InsightsController', () => {
 			};
 
 			it('should use the query filters when provided', async () => {
-				const startDate = DateTime.now().startOf('day').minus({ days: 12 }).toJSDate();
-				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+				const startDate = DateTime.now().minus({ days: 12, hours: 12 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 4, hours: 5 }).toJSDate();
 
 				// ARRANGE
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
@@ -178,7 +178,7 @@ describe('InsightsController', () => {
 			});
 
 			it('should default the endDate to today when not provided', async () => {
-				const startDate = DateTime.now().startOf('day').minus({ days: 12 }).toJSDate();
+				const startDate = DateTime.now().startOf('day').minus({ days: 12, minutes: 43 }).toJSDate();
 
 				// ARRANGE
 				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
@@ -374,13 +374,13 @@ describe('InsightsController', () => {
 					skip: 0,
 					take: 5,
 					sortBy: 'total:desc',
-					dateRange: 'week',
 				},
 			);
 
 			// ASSERT
 			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-				maxAgeInDays: 7,
+				startDate: sevenDaysAgo,
+				endDate: today,
 				skip: 0,
 				take: 5,
 				sortBy: 'total:desc',
@@ -404,13 +404,13 @@ describe('InsightsController', () => {
 					skip: 0,
 					take: 5,
 					sortBy: 'total:desc',
-					dateRange: 'week',
 				},
 			);
 
 			// ASSERT
 			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-				maxAgeInDays: 7,
+				startDate: sevenDaysAgo,
+				endDate: today,
 				skip: 0,
 				take: 5,
 				sortBy: 'total:desc',
@@ -422,6 +422,8 @@ describe('InsightsController', () => {
 		describe('with query filters', () => {
 			it('should use the query filters when provided', async () => {
 				// ARRANGE
+				const startDate = DateTime.now().minus({ days: 365 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 335 }).toJSDate();
 				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
 					count: mockRows.length,
 					rows: mockRows,
@@ -432,17 +434,19 @@ describe('InsightsController', () => {
 					mock<AuthenticatedRequest>(),
 					mock<Response>(),
 					{
+						startDate,
+						endDate,
 						skip: 5,
 						take: 10,
 						sortBy: 'failureRate:asc',
-						dateRange: 'month',
 						projectId: 'test-project',
 					},
 				);
 
 				// ASSERT
 				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
-					maxAgeInDays: 30,
+					startDate,
+					endDate,
 					skip: 5,
 					take: 10,
 					sortBy: 'failureRate:asc',
@@ -452,11 +456,78 @@ describe('InsightsController', () => {
 				expect(response).toEqual({ count: 3, data: mockRows });
 			});
 
+			it('should default the endDate to today when not provided', async () => {
+				// ARRANGE
+				const startDate = DateTime.now().startOf('day').minus({ days: 70 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: mockRows.length,
+					rows: mockRows,
+				});
+
+				// ACT
+				const response = await controller.getInsightsByWorkflow(
+					mock<AuthenticatedRequest>(),
+					mock<Response>(),
+					{
+						startDate,
+						skip: 0,
+						take: 5,
+						sortBy: 'total:desc',
+					},
+				);
+
+				// ASSERT
+				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+					startDate,
+					endDate: today,
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				expect(response).toEqual({ count: 3, data: mockRows });
+			});
+
+			it('should use the query dateRange filter in a backward compatible way', async () => {
+				// ARRANGE
+				const thirtyDaysAgo = DateTime.now().startOf('day').minus({ days: 30 }).toJSDate();
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: mockRows.length,
+					rows: mockRows,
+				});
+
+				// ACT
+				const response = await controller.getInsightsByWorkflow(
+					mock<AuthenticatedRequest>(),
+					mock<Response>(),
+					{
+						dateRange: 'month',
+						skip: 0,
+						take: 5,
+						sortBy: 'total:desc',
+					},
+				);
+
+				// ASSERT
+				expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith({
+					startDate: thirtyDaysAgo,
+					endDate: today,
+					skip: 0,
+					take: 5,
+					sortBy: 'total:desc',
+				});
+
+				expect(response).toEqual({ count: 3, data: mockRows });
+			});
+
 			it('should throw a BadRequestError when endDate is before startDate', async () => {
+				const startDate = DateTime.now().startOf('day').minus({ days: 10 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 12 }).toJSDate();
+
 				await expect(
 					controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: new Date('2025-06-10'),
-						endDate: new Date('2025-06-01'),
+						startDate,
+						endDate,
 						skip: 0,
 						take: 5,
 						sortBy: 'total:desc',
@@ -492,6 +563,61 @@ describe('InsightsController', () => {
 				).rejects.toThrowError(new BadRequestError('must be in the past'));
 			});
 		});
+
+		describe('with license restrictions', () => {
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				// ARRANGE
+				licenseState.getInsightsMaxHistory.mockReturnValue(30);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: 0,
+					rows: [],
+				});
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: new Date('2025-06-01T00:00:00Z'),
+						endDate: new Date('2025-06-01T00:00:00Z'),
+						skip: 0,
+						take: 5,
+						sortBy: 'total:desc',
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError('Hourly data is not available with your current license'),
+				);
+			});
+
+			it.only('should throw a forbidden error when date range exceeds license limit', async () => {
+				// ARRANGE
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ days: 32 }).toJSDate();
+				const endDate = DateTime.now().startOf('day').minus({ days: 4 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(31);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+					count: 0,
+					rows: [],
+				});
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: outOfRangeStart,
+						endDate,
+						skip: 0,
+						take: 5,
+						sortBy: 'total:desc',
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError(
+						'The selected date range exceeds the maximum history allowed by your license',
+					),
+				);
+			});
+		});
 	});
 
 	describe('getInsightsByTime', () => {
@@ -509,6 +635,31 @@ describe('InsightsController', () => {
 				timeSaved: 0,
 				failed: 4,
 				runTime: 10,
+			},
+		];
+
+		const expectedResponse = [
+			{
+				date: '2023-10-01T00:00:00.000Z',
+				values: {
+					succeeded: 10,
+					timeSaved: 0,
+					failed: 2,
+					averageRunTime: 10 / 12,
+					failureRate: 2 / 12,
+					total: 12,
+				},
+			},
+			{
+				date: '2023-10-02T00:00:00.000Z',
+				values: {
+					succeeded: 12,
+					timeSaved: 0,
+					failed: 4,
+					averageRunTime: 10 / 16,
+					failureRate: 4 / 16,
+					total: 16,
+				},
 			},
 		];
 
@@ -550,30 +701,7 @@ describe('InsightsController', () => {
 				periodUnit: 'week',
 			});
 
-			expect(response).toEqual([
-				{
-					date: '2023-10-01T00:00:00.000Z',
-					values: {
-						succeeded: 10,
-						timeSaved: 0,
-						failed: 2,
-						averageRunTime: 10 / 12,
-						failureRate: 2 / 12,
-						total: 12,
-					},
-				},
-				{
-					date: '2023-10-02T00:00:00.000Z',
-					values: {
-						succeeded: 12,
-						timeSaved: 0,
-						failed: 4,
-						averageRunTime: 10 / 16,
-						failureRate: 4 / 16,
-						total: 16,
-					},
-				},
-			]);
+			expect(response).toEqual(expectedResponse);
 		});
 
 		describe('with query filters', () => {

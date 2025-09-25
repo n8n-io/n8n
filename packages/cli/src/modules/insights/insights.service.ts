@@ -251,9 +251,9 @@ export class InsightsService {
 	}
 
 	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		const today = DateTime.now().startOf('day');
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
-		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
-		const differenceInDays = currentEnd.diff(currentStart, 'days').days;
+		const daysToStartDate = today.diff(currentStart, 'days').days;
 
 		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
 
@@ -267,7 +267,7 @@ export class InsightsService {
 			throw new UserError('Hourly data is not available with your current license');
 		}
 
-		if (maxHistoryInDays < differenceInDays) {
+		if (maxHistoryInDays < daysToStartDate) {
 			throw new UserError(
 				'The selected date range exceeds the maximum history allowed by your license',
 			);
