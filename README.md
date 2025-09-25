@@ -2,9 +2,19 @@
 
 # n8n - Secure Workflow Automation for Technical Teams
 
-n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
+n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automation workflows while maintaining full control over your data and deployments.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
+
+## Table of Contents
+- [Key Capabilities](#key-capabilities)
+- [Quick Start](#quick-start)
+- [Resources](#resources)
+- [Support](#support)
+- [License](#license)
+- [Contributing](#contributing)
+- [Join the Team](#join-the-team)
+- [What does n8n mean?](#what-does-n8n-mean)
 
 ## Key Capabilities
 
@@ -25,8 +35,14 @@ npx n8n
 Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
 
 ```
+# Create a persistent volume for storing workflows
 docker volume create n8n_data
-docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+
+# Run n8n with Docker and bind it to port 5678
+docker run -it --rm --name n8n \
+  -p 5678:5678 \
+  -v n8n_data:/home/node/.n8n \
+  docker.n8n.io/n8nio/n8n
 ```
 
 Access the editor at http://localhost:5678
@@ -49,9 +65,11 @@ Need help? Our community forum is the place to get support and connect with othe
 
 n8n is [fair-code](https://faircode.io) distributed under the [Sustainable Use License](https://github.com/n8n-io/n8n/blob/master/LICENSE.md) and [n8n Enterprise License](https://github.com/n8n-io/n8n/blob/master/LICENSE_EE.md).
 
-- **Source Available**: Always visible source code
-- **Self-Hostable**: Deploy anywhere
-- **Extensible**: Add your own nodes and functionality
+| Feature          | Description                                                                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source Available | Always-visible source code                                                                                                                                      |
+| Self-Hostable    | Can be deployed anywhere                                                                                                                                        |
+| Extensible       | Add custom nodes and functionality                                                                                                                              |
 
 [Enterprise licenses](mailto:license@n8n.io) available for additional features and support.
 
