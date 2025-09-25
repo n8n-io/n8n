@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { getTimeRangeLabels } from '../insights.utils';
 
 const props = defineProps<{

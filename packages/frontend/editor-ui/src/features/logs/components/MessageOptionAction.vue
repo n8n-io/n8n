@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAttrs } from 'vue';
-import { type IconName } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 defineProps<{ label: string; icon: IconName; placement: 'left' | 'right' | 'top' | 'bottom' }>();
 

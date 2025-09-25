@@ -5,8 +5,8 @@ import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants
 import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INode,
+import {
+	type INode,
 	type FromAIArgument,
 	type IDataObject,
 	NodeConnectionTypes,
