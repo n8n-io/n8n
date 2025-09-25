@@ -2,7 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
 import { INodeTypes } from 'n8n-workflow';
@@ -228,5 +228,19 @@ export class AiWorkflowBuilderService {
 	async getSessions(workflowId: string | undefined, user?: IUser) {
 		const userId = user?.id?.toString();
 		return await this.sessionManager.getSessions(workflowId, userId);
+	}
+
+	async getBuilderInstanceCredits(
+		user: IUser,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		if (this.client) {
+			return await this.client.getBuilderInstanceCredits(user);
+		}
+
+		// if using env variables directly instead of ai proxy service
+		return {
+			creditsQuota: -1,
+			creditsClaimed: 0,
+		};
 	}
 }
