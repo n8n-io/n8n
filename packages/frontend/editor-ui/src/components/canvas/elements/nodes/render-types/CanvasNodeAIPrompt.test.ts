@@ -11,14 +11,24 @@ import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 const streaming = ref(false);
 const openChat = vi.fn();
 const sendChatMessage = vi.fn();
+const stopStreaming = vi.fn();
+const creditsQuota = ref(100);
+const creditsClaimed = ref(0);
 vi.mock('@/stores/builder.store', () => {
 	return {
 		useBuilderStore: vi.fn(() => ({
 			get streaming() {
 				return streaming.value;
 			},
+			get creditsQuota() {
+				return creditsQuota.value;
+			},
+			get creditsClaimed() {
+				return creditsClaimed.value;
+			},
 			openChat,
 			sendChatMessage,
+			stopStreaming,
 		})),
 	};
 });
@@ -38,6 +48,15 @@ const openNodeCreatorForTriggerNodes = vi.fn();
 vi.mock('@/stores/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		openNodeCreatorForTriggerNodes,
+	})),
+}));
+
+const isInstanceOwner = ref(true);
+vi.mock('@/stores/users.store', () => ({
+	useUsersStore: vi.fn(() => ({
+		get isInstanceOwner() {
+			return isInstanceOwner.value;
+		},
 	})),
 }));
 
@@ -63,11 +82,65 @@ vi.mock('@/composables/useTelemetry', () => ({
 	})),
 }));
 
+const goToUpgrade = vi.fn();
+vi.mock('@/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: vi.fn(() => ({
+		goToUpgrade,
+	})),
+}));
+
 // Mock router
 vi.mock('vue-router', () => ({
 	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
 }));
+
+// Mock N8nPromptInput component
+vi.mock('@n8n/design-system/components/N8nPromptInput/N8nPromptInput.vue', () => ({
+	default: {
+		name: 'N8nPromptInput',
+		props: [
+			'modelValue',
+			'disabled',
+			'streaming',
+			'placeholder',
+			'maxLinesBeforeScroll',
+			'creditsQuota',
+			'creditsClaimed',
+			'onUpgradeClick',
+			'showAskOwnerTooltip',
+			'minLines',
+		],
+		emits: ['update:modelValue', 'submit', 'stop', 'input'],
+		template: `
+			<div class="n8n-prompt-input">
+				<textarea
+					:value="modelValue"
+					:disabled="disabled"
+					:placeholder="placeholder"
+					@input="$emit('update:modelValue', $event.target.value); $emit('input', $event)"
+					@keydown.enter.exact="$emit('submit')"
+				/>
+				<button v-if="streaming" @click="$emit('stop')">Stop</button>
+				<button v-else :disabled="!modelValue || disabled" @click="$emit('submit')">Send</button>
+			</div>
+		`,
+	},
+}));
+
+// Mock n8n-icon component
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual('@n8n/design-system');
+	return {
+		...actual,
+		N8nIcon: {
+			name: 'n8n-icon',
+			props: ['icon', 'size'],
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			template: '<span :class="`n8n-icon-${icon}`"></span>',
+		},
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeAIPrompt);
 
