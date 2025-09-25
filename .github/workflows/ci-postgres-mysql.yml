@@ -51,7 +51,7 @@ jobs:
         run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     env:
       DB_MYSQLDB_PASSWORD: password
-      DB_MYSQLDB_POOL_SIZE: 5
+      DB_MYSQLDB_POOL_SIZE: 1
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
@@ -68,17 +68,9 @@ jobs:
           compose-file: ./.github/docker-compose.yml
           services: mysql-8.4
 
-      - name: Wait for MySQL
-        run: |
-          until mysqladmin ping -h"127.0.0.1" -P3306 -uroot -proot --silent; do
-            echo 'Waiting for MySQL...'
-            sleep 2
-          done
-          echo 'MySQL is ready!'
-
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 120000
+        run: sleep 5s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres - Run ${{ matrix.run }}
