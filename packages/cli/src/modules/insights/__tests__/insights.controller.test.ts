@@ -815,9 +815,46 @@ describe('InsightsController', () => {
 		});
 
 		describe('with license restrictions', () => {
-			it('should throw a forbidden error when hourly data is requested without a license', async () => {});
+			it('should throw a forbidden error when hourly data is requested without a license', async () => {
+				// ARRANGE
+				licenseState.getInsightsMaxHistory.mockReturnValue(30);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
 
-			it('should throw a forbidden error when date range exceeds license limit', async () => {});
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: new Date('2025-06-01T00:00:00Z'),
+						endDate: new Date('2025-06-01T00:00:00Z'),
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError('Hourly data is not available with your current license'),
+				);
+			});
+
+			it('should throw a forbidden error when date range exceeds license limit', async () => {
+				// ARRANGE
+				const outOfRangeStart = DateTime.now().startOf('day').minus({ month: 4 }).toJSDate();
+				const outOfRangeDate = DateTime.now().startOf('day').minus({ months: 3 }).toJSDate();
+
+				licenseState.getInsightsMaxHistory.mockReturnValue(31);
+				licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+				// ACT & ASSERT
+				await expect(
+					controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
+						startDate: outOfRangeStart,
+						endDate: outOfRangeDate,
+					}),
+				).rejects.toThrowError(
+					new ForbiddenError(
+						'The selected date range exceeds the maximum history allowed by your license',
+					),
+				);
+			});
 		});
 	});
 
