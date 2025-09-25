@@ -463,6 +463,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
+	function updateBuilderCredits(quota: number, claimed: number) {
+		creditsQuota.value = quota;
+		creditsClaimed.value = claimed;
+	}
+
 	// Public API
 	return {
 		// State
@@ -483,8 +488,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		trackingSessionId,
 		streamingAbortController,
 		initialGeneration,
-		creditsQuota,
-		creditsClaimed,
+		creditsQuota: computed(() => creditsQuota.value),
+		creditsClaimed: computed(() => creditsClaimed.value),
 
 		// Methods
 		updateWindowWidth,
@@ -497,5 +502,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		applyWorkflowUpdate,
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
+		updateBuilderCredits,
 	};
 });

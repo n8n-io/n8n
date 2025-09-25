@@ -5,6 +5,5 @@ export async function builderCreditsUpdated(event: BuilderCreditsPushMessage): P
 	const builderStore = useBuilderStore();
 
 	// Update the builder store with new credits values
-	builderStore.creditsQuota = event.data.creditsQuota;
-	builderStore.creditsClaimed = event.data.creditsClaimed;
+	builderStore.updateBuilderCredits(event.data.creditsQuota, event.data.creditsClaimed);
 }
