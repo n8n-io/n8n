@@ -34,7 +34,7 @@ import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
-import type { ApiHelpers } from '../services/api-helper';
+import { ApiHelpers } from '../services/api-helper';
 import { BaseModal } from './components/BaseModal';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -85,9 +85,9 @@ export class n8nPage {
 	// Helpers
 	readonly navigate: NavigationHelper;
 
-	constructor(page: Page, api: ApiHelpers) {
+	constructor(page: Page) {
 		this.page = page;
-		this.api = api;
+		this.api = new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);

@@ -21,6 +21,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 // Types
 
@@ -375,7 +376,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<template v-else #icon>
 						<N8nIcon icon="arrow-right-from-line" size="xlarge" />
 					</template>
-					<template #description>
+					<template #default>
 						<I18nT
 							tag="span"
 							:keypath="
@@ -431,21 +432,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">
-				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
-			</N8nText>
-			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
+			<NDVEmptyState :title="i18n.baseText('ndv.output.waitNodeWaiting.title')" wide>
+				<span v-n8n-html="waitingNodeTooltip(node)" />
+			</NDVEmptyState>
 		</template>
 
 		<template #no-output-data>
-			<N8nText :bold="true" color="text-dark" size="large">{{
-				i18n.baseText('ndv.output.noOutputData.title')
-			}}</N8nText>
-			<N8nText>
+			<NDVEmptyState :title="i18n.baseText('ndv.output.noOutputData.title')">
 				{{ i18n.baseText('ndv.output.noOutputData.message') }}
 				<a @click="openSettings">{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a>
 				{{ i18n.baseText('ndv.output.noOutputData.message.settingsOption') }}
-			</N8nText>
+			</NDVEmptyState>
 		</template>
 
 		<template v-if="outputMode === 'logs' && node" #content>
@@ -453,14 +450,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		</template>
 
 		<template #recovered-artificial-output-data>
-			<div :class="$style.recoveredOutputData">
-				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</N8nText>
-				<N8nText>
-					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</N8nText>
-			</div>
+			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
+				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+			</NDVEmptyState>
 		</template>
 
 		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
@@ -522,16 +514,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 	> * {
 		margin-bottom: var(--spacing-2xs);
-	}
-}
-
-.recoveredOutputData {
-	margin: auto;
-	max-width: 250px;
-	text-align: center;
-
-	> *:first-child {
-		margin-bottom: var(--spacing-m);
 	}
 }
 
