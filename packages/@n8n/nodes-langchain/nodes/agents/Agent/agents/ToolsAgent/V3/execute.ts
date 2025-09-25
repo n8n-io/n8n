@@ -58,7 +58,7 @@ function createEngineRequests(
 			connectedSubnodes.find(
 				(node: { name: string }) =>
 					nodeNameToToolName(node.name).toLowerCase() === toolCall.tool.toLowerCase(),
-			) ?? toolCall.tool,
+			)?.name ?? toolCall.tool,
 		input: toolCall.toolInput,
 		type: NodeConnectionTypes.AiTool,
 		id: toolCall.toolCallId,
