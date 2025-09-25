@@ -221,16 +221,9 @@ export class ProjectController {
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		const { name, icon, description } = payload;
-		// NOTE: This endpoint only updates scalar settings (name, icon, description).
-		// Any `relations` included in the request payload are intentionally ignored.
-		// Member management now happens via dedicated endpoints under `/projects/:projectId/users`.
-		if (name || icon || description) {
-			await this.projectsService.updateProject(projectId, { name, icon, description });
-		}
+		await this.projectsService.updateProject(projectId, payload);
 	}
 
-	/** Add one or more users to a project immediately */
 	@Post('/:projectId/users')
 	@ProjectScope('project:update')
 	async addProjectUsers(
@@ -275,7 +268,6 @@ export class ProjectController {
 		}
 	}
 
-	/** Change a project member's role immediately */
 	@Patch('/:projectId/users/:userId')
 	@ProjectScope('project:update')
 	async changeProjectUserRole(
@@ -304,7 +296,6 @@ export class ProjectController {
 		}
 	}
 
-	/** Remove a project member immediately */
 	@Delete('/:projectId/users/:userId')
 	@ProjectScope('project:update')
 	async deleteProjectUser(

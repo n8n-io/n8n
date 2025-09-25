@@ -124,13 +124,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return newProject;
 	};
 
-	const updateProject = async (
-		id: Project['id'],
-		projectData: Partial<Pick<UpdateProjectDto, 'name' | 'icon' | 'description'>>,
-	): Promise<void> => {
-		// Only persist scalar settings here; member updates are handled via dedicated endpoints
+	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
 		const { name, icon, description } = projectData;
-		const payload: Partial<Pick<UpdateProjectDto, 'name' | 'icon' | 'description'>> = {};
+		const payload: UpdateProjectDto = {};
 		if (name !== undefined) payload.name = name;
 		if (icon !== undefined) payload.icon = icon;
 		if (description !== undefined) payload.description = description;
