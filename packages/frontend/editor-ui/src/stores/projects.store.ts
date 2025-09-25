@@ -155,25 +155,40 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const setProjectNavActiveIdByWorkflowHomeProject = async (
-		homeProject?: IWorkflowDb['homeProject'],
+		workflowHomeProject?: IWorkflowDb['homeProject'],
+		sharedWithProjects?: IWorkflowDb['sharedWithProjects'],
 	) => {
-		// Handle personal projects
-		if (homeProject?.type === ProjectTypes.Personal) {
-			const isOwnPersonalProject = personalProject.value?.id === homeProject?.id;
+		// For personal shared workflows, we need to show "Shared with you"
+		const isSharedWithMe =
+			personalProject.value?.id !== workflowHomeProject?.id &&
+			workflowHomeProject?.type === ProjectTypes.Personal &&
+			sharedWithProjects?.some((project) => project.id === personalProject.value?.id);
+
+		if (isSharedWithMe) {
+			projectNavActiveId.value = 'shared';
+			setCurrentProject(null);
+			return;
+		}
+
+		if (workflowHomeProject?.type === ProjectTypes.Personal) {
+			// Handle personal projects
+			const isOwnPersonalProject = personalProject.value?.id === workflowHomeProject?.id;
 			// If it's current user's personal project, set it as current project
 			if (isOwnPersonalProject) {
-				projectNavActiveId.value = homeProject?.id ?? null;
+				projectNavActiveId.value = workflowHomeProject?.id ?? null;
 				currentProject.value = personalProject.value;
+				return;
 			} else {
 				// Else default to overview page
 				projectNavActiveId.value = 'home';
+				return;
 			}
-		} else {
-			// Handle team projects
-			projectNavActiveId.value = homeProject?.id ?? null;
-			if (homeProject?.id && !currentProjectId.value) {
-				await getProject(homeProject?.id);
-			}
+		}
+
+		// Handle team projects
+		projectNavActiveId.value = workflowHomeProject?.id ?? null;
+		if (workflowHomeProject?.id && !currentProjectId.value) {
+			await getProject(workflowHomeProject?.id);
 		}
 	};
 

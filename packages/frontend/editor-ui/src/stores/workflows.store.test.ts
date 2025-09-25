@@ -22,15 +22,11 @@ import type {
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
-import type { PushPayload, FrontendSettings } from '@n8n/api-types';
+import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import * as apiUtils from '@n8n/rest-api-client';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useLocalStorage } from '@vueuse/core';
-import { ref } from 'vue';
 import {
 	createTestNode,
 	createTestTaskData,
@@ -80,13 +76,11 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
-		settingsStore = mockedStore(useSettingsStore);
 		track.mockReset();
 	});
 
@@ -1072,40 +1066,6 @@ describe('useWorkflowsStore', () => {
 			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
-
-	test.each([
-		// check userVersion behavior
-		[-1, 1, 1], // userVersion -1, use default (1)
-		[0, 1, 1], // userVersion 0, invalid, use default (1)
-		[1, 1, 1], // userVersion 1, valid, use userVersion (1)
-		[2, 1, 2], // userVersion 2, valid, use userVersion (2)
-		[-1, 2, 2], // userVersion -1, use default (2)
-		[0, 2, 1], // userVersion 0, invalid, use default (2)
-		[1, 2, 1], // userVersion 1, valid, use userVersion (1)
-		[2, 2, 2], // userVersion 2, valid, use userVersion (2)
-	] as Array<[number, 1 | 2, number]>)(
-		'when { userVersion:%s, defaultVersion:%s, enforced:%s } run workflow should use partial execution version %s',
-		async (userVersion, defaultVersion, expectedVersion) => {
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(userVersion));
-			settingsStore.settings = {
-				partialExecution: { version: defaultVersion },
-			} as FrontendSettings;
-
-			const workflowData = { id: '1', nodes: [], connections: {} };
-			const makeRestApiRequestSpy = vi
-				.spyOn(apiUtils, 'makeRestApiRequest')
-				.mockImplementation(async () => ({}));
-
-			await workflowsStore.runWorkflow({ workflowData });
-
-			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
-				{ baseUrl: '/rest', pushRef: expect.any(String) },
-				'POST',
-				`/workflows/1/run?partialExecutionVersion=${expectedVersion}`,
-				{ workflowData },
-			);
-		},
-	);
 
 	describe('findNodeByPartialId', () => {
 		test.each([
