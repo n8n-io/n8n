@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.config.sentry_config import SentryConfig
-from src.errors.task_runtime_error import TaskRuntimeError
+from src.errors import TaskRuntimeError, TaskCancelledError, SecurityViolationError
 from src.sentry import TaskRunnerSentry, setup_sentry
 from src.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
@@ -72,10 +72,18 @@ class TestTaskRunnerSentry:
 
             mock_flush.assert_called_once_with(timeout=2.0)
 
-    def test_filter_out_task_runtime_errors(self, sentry_config):
+    @pytest.mark.parametrize(
+        "error_type",
+        [
+            TaskRuntimeError,
+            TaskCancelledError,
+            SecurityViolationError,
+        ],
+    )
+    def test_filter_out_ignored_errors(self, sentry_config, error_type):
         sentry = TaskRunnerSentry(sentry_config)
         event = {"exception": {"values": []}}
-        hint = {"exc_info": (TaskRuntimeError, None, None)}
+        hint = {"exc_info": (error_type, None, None)}
 
         result = sentry._filter_out_ignored_errors(event, hint)
 

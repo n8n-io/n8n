@@ -169,6 +169,12 @@
 		"status": "SKIPPED"
 	},
 	{
+		"workflowId": "83",
+		"status": "SKIPPED",
+		"skipReason": "Producthunt.com is returning a 403 for the RSS Feed, we should swap to an rss without auth",
+		"ticketReference": "CAT-1470"
+	},
+	{
 		"workflowId": "85",
 		"status": "SKIPPED"
 	},
@@ -214,6 +220,12 @@
 	{
 		"workflowId": "106",
 		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "110",
+		"status": "SKIPPED",
+		"skipReason": "Error thrown in VM2, bug created for nodes team",
+		"ticketReference": "NODE-3692"
 	},
 	{
 		"workflowId": "112",
@@ -324,6 +336,11 @@
 		"workflowId": "143",
 		"status": "SKIPPED",
 		"skipReason": "Invalid API key for Clearbit."
+	},
+	{
+		"workflowId": "144",
+		"status": "SKIPPED",
+		"skipReason": "Quota exceeded, APITemplate.io need to check the rate limit."
 	},
 	{
 		"workflowId": "145",

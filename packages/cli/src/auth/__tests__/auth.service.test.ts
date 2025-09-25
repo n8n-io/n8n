@@ -100,11 +100,12 @@ describe('AuthService', () => {
 	});
 
 	describe('authMiddleware', () => {
-		const req = mock<AuthenticatedRequest>({
-			cookies: {},
-			user: undefined,
-			browserId,
-		});
+		const mockReq = () =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				browserId,
+			});
 		const res = mock<Response>();
 		const next = jest.fn() as NextFunction;
 
@@ -113,9 +114,10 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 if no cookie is set', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = undefined;
 
-			const middleware = authService.createAuthMiddleware(true);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
 			await middleware(req, res, next);
 
@@ -125,11 +127,12 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 and clear the cookie if the JWT is expired', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-			const middleware = authService.createAuthMiddleware(true);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
 			await middleware(req, res, next);
 
@@ -141,10 +144,11 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
-			const middleware = authService.createAuthMiddleware(true);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
 			await middleware(req, res, next);
 
@@ -156,6 +160,7 @@ describe('AuthService', () => {
 		});
 
 		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			userRepository.findOne.mockResolvedValue(user);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
@@ -163,7 +168,7 @@ describe('AuthService', () => {
 				return true;
 			});
 
-			const middleware = authService.createAuthMiddleware(false);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 
 			await middleware(req, res, next);
 
@@ -175,12 +180,13 @@ describe('AuthService', () => {
 		});
 
 		it('should refresh the cookie before it expires', async () => {
+			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
-			const middleware = authService.createAuthMiddleware(true);
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
 			await middleware(req, res, next);
 
@@ -190,6 +196,139 @@ describe('AuthService', () => {
 				maxAge: 604800000,
 				sameSite: 'lax',
 				secure: true,
+			});
+		});
+
+		describe('allowSkipPreviewAuth', () => {
+			let originalPreviewMode: string | undefined;
+
+			beforeEach(() => {
+				// Store original value
+				originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+				// Reset mocks
+				jest.resetAllMocks();
+				res.status.mockReturnThis();
+			});
+
+			afterEach(() => {
+				// Restore original value
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			});
+
+			it('should skip authentication when allowSkipPreviewAuth is true and preview mode is enabled', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is false even in preview mode', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: false,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is true but preview mode is disabled', async () => {
+				process.env.N8N_PREVIEW_MODE = 'false';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should NOT skip authentication when allowSkipPreviewAuth is true but preview mode is undefined', async () => {
+				delete process.env.N8N_PREVIEW_MODE;
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(next).not.toHaveBeenCalled();
+				expect(res.status).toHaveBeenCalledWith(401);
+			});
+
+			it('should still process valid authentication normally in preview mode with allowSkipPreviewAuth true', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = validToken;
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+				userRepository.findOne.mockResolvedValue(user);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(req.user).toBe(user);
+				expect(next).toHaveBeenCalled();
+				expect(res.status).not.toHaveBeenCalled();
+			});
+
+			it('should handle authentication errors normally in preview mode with allowSkipPreviewAuth true', async () => {
+				process.env.N8N_PREVIEW_MODE = 'true';
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = 'invalid-token';
+				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+				const middleware = authService.createAuthMiddleware({
+					allowSkipMFA: true,
+					allowSkipPreviewAuth: true,
+				});
+
+				await middleware(req, res, next);
+
+				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(next).toHaveBeenCalled(); // Should still call next() due to preview mode skip
+				expect(res.status).not.toHaveBeenCalled();
 			});
 		});
 	});
