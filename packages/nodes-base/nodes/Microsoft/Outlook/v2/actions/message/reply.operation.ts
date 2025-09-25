@@ -47,28 +47,13 @@ export const properties: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
-				type: 'fixedCollection',
-				placeholder: 'Add Attachment',
-				default: {},
+				type: 'json',
+				default: '[]',
+				description:
+					'Array of attachment objects with binaryPropertyName field. Example: [{"binaryPropertyName": "attachment_0"}] or use expression: Object.keys($input.item.binary).map(x => ({binaryPropertyName: x}))',
 				typeOptions: {
-					multipleValues: true,
+					alwaysOpenEditWindow: true,
 				},
-				options: [
-					{
-						name: 'attachments',
-						displayName: 'Attachment',
-						values: [
-							{
-								displayName: 'Input Data Field Name',
-								name: 'binaryPropertyName',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. data',
-								hint: 'The name of the input field containing the binary file data to be attached',
-							},
-						],
-					},
-				],
 			},
 			{
 				displayName: 'BCC Recipients',
@@ -253,8 +238,31 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	);
 
 	if (additionalFields.attachments) {
-		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
-		// // Handle attachments
+		let attachments: IDataObject[];
+
+		// Handle both old fixedCollection format and new JSON format
+		if (typeof additionalFields.attachments === 'string') {
+			try {
+				attachments = JSON.parse(additionalFields.attachments as string);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), 'Invalid JSON format for attachments', {
+					itemIndex: index,
+				});
+			}
+		} else if (Array.isArray(additionalFields.attachments)) {
+			attachments = additionalFields.attachments;
+		} else {
+			// Legacy fixedCollection format
+			attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
+		}
+
+		if (!Array.isArray(attachments)) {
+			throw new NodeOperationError(this.getNode(), 'Attachments must be an array', {
+				itemIndex: index,
+			});
+		}
+
+		// Handle attachments
 		const data: IDataObject[] = [];
 
 		for (const attachment of attachments) {
