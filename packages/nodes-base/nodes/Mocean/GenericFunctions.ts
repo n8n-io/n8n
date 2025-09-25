@@ -40,6 +40,9 @@ export async function moceanApiRequest(
 		qs: query,
 		uri: `https://rest.moceanapi.com${endpoint}`,
 		json: true,
+		headers: {
+			Authorization: `Bearer ${credentials!['mocean-api-token']}`,
+		},
 	};
 
 	try {
