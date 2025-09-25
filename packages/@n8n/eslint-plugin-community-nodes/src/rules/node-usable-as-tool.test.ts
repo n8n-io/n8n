@@ -60,6 +60,14 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			name: 'class that does not implement INodeType',
 			code: createNonNodeClass(),
 		},
+		{
+			name: 'node with usableAsTool set to false',
+			code: createNodeCode(false),
+		},
+		{
+			name: 'node without description property',
+			code: createNodeCode(undefined, false),
+		},
 	],
 	invalid: [
 		{
@@ -67,17 +75,6 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			code: createNodeCode('missing'),
 			errors: [{ messageId: 'missingUsableAsTool' }],
 			output: createNodeCode(true),
-		},
-		{
-			name: 'node with usableAsTool set to false',
-			code: createNodeCode(false),
-			errors: [{ messageId: 'missingUsableAsTool' }],
-			output: createNodeCode(true),
-		},
-		{
-			name: 'node without description property',
-			code: createNodeCode(undefined, false),
-			errors: [{ messageId: 'missingUsableAsTool' }],
 		},
 	],
 });

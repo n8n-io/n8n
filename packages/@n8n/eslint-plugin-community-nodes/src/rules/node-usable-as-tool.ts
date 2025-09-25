@@ -28,36 +28,21 @@ export const NodeUsableAsToolRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				const descriptionProperty = findClassProperty(node, 'description');
 				if (!descriptionProperty) {
-					context.report({
-						node,
-						messageId: 'missingUsableAsTool',
-					});
 					return;
 				}
 
-				let usableAsToolProperty = null;
-				let hasUsableAsTool = false;
-				let isUsableAsToolTrue = false;
-
 				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type === 'ObjectExpression') {
-					usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
-					if (usableAsToolProperty) {
-						hasUsableAsTool = true;
-						const value = getBooleanLiteralValue(usableAsToolProperty.value);
-						isUsableAsToolTrue = value === true;
-					}
+				if (descriptionValue?.type !== 'ObjectExpression') {
+					return;
 				}
 
-				if (!hasUsableAsTool || !isUsableAsToolTrue) {
+				const usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
+
+				if (!usableAsToolProperty) {
 					context.report({
 						node,
 						messageId: 'missingUsableAsTool',
 						fix(fixer) {
-							if (hasUsableAsTool && usableAsToolProperty?.value) {
-								return fixer.replaceText(usableAsToolProperty.value, 'true');
-							}
-
 							if (descriptionValue?.type === 'ObjectExpression') {
 								const properties = descriptionValue.properties;
 								if (properties.length === 0) {
