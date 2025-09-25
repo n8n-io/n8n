@@ -136,11 +136,12 @@ describe('AskAssistantBuild', () => {
 
 			// Type message into the chat input
 			const chatInput = getByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
 
-			// Click the send button
-			const sendButton = getByTestId('send-message-button');
-			sendButton.click();
+			// Trigger submit using Enter key (N8nPromptInput submits on Enter)
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			await flushPromises();
 
@@ -332,9 +333,10 @@ describe('AskAssistantBuild', () => {
 			// Send initial message to start generation
 			const testMessage = 'Create a workflow to send emails';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: true,
@@ -403,9 +405,10 @@ describe('AskAssistantBuild', () => {
 			// Send message to modify existing workflow
 			const testMessage = 'Add an HTTP node';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: false,
@@ -459,9 +462,10 @@ describe('AskAssistantBuild', () => {
 			// Send initial message
 			const testMessage = 'Create a workflow';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// The component should have set initialGeneration to true since workflow was empty
 			await flushPromises();
@@ -513,9 +517,10 @@ describe('AskAssistantBuild', () => {
 			// Send initial message
 			const testMessage = 'Create a workflow';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
@@ -564,9 +569,10 @@ describe('AskAssistantBuild', () => {
 			// Send initial message
 			const testMessage = 'Create a workflow';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			await flushPromises();
 
@@ -593,9 +599,10 @@ describe('AskAssistantBuild', () => {
 			// Send new message in existing session
 			const testMessage = 'Add email nodes';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true, initialGeneration: true });
@@ -664,9 +671,10 @@ describe('AskAssistantBuild', () => {
 			// Send message to generate new workflow
 			const testMessage = 'Create a new workflow';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
 				initialGeneration: true,
@@ -725,9 +733,10 @@ describe('AskAssistantBuild', () => {
 			// Send message
 			const testMessage = 'Create a workflow';
 			const chatInput = await findByTestId('chat-input');
-			await fireEvent.update(chatInput, testMessage);
-			const sendButton = await findByTestId('send-message-button');
-			await fireEvent.click(sendButton);
+			const textarea = chatInput.querySelector('textarea');
+			if (!textarea) throw new Error('Textarea not found');
+			await fireEvent.update(textarea, testMessage);
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });

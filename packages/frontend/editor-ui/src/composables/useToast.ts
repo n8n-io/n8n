@@ -7,13 +7,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
-import { VIEWS, VISIBLE_LOGS_VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useLogsStore } from '@/stores/logs.store';
-import { LOGS_PANEL_STATE } from '@/features/logs/logs.constants';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -30,29 +26,13 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
-	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
-	const logsStore = useLogsStore();
-	const ndvStore = useNDVStore();
-
-	function determineToastOffset() {
-		const assistantOffset = settingsStore.isAiAssistantEnabled ? 64 : 0;
-		const logsOffset =
-			VISIBLE_LOGS_VIEWS.includes(uiStore.currentView as VIEWS) &&
-			ndvStore.activeNode === null &&
-			logsStore.state !== LOGS_PANEL_STATE.FLOATING
-				? logsStore.height
-				: 0;
-
-		return assistantOffset + logsOffset;
-	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
 			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-			offset: determineToastOffset(),
 			appendTo: '#app-grid',
 			customClass: 'content-toast',
 		};
@@ -214,6 +194,5 @@ export function useToast() {
 		showError,
 		clearAllStickyNotifications,
 		showNotificationForViews,
-		determineToastOffset,
 	};
 }
