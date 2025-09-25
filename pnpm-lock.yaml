@@ -16361,8 +16361,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.1.0-alpha.0:
-    resolution: {integrity: sha512-K1guwS1Oy0gNfBdIdIn8JMkUV+S38sriR1zf5dP+KkPS7/r5nHnPZUL74meY2CYlxYBH4qSQ+k7bpHfwiRvaMg==}
+  vue-component-type-helpers@3.0.8:
+    resolution: {integrity: sha512-WyR30Eq15Y/+odrUUMax6FmPbZwAp/HnC7qgR1r3lVFAcqwQ4wUoV79Mbh4SxDy3NiqDa+G4TOKD5xXSgBHo5A==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -21786,7 +21786,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.1.0-alpha.0
+      vue-component-type-helpers: 3.0.8
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@1.21.7))':
     dependencies:
@@ -33263,7 +33263,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.1.0-alpha.0: {}
+  vue-component-type-helpers@3.0.8: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
