@@ -96,7 +96,6 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 			} else {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			}
-			webhookData.lastTimeChecked = endDate;
 			return [this.helpers.returnJsonArray(returnData)];
 		} else {
 			return null;
