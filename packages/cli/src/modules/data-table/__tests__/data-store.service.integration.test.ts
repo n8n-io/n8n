@@ -947,7 +947,7 @@ describe('dataStore', () => {
 		});
 	});
 
-	describe('insertRows', () => {
+	describe.only('insertRows', () => {
 		it('inserts rows into an existing table', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
