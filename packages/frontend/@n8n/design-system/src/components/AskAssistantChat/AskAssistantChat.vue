@@ -430,7 +430,6 @@ defineExpose({
 				:credits-claimed="creditsClaimed"
 				:on-upgrade-click="onUpgradeClick"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
-				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
