@@ -7,8 +7,9 @@ import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { N8nActionDropdown } from '@n8n/design-system';
 
 type HeaderParamsWithDelete = IHeaderParams & {
-	onDelete: (columnId: string) => void;
+	onDelete?: (columnId: string) => void;
 	allowMenuActions: boolean;
+	showTypeIcon?: boolean;
 };
 
 const props = defineProps<{
@@ -23,6 +24,8 @@ const isDropdownOpen = ref(false);
 const isFilterOpen = ref(false);
 const hasActiveFilter = ref(false);
 const currentSort = ref<SortDirection>(null);
+const shouldShowTypeIcon = computed(() => props.params.showTypeIcon !== false);
+const isFilterable = computed(() => props.params.column.getColDef().filter !== false);
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -31,7 +34,7 @@ const enum ItemAction {
 const onItemClick = (action: string) => {
 	const actionEnum = action as ItemAction;
 	if (actionEnum === ItemAction.Delete) {
-		props.params.onDelete(props.params.column.getColId());
+		props.params.onDelete?.(props.params.column.getColId());
 	}
 };
 
@@ -48,6 +51,10 @@ const onDropdownVisibleChange = (visible: boolean) => {
 };
 
 const checkFilterStatus = () => {
+	if (!isFilterable.value) {
+		hasActiveFilter.value = false;
+		return;
+	}
 	const columnId = props.params.column.getColId();
 	const filterModel = props.params.api.getFilterModel();
 	hasActiveFilter.value = filterModel && Boolean(filterModel[columnId]);
@@ -65,10 +72,14 @@ const isMenuButtonVisible = computed(() => {
 });
 
 const isFilterButtonVisible = computed(() => {
+	if (!isFilterable.value) return false;
 	return isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value;
 });
 
 const typeIcon = computed(() => {
+	if (!shouldShowTypeIcon.value) {
+		return null;
+	}
 	const cellDataType = props.params.column.getColDef().cellDataType;
 	if (!isAGGridCellType(cellDataType)) {
 		return null;
