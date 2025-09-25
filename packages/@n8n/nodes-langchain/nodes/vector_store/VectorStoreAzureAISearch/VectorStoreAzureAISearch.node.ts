@@ -4,6 +4,7 @@ import {
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
 import { DefaultAzureCredential } from '@azure/identity';
+import { SearchClient, AzureKeyCredential } from '@azure/search-documents';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -15,6 +16,9 @@ import {
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+
+// User agent for usage tracking
+const USER_AGENT_PREFIX = 'n8n-azure-ai-search';
 
 export const AZURE_AI_SEARCH_CREDENTIALS = 'azureAiSearchApi';
 export const INDEX_NAME = 'indexName';
@@ -192,11 +196,8 @@ async function getAzureAISearchClient(
 		}
 		const endpoint = credentials.endpoint;
 
-		const config: any = {
-			endpoint,
-			indexName,
-			search: {},
-		};
+		// Create the appropriate credentials based on auth type
+		let azureCredentials: AzureKeyCredential | DefaultAzureCredential;
 
 		if (authType === 'apiKey') {
 			if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
@@ -206,12 +207,12 @@ async function getAzureAISearchClient(
 					{ itemIndex },
 				);
 			}
-			config.key = credentials.apiKey;
+			azureCredentials = new AzureKeyCredential(credentials.apiKey);
 		} else if (authType === 'managedIdentitySystem') {
 			// Use DefaultAzureCredential which supports:
 			// 1. System-assigned MI when running on Azure
 			// 2. Microsoft Entra ID via Azure CLI for local development
-			config.credentials = new DefaultAzureCredential();
+			azureCredentials = new DefaultAzureCredential();
 		} else if (authType === 'managedIdentityUser') {
 			if (
 				!credentials.managedIdentityClientId ||
@@ -226,7 +227,7 @@ async function getAzureAISearchClient(
 			const clientId = credentials.managedIdentityClientId;
 			// Use DefaultAzureCredential with specific client ID for user-assigned MI
 			// This supports both Azure-hosted MI and local Microsoft Entra ID auth
-			config.credentials = new DefaultAzureCredential({
+			azureCredentials = new DefaultAzureCredential({
 				managedIdentityClientId: clientId,
 			});
 		} else {
@@ -236,6 +237,17 @@ async function getAzureAISearchClient(
 				{ itemIndex },
 			);
 		}
+
+		// Create a custom SearchClient with our user agent
+		const searchClient = new SearchClient(endpoint, indexName, azureCredentials, {
+			userAgentOptions: { userAgentPrefix: USER_AGENT_PREFIX },
+		});
+
+		const config: any = {
+			indexName,
+			search: {},
+			client: searchClient, // Pass our custom client with user agent (includes credentials)
+		};
 
 		// Set search configuration options only for execution contexts
 		if (isExecutionContext(context)) {
