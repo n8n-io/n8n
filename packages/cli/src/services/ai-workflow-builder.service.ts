@@ -82,4 +82,9 @@ export class WorkflowBuilderService {
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
 	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		const service = await this.getService();
+		return await service.getBuilderInstanceCredits(user);
+	}
 }

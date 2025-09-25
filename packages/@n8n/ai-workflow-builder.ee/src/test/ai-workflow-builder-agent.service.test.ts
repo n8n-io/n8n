@@ -686,4 +686,31 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
 		});
 	});
+
+	describe('getBuilderInstanceCredits', () => {
+		it('should return builder instance credits when client is available', async () => {
+			const expectedCredits = {
+				creditsQuota: 100,
+				creditsClaimed: 25,
+			};
+
+			(mockClient.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
+
+			const result = await service.getBuilderInstanceCredits(mockUser);
+
+			expect(result).toEqual(expectedCredits);
+			expect(mockClient.getBuilderInstanceCredits).toHaveBeenCalledWith(mockUser);
+		});
+
+		it('should return default values when client is not configured', async () => {
+			const serviceWithoutClient = new AiWorkflowBuilderService(mockNodeTypes);
+
+			const result = await serviceWithoutClient.getBuilderInstanceCredits(mockUser);
+
+			expect(result).toEqual({
+				creditsQuota: -1,
+				creditsClaimed: 0,
+			});
+		});
+	});
 });

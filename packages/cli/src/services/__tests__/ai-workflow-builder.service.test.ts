@@ -330,4 +330,43 @@ describe('WorkflowBuilderService', () => {
 			);
 		});
 	});
+
+	describe('getBuilderInstanceCredits', () => {
+		it('should return builder instance credits', async () => {
+			const expectedCredits = {
+				creditsQuota: 100,
+				creditsClaimed: 25,
+			};
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			const result = await service.getBuilderInstanceCredits(mockUser);
+
+			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
+			expect(mockAiService.getBuilderInstanceCredits).toHaveBeenCalledWith(mockUser);
+			expect(result).toEqual(expectedCredits);
+		});
+
+		it('should reuse existing service instance', async () => {
+			const expectedCredits = {
+				creditsQuota: 50,
+				creditsClaimed: 10,
+			};
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			// Call twice to test service reuse
+			await service.getBuilderInstanceCredits(mockUser);
+			const result = await service.getBuilderInstanceCredits(mockUser);
+
+			// Should only create the service once
+			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
+			expect(mockAiService.getBuilderInstanceCredits).toHaveBeenCalledTimes(2);
+			expect(result).toEqual(expectedCredits);
+		});
+	});
 });
