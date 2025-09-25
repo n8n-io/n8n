@@ -13,6 +13,7 @@ import {
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
+import dateformat from 'dateformat';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -45,6 +46,7 @@ const headers = ref<Array<TableHeader<Role>>>([
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.lastEdited'),
 		key: 'updatedAt',
+		value: (item: Role) => (item.updatedAt ? dateformat(item.updatedAt, 'd mmm, yyyy') : ''),
 		disableSort: true,
 	},
 	{
@@ -153,13 +155,12 @@ function handleAction(action: string, item: Role) {
 					<div>{{ item.displayName }}</div>
 					<div>{{ item.description }}</div>
 				</template>
-				<RouterLink
-					v-else
-					:to="{ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } }"
-				>
-					<div>{{ item.displayName }}</div>
+				<template v-else>
+					<RouterLink :to="{ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } }">
+						<div>{{ item.displayName }}</div>
+					</RouterLink>
 					<div>{{ item.description }}</div>
-				</RouterLink>
+				</template>
 			</template>
 			<template #[`item.systemRole`]="{ item }">
 				<template v-if="item.systemRole"> <N8nIcon icon="lock" /> System</template>
