@@ -66,4 +66,4 @@ jobs:
 
       - name: Print logs
         if: always()
-        run: cat .github/mysql/log/general.log
+        run: cat ./mysql/log/general.log
