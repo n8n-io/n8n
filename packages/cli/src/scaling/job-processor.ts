@@ -272,10 +272,13 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
-		const executionId = this.runningJobs[jobId]?.executionId;
-		if (executionId) this.eventService.emit('execution-cancelled', { executionId });
+		const runningJob = this.runningJobs[jobId];
+		if (!runningJob) return;
 
-		this.runningJobs[jobId]?.run.cancel();
+		const executionId = runningJob.executionId;
+		this.eventService.emit('execution-cancelled', { executionId });
+
+		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
 	}
 
