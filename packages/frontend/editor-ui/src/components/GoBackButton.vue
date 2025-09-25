@@ -12,7 +12,7 @@ const navigateTo = () => {
 
 <template>
 	<div :class="$style.wrapper" @click="navigateTo">
-		<n8n-icon :class="$style.icon" icon="arrow-left" />
+		<N8nIcon :class="$style.icon" icon="arrow-left" />
 		<div :class="$style.text" v-text="i18n.baseText('template.buttons.goBackButton')" />
 	</div>
 </template>

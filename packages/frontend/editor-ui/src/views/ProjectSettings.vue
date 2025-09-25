@@ -9,7 +9,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '@/stores/projects.store';
-import type { Project, ProjectRelation } from '@/types/projects.types';
+import type { Project, ProjectRelation, ProjectMemberData } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -23,7 +23,6 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
-import type { ProjectMemberData } from '@/types/projects.types';
 import { isProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {

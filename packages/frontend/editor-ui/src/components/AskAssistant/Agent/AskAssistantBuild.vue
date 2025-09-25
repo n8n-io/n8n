@@ -190,7 +190,7 @@ watch(currentRoute, () => {
 			:title="'n8n AI'"
 			:show-stop="true"
 			:scroll-on-new-message="true"
-			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
@@ -200,9 +200,9 @@ watch(currentRoute, () => {
 				<slot name="header" />
 			</template>
 			<template #placeholder>
-				<n8n-text :class="$style.topText">{{
+				<N8nText :class="$style.topText">{{
 					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
-				}}</n8n-text>
+				}}</N8nText>
 			</template>
 		</AskAssistantChat>
 	</div>

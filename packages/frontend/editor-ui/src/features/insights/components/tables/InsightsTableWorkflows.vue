@@ -188,13 +188,13 @@ watch(sortBy, (newValue) => {
 				</component>
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
-				<router-link
+				<RouterLink
 					v-if="!item.timeSaved && item.workflowId"
 					:to="getWorkflowLink(item, { settings: 'true' })"
 					:class="$style.link"
 				>
 					{{ i18n.baseText('insights.dashboard.table.estimate') }}
-				</router-link>
+				</RouterLink>
 				<template v-else>
 					{{ value }}
 				</template>

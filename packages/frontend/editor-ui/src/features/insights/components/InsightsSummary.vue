@@ -86,7 +86,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 							</template>
 						</I18nT>
 					</template>
-					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+					<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
 						<strong>
 							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 								<template #content>
@@ -136,7 +136,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</N8nTooltip>
 							</small>
 						</span>
-					</router-link>
+					</RouterLink>
 				</N8nTooltip>
 			</li>
 		</ul>

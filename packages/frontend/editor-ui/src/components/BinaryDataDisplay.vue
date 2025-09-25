@@ -74,7 +74,7 @@ function closeWindow() {
 
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
-		<n8n-button
+		<N8nButton
 			size="small"
 			class="binary-data-window-back"
 			:title="i18n.baseText('binaryDataDisplay.backToOverviewPage')"

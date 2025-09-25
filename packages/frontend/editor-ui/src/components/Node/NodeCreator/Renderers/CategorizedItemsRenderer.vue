@@ -112,12 +112,12 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			@click="toggleExpanded"
 		>
 			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="circle-help" size="small" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" />
 					<template #content>
 						<div v-n8n-html="mouseOverTooltip" />
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</span>
 		</CategoryItem>
 

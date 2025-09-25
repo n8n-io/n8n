@@ -326,7 +326,7 @@ onMounted(() => {
 				:personal-project="personalProject"
 				resource-type="credentials"
 			/>
-			<n8n-action-box
+			<N8nActionBox
 				v-else
 				data-test-id="empty-resources-list"
 				emoji="👋"
@@ -354,7 +354,7 @@ onMounted(() => {
 							: i18n.baseText('credentials.empty.button.disabled.tooltip')
 					}}
 				</template>
-			</n8n-action-box>
+			</N8nActionBox>
 		</template>
 	</ResourcesListLayout>
 </template>

@@ -73,7 +73,7 @@ function onRetryMenuItemSelect(action: string): void {
 			[$style.showGap]: showGap,
 		}"
 	>
-		<router-link
+		<RouterLink
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
@@ -175,7 +175,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nIcon :class="[$style.icon, $style.evaluation]" icon="check-check" />
 				</N8nTooltip>
 			</div>
-		</router-link>
+		</RouterLink>
 	</div>
 </template>
 

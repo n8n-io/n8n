@@ -232,8 +232,8 @@ defineExpose({
 	>
 		<!-- Warning banner when character limit is reached -->
 		<N8nCallout
-			slim
 			v-if="showWarningBanner"
+			slim
 			icon="info"
 			theme="warning"
 			:class="$style.warningCallout"
