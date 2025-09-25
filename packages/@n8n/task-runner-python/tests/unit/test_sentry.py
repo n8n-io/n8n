@@ -74,7 +74,7 @@ class TestTaskRunnerSentry:
 
     @pytest.mark.parametrize(
         "error_type",
-        list(IGNORED_ERROR_TYPES),
+        IGNORED_ERROR_TYPES,
     )
     def test_filter_out_ignored_errors(self, sentry_config, error_type):
         sentry = TaskRunnerSentry(sentry_config)
