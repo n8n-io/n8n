@@ -51,7 +51,6 @@ describe('GithubTrigger Node', () => {
 				getWorkflowStaticData: () => webhookData,
 				getCredentials: jest.fn(),
 				getNode: () => ({ name: 'GitHub Trigger' }),
-				getNode: () => ({}),
 			};
 		});
 
