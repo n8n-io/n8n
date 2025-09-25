@@ -1,9 +1,231 @@
-// Primitive Colors
-// The primitives should not be used directly in components and other UI elements.
-// They can be only mapped to tokens.
-// Tokens should be used instead in components and other UI elements
+// 👶 NEW PRIMITIVES
+
+// Plan:
+// Replace existing with new ones (also in token files)
+// e.g. --color--orange-100
+// (For tokens instead we will create new ones)
+// ! Questions:
+// - How do we name color primitives with alpha channels? e.g. --color--orange-500 but with alpha?
+// - We're adding a lot more colors than we actually need
+// - We can try to make the neede color converge on these ones (like if we need a 21% iwe can use the 20% in the new colors, but what if we need a 25% and the closer color is too differet?
 
 @mixin primitives {
+	// Primary
+	--color--primary-50: var(--color--orange-050);
+	--color--primary-100: var(--color--orange-100);
+	--color--primary-200: var(--color--orange-200);
+	--color--primary-300: var(--color--orange-300);
+	--color--primary-400: var(--color--orange-400);
+	--color--primary-500: var(--color--orange-500);
+	--color--primary-600: var(--color--orange-600);
+	--color--primary-700: var(--color--orange-700);
+	--color--primary-800: var(--color--orange-800);
+	--color--primary-900: var(--color--orange-900);
+	--color--primary-950: var(--color--orange-950);
+	// ! Previous lightness: 78%, 88%, 93%, 95%, 98%
+	// ! Previous alpha: 0.1, 0.35, 0.5
+	// ! Missing primary with alpha
+
+	// Secondary
+	--color--secondary-50: var(--color--purple-050);
+	--color--secondary-100: var(--color--purple-100);
+	--color--secondary-200: var(--color--purple-200);
+	--color--secondary-300: var(--color--purple-300);
+	--color--secondary-400: var(--color--purple-400);
+	--color--secondary-500: var(--color--purple-500);
+	--color--secondary-600: var(--color--purple-600);
+	--color--secondary-700: var(--color--purple-700);
+	--color--secondary-800: var(--color--purple-800);
+	--color--secondary-900: var(--color--purple-900);
+	--color--secondary-950: var(--color--purple-950);
+	// ! Previous lightness: 28%, 43%, 53%, 63%, 73%, 83%, 93%
+	// ! Previous alpha: 0.1, 0.25
+	// ! Missing secondary with alpha
+
+	// White
+	--color--white-100: hsl(220, 1%, 100%, 0.1);
+	--color--white-200: hsl(220, 1%, 100%, 0.2);
+	--color--white-300: hsl(220, 1%, 100%, 0.3);
+	--color--white-400: hsl(220, 1%, 100%, 0.4);
+	--color--white-500: hsl(220, 1%, 100%, 0.5);
+	--color--white-600: hsl(220, 1%, 100%, 0.6);
+	--color--white-700: hsl(220, 1%, 100%, 0.7);
+	--color--white-800: hsl(220, 1%, 100%, 0.8);
+	--color--white-900: hsl(220, 1%, 100%, 0.9);
+	--color--white-1000: hsl(220, 1%, 100%, 1);
+	// ! Previous alpha: '0.75, 0.3, 0.25, 0.2, 0.15, 0.1
+
+	// Black
+	--color--black-100: hsl(220, 1%, 0%, 0.1);
+	--color--black-200: hsl(220, 1%, 0%, 0.2);
+	--color--black-300: hsl(220, 1%, 0%, 0.3);
+	--color--black-400: hsl(220, 1%, 0%, 0.4);
+	--color--black-500: hsl(220, 1%, 0%, 0.5);
+	--color--black-600: hsl(220, 1%, 0%, 0.6);
+	--color--black-700: hsl(220, 1%, 0%, 0.7);
+	--color--black-800: hsl(220, 1%, 0%, 0.8);
+	--color--black-900: hsl(220, 1%, 0%, 0.9);
+	--color--black-1000: hsl(220, 1%, 0%, 1);
+
+	// Gray
+	--color--gray-50: hsl(220, 1%, 95%);
+	--color--gray-100: hsl(220, 1%, 90%);
+	--color--gray-200: hsl(220, 1%, 80%);
+	--color--gray-300: hsl(220, 1%, 70%);
+	--color--gray-400: hsl(220, 1%, 60%);
+	--color--gray-500: hsl(220, 1%, 50%);
+	--color--gray-600: hsl(220, 1%, 40%);
+	--color--gray-700: hsl(220, 1%, 30%);
+	--color--gray-800: hsl(220, 1%, 20%);
+	--color--gray-900: hsl(220, 1%, 10%);
+	--color--gray-950: hsl(220, 1%, 5%);
+	// ! Previous lightness: 18%, 20%, 22%, 26%, 29%, 33%, 46%, 51%, 58%, 68%, 80%, 88%, 93%, 96%, 97%, 97.5%, 99%
+	// ! Missing gray with alpha
+
+	// Orange
+	--color--orange-50: hsl(7, 100%, 95%);
+	--color--orange-100: hsl(7, 100%, 90%);
+	--color--orange-200: hsl(7, 100%, 80%);
+	--color--orange-300: hsl(7, 100%, 70%);
+	--color--orange-400: hsl(7, 100%, 60%);
+	--color--orange-500: hsl(7, 100%, 50%);
+	--color--orange-600: hsl(7, 100%, 40%);
+	--color--orange-700: hsl(7, 100%, 30%);
+	--color--orange-800: hsl(7, 100%, 20%);
+	--color--orange-900: hsl(7, 100%, 10%);
+	--color--orange-950: hsl(7, 100%, 5%);
+	// ! Previous lightness: 78%, 88%, 93%, 95%, 98%
+	// ! Previous alpha: 0.1, 0.35, 0.5
+	// ! Missing primary with alpha
+
+	// Purple
+	--color--purple-50: hsl(247, 49%, 95%);
+	--color--purple-100: hsl(247, 49%, 90%);
+	--color--purple-200: hsl(247, 49%, 80%);
+	--color--purple-300: hsl(247, 49%, 70%);
+	--color--purple-400: hsl(247, 49%, 60%);
+	--color--purple-500: hsl(247, 49%, 50%);
+	--color--purple-600: hsl(247, 49%, 40%);
+	--color--purple-700: hsl(247, 49%, 30%);
+	--color--purple-800: hsl(247, 49%, 20%);
+	--color--purple-900: hsl(247, 49%, 10%);
+	--color--purple-950: hsl(247, 49%, 5%);
+	// ! Previous lightness: 28%, 43%, 53%, 63%, 73%, 83%, 93%
+	// ! Previous alpha: 0.1, 0.25
+	// ! Missing purple with alpha
+
+	// Green
+	--color--green-50: hsl(150, 45%, 95%);
+	--color--green-100: hsl(150, 45%, 90%);
+	--color--green-200: hsl(150, 45%, 80%);
+	--color--green-300: hsl(150, 45%, 70%);
+	--color--green-400: hsl(150, 45%, 60%);
+	--color--green-500: hsl(150, 45%, 50%);
+	--color--green-600: hsl(150, 45%, 40%);
+	--color--green-700: hsl(150, 45%, 30%);
+	--color--green-800: hsl(150, 45%, 20%);
+	--color--green-900: hsl(150, 45%, 10%);
+	--color--green-950: hsl(150, 45%, 5%);
+	// ! Previous lightness: 20%, 30%, 40%, 70%, 80%, 90%, 95%
+	// ! Previous alpha: 0.15, 0.25
+	// ! Missing green with alpha
+
+	// Blue
+	--color--blue-50: hsl(210, 67%, 95%);
+	--color--blue-100: hsl(210, 67%, 90%);
+	--color--blue-200: hsl(210, 67%, 80%);
+	--color--blue-300: hsl(210, 67%, 70%);
+	--color--blue-400: hsl(210, 67%, 60%);
+	--color--blue-500: hsl(210, 67%, 50%);
+	--color--blue-600: hsl(210, 67%, 40%);
+	--color--blue-700: hsl(210, 67%, 30%);
+	--color--blue-800: hsl(210, 67%, 20%);
+	--color--blue-900: hsl(210, 67%, 10%);
+	--color--blue-950: hsl(210, 67%, 5%);
+	// ! Previous lightness: 22%, 32%, 42%, 47%, 57%, 82%, 92%
+
+	// Gold
+	--color--gold-50: hsl(36, 77%, 95%);
+	--color--gold-100: hsl(36, 77%, 90%);
+	--color--gold-200: hsl(36, 77%, 80%);
+	--color--gold-300: hsl(36, 77%, 70%);
+	--color--gold-400: hsl(36, 77%, 60%);
+	--color--gold-500: hsl(36, 77%, 50%);
+	--color--gold-600: hsl(36, 77%, 40%);
+	--color--gold-700: hsl(36, 77%, 30%);
+	--color--gold-800: hsl(36, 77%, 20%);
+	--color--gold-900: hsl(36, 77%, 10%);
+	--color--gold-950: hsl(36, 77%, 5%);
+	// ! Previous lightness: 22%, 32%, 47%, 57%, 72%, 82%, 87%, 97%
+	// ! Previous alpha: 0.2
+	// ! Missing gold with alpha
+
+	// Red
+	--color--red-50: hsl(355, 83%, 95%);
+	--color--red-100: hsl(355, 83%, 90%);
+	--color--red-200: hsl(355, 83%, 80%);
+	--color--red-300: hsl(355, 83%, 70%);
+	--color--red-400: hsl(355, 83%, 60%);
+	--color--red-500: hsl(355, 83%, 50%);
+	--color--red-600: hsl(355, 83%, 40%);
+	--color--red-700: hsl(355, 83%, 30%);
+	--color--red-800: hsl(355, 83%, 20%);
+	--color--red-900: hsl(355, 83%, 10%);
+	--color--red-950: hsl(355, 83%, 5%);
+	// ! Previous lightness: 27%, 37%, 42%, 52%, 67%, 69%, 77%, 82%, 92%, 97%
+	// ! Previous alpha: 0.2, 0.1
+	// ! Missing red with alpha
+
+	// Yellow
+	--color--yellow-50: hsl(46, 100%, 95%);
+	--color--yellow-100: hsl(46, 100%, 90%);
+	--color--yellow-200: hsl(46, 100%, 80%);
+	--color--yellow-300: hsl(46, 100%, 70%);
+	--color--yellow-400: hsl(46, 100%, 60%);
+	--color--yellow-500: hsl(46, 100%, 50%);
+	--color--yellow-600: hsl(46, 100%, 40%);
+	--color--yellow-700: hsl(46, 100%, 30%);
+	--color--yellow-800: hsl(46, 100%, 20%);
+	--color--yellow-900: hsl(46, 100%, 10%);
+	--color--yellow-950: hsl(46, 100%, 5%);
+	// ! Previous lightness: 22%, 32%, 77%, 92%
+
+	// GreeLight
+	--color--green-light-50: hsl(147, 83%, 95%);
+	--color--green-light-100: hsl(147, 83%, 90%);
+	--color--green-light-200: hsl(147, 83%, 80%);
+	--color--green-light-300: hsl(147, 83%, 70%);
+	--color--green-light-400: hsl(147, 83%, 60%);
+	--color--green-light-500: hsl(147, 83%, 50%);
+	--color--green-light-600: hsl(147, 83%, 40%);
+	--color--green-light-700: hsl(147, 83%, 30%);
+	--color--green-light-800: hsl(147, 83%, 20%);
+	--color--green-light-900: hsl(147, 83%, 10%);
+	--color--green-light-950: hsl(147, 83%, 5%);
+	// ! Previous lightness: 44%
+
+	// Slate
+	--color--slate-50: hsl(248, 10%, 95%);
+	--color--slate-100: hsl(248, 10%, 90%);
+	--color--slate-200: hsl(248, 10%, 80%);
+	--color--slate-300: hsl(248, 10%, 70%);
+	--color--slate-400: hsl(248, 10%, 60%);
+	--color--slate-500: hsl(248, 10%, 50%);
+	--color--slate-600: hsl(248, 10%, 40%);
+	--color--slate-700: hsl(248, 10%, 30%);
+	--color--slate-800: hsl(248, 10%, 20%);
+	--color--slate-900: hsl(248, 10%, 10%);
+	--color--slate-950: hsl(248, 10%, 5%);
+	// ! Previous lightness: 30%
+	// ! Previous alpha: 0.75
+	// ! Missing slate with alpha
+
+	// --------------------
+	// --------------------
+	// --------------------
+	// --------------------
+
+	// 👴 OLD PRIMITIVES
 	--h-gray: 220;
 
 	// Gray
