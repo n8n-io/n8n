@@ -721,7 +721,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			uiStore.stateIsDirty = true;
 		}
 		workflow.value.name = data.newName;
-		workflowObject.value.name = workflow.value.name;
 
 		if (
 			workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
