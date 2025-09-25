@@ -95,7 +95,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		app.use(
 			`/${restEndpoint}/push`,
 
-			this.authService.createAuthMiddleware(false),
+			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
 				this.handleRequest(req, res),
 		);

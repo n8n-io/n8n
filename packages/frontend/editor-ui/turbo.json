@@ -13,7 +13,8 @@
 		},
 		"build": {
 			"dependsOn": ["^build", "fetch-popularity"],
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**"],
+			"inputs": ["!.build/**"]
 		}
 	}
 }

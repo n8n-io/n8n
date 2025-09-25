@@ -25,9 +25,14 @@ export interface ArrowKeyDownPayload {
 	currentInputValue: string;
 }
 
+export interface EscapeKeyDownPayload {
+	currentInputValue: string;
+}
+
 const { t } = useI18n();
 const emit = defineEmits<{
 	arrowKeyDown: [value: ArrowKeyDownPayload];
+	escapeKeyDown: [value: EscapeKeyDownPayload];
 }>();
 
 const { options } = useOptions();
@@ -289,6 +294,12 @@ function onKeyDown(event: KeyboardEvent) {
 
 		emit('arrowKeyDown', {
 			key: event.key,
+			currentInputValue: input.value,
+		});
+	} else if (event.key === 'Escape') {
+		event.preventDefault();
+
+		emit('escapeKeyDown', {
 			currentInputValue: input.value,
 		});
 	}
