@@ -100,6 +100,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		);
 	});
 
+	const hasCreditsLeft = computed(() =>
+		creditsQuota.value ? creditsQuota.value > creditsClaimed.value : true,
+	);
+
 	const toolMessages = computed(() => chatMessages.value.filter(isToolMessage));
 
 	const workflowMessages = computed(() => chatMessages.value.filter(isWorkflowUpdatedMessage));
@@ -485,6 +489,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration,
 		creditsQuota,
 		creditsClaimed,
+		hasCreditsLeft,
 
 		// Methods
 		updateWindowWidth,
