@@ -1,7 +1,7 @@
-import os
 from dataclasses import dataclass
 from typing import Set
 
+from src.env import read_env
 from src.constants import (
     BUILTINS_DENY_DEFAULT,
     DEFAULT_MAX_CONCURRENCY,
@@ -61,52 +61,69 @@ class TaskRunnerConfig:
 
     @classmethod
     def from_env(cls):
-        grant_token = os.getenv(ENV_GRANT_TOKEN, "")
+        grant_token = read_env(ENV_GRANT_TOKEN) or ""
         if not grant_token:
             raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
 
-        task_timeout = int(os.getenv(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT))
+        task_timeout_str = read_env(ENV_TASK_TIMEOUT)
+        task_timeout = (
+            int(task_timeout_str) if task_timeout_str else DEFAULT_TASK_TIMEOUT
+        )
         if task_timeout <= 0:
             raise ValueError(f"Task timeout must be positive, got {task_timeout}")
 
-        auto_shutdown_timeout = int(
-            os.getenv(ENV_AUTO_SHUTDOWN_TIMEOUT, DEFAULT_AUTO_SHUTDOWN_TIMEOUT)
+        auto_shutdown_timeout_str = read_env(ENV_AUTO_SHUTDOWN_TIMEOUT)
+        auto_shutdown_timeout = (
+            int(auto_shutdown_timeout_str)
+            if auto_shutdown_timeout_str
+            else DEFAULT_AUTO_SHUTDOWN_TIMEOUT
         )
         if auto_shutdown_timeout < 0:
             raise ValueError(
                 f"Auto shutdown timeout must be non-negative, got {auto_shutdown_timeout}"
             )
 
-        graceful_shutdown_timeout = int(
-            os.getenv(ENV_GRACEFUL_SHUTDOWN_TIMEOUT, DEFAULT_SHUTDOWN_TIMEOUT)
+        graceful_shutdown_timeout_str = read_env(ENV_GRACEFUL_SHUTDOWN_TIMEOUT)
+        graceful_shutdown_timeout = (
+            int(graceful_shutdown_timeout_str)
+            if graceful_shutdown_timeout_str
+            else DEFAULT_SHUTDOWN_TIMEOUT
         )
         if graceful_shutdown_timeout <= 0:
             raise ValueError(
                 f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
             )
 
+        max_concurrency_str = read_env(ENV_MAX_CONCURRENCY)
+        max_concurrency = (
+            int(max_concurrency_str) if max_concurrency_str else DEFAULT_MAX_CONCURRENCY
+        )
+
+        max_payload_size_str = read_env(ENV_MAX_PAYLOAD_SIZE)
+        max_payload_size = (
+            int(max_payload_size_str)
+            if max_payload_size_str
+            else DEFAULT_MAX_PAYLOAD_SIZE
+        )
+
         return cls(
             grant_token=grant_token,
-            task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
-            max_concurrency=int(
-                os.getenv(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)
-            ),
-            max_payload_size=int(
-                os.getenv(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
-            ),
+            task_broker_uri=read_env(ENV_TASK_BROKER_URI) or DEFAULT_TASK_BROKER_URI,
+            max_concurrency=max_concurrency,
+            max_payload_size=max_payload_size,
             task_timeout=task_timeout,
             auto_shutdown_timeout=auto_shutdown_timeout,
             graceful_shutdown_timeout=graceful_shutdown_timeout,
             stdlib_allow=parse_allowlist(
-                os.getenv(ENV_STDLIB_ALLOW, ""), ENV_STDLIB_ALLOW
+                read_env(ENV_STDLIB_ALLOW) or "", ENV_STDLIB_ALLOW
             ),
             external_allow=parse_allowlist(
-                os.getenv(ENV_EXTERNAL_ALLOW, ""), ENV_EXTERNAL_ALLOW
+                read_env(ENV_EXTERNAL_ALLOW) or "", ENV_EXTERNAL_ALLOW
             ),
             builtins_deny=set(
                 module.strip()
-                for module in os.getenv(ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT).split(
-                    ","
-                )
+                for module in (
+                    read_env(ENV_BUILTINS_DENY) or BUILTINS_DENY_DEFAULT
+                ).split(",")
             ),
         )
