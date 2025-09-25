@@ -22,7 +22,7 @@ describe('N8nPromptInput', () => {
 		it('should render with non-default placeholder', () => {
 			const { container } = renderComponent({
 				props: {
-					placeholder: 'Type your message here...',
+					inputPlaceholder: 'Type your message here...',
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -32,7 +32,7 @@ describe('N8nPromptInput', () => {
 			expect(textarea).toHaveAttribute('placeholder', 'Type your message here...');
 		});
 
-		it('should render streaming state', () => {
+		it('should render streaming state without disabling textarea', () => {
 			const { container } = renderComponent({
 				props: {
 					streaming: true,
@@ -42,7 +42,8 @@ describe('N8nPromptInput', () => {
 				},
 			});
 			const textarea = container.querySelector('textarea');
-			expect(textarea).toHaveAttribute('disabled');
+			// Textarea should NOT be disabled during streaming
+			expect(textarea).not.toHaveAttribute('disabled');
 			expect(container).toMatchSnapshot();
 		});
 	});
@@ -75,40 +76,46 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			const { container } = renderComponent({
-				props: {
-					modelValue: '',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
+			try {
+				const { container } = renderComponent({
+					props: {
+						modelValue: '',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
 
-			// Initially should be single-line
-			expect(container.querySelector('.singleLineWrapper')).toBeTruthy();
-			expect(container.querySelector('.multilineTextarea')).toBeFalsy();
+				// Initially should be single-line
+				expect(container.querySelector('.singleLineWrapper')).toBeTruthy();
+				expect(container.querySelector('.multilineTextarea')).toBeFalsy();
 
-			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+				const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
-			// Update the textarea value with newlines
-			textarea.value = 'Line 1\nLine 2\nLine 3';
+				// Update the textarea value with newlines
+				textarea.value = 'Line 1\nLine 2\nLine 3';
 
-			// Trigger the input event which calls adjustHeight
-			await fireEvent.input(textarea);
+				// Trigger the input event which calls adjustHeight
+				await fireEvent.input(textarea);
 
-			// Wait for Vue to update the DOM
-			await vi.waitFor(() => {
-				// After adjustHeight runs, should be in multiline mode
-				return container.querySelector('.multilineTextarea');
-			});
+				// Wait for Vue to update the DOM
+				await vi.waitFor(() => {
+					// After adjustHeight runs, should be in multiline mode
+					return container.querySelector('.multilineTextarea');
+				});
 
-			// Verify we're now in multiline mode
-			expect(container.querySelector('.multilineTextarea')).toBeTruthy();
-			expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
-
-			// Restore original descriptor
-			if (originalDescriptor) {
-				Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				// Verify we're now in multiline mode
+				expect(container.querySelector('.multilineTextarea')).toBeTruthy();
+				expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
+			} finally {
+				// Always restore original descriptor or delete the mock
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					// If there was no original descriptor, delete the mocked property
+					// Use Reflect.deleteProperty for type-safe deletion
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
 			}
 		});
 
@@ -143,7 +150,7 @@ describe('N8nPromptInput', () => {
 				props: {
 					// Start at max length to trigger warning
 					modelValue: '1234567890',
-					maxLength: 10,
+					maxInputCharacterLength: 10,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -158,7 +165,7 @@ describe('N8nPromptInput', () => {
 		it('should set maxlength attribute on textarea', () => {
 			const { container } = renderComponent({
 				props: {
-					maxLength: 100,
+					maxInputCharacterLength: 100,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -173,7 +180,7 @@ describe('N8nPromptInput', () => {
 			const render = renderComponent({
 				props: {
 					modelValue: '',
-					maxLength: 5,
+					maxInputCharacterLength: 5,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -192,7 +199,7 @@ describe('N8nPromptInput', () => {
 			const render = renderComponent({
 				props: {
 					modelValue: '12345',
-					maxLength: 5,
+					maxInputCharacterLength: 5,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -523,7 +530,7 @@ describe('N8nPromptInput', () => {
 			const { container } = renderComponent({
 				props: {
 					modelValue: longText,
-					maxLength: 1000,
+					maxInputCharacterLength: 1000,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
@@ -550,27 +557,6 @@ describe('N8nPromptInput', () => {
 			// Component should render without errors
 			const textarea = container.querySelector('textarea');
 			expect(textarea).toBeTruthy();
-		});
-
-		it('should prevent input when at max length', async () => {
-			const render = renderComponent({
-				props: {
-					modelValue: '12345',
-					maxLength: 5,
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-
-			// Try to type when at max length
-			await fireEvent.keyDown(textarea, { key: 'a' });
-
-			// Should not emit update since we're at max
-			const updates = render.emitted('update:modelValue');
-			expect(updates).toBeFalsy();
 		});
 	});
 });

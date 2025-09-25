@@ -986,7 +986,7 @@ describe('AskAssistantChat', () => {
 	});
 
 	describe('onSendMessage', () => {
-		it('should emit message and clear input when N8nPromptInput submits', async () => {
+		it('should emit message when N8nPromptInput submits', async () => {
 			const wrapper = mount(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },

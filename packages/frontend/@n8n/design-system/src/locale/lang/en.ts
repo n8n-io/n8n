@@ -67,6 +67,7 @@ export default {
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',

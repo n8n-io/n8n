@@ -1,38 +1,42 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
-import N8nSendStopButton from './N8nSendStopButton.vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nLink from '../N8nLink';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export interface N8nPromptInputProps {
 	modelValue?: string;
-	placeholder?: string;
-	maxLength?: number;
+	inputPlaceholder?: string;
+	maxInputCharacterLength?: number;
 	maxLinesBeforeScroll?: number;
+	minLines?: number;
 	streaming?: boolean;
 	disabled?: boolean;
 	creditsQuota?: number;
 	creditsClaimed?: number;
 	onUpgradeClick: () => void;
 	showAskOwnerTooltip?: boolean;
+	refocusAfterSend?: boolean;
 }
 
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
-	placeholder: '',
-	maxLength: 1000,
+	inputPlaceholder: '',
+	maxInputCharacterLength: 1000,
 	maxLinesBeforeScroll: 6,
+	minLines: 1,
 	streaming: false,
 	disabled: false,
 	creditsQuota: undefined,
 	creditsClaimed: undefined,
 	showAskOwnerTooltip: false,
+	refocusAfterSend: false,
 });
 
 const emit = defineEmits<{
@@ -49,8 +53,12 @@ const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
-const textareaHeight = ref<number>(24);
-const isMultiline = ref(false);
+const singleLineHeight = 24;
+const lineHeight = 18; // Height per line in multiline mode
+const textareaHeight = ref<number>(
+	props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight,
+);
+const isMultiline = ref(props.minLines > 1);
 
 const textAreaMaxHeight = computed(() => {
 	return props.maxLinesBeforeScroll * 18;
@@ -58,7 +66,7 @@ const textAreaMaxHeight = computed(() => {
 
 const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 	value: textValue,
-	maxLength: toRef(props, 'maxLength'),
+	maxLength: toRef(props, 'maxInputCharacterLength'),
 });
 
 const showWarningBanner = computed(() => isAtLimit.value);
@@ -98,10 +106,6 @@ const creditsInfo = computed(() => {
 	});
 });
 
-const characterLimitMessage = computed(() => {
-	return t('promptInput.characterLimitReached', { limit: props.maxLength });
-});
-
 const getNextMonth = () => {
 	const now = new Date();
 	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -116,10 +120,10 @@ const creditsTooltipContent = computed(() => {
 
 	const lines = [
 		t('promptInput.remainingCredits', {
-			count: creditsRemaining.value || 0,
+			count: creditsRemaining.value ?? 0,
 		}),
 		t('promptInput.monthlyCredits', {
-			count: props.creditsQuota || 0,
+			count: props.creditsQuota ?? 0,
 		}),
 		t('promptInput.creditsRenew', { date: nextMonthDate }),
 		t('promptInput.creditsExpire', { date: nextMonthDate }),
@@ -148,14 +152,23 @@ function adjustHeight() {
 	// Store focus state and scroll position before potential mode change
 	const wasFocused = document.activeElement === textareaRef.value;
 	const wasMultiline = isMultiline.value;
-	const singleLineHeight = 24;
+	const minHeight = props.minLines > 1 ? lineHeight * props.minLines : singleLineHeight;
 
-	// If text is empty, revert to single-line mode
-	if (!textValue.value || textValue.value.trim() === '') {
-		isMultiline.value = false;
-		textareaHeight.value = singleLineHeight;
-		if (textareaRef.value) {
-			textareaRef.value.style.height = `${singleLineHeight}px`;
+	// If text is completely empty (not just whitespace), use minimum height
+	if (!textValue.value || textValue.value === '') {
+		// Respect minLines prop
+		if (props.minLines > 1) {
+			isMultiline.value = true;
+			textareaHeight.value = minHeight;
+			if (textareaRef.value) {
+				textareaRef.value.style.height = `${minHeight}px`;
+			}
+		} else {
+			isMultiline.value = false;
+			textareaHeight.value = singleLineHeight;
+			if (textareaRef.value) {
+				textareaRef.value.style.height = `${singleLineHeight}px`;
+			}
 		}
 		return;
 	}
@@ -166,19 +179,20 @@ function adjustHeight() {
 	const scrollHeight = textareaRef.value.scrollHeight;
 
 	// Check if we need multiline mode
-	// Switch to multiline when text would wrap or when there's actual line breaks
-	const shouldBeMultiline = scrollHeight > singleLineHeight || textValue.value.includes('\n');
+	// Switch to multiline when text would wrap, when there's actual line breaks, or when minLines > 1
+	const shouldBeMultiline =
+		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
-	// Update height tracking
-	textareaHeight.value = scrollHeight;
+	// Update height tracking - use at least the minimum height
+	textareaHeight.value = Math.max(scrollHeight, minHeight);
 	isMultiline.value = shouldBeMultiline;
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
-		// For multiline, set exact scrollHeight
-		textareaRef.value.style.height = `${scrollHeight}px`;
+		// For multiline, set at least minHeight
+		textareaRef.value.style.height = `${Math.max(scrollHeight, minHeight)}px`;
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
@@ -205,31 +219,45 @@ watch(textValue, (newValue, oldValue) => {
 	}
 });
 
-function handleSubmit() {
+async function refocusTextArea() {
+	await nextTick();
+	await new Promise(requestAnimationFrame);
+	textareaRef.value?.focus();
+}
+
+async function handleSubmit() {
 	emit('submit');
+	if (props.refocusAfterSend) {
+		await refocusTextArea();
+	}
 }
 
-function handleStop() {
+async function handleStop() {
 	emit('stop');
+	if (props.refocusAfterSend) {
+		await refocusTextArea();
+	}
 }
 
-function handleKeyDown(event: KeyboardEvent) {
+async function handleKeyDown(event: KeyboardEvent) {
+	const hasModifier = event.ctrlKey || event.metaKey;
+	const isPrintableChar = event.key.length === 1 && !hasModifier;
+	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
+	const atMaxLength = characterCount.value >= props.maxInputCharacterLength;
+	const isPlainEnter = event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey;
+
 	// Prevent adding characters if at max length (but allow deletions/navigation)
-	if (
-		characterCount.value >= props.maxLength &&
-		event.key.length === 1 &&
-		!event.ctrlKey &&
-		!event.metaKey &&
-		event.key !== 'Backspace' &&
-		event.key !== 'Delete'
-	) {
+	if (atMaxLength && isPrintableChar && !isDeletionKey) {
 		event.preventDefault();
 		return;
 	}
 
-	if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+	// Submit on plain Enter (no Shift/Ctrl/Meta). If send disabled, don't submit.
+	if (isPlainEnter) {
 		event.preventDefault();
-		handleSubmit();
+		if (!sendDisabled.value) {
+			await handleSubmit();
+		}
 	}
 }
 
@@ -248,10 +276,8 @@ function focusInput() {
 }
 
 onMounted(() => {
-	// Only adjust height if there's initial content
-	if (textValue.value) {
-		void nextTick(() => adjustHeight());
-	}
+	// Adjust height on mount to respect minLines or initial content
+	void nextTick(() => adjustHeight());
 });
 
 defineExpose({
@@ -268,7 +294,7 @@ defineExpose({
 				{
 					[$style.focused]: isFocused,
 					[$style.multiline]: isMultiline,
-					[$style.disabled]: disabled || streaming || hasNoCredits,
+					[$style.disabled]: disabled || hasNoCredits,
 					[$style.withBottomBorder]: !!showCredits,
 				},
 			]"
@@ -277,11 +303,12 @@ defineExpose({
 			<!-- Warning banner when character limit is reached -->
 			<N8nCallout
 				v-if="showWarningBanner"
+				slim
 				icon="info"
 				theme="warning"
 				:class="$style.warningCallout"
 			>
-				{{ characterLimitMessage }}
+				{{ t('assistantChat.characterLimit', { limit: maxInputCharacterLength.toString() }) }}
 			</N8nCallout>
 
 			<!-- Single line mode: input and button side by side -->
@@ -289,10 +316,14 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
-					:class="$style.singleLineTextarea"
-					:placeholder="hasNoCredits ? '' : placeholder"
-					:disabled="disabled || streaming || hasNoCredits"
-					:maxlength="maxLength"
+					:class="[
+						$style.singleLineTextarea,
+						'ignore-key-press-node-creator',
+						'ignore-key-press-canvas',
+					]"
+					:placeholder="hasNoCredits ? '' : inputPlaceholder"
+					:disabled="disabled || hasNoCredits"
+					:maxlength="maxInputCharacterLength"
 					rows="1"
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
@@ -320,11 +351,15 @@ defineExpose({
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
-						:class="$style.multilineTextarea"
+						:class="[
+							$style.multilineTextarea,
+							'ignore-key-press-node-creator',
+							'ignore-key-press-canvas',
+						]"
 						:style="textareaStyle"
-						:placeholder="placeholder"
-						:disabled="disabled || streaming || hasNoCredits"
-						:maxlength="maxLength"
+						:placeholder="hasNoCredits ? '' : inputPlaceholder"
+						:disabled="disabled || hasNoCredits"
+						:maxlength="maxInputCharacterLength"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
@@ -341,7 +376,6 @@ defineExpose({
 				</div>
 			</template>
 		</div>
-
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
 			<N8nTooltip
@@ -416,7 +450,7 @@ defineExpose({
 }
 
 .warningCallout {
-	margin: 0 0 var(--spacing-xs) 0;
+	margin: 0 var(--spacing-3xs) var(--spacing-2xs) var(--spacing-3xs);
 }
 
 // Single line mode
@@ -470,7 +504,7 @@ defineExpose({
 	font-size: var(--font-size-2xs);
 	line-height: 18px;
 	color: var(--color-text-dark);
-	padding: var(--spacing-3xs) var(--spacing-2xs);
+	padding: var(--spacing-3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;

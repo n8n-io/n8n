@@ -13,7 +13,7 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
       class="singleLineWrapper"
     >
       <textarea
-        class="singleLineTextarea"
+        class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
         maxlength="1000"
         placeholder=""
         rows="1"
@@ -58,10 +58,10 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
 </div>
 `;
 
-exports[`N8nPromptInput > rendering > should render streaming state 1`] = `
+exports[`N8nPromptInput > rendering > should render streaming state without disabling textarea 1`] = `
 <div>
   <div
-    class="container disabled"
+    class="container"
     style="min-height: 40px;"
   >
     <!-- Warning banner when character limit is reached -->
@@ -71,8 +71,7 @@ exports[`N8nPromptInput > rendering > should render streaming state 1`] = `
       class="singleLineWrapper"
     >
       <textarea
-        class="singleLineTextarea"
-        disabled=""
+        class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
         maxlength="1000"
         placeholder=""
         rows="1"

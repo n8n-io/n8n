@@ -248,18 +248,22 @@ watch(
 // Setup ResizeObserver to maintain scroll position when input height changes
 let resizeObserver: ResizeObserver | null = null;
 let scrollLockActive = false;
+let scrollHandler: (() => void) | null = null;
 
 onMounted(() => {
 	if (inputWrapperRef.value && messagesRef.value && 'ResizeObserver' in window) {
 		// Track user scroll to determine if they want to stay at bottom
 		let userIsAtBottom = true;
 
-		// Monitor user scrolling
-		messagesRef.value.addEventListener('scroll', () => {
+		// Create scroll handler function so we can remove it later
+		scrollHandler = () => {
 			if (!scrollLockActive) {
 				userIsAtBottom = isScrolledToBottom();
 			}
-		});
+		};
+
+		// Monitor user scrolling
+		messagesRef.value.addEventListener('scroll', scrollHandler);
 
 		// Monitor input size changes
 		resizeObserver = new ResizeObserver(() => {
@@ -286,6 +290,13 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	// Remove scroll event listener to prevent memory leak
+	if (scrollHandler && messagesRef.value) {
+		messagesRef.value.removeEventListener('scroll', scrollHandler);
+		scrollHandler = null;
+	}
+
+	// Disconnect ResizeObserver
 	if (resizeObserver) {
 		resizeObserver.disconnect();
 		resizeObserver = null;
@@ -412,15 +423,16 @@ defineExpose({
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
-				:placeholder="placeholder || t('assistantChat.inputPlaceholder')"
+				:input-placeholder="placeholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
-				:max-length="maxLength"
+				:max-input-character-length="maxLength"
 				:credits-quota="creditsQuota"
 				:credits-claimed="creditsClaimed"
 				:on-upgrade-click="onUpgradeClick"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				class="ignore-key-press-node-creator ignore-key-press-canvas"
+				:refocus-after-send="true"
 				data-test-id="chat-input"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
@@ -435,6 +447,7 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	background-color: var(--color-background-light);
 }
 
 .header {
@@ -459,6 +472,7 @@ defineExpose({
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
+	border-bottom: 0;
 	position: relative;
 
 	pre,
@@ -478,6 +492,7 @@ defineExpose({
 	width: 100%;
 	height: 100%;
 	padding: var(--spacing-xs);
+	padding-bottom: var(--spacing-xl); // Extra padding for fade area
 	overflow-y: auto;
 
 	@supports not (selector(::-webkit-scrollbar)) {
@@ -550,11 +565,25 @@ defineExpose({
 }
 
 .inputWrapper {
-	padding: var(--spacing-xs);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
+	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	background-color: transparent;
 	width: 100%;
-	border-top: 0;
+	position: relative;
+	border-left: var(--border-base);
+	border-right: var(--border-base);
+
+	// Add a gradient fade from the chat to the input
+	&::before {
+		content: '';
+		position: absolute;
+		top: calc(-1 * var(--spacing-m));
+		left: 0;
+		right: var(--spacing-xs);
+		height: var(--spacing-m);
+		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		pointer-events: none;
+		z-index: 1;
+	}
 }
 
 .disabledInput {
