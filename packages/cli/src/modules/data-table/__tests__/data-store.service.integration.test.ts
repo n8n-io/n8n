@@ -50,6 +50,9 @@ describe('dataStore', () => {
 		dataStoreService = Container.get(DataStoreService);
 		dataStoreRepository = Container.get(DataStoreRepository);
 		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+		console.log('dataStoreService', dataStoreService);
+		console.log('dataStoreRepo', dataStoreRepository);
+		console.log('dataStoreRowsRepo', dataStoreRowsRepository);
 
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
