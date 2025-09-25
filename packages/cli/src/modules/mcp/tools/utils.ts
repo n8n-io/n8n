@@ -177,31 +177,32 @@ const getJWTAuthVariant = async (
 const getResponseModeDescription = (node: INode): string => {
 	const responseMode =
 		typeof node.parameters.responseMode === 'string' ? node.parameters.responseMode : undefined;
-	let responseModeInfo =
-		'Webhook is configured to respond immediately with the message "Workflow got started."';
+
 	if (responseMode === 'responseNode') {
-		responseModeInfo = 'Webhook is configured to respond using "Respond to Webhook" node.';
-	} else if (responseMode === 'lastNode') {
-		// [undefined = firstEntryJSON], allEntries, firstEntryBinary, noData
+		return 'Webhook is configured to respond using "Respond to Webhook" node.';
+	}
+
+	if (responseMode === 'lastNode') {
 		const responseData =
 			typeof node.parameters.responseData === 'string' ? node.parameters.responseData : undefined;
-		responseModeInfo = 'Webhook is configured to respond when the last node is executed. ';
+		const base = 'Webhook is configured to respond when the last node is executed. ';
 		switch (responseData) {
 			case 'allEntries':
-				responseModeInfo += 'Returns all the entries of the last node. Always returns an array.';
-				break;
+				return base + 'Returns all the entries of the last node. Always returns an array.';
 			case 'firstEntryBinary':
-				responseModeInfo +=
-					'Returns the binary data of the first entry of the last node. Always returns a binary file.';
-				break;
+				return (
+					base +
+					'Returns the binary data of the first entry of the last node. Always returns a binary file.'
+				);
 			case 'noData':
-				responseModeInfo += 'Returns without a body.';
-				break;
+				return base + 'Returns without a body.';
 			default:
-				responseModeInfo +=
-					'Returns the JSON data of the first entry of the last node. Always returns a JSON object.';
-				break;
+				return (
+					base +
+					'Returns the JSON data of the first entry of the last node. Always returns a JSON object.'
+				);
 		}
 	}
-	return responseModeInfo;
+
+	return 'Webhook is configured to respond immediately with the message "Workflow got started."';
 };
