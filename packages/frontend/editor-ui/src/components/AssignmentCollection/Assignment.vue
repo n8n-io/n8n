@@ -71,11 +71,15 @@ const nameParameter = computed<INodeProperties>(() => ({
 }));
 
 const valueParameter = computed<INodeProperties>(() => {
+	const placeholder =
+		assignment.value.type === 'binary'
+			? i18n.baseText('assignment.binaryData.placeholder')
+			: 'value';
 	return {
 		name: 'value',
 		displayName: 'Value',
 		default: '',
-		placeholder: 'value',
+		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
 	};
 });
