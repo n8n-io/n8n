@@ -271,6 +271,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 		bottom: calc(var(--spacing-s) * -1);
 		left: 0;
 		right: 0;
+		font-family: monospace;
 	}
 
 	.optionsPadding {
