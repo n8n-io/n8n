@@ -1,0 +1,47 @@
+{
+	"basic_ga4_report": {
+		"dimensionHeaders": [{ "name": "date" }],
+		"metricHeaders": [
+			{ "name": "activeUsers", "type": "TYPE_INTEGER" },
+			{ "name": "sessions", "type": "TYPE_INTEGER" }
+		],
+		"rows": [
+			{
+				"dimensionValues": [{ "value": "20230101" }],
+				"metricValues": [{ "value": "150" }, { "value": "200" }]
+			},
+			{
+				"dimensionValues": [{ "value": "20230102" }],
+				"metricValues": [{ "value": "180" }, { "value": "240" }]
+			}
+		],
+		"rowCount": 2,
+		"metadata": {
+			"dataLossFromOtherRow": false
+		}
+	},
+	"multi_dimension_ga4_report": {
+		"dimensionHeaders": [{ "name": "date" }, { "name": "deviceCategory" }],
+		"metricHeaders": [
+			{ "name": "activeUsers", "type": "TYPE_INTEGER" },
+			{ "name": "bounceRate", "type": "TYPE_FLOAT" }
+		],
+		"rows": [
+			{
+				"dimensionValues": [{ "value": "20230101" }, { "value": "desktop" }],
+				"metricValues": [{ "value": "100" }, { "value": "0.45" }]
+			},
+			{
+				"dimensionValues": [{ "value": "20230101" }, { "value": "mobile" }],
+				"metricValues": [{ "value": "50" }, { "value": "0.52" }]
+			}
+		],
+		"rowCount": 2
+	},
+	"empty_ga4_report": {
+		"dimensionHeaders": [{ "name": "date" }],
+		"metricHeaders": [{ "name": "activeUsers", "type": "TYPE_INTEGER" }],
+		"rows": [],
+		"rowCount": 0
+	}
+}
