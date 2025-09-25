@@ -28,6 +28,12 @@ type PushEvents = {
 };
 
 /**
+ * Max allowed size of a push message in bytes. Events going through the pubsub
+ * channel are trimmed if exceeding this size.
+ */
+const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
+
+/**
  * Push service for uni- or bi-directional communication with frontend clients.
  * Uses either server-sent events (SSE, unidirectional from backend --> frontend)
  * or WebSocket (bidirectional backend <--> frontend) depending on the configuration.
@@ -221,6 +227,24 @@ export class Push extends TypedEmitter<PushEvents> {
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
 	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
+		const { type } = pushMsg;
+
+		if (type === 'nodeExecuteAfterData') {
+			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
+			const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
+			const eventMb = toMb(eventSizeBytes);
+			const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
+
+			this.logger.warn(
+				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+			);
+			// In case of nodeExecuteAfterData, we omit the message entirely. We
+			// already include the amount of items in the nodeExecuteAfter message,
+			// based on which the FE will construct placeholder data. The actual
+			// data is then fetched at the end of the execution.
+			return;
+		}
+
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
 			payload: { ...pushMsg, pushRef, asBinary },
