@@ -18,8 +18,6 @@ import {
 	AssignableProjectRole,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
-	PROJECT_EDITOR_ROLE_SLUG,
-	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
