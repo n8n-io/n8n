@@ -27,6 +27,35 @@ const inputSchema = {
 	projectId: z.string().optional(),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	data: z
+		.array(
+			z.object({
+				id: z.string(),
+				name: z.string().nullable(),
+				active: z.boolean().nullable(),
+				createdAt: z.string().nullable(),
+				updatedAt: z.string().nullable(),
+				triggerCount: z.number().nullable(),
+				nodes: z.array(
+					z.object({
+						name: z.string(),
+						type: z.string(),
+					}),
+				),
+			}),
+		)
+		.describe('List of workflows matching the query'),
+	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
+} satisfies z.ZodRawShape;
+
+/**
+ * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and nodes.
+ * @param user
+ * @param workflowService
+ * @returns
+ */
 export const createSearchWorkflowsTool = (
 	user: User,
 	workflowService: WorkflowService,
@@ -37,6 +66,7 @@ export const createSearchWorkflowsTool = (
 			description:
 				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
+			outputSchema,
 		},
 		handler: async ({ limit = MAX_RESULTS, active, name, projectId }) => {
 			const payload: SearchWorkflowsResult = await searchWorkflows(user, workflowService, {
@@ -47,6 +77,8 @@ export const createSearchWorkflowsTool = (
 			});
 
 			return {
+				structuredContent: payload,
+				// Keeping text content for backward compatibility
 				content: [
 					{
 						type: 'text',

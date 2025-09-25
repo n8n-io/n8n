@@ -6,6 +6,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	config: {
 		description?: string;
 		inputSchema?: InputArgs;
+		outputSchema?: z.ZodRawShape;
 	};
 	handler: ToolCallback<InputArgs>;
 };
