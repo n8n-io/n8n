@@ -171,10 +171,10 @@ export class AuthService {
 
 			next();
 		} catch (error) {
-			this.errorReporter.error(error);
 			if (error instanceof AuthError) {
 				response.status(401).json({ status: 'error', message: 'Invalid API key' });
 			} else {
+				this.errorReporter.error(error);
 				response.status(500).json({ status: 'error', message: 'Internal server error' });
 			}
 		}
