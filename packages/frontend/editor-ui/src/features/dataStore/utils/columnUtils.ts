@@ -11,6 +11,7 @@ import { DateTime } from 'luxon';
 import type { I18nClass } from '@n8n/i18n';
 import type { DataStoreColumn, DataStoreRow } from '@/features/dataStore/datastore.types';
 import {
+	ADD_COLUMN_COLUMN_ID,
 	ADD_ROW_ROW_ID,
 	EMPTY_VALUE,
 	NULL_VALUE,
@@ -47,7 +48,7 @@ export const createValueGetter =
 
 export const createCellRendererSelector =
 	(col: DataStoreColumn) => (params: ICellRendererParams) => {
-		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
+		if (params.data?.id === ADD_ROW_ROW_ID || col.id === ADD_COLUMN_COLUMN_ID) {
 			return {};
 		}
 		let rowValue = (params.data as DataStoreRow | undefined)?.[col.name];

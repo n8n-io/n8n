@@ -21,6 +21,8 @@ import { MODAL_CONFIRM } from '@/constants';
 import { isDataStoreValue, isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { areValuesEqual } from '@/features/dataStore/utils/typeUtils';
+import type { BackendFilter } from '@/features/dataStore/types/dataStoreFilters.types';
+import { ADD_COLUMN_COLUMN_ID } from '@/features/dataStore/constants';
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -42,10 +44,11 @@ export type UseDataStoreOperationsParams = {
 	pageSize: Ref<number>;
 	currentSortBy: Ref<string>;
 	currentSortOrder: Ref<string | null>;
-	currentFilterJSON?: Ref<string | undefined>;
+	currentBEFilters: Ref<BackendFilter>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataStoreRow>) => Promise<void>;
+	searchQuery: Ref<string>;
 };
 
 export const useDataStoreOperations = ({
@@ -68,10 +71,11 @@ export const useDataStoreOperations = ({
 	pageSize,
 	currentSortBy,
 	currentSortOrder,
-	currentFilterJSON,
+	currentBEFilters,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
+	searchQuery,
 }: UseDataStoreOperationsParams) => {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -239,17 +243,43 @@ export const useDataStoreOperations = ({
 		}
 	};
 
+	function getFilters() {
+		console.log('searchQuery', searchQuery.value);
+		if (!searchQuery.value) {
+			return JSON.stringify(currentBEFilters?.value);
+		}
+
+		return JSON.stringify({
+			...currentBEFilters?.value,
+			filters: [
+				...currentBEFilters.value.filters,
+				...colDefs.value
+					.map((col) => {
+						if (col.colId === ADD_COLUMN_COLUMN_ID || col.colId === 'id') return null;
+						console.log('col', col);
+						return {
+							columnName: col.field ?? '',
+							condition: 'ilike',
+							value: searchQuery.value,
+						};
+					})
+					.filter(Boolean),
+			],
+		});
+	}
+
 	async function fetchDataStoreRows() {
 		try {
 			contentLoading.value = true;
 
+			console.log('getFilters', getFilters());
 			const fetchedRows = await dataStoreStore.fetchDataStoreContent(
 				dataStoreId,
 				projectId,
 				currentPage.value,
 				pageSize.value,
 				`${currentSortBy.value}:${currentSortOrder.value}`,
-				currentFilterJSON?.value,
+				getFilters(),
 			);
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);

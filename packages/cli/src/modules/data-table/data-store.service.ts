@@ -27,8 +27,6 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { RoleService } from '@/services/role.service';
-
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreSizeValidator } from './data-store-size-validator.service';
@@ -40,6 +38,8 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataStoreService {
@@ -454,15 +454,15 @@ export class DataStoreService {
 		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
 	): void {
-		this.validateRowsWithColumns(
-			filterObject.filters.map((f) => {
-				return {
-					[f.columnName]: f.value,
-				};
-			}),
-			columns,
-			true,
-		);
+		// this.validateRowsWithColumns(
+		// 	filterObject.filters.map((f) => {
+		// 		return {
+		// 			[f.columnName]: f.value,
+		// 		};
+		// 	}),
+		// 	columns,
+		// 	true,
+		// );
 
 		for (const filter of filterObject.filters) {
 			if (['like', 'ilike'].includes(filter.condition)) {

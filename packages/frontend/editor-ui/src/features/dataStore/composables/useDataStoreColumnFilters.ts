@@ -19,12 +19,13 @@ export type UseDataStoreColumnFiltersParams = {
 	setGridData: (params: { rowData?: DataStoreRow[]; colDefs?: ColDef[] }) => void;
 };
 
+const EMPTY_BACKEND_FILTER: BackendFilter = { type: 'or', filters: [] };
 export const useDataStoreColumnFilters = ({
 	gridApi,
 	colDefs,
 	setGridData,
 }: UseDataStoreColumnFiltersParams) => {
-	const currentFilterJSON = ref<string | undefined>(undefined);
+	const currentBEFilters = ref<BackendFilter>(EMPTY_BACKEND_FILTER);
 
 	const initializeFilters = () => {
 		gridApi.value.setGridOption('defaultColDef', GRID_FILTER_CONFIG.defaultColDef);
@@ -77,15 +78,15 @@ export const useDataStoreColumnFilters = ({
 	const onFilterChanged = () => {
 		const model = gridApi.value.getFilterModel();
 		const backend = convertAgModelToBackend(model, colDefs.value);
-		currentFilterJSON.value = backend ? JSON.stringify(backend) : undefined;
+		currentBEFilters.value = backend ?? EMPTY_BACKEND_FILTER;
 	};
 
-	const hasActiveFilters = computed(() => Boolean(currentFilterJSON.value));
+	const hasActiveFilters = computed(() => Boolean(currentBEFilters.value));
 
 	return {
 		initializeFilters,
 		onFilterChanged,
-		currentFilterJSON,
+		currentBEFilters,
 		hasActiveFilters,
 	};
 };

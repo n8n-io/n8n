@@ -34,6 +34,7 @@ const loading = ref(false);
 const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
 const dataStoreTableRef = ref<InstanceType<typeof DataStoreTable>>();
+const searchQuery = ref('');
 
 const { debounce } = useDebounce();
 
@@ -96,6 +97,10 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload): Promise<AddCol
 	return await dataStoreTableRef.value.addColumn(column);
 };
 
+const onSearchUpdate = (value: string) => {
+	searchQuery.value = value;
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 	await initialize();
@@ -122,6 +127,19 @@ onMounted(async () => {
 					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
 				</div>
 				<div :class="$style.actions">
+					<n8n-input
+						ref="search"
+						:class="$style.search"
+						:placeholder="i18n.baseText('dataStore.search.placeholder')"
+						:model-value="searchQuery"
+						size="small"
+						clearable
+						@update:model-value="onSearchUpdate"
+					>
+						<template #prefix>
+							<n8n-icon icon="search" />
+						</template>
+					</n8n-input>
 					<n8n-button @click="dataStoreTableRef?.addRow">{{
 						i18n.baseText('dataStore.addRow.label')
 					}}</n8n-button>
@@ -136,6 +154,7 @@ onMounted(async () => {
 				<DataStoreTable
 					ref="dataStoreTableRef"
 					:data-store="dataStore"
+					:search-query="searchQuery"
 					@toggle-save="onToggleSave"
 				/>
 			</div>

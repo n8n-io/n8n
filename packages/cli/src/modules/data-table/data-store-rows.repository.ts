@@ -42,6 +42,20 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
 
+// Helper to cast non-text columns to text for pattern matching
+const toText = (ref: string, dbType: DataSourceOptions['type']) => {
+	switch (dbType) {
+		case 'mysql':
+		case 'mariadb':
+			return `CAST(${ref} AS CHAR)`;
+		case 'postgres':
+		case 'sqlite':
+		case 'sqlite-pooled':
+		default:
+			return `CAST(${ref} AS TEXT)`;
+	}
+};
+
 /**
  * Converts filter conditions to SQL WHERE clauses with parameters.
  *
@@ -97,37 +111,42 @@ function getConditionAndParams(
 		return [`(${columnRef} != :${paramName} OR ${columnRef} IS NULL)`, { [paramName]: value }];
 	}
 
+	const needsCastToText =
+		(columnInfo && columnInfo.type !== 'string') ||
+		filter.columnName === 'createdAt' ||
+		filter.columnName === 'updatedAt';
+	const target = needsCastToText ? toText(columnRef, dbType) : columnRef;
+
 	switch (filter.condition) {
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				const globValue = toSqliteGlobFromPercent(value as string);
-				return [`${columnRef} GLOB :${paramName}`, { [paramName]: globValue }];
+				return [`${target} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [
-					`${columnRef} LIKE BINARY :${paramName} ESCAPE '\\\\'`,
-					{ [paramName]: escapedValue },
-				];
+				return [`${target} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
 			}
 
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [`${columnRef} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+				return [`${target} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
 			// Generic fallback
-			return [`${columnRef} LIKE :${paramName}`, { [paramName]: value }];
+			{
+				return [`${target} LIKE :${paramName}`, { [paramName]: value }];
+			}
 
 		// case-insensitive
 		case 'ilike':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
-					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
+					`UPPER(${target}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
@@ -135,17 +154,19 @@ function getConditionAndParams(
 			if (['mysql', 'mariadb'].includes(dbType)) {
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
-					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
+					`UPPER(${target}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
 
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
-				return [`${columnRef} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+				return [`${target} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
-			return [`UPPER(${columnRef}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
+			{
+				return [`UPPER(${target}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
+			}
 	}
 
 	// This should never happen as all valid conditions are handled above

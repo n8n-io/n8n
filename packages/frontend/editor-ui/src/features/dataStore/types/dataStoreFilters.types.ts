@@ -7,7 +7,7 @@ export type BackendFilterRecord = {
 };
 
 export type BackendFilter = {
-	type: 'and';
+	type: 'and' | 'or';
 	filters: BackendFilterRecord[];
 };
 

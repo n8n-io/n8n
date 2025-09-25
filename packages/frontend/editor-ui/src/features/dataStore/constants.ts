@@ -16,6 +16,7 @@ export const DATA_STORE_HEADER_HEIGHT = 36;
 export const DATA_STORE_ROW_HEIGHT = 33;
 
 export const ADD_ROW_ROW_ID = '__n8n_add_row__';
+export const ADD_COLUMN_COLUMN_ID = '__n8n_add_column__';
 
 export const DATA_STORE_CARD_ACTIONS = {
 	RENAME: 'rename',

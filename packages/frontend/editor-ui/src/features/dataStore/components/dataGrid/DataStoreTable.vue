@@ -66,6 +66,7 @@ ModuleRegistry.registerModules([
 
 type Props = {
 	dataStore: DataStore;
+	searchQuery: string;
 };
 
 const props = defineProps<Props>();
@@ -87,7 +88,7 @@ const dataStoreGridBase = useDataStoreGridBase({
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
+const { initializeFilters, onFilterChanged, currentBEFilters } = useDataStoreColumnFilters({
 	gridApi: dataStoreGridBase.gridApi,
 	colDefs: dataStoreGridBase.colDefs,
 	setGridData: dataStoreGridBase.setGridData,
@@ -107,6 +108,8 @@ const {
 const selection = useDataStoreSelection({
 	gridApi: dataStoreGridBase.gridApi,
 });
+
+const searchQueryComputed = computed(() => props.searchQuery);
 
 const dataStoreOperations = useDataStoreOperations({
 	colDefs: dataStoreGridBase.colDefs,
@@ -131,7 +134,8 @@ const dataStoreOperations = useDataStoreOperations({
 	handleClearSelection: selection.handleClearSelection,
 	selectedRowIds: selection.selectedRowIds,
 	handleCopyFocusedCell: dataStoreGridBase.handleCopyFocusedCell,
-	currentFilterJSON,
+	currentBEFilters,
+	searchQuery: searchQueryComputed,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -163,9 +167,17 @@ watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], asy
 	await setCurrentPage(1);
 });
 
-watch(currentFilterJSON, async () => {
+// TODO: check that watching of object works as expected here
+watch(currentBEFilters, async () => {
 	await setCurrentPage(1);
 });
+
+watch(
+	() => props.searchQuery,
+	async () => {
+		await setCurrentPage(1);
+	},
+);
 
 defineExpose({
 	addRow: dataStoreOperations.onAddRowClick,
@@ -311,13 +323,13 @@ defineExpose({
 		}
 	}
 
-	:global(.ag-header-cell[col-id='add-column']) {
+	:global(.ag-header-cell[col-id='__n8n_add_column__']) {
 		&:after {
 			display: none;
 		}
 	}
 
-	:global(.ag-cell-value[col-id='add-column']),
+	:global(.ag-cell-value[col-id='__n8n_add_column__']),
 	:global(.ag-cell-value[col-id='id']),
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;

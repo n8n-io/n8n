@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, type Ref } from 'vue';
 import { useDataStoreColumnFilters } from '../useDataStoreColumnFilters';
 import type { ColDef, GridApi } from 'ag-grid-community';
+import { ADD_COLUMN_COLUMN_ID } from '@/features/dataStore/constants';
 
 describe('useDataStoreColumnFilters', () => {
 	let mockGridApi: GridApi;
@@ -19,7 +20,7 @@ describe('useDataStoreColumnFilters', () => {
 		colDefs = ref([
 			{ field: 'name', colId: 'name' },
 			{ field: 'age', colId: 'age' },
-			{ field: 'add-column', colId: 'add-column' },
+			{ field: ADD_COLUMN_COLUMN_ID, colId: ADD_COLUMN_COLUMN_ID },
 		]);
 	});
 
@@ -37,7 +38,7 @@ describe('useDataStoreColumnFilters', () => {
 			const expectedColDefs = [
 				{ field: 'name', colId: 'name' },
 				{ field: 'age', colId: 'age' },
-				{ field: 'add-column', colId: 'add-column', filter: false },
+				{ field: ADD_COLUMN_COLUMN_ID, colId: ADD_COLUMN_COLUMN_ID, filter: false },
 			];
 
 			expect(colDefs.value).toEqual(expectedColDefs);

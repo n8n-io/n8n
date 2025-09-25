@@ -18,6 +18,7 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import {
+	ADD_COLUMN_COLUMN_ID,
 	ADD_ROW_ROW_ID,
 	DATA_STORE_ID_COLUMN_WIDTH,
 	DEFAULT_COLUMN_WIDTH,
@@ -274,7 +275,7 @@ export const useDataStoreGridBase = ({
 			createColumnDef(
 				{
 					index: dataStoreColumns.length + 3,
-					id: 'add-column',
+					id: ADD_COLUMN_COLUMN_ID,
 					name: 'Add Column',
 					type: 'string',
 				},

@@ -1,6 +1,7 @@
+import { ADD_COLUMN_COLUMN_ID } from '@/features/dataStore/constants';
 import type { BackendFilterCondition, FilterOperation } from '../types/dataStoreFilters.types';
 
-export const SPECIAL_COLUMNS = ['add-column', 'ag-Grid-SelectionColumn'] as const;
+export const SPECIAL_COLUMNS = [ADD_COLUMN_COLUMN_ID, 'ag-Grid-SelectionColumn'] as const;
 export const isSpecialColumn = (value: unknown): value is (typeof SPECIAL_COLUMNS)[number] =>
 	typeof value === 'string' && (SPECIAL_COLUMNS as readonly string[]).includes(value);
 export const MAX_CONDITIONS = 1;
