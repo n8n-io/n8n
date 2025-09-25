@@ -54,10 +54,6 @@ jobs:
       DB_MYSQLDB_POOL_SIZE: 1
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
-      DB_MYSQLDB_WAIT_FOR_CONNECTION: true
-      DB_MYSQLDB_CONNECTION_LIMIT: 1
-      DB_MYSQLDB_RECONNECT: false
-      DB_MYSQLDB_MAX: 1
       DB_MYSQLDB_TIMEOUT: 120000
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -73,7 +69,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 120000
+        run: sleep 1s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres - Run ${{ matrix.run }}

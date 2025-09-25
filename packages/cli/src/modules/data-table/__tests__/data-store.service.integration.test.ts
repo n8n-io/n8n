@@ -16,18 +16,10 @@ import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
 import { toTableName } from '../utils/sql-utils';
 
-beforeAll(async () => {
-	// await testModules.loadModules(['data-table']);
-	// await testDb.init();
-	// mockDataStoreSizeValidator();
-});
-
-// beforeEach(async () => {
-// await testDb.truncate(['DataTable', 'DataTableColumn']);
-// });
-
-// afterAll(async () => {
-// await testDb.terminate();
+// beforeAll(async () => {
+// await testModules.loadModules(['data-table']);
+// await testDb.init();
+// mockDataStoreSizeValidator();
 // });
 
 describe('dataStore', () => {
@@ -36,26 +28,31 @@ describe('dataStore', () => {
 	let dataStoreRowsRepository: DataStoreRowsRepository;
 
 	beforeAll(async () => {
-		// await new Promise((resolve) => setTimeout(resolve, 1000));
-		// dataStoreService = Container.get(DataStoreService);
-		// dataStoreRepository = Container.get(DataStoreRepository);
-		// dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+		await testModules.loadModules(['data-table']);
+		await testDb.init();
+		mockDataStoreSizeValidator();
 	});
 
 	let project1: Project;
 	let project2: Project;
 
 	beforeEach(async () => {
+		await testDb.truncate(['DataTable', 'DataTableColumn']);
+
 		// await new Promise((resolve) => setTimeout(resolve, 1000));
-		// dataStoreService = Container.get(DataStoreService);
-		// await dataStoreService.deleteDataStoreAll();
+		dataStoreService = Container.get(DataStoreService);
+		await dataStoreService.deleteDataStoreAll();
 		// dataStoreRepository = Container.get(DataStoreRepository);
 		// dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
 		// console.log('dataStoreService', dataStoreService);
 		// console.log('dataStoreRepo', dataStoreRepository);
 		// console.log('dataStoreRowsRepo', dataStoreRowsRepository);
-		// project1 = await createTeamProject();
+		project1 = await createTeamProject();
 		// project2 = await createTeamProject();
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
 	});
 
 	// describe('createDataStore', () => {
