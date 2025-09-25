@@ -275,7 +275,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
-					resultData.push(...docs);
+					resultData.push.apply(resultData, docs);
 				}
 
 				return [resultData];
