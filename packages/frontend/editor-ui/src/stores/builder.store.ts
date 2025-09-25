@@ -3,7 +3,8 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
-	WORKFLOW_BUILDER_EXPERIMENT,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -84,9 +85,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
 	const isAIBuilderEnabled = computed(() => {
+		const releaseExperimentVariant = posthogStore.getVariant(
+			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
+		);
+		if (releaseExperimentVariant === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+			return true;
+		}
+
 		return (
-			posthogStore.getVariant(WORKFLOW_BUILDER_EXPERIMENT.name) ===
-			WORKFLOW_BUILDER_EXPERIMENT.variant
+			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
+			WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant
 		);
 	});
 
@@ -273,12 +281,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
+
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
 		// Abort previous streaming request if any
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 		}
+
+		const useDeprecatedCredentials =
+			posthogStore.getVariant(WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) !==
+				WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant &&
+			posthogStore.getVariant(WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name) ===
+				WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
 
 		streamingAbortController.value = new AbortController();
 		try {
@@ -305,6 +320,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
 				streamingAbortController.value?.signal,
+				useDeprecatedCredentials,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);

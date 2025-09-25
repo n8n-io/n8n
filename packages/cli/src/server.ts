@@ -290,6 +290,13 @@ export class Server extends AbstractServer {
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
+			const overwriteEndpointMiddleware =
+				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
+
+			if (overwriteEndpointMiddleware) {
+				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+			}
+
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
@@ -330,7 +337,7 @@ export class Server extends AbstractServer {
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
-				authService.createAuthMiddleware(true),
+				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
 				async (_, res: express.Response) => {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 					res.sendFile(path.substring(1), {

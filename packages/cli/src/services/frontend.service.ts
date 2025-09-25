@@ -200,6 +200,7 @@ export class FrontendService {
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
+				setup: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -281,7 +282,6 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			easyAIWorkflowOnboarded: false,
-			partialExecution: this.globalConfig.partialExecutions,
 			folders: {
 				enabled: false,
 			},
@@ -408,6 +408,7 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
+			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAskAiEnabled) {

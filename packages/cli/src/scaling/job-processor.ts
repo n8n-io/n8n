@@ -197,7 +197,6 @@ export class JobProcessor {
 				startNodes: startData?.startNodes,
 				runData: resultData.runData,
 				pinData: resultData.pinData,
-				partialExecutionVersion: manualData?.partialExecutionVersion,
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
 				userId: manualData?.userId,
