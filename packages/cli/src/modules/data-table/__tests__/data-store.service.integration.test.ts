@@ -37,9 +37,9 @@ describe('dataStore', () => {
 
 	beforeAll(async () => {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
-		dataStoreService = Container.get(DataStoreService);
-		dataStoreRepository = Container.get(DataStoreRepository);
-		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+		// dataStoreService = Container.get(DataStoreService);
+		// dataStoreRepository = Container.get(DataStoreRepository);
+		// dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
 	});
 
 	let project1: Project;
