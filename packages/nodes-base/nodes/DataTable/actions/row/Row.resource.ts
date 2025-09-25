@@ -85,7 +85,7 @@ export const description: INodeProperties[] = [
 					searchable: true,
 					allowNewResource: {
 						label: 'resourceLocator.dataTable.createNew',
-						url: '{{$projectId ? "/projects/" + $projectId + "/datatables/new" : "/datatables/new"}}',
+						url: '/projects/{{$projectId}}/datatables/new',
 					},
 				},
 			},
