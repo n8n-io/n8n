@@ -48,7 +48,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        run: [1, 2, 3, 4, 5]
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
@@ -78,7 +78,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        run: [1, 2, 3, 4, 5]
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     env:
       DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
