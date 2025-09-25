@@ -1015,4 +1015,13 @@ export class NodeDetailsViewPage extends BasePage {
 		await editor.click();
 		await this.page.keyboard.type(invalidExpression ?? '{{ invalid_expression');
 	}
+
+	/**
+	 * Opens a resource locator dropdown for a given parameter
+	 * @param paramName - The parameter name for the resource locator
+	 */
+	async openResourceLocator(paramName: string): Promise<void> {
+		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
+		await this.getResourceLocatorInput(paramName).click();
+	}
 }

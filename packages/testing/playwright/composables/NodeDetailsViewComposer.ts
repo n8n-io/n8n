@@ -1,4 +1,4 @@
-import type { Request } from '@playwright/test';
+import type { Request, Page } from '@playwright/test';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -9,21 +9,12 @@ export class NodeDetailsViewComposer {
 	constructor(private readonly n8n: n8nPage) {}
 
 	/**
-	 * Opens a resource locator dropdown for a given parameter
-	 * @param paramName - The parameter name for the resource locator
-	 */
-	async openResourceLocator(paramName: string): Promise<void> {
-		await this.n8n.ndv.getResourceLocator(paramName).waitFor({ state: 'visible' });
-		await this.n8n.ndv.getResourceLocatorInput(paramName).click();
-	}
-
-	/**
 	 * Selects a workflow from the resource locator list by name
 	 * @param paramName - The parameter name for the resource locator
 	 * @param workflowName - The name of the workflow to select
 	 */
 	async selectWorkflowFromList(paramName: string, workflowName: string): Promise<void> {
-		await this.openResourceLocator(paramName);
+		await this.n8n.ndv.openResourceLocator(paramName);
 
 		const items = this.n8n.page.getByTestId('rlc-item');
 		const targetItem = items.filter({ hasText: workflowName });
@@ -36,7 +27,7 @@ export class NodeDetailsViewComposer {
 	 * @param searchTerm - The term to search for
 	 */
 	async filterWorkflowList(paramName: string, searchTerm: string): Promise<void> {
-		await this.openResourceLocator(paramName);
+		await this.n8n.ndv.openResourceLocator(paramName);
 		await this.n8n.ndv.getResourceLocatorSearch(paramName).fill(searchTerm);
 	}
 
@@ -67,7 +58,7 @@ export class NodeDetailsViewComposer {
 	 * @param paramName - The parameter name for the resource locator
 	 */
 	async createNewSubworkflow(paramName: string): Promise<void> {
-		await this.openResourceLocator(paramName);
+		await this.n8n.ndv.openResourceLocator(paramName);
 
 		const addResourceItem = this.n8n.page.getByTestId('rlc-item-add-resource').first();
 		await addResourceItem.waitFor({ state: 'visible' });
@@ -76,37 +67,22 @@ export class NodeDetailsViewComposer {
 	}
 
 	/**
-	 * Creates a new sub-workflow with window.open redirect tracking
+	 * Creates a new sub-workflow with redirect handling
 	 * @param paramName - The parameter name for the resource locator
-	 * @returns Promise with request data and redirect URL
+	 * @returns Promise with request data and new window page
 	 */
 	async createNewSubworkflowWithRedirect(
 		paramName: string,
-	): Promise<{ request: Request; redirectUrl: string }> {
-		await this.n8n.page.evaluate(() => {
-			// @ts-expect-error - Custom window property
-			window.originalWindowOpen = window.open;
-			window.open = (url) => {
-				// @ts-expect-error - Custom window property
-				window.lastWindowOpenCall = url?.toString();
-				return null;
-			};
-		});
+	): Promise<{ request: Request; page: Page }> {
+		const subWorkflowPagePromise = this.n8n.page.waitForEvent('popup');
 
 		const [request] = await Promise.all([
 			this.n8n.page.waitForRequest('**/rest/workflows'),
 			this.createNewSubworkflow(paramName),
 		]);
 
-		await this.n8n.page.waitForFunction(() => {
-			// @ts-expect-error - Custom window property
-			return window.lastWindowOpenCall;
-		});
-		const redirectUrl = await this.n8n.page.evaluate(() => {
-			// @ts-expect-error - Custom window property
-			return window.lastWindowOpenCall;
-		});
+		const page = await subWorkflowPagePromise;
 
-		return { request, redirectUrl };
+		return { request, page };
 	}
 }

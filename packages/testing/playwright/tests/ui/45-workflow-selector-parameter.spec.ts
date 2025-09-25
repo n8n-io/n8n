@@ -1,39 +1,35 @@
 import { MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
-import type { n8nPage } from '../../pages/n8nPage';
+import { n8nPage } from '../../pages/n8nPage';
 
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
 test.describe('Workflow Selector Parameter @db:reset', () => {
-	async function setupSubWorkflows(n8n: n8nPage) {
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.start.fromNewProjectBlankCanvas();
+
 		const subWorkflows = [
 			{ file: 'Test_Subworkflow_Get_Weather.json', name: 'Get_Weather' },
 			{ file: 'Test_Subworkflow_Search_DB.json', name: 'Search_DB' },
 		];
 
-		for (const { file, name } of subWorkflows) {
-			await n8n.start.fromBlankCanvas();
-			await n8n.canvas.importWorkflow(file, name);
+		for (const { file } of subWorkflows) {
+			await n8n.api.workflowApi.importWorkflow(file);
 		}
-	}
 
-	test.beforeEach(async ({ n8n }) => {
-		await setupSubWorkflows(n8n);
-
-		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 	});
 
 	test('should render sub-workflows list', async ({ n8n }) => {
-		await n8n.ndvComposer.openResourceLocator('workflowId');
+		await n8n.ndv.openResourceLocator('workflowId');
 
 		await expect(n8n.ndv.getResourceLocatorItems()).toHaveCount(2);
 		await expect(n8n.ndv.getAddResourceItem()).toHaveCount(1);
 	});
 
 	test('should show required parameter warning', async ({ n8n }) => {
-		await n8n.ndvComposer.openResourceLocator('workflowId');
+		await n8n.ndv.openResourceLocator('workflowId');
 		await expect(n8n.ndv.getParameterInputIssues()).toBeVisible();
 	});
 
@@ -43,11 +39,11 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 
 		await n8n.ndvComposer.selectFirstFilteredWorkflow();
 		const inputField = n8n.ndv.getResourceLocatorInput('workflowId').locator('input');
-		await expect(inputField).toHaveValue('Get_Weather');
+		await expect(inputField).toHaveValue(/Get Weather.*Test/);
 	});
 
 	test('should render sub-workflow links correctly', async ({ n8n }) => {
-		await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search_DB');
+		await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search DB');
 		const link = n8n.ndv.getResourceLocatorInput('workflowId').locator('a');
 		await expect(link).toBeVisible();
 
@@ -56,7 +52,7 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 	});
 
 	test('should switch to ID mode on expression', async ({ n8n }) => {
-		await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search_DB');
+		await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search DB');
 		const modeSelector = n8n.ndv.getResourceLocatorModeSelector('workflowId').locator('input');
 		await expect(modeSelector).toHaveValue('From list');
 
@@ -67,14 +63,13 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 	test('should render add resource option and redirect to the correct route when clicked', async ({
 		n8n,
 	}) => {
-		await n8n.ndvComposer.openResourceLocator('workflowId');
+		await n8n.ndv.openResourceLocator('workflowId');
 
 		const addResourceItem = n8n.ndv.getAddResourceItem();
 		await expect(addResourceItem).toHaveCount(1);
 		await expect(addResourceItem.getByText(/Create a/)).toBeVisible();
 
-		const { request, redirectUrl } =
-			await n8n.ndvComposer.createNewSubworkflowWithRedirect('workflowId');
+		const { request, page } = await n8n.ndvComposer.createNewSubworkflowWithRedirect('workflowId');
 		const requestBody = request.postDataJSON();
 
 		expect(requestBody).toHaveProperty('name');
@@ -84,6 +79,8 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 		expect(requestBody.nodes[0]).toHaveProperty('name', 'When Executed by Another Workflow');
 		expect(requestBody.nodes[1]).toHaveProperty('name', 'Replace me with your logic');
 
-		expect(redirectUrl).toMatch(/\/workflow\/.+/);
+		const newPage = new n8nPage(page);
+		expect(newPage.page.url()).toMatch(/\/workflow\/.+/);
+		await newPage.page.close();
 	});
 });
