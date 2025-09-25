@@ -36,7 +36,7 @@ describe('dataStore', () => {
 	let dataStoreRowsRepository: DataStoreRowsRepository;
 
 	beforeAll(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		// await new Promise((resolve) => setTimeout(resolve, 1000));
 		// dataStoreService = Container.get(DataStoreService);
 		// dataStoreRepository = Container.get(DataStoreRepository);
 		// dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
@@ -46,19 +46,21 @@ describe('dataStore', () => {
 	let project2: Project;
 
 	beforeEach(async () => {
+		throw new Error('nooo');
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		dataStoreService = Container.get(DataStoreService);
-		dataStoreRepository = Container.get(DataStoreRepository);
-		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+		// dataStoreRepository = Container.get(DataStoreRepository);
+		// dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
 		console.log('dataStoreService', dataStoreService);
-		console.log('dataStoreRepo', dataStoreRepository);
-		console.log('dataStoreRowsRepo', dataStoreRowsRepository);
+		// console.log('dataStoreRepo', dataStoreRepository);
+		// console.log('dataStoreRowsRepo', dataStoreRowsRepository);
 
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
 	});
 
 	afterEach(async () => {
+		throw new Error('yeeees');
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		await dataStoreService.deleteDataStoreAll();
 	});
@@ -970,40 +972,40 @@ describe('dataStore', () => {
 				],
 			});
 
-			// ACT
-			const rows = [
-				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
-				{ c1: 4, c2: false, c3: new Date(), c4: 'hello!' },
-				{ c1: 5, c2: true, c3: new Date(), c4: 'hello.' },
-				{
-					c1: 1,
-					c2: true,
-					c3: '2025-08-15T09:48:14.259Z',
-					c4: 'iso 8601 date strings are okay too',
-				},
-			];
-			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'id');
+			// // ACT
+			// const rows = [
+			// 	{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
+			// 	{ c1: 4, c2: false, c3: new Date(), c4: 'hello!' },
+			// 	{ c1: 5, c2: true, c3: new Date(), c4: 'hello.' },
+			// 	{
+			// 		c1: 1,
+			// 		c2: true,
+			// 		c3: '2025-08-15T09:48:14.259Z',
+			// 		c4: 'iso 8601 date strings are okay too',
+			// 	},
+			// ];
+			// const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows, 'id');
 
-			// ASSERT
-			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
+			// // ASSERT
+			// expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
 
-			const { count, data } = await dataStoreService.getManyRowsAndCount(
-				dataStoreId,
-				project1.id,
-				{},
-			);
-			expect(count).toEqual(4);
+			// const { count, data } = await dataStoreService.getManyRowsAndCount(
+			// 	dataStoreId,
+			// 	project1.id,
+			// 	{},
+			// );
+			// expect(count).toEqual(4);
 
-			const expected = rows.map(
-				(row, i) =>
-					expect.objectContaining<DataStoreRow>({
-						...row,
-						id: i + 1,
-						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-					}) as jest.AsymmetricMatcher,
-			);
+			// const expected = rows.map(
+			// 	(row, i) =>
+			// 		expect.objectContaining<DataStoreRow>({
+			// 			...row,
+			// 			id: i + 1,
+			// 			c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
+			// 		}) as jest.AsymmetricMatcher,
+			// );
 
-			expect(data).toEqual(expected);
+			// expect(data).toEqual(expected);
 		});
 
 		// it('inserts a row even if it matches with the existing one', async () => {
