@@ -1,25 +1,22 @@
 import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-export function isNodeTypeClass(node: TSESTree.ClassDeclaration): boolean {
+function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: string): boolean {
 	return (
 		node.implements?.some(
 			(impl) =>
 				impl.type === 'TSClassImplements' &&
 				impl.expression.type === 'Identifier' &&
-				impl.expression.name === 'INodeType',
+				impl.expression.name === interfaceName,
 		) ?? false
 	);
 }
 
+export function isNodeTypeClass(node: TSESTree.ClassDeclaration): boolean {
+	return implementsInterface(node, 'INodeType');
+}
+
 export function isCredentialTypeClass(node: TSESTree.ClassDeclaration): boolean {
-	return (
-		node.implements?.some(
-			(impl) =>
-				impl.type === 'TSClassImplements' &&
-				impl.expression.type === 'Identifier' &&
-				impl.expression.name === 'ICredentialType',
-		) ?? false
-	);
+	return implementsInterface(node, 'ICredentialType');
 }
 
 export function findClassProperty(
@@ -93,7 +90,6 @@ export function findArrayLiteralProperty(
 
 export function hasArrayLiteralValue(
 	node: TSESTree.PropertyDefinition,
-	_propertyName: string,
 	searchValue: string,
 ): boolean {
 	if (node.value?.type !== 'ArrayExpression') return false;
@@ -134,9 +130,9 @@ export function isRequireMemberCall(node: TSESTree.CallExpression): boolean {
 	);
 }
 
-export function extractCredentialNameFromArray(
+export function extractCredentialInfoFromArray(
 	element: TSESTree.ArrayExpression['elements'][number],
-): { name: string; node: TSESTree.Node } | null {
+): { name: string; testedBy?: string; node: TSESTree.Node } | null {
 	if (!element) return null;
 
 	const stringValue = getStringLiteralValue(element);
@@ -146,13 +142,30 @@ export function extractCredentialNameFromArray(
 
 	if (element.type === 'ObjectExpression') {
 		const nameProperty = findObjectProperty(element, 'name');
+		const testedByProperty = findObjectProperty(element, 'testedBy');
+
 		if (nameProperty) {
 			const nameValue = getStringLiteralValue(nameProperty.value);
+			const testedByValue = testedByProperty
+				? getStringLiteralValue(testedByProperty.value)
+				: undefined;
+
 			if (nameValue) {
-				return { name: nameValue, node: nameProperty.value };
+				return {
+					name: nameValue,
+					testedBy: testedByValue || undefined,
+					node: nameProperty.value,
+				};
 			}
 		}
 	}
 
 	return null;
+}
+
+export function extractCredentialNameFromArray(
+	element: TSESTree.ArrayExpression['elements'][number],
+): { name: string; node: TSESTree.Node } | null {
+	const info = extractCredentialInfoFromArray(element);
+	return info ? { name: info.name, node: info.node } : null;
 }

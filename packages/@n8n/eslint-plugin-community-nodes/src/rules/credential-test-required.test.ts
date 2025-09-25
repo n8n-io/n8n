@@ -46,6 +46,48 @@ export class ${className} {
 }`;
 }
 
+function createNodeCode(options: {
+	name?: string;
+	displayName?: string;
+	credentials?: Array<string | { name: string; testedBy?: string }>;
+}): string {
+	const { name = 'myNode', displayName = 'My Node', credentials = [] } = options;
+
+	const credentialsArray = credentials
+		.map((cred) => {
+			if (typeof cred === 'string') {
+				return `'${cred}'`;
+			}
+			const testedByStr = cred.testedBy ? `, testedBy: '${cred.testedBy}'` : '';
+			return `{ name: '${cred.name}'${testedByStr} }`;
+		})
+		.join(', ');
+
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: '${displayName}',
+		name: '${name}',
+		group: ['transform'],
+		version: 1,
+		description: 'A test node',
+		defaults: {
+			name: '${displayName}',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [${credentialsArray}],
+		properties: [],
+	};
+
+	execute() {
+		return Promise.resolve([]);
+	}
+}`;
+}
+
 ruleTester.run('credential-test-required', CredentialTestRequiredRule, {
 	valid: [
 		{
@@ -75,19 +117,19 @@ ruleTester.run('credential-test-required', CredentialTestRequiredRule, {
 	],
 	invalid: [
 		{
-			name: 'credential class missing test property',
+			name: 'credential class missing test property and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({}),
 			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],
 		},
 		{
-			name: 'credential class with extends but not oAuth2Api',
+			name: 'credential class with extends but not oAuth2Api and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({ extends: ['someOtherApi'] }),
 			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],
 		},
 		{
-			name: 'credential class with empty extends array',
+			name: 'credential class with empty extends array and no testedBy in package',
 			filename: 'MyApi.credentials.ts',
 			code: createCredentialCode({ extends: [] }),
 			errors: [{ messageId: 'missingCredentialTest', data: { className: 'MyApi' } }],

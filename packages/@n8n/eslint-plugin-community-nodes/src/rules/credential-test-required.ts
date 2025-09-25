@@ -4,7 +4,11 @@ import {
 	findClassProperty,
 	hasArrayLiteralValue,
 	isFileType,
+	getStringLiteralValue,
+	findPackageJson,
+	areAllCredentialUsagesTestedByNodes,
 } from '../utils/index.js';
+import { dirname } from 'node:path';
 
 export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -13,7 +17,8 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 			description: 'Ensure credentials have a credential test',
 		},
 		messages: {
-			missingCredentialTest: 'Credential class "{{ className }}" must have a test property',
+			missingCredentialTest:
+				'Credential class "{{ className }}" must have a test property or be tested by a node via testedBy',
 		},
 		schema: [],
 	},
@@ -23,6 +28,23 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 			return {};
 		}
 
+		let packageDir: string | null = null;
+
+		const getPackageDir = (): string | null => {
+			if (packageDir !== null) {
+				return packageDir;
+			}
+
+			const packageJsonPath = findPackageJson(context.filename);
+			if (!packageJsonPath) {
+				packageDir = '';
+				return packageDir;
+			}
+
+			packageDir = dirname(packageJsonPath);
+			return packageDir;
+		};
+
 		return {
 			ClassDeclaration(node) {
 				if (!isCredentialTypeClass(node)) {
@@ -30,12 +52,42 @@ export const CredentialTestRequiredRule = ESLintUtils.RuleCreator.withoutDocs({
 				}
 
 				const extendsProperty = findClassProperty(node, 'extends');
-				if (extendsProperty && hasArrayLiteralValue(extendsProperty, 'extends', 'oAuth2Api')) {
+				if (extendsProperty && hasArrayLiteralValue(extendsProperty, 'oAuth2Api')) {
 					return;
 				}
 
 				const testProperty = findClassProperty(node, 'test');
-				if (!testProperty) {
+				if (testProperty) {
+					return; // Has test property, no error needed
+				}
+
+				// Check if any node in the package tests this credential via testedBy
+				const nameProperty = findClassProperty(node, 'name');
+				if (!nameProperty) {
+					return; // Can't determine credential name
+				}
+
+				const credentialName = getStringLiteralValue(nameProperty.value);
+				if (!credentialName) {
+					return; // Can't determine credential name
+				}
+
+				const pkgDir = getPackageDir();
+				if (!pkgDir) {
+					// If we can't find package directory, fall back to original behavior
+					context.report({
+						node,
+						messageId: 'missingCredentialTest',
+						data: {
+							className: node.id?.name || 'Unknown',
+						},
+					});
+					return;
+				}
+
+				// Check if all node usages of this credential have testedBy
+				const allUsagesTestedByNodes = areAllCredentialUsagesTestedByNodes(credentialName, pkgDir);
+				if (!allUsagesTestedByNodes) {
 					context.report({
 						node,
 						messageId: 'missingCredentialTest',
