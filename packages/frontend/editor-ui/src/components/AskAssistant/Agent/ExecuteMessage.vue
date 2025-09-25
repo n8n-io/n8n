@@ -5,13 +5,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useI18n } from '@n8n/i18n';
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import { useToast } from '@/composables/useToast';
+import { N8nTooltip } from '@n8n/design-system';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -30,6 +31,44 @@ const toast = useToast();
 
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
+
+let executionWatcherStop: WatchStopHandle | undefined;
+let didEmitAfterRun = false;
+
+const containerRef = ref<HTMLElement | null>(null);
+
+const stopExecutionWatcher = () => {
+	if (executionWatcherStop) {
+		executionWatcherStop();
+		executionWatcherStop = undefined;
+	}
+};
+
+/**
+ * Sets up a watcher that fires exactly once per execution cycle.
+ * We cache it so that chat-triggered runs (where onExecute returns early)
+ * still emit the completion event after the store toggles back to idle.
+ */
+const ensureExecutionWatcher = () => {
+	if (executionWatcherStop) return;
+
+	didEmitAfterRun = false;
+	let wasRunning = workflowsStore.isWorkflowRunning;
+
+	executionWatcherStop = watch(
+		() => workflowsStore.isWorkflowRunning,
+		(isRunning) => {
+			if (wasRunning && !isRunning) {
+				stopExecutionWatcher();
+				if (!didEmitAfterRun) {
+					didEmitAfterRun = true;
+					emit('workflowExecuted');
+				}
+			}
+			wasRunning = isRunning;
+		},
+	);
+};
 
 // Workflow validation from store
 const workflowIssues = computed(() =>
@@ -60,43 +99,71 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
  * Excludes trigger nodes when there are validation issues to prevent dropdown rendering
  */
 const availableTriggerNodes = computed(() => (hasValidationIssues.value ? [] : triggerNodes.value));
+const executeButtonTooltip = computed(() =>
+	hasValidationIssues.value
+		? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip')
+		: '',
+);
 
 async function onExecute() {
+	if (hasValidationIssues.value) {
+		return;
+	}
+
+	ensureExecutionWatcher();
+
 	const selectedTriggerNode =
 		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
-	const selectedTriggerNodeType = workflowsStore.getNodeByName(selectedTriggerNode);
+	const selectedTriggerNodeType = selectedTriggerNode
+		? workflowsStore.getNodeByName(selectedTriggerNode)
+		: null;
 
 	// If the selected trigger is a chat node, open logs panel instead of executing
 	// the execution will be handled by the chat node itself
-	if (isChatNode(selectedTriggerNodeType!)) {
+	if (selectedTriggerNodeType && isChatNode(selectedTriggerNodeType)) {
 		toast.showMessage({
 			title: i18n.baseText('aiAssistant.builder.toast.title'),
 			message: i18n.baseText('aiAssistant.builder.toast.description'),
 			type: 'info',
 		});
 		logsStore.toggleOpen(true);
-	} else {
-		await runWorkflow({
-			triggerNode: workflowsStore.selectedTriggerNodeName,
-		});
+		return;
 	}
 
-	// Watch for execution completion
-	const executionWatcher = watch(
-		() => workflowsStore.isWorkflowRunning,
-		(newVal, oldVal) => {
-			if (oldVal && !newVal) {
-				// Workflow execution has finished
-				executionWatcher(); // Stop watching
+	const runOptions: Parameters<typeof runWorkflow>[0] = {};
+	if (selectedTriggerNode) {
+		runOptions.triggerNode = selectedTriggerNode;
+	}
+
+	try {
+		await runWorkflow(runOptions);
+	} finally {
+		if (!workflowsStore.isWorkflowRunning) {
+			stopExecutionWatcher();
+			if (!didEmitAfterRun) {
+				didEmitAfterRun = true;
 				emit('workflowExecuted');
 			}
-		},
-	);
+		}
+	}
 }
+
+onMounted(() => {
+	containerRef.value?.scrollIntoView({ behavior: 'smooth' });
+});
+
+onBeforeUnmount(() => {
+	stopExecutionWatcher();
+});
 </script>
 
 <template>
-	<div :class="$style.container" role="region" aria-label="Workflow execution panel">
+	<div
+		ref="containerRef"
+		:class="$style.container"
+		role="region"
+		aria-label="Workflow execution panel"
+	>
 		<!-- Validation Issues Section -->
 		<template v-if="hasValidationIssues">
 			<p :class="$style.description">
@@ -127,20 +194,22 @@ async function onExecute() {
 		</template>
 
 		<!-- Execution Button -->
-		<CanvasRunWorkflowButton
-			:class="$style.runButton"
-			:disabled="hasValidationIssues"
-			:waiting-for-webhook="isExecutionWaitingForWebhook"
-			:hide-label="true"
-			:executing="isWorkflowRunning"
-			:include-chat-trigger="true"
-			size="medium"
-			:trigger-nodes="availableTriggerNodes"
-			:get-node-type="nodeTypesStore.getNodeType"
-			:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
-			@execute="onExecute"
-			@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
-		/>
+		<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
+			<CanvasRunWorkflowButton
+				:class="$style.runButton"
+				:disabled="hasValidationIssues"
+				:waiting-for-webhook="isExecutionWaitingForWebhook"
+				:hide-label="true"
+				:executing="isWorkflowRunning"
+				:include-chat-trigger="true"
+				size="medium"
+				:trigger-nodes="availableTriggerNodes"
+				:get-node-type="nodeTypesStore.getNodeType"
+				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+				@execute="onExecute"
+				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+			/>
+		</N8nTooltip>
 	</div>
 </template>
 

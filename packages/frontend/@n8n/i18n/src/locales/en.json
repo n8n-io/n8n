@@ -213,6 +213,7 @@
 	"aiAssistant.builder.streamAbortedMessage": "[Task aborted]",
 	"aiAssistant.builder.executeMessage.description": "Complete these steps before executing your workflow:",
 	"aiAssistant.builder.executeMessage.noIssues": "Your workflow is ready to be executed",
+	"aiAssistant.builder.executeMessage.validationTooltip": "Resolve validation issues to run the workflow",
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
 	"aiAssistant.assistant": "AI Assistant",

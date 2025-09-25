@@ -21,16 +21,18 @@ const props = defineProps<Props>();
 
 const ndvStore = useNDVStore();
 
-/**
- * Handle edit button click - opens the node in NDV for editing
- */
 function handleEditClick() {
 	ndvStore.setActiveNodeName(props.issue.node, 'other');
 }
 </script>
 
 <template>
-	<li :class="$style.nodeIssue" role="listitem">
+	<li
+		:class="$style.nodeIssue"
+		role="listitem"
+		:aria-label="`Edit ${issue.node} node`"
+		@click="handleEditClick"
+	>
 		<!-- Node icon with tooltip -->
 		<NodeIcon
 			:node-type="getNodeType(issue.node)"
@@ -49,15 +51,7 @@ function handleEditClick() {
 		</div>
 
 		<!-- Edit button -->
-		<n8n-icon-button
-			:class="$style.editButton"
-			type="tertiary"
-			size="small"
-			:outline="true"
-			icon="pencil"
-			:aria-label="`Edit ${issue.node} node`"
-			@click="handleEditClick"
-		/>
+		<n8n-icon size="large" icon="pencil" />
 	</li>
 </template>
 
@@ -68,6 +62,11 @@ function handleEditClick() {
 	align-items: center;
 	padding: var(--spacing-3xs) 0;
 	border-bottom: 1px solid var(--color-foreground-light);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color-primary);
+	}
 
 	&:first-child {
 		padding-top: 0;

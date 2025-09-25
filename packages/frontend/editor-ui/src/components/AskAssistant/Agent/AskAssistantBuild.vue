@@ -115,27 +115,63 @@ function trackWorkflowModifications() {
 }
 
 function onWorkflowExecuted() {
-	const executionStatus = workflowsStore.workflowExecutionData?.status;
-	if (executionStatus !== 'success') {
-		const executionError = workflowsStore.workflowExecutionData?.data?.resultData.error?.message;
-		const errorNode = workflowsStore.workflowExecutionData?.data?.resultData.lastNodeExecuted;
-		const errorNodeType = workflowsStore.workflow.nodes.find((n) => n.name === errorNode)?.type;
+	const executionData = workflowsStore.workflowExecutionData;
+	const executionStatus = executionData?.status ?? 'unknown';
+	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
+	const errorNodeType = errorNodeName
+		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		: undefined;
 
+	if (workflowsStore.executionWaitingForWebhook || executionStatus === 'waiting') {
 		builderStore.sendChatMessage({
-			text: `Workflow executed with an error: ${executionError}`,
+			text: 'Workflow execution is waiting for a webhook or external event to continue.',
 			type: 'execution',
-			errorMessage: executionError,
-			errorNodeType,
-			executionStatus,
+			executionStatus: 'waiting',
 		});
-
 		return;
 	}
 
+	if (!executionData) {
+		builderStore.sendChatMessage({
+			text: 'Workflow execution could not be started. Please try again.',
+			type: 'execution',
+			executionStatus: 'error',
+			errorMessage: 'Workflow execution data missing after run attempt.',
+		});
+		return;
+	}
+
+	if (executionStatus === 'success') {
+		builderStore.sendChatMessage({
+			text: 'Workflow executed successfully.',
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	if (executionStatus === 'canceled') {
+		builderStore.sendChatMessage({
+			text: 'Workflow execution was canceled before completion.',
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
+	const scopedErrorMessage = errorNodeName
+		? `Workflow execution failed on node "${errorNodeName}": ${executionError}`
+		: `Workflow execution failed: ${executionError}`;
+
+	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
+
 	builderStore.sendChatMessage({
-		text: 'Workflow executed',
+		text: scopedErrorMessage,
 		type: 'execution',
-		executionStatus,
+		errorMessage: executionError,
+		errorNodeType,
+		executionStatus: failureStatus,
 	});
 }
 

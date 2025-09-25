@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -16,12 +17,20 @@ import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+	i18n: {
+		baseText: (key: string) => key,
+	},
 }));
 
 // Mock useToast
@@ -31,31 +40,19 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
-// Mock the workflows store
-const mockSetWorkflowName = vi.fn();
-const mockRemoveAllConnections = vi.fn();
-const mockRemoveAllNodes = vi.fn();
-const mockWorkflow = {
-	name: DEFAULT_NEW_WORKFLOW_NAME,
-	nodes: [],
-	connections: {},
-};
-
-vi.mock('./workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflow: mockWorkflow,
-		workflowId: 'test-workflow-id',
-		allNodes: [],
-		nodesByName: {},
-		workflowExecutionData: null,
-		setWorkflowName: mockSetWorkflowName,
-		removeAllConnections: mockRemoveAllConnections,
-		removeAllNodes: mockRemoveAllNodes,
-	})),
-}));
-
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
+let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+let pinia: ReturnType<typeof createTestingPinia>;
+
+let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
+let removeAllConnectionsSpy: ReturnType<typeof vi.fn>;
+let removeAllNodesSpy: ReturnType<typeof vi.fn>;
+let getNodeTypeSpy: ReturnType<typeof vi.fn>;
+let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
+let getCredentialTypeByNameSpy: ReturnType<typeof vi.fn>;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -92,7 +89,8 @@ vi.mock('vue-router', () => ({
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		setActivePinia(createPinia());
+		pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
@@ -106,14 +104,38 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
-		// Reset workflow store mocks
-		mockSetWorkflowName.mockReset();
-		mockRemoveAllConnections.mockReset();
-		mockRemoveAllNodes.mockReset();
-		// Reset workflow to default state
-		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-		mockWorkflow.nodes = [];
-		mockWorkflow.connections = {};
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
+
+		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+		workflowsStore.workflow.nodes = [];
+		workflowsStore.workflow.connections = {} as never;
+		workflowsStore.allNodes = [];
+		workflowsStore.nodesByName = {} as never;
+		workflowsStore.workflowExecutionData = null;
+
+		setWorkflowNameSpy = vi
+			.spyOn(workflowsStore, 'setWorkflowName')
+			.mockImplementation(({ newName }) => {
+				workflowsStore.workflow.name = newName;
+			});
+		removeAllConnectionsSpy = vi
+			.spyOn(workflowsStore, 'removeAllConnections')
+			.mockImplementation(() => {});
+		removeAllNodesSpy = vi.spyOn(workflowsStore, 'removeAllNodes').mockImplementation(() => {});
+
+		getNodeTypeSpy = vi.fn();
+		nodeTypesStore.getNodeType = getNodeTypeSpy as unknown as typeof nodeTypesStore.getNodeType;
+
+		getCredentialsByTypeSpy = vi.fn().mockReturnValue([]);
+		credentialsStore.getCredentialsByType =
+			getCredentialsByTypeSpy as unknown as typeof credentialsStore.getCredentialsByType;
+		getCredentialTypeByNameSpy = vi.fn().mockReturnValue(undefined);
+		credentialsStore.getCredentialTypeByName =
+			getCredentialTypeByNameSpy as unknown as typeof credentialsStore.getCredentialTypeByName;
 	});
 
 	afterEach(() => {
@@ -817,7 +839,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -841,7 +863,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was called with the generated name
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -854,7 +876,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Set a custom workflow name (not the default)
-			mockWorkflow.name = 'My Custom Workflow';
+			workflowsStore.workflow.name = 'My Custom Workflow';
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -878,7 +900,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should NOT apply generated workflow name when not initial generation', () => {
@@ -888,7 +910,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = false;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -912,7 +934,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow updates without name property', () => {
@@ -922,7 +944,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON without a name property
 			const workflowJson = JSON.stringify({
@@ -945,7 +967,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow names that start with but are not exactly the default name', () => {
@@ -955,7 +977,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Set workflow name that starts with default but has more text
-			mockWorkflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
+			workflowsStore.workflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -979,7 +1001,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName WAS called because the name starts with default
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -1009,7 +1031,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// First update with name
 			const workflowJson1 = JSON.stringify({
@@ -1019,7 +1041,7 @@ describe('AI Builder store', () => {
 			});
 
 			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
 
 			// The flag should still be true for subsequent updates in the same generation
 			expect(builderStore.initialGeneration).toBe(true);
@@ -1041,7 +1063,107 @@ describe('AI Builder store', () => {
 			builderStore.applyWorkflowUpdate(workflowJson2);
 
 			// Should not call setWorkflowName again
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
+		});
+
+		describe('applyWorkflowUpdate credential defaults', () => {
+			const createTestNodeType = (): INodeTypeDescription =>
+				({
+					displayName: 'Test Node',
+					name: 'n8n-nodes-base.test',
+					description: 'Test node',
+					group: ['trigger'],
+					version: 1,
+					defaults: { name: 'Test Node' },
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{
+									name: 'API Key',
+									value: 'apiKey',
+								},
+							],
+							default: 'apiKey',
+							required: true,
+						},
+					],
+					credentials: [
+						{
+							name: 'testApi',
+							required: true,
+							displayOptions: {
+								show: {
+									authentication: ['apiKey'],
+								},
+							},
+						},
+					],
+				}) as unknown as INodeTypeDescription;
+
+			it('assigns default credentials when available', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'cred-id', name: 'API Credential' },
+				});
+				expect(node.parameters.authentication).toBe('apiKey');
+			});
+
+			it('keeps existing credentials untouched', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: { authentication: 'apiKey' },
+							credentials: {
+								testApi: { id: 'existing', name: 'Existing Credential' },
+							},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'existing', name: 'Existing Credential' },
+				});
+			});
 		});
 	});
 });
