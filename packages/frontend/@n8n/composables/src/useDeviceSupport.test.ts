@@ -3,45 +3,55 @@ import { useDeviceSupport } from './useDeviceSupport';
 const detectPointerType = (query: string) => {
 	const isCoarse = query === '(any-pointer: coarse)';
 	const isFine = query === '(any-pointer: fine)';
-	return { fine: isFine, coarse: isCoarse };
+	return { matches: isCoarse || isFine };
 };
 
 describe('useDeviceSupport()', () => {
 	beforeEach(() => {
 		global.window = Object.create(window);
 		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 } as Navigator;
+
+		Object.defineProperty(window, 'matchMedia', {
+			value: vi.fn().mockImplementation((query: string) => detectPointerType(query)),
+		});
 	});
 
 	describe('isTouchDevice', () => {
-		it('should be false if window matches `any-pointer: fine` and `!any-pointer: coarse`', () => {
+		it('should be true if device has touch points', () => {
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
+			const { isTouchDevice } = useDeviceSupport();
+			expect(isTouchDevice).toEqual(true);
+		});
+
+		it('should be true if device has only coarse pointer', () => {
 			Object.defineProperty(window, 'matchMedia', {
-				value: vi.fn().mockImplementation((query: string) => {
-					const { fine, coarse } = detectPointerType(query);
-					return { matches: fine && !coarse };
-				}),
+				value: vi.fn().mockImplementation((query: string) => ({
+					matches: query === '(any-pointer: coarse)',
+				})),
+			});
+			const { isTouchDevice } = useDeviceSupport();
+			expect(isTouchDevice).toEqual(true);
+		});
+
+		it('should be false if device has no touch points and has fine pointer', () => {
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 0 });
+			Object.defineProperty(window, 'matchMedia', {
+				value: vi.fn().mockImplementation((query: string) => ({
+					matches: query === '(any-pointer: fine)',
+				})),
 			});
 			const { isTouchDevice } = useDeviceSupport();
 			expect(isTouchDevice).toEqual(false);
 		});
 
-		it('should be false if window matches `any-pointer: fine` and `any-pointer: coarse`', () => {
+		it('should be true for iPad Pro with Apple Pencil', () => {
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
 			Object.defineProperty(window, 'matchMedia', {
-				value: vi.fn().mockImplementation((query: string) => {
-					const { fine, coarse } = detectPointerType(query);
-					return { matches: fine && coarse };
-				}),
+				value: vi.fn().mockImplementation(() => ({
+					matches: true, // Both fine and coarse pointers
+				})),
 			});
-			const { isTouchDevice } = useDeviceSupport();
-			expect(isTouchDevice).toEqual(false);
-		});
-
-		it('should be true if window matches `any-pointer: coarse` and `!any-pointer: fine`', () => {
-			Object.defineProperty(window, 'matchMedia', {
-				value: vi.fn().mockImplementation((query: string) => {
-					const { fine, coarse } = detectPointerType(query);
-					return { matches: coarse && !fine };
-				}),
-			});
+			Object.defineProperty(navigator, 'userAgent', { value: 'ipad' });
 			const { isTouchDevice } = useDeviceSupport();
 			expect(isTouchDevice).toEqual(true);
 		});
