@@ -22,7 +22,6 @@ export class McpSettingsController {
 
 	@Patch('/settings')
 	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
-		console.log('Update MCP settings DTO:', dto);
 		if (req.user.role?.slug !== GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Only the instance owner can update MCP settings');
 		}

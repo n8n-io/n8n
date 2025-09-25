@@ -37,7 +37,8 @@ describe('McpSettingsController', () => {
 		test('prevents non-owners from updating MCP access', async () => {
 			const req = createReq({ mcpAccessEnabled: false }, 'member');
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
-			await expect(controller.updateSettings(req, dto)).rejects.toBeInstanceOf(ForbiddenError);
+			const res = new Response();
+			await expect(controller.updateSettings(req, res, dto)).rejects.toBeInstanceOf(ForbiddenError);
 		});
 
 		test('disables MCP access correctly', async () => {
@@ -46,7 +47,8 @@ describe('McpSettingsController', () => {
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
 
-			const result = await controller.updateSettings(req, dto);
+			const res = new Response();
+			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
@@ -59,7 +61,8 @@ describe('McpSettingsController', () => {
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: true });
 
-			const result = await controller.updateSettings(req, dto);
+			const res = new Response();
+			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
