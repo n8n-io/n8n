@@ -507,8 +507,8 @@ describe('ImportService', () => {
 
 			await importService.disableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = OFF;');
-			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = OFF;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = ON;');
+			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA defer_foreign_keys = ON;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints disabled');
 		});
 
@@ -537,8 +537,8 @@ describe('ImportService', () => {
 
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
-			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA foreign_keys = ON;');
-			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA foreign_keys = ON;');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('PRAGMA defer_foreign_keys = OFF;');
+			expect(mockLogger.debug).toHaveBeenCalledWith('Executing: PRAGMA defer_foreign_keys = OFF;');
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Foreign key constraints re-enabled');
 		});
 
@@ -772,6 +772,276 @@ describe('ImportService', () => {
 			expect(importService.getImportMetadata).toHaveBeenCalledWith('/test/input');
 			expect(importService.areAllEntityTablesEmpty).toHaveBeenCalledWith(['user']);
 			expect(importService.importEntitiesFromFiles).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validateMigrations', () => {
+		beforeEach(() => {
+			// Set up default DataSource options
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.options = { type: 'sqlite', entityPrefix: '' };
+			mockDataSource.driver = {
+				escape: jest.fn((identifier: string) => `"${identifier}"`),
+			} as any;
+		});
+
+		it('should throw error when migrations file is missing', async () => {
+			const inputDir = '/test/input';
+			const migrationsFilePath = '/test/input/migrations.jsonl';
+
+			jest.mocked(readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Migrations file not found. Cannot proceed with import without migration validation.',
+			);
+
+			expect(readFile).toHaveBeenCalledWith(migrationsFilePath, 'utf8');
+		});
+
+		it('should throw error when migrations file contains invalid JSON', async () => {
+			const inputDir = '/test/input';
+			const migrationsFilePath = '/test/input/migrations.jsonl';
+			const invalidJsonContent =
+				'{"id": "001", "name": "TestMigration", "timestamp": "1000"}\n{invalid json}';
+
+			jest.mocked(readFile).mockResolvedValue(invalidJsonContent);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Invalid JSON in migrations file:',
+			);
+
+			expect(readFile).toHaveBeenCalledWith(migrationsFilePath, 'utf8');
+		});
+
+		it('should handle empty migrations file gracefully', async () => {
+			const inputDir = '/test/input';
+			const migrationsFilePath = '/test/input/migrations.jsonl';
+
+			jest.mocked(readFile).mockResolvedValue('');
+
+			await importService.validateMigrations(inputDir);
+
+			expect(readFile).toHaveBeenCalledWith(migrationsFilePath, 'utf8');
+			expect(mockLogger.info).toHaveBeenCalledWith('No migrations found in import data');
+		});
+
+		it('should handle migrations file with only whitespace', async () => {
+			const inputDir = '/test/input';
+			const migrationsFilePath = '/test/input/migrations.jsonl';
+
+			jest.mocked(readFile).mockResolvedValue('\n\n  \n\t\n');
+
+			await importService.validateMigrations(inputDir);
+
+			expect(readFile).toHaveBeenCalledWith(migrationsFilePath, 'utf8');
+			expect(mockLogger.info).toHaveBeenCalledWith('No migrations found in import data');
+		});
+
+		it('should throw error when target database has no migrations', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue([]);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Target database has no migrations. Cannot import data from a different migration state.',
+			);
+
+			expect(mockDataSource.query).toHaveBeenCalledWith(
+				'SELECT * FROM "migrations" ORDER BY timestamp DESC LIMIT 1',
+			);
+		});
+
+		it('should throw error when migration timestamps do not match', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: '002', name: 'TestMigration', timestamp: '2000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Migration timestamp mismatch. Import data: TestMigration (1000) does not match target database TestMigration (2000). Cannot import data from different migration states.',
+			);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: TestMigration (timestamp: 1000, id: 001)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in target database: TestMigration (timestamp: 2000, id: 002)',
+			);
+		});
+
+		it('should throw error when migration names do not match', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'ImportMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: '001', name: 'DbMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Migration name mismatch. Import data: ImportMigration does not match target database DbMigration. Cannot import data from different migration states.',
+			);
+		});
+
+		it('should throw error when migration IDs do not match', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: '002', name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 002). Cannot import data from different migration states.',
+			);
+		});
+
+		it('should pass validation when migrations match exactly', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations(inputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: TestMigration (timestamp: 1000, id: 001)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in target database: TestMigration (timestamp: 1000, id: 001)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should throw error when migration IDs have different formats', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: 1, name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 1). Cannot import data from different migration states.',
+			);
+		});
+
+		it('should handle multiple migrations and find the latest one', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [
+				{ id: '001', name: 'FirstMigration', timestamp: '1000' },
+				{ id: '002', name: 'SecondMigration', timestamp: '2000' },
+				{ id: '003', name: 'LatestMigration', timestamp: '3000' },
+			];
+			const dbMigrations = [{ id: '003', name: 'LatestMigration', timestamp: '3000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations(inputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: LatestMigration (timestamp: 3000, id: 003)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should handle migrations with only ID field (no timestamp)', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '1000', name: 'TestMigration' }];
+			const dbMigrations = [{ id: '1000', name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations(inputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'Latest migration in import data: TestMigration (timestamp: 1000, id: 1000)',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should handle database query errors gracefully', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+
+			await expect(importService.validateMigrations(inputDir)).rejects.toThrow(
+				'Database connection failed',
+			);
+		});
+
+		it('should handle migrations with table prefix', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+			const dbMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+
+			// Set up DataSource with table prefix
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.options = { type: 'sqlite', entityPrefix: 'n8n_' };
+
+			jest
+				.mocked(readFile)
+				.mockResolvedValue(importMigrations.map((m) => JSON.stringify(m)).join('\n'));
+			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await importService.validateMigrations(inputDir);
+
+			expect(mockDataSource.query).toHaveBeenCalledWith(
+				'SELECT * FROM "n8n_migrations" ORDER BY timestamp DESC LIMIT 1',
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
+		});
+
+		it('should handle migrations with mixed line endings', async () => {
+			const inputDir = '/test/input';
+			const importMigrations = [{ id: '001', name: 'TestMigration', timestamp: '1000' }];
+
+			// Simulate file with mixed line endings
+			const fileContent = importMigrations.map((m) => JSON.stringify(m)).join('\r\n');
+
+			jest.mocked(readFile).mockResolvedValue(fileContent);
+			jest.mocked(mockDataSource.query).mockResolvedValue(importMigrations);
+
+			await importService.validateMigrations(inputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				'✅ Migration validation passed - import data matches target database migration state',
+			);
 		});
 	});
 });
