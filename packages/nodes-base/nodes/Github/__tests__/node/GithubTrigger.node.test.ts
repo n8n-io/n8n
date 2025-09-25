@@ -49,6 +49,8 @@ describe('GithubTrigger Node', () => {
 					if (name === 'options') return { insecureSSL: false };
 				}),
 				getWorkflowStaticData: () => webhookData,
+				getCredentials: jest.fn(),
+				getNode: () => ({ name: 'GitHub Trigger' }),
 				getNode: () => ({}),
 			};
 		});
@@ -95,6 +97,40 @@ describe('GithubTrigger Node', () => {
 
 			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
 				/Check that the repository exists/,
+			);
+		});
+
+		it('should provide specific error message for fine-grained PAT permission issues (403)', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				accessToken: 'github_pat_11ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+			});
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '403' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/fine-grained tokens, ensure you have "Webhooks: Write" permission/,
+			);
+		});
+
+		it('should provide specific error message for classic PAT permission issues (403)', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				accessToken: 'ghp_1234567890abcdefghijklmnopqrstuvwxyz',
+			});
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '403' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/classic tokens, ensure you have "repo" or "admin:repo_hook" scope/,
 			);
 		});
 	});

@@ -550,6 +550,26 @@ export class GithubTrigger implements INodeType {
 						);
 					}
 
+					if (error.httpCode === '403') {
+						const credentials = await this.getCredentials('githubApi');
+						const token = credentials.accessToken as string;
+						const isFineGrainedToken = token?.startsWith('github_pat_');
+						
+						let permissionMessage = 'Insufficient permissions to create webhooks. ';
+						
+						if (isFineGrainedToken) {
+							permissionMessage += 'For fine-grained tokens, ensure you have "Webhooks: Write" permission for the repository.';
+						} else {
+							permissionMessage += 'For classic tokens, ensure you have "repo" or "admin:repo_hook" scope.';
+						}
+						
+						throw new NodeOperationError(
+							this.getNode(),
+							permissionMessage,
+							{ level: 'warning' },
+						);
+					}
+
 					if (error.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),
