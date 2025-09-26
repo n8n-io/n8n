@@ -7,7 +7,7 @@ import { n8nHtml } from '../../directives';
 import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue';
 import type { ChatUI } from '../../types/assistant';
 
-const stubs = ['n8n-avatar', 'n8n-button', 'n8n-icon', 'n8n-icon-button'];
+const stubs = ['N8nAvatar', 'N8nButton', 'N8nIcon', 'N8nIconButton'];
 
 describe('AskAssistantChat', () => {
 	it('renders default placeholder chat correctly', () => {
@@ -815,7 +815,7 @@ describe('AskAssistantChat', () => {
 					directives: { n8nHtml },
 					stubs: {
 						...Object.fromEntries(stubs.map((stub) => [stub, true])),
-						'n8n-button': { template: '<button><slot></button' },
+						N8nButton: { template: '<button><slot></button' },
 					},
 				},
 				props: {

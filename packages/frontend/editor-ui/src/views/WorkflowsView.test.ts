@@ -500,7 +500,7 @@ describe('Folders', () => {
 			pinia,
 			global: {
 				stubs: {
-					'router-link': {
+					RouterLink: {
 						template: '<div data-test-id="folder-card"><slot /></div>',
 					},
 				},
