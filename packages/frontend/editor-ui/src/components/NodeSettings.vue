@@ -45,6 +45,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 import { ProjectTypes } from '@/types/projects.types';
+import { getNodeIconSource } from '@/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -447,6 +448,8 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(isExecutable.value, isToolNode.value, i18n.baseText.bind(i18n)),
 );
 
+const iconSource = computed(() => getNodeIconSource(node.value?.type));
+
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
 };
@@ -610,7 +613,15 @@ function handleSelectAction(params: INodeParameters) {
 		<div v-else-if="!isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
-					v-if="node"
+					v-if="node && !nodeType"
+					class="node-name"
+					:model-value="node.name"
+					:icon-source="iconSource"
+					:read-only="isReadOnly"
+					@update:model-value="nameChanged"
+				/>
+				<NodeTitle
+					v-else-if="node"
 					class="node-name"
 					:model-value="node.name"
 					:node-type="nodeType"

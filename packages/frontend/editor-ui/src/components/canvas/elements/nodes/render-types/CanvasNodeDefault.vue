@@ -9,6 +9,8 @@ import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-t
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -19,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
+const route = useRoute();
 const {
 	id,
 	label,
@@ -37,6 +40,7 @@ const {
 	hasRunData,
 	hasExecutionErrors,
 	render,
+	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
@@ -47,12 +51,14 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
-		[$style.disabled]: isDisabled.value,
+		[$style.disabled]:
+			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
