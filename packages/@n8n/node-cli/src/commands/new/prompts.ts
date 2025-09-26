@@ -7,10 +7,10 @@ import { validateNodeName } from '../../utils/validation';
 export const nodeNamePrompt = async () =>
 	await withCancelHandler(
 		text({
-			message: 'What is your node called?',
-			placeholder: 'n8n-nodes-example',
+			message: "Package name (must start with 'n8n-nodes-' or '@org/n8n-nodes-')",
+			placeholder: 'n8n-nodes-my-app',
 			validate: validateNodeName,
-			defaultValue: 'n8n-nodes-example',
+			defaultValue: 'n8n-nodes-my-app',
 		}),
 	);
 

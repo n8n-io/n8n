@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('RAG callout experiment', () => {
 	test.describe('NDV callout', () => {
-		test('should show callout and open template on click', async ({ n8n, page }) => {
+		test('should show callout and open template on click', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Zep Vector Store', {
 				action: 'Add documents to vector store',
@@ -11,7 +11,7 @@ test.describe('RAG callout experiment', () => {
 
 			await expect(n8n.canvas.getRagCalloutTip()).toBeVisible();
 
-			const popupPromise = page.waitForEvent('popup');
+			const popupPromise = n8n.page.waitForEvent('popup');
 			await n8n.canvas.clickRagTemplateLink();
 
 			const popup = await popupPromise;
@@ -22,12 +22,12 @@ test.describe('RAG callout experiment', () => {
 	});
 
 	test.describe('search callout', () => {
-		test('should show callout and open template on click', async ({ n8n, page }) => {
+		test('should show callout and open template on click', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.clickNodeCreatorPlusButton();
 			await n8n.canvas.fillNodeCreatorSearchBar('rag');
 
-			const popupPromise = page.waitForEvent('popup');
+			const popupPromise = n8n.page.waitForEvent('popup');
 			await expect(n8n.canvas.getRagTemplateLink()).toBeVisible();
 			await n8n.canvas.clickRagTemplateLink();
 

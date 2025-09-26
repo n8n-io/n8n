@@ -525,7 +525,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			);
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+			workflowData.homeProject,
+			workflowData.sharedWithProjects,
+		);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
@@ -1602,6 +1605,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
@@ -1620,6 +1627,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			}
 		} else if (json && json.command === 'openExecution') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
 				isProductionExecutionPreview.value =
@@ -2071,7 +2082,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
-			:suppress-interaction="canvasStore.suppressInteraction"
+			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

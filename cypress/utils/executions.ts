@@ -82,7 +82,7 @@ export function runMockWorkflowExecution({
 		},
 	};
 
-	cy.intercept('POST', '/rest/workflows/**/run?**', {
+	cy.intercept('POST', '/rest/workflows/**/run', {
 		statusCode: 201,
 		body: {
 			data: {
@@ -118,18 +118,27 @@ export function runMockWorkflowExecution({
 			data: pick(nodeRunData, ['startTime', 'executionIndex', 'source', 'hints']),
 		});
 		const { data: _, ...taskData } = nodeRunData;
-		const itemCount = nodeRunData.data?.main?.[0]?.length ?? 0;
+		const itemCountByConnectionType: Record<string, number[]> = {};
+		for (const connectionType of Object.keys(nodeRunData.data ?? {})) {
+			const connectionData = nodeRunData.data?.[connectionType];
+			if (Array.isArray(connectionData)) {
+				itemCountByConnectionType[connectionType] = connectionData.map((d) => (d ? d.length : 0));
+			} else {
+				itemCountByConnectionType[connectionType] = [0];
+			}
+		}
+
 		cy.push('nodeExecuteAfter', {
 			executionId,
 			nodeName,
 			data: taskData,
-			itemCount,
+			itemCountByConnectionType,
 		});
 		cy.push('nodeExecuteAfterData', {
 			executionId,
 			nodeName,
 			data: nodeRunData,
-			itemCount,
+			itemCountByConnectionType,
 		});
 	});
 

@@ -2,7 +2,7 @@ import { setActivePinia } from 'pinia';
 import { useLogsExecutionData } from './useLogsExecutionData';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { nodeTypes } from '../__test__/data';
@@ -15,6 +15,7 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
+import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
 
@@ -29,6 +30,31 @@ describe(useLogsExecutionData, () => {
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
+	});
+
+	describe('isEnabled', () => {
+		beforeEach(() => {
+			workflowsStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
+					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
+				}),
+			);
+		});
+
+		it('should not calculate entries isEnabled is false', async () => {
+			const { entries } = useLogsExecutionData(computed(() => false));
+
+			await waitAllPromises();
+			expect(entries.value).toHaveLength(0);
+		});
+
+		it('should calculate entries if isEnabled is true', async () => {
+			const { entries } = useLogsExecutionData(computed(() => true));
+
+			await waitAllPromises();
+			expect(entries.value).toHaveLength(1);
+		});
 	});
 
 	describe('loadSubExecution', () => {
@@ -76,9 +102,9 @@ describe(useLogsExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
-			expect(entries.value).toHaveLength(2);
+			await waitFor(() => expect(entries.value).toHaveLength(2));
 			expect(entries.value[1].children).toHaveLength(0);
 
 			await loadSubExecution(entries.value[1]);
@@ -107,8 +133,9 @@ describe(useLogsExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useLogsExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData(computed(() => true));
 
+			await waitFor(() => expect(entries.value).toHaveLength(2));
 			await loadSubExecution(entries.value[1]);
 
 			vi.advanceTimersByTime(1000);

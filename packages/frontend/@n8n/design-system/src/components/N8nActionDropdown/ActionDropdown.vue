@@ -29,6 +29,7 @@ interface ActionDropdownProps {
 	teleported?: boolean;
 	disabled?: boolean;
 	extraPopperClass?: string;
+	maxHeight?: string | number;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	hideArrow: false,
 	teleported: true,
 	disabled: false,
+	maxHeight: '',
 });
 
 const attrs = useAttrs();
@@ -96,6 +98,7 @@ defineExpose({ open, close });
 			:popper-class="popperClass"
 			:teleported="teleported"
 			:disabled="disabled"
+			:max-height="maxHeight"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
