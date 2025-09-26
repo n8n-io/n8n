@@ -37,7 +37,6 @@ function onRename(newNodeName: string) {
 					@update:model-value="onRename"
 				/>
 			</div>
-
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>
@@ -52,12 +51,14 @@ function onRename(newNodeName: string) {
 			</N8nText>
 		</div>
 
-		<N8nTooltip>
-			<template #content>
-				{{ i18n.baseText('ndv.close.tooltip') }}
-			</template>
-			<N8nIconButton icon="x" type="tertiary" @click="emit('close')" />
-		</N8nTooltip>
+		<div :class="$style.actions">
+			<N8nTooltip>
+				<template #content>
+					{{ i18n.baseText('ndv.close.tooltip') }}
+				</template>
+				<N8nIconButton icon="x" type="tertiary" text @click="emit('close')" />
+			</N8nTooltip>
+		</div>
 	</header>
 </template>
 
@@ -68,7 +69,7 @@ function onRename(newNodeName: string) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-3xs);
+	padding: var(--spacing-4xs);
 	background: var(--color-background-xlight);
 }
 
@@ -79,9 +80,24 @@ function onRename(newNodeName: string) {
 	margin-left: var(--spacing-2xs);
 }
 
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+}
+
+.actions button:hover {
+	background-color: var(--color-background-base);
+}
+
+.actions > *:not(:last-child) {
+	border-right: var(--border-base);
+	padding-right: var(--spacing-xs);
+}
+
 .title {
 	color: var(--color-text-dark);
-	font-size: var(--font-size-m);
+	font-size: var(--font-size-s);
 }
 
 .subtitle {
