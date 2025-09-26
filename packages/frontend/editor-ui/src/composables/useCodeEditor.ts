@@ -55,6 +55,7 @@ import debounce from 'lodash/debounce';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -197,7 +198,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
+		if (!dragging.value && !isEventTargetContainedBy(event.target, editor.value?.dom)) {
 			blur();
 		}
 		dragging.value = false;

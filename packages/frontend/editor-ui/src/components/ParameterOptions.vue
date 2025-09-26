@@ -11,6 +11,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 interface Props {
 	parameter: INodeProperties;
@@ -46,22 +47,29 @@ const ndvStore = useNDVStore();
 const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(
-	() => getParameterTypeOption(props.parameter, 'editor') === 'htmlEditor',
-);
+const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
 const isInEmbeddedNdv = useIsInExperimentalNdv();
+const experimentalNdvStore = useExperimentalNdvStore();
 
-const canBeOpenedInFocusPanel = computed(
-	() =>
-		!props.parameter.isNodeSetting &&
-		!props.isReadOnly &&
-		!props.isContentOverridden &&
-		(activeNode.value || isInEmbeddedNdv.value) && // checking that it's inside ndv
-		(props.parameter.type === 'string' || props.parameter.type === 'json'),
-);
+const canBeOpenedInFocusPanel = computed(() => {
+	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
+		return false;
+	}
+
+	if (!activeNode.value && !isInEmbeddedNdv.value) {
+		// The current parameter is focused parameter in focus panel
+		return false;
+	}
+
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+		return (props.parameter.typeOptions?.rows ?? 1) > 1 || editor.value !== undefined;
+	}
+
+	return props.parameter.type === 'string' || props.parameter.type === 'json';
+});
 
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
@@ -100,7 +108,7 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
-	if (isHtmlEditor.value && !isValueAnExpression.value) {
+	if (editor.value === 'htmlEditor' && !isValueAnExpression.value) {
 		return [
 			{
 				label: i18n.baseText('parameterInput.formatHtml'),
