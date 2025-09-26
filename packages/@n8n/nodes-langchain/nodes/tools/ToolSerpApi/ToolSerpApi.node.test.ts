@@ -63,6 +63,9 @@ describe('ToolSerpApi', () => {
 						json: {
 							response: mockResult,
 						},
+						pairedItem: {
+							item: 0,
+						},
 					},
 				],
 			]);
@@ -101,10 +104,16 @@ describe('ToolSerpApi', () => {
 						json: {
 							response: 'Machine learning search results',
 						},
+						pairedItem: {
+							item: 0,
+						},
 					},
 					{
 						json: {
 							response: 'Deep learning search results',
+						},
+						pairedItem: {
+							item: 1,
 						},
 					},
 				],

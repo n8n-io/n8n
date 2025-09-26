@@ -93,23 +93,21 @@ export class ToolThink implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const input = this.getInputData();
-		const response: INodeExecutionData[][] = [];
+		const response: INodeExecutionData[] = [];
 		for (let i = 0; i < input.length; i++) {
 			const inputItem = input[i];
 			const tool = await getTool(this, i);
 			const result = await tool.invoke(inputItem.json);
-			response.push([
-				{
-					json: {
-						response: result,
-					},
-					pairedItems: {
-						itemIndex: i,
-					},
+			response.push({
+				json: {
+					response: result,
 				},
-			]);
+				pairedItems: {
+					item: i,
+				},
+			});
 		}
 
-		return response;
+		return [response];
 	}
 }

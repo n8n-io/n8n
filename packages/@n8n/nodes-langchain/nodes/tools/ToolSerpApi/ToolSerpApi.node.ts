@@ -139,6 +139,7 @@ export class ToolSerpApi implements INodeType {
 				json: {
 					response: result,
 				},
+				pairedItem: { item: itemIndex },
 			});
 		}
 

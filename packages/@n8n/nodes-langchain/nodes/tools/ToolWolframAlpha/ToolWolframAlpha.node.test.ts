@@ -66,7 +66,7 @@ describe('ToolWolframAlpha', () => {
 					},
 				],
 			]);
-			expect(WolframAlphaTool.prototype.invoke).toHaveBeenCalledWith(inputData[0]);
+			expect(WolframAlphaTool.prototype.invoke).toHaveBeenCalledWith(inputData[0].json);
 		});
 
 		it('should handle multiple input items', async () => {

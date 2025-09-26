@@ -150,7 +150,7 @@ describe('ToolVectorStore', () => {
 					},
 				],
 			]);
-			expect(VectorStoreQATool.prototype.invoke).toHaveBeenCalledWith(inputData[0]);
+			expect(VectorStoreQATool.prototype.invoke).toHaveBeenCalledWith(inputData[0].json);
 		});
 
 		it('should handle multiple input items', async () => {

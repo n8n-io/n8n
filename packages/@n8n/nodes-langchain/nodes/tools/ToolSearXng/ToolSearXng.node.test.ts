@@ -110,8 +110,6 @@ describe('ToolSearXng', () => {
 							item: 0,
 						},
 					},
-				],
-				[
 					{
 						json: {
 							response: 'Deep learning search results',

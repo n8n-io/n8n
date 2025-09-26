@@ -103,8 +103,6 @@ describe('ToolWikipedia', () => {
 							item: 0,
 						},
 					},
-				],
-				[
 					{
 						json: {
 							response: 'Deep learning (also known as deep structured learning...',
