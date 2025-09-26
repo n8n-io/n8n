@@ -10,6 +10,7 @@ import {
 	N8nLink,
 	N8nIconButton,
 	N8nMenuItem,
+	isCustomMenuItem,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
@@ -180,6 +181,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
+		type: 'popover',
 		children: [
 			{
 				id: 'quickstart',
@@ -241,6 +243,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.whatsNew'),
 		position: 'bottom',
 		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+		type: 'popover',
 		children: [
 			...versionsStore.whatsNewArticles.map(
 				(article) =>
@@ -545,12 +548,44 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 
 				<div :class="$style.bottomMenu">
-					<N8nMenuItem
-						v-for="item in visibleMenuItems"
-						:item="item"
-						:compact="isCollapsed"
-						@on-click="() => handleSelect(item.id)"
-					/>
+					<template v-for="item in visibleMenuItems">
+						<N8nPopoverReka
+							v-if="item.type === 'popover'"
+							:key="item.id"
+							side="right"
+							align="end"
+							:side-offset="16"
+						>
+							<template #content>
+								<div :class="$style.popover">
+									<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
+										item.label
+									}}</N8nText>
+									<template v-for="child in item.children" :key="child.id">
+										<component
+											v-if="isCustomMenuItem(child)"
+											:is="child.component"
+											v-bind="child.props"
+										/>
+										<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
+									</template>
+								</div>
+							</template>
+							<template #trigger>
+								<N8nMenuItem
+									:item="item"
+									:compact="isCollapsed"
+									@on-click="() => handleSelect(item.id)"
+								/>
+							</template>
+						</N8nPopoverReka>
+						<N8nMenuItem
+							v-else
+							:item="item"
+							:compact="isCollapsed"
+							@on-click="() => handleSelect(item.id)"
+						/>
+					</template>
 				</div>
 
 				<div v-if="showUserArea">
@@ -668,29 +703,13 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	padding: var(--spacing-xs);
 }
 
-.updates {
-	display: flex;
-	align-items: center;
-	cursor: pointer;
-	padding: var(--spacing-2xs) var(--spacing-l);
-	margin: var(--spacing-2xs) 0 0;
+.popover {
+	padding: var(--spacing-xs);
+}
 
-	svg {
-		color: var(--color-text-base) !important;
-	}
-	span {
-		display: none;
-		&.expanded {
-			display: initial;
-		}
-	}
-
-	&:hover {
-		&,
-		& svg {
-			color: var(--color-text-dark) !important;
-		}
-	}
+.popoverTitle {
+	display: block;
+	margin-bottom: var(--spacing-3xs);
 }
 
 .userArea {
