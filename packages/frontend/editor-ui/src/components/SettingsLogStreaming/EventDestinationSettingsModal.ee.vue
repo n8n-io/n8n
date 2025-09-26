@@ -49,7 +49,7 @@ import {
 	syslogModalDescription,
 } from './descriptions.ee';
 import { useElementSize } from '@vueuse/core';
-import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
+import { N8nInlineTextEdit, N8nMenuItem, N8nText } from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
