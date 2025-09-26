@@ -4,7 +4,9 @@
 		"sourceMap": false,
 		"declaration": false,
 		"lib": ["esnext", "dom"],
-		"types": ["@playwright/test", "node"]
+		"types": ["@playwright/test", "node"],
+		"module": "es2015",
+		"moduleResolution": "bundler"
 	},
 	"include": ["**/*.ts"],
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
