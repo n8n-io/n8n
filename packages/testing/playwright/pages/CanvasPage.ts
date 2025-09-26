@@ -216,9 +216,17 @@ export class CanvasPage extends BasePage {
 		await this.page.getByRole('radio', { name: 'Editor' }).click();
 	}
 
-	async setWorkflowName(name: string): Promise<void> {
-		await this.clickByTestId('inline-edit-preview');
-		await this.fillByTestId('inline-edit-input', name);
+	async setWorkflowName(
+		name: string,
+		{ isNewCanvas = true }: { isNewCanvas?: boolean } = {},
+	): Promise<void> {
+		if (isNewCanvas) {
+			await this.getCanvasPlusButton().waitFor({ state: 'visible' });
+			await this.clickByTestId('inline-edit-preview');
+			await this.fillByTestId('inline-edit-input', name);
+			await this.saveWorkflow();
+			await this.getWorkflowSaveButton().getByText('Saved').waitFor({ state: 'visible' });
+		}
 	}
 
 	/**
@@ -751,5 +759,9 @@ export class CanvasPage extends BasePage {
 
 	getCanvasPlusButton(): Locator {
 		return this.page.getByTestId('canvas-plus-button');
+	}
+
+	getWorkflowName(): Locator {
+		return this.page.getByTestId('workflow-name-input');
 	}
 }

@@ -44,10 +44,7 @@ export class TestEntryComposer {
 	}
 
 	async fromNewProject() {
-		await this.withProjectFeatures();
-		// Create a project using the API
 		const response = await this.n8n.api.projects.createProject();
-
 		const projectId = response.id;
 		await this.n8n.navigate.toProject(projectId);
 		return projectId;

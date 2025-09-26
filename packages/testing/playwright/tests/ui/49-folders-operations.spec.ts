@@ -3,10 +3,6 @@ import { test, expect } from '../../fixtures/base';
 test.describe('Folders - Operations', () => {
 	// Tests are marked as serial because the performance impact in parallel causes instability due to performance.
 	test.describe.configure({ mode: 'serial' });
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.start.withProjectFeatures();
-	});
-
 	test.describe('Rename and delete folders', () => {
 		test('should rename folder from breadcrumb dropdown', async ({ n8n }) => {
 			await n8n.start.fromNewProject();
