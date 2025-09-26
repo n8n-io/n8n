@@ -100,7 +100,13 @@ export class InsightsController {
 		})) as RestrictedInsightsByTime[];
 	}
 
-	private validateQueryDates(query: InsightsDateFilterDto) {
+	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
+		// For backward compatibility, skip validation
+		// when dateRange is provided the new `startDate` and `endDate` query are ignored
+		if (query.dateRange) {
+			return;
+		}
+
 		const inThePast = (date?: Date) => !date || date <= new Date();
 		const dateInThePastSchema = z.coerce
 			.date()
