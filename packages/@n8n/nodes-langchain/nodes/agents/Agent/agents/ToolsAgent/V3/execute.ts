@@ -412,7 +412,7 @@ export async function toolsAgentExecute(
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,
-						chat_history: chatHistory ?? undefined,
+						chat_history: chatHistory,
 					},
 					{
 						version: 'v2',
@@ -450,7 +450,7 @@ export async function toolsAgentExecute(
 				}
 				const response = await executor.invoke({
 					...invokeParams,
-					chat_history: chatHistory ?? undefined,
+					chat_history: chatHistory,
 				});
 
 				if ('returnValues' in response) {
