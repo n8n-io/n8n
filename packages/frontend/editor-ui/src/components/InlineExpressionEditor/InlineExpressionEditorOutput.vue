@@ -4,13 +4,13 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
-import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
+import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useElementSize } from '@vueuse/core';
-import { N8nPopover } from '@n8n/design-system';
+import { N8nPopoverReka, N8nText } from '@n8n/design-system';
+import { useStyles } from '@/composables/useStyles';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
@@ -20,10 +20,9 @@ interface InlineExpressionEditorOutputProps {
 	isReadOnly?: boolean;
 	visible: boolean;
 	virtualRef?: HTMLElement;
-	appendTo?: string;
 }
 
-const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -34,7 +33,7 @@ const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
 const contentRef = useTemplateRef('content');
-const virtualRefSize = useElementSize(computed(() => props.virtualRef));
+const { APP_Z_INDEXES } = useStyles();
 
 onBeforeUnmount(() => {
 	ndvStore.expressionOutputItemIndex = 0;
@@ -46,71 +45,60 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopover
-		:visible="visible"
-		placement="bottom"
-		:show-arrow="false"
-		:offset="0"
-		:persistent="false"
-		:virtual-triggering="virtualRef !== undefined"
-		:virtual-ref="virtualRef"
-		:width="virtualRefSize.width.value"
-		:popper-class="$style.popper"
-		:popper-options="{
-			modifiers: [
-				{ name: 'flip', enabled: false },
-				{
-					// Ensures that the popover is re-positioned when the reference element is resized
-					name: 'custom modifier',
-					options: {
-						width: virtualRefSize.width.value,
-						height: virtualRefSize.height.value,
-					},
-				},
-			],
-		}"
-		:append-to="appendTo"
+	<N8nPopoverReka
+		:open="visible"
+		side="bottom"
+		:side-flip="false"
+		:side-offset="0"
+		align="start"
+		:reference="virtualRef"
+		width="var(--reka-popper-anchor-width)"
+		:content-class="$style.popover"
+		:enable-slide-in="false"
+		:enable-scrolling="false"
+		:suppress-auto-focus="true"
+		:z-index="APP_Z_INDEXES.NDV + 1"
 	>
-		<div ref="content" :class="$style.dropdown">
-			<div :class="$style.header">
-				<n8n-text bold size="small" compact>
-					{{ i18n.baseText('parameterInput.result') }}
-				</n8n-text>
+		<template #content>
+			<div ref="content" :class="[$style.dropdown, 'ignore-key-press-canvas']">
+				<div :class="$style.header">
+					<N8nText bold size="small" compact>
+						{{ i18n.baseText('parameterInput.result') }}
+					</N8nText>
 
-				<OutputItemSelect />
+					<OutputItemSelect />
+				</div>
+				<N8nText :class="$style.body">
+					<ExpressionOutput
+						data-test-id="inline-expression-editor-output"
+						:segments="segments"
+						:extensions="theme"
+					>
+					</ExpressionOutput>
+				</N8nText>
+				<div v-if="!isReadOnly" :class="$style.footer">
+					<InlineExpressionTip
+						:editor-state="editorState"
+						:selection="selection"
+						:unresolved-expression="unresolvedExpression"
+					/>
+				</div>
 			</div>
-			<n8n-text :class="$style.body">
-				<ExpressionOutput
-					data-test-id="inline-expression-editor-output"
-					:segments="segments"
-					:extensions="theme"
-				>
-				</ExpressionOutput>
-			</n8n-text>
-			<div v-if="!isReadOnly" :class="$style.footer">
-				<InlineExpressionTip
-					:editor-state="editorState"
-					:selection="selection"
-					:unresolved-expression="unresolvedExpression"
-				/>
-			</div>
-		</div>
-	</N8nPopover>
+		</template>
+	</N8nPopoverReka>
 </template>
 
 <style lang="scss" module>
-.popper {
-	background-color: transparent !important;
-	padding: 0 !important;
-	border: none !important;
+.popover {
+	border-top: none;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
 }
 
 .dropdown {
 	display: flex;
 	flex-direction: column;
 	background: var(--color-code-background);
-	border: var(--border-base);
-	border-top: none;
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;

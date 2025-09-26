@@ -30,6 +30,9 @@
         "conversationId": {
             "type": "string"
         },
+        "createdDateTime": {
+            "type": "string"
+        },
         "from": {
             "type": "object",
             "properties": {
@@ -52,15 +55,28 @@
         "id": {
             "type": "string"
         },
-        "sentDateTime": {
-            "type": "string"
+        "isRead": {
+            "type": "boolean"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "subject": {
             "type": "string"
-        },
-        "webLink": {
-            "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

@@ -13,30 +13,31 @@ export function useBuilderMessages() {
 	const locale = useI18n();
 
 	/**
+	 * Clear rating from all messages
+	 */
+	function clearRatingLogic(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+		return messages.map((message) => {
+			if (message.type === 'text' && 'showRating' in message) {
+				// Pick all properties except showRating and ratingStyle
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { showRating, ratingStyle, ...cleanMessage } = message;
+				return cleanMessage;
+			}
+			return message;
+		});
+	}
+
+	/**
 	 * Apply rating logic to messages - only show rating on the last AI text message after workflow-updated
 	 * when no tools are running
 	 */
 	function applyRatingLogic(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
-		// Check if any tools are still running
-		const hasRunningTools = messages.some(
-			(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).status === 'running',
-		);
+		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
 		// Don't apply rating if tools are still running
-		if (hasRunningTools) {
+		if (hasAnyRunningTools || isStillThinking) {
 			// Remove any existing ratings
-			return messages.map((message) => {
-				if (message.type === 'text' && 'showRating' in message) {
-					// Pick all properties except showRating and ratingStyle
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
-						showRating?: boolean;
-						ratingStyle?: string;
-					};
-					return cleanMessage;
-				}
-				return message;
-			});
+			return clearRatingLogic(messages);
 		}
 
 		// Find the index of the last workflow-updated message
@@ -82,10 +83,7 @@ export function useBuilderMessages() {
 			// Remove any existing rating from other messages
 			if (message.type === 'text' && 'showRating' in message) {
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
-					showRating?: boolean;
-					ratingStyle?: string;
-				};
+				const { showRating, ratingStyle, ...cleanMessage } = message;
 				return cleanMessage;
 			}
 			return message;
@@ -99,6 +97,7 @@ export function useBuilderMessages() {
 		messages: ChatUI.AssistantMessage[],
 		msg: ChatRequest.MessageResponse,
 		messageId: string,
+		retry?: () => Promise<void>,
 	): boolean {
 		let shouldClearThinking = false;
 
@@ -109,14 +108,14 @@ export function useBuilderMessages() {
 				type: 'text',
 				content: msg.text,
 				read: false,
-			} as ChatUI.AssistantMessage);
+			} satisfies ChatUI.AssistantMessage);
 			shouldClearThinking = true;
 		} else if (isWorkflowUpdatedMessage(msg)) {
 			messages.push({
 				...msg,
 				id: messageId,
 				read: false,
-			} as ChatUI.AssistantMessage);
+			} satisfies ChatUI.AssistantMessage);
 			// Don't clear thinking for workflow updates - they're just state changes
 		} else if (isToolMessage(msg)) {
 			processToolMessage(messages, msg, messageId);
@@ -129,6 +128,7 @@ export function useBuilderMessages() {
 				type: 'error',
 				content: msg.content,
 				read: false,
+				retry,
 			});
 			shouldClearThinking = true;
 		}
@@ -145,13 +145,11 @@ export function useBuilderMessages() {
 		messageId: string,
 	): void {
 		// Use toolCallId as the message ID for consistency across updates
-		const toolMessageId = msg.toolCallId || messageId;
+		const toolMessageId = msg.toolCallId ?? messageId;
 
 		// Check if we already have this tool message
 		const existingIndex = msg.toolCallId
-			? messages.findIndex(
-					(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).toolCallId === msg.toolCallId,
-				)
+			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
 			: -1;
 
 		if (existingIndex !== -1) {
@@ -171,6 +169,8 @@ export function useBuilderMessages() {
 				type: 'tool',
 				toolName: msg.toolName,
 				toolCallId: msg.toolCallId,
+				displayTitle: msg.displayTitle,
+				customDisplayTitle: msg.customDisplayTitle,
 				status: msg.status,
 				updates: msg.updates || [],
 				read: false,
@@ -180,46 +180,68 @@ export function useBuilderMessages() {
 	}
 
 	/**
-	 * Determine the thinking message based on tool states
+	 * If any tools are running, then it's still running tools and not done thinking
+	 * If all tools are done and no text response yet, then it's still thinking
+	 * Otherwise, it's done
+	 *
+	 * @param messages
+	 * @returns
 	 */
-	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
-		// Check ALL messages to determine state
+	function getThinkingState(messages: ChatUI.AssistantMessage[]): {
+		hasAnyRunningTools: boolean;
+		isStillThinking: boolean;
+	} {
 		const allToolMessages = messages.filter(
 			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
 		);
 		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
+		if (hasAnyRunningTools) {
+			return {
+				hasAnyRunningTools: true,
+				isStillThinking: false,
+			};
+		}
+
 		const hasCompletedTools = allToolMessages.some((msg) => msg.status === 'completed');
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const msg = messages[i];
-			if (msg.type === 'tool' && (msg as ChatUI.ToolMessage).status === 'completed') {
+			if (msg.type === 'tool' && msg.status === 'completed') {
 				lastCompletedToolIndex = i;
 				break;
 			}
 		}
 
-		// Check if there's any text message after the last completed tool
+		// Check if there's any text or custom message after the last completed tool
 		// Note: workflow-updated messages shouldn't count as they're just canvas state updates
-		let hasTextAfterTools = false;
+		// Custom messages (like plan messages) should count as responses
+		let hasResponseAfterTools = false;
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text') {
-					hasTextAfterTools = true;
+				if (msg.type === 'text' || msg.type === 'custom') {
+					hasResponseAfterTools = true;
 					break;
 				}
 			}
 		}
 
-		// - If any tools are running, show "Running tools..."
-		// - If all tools are done and no text response yet, show "Processing results..."
-		// - Otherwise, clear the thinking message
-		if (hasAnyRunningTools) {
-			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
-		} else if (hasCompletedTools && !hasTextAfterTools) {
-			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
+		return {
+			hasAnyRunningTools: false,
+			isStillThinking: hasCompletedTools && !hasResponseAfterTools,
+		};
+	}
+
+	/**
+	 * Determine the thinking message based on tool states
+	 */
+	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
+		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
+
+		if (!hasAnyRunningTools && isStillThinking) {
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}
 
 		return undefined;
@@ -229,6 +251,7 @@ export function useBuilderMessages() {
 		currentMessages: ChatUI.AssistantMessage[],
 		newMessages: ChatRequest.MessageResponse[],
 		baseId: string,
+		retry?: () => Promise<void>,
 	): MessageProcessingResult {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
@@ -236,20 +259,34 @@ export function useBuilderMessages() {
 		newMessages.forEach((msg, index) => {
 			// Generate unique ID for each message in the batch
 			const messageId = `${baseId}-${index}`;
-			const clearThinking = processSingleMessage(mutableMessages, msg, messageId);
+			const clearThinking = processSingleMessage(mutableMessages, msg, messageId, retry);
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});
 
 		const thinkingMessage = determineThinkingMessage(mutableMessages);
 
 		// Apply rating logic only to messages after workflow-updated
-		const finalMessages = applyRatingLogic(mutableMessages);
+		const messagesWithRatingLogic = applyRatingLogic(mutableMessages);
+
+		// Remove retry from all error messages except the last one
+		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(messagesWithRatingLogic);
 
 		return {
-			messages: finalMessages,
+			messages: messagesWithRetryLogic,
 			thinkingMessage,
 			shouldClearThinking: shouldClearThinking && mutableMessages.length > currentMessages.length,
 		};
+	}
+
+	function removeRetryFromOldErrorMessages(messages: ChatUI.AssistantMessage[]) {
+		// Remove retry from all error messages except the last one
+		return messages.map((message, index) => {
+			if (message.type === 'error' && message.retry && index !== messages.length - 1) {
+				const { retry, ...messageWithoutRetry } = message;
+				return messageWithoutRetry;
+			}
+			return message;
+		});
 	}
 
 	function createUserMessage(content: string, id: string): ChatUI.AssistantMessage {
@@ -259,7 +296,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content,
 			read: true,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function createAssistantMessage(content: string, id: string): ChatUI.AssistantMessage {
@@ -269,7 +306,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content,
 			read: true,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function createErrorMessage(
@@ -284,7 +321,7 @@ export function useBuilderMessages() {
 			content,
 			retry,
 			read: false,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function clearMessages(): ChatUI.AssistantMessage[] {
@@ -310,7 +347,7 @@ export function useBuilderMessages() {
 				type: 'text',
 				content: message.text,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		if (isWorkflowUpdatedMessage(message)) {
@@ -318,7 +355,7 @@ export function useBuilderMessages() {
 				...message,
 				id,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		if (isToolMessage(message)) {
@@ -328,10 +365,12 @@ export function useBuilderMessages() {
 				type: 'tool',
 				toolName: message.toolName,
 				toolCallId: message.toolCallId,
+				displayTitle: message.displayTitle,
+				customDisplayTitle: message.customDisplayTitle,
 				status: message.status,
 				updates: message.updates || [],
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		// Handle event messages
@@ -340,7 +379,7 @@ export function useBuilderMessages() {
 				...message,
 				id,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		// Default fallback
@@ -350,7 +389,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content: locale.baseText('aiAssistant.thinkingSteps.thinking'),
 			read: false,
-		} as ChatUI.AssistantMessage;
+		} satisfies ChatUI.AssistantMessage;
 	}
 
 	return {
@@ -361,5 +400,7 @@ export function useBuilderMessages() {
 		clearMessages,
 		addMessages,
 		mapAssistantMessageToUI,
+		applyRatingLogic,
+		clearRatingLogic,
 	};
 }

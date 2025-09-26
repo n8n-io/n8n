@@ -18,7 +18,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getChatInput() {
-		return this.page.getByTestId('chat-input');
+		return this.page.getByTestId('chat-input').locator('textarea');
 	}
 
 	getSendMessageButton() {

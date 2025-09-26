@@ -17,7 +17,6 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
 	return {
@@ -51,7 +50,11 @@ async function createPiniaStore(
 		{},
 	);
 
-	ndvStore.activeNodeName = activeNodeName;
+	if (activeNodeName) {
+		ndvStore.setActiveNodeName(activeNodeName, 'other');
+	} else {
+		ndvStore.unsetActiveNodeName();
+	}
 
 	await useSettingsStore().getSettings();
 	await useUsersStore().loginWithCookie();
@@ -70,12 +73,7 @@ describe('NodeDetailsViewV2', () => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -201,7 +199,7 @@ describe('NodeDetailsViewV2', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = 'Manual Trigger';
+			ndvStore.setActiveNodeName('Manual Trigger', 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 

@@ -52,7 +52,6 @@ const mockDataStore: DataStore = {
 	id: '1',
 	name: 'Test DataStore',
 	sizeBytes: 1024,
-	recordCount: 100,
 	columns: [],
 	createdAt: '2023-01-01T00:00:00.000Z',
 	updatedAt: '2023-01-01T00:00:00.000Z',
@@ -96,7 +95,7 @@ describe('DataStoreBreadcrumbs', () => {
 			});
 
 			expect(getByText('Data Stores')).toBeInTheDocument();
-			const separators = getAllByText('›');
+			const separators = getAllByText('/');
 			expect(separators.length).toBeGreaterThan(0);
 		});
 
@@ -153,7 +152,7 @@ describe('DataStoreBreadcrumbs', () => {
 			const datastoresLink = getByText('Data Stores');
 			await userEvent.click(datastoresLink);
 
-			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/datastores');
+			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/datatables');
 		});
 
 		it('should render DataStoreActions component that can trigger navigation', () => {
@@ -224,7 +223,7 @@ describe('DataStoreBreadcrumbs', () => {
 				}),
 			});
 
-			const separators = getAllByText('›');
+			const separators = getAllByText('/');
 			expect(separators.length).toBeGreaterThan(0);
 		});
 	});

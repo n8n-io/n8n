@@ -25,8 +25,12 @@ describe('ProjectDeleteDialog', () => {
 			props: {
 				currentProject,
 				projects: [],
-				isCurrentProjectEmpty: true,
 				modelValue: true,
+				resourceCounts: {
+					credentials: 0,
+					workflows: 0,
+					dataTables: 0,
+				},
 			},
 		});
 
@@ -43,8 +47,12 @@ describe('ProjectDeleteDialog', () => {
 				props: {
 					currentProject,
 					projects: [],
-					isCurrentProjectEmpty: false,
 					modelValue: true,
+					resourceCounts: {
+						credentials: 0,
+						workflows: 1,
+						dataTables: 0,
+					},
 				},
 			});
 

@@ -9,6 +9,10 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { CredentialApiHelper } from './credential-api-helper';
+import { ProjectApiHelper } from './project-api-helper';
+import { VariablesApiHelper } from './variables-api-helper';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;
@@ -30,10 +34,18 @@ const DB_TAGS = {
 } as const;
 
 export class ApiHelpers {
-	private request: APIRequestContext;
+	request: APIRequestContext;
+	workflowApi: WorkflowApiHelper;
+	projectApi: ProjectApiHelper;
+	credentialApi: CredentialApiHelper;
+	variablesApi: VariablesApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
+		this.workflowApi = new WorkflowApiHelper(this);
+		this.projectApi = new ProjectApiHelper(this);
+		this.credentialApi = new CredentialApiHelper(this);
+		this.variablesApi = new VariablesApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -210,6 +222,7 @@ export class ApiHelpers {
 				emailOrLdapLoginId: credentials.email,
 				password: credentials.password,
 			},
+			maxRetries: 3,
 		});
 
 		if (!response.ok()) {

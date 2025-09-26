@@ -118,6 +118,8 @@ import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/event-bus/canvas';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -164,6 +166,7 @@ export function useCanvasOperations() {
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
+	const focusPanelStore = useFocusPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -191,12 +194,18 @@ export function useCanvasOperations() {
 	 * Node operations
 	 */
 
-	function tidyUp({ result, source, target }: CanvasLayoutEvent) {
+	function tidyUp(
+		{ result, source, target }: CanvasLayoutEvent,
+		{ trackEvents = true }: { trackEvents?: boolean } = {},
+	) {
 		updateNodesPosition(
 			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
 			{ trackBulk: true, trackHistory: true },
 		);
-		trackTidyUp({ result, source, target });
+
+		if (trackEvents) {
+			trackTidyUp({ result, source, target });
+		}
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
@@ -331,7 +340,7 @@ export function useCanvasOperations() {
 
 		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.activeNodeName = newName;
+			ndvStore.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -535,22 +544,22 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function setNodeActive(id: string) {
+	function setNodeActive(id: string, source: TelemetryNdvSource) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
 		}
 
 		workflowsStore.setNodePristine(node.name, false);
-		setNodeActiveByName(node.name);
+		setNodeActiveByName(node.name, source);
 	}
 
-	function setNodeActiveByName(name: string) {
-		ndvStore.activeNodeName = name;
+	function setNodeActiveByName(name: string, source: TelemetryNdvSource) {
+		ndvStore.setActiveNodeName(name, source);
 	}
 
 	function clearNodeActive() {
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -793,19 +802,31 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
 
+			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
+			const nextView =
+				isStickyNode || !options.openNDV || preventOpeningNDV
+					? undefined
+					: experimentalNdvStore.isNdvInFocusPanelEnabled &&
+							focusPanelStore.focusPanelActive &&
+							focusPanelStore.resolvedParameter === undefined
+						? 'focus_panel'
+						: experimentalNdvStore.isZoomedViewEnabled
+							? 'zoomed_view'
+							: 'ndv';
+
 			if (options.telemetry) {
-				trackAddNode(nodeData, options);
+				trackAddNode(nodeData, options, nextView);
 			}
 
-			if (nodeData.type !== STICKY_NODE_TYPE) {
+			if (!isStickyNode) {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
-				if (options.openNDV && !preventOpeningNDV) {
-					if (experimentalNdvStore.isEnabled) {
-						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
-					} else {
-						ndvStore.setActiveNodeName(nodeData.name);
-					}
+				if (nextView === 'focus_panel') {
+					// Do nothing. The added node get selected and the details are shown in the focus panel
+				} else if (nextView === 'zoomed_view') {
+					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
+				} else if (nextView === 'ndv') {
+					ndvStore.setActiveNodeName(nodeData.name, 'added_new_node');
 				}
 			}
 		});
@@ -897,13 +918,13 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions, nextView?: TelemetryNdvType) {
 		switch (nodeData.type) {
 			case STICKY_NODE_TYPE:
 				trackAddStickyNoteNode();
 				break;
 			default:
-				trackAddDefaultNode(nodeData, options);
+				trackAddDefaultNode(nodeData, options, nextView);
 		}
 	}
 
@@ -913,7 +934,11 @@ export function useCanvasOperations() {
 		});
 	}
 
-	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddDefaultNode(
+		nodeData: INodeUi,
+		options: AddNodeOptions,
+		nextView?: TelemetryNdvType,
+	) {
 		// Extract action-related parameters from node parameters if available
 		const nodeParameters = nodeData.parameters;
 		const resource =
@@ -934,6 +959,7 @@ export function useCanvasOperations() {
 			resource,
 			operation,
 			action: options.actionName,
+			next_view_shown: nextView,
 		});
 	}
 
@@ -1862,12 +1888,14 @@ export function useCanvasOperations() {
 			trackHistory = true,
 			viewport,
 			regenerateIds = true,
+			trackEvents = true,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
 			trackHistory?: boolean;
 			regenerateIds?: boolean;
 			viewport?: ViewportBoundaries;
+			trackEvents?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -1924,37 +1952,43 @@ export function useCanvasOperations() {
 
 			removeUnknownCredentials(workflowData);
 
-			const nodeGraph = JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{
-						nodeIdMap,
-						sourceInstanceId:
-							workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
-								? workflowData.meta.instanceId
-								: '',
-						isCloudDeployment: settingsStore.isCloudDeployment,
-					},
-				).nodeGraph,
-			);
+			try {
+				if (trackEvents) {
+					const nodeGraph = JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							workflowHelpers.getNodeTypes(),
+							{
+								nodeIdMap,
+								sourceInstanceId:
+									workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+										? workflowData.meta.instanceId
+										: '',
+								isCloudDeployment: settingsStore.isCloudDeployment,
+							},
+						).nodeGraph,
+					);
 
-			if (source === 'paste') {
-				telemetry.track('User pasted nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else if (source === 'duplicate') {
-				telemetry.track('User duplicated nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else {
-				telemetry.track('User imported workflow', {
-					source,
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
+					if (source === 'paste') {
+						telemetry.track('User pasted nodes', {
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else if (source === 'duplicate') {
+						telemetry.track('User duplicated nodes', {
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else {
+						telemetry.track('User imported workflow', {
+							source,
+							workflow_id: workflowsStore.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					}
+				}
+			} catch {
+				// If telemetry fails, don't throw an error
 			}
 
 			// Fix the node position as it could be totally offscreen
@@ -1978,6 +2012,10 @@ export function useCanvasOperations() {
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
+			}
+
+			if (workflowData.name) {
+				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
 			}
 
 			return workflowData;
@@ -2188,7 +2226,7 @@ export function useCanvasOperations() {
 		if (nodeId) {
 			const node = workflowsStore.getNodeById(nodeId);
 			if (node) {
-				ndvStore.activeNodeName = node.name;
+				ndvStore.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),

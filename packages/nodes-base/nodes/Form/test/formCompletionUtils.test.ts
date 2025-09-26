@@ -118,12 +118,13 @@ describe('formCompletionUtils', () => {
 		it('should call sanitizeHtml on completionMessage', async () => {
 			const sanitizeHtmlSpy = jest.spyOn(utils, 'sanitizeHtml');
 			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';
+			const responseText = 'Response text';
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
 					completionTitle: 'Form Completion',
 					completionMessage: maliciousMessage,
-					responseText: 'Response text',
+					responseText,
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -132,7 +133,7 @@ describe('formCompletionUtils', () => {
 			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
 
 			expect(sanitizeHtmlSpy).toHaveBeenCalledWith(maliciousMessage);
-			expect(sanitizeHtmlSpy).toHaveBeenCalledWith('Response text');
+			expect(sanitizeHtmlSpy).toHaveBeenCalledTimes(1);
 			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: undefined,
 				formTitle: 'Form Title',
@@ -282,6 +283,25 @@ describe('formCompletionUtils', () => {
 					title: 'Form Completion',
 				});
 			}
+		});
+
+		it('should set Content-Security-Policy header with sandbox CSP', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+			expect(mockResponse.render).toHaveBeenCalled();
 		});
 	});
 

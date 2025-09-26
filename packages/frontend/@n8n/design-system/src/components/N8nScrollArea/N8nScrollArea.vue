@@ -118,6 +118,7 @@ const viewportStyle = computed(() => {
 	padding: var(--spacing-5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
+	pointer-events: none;
 
 	&:hover {
 		background: var(--color-foreground-light);
@@ -138,18 +139,7 @@ const viewportStyle = computed(() => {
 	background: var(--color-foreground-base);
 	border-radius: 4px;
 	position: relative;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 100%;
-		height: 100%;
-		min-width: 44px;
-		min-height: 44px;
-	}
+	pointer-events: auto;
 
 	&:hover {
 		background: var(--color-foreground-dark);

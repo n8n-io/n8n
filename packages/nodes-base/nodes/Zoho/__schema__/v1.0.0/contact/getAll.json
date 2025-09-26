@@ -82,6 +82,9 @@
         "$state": {
             "type": "string"
         },
+        "Asst_Phone": {
+            "type": "null"
+        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -102,8 +105,14 @@
         "Email_Opt_Out": {
             "type": "boolean"
         },
+        "Fax": {
+            "type": "null"
+        },
         "Full_Name": {
             "type": "string"
+        },
+        "Home_Phone": {
+            "type": "null"
         },
         "id": {
             "type": "string"
@@ -131,6 +140,9 @@
         "Modified_Time": {
             "type": "string"
         },
+        "Other_Phone": {
+            "type": "null"
+        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -145,6 +157,9 @@
                 }
             }
         },
+        "Reporting_To": {
+            "type": "null"
+        },
         "Tag": {
             "type": "array",
             "items": {
@@ -158,7 +173,13 @@
                     }
                 }
             }
+        },
+        "Unsubscribed_Mode": {
+            "type": "null"
+        },
+        "Unsubscribed_Time": {
+            "type": "null"
         }
     },
-    "version": 5
+    "version": 7
 }

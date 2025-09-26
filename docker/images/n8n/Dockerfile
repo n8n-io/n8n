@@ -1,6 +1,6 @@
 ARG NODE_VERSION=22
 ARG N8N_VERSION=snapshot
-ARG LAUNCHER_VERSION=1.1.5
+ARG LAUNCHER_VERSION=1.3.1
 ARG TARGETPLATFORM
 
 # ==============================================================================
@@ -62,8 +62,6 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node
 
-# Install npm@11.4.2 to fix brace-expansion vulnerability, remove after vulnerability is fixed in node image
-RUN npm install -g npm@11.4.2
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
 
 EXPOSE 5678/tcp

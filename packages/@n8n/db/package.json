@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "0.18.0",
+  "version": "0.24.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -38,7 +38,8 @@
     "p-lazy": "3.1.0",
     "reflect-metadata": "catalog:",
     "uuid": "catalog:",
-    "xss": "catalog:"
+    "xss": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

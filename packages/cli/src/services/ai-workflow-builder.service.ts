@@ -9,6 +9,8 @@ import type { IUser } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { UrlService } from '@/services/url.service';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -23,6 +25,8 @@ export class WorkflowBuilderService {
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+		private readonly push: Push,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -43,7 +47,27 @@ export class WorkflowBuilderService {
 				});
 			}
 
-			this.service = new AiWorkflowBuilderService(this.nodeTypes, client, this.logger);
+			// Create callback that uses the push service
+			const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+				this.push.sendToUsers(
+					{
+						type: 'updateBuilderCredits',
+						data: {
+							creditsQuota,
+							creditsClaimed,
+						},
+					},
+					[userId],
+				);
+			};
+
+			this.service = new AiWorkflowBuilderService(
+				this.nodeTypes,
+				client,
+				this.logger,
+				this.urlService.getInstanceBaseUrl(),
+				onCreditsUpdated,
+			);
 		}
 		return this.service;
 	}
@@ -57,5 +81,10 @@ export class WorkflowBuilderService {
 		const service = await this.getService();
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
+	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		const service = await this.getService();
+		return await service.getBuilderInstanceCredits(user);
 	}
 }

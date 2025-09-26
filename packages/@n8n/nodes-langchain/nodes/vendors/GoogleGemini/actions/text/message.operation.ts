@@ -1,15 +1,22 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
+	validateNodeParameters,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import type { GenerateContentResponse, Content, Tool } from '../../helpers/interfaces';
+import type {
+	GenerateContentRequest,
+	GenerateContentResponse,
+	Content,
+	Tool,
+	GenerateContentGenerationConfig,
+} from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -187,6 +194,18 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Thinking Budget',
+				name: 'thinkingBudget',
+				type: 'number',
+				default: undefined,
+				description:
+					'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode.',
+				typeOptions: {
+					minValue: -1,
+					numberPrecision: 0,
+				},
+			},
+			{
 				displayName: 'Max Tool Calls Iterations',
 				name: 'maxToolsIterations',
 				type: 'number',
@@ -224,8 +243,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
+	validateNodeParameters(
+		options,
+		{
+			systemMessage: { type: 'string', required: false },
+			codeExecution: { type: 'boolean', required: false },
+			frequencyPenalty: { type: 'number', required: false },
+			maxOutputTokens: { type: 'number', required: false },
+			candidateCount: { type: 'number', required: false },
+			presencePenalty: { type: 'number', required: false },
+			temperature: { type: 'number', required: false },
+			topP: { type: 'number', required: false },
+			topK: { type: 'number', required: false },
+			thinkingBudget: { type: 'number', required: false },
+			maxToolsIterations: { type: 'number', required: false },
+		},
+		this.getNode(),
+	);
 
-	const generationConfig = {
+	const generationConfig: GenerateContentGenerationConfig = {
 		frequencyPenalty: options.frequencyPenalty,
 		maxOutputTokens: options.maxOutputTokens,
 		candidateCount: options.candidateCount,
@@ -235,6 +271,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		topK: options.topK,
 		responseMimeType: jsonOutput ? 'application/json' : undefined,
 	};
+
+	// Add thinkingConfig if thinkingBudget is specified
+	if (options.thinkingBudget !== undefined) {
+		generationConfig.thinkingConfig = {
+			thinkingBudget: options.thinkingBudget,
+		};
+	}
 
 	const nodeInputs = this.getNodeInputs();
 	const availableTools = nodeInputs.some((i) => i.type === 'ai_tool')
@@ -267,7 +310,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		parts: [{ text: m.content }],
 		role: m.role,
 	}));
-	const body = {
+	const body: GenerateContentRequest = {
 		tools,
 		contents,
 		generationConfig,

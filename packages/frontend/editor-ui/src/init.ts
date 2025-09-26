@@ -1,37 +1,55 @@
-import { h } from 'vue';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useVersionsStore } from '@/stores/versions.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { useRolesStore } from './stores/roles.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import { useToast } from '@/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
-import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature } from '@/constants';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
-import type { BannerName } from '@n8n/api-types';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { usePostHog } from '@/stores/posthog.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRBACStore } from '@/stores/rbac.store';
+import { useToast } from '@/composables/useToast';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
+	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
-	registerModuleModals,
+	registerModuleSettingsPages,
 } from '@/moduleInitializer/moduleInitializer';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useRBACStore } from '@/stores/rbac.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import type { BannerName } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { h } from 'vue';
+import { useRolesStore } from './stores/roles.store';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 export const state = {
 	initialized: false,
 };
 let authenticatedFeaturesInitialized = false;
+
+/**
+ * EXP: Ready to run V2
+ * Tracks user visits and determines if trial banner should show
+ * Returns true if this is not the user's first visit
+ */
+function shouldShowTrialBanner(): boolean {
+	const VISIT_COUNT_KEY = 'n8n-trial-visit-count';
+	const currentCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) ?? '0', 10);
+	const newCount = currentCount + 1;
+
+	localStorage.setItem(VISIT_COUNT_KEY, newCount.toString());
+
+	// Don't show banner on first visit
+	return newCount > 1;
+}
 
 /**
  * Initializes the core application stores and hooks
@@ -111,6 +129,7 @@ export async function initializeCore() {
  */
 export async function initializeAuthenticatedFeatures(
 	initialized: boolean = authenticatedFeaturesInitialized,
+	routeName?: string,
 ) {
 	if (initialized) {
 		return;
@@ -133,6 +152,7 @@ export async function initializeAuthenticatedFeatures(
 	const insightsStore = useInsightsStore();
 	const uiStore = useUIStore();
 	const versionsStore = useVersionsStore();
+	const dataStoreStore = useDataStoreStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -159,7 +179,7 @@ export async function initializeAuthenticatedFeatures(
 				if (cloudPlanStore.userIsTrialing) {
 					if (cloudPlanStore.trialExpired) {
 						uiStore.pushBannerToStack('TRIAL_OVER');
-					} else {
+					} else if (shouldShowTrialBanner()) {
 						uiStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
@@ -171,11 +191,27 @@ export async function initializeAuthenticatedFeatures(
 			});
 	}
 
+	if (settingsStore.isDataTableFeatureEnabled) {
+		void dataStoreStore
+			.fetchDataStoreSize()
+			.then(({ quotaStatus }) => {
+				if (quotaStatus === 'error') {
+					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_ERROR');
+				} else if (quotaStatus === 'warn') {
+					uiStore.pushBannerToStack('DATA_STORE_STORAGE_LIMIT_WARNING');
+				}
+			})
+			.catch((error) => {
+				console.error('Failed to fetch data table limits:', error);
+			});
+	}
+
 	if (insightsStore.isSummaryEnabled) {
 		void insightsStore.weeklySummary.execute();
 	}
 
-	if (!settingsStore.isPreviewMode) {
+	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
+	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
 		void versionsStore.checkForNewVersions();
 	}
 
@@ -190,6 +226,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerModuleSettingsPages();
 
 	authenticatedFeaturesInitialized = true;
 }
@@ -203,12 +240,14 @@ function registerAuthenticationHooks() {
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 
 	usersStore.registerLoginHook((user) => {
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id);
+		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+		void settingsStore.getModuleSettings();
 	});
 
 	usersStore.registerLogoutHook(() => {

@@ -109,13 +109,18 @@ export const useExecutionDebugging = () => {
 		let pinnings = 0;
 
 		pinnableNodes.forEach((node: INodeUi) => {
-			const nodeData = runData[node.name]?.[0]?.data?.main?.[0];
-			if (nodeData) {
-				pinnings++;
-				workflowsStore.pinData({
-					node,
-					data: nodeData,
-				});
+			const taskData = runData[node.name]?.[0];
+			if (taskData?.data?.main) {
+				// Get the first main output that has data, preserving all execution data including binary
+				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
+				if (nodeData) {
+					pinnings++;
+					workflowsStore.pinData({
+						node,
+						data: nodeData,
+						isRestoration: true,
+					});
+				}
 			}
 		});
 

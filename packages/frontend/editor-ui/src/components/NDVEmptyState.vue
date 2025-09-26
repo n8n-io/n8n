@@ -1,17 +1,22 @@
 <script setup lang="ts">
-defineProps<{ title: string }>();
+import { N8nIcon } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
+const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }>();
 
 defineSlots<{
 	icon(): unknown;
-	description(): unknown;
+	default(): unknown;
 }>();
 </script>
 
 <template>
-	<article :class="$style.empty">
-		<slot name="icon" />
-		<h1 :class="$style.title">{{ title }}</h1>
-		<p :class="$style.description"><slot name="description" /></p>
+	<article :class="[$style.empty, { [$style.wide]: wide }]">
+		<slot name="icon">
+			<N8nIcon v-if="icon" :icon="icon" size="xlarge" />
+		</slot>
+		<h1 v-if="title" :class="$style.title">{{ title }}</h1>
+		<p :class="$style.description"><slot /></p>
 	</article>
 </template>
 
@@ -36,7 +41,12 @@ defineSlots<{
 
 .description {
 	font-size: var(--font-size-s);
-	max-width: 180px;
 	margin: 0;
+	text-align: center;
+	max-width: 240px;
+
+	.wide & {
+		max-width: none;
+	}
 }
 </style>

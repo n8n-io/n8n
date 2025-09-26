@@ -35,6 +35,11 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	parentFolderId?: string;
 
+	@IsBoolean()
+	@IsOptional()
+	@Expose()
+	availableInMCP?: boolean;
+
 	@IsArray()
 	@IsString({ each: true })
 	@IsOptional()

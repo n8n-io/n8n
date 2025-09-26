@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.17.0",
+  "version": "0.23.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -20,8 +20,9 @@
     "deps:report": "madge src/index.ts --json > deps-report.json && echo 'Dependency report saved to deps-report.json'",
     "deps:orphans": "madge src/index.ts --orphans",
     "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
-    "eval": "tsx evaluations/run-evaluation.ts",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations/run-evaluation.ts"
+    "eval": "tsx evaluations",
+    "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -46,6 +47,7 @@
     "@n8n/di": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "langsmith": "^0.3.45",
+    "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
     "zod": "catalog:"
@@ -53,10 +55,10 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/cli-progress": "^3.11.5",
-    "p-limit": "^3.1.0",
     "cli-progress": "^3.12.0",
     "cli-table3": "^0.6.3",
     "jest-mock-extended": "^3.0.4",
-    "madge": "^8.0.0"
+    "madge": "^8.0.0",
+    "p-limit": "^3.1.0"
   }
 }

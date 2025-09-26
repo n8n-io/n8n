@@ -2,14 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import {
+	isWebhookHtmlSandboxingDisabled,
+	getWebhookSandboxCSP,
 	isHtmlRenderedContentType,
-	sandboxHtmlResponse,
-	createHtmlSandboxTransformStream,
 } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { Readable } from 'stream';
 import { finished } from 'stream/promises';
-
-import { WebhookService } from './webhook.service';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
@@ -24,6 +23,7 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
+import { WebhookService } from '@/webhooks/webhook.service';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -68,20 +68,12 @@ class WebhookRequestHandler {
 			// Modern way of responding to webhooks
 			if (isWebhookResponse(response)) {
 				await this.sendWebhookResponse(res, response);
-			} else {
+			} else if (response.noWebhookResponse !== true) {
 				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
 				// pass the response from the webhookManager. However, we still have code
 				// that doesn't use that yet. We need to keep this here until all codepaths
 				// return a `WebhookResponse` instead.
-				if (response.noWebhookResponse !== true) {
-					ResponseHelper.sendSuccessResponse(
-						res,
-						response.data,
-						true,
-						response.responseCode,
-						response.headers,
-					);
-				}
+				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -126,12 +118,8 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		const contentType = res.getHeader('content-type') as string | undefined;
-		const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
-
-		const streamToSend = needsSandbox ? stream.pipe(createHtmlSandboxTransformStream()) : stream;
-		streamToSend.pipe(res, { end: false });
-		await finished(streamToSend);
+		stream.pipe(res, { end: false });
+		await finished(stream);
 
 		process.nextTick(() => res.end());
 	}
@@ -142,19 +130,10 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		const contentType = res.getHeader('content-type') as string | undefined;
-
 		if (typeof body === 'string') {
-			const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
-			const bodyToSend = needsSandbox ? sandboxHtmlResponse(body) : body;
-			res.send(bodyToSend);
+			res.send(body);
 		} else {
-			const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
-			if (needsSandbox) {
-				res.send(sandboxHtmlResponse(body));
-			} else {
-				res.json(body);
-			}
+			res.json(body);
 		}
 	}
 
@@ -169,6 +148,47 @@ class WebhookRequestHandler {
 			for (const [name, value] of headers.entries()) {
 				res.setHeader(name, value);
 			}
+		}
+
+		const contentType = res.getHeader('content-type') as string | undefined;
+		const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
+
+		if (needsSandbox && !isWebhookHtmlSandboxingDisabled()) {
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+		}
+	}
+
+	/**
+	 * Sends a legacy response to the client, i.e. when the webhook response is not a `WebhookResponse`.
+	 * @deprecated Use `sendWebhookResponse` instead.
+	 */
+	private sendLegacyResponse(
+		res: express.Response,
+		data: any,
+		raw?: boolean,
+		responseCode?: number,
+		responseHeader?: object,
+	) {
+		this.setResponseStatus(res, responseCode);
+		if (responseHeader) {
+			this.setResponseHeaders(res, new Map(Object.entries(responseHeader)));
+		}
+
+		if (data instanceof Readable) {
+			data.pipe(res);
+			return;
+		}
+
+		if (raw === true) {
+			if (typeof data === 'string') {
+				res.send(data);
+			} else {
+				res.json(data);
+			}
+		} else {
+			res.json({
+				data,
+			});
 		}
 	}
 

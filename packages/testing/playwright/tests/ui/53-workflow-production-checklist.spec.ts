@@ -5,13 +5,13 @@ const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 test.describe('Workflow Production Checklist', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 	});
 
 	test('should show suggested actions automatically when workflow is first activated', async ({
 		n8n,
 	}) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
@@ -30,12 +30,11 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should display evaluations action when AI node exists and feature is enabled', async ({
 		n8n,
-		api,
 	}) => {
-		await api.enableFeature('evaluation');
+		await n8n.api.enableFeature('evaluation');
 
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
-		await n8n.canvas.addNodeAndCloseNDV('OpenAI', 'Create an assistant');
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.addNode('OpenAI', { action: 'Create an assistant', closeNDV: true });
 
 		await n8n.canvas.nodeDisableButton('Create an assistant').click();
 
@@ -56,7 +55,7 @@ test.describe('Workflow Production Checklist', () => {
 	test('should open workflow settings modal when error workflow action is clicked', async ({
 		n8n,
 	}) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -73,7 +72,7 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should open workflow settings modal when time saved action is clicked', async ({ n8n }) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -89,7 +88,7 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should allow ignoring individual actions', async ({ n8n }) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -109,7 +108,7 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should show completed state for configured actions', async ({ n8n }) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -134,7 +133,7 @@ test.describe('Workflow Production Checklist', () => {
 	});
 
 	test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
-		await n8n.canvas.addNodeAndCloseNDV(SCHEDULE_TRIGGER_NODE_NAME);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();
 		await expect(n8n.workflowActivationModal.getModal()).toBeVisible();

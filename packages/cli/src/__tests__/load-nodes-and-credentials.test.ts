@@ -30,7 +30,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});
@@ -58,7 +58,7 @@ describe('LoadNodesAndCredentials', () => {
 	});
 
 	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 
 		let fullNodeWrapper: { description: INodeTypeDescription };
 
@@ -290,7 +290,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.knownNodes['n8n-nodes-base.test'] = {
 				className: 'Test',
 				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
@@ -330,7 +330,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.types.nodes = [
 				{
 					name: 'testNode',
@@ -443,6 +443,135 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('shouldAddDomainRestrictions', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+		});
+		it('should return true for credentials with authenticate property', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				authenticate: {},
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for credentials with genericAuth set to true', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				genericAuth: true,
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for credentials extending oAuth2Api', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				extends: ['oAuth2Api'],
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for credentials extending oAuth1Api', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				extends: ['oAuth1Api'],
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return true for credentials extending googleOAuth2Api', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				extends: ['googleOAuth2Api'],
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return true when extending multiple APIs including OAuth', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				extends: ['someOtherApi', 'oAuth2Api', 'anotherApi'],
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return false for credentials without authenticate, genericAuth, or OAuth extensions', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(false);
+		});
+
+		it('should return false for credentials with extends that does not include OAuth types', () => {
+			const credential = {
+				name: 'testCredential',
+				displayName: 'Test Credential',
+				extends: ['someOtherApi', 'anotherApi'],
+				properties: [],
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(false);
+		});
+
+		it('should handle LoadedClass credential objects with type property', () => {
+			const credential = {
+				type: {
+					name: 'testCredential',
+					displayName: 'Test Credential',
+					authenticate: {},
+					properties: [],
+				},
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(true);
+		});
+
+		it('should return false for LoadedClass credential objects without auth-related properties', () => {
+			const credential = {
+				type: {
+					name: 'testCredential',
+					displayName: 'Test Credential',
+					properties: [],
+				},
+			};
+
+			const result = (instance as any).shouldAddDomainRestrictions(credential);
+			expect(result).toBe(false);
+		});
+	});
+
 	describe('setupHotReload', () => {
 		let instance: LoadNodesAndCredentials;
 
@@ -455,7 +584,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory

@@ -28,6 +28,8 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { inject } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
 type Props = {
 	parameter: INodeProperties;
@@ -72,7 +74,16 @@ const wrapperHovered = ref(false);
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const activeNode = computed(() => {
+	const ctx = expressionLocalResolveCtx?.value;
+
+	if (ctx) {
+		return ctx.workflow.getNode(ctx.nodeName);
+	}
+
+	return ndvStore.activeNode;
+});
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {
@@ -318,6 +329,7 @@ function removeOverride(clearField = false) {
 		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
+		:input-name="parameter.name"
 		color="text-dark"
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"

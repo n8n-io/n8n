@@ -1,6 +1,10 @@
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
-import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
-import type { RestrictedInsightsByTime } from '@n8n/api-types/src/schemas/insights.schema';
+import type {
+	RestrictedInsightsByTime,
+	InsightsSummary,
+	InsightsByTime,
+	InsightsByWorkflow,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import type { UserError } from 'n8n-workflow';
@@ -36,11 +40,12 @@ export class InsightsController {
 	async getInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query payload: InsightsDateFilterDto = { dateRange: 'week' },
+		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
-		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(payload);
+		const dateRangeAndMaxAgeInDays = this.getMaxAgeInDaysAndGranularity(query);
 		return await this.insightsService.getInsightsSummary({
 			periodLengthInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
+			projectId: query.projectId,
 		});
 	}
 
@@ -60,6 +65,7 @@ export class InsightsController {
 			skip: payload.skip,
 			take: payload.take,
 			sortBy: payload.sortBy,
+			projectId: payload.projectId,
 		});
 	}
 
@@ -78,6 +84,7 @@ export class InsightsController {
 		return (await this.insightsService.getInsightsByTime({
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
+			projectId: payload.projectId,
 		})) as InsightsByTime[];
 	}
 
@@ -100,6 +107,7 @@ export class InsightsController {
 			maxAgeInDays: dateRangeAndMaxAgeInDays.maxAgeInDays,
 			periodUnit: dateRangeAndMaxAgeInDays.granularity,
 			insightTypes: ['time_saved_min'],
+			projectId: payload.projectId,
 		})) as RestrictedInsightsByTime[];
 	}
 }

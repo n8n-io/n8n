@@ -11,8 +11,9 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 	ITaskData,
+	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
+import { FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -30,6 +31,7 @@ import {
 import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
 export const mockNode = ({
 	id = uuid(),
@@ -56,6 +58,7 @@ export const mockNode = ({
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	displayName = name,
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
@@ -66,23 +69,13 @@ export const mockNodeTypeDescription = ({
 	group,
 	hidden,
 	description,
-}: {
-	name?: INodeTypeDescription['name'];
-	icon?: INodeTypeDescription['icon'];
-	version?: INodeTypeDescription['version'];
-	credentials?: INodeTypeDescription['credentials'];
-	inputs?: INodeTypeDescription['inputs'];
-	outputs?: INodeTypeDescription['outputs'];
-	codex?: INodeTypeDescription['codex'];
-	properties?: INodeTypeDescription['properties'];
-	group?: INodeTypeDescription['group'];
-	hidden?: INodeTypeDescription['hidden'];
-	description?: INodeTypeDescription['description'];
-} = {}) =>
+	webhooks,
+	eventTriggerDescription,
+}: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
-		displayName: name,
+		displayName,
 		description: description ?? '',
 		version,
 		defaults: {
@@ -98,9 +91,10 @@ export const mockNodeTypeDescription = ({
 		credentials,
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks: undefined,
+		webhooks,
 		parameterPane: undefined,
 		hidden,
+		eventTriggerDescription,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
@@ -117,6 +111,7 @@ export const mockNodes = [
 	mockNode({ name: 'Code', type: CODE_NODE_TYPE }),
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
@@ -223,6 +218,16 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 	};
 }
 
+export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
+	return {
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		...data,
+	};
+}
+
 export function createMockEnterpriseSettings(
 	overrides: Partial<FrontendSettings['enterprise']> = {},
 ): FrontendSettings['enterprise'] {
@@ -283,6 +288,24 @@ export function createTestWorkflowExecutionResponse(
 		},
 		createdAt: '2025-04-16T00:00:00.000Z',
 		startedAt: '2025-04-16T00:00:01.000Z',
+		...data,
+	};
+}
+
+export function createTestExpressionLocalResolveContext(
+	data: Partial<ExpressionLocalResolveContext> = {},
+): ExpressionLocalResolveContext {
+	const workflow = data.workflow ?? createTestWorkflowObject();
+
+	return {
+		localResolve: true,
+		workflow,
+		nodeName: 'n0',
+		inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		envVars: {},
+		additionalKeys: {},
+		connections: workflow.connectionsBySourceNode,
+		execution: null,
 		...data,
 	};
 }

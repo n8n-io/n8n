@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type {
+	AddColumnResponse,
+	DataStore,
+	DataStoreColumnCreatePayload,
+} from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { DATA_STORE_VIEW, MIN_LOADING_TIME } from '@/features/dataStore/constants';
 import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBreadcrumbs.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 
 type Props = {
 	id: string;
@@ -24,7 +31,11 @@ const documentTitle = useDocumentTitle();
 const dataStoreStore = useDataStoreStore();
 
 const loading = ref(false);
+const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
+const dataStoreTableRef = ref<InstanceType<typeof DataStoreTable>>();
+
+const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
@@ -40,6 +51,7 @@ const initialize = async () => {
 		const response = await dataStoreStore.fetchOrFindDataStore(props.id, props.projectId);
 		if (response) {
 			dataStore.value = response;
+			documentTitle.set(`${i18n.baseText('dataStore.dataStores')} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataStore.notFound')));
 		}
@@ -50,12 +62,38 @@ const initialize = async () => {
 	}
 };
 
-const onAddColumnClick = () => {
-	toast.showMessage({
-		type: 'warning',
-		message: 'Coming soon',
-		duration: 3000,
-	});
+// Debounce creating new timer slightly if saving is initiated fast in succession
+const debouncedSetSaving = debounce(
+	(value: boolean) => {
+		saving.value = value;
+	},
+	{ debounceTime: 50, trailing: true },
+);
+
+// Debounce hiding the saving indicator so users can see saving state
+const debouncedHideSaving = debounce(
+	() => {
+		saving.value = false;
+	},
+	{ debounceTime: MIN_LOADING_TIME, trailing: true },
+);
+
+const onToggleSave = (value: boolean) => {
+	if (value) {
+		debouncedSetSaving(true);
+	} else {
+		debouncedHideSaving();
+	}
+};
+
+const onAddColumn = async (column: DataStoreColumnCreatePayload): Promise<AddColumnResponse> => {
+	if (!dataStoreTableRef.value) {
+		return {
+			success: false,
+			errorMessage: i18n.baseText('dataStore.error.tableNotInitialized'),
+		};
+	}
+	return await dataStoreTableRef.value.addColumn(column);
 };
 
 onMounted(async () => {
@@ -66,7 +104,7 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style['data-store-details-view']">
-		<div v-if="loading" class="loading">
+		<div v-if="loading" data-test-id="data-store-details-loading">
 			<n8n-loading
 				variant="h1"
 				:loading="true"
@@ -79,16 +117,26 @@ onMounted(async () => {
 		<div v-else-if="dataStore">
 			<div :class="$style.header">
 				<DataStoreBreadcrumbs :data-store="dataStore" />
+				<div v-if="saving" :class="$style.saving">
+					<n8n-spinner />
+					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
+				</div>
+				<div :class="$style.actions">
+					<n8n-button @click="dataStoreTableRef?.addRow">{{
+						i18n.baseText('dataStore.addRow.label')
+					}}</n8n-button>
+					<AddColumnButton
+						:use-text-trigger="true"
+						:popover-id="'ds-details-add-column-popover'"
+						:params="{ onAddColumn }"
+					/>
+				</div>
 			</div>
 			<div :class="$style.content">
-				<n8n-action-box
-					v-if="dataStore.columns.length === 0"
-					data-test-id="empty-shared-action-box"
-					:heading="i18n.baseText('dataStore.noColumns.heading')"
-					:description="i18n.baseText('dataStore.noColumns.description')"
-					:button-text="i18n.baseText('dataStore.noColumns.button.label')"
-					button-type="secondary"
-					@click:button="onAddColumnClick"
+				<DataStoreTable
+					ref="dataStoreTableRef"
+					:data-store="dataStore"
+					@toggle-save="onToggleSave"
 				/>
 			</div>
 		</div>
@@ -101,15 +149,11 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
 	box-sizing: border-box;
 	align-content: start;
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .header-loading {
-	margin-bottom: var(--spacing-xl);
-
 	div {
 		height: 2em;
 	}
@@ -117,8 +161,25 @@ onMounted(async () => {
 
 .header {
 	display: flex;
+	gap: var(--spacing-l);
 	align-items: center;
-	justify-content: space-between;
-	margin-bottom: var(--spacing-xl);
+}
+
+.header,
+.header-loading {
+	padding: var(--spacing-s);
+}
+
+.saving {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	margin-top: var(--spacing-5xs);
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing-3xs);
+	margin-left: auto;
 }
 </style>

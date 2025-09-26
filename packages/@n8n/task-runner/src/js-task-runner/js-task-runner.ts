@@ -48,7 +48,6 @@ import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface RpcCallObject {
@@ -57,6 +56,8 @@ export interface RpcCallObject {
 
 export interface JSExecSettings {
 	code: string;
+	// Additional properties to add to the context
+	additionalProperties?: Record<string, unknown>;
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
@@ -240,12 +241,13 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
-	): Promise<INodeExecutionData[]> {
+	): Promise<TaskResultData['result']> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
+			...settings.additionalProperties,
 		});
 
 		try {
@@ -278,7 +280,7 @@ export class JsTaskRunner extends TaskRunner {
 				return [];
 			}
 
-			return validateRunForAllItemsOutput(result);
+			return result;
 		} catch (e) {
 			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
 			const error = this.toExecutionErrorIfNeeded(e);
@@ -310,7 +312,13 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const context = this.buildContext(
+			taskId,
+			workflow,
+			data.node,
+			undefined,
+			settings.additionalProperties,
+		);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);
@@ -318,7 +326,7 @@ export class JsTaskRunner extends TaskRunner {
 			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
-				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+				const result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
 					const abortHandler = () => {
 						reject(new TimeoutError(this.taskTimeout));
 					};
@@ -348,17 +356,23 @@ export class JsTaskRunner extends TaskRunner {
 					continue;
 				}
 
-				result = validateRunForEachItemOutput(result, index);
 				if (result) {
+					let jsonData;
+					if (isObject(result) && 'json' in result) {
+						jsonData = result.json;
+					} else {
+						jsonData = result;
+					}
+
 					returnData.push(
 						result.binary
 							? {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 									binary: result.binary,
 								}
 							: {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 								},
 					);

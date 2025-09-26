@@ -29,12 +29,9 @@
         "sessionId": {
             "type": "string"
         },
-        "warnings": {
-            "type": "null"
-        },
         "windowId": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

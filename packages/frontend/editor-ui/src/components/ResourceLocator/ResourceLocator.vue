@@ -55,6 +55,7 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
+import { useProjectsStore } from '@/stores/projects.store';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -144,6 +145,7 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -270,6 +272,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
+		projectId: projectsStore.currentProjectId,
 	};
 });
 
@@ -364,10 +367,13 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value
+					? searchFilter.value
+					: (addNewResourceOptions.defaultName ?? ''),
 			},
 		}),
 		method: addNewResourceOptions.method,
+		url: addNewResourceOptions.url,
 	};
 });
 
@@ -376,7 +382,23 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const { method: addNewResourceMethodName, url: redirectUrl } = allowNewResources.value;
+
+	if (redirectUrl) {
+		let resolvedUrl = redirectUrl;
+
+		if (resolvedUrl.includes('{{$projectId}}')) {
+			resolvedUrl = resolvedUrl.replace(
+				/\{\{\$projectId\}\}/g,
+				projectsStore.currentProjectId ?? '',
+			);
+		}
+
+		hideResourceDropdown();
+		openResource(resolvedUrl);
+		return;
+	}
+
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
@@ -414,7 +436,9 @@ const handleAddResourceClick = async () => {
 };
 
 const onAddResourceClicked = computed(() =>
-	allowNewResources.value ? handleAddResourceClick : undefined,
+	allowNewResources.value && (allowNewResources.value.method || allowNewResources.value.url)
+		? handleAddResourceClick
+		: undefined,
 );
 
 watch(currentQueryError, (curr, prev) => {
@@ -608,7 +632,8 @@ function onModeSelected(value: string): void {
 	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
-		emit('update:modelValue', { __rl: true, mode: value, value: '' });
+		const currentValue = props.modelValue?.value ?? '';
+		emit('update:modelValue', { __rl: true, mode: value, value: currentValue });
 	}
 
 	trackEvent('User changed resource locator mode', { mode: value });
@@ -721,6 +746,7 @@ async function loadResources() {
 			methodName: loadOptionsMethod,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
+			projectId: projectsStore.currentProjectId,
 		};
 
 		if (params.filter) {
@@ -907,7 +933,7 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
-			:model-value="modelValue ? modelValue.value : ''"
+			:model-value="modelValue"
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"

@@ -9,6 +9,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import type { Mock } from 'vitest';
+import { type Project } from '@/types/projects.types';
 
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
@@ -60,6 +62,7 @@ vi.mock('@/composables/useDocumentTitle', () => ({
 
 const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
+	debounce: vi.fn(),
 };
 vi.mock('@/composables/useDebounce', () => ({
 	useDebounce: vi.fn(() => mockDebounce),
@@ -69,7 +72,7 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes: [
 		{
-			path: '/projects/:projectId/data-stores',
+			path: '/projects/:projectId/data-tables',
 			component: { template: '<div></div>' },
 		},
 		{
@@ -102,7 +105,6 @@ const TEST_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
 	sizeBytes: 1024,
-	recordCount: 100,
 	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
@@ -113,7 +115,7 @@ const TEST_DATA_STORE: DataStoreResource = {
 describe('DataStoreView', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		await router.push('/projects/test-project/data-stores');
+		await router.push('/projects/test-project/data-tables');
 		await router.isReady();
 
 		pinia = createTestingPinia({ initialState });
@@ -126,7 +128,7 @@ describe('DataStoreView', () => {
 		dataStoreStore.totalCount = 1;
 		dataStoreStore.fetchDataStores = vi.fn().mockResolvedValue(undefined);
 
-		projectsStore.getCurrentProjectId = vi.fn(() => 'test-project');
+		projectsStore.currentProjectId = '';
 		sourceControlStore.isProjectShared = vi.fn(() => false);
 	});
 
@@ -135,10 +137,23 @@ describe('DataStoreView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('', 1, 25);
 			expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();
 		});
 
+		it('should filter by project if not on overview sub page', async () => {
+			(useProjectPages as Mock).mockReturnValue({
+				isOverviewSubPage: false,
+			});
+			projectsStore.currentProjectId = 'test-project';
+			projectsStore.currentProject = {
+				id: 'test-project',
+			} as Project;
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+		});
 		it('should set document title on mount', async () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
@@ -224,7 +239,7 @@ describe('DataStoreView', () => {
 			await waitAllPromises();
 
 			// Initial call should use default page size of 25
-			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('', 1, 25);
 		});
 	});
 });

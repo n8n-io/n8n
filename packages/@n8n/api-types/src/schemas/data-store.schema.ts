@@ -2,20 +2,23 @@ import { z } from 'zod';
 
 import type { ListDataStoreQueryDto } from '../dto';
 
+export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
+
 export const dataStoreNameSchema = z.string().trim().min(1).max(128);
 export const dataStoreIdSchema = z.string().max(36);
 
-export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
+// Postgres does not allow leading numbers or -
+export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+export const DATA_STORE_COLUMN_MAX_LENGTH = 63; // Postgres has a maximum of 63 characters
+export const DATA_STORE_COLUMN_ERROR_MESSAGE =
+	'Only alphabetical characters and non-leading numbers and underscores are allowed for column names, and the maximum length is 63 characters.';
 
 export const dataStoreColumnNameSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(128)
-	.regex(
-		DATA_STORE_COLUMN_REGEX,
-		'Only alphanumeric characters and non-leading dashes are allowed for column names',
-	);
+	.max(DATA_STORE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
+	.regex(DATA_STORE_COLUMN_REGEX, DATA_STORE_COLUMN_ERROR_MESSAGE);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 export const dataStoreCreateColumnSchema = z.object({
@@ -39,8 +42,6 @@ export const dataStoreSchema = z.object({
 export type DataStore = z.infer<typeof dataStoreSchema>;
 export type DataStoreColumn = z.infer<typeof dataStoreColumnSchema>;
 
-export type DataStoreUserTableName = `data_store_user_${string}`;
-
 export type DataStoreListFilter = {
 	id?: string | string[];
 	projectId?: string | string[];
@@ -51,6 +52,16 @@ export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
 
-export type DataStoreColumnJsType = string | number | boolean | Date;
+export const dateTimeSchema = z
+	.string()
+	.datetime({ offset: true })
+	.transform((s) => new Date(s))
+	.pipe(z.date());
 
-export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
+export const dataStoreColumnValueSchema = z.union([
+	z.string(),
+	z.number(),
+	z.boolean(),
+	z.null(),
+	z.date(),
+]);

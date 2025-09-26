@@ -22,7 +22,7 @@ function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 			requestTimeout: 10000,
 		}),
 		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 1 }),
+		getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
 		continueOnFail: jest.fn().mockReturnValue(true),
 		helpers: {
 			constructExecutionMetaData,
@@ -79,5 +79,30 @@ describe('MicrosoftSql Node', () => {
 		expect(result).toEqual([[{ json: { value: 1 }, pairedItem: [{ item: 0 }] }]]);
 		expect(mockRequest.query).toHaveBeenCalledWith('SELECT 1 AS value');
 		expect(mockPool.close).toHaveBeenCalled();
+	});
+
+	test('correctly resolves expressions (does not remove $ characters)', async () => {
+		const queryResult = { recordsets: [[{ value: 1 }]] };
+		const mockRequest = { query: jest.fn().mockResolvedValue(queryResult) };
+		const mockPool = mock<mssql.ConnectionPool>({
+			connect: jest.fn().mockResolvedValue(undefined),
+			close: jest.fn(),
+			request: jest.fn().mockReturnValue(mockRequest),
+		});
+
+		mockedConnectionPool.mockReturnValue(mockPool);
+
+		const node = new MicrosoftSql();
+		const context = getMockedExecuteFunctions({
+			getNodeParameter: jest
+				.fn()
+				.mockReturnValueOnce('executeQuery')
+				.mockReturnValueOnce("SELECT '{{ '$$$' }}'"),
+		});
+		context.evaluateExpression.mockReturnValue('$$$');
+
+		await node.execute.call(context);
+
+		expect(mockRequest.query).toHaveBeenCalledWith("SELECT '$$$'");
 	});
 });

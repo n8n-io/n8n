@@ -16,10 +16,12 @@ export const LOG_SCOPES = [
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'task-runner-js',
+	'task-runner-py',
 	'insights',
 	'workflow-activation',
 	'ssh-client',
-	'data-store',
+	'data-table',
 	'cron',
 	'community-nodes',
 	'legacy-sqlite-execution-recovery',
@@ -112,7 +114,8 @@ export class LoggingConfig {
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
-	 * - `task-runner`
+	 * - `task-runner-js`
+	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
 	 *

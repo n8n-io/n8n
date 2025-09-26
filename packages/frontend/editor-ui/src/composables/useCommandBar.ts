@@ -113,7 +113,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
 					: '',
 				handler: () => {
-					setNodeActive(id);
+					setNodeActive(id, 'command_bar');
 				},
 			};
 		});

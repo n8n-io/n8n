@@ -8,10 +8,12 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	dataStore: DataStore;
 	isReadOnly?: boolean;
+	location: 'card' | 'breadcrumbs';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -33,19 +35,25 @@ const dataStoreStore = useDataStoreStore();
 const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
+const telemetry = useTelemetry();
 
-const actions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: props.isReadOnly,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: props.isReadOnly,
-	},
-]);
+const actions = computed<Array<UserAction<IUser>>>(() => {
+	const availableActions = [
+		{
+			label: i18n.baseText('generic.delete'),
+			value: DATA_STORE_CARD_ACTIONS.DELETE,
+			disabled: props.isReadOnly,
+		},
+	];
+	if (props.location === 'breadcrumbs') {
+		availableActions.unshift({
+			label: i18n.baseText('generic.rename'),
+			value: DATA_STORE_CARD_ACTIONS.RENAME,
+			disabled: props.isReadOnly,
+		});
+	}
+	return availableActions;
+});
 
 const onAction = async (action: string) => {
 	switch (action) {
@@ -87,6 +95,10 @@ const deleteDataStore = async () => {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		emit('onDeleted');
+		telemetry.track('User deleted data table', {
+			data_table_id: props.dataStore.id,
+			data_table_project_id: props.dataStore.projectId,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.delete.error'));
 	}

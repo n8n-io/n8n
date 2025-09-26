@@ -26,6 +26,7 @@ export class TaskRunnerSentry {
 			environment,
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
+			withEventLoopBlockDetection: false,
 		});
 	}
 

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="T extends string">
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
@@ -19,7 +19,7 @@ import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: ActionDropdownItem[];
+	items: Array<ActionDropdownItem<T>>;
 	placement?: Placement;
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
@@ -29,6 +29,7 @@ interface ActionDropdownProps {
 	teleported?: boolean;
 	disabled?: boolean;
 	extraPopperClass?: string;
+	maxHeight?: string | number;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -40,13 +41,14 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	hideArrow: false,
 	teleported: true,
 	disabled: false,
+	maxHeight: '',
 });
 
 const attrs = useAttrs();
 const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -56,13 +58,13 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 };
 
 const emit = defineEmits<{
-	select: [action: string];
+	select: [action: T];
 	visibleChange: [open: boolean];
 }>();
 
 defineSlots<{
 	activator: {};
-	menuItem: (props: ActionDropdownItem) => void;
+	menuItem: (props: ActionDropdownItem<T>) => void;
 }>();
 
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
@@ -72,7 +74,7 @@ const popperClass = computed(
 		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
 );
 
-const onSelect = (action: string) => emit('select', action);
+const onSelect = (action: T) => emit('select', action);
 const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
@@ -96,6 +98,7 @@ defineExpose({ open, close });
 			:popper-class="popperClass"
 			:teleported="teleported"
 			:disabled="disabled"
+			:max-height="maxHeight"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -199,6 +202,7 @@ defineExpose({ open, close });
 }
 
 .icon {
+	display: flex;
 	text-align: center;
 	margin-right: var(--spacing-2xs);
 

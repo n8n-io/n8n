@@ -3,7 +3,7 @@ import Node from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import Modal from '@/components/Modal.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { STICKY_NODE_TYPE, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import DiffBadge from '@/features/workflow-diff/DiffBadge.vue';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
 import SyncedWorkflowCanvas from '@/features/workflow-diff/SyncedWorkflowCanvas.vue';
@@ -13,14 +13,23 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -28,13 +37,15 @@ const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-const { selectedDetailId, onNodeClick } = useProvideViewportSync();
+const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
 const telemetry = useTelemetry();
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -83,8 +94,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -117,6 +128,17 @@ const settingsDiff = computed(() => {
 		}
 		return acc;
 	}, []);
+
+	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name;
+	const targetName = targetWorkFlow.value.state.value?.workflow?.name;
+
+	if (sourceName && targetName && sourceName !== targetName) {
+		settings.unshift({
+			name: 'name',
+			before: sourceName,
+			after: targetName,
+		});
+	}
 
 	const sourceTags = (sourceWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
 		typeof tag === 'string' ? tag : tag.name,
@@ -252,15 +274,63 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
+	// Custom replacer to exclude certain properties and format others
+	function replacer(key: string, value: unknown, nodeType?: string) {
+		if (key === 'position') {
+			return undefined; // exclude this property
+		}
+
+		if (
+			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
+			typeof value === 'string'
+		) {
+			return value.split('\n');
+		}
+
+		return value;
+	}
+
+	const withNodeType = (type?: string) => (key: string, value: unknown) =>
+		replacer(key, value, type);
+
 	return {
-		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
-		newString: JSON.stringify(targetNode, null, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
+		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
 	};
 });
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
+
+	// Check if we have history to go back to avoid empty navigation issues
+	if (window.history.length > 1) {
+		// Use router.back() to maintain proper navigation flow when possible
+		router.back();
+	} else {
+		// Fallback to query parameter manipulation when no navigation history
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
 }
+
+// Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', handleEscapeKey, true);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', handleEscapeKey, true);
+});
 
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
@@ -342,9 +412,10 @@ const modifiers = [
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		:close-on-press-escape="false"
 		@before-close="handleBeforeClose"
 	>
-		<template #header="{ closeDialog }">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
@@ -352,9 +423,9 @@ const modifiers = [
 						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
-						@click="closeDialog"
+						@click="handleBeforeClose"
 					></N8nIconButton>
-					<N8nHeading tag="h1" size="xlarge">
+					<N8nHeading tag="h4" size="medium">
 						{{
 							sourceWorkFlow.state.value?.workflow?.name ||
 							targetWorkFlow.state.value?.workflow?.name
@@ -362,7 +433,13 @@ const modifiers = [
 					</N8nHeading>
 				</div>
 
-				<div>
+				<div :class="$style.headerRight">
+					<N8nCheckbox
+						v-model="syncIsEnabled"
+						label-size="small"
+						label="Sync views"
+						class="mb-0 mr-s"
+					/>
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -370,10 +447,9 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary">
+						<N8nButton type="secondary" style="--button-border-radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -503,16 +579,17 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
-						class="mr-2xs"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
-					></N8nIconButton>
+					/>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0 4px 4px 0"
 						@click="nextNodeChange"
-					></N8nIconButton>
+					/>
 				</div>
 			</div>
 		</template>
@@ -875,8 +952,8 @@ const modifiers = [
 }
 
 .dropdownContent {
-	width: 320px;
-	padding: 2px 0 2px 12px;
+	min-width: 320px;
+	padding: 0 12px;
 
 	ul {
 		list-style: none;
@@ -938,7 +1015,8 @@ const modifiers = [
 	}
 }
 
-.headerLeft {
+.headerLeft,
+.headerRight {
 	display: flex;
 	align-items: center;
 }

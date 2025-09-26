@@ -474,6 +474,14 @@ describe('useImportCurlCommand', () => {
 			]);
 		});
 
+		test('Should parse cURL command with a comma in query parameter value', () => {
+			const curl = 'curl "https://example.com?bla=blu,bli"';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.url).toBe('https://example.com');
+			expect(parameters.sendQuery).toBe(true);
+			expect(parameters.queryParameters?.parameters).toEqual([{ name: 'bla', value: 'blu,bli' }]);
+		});
+
 		test('Should parse cURL command with custom header and no content type', () => {
 			const curl = 'curl -X GET https://reqbin.com/echo -H "Authorization: Bearer token"';
 			const parameters = toHttpNodeParameters(curl);

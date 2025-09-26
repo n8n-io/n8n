@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { LLMServiceError } from '../errors';
 import type { ParameterUpdaterOptions } from '../types/config';
+import { instanceUrlPrompt } from './prompts/instance-url';
 import { ParameterUpdatePromptBuilder } from './prompts/prompt-builder';
 
 export const parametersSchema = z
@@ -39,7 +40,6 @@ const workflowContextPrompt = `
 <current_execution_nodes_schemas>
 {execution_schema}
 </current_execution_nodes_schemas>
-
 
 <selected_node>
 Name: {node_name}
@@ -88,7 +88,6 @@ export const createParameterUpdaterChain = (
 			{
 				type: 'text',
 				text: systemPromptContent,
-				cache_control: { type: 'ephemeral' },
 			},
 		],
 	});
@@ -99,7 +98,10 @@ export const createParameterUpdaterChain = (
 				{
 					type: 'text',
 					text: nodeDefinitionPrompt,
-					cache_control: { type: 'ephemeral' },
+				},
+				{
+					type: 'text',
+					text: instanceUrlPrompt,
 				},
 			],
 		],
