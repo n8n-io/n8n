@@ -53,6 +53,7 @@ export type Props = {
 	focusedMappableInput: string;
 	isMappingOnboarded: boolean;
 	nodeNotRunMessageVariant?: 'default' | 'simple';
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -424,6 +425,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:disable-ai-content="true"
 		:collapsing-table-column-name="collapsingColumnName"
 		:compact="compact"
+		:truncate-limit="truncateLimit"
 		:disable-display-mode-selection="disableDisplayModeSelection"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"

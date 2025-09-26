@@ -35,6 +35,7 @@
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "@n8n/db": "workspace:*",
     "flatted": "catalog:",
     "nanoid": "catalog:",
     "otplib": "^12.0.1",
