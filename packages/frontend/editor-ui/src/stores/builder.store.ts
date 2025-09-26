@@ -481,8 +481,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
-		creditsQuota.value = 10;
-		creditsClaimed.value = 10;
+		creditsQuota.value = quota;
+		creditsClaimed.value = claimed;
 	}
 
 	// Public API
