@@ -1028,10 +1028,10 @@ describe('AskAssistantChat', () => {
 					directives: { n8nHtml },
 					stubs: {
 						...Object.fromEntries(
-							stubs.filter((stub) => stub !== 'n8n-prompt-input').map((stub) => [stub, true]),
+							stubs.filter((stub) => stub !== 'N8nPromptInput').map((stub) => [stub, true]),
 						),
-						'message-wrapper': MessageWrapperStub,
-						'n8n-prompt-input': {
+						MessageWrapper: MessageWrapperStub,
+						N8nPromptInput: {
 							name: 'n8n-prompt-input',
 							props: [
 								'modelValue',
