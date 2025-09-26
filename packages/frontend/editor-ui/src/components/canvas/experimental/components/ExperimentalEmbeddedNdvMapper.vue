@@ -46,9 +46,12 @@ const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, ho
 const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
 
 function handleFocusIn() {
-	if (!experimentalNdvStore.isMapperOpen) {
-		state.value = { isOpen: true, closeOnMouseLeave: false };
+	if (experimentalNdvStore.isMapperOpen) {
+		// Skip if there's already a mapper opened
+		return;
 	}
+
+	state.value = { isOpen: true, closeOnMouseLeave: false };
 }
 
 function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
@@ -57,6 +60,7 @@ function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
 		isEventTargetContainedBy(event.target, contentElRef) ||
 		isEventTargetContainedBy(event.relatedTarget, contentElRef)
 	) {
+		// Skip when focus moves between the mapper and its reference element
 		return;
 	}
 
