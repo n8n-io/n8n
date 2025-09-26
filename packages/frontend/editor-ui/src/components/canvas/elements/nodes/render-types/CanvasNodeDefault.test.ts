@@ -1,13 +1,26 @@
-import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
-import { createComponentRenderer } from '@/__tests__/render';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import { fireEvent } from '@testing-library/vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
+import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
+import { VIEWS } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
+import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
+import type * as actualVueRouter from 'vue-router';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as typeof actualVueRouter),
+		useRoute: vi.fn(),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	global: {
@@ -17,12 +30,18 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 	},
 });
 
+let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+const mockedUseRoute = vi.mocked(useRoute);
+
 beforeEach(() => {
+	vi.clearAllMocks();
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const workflowsStore = useWorkflowsStore();
+	nodeTypesStore = mockedStore(useNodeTypesStore);
 	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
 	workflowsStore.workflowObject = workflowObject;
+	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 });
 
 describe('CanvasNodeDefault', () => {
@@ -114,6 +133,33 @@ describe('CanvasNodeDefault', () => {
 
 			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
 			expect(getByText('(Deactivated)')).toBeVisible();
+		});
+
+		it('should apply disabled class when node is not installed', () => {
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('disabled');
+		});
+
+		it('should not apply disabled class when node is not installed and route is demo', () => {
+			mockedUseRoute.mockReturnValue({
+				name: VIEWS.DEMO,
+			} as RouteLocationNormalizedLoadedGeneric);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-test.testNode' } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
 		});
 
 		it('should not apply disabled class when node is enabled', () => {

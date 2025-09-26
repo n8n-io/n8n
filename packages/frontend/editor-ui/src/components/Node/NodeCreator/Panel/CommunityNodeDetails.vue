@@ -65,8 +65,10 @@ const updateStoresAndViewStack = (key: string) => {
 const onInstall = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
-		await installNode({ type: 'verified', packageName, nodeType: key });
-		updateStoresAndViewStack(key);
+		const result = await installNode({ type: 'verified', packageName, nodeType: key });
+		if (result.success) {
+			updateStoresAndViewStack(key);
+		}
 	}
 };
 </script>

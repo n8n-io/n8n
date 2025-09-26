@@ -9,10 +9,11 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
+import ContactAdministratorToInstall from './ContactAdministratorToInstall.vue';
 
 const { node } = defineProps<{ node: INodeUi }>();
 
@@ -22,6 +23,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const ndvStore = useNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const usersStore = useUsersStore();
 
 const isCommunityNode = computed(() => isCommunityPackageName(node.type));
 const isVerifiedCommunityNode = computed(
@@ -30,7 +32,7 @@ const isVerifiedCommunityNode = computed(
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
 const npmPackage = computed(() => node.type.split('.')[0]);
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const isOwner = computed(() => usersStore.isInstanceOwner);
 
 const { installNode, loading } = useInstallNode();
 
@@ -109,10 +111,15 @@ watch(isNodeDefined, () => {
 					:disabled="loading"
 					@click="onInstallClick"
 				>
-					Install
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installButton.label') }}
 				</N8nButton>
-				<N8nButton icon="external-link" type="secondary" @click="onViewDetailsClick">
-					View details
+				<N8nButton
+					icon="external-link"
+					type="secondary"
+					@click="onViewDetailsClick"
+					data-test-id="view-details-button"
+				>
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.viewDetailsButton.label') }}
 				</N8nButton>
 			</div>
 			<ContactAdministratorToInstall v-else :box="false" />

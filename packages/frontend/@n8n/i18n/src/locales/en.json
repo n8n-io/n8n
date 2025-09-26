@@ -1512,6 +1512,8 @@
 	"nodeSettings.communityNodeUnknown.title": "Install this node to use it",
 	"nodeSettings.communityNodeUnknown.description": "This node is not currently installed. It's part of the {action} community package.",
 	"nodeSettings.communityNodeUnknown.installLink.text": "How to install community nodes",
+	"nodeSettings.communityNodeUnknown.installButton.label": "Install",
+	"nodeSettings.communityNodeUnknown.viewDetailsButton.label": "View details",
 	"nodeSettings.nodeTypeUnknown.description": "This node is not currently installed. It is either from a newer version of n8n, a {action}, or has an invalid structure",
 	"nodeSettings.nodeTypeUnknown.description.customNode": "custom node",
 	"nodeSettings.thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters",
