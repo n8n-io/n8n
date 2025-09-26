@@ -90,6 +90,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/types';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -135,7 +136,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -149,6 +150,7 @@ type Props = {
 	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,7 +159,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -1380,7 +1382,7 @@ defineExpose({ enterEditMode });
 			{
 				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
 		]"
 		@mouseover="activatePane"
@@ -1442,7 +1444,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -1727,27 +1729,28 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
-				<N8nText bold color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.title') }}
-				</N8nText>
-				<N8nText>
-					{{ i18n.baseText('runData.trimmedData.message') }}
-				</N8nText>
-			</div>
+			<NDVEmptyState
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="$style.center"
+				:title="i18n.baseText('runData.trimmedData.title')"
+			>
+				{{ i18n.baseText('runData.trimmedData.message') }}
+			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
-					{{
+				<NDVEmptyState
+					v-if="isPaneTypeInput"
+					:class="$style.center"
+					:title="
 						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
 							interpolate: { nodeName: node?.name ?? '' },
 						})
-					}}
-				</N8nText>
+					"
+				/>
 				<div v-else-if="$slots['content']">
 					<NodeErrorView
 						v-if="workflowRunErrorAsNodeError"
@@ -1776,15 +1779,13 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 			>
 				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
-					<template #description>
-						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</I18nT>
-					</template>
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+						<template #link>
+							<a href="#" @click.prevent="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</I18nT>
 				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
@@ -1803,16 +1804,15 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
-				<N8nText align="center" tag="div"
-					><span
+				<NDVEmptyState :title="tooMuchDataTitle">
+					<span
 						v-n8n-html="
 							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
-					></span
-				></N8nText>
+					/>
+				</NDVEmptyState>
 
 				<N8nButton
 					outline
@@ -1853,15 +1853,13 @@ defineExpose({ enterEditMode });
 				:class="$style.center"
 				:title="i18n.baseText('ndv.search.noMatch.title')"
 			>
-				<template #description>
-					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-						<template #link>
-							<a href="#" @click="onSearchClear">
-								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-							</a>
-						</template>
-					</I18nT>
-				</template>
+				<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+					<template #link>
+						<a href="#" @click="onSearchClear">
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</I18nT>
 			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
@@ -1928,6 +1926,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:class="$style.schema"
 					:compact="props.compact"
+					:truncate-limit="props.truncateLimit"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -2141,15 +2140,17 @@ defineExpose({ enterEditMode });
 	}
 
 	.showActionsOnHover & {
-		visibility: hidden;
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
+	.showActionsOnHover:focus-within &,
 	.showActionsOnHover:hover & {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 

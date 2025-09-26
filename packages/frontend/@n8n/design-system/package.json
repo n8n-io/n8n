@@ -47,7 +47,8 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "vue-tsc": "catalog:frontend"
+    "vue-tsc": "catalog:frontend",
+    "@vue/test-utils": "catalog:frontend"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",

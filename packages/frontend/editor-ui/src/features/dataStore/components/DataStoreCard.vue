@@ -51,9 +51,9 @@ const getDataStoreSize = computed(() => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
-						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
+						<N8nText tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
-						</n8n-text>
+						</N8nText>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
