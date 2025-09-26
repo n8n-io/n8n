@@ -56,6 +56,14 @@ export class SidebarPage {
 		return this.page.getByTestId('user-menu-item-logout');
 	}
 
+	getAdminPanel(): Locator {
+		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
 	async openUserMenu(): Promise<void> {
 		await this.getUserMenu().click();
 	}

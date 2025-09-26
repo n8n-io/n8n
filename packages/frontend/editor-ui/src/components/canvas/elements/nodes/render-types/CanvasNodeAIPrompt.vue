@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import N8nPromptInput from '@n8n/design-system/components/N8nPromptInput/N8nPromptInput.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
@@ -29,7 +30,6 @@ const workflowSaver = useWorkflowSaving({ router });
 // Component state
 const prompt = ref('');
 const userEditedPrompt = ref(false);
-const isFocused = ref(false);
 const isLoading = ref(false);
 
 // Computed properties
@@ -111,40 +111,26 @@ function onAddNodeClick() {
 
 		<!-- Prompt input section -->
 		<section
-			:class="[$style.promptContainer, { [$style.focused]: isFocused }]"
+			:class="$style.promptContainer"
 			@click.stop
 			@dblclick.stop
 			@mousedown.stop
 			@scroll.stop
 			@wheel.stop
 		>
-			<form :class="$style.form" @submit.prevent="onSubmit">
-				<n8n-input
-					v-model="prompt"
-					name="aiBuilderPrompt"
-					:class="$style.formTextarea"
-					type="textarea"
-					:disabled="isLoading || builderStore.streaming"
-					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
-					:read-only="false"
-					:rows="15"
-					:maxlength="1000"
-					@focus="isFocused = true"
-					@blur="isFocused = false"
-					@keydown.meta.enter.stop="onSubmit"
-					@input="userEditedPrompt = true"
-				/>
-				<footer :class="$style.formFooter">
-					<n8n-button
-						native-type="submit"
-						:disabled="!hasContent || builderStore.streaming"
-						:loading="isLoading"
-						@keydown.enter="onSubmit"
-					>
-						{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWorkflow') }}
-					</n8n-button>
-				</footer>
-			</form>
+			<N8nPromptInput
+				v-model="prompt"
+				:class="$style.promptInput"
+				:disabled="isLoading"
+				:streaming="builderStore.streaming"
+				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+				:max-lines-before-scroll="4"
+				:min-lines="2"
+				data-test-id="ai-builder-prompt"
+				@submit="onSubmit"
+				@stop="builderStore.stopStreaming"
+				@input="userEditedPrompt = true"
+			/>
 		</section>
 
 		<!-- Suggestion pills section -->
@@ -208,70 +194,13 @@ function onAddNodeClick() {
 /* Prompt Input Section */
 .promptContainer {
 	display: flex;
-	height: 128px;
-	padding: var(--spacing-xs);
-	padding-left: var(--spacing-s);
 	flex-direction: column;
-	justify-content: flex-end;
-	align-items: flex-end;
 	gap: var(--spacing-s);
 	align-self: stretch;
-	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-foreground-xdark);
-	background: var(--color-background-xlight);
-	transition: border-color 0.2s ease;
-
-	&.focused {
-		border-color: var(--prim-color-secondary);
-	}
 }
 
-.form {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
+.promptInput {
 	width: 100%;
-	gap: var(--spacing-xs);
-}
-
-.formTextarea {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-	border: 0;
-
-	:global(.el-textarea__inner) {
-		height: 100%;
-		min-height: 0;
-		overflow-y: auto;
-		border: 0;
-		background: transparent;
-		resize: none;
-		font-family: var(--font-family);
-		padding: 0;
-
-		/* Custom scrollbar styles */
-		@supports not (selector(::-webkit-scrollbar)) {
-			scrollbar-width: thin;
-		}
-		@supports selector(::-webkit-scrollbar) {
-			&::-webkit-scrollbar {
-				width: var(--spacing-2xs);
-			}
-			&::-webkit-scrollbar-thumb {
-				border-radius: var(--spacing-xs);
-				background: var(--color-foreground-dark);
-				border: var(--spacing-5xs) solid white;
-			}
-		}
-	}
-}
-
-.formFooter {
-	display: flex;
-	justify-content: flex-end;
 }
 
 /* Suggestion Pills Section */

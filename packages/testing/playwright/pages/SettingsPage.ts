@@ -124,4 +124,8 @@ export class SettingsPage extends BasePage {
 		await this.getMfaCodeOrRecoveryCodeInput().fill(code);
 		await this.getMfaSaveButton().click();
 	}
+
+	getUpgradeCta(): Locator {
+		return this.page.getByTestId('public-api-upgrade-cta');
+	}
 }

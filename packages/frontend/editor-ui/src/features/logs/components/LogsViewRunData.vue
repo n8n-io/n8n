@@ -11,12 +11,15 @@ import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import { type SearchShortcut } from '@/types';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
 	collapsingTableColumnName: string | null;
+	searchShortcut?: SearchShortcut;
 }>();
 
 const emit = defineEmits<{
@@ -95,6 +98,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:is-executing="isExecuting"
 		table-header-bg-color="light"
 		:collapsing-table-column-name="collapsingTableColumnName"
+		:search-shortcut="searchShortcut"
 		@display-mode-change="handleChangeDisplayMode"
 		@collapsing-table-column-changed="emit('collapsingTableColumnChanged', $event)"
 	>
@@ -109,16 +113,13 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		</template>
 
 		<template #no-output-data>
-			<N8nText :bold="true" color="text-dark" size="large">
-				{{ locale.baseText('ndv.output.noOutputData.title') }}
-			</N8nText>
+			<NDVEmptyState :title="locale.baseText('ndv.output.noOutputData.title')" />
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">
-				{{ locale.baseText('ndv.output.waitNodeWaiting.title') }}
-			</N8nText>
-			<N8nText v-n8n-html="waitingNodeTooltip(logEntry.node)"></N8nText>
+			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
+				<span v-n8n-html="waitingNodeTooltip(logEntry.node)" />
+			</NDVEmptyState>
 		</template>
 
 		<template v-if="isMultipleInput" #content>
