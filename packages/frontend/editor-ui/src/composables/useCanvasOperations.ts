@@ -30,6 +30,7 @@ import {
 	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
+	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
@@ -113,8 +114,13 @@ import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { canvasEventBus } from '@/event-bus/canvas';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
+import { useRoute, useRouter } from 'vue-router';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { tryToParseNumber } from '@/utils/typesUtils';
+import { useParentFolder } from './useParentFolder';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -160,6 +166,7 @@ export function useCanvasOperations() {
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
+	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 
 	const i18n = useI18n();
@@ -170,6 +177,10 @@ export function useCanvasOperations() {
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
+	const { fetchAndSetParentFolder } = useParentFolder();
+
+	const router = useRouter();
+	const route = useRoute();
 
 	const lastClickPosition = ref<XYPosition>([0, 0]);
 
@@ -2282,6 +2293,107 @@ export function useCanvasOperations() {
 		return true;
 	}
 
+	function fitView() {
+		setTimeout(() => canvasEventBus.emit('fitView'));
+	}
+
+	function trackOpenWorkflowTemplate(templateId: string) {
+		telemetry.track('User inserted workflow template', {
+			source: 'workflow',
+			template_id: tryToParseNumber(templateId),
+			wf_template_repo_session_id: templatesStore.previousSessionId,
+		});
+	}
+
+	async function openWorkflowTemplate(templateId: string) {
+		resetWorkspace();
+
+		canvasStore.startLoading();
+		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+		workflowsStore.currentWorkflowExecutions = [];
+		executionsStore.activeExecution = null;
+
+		let data: IWorkflowTemplate | undefined;
+		try {
+			void externalHooks.run('template.requested', { templateId });
+
+			data = await templatesStore.getFixedWorkflowTemplate(templateId);
+			if (!data) {
+				throw new Error(
+					i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
+						interpolate: { templateId },
+					}),
+				);
+			}
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.couldntImportWorkflow'));
+			await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			return;
+		}
+
+		trackOpenWorkflowTemplate(templateId);
+
+		uiStore.isBlankRedirect = true;
+		await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+
+		await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
+
+		uiStore.stateIsDirty = true;
+
+		canvasStore.stopLoading();
+
+		void externalHooks.run('template.open', {
+			templateId,
+			templateName: data.name,
+			workflow: data.workflow,
+		});
+
+		fitView();
+	}
+
+	async function openWorkflowTemplateFromJSON(workflow: WorkflowDataWithTemplateId) {
+		if (!workflow.nodes || !workflow.connections) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+				i18n.baseText('nodeView.couldntImportWorkflow'),
+			);
+			await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			return;
+		}
+		resetWorkspace();
+
+		canvasStore.startLoading();
+		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+		workflowsStore.currentWorkflowExecutions = [];
+		executionsStore.activeExecution = null;
+
+		uiStore.isBlankRedirect = true;
+		const templateId = workflow.meta.templateId;
+		const parentFolderId = route.query.parentFolderId as string | undefined;
+
+		await projectsStore.refreshCurrentProject();
+		await fetchAndSetParentFolder(parentFolderId);
+
+		await router.replace({
+			name: VIEWS.NEW_WORKFLOW,
+			query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
+		});
+
+		await importTemplate({
+			id: templateId,
+			name: workflow.name,
+			workflow,
+		});
+
+		uiStore.stateIsDirty = true;
+
+		canvasStore.stopLoading();
+
+		fitView();
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2336,5 +2448,8 @@ export function useCanvasOperations() {
 		importTemplate,
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
+		fitView,
+		openWorkflowTemplate,
+		openWorkflowTemplateFromJSON,
 	};
 }

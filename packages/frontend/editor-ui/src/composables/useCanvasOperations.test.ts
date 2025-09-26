@@ -11,7 +11,13 @@ import { NodeConnectionTypes, NodeHelpers, UserError } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type {
+	ICredentialsResponse,
+	IExecutionResponse,
+	INodeUi,
+	IWorkflowDb,
+	WorkflowDataWithTemplateId,
+} from '@/Interface';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -39,19 +45,35 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
-import { nextTick, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 
 import { TelemetryHelpers } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
+import { useTemplatesStore } from '@/stores/templates.store';
+
+const mockRoute = reactive({
+	query: {},
+});
+
+const mockRouterReplace = vi.fn();
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	useRouter: () => ({
+		replace: mockRouterReplace,
+	}),
+}));
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -4171,6 +4193,91 @@ describe('useCanvasOperations', () => {
 			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
 			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(2);
 			expect(workflowsStore.addConnection).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('openWorkflowTemplate', () => {
+		let templatesStore: ReturnType<typeof mockedStore<typeof useTemplatesStore>>;
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+
+		beforeEach(() => {
+			templatesStore = mockedStore(useTemplatesStore);
+			workflowsStore = mockedStore(useWorkflowsStore);
+			projectsStore = mockedStore(useProjectsStore);
+
+			projectsStore.currentProjectId = 'test-project-id';
+		});
+
+		it('should open workflow template', async () => {
+			const router = useRouter();
+			const telemetry = useTelemetry();
+
+			templatesStore.getFixedWorkflowTemplate = vi.fn().mockReturnValue({
+				id: 'workflow-id',
+				name: 'Template Name',
+				workflow: { nodes: [], connections: {} },
+			});
+
+			const { openWorkflowTemplate } = useCanvasOperations();
+			await openWorkflowTemplate('template-id');
+
+			expect(templatesStore.getFixedWorkflowTemplate).toHaveBeenCalledWith('template-id');
+			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
+				'Template Name',
+				'test-project-id',
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User inserted workflow template', {
+				source: 'workflow',
+				template_id: 'template-id',
+				wf_template_repo_session_id: '',
+			});
+			expect(router.replace).toHaveBeenCalledWith({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { templateId: 'template-id' },
+			});
+		});
+	});
+
+	describe('openWorkflowTempalateFromJSON', () => {
+		let router: ReturnType<typeof useRouter>;
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+		let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+
+		beforeEach(() => {
+			router = useRouter();
+			workflowsStore = mockedStore(useWorkflowsStore);
+			projectsStore = mockedStore(useProjectsStore);
+
+			projectsStore.currentProjectId = 'test-project-id';
+		});
+
+		it('should open workflow template from JSON', async () => {
+			const template: WorkflowDataWithTemplateId = {
+				id: 'workflow-id',
+				name: 'Template Name',
+				nodes: [],
+				connections: {},
+				meta: { templateId: 'template-id' },
+			};
+
+			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
+			await openWorkflowTemplateFromJSON(template);
+
+			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
+				'Template Name',
+				'test-project-id',
+			);
+
+			expect(router.replace).toHaveBeenCalledWith({
+				name: VIEWS.NEW_WORKFLOW,
+				query: {
+					templateId: 'template-id',
+					projectId: 'test-project-id',
+					parentFolderId: undefined,
+				},
+			});
 		});
 	});
 });
