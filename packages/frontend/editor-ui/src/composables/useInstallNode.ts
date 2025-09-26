@@ -11,7 +11,6 @@ import { removePreviewToken } from '@/components/Node/NodeCreator/utils';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
-	onBeforeRefetch?: () => Promise<void> | void;
 } & (
 	| {
 			type: 'verified';
@@ -67,19 +66,18 @@ export function useInstallNode() {
 			} else {
 				await communityNodesStore.installPackage(props.packageName);
 			}
-			if (props.onBeforeRefetch) {
-				await props.onBeforeRefetch();
-			}
+
+			// refresh store information about installed nodes
 			await nodeTypesStore.getNodeTypes();
 			await credentialsStore.fetchCredentialTypes(true);
 			await nextTick();
 
+			// update parameters and webhooks for freshly installed nodes
 			const nodeType = props.nodeType;
 			if (nodeType && workflowsStore.workflow.nodes?.length) {
 				const nodesToUpdate = workflowsStore.workflow.nodes.filter(
 					(node) => node.type === removePreviewToken(nodeType),
 				);
-				// resolve node parameters and webhooks known that node type is known
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);
 			}
 			toast.showMessage({
