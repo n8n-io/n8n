@@ -890,7 +890,7 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should replace existing placeholder task data in new log view', () => {
+		it('should replace existing placeholder task data and lastNodeExecuted in new log view', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -934,6 +934,7 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
+				lastNodeExecuted: 'When clicking ‘Execute workflow’',
 				data: {
 					resultData: {
 						runData: {
