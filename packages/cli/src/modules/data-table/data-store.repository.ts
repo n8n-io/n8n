@@ -4,7 +4,7 @@ import {
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { Project } from '@n8n/db';
+import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
@@ -28,22 +28,22 @@ export class DataStoreRepository extends Repository<DataTable> {
 		super(DataTable, dataSource.manager);
 	}
 
-	async createDataStore(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
-		if (columns.some((c) => !isValidColumnName(c.name))) {
-			throw new DataStoreValidationError(DATA_STORE_COLUMN_ERROR_MESSAGE);
-		}
+	async createDataStore(
+		projectId: string,
+		name: string,
+		columns: DataStoreCreateColumnSchema[],
+		trx?: EntityManager,
+	) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			if (columns.some((c) => !isValidColumnName(c.name))) {
+				throw new DataStoreValidationError(DATA_STORE_COLUMN_ERROR_MESSAGE);
+			}
 
-		let dataTableId: string | undefined;
-		await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataTable, { name, columns, projectId });
+
 			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTable, dataStore);
-			dataTableId = dataStore.id;
-
-			const queryRunner = em.queryRunner;
-			if (!queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
+			const dataTableId = dataStore.id;
 
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
@@ -61,48 +61,37 @@ export class DataStoreRepository extends Repository<DataTable> {
 			}
 
 			// create user table (will create empty table with just id column if no columns)
-			await this.dataStoreRowsRepository.createTableWithColumns(
-				dataTableId,
-				columnEntities,
-				queryRunner,
-			);
-		});
+			await this.dataStoreRowsRepository.createTableWithColumns(dataTableId, columnEntities, em);
 
-		if (!dataTableId) {
-			throw new UnexpectedError('Data store creation failed');
-		}
-
-		const createdDataStore = await this.findOneOrFail({
-			where: { id: dataTableId },
-			relations: ['project', 'columns'],
-		});
-
-		return createdDataStore;
-	}
-
-	async deleteDataStore(dataStoreId: string, tx?: EntityManager) {
-		const run = async (em: EntityManager) => {
-			const queryRunner = em.queryRunner;
-			if (!queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
+			if (!dataTableId) {
+				throw new UnexpectedError('Data store creation failed');
 			}
 
-			await em.delete(DataTable, { id: dataStoreId });
-			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
-			return true;
-		};
+			const createdDataStore = await em.findOneOrFail(DataTable, {
+				where: { id: dataTableId },
+				relations: ['project', 'columns'],
+			});
 
-		if (tx) {
-			return await run(tx);
-		}
-
-		return await this.manager.transaction(run);
+			return createdDataStore;
+		});
 	}
 
-	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
+	async deleteDataStore(dataStoreId: string, trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			await em.delete(DataTable, { id: dataStoreId });
+			await this.dataStoreRowsRepository.dropTable(dataStoreId, em);
+			return true;
+		});
+	}
+
+	async transferDataStoreByProjectId(
+		fromProjectId: string,
+		toProjectId: string,
+		trx?: EntityManager,
+	) {
 		if (fromProjectId === toProjectId) return false;
 
-		return await this.manager.transaction(async (em) => {
+		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
 			let transferred = false;
@@ -137,8 +126,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 		});
 	}
 
-	async deleteDataStoreByProjectId(projectId: string) {
-		return await this.manager.transaction(async (em) => {
+	async deleteDataStoreByProjectId(projectId: string, trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
 			let changed = false;
@@ -151,19 +140,14 @@ export class DataStoreRepository extends Repository<DataTable> {
 		});
 	}
 
-	async deleteDataStoreAll() {
-		return await this.manager.transaction(async (em) => {
-			const queryRunner = em.queryRunner;
-			if (!queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-
+	async deleteDataStoreAll(trx?: EntityManager) {
+		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataTable, { id: match.id });
-				await this.dataStoreRowsRepository.dropTable(match.id, queryRunner);
+				await this.dataStoreRowsRepository.dropTable(match.id, em);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 
