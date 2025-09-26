@@ -1,7 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import type { Runnable, RunnableSequence } from '@langchain/core/runnables';
+import type { Runnable } from '@langchain/core/runnables';
+import { RunnableSequence } from '@langchain/core/runnables';
 import { OperationalError } from 'n8n-workflow';
 import type { z } from 'zod';
 
@@ -13,7 +14,7 @@ type EvaluatorChainInput = {
 	referenceSection: string;
 };
 
-export function createEvaluatorChain<TResult>(
+export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 	llm: BaseChatModel,
 	schema: z.ZodType<TResult>,
 	systemPrompt: string,
