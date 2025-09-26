@@ -631,19 +631,21 @@ describe('N8nPromptInput', () => {
 					creditsRemaining: 10,
 				},
 				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: true,
+						N8nTooltip: {
+							template: '<n8n-tooltip-stub><slot></slot></n8n-tooltip-stub>',
+						},
+						N8nLink: true,
+						N8nIcon: true,
+					},
 				},
 			});
 
 			// Find and click the upgrade link
-			const upgradeLink = wrapper.find('.n8n-link');
+			const upgradeLink = wrapper.find('n8n-link-stub');
 			await upgradeLink.trigger('click');
 
 			// Verify the upgrade-click event was emitted
