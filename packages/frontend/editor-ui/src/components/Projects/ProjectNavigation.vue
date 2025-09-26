@@ -120,11 +120,9 @@ onBeforeMount(async () => {
 				data-test-id="project-shared-menu-item"
 			/>
 		</div>
-		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
-			tag="h3"
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
@@ -181,7 +179,6 @@ onBeforeMount(async () => {
 				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
 			</N8nButton>
 		</N8nTooltip>
-		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
 
@@ -213,6 +210,7 @@ onBeforeMount(async () => {
 	overflow: hidden;
 	box-sizing: border-box;
 	padding: 0 var(--spacing-s);
+	margin-top: var(--spacing-m);
 	color: var(--color-text-base);
 
 	&.collapsed {
