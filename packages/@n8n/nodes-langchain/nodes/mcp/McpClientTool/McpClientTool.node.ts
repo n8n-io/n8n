@@ -1,13 +1,13 @@
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
-	NodeConnectionTypes,
 	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { getTools } from './loadOptions';
 import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
@@ -68,6 +68,15 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['headerAuth'],
+					},
+				},
+			},
+			{
+				name: 'httpCustomAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['customAuth'],
 					},
 				},
 			},
@@ -134,6 +143,10 @@ export class McpClientTool implements INodeType {
 						value: 'bearerAuth',
 					},
 					{
+						name: 'Custom Auth',
+						value: 'customAuth',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
 					},
@@ -152,7 +165,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'customAuth'],
 					},
 				},
 			},
