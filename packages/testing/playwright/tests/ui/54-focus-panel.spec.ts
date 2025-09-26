@@ -19,7 +19,7 @@ test.describe('Focus panel', () => {
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.toggleFocusPanelButton().click();
 			await n8n.canvas.nodeByName('Set').click();
-			await expect(n8n.canvas.focusPanel.getHeader()).toHaveText('Set');
+			await expect(n8n.canvas.focusPanel.getHeaderNodeName()).toHaveText('Set');
 			await n8n.canvas.focusPanel.getParameterInputField('assignments.assignments.0.value').focus();
 			await expect(n8n.canvas.focusPanel.getMapper()).toBeVisible();
 
@@ -27,13 +27,13 @@ test.describe('Focus panel', () => {
 			await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } });
 
 			await expect(n8n.canvas.focusPanel.getMapper()).toBeHidden();
-			await expect(n8n.canvas.focusPanel.getHeader()).toHaveText('Set');
+			await expect(n8n.canvas.focusPanel.getHeaderNodeName()).toHaveText('Set');
 			await expect(n8n.canvas.selectedNodes()).toHaveCount(1);
 
 			// Assert that another click on canvas does de-select the Set node
 			await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } });
 
-			await expect(n8n.canvas.focusPanel.getHeader()).toBeHidden();
+			await expect(n8n.canvas.focusPanel.getHeaderNodeName()).toBeHidden();
 			await expect(n8n.canvas.selectedNodes()).toHaveCount(0);
 		});
 	});

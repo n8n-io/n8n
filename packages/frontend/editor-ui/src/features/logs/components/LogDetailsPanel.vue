@@ -30,6 +30,7 @@ const {
 	panels,
 	collapsingInputTableColumnName,
 	collapsingOutputTableColumnName,
+	isHeaderClickable,
 } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
@@ -38,6 +39,7 @@ const {
 	panels: LogDetailsPanelState;
 	collapsingInputTableColumnName: string | null;
 	collapsingOutputTableColumnName: string | null;
+	isHeaderClickable: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -94,6 +96,7 @@ function handleResizeEnd() {
 		<LogsPanelHeader
 			data-test-id="log-details-header"
 			:class="$style.header"
+			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
 			<template #title>
