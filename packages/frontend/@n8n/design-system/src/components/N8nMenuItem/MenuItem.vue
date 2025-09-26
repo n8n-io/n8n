@@ -66,12 +66,7 @@ const indentArray = computed(() => {
 
 <template>
 	<div class="sidebarItemWrapper" @mouseenter="emit('mouseEnter')">
-		<span
-			class="sidebarItemIndent"
-			v-if="level && level > 1"
-			v-for="level in indentArray"
-			:key="level"
-		/>
+		<span class="sidebarItemIndent" v-for="level in indentArray" :key="level" />
 		<N8nRoute
 			:to="to"
 			class="sidebarItem"
