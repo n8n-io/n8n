@@ -45,18 +45,7 @@ export class DbConnection {
 		const { connectionState, options } = this;
 		if (connectionState.connected) return;
 		try {
-			for (let i = 0; i < 10; ++i) {
-				try {
-					await this.dataSource.initialize();
-					break;
-				} catch (e) {
-					if (i < 9) {
-						await new Promise((resolve) => setTimeout(resolve, 500));
-					} else {
-						throw e;
-					}
-				}
-			}
+			await this.dataSource.initialize();
 		} catch (e) {
 			let error = ensureError(e);
 			if (
