@@ -1,5 +1,5 @@
-import { nanoid } from 'nanoid';
 import type { Folder } from '@n8n/db';
+import { nanoid } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
@@ -57,7 +57,6 @@ export class ProjectApiHelper {
 		parentFolderId?: string,
 	): Promise<Folder> {
 		const uniqueName = folderName ? `${folderName} (${nanoid(8)})` : `Test Folder ${nanoid(8)}`;
-
 		const response = await this.api.request.post(`/rest/projects/${projectId}/folders`, {
 			data: {
 				name: uniqueName,

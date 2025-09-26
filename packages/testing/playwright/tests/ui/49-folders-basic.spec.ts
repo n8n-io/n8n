@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Folders - Basic Operations', () => {
+	const FOLDER_CREATED_NOTIFICATION = 'Folder created';
 	test('should create folder from the workflows page using addResource dropdown', async ({
 		n8n,
 	}) => {
@@ -34,7 +35,7 @@ test.describe('Folders - Basic Operations', () => {
 		await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
 	});
 
-	test('should crate a folder from the list header button', async ({ n8n }) => {
+	test('should create a folder from the list header button', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProject();
 		await n8n.api.projects.createFolder(projectId);
 		await n8n.workflows.addFolderButton().click();
@@ -60,11 +61,11 @@ test.describe('Folders - Basic Operations', () => {
 		n8n,
 	}) => {
 		const projectId = await n8n.start.fromNewProject();
-		const rootFolder = await n8n.api.projects.createFolder(projectId);
+		const parentFolder = await n8n.api.projects.createFolder(projectId);
 		const childFolder = await n8n.api.projects.createFolder(
 			projectId,
 			'Child Folder',
-			rootFolder.id,
+			parentFolder.id,
 		);
 		const grandChildFolder = await n8n.api.projects.createFolder(
 			projectId,
@@ -72,38 +73,21 @@ test.describe('Folders - Basic Operations', () => {
 			childFolder.id,
 		);
 
-		// Start at the deepest folder
 		await n8n.navigate.toFolder(grandChildFolder.id, projectId);
+		await expect(n8n.breadcrumbs.getCurrentBreadcrumb()).toContainText(grandChildFolder.name);
 
-		const breadcrumbs = n8n.page.getByTestId('main-breadcrumbs');
+		// Hidden breadcrumb should be visible because not all breadcrumbs can fit in the UI
+		await n8n.breadcrumbs.getHiddenBreadcrumbs().click();
+		await expect(n8n.breadcrumbs.getActionToggleDropdown(parentFolder.id)).toBeVisible();
 
-		// Verify we're at the deepest level
-		const currentBreadcrumb = breadcrumbs.getByTestId('breadcrumbs-item-current');
-		await expect(currentBreadcrumb).toContainText(grandChildFolder.name);
-
-		// Step 1: Verify that hidden item is visible because we're fully collapsed
-		const hiddenItemsMenu = n8n.page.getByTestId('hidden-items-menu');
-		await expect(hiddenItemsMenu).toBeVisible();
-		await hiddenItemsMenu.click();
-		await expect(n8n.page.getByTestId(`action-${rootFolder.id}`)).toBeVisible();
-
-		// Step 2: Navigate to child folder (parent of current)
-		const grandChildFolderBreadcrumb = breadcrumbs
-			.getByTestId('breadcrumbs-item')
-			.filter({ hasText: childFolder.name });
-		await grandChildFolderBreadcrumb.click();
+		await n8n.breadcrumbs.getBreadcrumb(childFolder.name).click();
 		await expect(n8n.workflows.cards.getFolder(grandChildFolder.name)).toBeVisible();
 
-		// Step 3: Navigate to child folder
-		const childFolderBreadcrumb = breadcrumbs
-			.getByTestId('breadcrumbs-item')
-			.filter({ hasText: rootFolder.name });
-		await childFolderBreadcrumb.click();
+		await n8n.breadcrumbs.getBreadcrumb(parentFolder.name).click();
 		await expect(n8n.workflows.cards.getFolder(childFolder.name)).toBeVisible();
 
-		const homeProjectBreadcrumb = breadcrumbs.getByTestId('home-project');
-		await homeProjectBreadcrumb.click();
-		await expect(n8n.workflows.cards.getFolder(rootFolder.name)).toBeVisible();
+		await n8n.breadcrumbs.getHomeProjectBreadcrumb().click();
+		await expect(n8n.workflows.cards.getFolder(parentFolder.name)).toBeVisible();
 	});
 
 	test('should find nested folders through search from project root', async ({ n8n }) => {
@@ -138,5 +122,69 @@ test.describe('Folders - Basic Operations', () => {
 		await expect(n8n.workflows.cards.getFolder(rootFolder.name)).toBeVisible();
 		await expect(n8n.workflows.cards.getFolder(childFolder.name)).toBeHidden(); // Child is inside root
 		await expect(n8n.workflows.cards.getFolder(grandChildFolder.name)).toBeHidden(); // Grandchild is inside child
+	});
+
+	test('should create workflow in a folder', async ({ n8n }) => {
+		const projectId = await n8n.start.fromNewProject();
+		const folder = await n8n.api.projects.createFolder(projectId);
+		const folderName = folder.name;
+		await n8n.workflows.cards.openFolder(folderName);
+		await n8n.workflows.addResource.workflow();
+
+		await expect(n8n.breadcrumbs.getBreadcrumb(folderName)).toBeVisible();
+	});
+
+	test('should not create folders with invalid names in the UI', async ({ n8n }) => {
+		await n8n.start.fromNewProject();
+		const invalidNames = ['folder[test]', 'folder/test'];
+		const errorMessage = 'Folder name cannot contain the following characters';
+		const emptyErrorMessage = 'Folder name cannot be empty';
+		const tooLongErrorMessage = 'Folder name cannot be longer than 100 characters';
+		const dotsErrorMessage = 'Folder name cannot contain only dots';
+		await n8n.workflows.addResource.folder();
+
+		for (const invalidName of invalidNames) {
+			await n8n.modal.fillInput(invalidName);
+			await expect(n8n.modal.container.getByText(errorMessage, { exact: false })).toBeVisible();
+		}
+
+		await n8n.modal.fillInput('');
+		await expect(n8n.modal.container.getByText(emptyErrorMessage)).toBeVisible();
+
+		await n8n.modal.fillInput('a'.repeat(101));
+		await expect(n8n.modal.container.getByText(tooLongErrorMessage)).toBeVisible();
+
+		await n8n.modal.fillInput('...');
+		await expect(n8n.modal.container.getByText(dotsErrorMessage)).toBeVisible();
+	});
+
+	test('should expose API validation gaps that UI blocks', async ({ api }) => {
+		const { id: projectId } = await api.projects.createProject();
+		const invalidNames = ['folder[test]', 'folder/test'];
+		for (const invalidName of invalidNames) {
+			const folderResponse = await api.projects.createFolder(projectId, invalidName);
+			// Currently passes - will fail when API validation is fixed
+			expect(folderResponse, `Should reject "${invalidName}"`).not.toBeNull();
+		}
+	});
+
+	test('should navigate to a folder using card actions', async ({ n8n }) => {
+		const projectId = await n8n.start.fromNewProject();
+		const folder = await n8n.api.projects.createFolder(projectId);
+		const folderName = folder.name;
+		const folderCard = n8n.workflows.cards.getFolder(folderName);
+		await n8n.workflows.cards.openCardActions(folderCard);
+		await n8n.workflows.cards.getCardAction('open').click();
+		await expect(n8n.breadcrumbs.getCurrentBreadcrumb()).toContainText(folderName);
+	});
+
+	test('should navigate to a folder using notification', async ({ n8n }) => {
+		await n8n.start.fromNewProject();
+		const folderName = await n8n.workflows.addFolder();
+		await n8n.notifications
+			.getNotificationByTitleOrContent(FOLDER_CREATED_NOTIFICATION)
+			.getByText('Open folder')
+			.click();
+		await expect(n8n.breadcrumbs.getCurrentBreadcrumb()).toContainText(folderName);
 	});
 });

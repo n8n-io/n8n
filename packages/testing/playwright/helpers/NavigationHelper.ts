@@ -126,7 +126,7 @@ export class NavigationHelper {
 	async toFolder(folderId: string, projectId?: string): Promise<void> {
 		const url = projectId
 			? `/projects/${projectId}/folders/${folderId}/workflows`
-			: `/folders/${folderId}/workflows`;
+			: `/home/folders/${folderId}/workflows`;
 		await this.page.goto(url);
 	}
 
