@@ -13,7 +13,7 @@ import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
-import { type RouteLocationRaw, type LocationQueryRaw } from 'vue-router';
+import { type RouteLocationRaw, type LocationQueryRaw, RouterLink } from 'vue-router';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -169,7 +169,7 @@ watch(sortBy, (newValue) => {
 		>
 			<template #[`item.workflowName`]="{ item }">
 				<component
-					:is="item.workflowId ? 'router-link' : 'div'"
+					:is="item.workflowId ? RouterLink : 'div'"
 					v-bind="
 						item.workflowId
 							? {
