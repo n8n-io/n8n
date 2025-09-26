@@ -3,6 +3,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chat from './chat';
 import * as chatMessage from './chatMessage';
 import * as task from './task';
 import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
@@ -43,6 +44,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'channelMessage',
 				},
 				{
+					name: 'Chat',
+					value: 'chat',
+				},
+				{
 					name: 'Chat Message',
 					value: 'chatMessage',
 				},
@@ -56,6 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 
 		...channel.description,
 		...channelMessage.description,
+		...chat.description,
 		...chatMessage.description,
 		...task.description,
 	],
