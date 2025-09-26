@@ -75,7 +75,7 @@ export class WorkflowsPage extends BasePage {
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
-	async searchWorkflows(searchTerm: string) {
+	async search(searchTerm: string) {
 		await this.clickByTestId('resources-list-search');
 		await this.fillByTestId('resources-list-search', searchTerm);
 	}
