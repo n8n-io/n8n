@@ -1,64 +1,63 @@
 <script setup lang="ts">
-import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type {
-	INodeParameters,
-	NodeConnectionType,
-	NodeParameterValue,
-	INodeCredentialDescription,
-	PublicInstalledPackage,
-} from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
 import type {
 	CurlToJSONResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+import type {
+	INodeCredentialDescription,
+	INodeParameters,
+	NodeConnectionType,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL } from '@/constants';
 
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import NDVSubConnections from '@/components/NDVSubConnections.vue';
-import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import get from 'lodash/get';
 
-import NodeExecuteButton from './NodeExecuteButton.vue';
-import {
-	collectSettings,
-	createCommonNodeSettings,
-	nameIsParameter,
-	getNodeSettingsInitialValues,
-	collectParametersByTab,
-} from '@/utils/nodeSettingsUtils';
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { RenameNodeCommand } from '@/models/history';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { useUsersStore } from '@/stores/users.store';
-import type { EventBus } from '@n8n/utils/event-bus';
+import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import NodeActionsList from '@/components/NodeActionsList.vue';
+import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@n8n/i18n';
+import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
-import { ProjectTypes } from '@/types/projects.types';
-import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
-import { useResizeObserver } from '@vueuse/core';
-import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
-import ExperimentalEmbeddedNdvHeader from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
-import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNodeWarning.vue';
+import { RenameNodeCommand } from '@/models/history';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
-import NodeActionsList from '@/components/NodeActionsList.vue';
-import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import { ProjectTypes } from '@/types/projects.types';
+import {
+	collectParametersByTab,
+	collectSettings,
+	createCommonNodeSettings,
+	getNodeSettingsInitialValues,
+	nameIsParameter,
+} from '@/utils/nodeSettingsUtils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { useResizeObserver } from '@vueuse/core';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -143,8 +142,6 @@ const nodeValuesInitialized = ref(false);
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
-
 const currentWorkflow = computed(
 	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
@@ -162,6 +159,9 @@ const nodeType = computed(() =>
 );
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
+
+const nodeTypeName = computed(() => node.value?.type);
+const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -541,10 +541,6 @@ onMounted(async () => {
 	}
 	importCurlEventBus.on('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.on('updateParameterValue', valueChanged);
-
-	if (isCommunityNode.value && useUsersStore().isInstanceOwner) {
-		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(packageName.value);
-	}
 });
 
 onBeforeUnmount(() => {
@@ -748,8 +744,10 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isCommunityNode && installedPackage?.updateAvailable"
+					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 					data-test-id="update-available"
+					:package-name="packageName"
+					style="margin-top: var(--spacing-s)"
 				/>
 				<ParameterInputList
 					:parameters="parametersByTab.settings"
