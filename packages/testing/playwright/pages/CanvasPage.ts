@@ -468,6 +468,8 @@ export class CanvasPage extends BasePage {
 	}
 
 	async selectAll(): Promise<void> {
+		// Establish proper selection context first
+		await this.getCanvasNodes().first().click();
 		await this.page.keyboard.press('ControlOrMeta+a');
 	}
 

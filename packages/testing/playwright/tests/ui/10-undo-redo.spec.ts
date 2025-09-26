@@ -78,8 +78,6 @@ test.describe('Undo/Redo', () => {
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 
-		await n8n.page.locator('body').click();
-
 		await n8n.canvas.hitUndo();
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
