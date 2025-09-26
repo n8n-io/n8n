@@ -8,7 +8,6 @@ import type { ProjectListItem } from '@/types/projects.types';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { N8nMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ElMenu } from 'element-plus';
 import { computed, onBeforeMount } from 'vue';
 
 type Props = {
@@ -93,7 +92,7 @@ onBeforeMount(async () => {
 
 <template>
 	<div :class="$style.projects">
-		<ElMenu :collapse="props.collapsed" class="home">
+		<div class="home">
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -120,7 +119,7 @@ onBeforeMount(async () => {
 				mode="tabs"
 				data-test-id="project-shared-menu-item"
 			/>
-		</ElMenu>
+		</div>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
@@ -145,9 +144,8 @@ onBeforeMount(async () => {
 				/>
 			</N8nTooltip>
 		</N8nText>
-		<ElMenu
+		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
-			:collapse="props.collapsed"
 			:class="$style.projectItems"
 		>
 			<N8nMenuItem
@@ -158,11 +156,9 @@ onBeforeMount(async () => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
 				data-test-id="project-menu-item"
 			/>
-		</ElMenu>
+		</div>
 		<N8nTooltip
 			v-if="showAddFirstProject"
 			placement="right"
@@ -191,10 +187,7 @@ onBeforeMount(async () => {
 
 <style lang="scss" module>
 .projects {
-	display: grid;
-	grid-auto-rows: auto;
 	width: 100%;
-	overflow: hidden;
 	align-items: start;
 	gap: var(--spacing-3xs);
 	&:hover {
@@ -205,9 +198,7 @@ onBeforeMount(async () => {
 }
 
 .projectItems {
-	height: 100%;
-	padding: 0 var(--spacing-xs) var(--spacing-s);
-	overflow: auto;
+	padding: var(--spacing-xs);
 }
 
 .upgradeLink {
@@ -215,18 +206,13 @@ onBeforeMount(async () => {
 	cursor: pointer;
 }
 
-.collapsed {
-	text-transform: uppercase;
-}
-
 .projectsLabel {
 	display: flex;
 	justify-content: space-between;
-	margin: 0 0 var(--spacing-s) var(--spacing-xs);
-	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
+	padding: 0 var(--spacing-s);
 	color: var(--color-text-base);
 
 	&.collapsed {
@@ -260,9 +246,5 @@ onBeforeMount(async () => {
 <style lang="scss" scoped>
 .home {
 	padding: 0 var(--spacing-xs);
-
-	:deep(.el-menu-item) {
-		padding: var(--spacing-m) var(--spacing-xs) !important;
-	}
 }
 </style>
