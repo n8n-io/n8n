@@ -53,10 +53,12 @@ const onClick = () => {
 		data-test-id="ask-assistant-button"
 		@click="onClick"
 	>
-		<div :style="{ padding: sizes[size].padding }">
-			<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
-			<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-			<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
+		<div>
+			<div :style="{ padding: sizes[size].padding }">
+				<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
+				<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
+				<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
+			</div>
 		</div>
 	</button>
 </template>
@@ -65,40 +67,49 @@ const onClick = () => {
 .button {
 	border-radius: var(--border-radius-base);
 	position: relative;
-	border: 1px solid transparent;
-	padding: 0;
+	border: 0;
+	padding: 1px;
 
-	background:
-		var(--color-askAssistant-button-background-gradient) padding-box,
-		var(--color-assistant-highlight-gradient) border-box;
+	background: var(--color-assistant-highlight-gradient);
 
 	> div {
+		background-color: var(--color-askAssistant-button-background);
+		border-radius: inherit;
 		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		line-height: unset;
+		overflow: hidden;
+
+		> div {
+			height: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			line-height: unset;
+		}
 	}
 }
 
 .hoverable {
 	&:hover {
 		cursor: pointer;
-		background:
-			var(--color-askAssistant-button-background-gradient-hover) padding-box,
-			var(--color-assistant-highlight-reverse) border-box;
+		background: var(--color-assistant-highlight-reverse);
 
 		> div {
+			background: var(--color-askAssistant-button-background-hover);
+		}
+
+		> div > div {
 			background: var(--color-assistant-inner-highlight-hover);
 		}
 	}
 
 	&:active {
-		background:
-			var(--color-askAssistant-button-background-gradient-active) padding-box,
-			var(--color-assistant-highlight-reverse) border-box;
+		background: var(--color-assistant-highlight-gradient);
 
 		> div {
+			background: var(--color-askAssistant-button-background-active);
+		}
+
+		> div > div {
 			background: var(--color-assistant-inner-highlight-active);
 		}
 	}
