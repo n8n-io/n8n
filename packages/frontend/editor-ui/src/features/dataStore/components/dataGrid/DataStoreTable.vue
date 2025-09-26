@@ -208,7 +208,7 @@ defineExpose({
 				@filter-changed="onFilterChanged"
 			/>
 			<div :class="$style.footer">
-				<el-pagination
+				<ElPagination
 					v-model:current-page="currentPage"
 					v-model:page-size="pageSize"
 					data-test-id="data-store-content-pagination"

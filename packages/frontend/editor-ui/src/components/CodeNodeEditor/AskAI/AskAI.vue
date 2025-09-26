@@ -262,19 +262,6 @@ onMounted(() => {
 	<div>
 		<p :class="$style.intro" v-text="i18n.baseText('codeNodeEditor.askAi.intro')" />
 		<div :class="$style.inputContainer">
-			<div :class="$style.meta">
-				<span
-					v-show="prompt.length > 1"
-					:class="$style.counter"
-					data-test-id="ask-ai-prompt-counter"
-					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
-				/>
-				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
-					<n8n-icon icon="circle-help" color="text-light" size="large" />{{
-						i18n.baseText('codeNodeEditor.askAi.help')
-					}}
-				</a>
-			</div>
 			<N8nInput
 				v-model="prompt"
 				:class="$style.input"
@@ -286,13 +273,26 @@ onMounted(() => {
 				:readonly="props.isReadOnly"
 				@input="onPromptInput"
 			/>
+			<div :class="$style.meta">
+				<span
+					v-show="prompt.length > 1"
+					:class="$style.counter"
+					data-test-id="ask-ai-prompt-counter"
+					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
+				/>
+				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
+					<N8nIcon icon="circle-help" color="text-light" size="large" />{{
+						i18n.baseText('codeNodeEditor.askAi.help')
+					}}
+				</a>
+			</div>
 		</div>
 		<div :class="$style.controls">
 			<div v-if="isLoading" :class="$style.loader">
-				<transition name="text-fade-in-out" mode="out-in">
+				<Transition name="text-fade-in-out" mode="out-in">
 					<div :key="loadingPhraseIndex" v-text="loadingString" />
-				</transition>
-				<n8n-circle-loader :radius="8" :progress="loaderProgress" :stroke-width="3" />
+				</Transition>
+				<N8nCircleLoader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
 			<N8nTooltip v-else :disabled="isSubmitEnabled">
 				<div>
@@ -357,12 +357,27 @@ onMounted(() => {
 <style module lang="scss">
 .input * {
 	border: 0 !important;
+	border-radius: 0 !important;
 }
 .input textarea {
 	font-size: var(--font-size-2xs);
-	padding-bottom: var(--spacing-2xl);
 	font-family: var(--font-family);
 	resize: none;
+
+	/* Custom scrollbar */
+	&::-webkit-scrollbar {
+		width: 4px;
+	}
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	&::-webkit-scrollbar-thumb {
+		background: var(--color-foreground-base);
+		border-radius: 2px;
+	}
+	&::-webkit-scrollbar-thumb:hover {
+		background: var(--color-foreground-dark);
+	}
 }
 .intro {
 	font-weight: var(--font-weight-bold);
@@ -381,6 +396,9 @@ onMounted(() => {
 	position: relative;
 }
 .help {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
 	text-decoration: underline;
 	margin-left: auto;
 	color: #909399;
@@ -388,11 +406,10 @@ onMounted(() => {
 .meta {
 	display: flex;
 	justify-content: space-between;
-	position: absolute;
-	bottom: var(--spacing-2xs);
-	left: var(--spacing-xs);
-	right: var(--spacing-xs);
-	z-index: 1;
+	align-items: center;
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	background-color: var(--color-foreground-xlight);
+	border-top: 1px solid var(--border-color-base);
 
 	* {
 		font-size: var(--font-size-2xs);

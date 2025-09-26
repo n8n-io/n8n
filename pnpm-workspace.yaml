@@ -12,7 +12,7 @@ minimumReleaseAgeExclude:
 
 catalog:
   '@n8n/typeorm': 0.3.20-12
-  '@n8n_io/ai-assistant-sdk': 1.15.0
+  '@n8n_io/ai-assistant-sdk': 1.17.0
   '@langchain/core': 0.3.68
   '@langchain/openai': 0.6.7
   '@langchain/anthropic': 0.3.26
@@ -65,6 +65,7 @@ catalogs:
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
+    '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4

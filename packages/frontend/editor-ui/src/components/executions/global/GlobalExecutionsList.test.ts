@@ -104,7 +104,7 @@ const renderComponent = createComponentRenderer(ExecutionsList, {
 				params: {},
 			},
 		},
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 	},
 });
 

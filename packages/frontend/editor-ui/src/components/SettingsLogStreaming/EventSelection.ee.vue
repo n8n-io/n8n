@@ -79,17 +79,17 @@ export default defineComponent({
 				@change="onCheckboxChecked(group.name, $event)"
 			>
 				<strong>{{ groupLabelName(group.name) }}</strong>
-				<n8n-tooltip
+				<N8nTooltip
 					v-if="groupLabelInfo(group.name)"
 					placement="top"
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
 				>
-					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
+					<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ groupLabelInfo(group.name) }}
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</Checkbox>
 			<Checkbox
 				v-if="group.name === 'n8n.audit'"
@@ -99,12 +99,12 @@ export default defineComponent({
 				@change="anonymizeAuditMessagesChanged"
 			>
 				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="circle-help" size="small" class="ml-4xs" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</Checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
@@ -117,11 +117,11 @@ export default defineComponent({
 						@change="onCheckboxChecked(event.name, $event)"
 					>
 						{{ event.label }}
-						<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
 							<template #content>
 								{{ event.name }}
 							</template>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</Checkbox>
 				</li>
 			</ul>

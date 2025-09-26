@@ -8,7 +8,7 @@ import type { usePinnedData } from '@/composables/usePinnedData';
 
 const renderComponent = createComponentRenderer(RunDataPinButton, {
 	global: {
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 		plugins: [
 			createTestingPinia({
 				initialState: {

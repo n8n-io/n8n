@@ -44,6 +44,7 @@ const onActionSelect = (role: ProjectRole) => {
 		v-if="isEditable"
 		placement="bottom-start"
 		:items="props.actions"
+		:max-height="280"
 		data-test-id="project-member-role-dropdown"
 		@select="onActionSelect"
 	>
@@ -93,6 +94,4 @@ const onActionSelect = (role: ProjectRole) => {
 		white-space: normal;
 	}
 }
-
-/* removeUser style no longer used since remove moved to actions menu */
 </style>

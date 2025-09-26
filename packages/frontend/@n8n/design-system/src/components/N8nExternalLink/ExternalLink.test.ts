@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 
 import N8nExternalLink from './ExternalLink.vue';
 
-const stubs = ['n8n-icon'];
+const stubs = ['N8nIcon'];
 
 describe('components', () => {
 	describe('N8nExternalLink', () => {

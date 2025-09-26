@@ -133,7 +133,7 @@ describe('WorkflowCard', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -193,7 +193,7 @@ describe('WorkflowCard', () => {
 		const data = createWorkflow({
 			scopes: ['workflow:move'],
 		});
-		const { getByTestId } = renderComponent({ props: { data } });
+		const { getByTestId } = renderComponent({ props: { data, areFoldersEnabled: true } });
 		const cardActions = getByTestId('workflow-card-actions');
 
 		expect(cardActions).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -221,7 +221,7 @@ describe('WorkflowCard', () => {
 			scopes: ['workflow:update'],
 		});
 
-		const { getByTestId } = renderComponent({ props: { data } });
+		const { getByTestId } = renderComponent({ props: { data, areFoldersEnabled: true } });
 		const cardActions = getByTestId('workflow-card-actions');
 
 		expect(cardActions).toBeInTheDocument();
@@ -232,7 +232,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -261,7 +261,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -290,7 +290,7 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -315,7 +315,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -351,7 +351,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -386,7 +386,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -420,7 +420,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -444,6 +444,143 @@ describe('WorkflowCard', () => {
 
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
+	});
+
+	it('should show Enable MCP action when module is enabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should show Disable MCP action when workflow is available in MCP and module is enabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should hide MCP actions when module is disabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should show MCP indicator when module is enabled and workflow is available', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const indicator = getByTestId('workflow-card-mcp');
+		expect(indicator).toBeVisible();
+	});
+
+	it('should hide MCP indicator when module is disabled', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const indicator = queryByTestId('workflow-card-mcp');
+		expect(indicator).not.toBeVisible();
+	});
+
+	it('should hide MCP indicator when workflow is not available in MCP', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const indicator = queryByTestId('workflow-card-mcp');
+		expect(indicator).not.toBeVisible();
 	});
 
 	it('should show Archived text on archived workflows', async () => {

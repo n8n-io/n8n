@@ -8,7 +8,7 @@ import type { ComponentProps } from 'vue-component-type-helpers';
 const renderComponent = createComponentRenderer(ProjectMoveSuccessToastMessage, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<a href="#"><slot /></a>',
 			},
 		},
