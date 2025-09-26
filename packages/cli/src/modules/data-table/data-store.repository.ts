@@ -67,7 +67,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 				throw new UnexpectedError('Data store creation failed');
 			}
 
-			const createdDataStore = await this.findOneOrFail({
+			const createdDataStore = await em.findOneOrFail(DataTable, {
 				where: { id: dataTableId },
 				relations: ['project', 'columns'],
 			});
