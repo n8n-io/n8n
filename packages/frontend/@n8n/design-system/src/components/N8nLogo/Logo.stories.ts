@@ -18,7 +18,7 @@ export default {
 		releaseChannel: {
 			control: {
 				type: 'select',
-				options: ['stable', 'dev', 'beta'],
+				options: ['stable', 'dev', 'beta', 'nightly'],
 			},
 		},
 	},
