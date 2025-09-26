@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.env import read_int_env, read_bool_env, read_env
+from src.env import read_int_env, read_bool_env, read_str_env
 from src.constants import (
     DEFAULT_HEALTH_CHECK_SERVER_HOST,
     DEFAULT_HEALTH_CHECK_SERVER_PORT,
@@ -26,7 +26,8 @@ class HealthCheckConfig:
 
         return cls(
             enabled=read_bool_env(ENV_HEALTH_CHECK_SERVER_ENABLED, default=False),
-            host=read_env(ENV_HEALTH_CHECK_SERVER_HOST)
-            or DEFAULT_HEALTH_CHECK_SERVER_HOST,
+            host=read_str_env(
+                ENV_HEALTH_CHECK_SERVER_HOST, DEFAULT_HEALTH_CHECK_SERVER_HOST
+            ),
             port=port,
         )

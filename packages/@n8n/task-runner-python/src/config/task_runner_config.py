@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Set
 
-from src.env import read_env, read_int_env
+from src.env import read_int_env, read_str_env
 from src.constants import (
     BUILTINS_DENY_DEFAULT,
     DEFAULT_MAX_CONCURRENCY,
@@ -61,7 +61,7 @@ class TaskRunnerConfig:
 
     @classmethod
     def from_env(cls):
-        grant_token = read_env(ENV_GRANT_TOKEN) or ""
+        grant_token = read_str_env(ENV_GRANT_TOKEN, "")
         if not grant_token:
             raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
 
@@ -90,22 +90,22 @@ class TaskRunnerConfig:
 
         return cls(
             grant_token=grant_token,
-            task_broker_uri=read_env(ENV_TASK_BROKER_URI) or DEFAULT_TASK_BROKER_URI,
+            task_broker_uri=read_str_env(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
             max_concurrency=max_concurrency,
             max_payload_size=max_payload_size,
             task_timeout=task_timeout,
             auto_shutdown_timeout=auto_shutdown_timeout,
             graceful_shutdown_timeout=graceful_shutdown_timeout,
             stdlib_allow=parse_allowlist(
-                read_env(ENV_STDLIB_ALLOW) or "", ENV_STDLIB_ALLOW
+                read_str_env(ENV_STDLIB_ALLOW, ""), ENV_STDLIB_ALLOW
             ),
             external_allow=parse_allowlist(
-                read_env(ENV_EXTERNAL_ALLOW) or "", ENV_EXTERNAL_ALLOW
+                read_str_env(ENV_EXTERNAL_ALLOW, ""), ENV_EXTERNAL_ALLOW
             ),
             builtins_deny=set(
                 module.strip()
-                for module in (
-                    read_env(ENV_BUILTINS_DENY) or BUILTINS_DENY_DEFAULT
+                for module in read_str_env(
+                    ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT
                 ).split(",")
             ),
         )

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from src.env import read_env, read_int_env, read_bool_env
+from src.env import read_env, read_int_env, read_bool_env, read_str_env
 
 
 class TestReadEnv:
@@ -113,6 +113,35 @@ class TestReadEnv:
         finally:
             Path(temp_file_path).chmod(0o644)
             Path(temp_file_path).unlink()
+
+
+class TestReadStrEnv:
+    def test_returns_string_from_direct_env(self):
+        with patch.dict(os.environ, {"TEST_STR": "hello world"}):
+            result = read_str_env("TEST_STR", default="default")
+            assert result == "hello world"
+
+    def test_returns_string_from_file(self):
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+            f.write("file content")
+            temp_file_path = f.name
+
+        try:
+            with patch.dict(os.environ, {"TEST_STR_FILE": temp_file_path}):
+                result = read_str_env("TEST_STR", default="default")
+                assert result == "file content"
+        finally:
+            Path(temp_file_path).unlink()
+
+    def test_returns_default_when_not_set(self):
+        with patch.dict(os.environ, clear=True):
+            result = read_str_env("TEST_STR", default="fallback")
+            assert result == "fallback"
+
+    def test_handles_empty_string_from_env(self):
+        with patch.dict(os.environ, {"TEST_STR": ""}):
+            result = read_str_env("TEST_STR", default="default")
+            assert result == ""
 
 
 class TestReadIntEnv:

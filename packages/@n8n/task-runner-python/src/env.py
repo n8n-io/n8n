@@ -18,6 +18,13 @@ def read_env(env_name: str) -> Optional[str]:
     return None
 
 
+def read_str_env(env_name: str, default: str) -> str:
+    value = read_env(env_name)
+    if value is None:
+        return default
+    return value
+
+
 def read_int_env(env_name: str, default: int) -> int:
     value = read_env(env_name)
     if value is None:
