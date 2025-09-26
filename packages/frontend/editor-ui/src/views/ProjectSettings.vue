@@ -568,6 +568,7 @@ onMounted(() => {
 				</h3>
 				<N8nUserSelect
 					id="projectMembers"
+					:class="$style.userSelect"
 					class="mb-s"
 					size="large"
 					:users="usersList"
@@ -637,6 +638,8 @@ onMounted(() => {
 
 <style lang="scss" module>
 .projectSettings {
+	--project-field-width: 560px;
+
 	display: grid;
 	width: 100%;
 	justify-items: center;
@@ -646,8 +649,6 @@ onMounted(() => {
 		width: 100%;
 		max-width: var(--content-container-width);
 		padding: 0 var(--spacing-2xl);
-		/* Narrower fields for name/description */
-		--project-field-width: 560px;
 
 		fieldset {
 			padding-bottom: var(--spacing-xl);
@@ -688,7 +689,7 @@ onMounted(() => {
 }
 
 .search {
-	max-width: 300px;
+	max-width: var(--project-field-width);
 	margin-bottom: var(--spacing-s);
 }
 
@@ -702,8 +703,10 @@ onMounted(() => {
 	}
 }
 
-.projectDescriptionInput {
+.projectDescriptionInput,
+.userSelect {
 	max-width: var(--project-field-width);
+	width: 100%;
 }
 
 /* Ensure textarea uses regular UI font, not monospace */
