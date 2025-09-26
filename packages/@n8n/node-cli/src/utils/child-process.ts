@@ -30,6 +30,7 @@ export async function runCommand(
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
 			stdio: opts.stdio ?? ['ignore', 'pipe', 'pipe'],
+			shell: true,
 		};
 		const child =
 			opts.context === 'local'
