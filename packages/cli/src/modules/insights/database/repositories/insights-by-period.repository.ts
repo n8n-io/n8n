@@ -459,9 +459,14 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
 		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
 
-		const daysDifference = currentEnd.diff(currentStart, 'days').days;
-		const daysToStartDate = today.diff(currentStart, 'days').days;
+		let daysToStartDate = today.diff(currentStart, 'days').days;
+		// ensure that at least one day is covered
+		if (daysToStartDate < 1) {
+			daysToStartDate = 1;
+		}
 		const daysToEndDate = today.diff(currentEnd, 'days').days;
+
+		const daysDifference = daysToStartDate - daysToEndDate;
 
 		return {
 			daysToStartDate,
