@@ -209,9 +209,9 @@ watch(currentRoute, () => {
 				<slot name="header" />
 			</template>
 			<template #placeholder>
-				<n8n-text :class="$style.topText">{{
+				<N8nText :class="$style.topText">{{
 					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
-				}}</n8n-text>
+				}}</N8nText>
 			</template>
 		</AskAssistantChat>
 	</div>

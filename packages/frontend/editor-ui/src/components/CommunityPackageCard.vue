@@ -99,43 +99,43 @@ watch(
 <template>
 	<div :class="$style.cardContainer" data-test-id="community-package-card">
 		<div v-if="loading" :class="$style.cardSkeleton">
-			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<N8nLoading :class="$style.loader" variant="p" :rows="1" />
+			<N8nLoading :class="$style.loader" variant="p" :rows="1" />
 		</div>
 		<div v-else-if="communityPackage" :class="$style.packageCard">
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
-					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
+					<N8nText :bold="true" size="large">{{ communityPackage.packageName }}</N8nText>
 				</div>
 				<div :class="$style.cardSubtitle">
-					<n8n-text :bold="true" size="small" color="text-light">
+					<N8nText :bold="true" size="small" color="text-light">
 						{{
 							i18n.baseText('settings.communityNodes.packageNodes.label', {
 								adjustToNumber: communityPackage.installedNodes.length,
 							})
 						}}:&nbsp;
-					</n8n-text>
-					<n8n-text size="small" color="text-light">
+					</N8nText>
+					<N8nText size="small" color="text-light">
 						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
 							{{ node.name
 							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
 						</span>
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 			<div :class="$style.cardControlsContainer">
-				<n8n-text :bold="true" size="large" color="text-light">
+				<N8nText :bold="true" size="large" color="text-light">
 					v{{ communityPackage.installedVersion }}
-				</n8n-text>
-				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
+				</N8nText>
+				<N8nTooltip v-if="communityPackage.failedLoading === true" placement="top">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
 						</div>
 					</template>
-					<n8n-icon icon="triangle-alert" color="danger" size="large" />
-				</n8n-tooltip>
-				<n8n-tooltip
+					<N8nIcon icon="triangle-alert" color="danger" size="large" />
+				</N8nTooltip>
+				<N8nTooltip
 					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
 					placement="top"
 				>
@@ -144,18 +144,18 @@ watch(
 							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<n8n-button outline label="Update" @click="onUpdateClick" />
-				</n8n-tooltip>
-				<n8n-tooltip v-else placement="top">
+					<N8nButton outline label="Update" @click="onUpdateClick" />
+				</N8nTooltip>
+				<N8nTooltip v-else placement="top">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.communityNodes.upToDate.tooltip') }}
 						</div>
 					</template>
-					<n8n-icon icon="circle-check" color="text-light" size="large" />
-				</n8n-tooltip>
+					<N8nIcon icon="circle-check" color="text-light" size="large" />
+				</N8nTooltip>
 				<div :class="$style.cardActions">
-					<n8n-action-toggle :actions="packageActions" @action="onAction"></n8n-action-toggle>
+					<N8nActionToggle :actions="packageActions" @action="onAction"></N8nActionToggle>
 				</div>
 			</div>
 		</div>

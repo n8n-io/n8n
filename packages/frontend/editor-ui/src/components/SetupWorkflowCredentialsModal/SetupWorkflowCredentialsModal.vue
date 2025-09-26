@@ -79,7 +79,7 @@ onUnmounted(() => {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					size="large"
 					:label="i18n.baseText('templateSetup.continue.button')"
 					:disabled="numFilledCredentials === 0"

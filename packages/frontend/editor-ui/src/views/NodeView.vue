@@ -2076,8 +2076,8 @@ onBeforeUnmount(() => {
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
 			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
-			ref="canvas"
 			:id="editableWorkflow.id"
+			ref="canvas"
 			:workflow="editableWorkflow"
 			:workflow-object="editableWorkflowObject"
 			:fallback-nodes="fallbackNodes"

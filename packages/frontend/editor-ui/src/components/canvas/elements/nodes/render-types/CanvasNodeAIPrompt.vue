@@ -175,7 +175,7 @@ function onAddNodeClick() {
 				type="button"
 				aria-label="Add node manually"
 			>
-				<n8n-icon icon="plus" :size="40" />
+				<N8nIcon icon="plus" :size="40" />
 			</button>
 			<div :class="$style.startManuallyLabel">
 				<strong :class="$style.startManuallyText">

@@ -40,11 +40,11 @@ vi.mock('../../types/assistant', async (importOriginal) => {
 });
 
 const stubs = [
-	'n8n-avatar',
-	'n8n-button',
-	'n8n-icon',
-	'n8n-icon-button',
-	'n8n-prompt-input',
+	'N8nAvatar',
+	'N8nButton',
+	'N8nIcon',
+	'N8nIconButton',
+	'N8nPromptInput',
 	'AssistantIcon',
 	'AssistantText',
 	'InlineAskAssistantButton',
@@ -845,7 +845,7 @@ describe('AskAssistantChat', () => {
 					stubs: {
 						...Object.fromEntries(stubs.map((stub) => [stub, true])),
 						MessageWrapper: MessageWrapperStub,
-						'n8n-button': { template: '<button><slot></button' },
+						N8nButton: { template: '<button><slot></button' },
 					},
 				},
 				props: {
@@ -1028,10 +1028,10 @@ describe('AskAssistantChat', () => {
 					directives: { n8nHtml },
 					stubs: {
 						...Object.fromEntries(
-							stubs.filter((stub) => stub !== 'n8n-prompt-input').map((stub) => [stub, true]),
+							stubs.filter((stub) => stub !== 'N8nPromptInput').map((stub) => [stub, true]),
 						),
-						'message-wrapper': MessageWrapperStub,
-						'n8n-prompt-input': {
+						MessageWrapper: MessageWrapperStub,
+						N8nPromptInput: {
 							name: 'n8n-prompt-input',
 							props: [
 								'modelValue',

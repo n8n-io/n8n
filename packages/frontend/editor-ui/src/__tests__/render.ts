@@ -37,8 +37,8 @@ const TestingGlobalComponentsPlugin: Plugin<{}> = {
 const defaultOptions = {
 	global: {
 		stubs: {
-			'router-link': true,
-			'vue-json-pretty': vueJsonPretty,
+			RouterLink: true,
+			VueJsonPretty: vueJsonPretty,
 		},
 		plugins: [
 			i18nInstance,

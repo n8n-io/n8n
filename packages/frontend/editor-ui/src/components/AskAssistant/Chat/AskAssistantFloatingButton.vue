@@ -36,7 +36,7 @@ const onClick = () => {
 
 <template>
 	<div :class="$style.container" data-test-id="ask-assistant-floating-button">
-		<n8n-tooltip
+		<N8nTooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"
 			:visible="!!lastUnread"
@@ -50,7 +50,7 @@ const onClick = () => {
 				</div>
 			</template>
 			<AskAssistantButton :unread-count="assistantStore.unreadCount" @click="onClick" />
-		</n8n-tooltip>
+		</N8nTooltip>
 	</div>
 </template>
 

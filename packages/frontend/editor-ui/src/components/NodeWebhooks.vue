@@ -188,20 +188,20 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<n8n-icon icon="chevron-right" class="minimize-button minimize-icon" />
+			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
 			{{ baseText.toggleTitle }}
 		</div>
-		<el-collapse-transition>
+		<ElCollapseTransition>
 			<div v-if="!isMinimized" class="node-webhooks">
 				<div v-if="!isProductionOnly" class="url-selection">
-					<el-row>
-						<el-col :span="24">
-							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
-						</el-col>
-					</el-row>
+					<ElRow>
+						<ElCol :span="24">
+							<N8nRadioButtons v-model="showUrlFor" :options="urlOptions" />
+						</ElCol>
+					</ElRow>
 				</div>
 
-				<n8n-tooltip
+				<N8nTooltip
 					v-for="(webhook, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
@@ -225,9 +225,9 @@ watch(
 							</div>
 						</div>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
-		</el-collapse-transition>
+		</ElCollapseTransition>
 	</div>
 </template>
 

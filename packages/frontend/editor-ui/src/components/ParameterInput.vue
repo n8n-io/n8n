@@ -1329,7 +1329,7 @@ onUpdated(async () => {
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<el-dialog
+				<ElDialog
 					width="calc(100% - var(--spacing-3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
@@ -1399,7 +1399,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
-				</el-dialog>
+				</ElDialog>
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
@@ -1610,7 +1610,7 @@ onUpdated(async () => {
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<el-color-picker
+				<ElColorPicker
 					size="small"
 					class="color-picker"
 					:model-value="displayValue"
@@ -1634,7 +1634,7 @@ onUpdated(async () => {
 				/>
 			</div>
 
-			<el-date-picker
+			<ElDatePicker
 				v-else-if="parameter.type === 'dateTime'"
 				ref="inputField"
 				v-model="tempValue"
@@ -1776,7 +1776,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
-			<el-switch
+			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
