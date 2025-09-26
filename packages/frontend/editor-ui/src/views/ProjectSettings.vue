@@ -1,24 +1,30 @@
 <script lang="ts" setup>
-import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
+import type { ProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { N8nFormInput } from '@n8n/design-system';
+import { N8nFormInput, N8nInput } from '@n8n/design-system';
+import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
-import { useProjectsStore } from '@/stores/projects.store';
+import { type ResourceCounts, useProjectsStore } from '@/stores/projects.store';
 import type { Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '@/components/Projects/ProjectRoleUpgradeDialog.vue';
+import ProjectMembersTable from '@/components/Projects/ProjectMembersTable.vue';
 import { useRolesStore } from '@/stores/roles.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { UserAction } from '@n8n/design-system';
+import type { ProjectMemberData } from '@/types/projects.types';
+import { isProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
 	name?: string;
@@ -43,12 +49,19 @@ const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
 const isValid = ref(false);
-const isCurrentProjectEmpty = ref(true);
+const resourceCounts = ref<ResourceCounts>({
+	credentials: -1,
+	dataTables: -1,
+	workflows: -1,
+});
 const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 	name: '',
 	description: '',
 	relations: [],
 });
+// Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
+const suppressNextSync = ref(false);
+
 const projectRoleTranslations = ref<{ [key: string]: string }>({
 	'project:viewer': i18n.baseText('projects.settings.role.viewer'),
 	'project:editor': i18n.baseText('projects.settings.role.editor'),
@@ -59,6 +72,17 @@ const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 const projectIcon = ref<IconOrEmoji>({
 	type: 'icon',
 	value: 'layers',
+});
+
+const search = ref('');
+const membersTableState = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
 });
 
 const usersList = computed(() =>
@@ -84,6 +108,15 @@ const projectRoles = computed(() =>
 );
 const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
+const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
+	{
+		label: i18n.baseText('projects.settings.table.row.removeUser'),
+		value: 'remove',
+		guard: (member) =>
+			member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
+	},
+]);
+
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
 	const user = usersStore.usersById[userId];
@@ -99,18 +132,95 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onRoleAction = (userId: string, role?: string) => {
-	isDirty.value = true;
-	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === userId);
-	if (role === 'remove') {
-		formData.value.relations.splice(index, 1);
-	} else {
-		formData.value.relations[index].role = role as ProjectRole;
+const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
+
+	const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
+	if (memberIndex === -1) {
+		return;
+	}
+
+	// Store original role for rollback
+	const originalRole = formData.value.relations[memberIndex].role;
+
+	// Update UI optimistically
+	formData.value.relations[memberIndex].role = role;
+
+	try {
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
+		});
+
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.memberRole.updated.title'),
+		});
+		telemetry.track('User changed member role on project', {
+			project_id: projectsStore.currentProject.id,
+			target_user_id: userId,
+			role,
+		});
+	} catch (error) {
+		// Rollback to original role on API failure
+		formData.value.relations[memberIndex].role = originalRole;
+		toast.showError(error, i18n.baseText('projects.settings.memberRole.update.error.title'));
 	}
 };
 
 const onTextInput = () => {
 	isDirty.value = true;
+};
+
+async function onRemoveMember(userId: string) {
+	const current = projectsStore.currentProject;
+	if (!current) return;
+
+	const idx = formData.value.relations.findIndex((r) => r.id === userId);
+	if (idx === -1) return;
+
+	// Optimistically remove from UI
+	const removed = formData.value.relations.splice(idx, 1)[0];
+
+	// Only persist if user existed in server relations
+	const isPersisted = current.relations.some((r) => r.id === userId);
+	if (!isPersisted) return;
+
+	try {
+		// Prevent next sync from wiping unsaved edits
+		suppressNextSync.value = true;
+		await projectsStore.updateProject(current.id, {
+			relations: current.relations
+				.filter((r) => r.id !== userId)
+				.map((r) => ({ userId: r.id, role: r.role })),
+		});
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.member.removed.title'),
+		});
+		telemetry.track('User removed member from project', {
+			project_id: current.id,
+			target_user_id: userId,
+		});
+	} catch (error) {
+		formData.value.relations.splice(idx, 0, removed);
+		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+	}
+}
+
+const onMembersListAction = async ({ action, userId }: { action: string; userId: string }) => {
+	switch (action) {
+		case 'remove':
+			await onRemoveMember(userId);
+			break;
+		default:
+			// no-op for now; future actions can be added here
+			break;
+	}
 };
 
 const onCancel = () => {
@@ -199,18 +309,20 @@ const updateProject = async () => {
 		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
 			throw new Error('Invalid role selected for this project.');
 		}
+
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			name: formData.value.name!,
+			name: formData.value.name ?? '',
 			icon: projectIcon.value,
-			description: formData.value.description!,
+			description: formData.value.description ?? '',
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
-				role: r.role as TeamProjectRole,
+				role: r.role,
 			})),
 		});
 		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		throw error;
 	}
 };
 
@@ -218,24 +330,27 @@ const onSubmit = async () => {
 	if (!isDirty.value) {
 		return;
 	}
-	await updateProject();
-	const diff = makeFormDataDiff();
-	sendTelemetry(diff);
-	toast.showMessage({
-		title: i18n.baseText('projects.settings.save.successful.title', {
-			interpolate: { projectName: formData.value.name ?? '' },
-		}),
-		type: 'success',
-	});
+	try {
+		await updateProject();
+		const diff = makeFormDataDiff();
+		sendTelemetry(diff);
+		toast.showMessage({
+			title: i18n.baseText('projects.settings.save.successful.title', {
+				interpolate: { projectName: formData.value.name ?? '' },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		// Error already handled and displayed by updateProject()
+		// Just prevent success toast/telemetry from executing
+	}
 };
 
 const onDelete = async () => {
 	await projectsStore.getAvailableProjects();
 
 	if (projectsStore.currentProjectId) {
-		isCurrentProjectEmpty.value = await projectsStore.isProjectEmpty(
-			projectsStore.currentProjectId,
-		);
+		resourceCounts.value = await projectsStore.getResourceCounts(projectsStore.currentProjectId);
 	}
 
 	dialogVisible.value = true;
@@ -275,9 +390,14 @@ const onIconUpdated = async () => {
 	});
 };
 
+// Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
 watch(
 	() => projectsStore.currentProject,
 	async () => {
+		if (suppressNextSync.value) {
+			suppressNextSync.value = false;
+			return;
+		}
 		formData.value.name = projectsStore.currentProject?.name ?? '';
 		formData.value.description = projectsStore.currentProject?.description ?? '';
 		formData.value.relations = projectsStore.currentProject?.relations
@@ -293,17 +413,63 @@ watch(
 );
 
 // Add users property to the relation objects,
-// So that N8nUsersList has access to the full user data
+// So that the table has access to the full user data
 const relationUsers = computed(() =>
 	formData.value.relations.map((relation: ProjectRelation) => {
 		const user = usersStore.usersById[relation.id];
-		if (!user) return relation as ProjectRelation & IUser;
+		// Ensure type safety for UI display while preserving original role in formData
+		const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+
+		if (!user) {
+			return {
+				...relation,
+				role: safeRole,
+				firstName: null,
+				lastName: null,
+				email: null,
+			};
+		}
 		return {
 			...user,
 			...relation,
+			role: safeRole,
 		};
 	}),
 );
+
+const membersTableData = computed(() => ({
+	items: relationUsers.value,
+	count: relationUsers.value.length,
+}));
+
+const filteredMembersData = computed(() => {
+	if (!search.value.trim()) {
+		return membersTableData.value;
+	}
+	const searchTerm = search.value.toLowerCase();
+	const filtered = relationUsers.value.filter((member) => {
+		const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
+		const email = (member.email || '').toLowerCase();
+		return fullName.includes(searchTerm) || email.includes(searchTerm);
+	});
+	return {
+		items: filtered,
+		count: filtered.length,
+	};
+});
+
+const debouncedSearch = useDebounceFn(() => {
+	membersTableState.value.page = 0; // Reset to first page on search
+}, 300);
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedSearch();
+};
+
+const onUpdateMembersTableOptions = (options: TableOptions) => {
+	membersTableState.value = options;
+};
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
@@ -316,7 +482,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.projectSettings">
+	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
 		</div>
@@ -377,49 +543,31 @@ onMounted(() => {
 						<N8nIcon icon="search" />
 					</template>
 				</N8nUserSelect>
-				<N8nUsersList
-					:actions="[]"
-					:users="relationUsers"
-					:current-user-id="usersStore.currentUser?.id"
-					:delete-label="i18n.baseText('workflows.shareModal.list.delete')"
-				>
-					<template #actions="{ user }">
-						<div :class="$style.buttons">
-							<N8nSelect
-								class="mr-2xs"
-								:model-value="user?.role || projectRoles[0].slug"
-								size="small"
-								data-test-id="projects-settings-user-role-select"
-								@update:model-value="onRoleAction(user.id, $event)"
-							>
-								<N8nOption
-									v-for="role in projectRoles"
-									:key="role.slug"
-									:value="role.slug"
-									:label="role.displayName"
-									:disabled="!role.licensed"
-								>
-									{{ role.displayName
-									}}<span
-										v-if="!role.licensed"
-										:class="$style.upgrade"
-										@click="upgradeDialogVisible = true"
-									>
-										&nbsp;-&nbsp;{{ i18n.baseText('generic.upgrade') }}
-									</span>
-								</N8nOption>
-							</N8nSelect>
-							<N8nButton
-								type="tertiary"
-								native-type="button"
-								square
-								icon="trash-2"
-								data-test-id="project-user-remove"
-								@click="onRoleAction(user.id, 'remove')"
-							/>
-						</div>
-					</template>
-				</N8nUsersList>
+				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
+					<N8nInput
+						:class="$style.search"
+						:model-value="search"
+						:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
+						clearable
+						data-test-id="project-members-search"
+						@update:model-value="onSearch"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<ProjectMembersTable
+						v-model:table-options="membersTableState"
+						data-test-id="project-members-table"
+						:data="filteredMembersData"
+						:current-user-id="usersStore.currentUser?.id"
+						:project-roles="projectRoles"
+						:actions="projectMembersActions"
+						@update:options="onUpdateMembersTableOptions"
+						@update:role="onUpdateMemberRole"
+						@action="onMembersListAction"
+					/>
+				</div>
 			</fieldset>
 			<fieldset :class="$style.buttons">
 				<div>
@@ -461,7 +609,7 @@ onMounted(() => {
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
-			:is-current-project-empty="isCurrentProjectEmpty"
+			:resource-counts="resourceCounts"
 			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
@@ -511,6 +659,15 @@ onMounted(() => {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.membersTableContainer {
+	margin-top: var(--spacing-s);
+}
+
+.search {
+	max-width: 300px;
+	margin-bottom: var(--spacing-s);
 }
 
 .project-name {

@@ -146,6 +146,7 @@ import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesS
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -208,6 +209,7 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -523,7 +525,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			);
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+			workflowData.homeProject,
+			workflowData.sharedWithProjects,
+		);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
@@ -1600,6 +1605,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
@@ -1618,6 +1627,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			}
 		} else if (json && json.command === 'openExecution') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
 				isProductionExecutionPreview.value =
@@ -1892,7 +1905,7 @@ watch(
 			name: CanvasNodeRenderType.AIPrompt,
 			type: CanvasNodeRenderType.AIPrompt,
 			typeVersion: 1,
-			position: [-690, -15],
+			position: [-300, -100],
 			parameters: {},
 			draggable: false,
 		};
@@ -2069,6 +2082,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
+			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
@@ -2216,7 +2230,9 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel
-			v-if="!isLoading"
+			v-if="
+				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
+			"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"

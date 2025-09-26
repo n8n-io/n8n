@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.110.0",
+  "version": "1.112.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -168,9 +168,9 @@
     "@azure/identity": "4.3.0",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
-    "@google-ai/generativelanguage": "2.6.0",
     "@google-cloud/resource-manager": "5.3.0",
     "@google/generative-ai": "0.21.0",
+    "@google/genai": "1.19.0",
     "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
     "@langchain/aws": "0.1.11",
@@ -178,7 +178,7 @@
     "@langchain/community": "catalog:",
     "@langchain/core": "catalog:",
     "@langchain/google-genai": "0.2.17",
-    "@langchain/google-vertexai": "0.2.13",
+    "@langchain/google-vertexai": "0.2.18",
     "@langchain/groq": "0.2.3",
     "@langchain/mistralai": "0.2.1",
     "@langchain/mongodb": "^0.1.0",

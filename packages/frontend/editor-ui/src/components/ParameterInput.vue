@@ -13,7 +13,6 @@ import type {
 	CodeExecutionMode,
 	EditorType,
 	IDataObject,
-	ILoadOptions,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
@@ -78,10 +77,16 @@ import { useUIStore } from '@/stores/ui.store';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onClickOutside, useElementSize } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { hasFocusOnInput, isBlurrableEl, isFocusableEl, isSelectableEl } from '@/utils/typesUtils';
+import {
+	hasFocusOnInput,
+	isBlurrableEl,
+	isEmpty,
+	isFocusableEl,
+	isSelectableEl,
+} from '@/utils/typesUtils';
 import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
@@ -161,7 +166,6 @@ const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, un
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
-const mapperRef = ref<InstanceType<typeof ExperimentalEmbeddedNdvMapper>>();
 
 const nodeName = ref('');
 const codeEditDialogVisible = ref(false);
@@ -203,7 +207,6 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
-const isMapperShown = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -219,8 +222,8 @@ const shortPath = computed<string>(() => {
 	return short.join('.');
 });
 
-function getTypeOption<T>(optionName: string): T {
-	return getParameterTypeOption<T>(props.parameter, optionName);
+function getTypeOption<T extends keyof NonNullable<INodeProperties['typeOptions']>>(optionName: T) {
+	return getParameterTypeOption(props.parameter, optionName);
 }
 
 const isModelValueExpression = computed(() => isValueExpression(props.parameter, props.modelValue));
@@ -269,13 +272,13 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 		: props.modelValue;
 });
 
-const editorRows = computed(() => getTypeOption<number>('rows'));
+const editorRows = computed(() => getTypeOption('rows'));
 
-const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor'>(() => {
-	return getTypeOption<EditorType>('editor');
+const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
+	return getTypeOption('editor');
 });
 const editorIsReadOnly = computed<boolean>(() => {
-	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
+	return getTypeOption('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
@@ -283,7 +286,7 @@ const editorLanguage = computed<CodeNodeLanguageOption>(() => {
 
 	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
 
-	return getTypeOption<CodeNodeLanguageOption>('editorLanguage') ?? 'javaScript';
+	return getTypeOption('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
@@ -383,7 +386,7 @@ const expressionDisplayValue = computed(() => {
 });
 
 const dependentParametersValues = computed<string | null>(() => {
-	const loadOptionsDependsOn = getTypeOption<string[] | undefined>('loadOptionsDependsOn');
+	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;
@@ -623,7 +626,14 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
-const mapperElRef = computed(() => mapperRef.value?.contentRef);
+const isMapperAvailable = computed(
+	() =>
+		!props.parameter.isNodeSetting &&
+		(isModelValueExpression.value ||
+			props.forceShowExpression ||
+			(isEmpty(props.modelValue) && props.parameter.type !== 'dateTime') ||
+			editorType.value !== undefined),
+);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -686,8 +696,8 @@ async function loadRemoteParameterOptions() {
 			props.parameter,
 			currentNodeParameters,
 		) as INodeParameters;
-		const loadOptionsMethod = getTypeOption<string | undefined>('loadOptionsMethod');
-		const loadOptions = getTypeOption<ILoadOptions | undefined>('loadOptions');
+		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
+		const loadOptions = getTypeOption('loadOptions');
 
 		const options = await nodeTypesStore.getNodeParameterOptions({
 			nodeTypeAndVersion: {
@@ -811,10 +821,6 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
-
-		if (isModelValueExpression.value || props.forceShowExpression || props.modelValue === '') {
-			isMapperShown.value = true;
-		}
 	}
 
 	emit('focus');
@@ -955,20 +961,9 @@ function expressionUpdated(value: string) {
 	valueChanged(val);
 }
 
-function onBlur(event?: FocusEvent | KeyboardEvent) {
+function onBlur() {
 	emit('blur');
 	isFocused.value = false;
-
-	if (
-		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
-		!(
-			event instanceof FocusEvent &&
-			event.relatedTarget instanceof Node &&
-			mapperElRef.value?.contains(event.relatedTarget)
-		)
-	) {
-		isMapperShown.value = false;
-	}
 }
 
 function onPaste(event: ClipboardEvent) {
@@ -1016,12 +1011,6 @@ function onUpdateTextInput(value: string) {
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
 
-function onClickOutsideMapper() {
-	if (!isFocused.value) {
-		isMapperShown.value = false;
-	}
-}
-
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
 
@@ -1036,7 +1025,6 @@ async function optionSelected(command: string) {
 
 		case 'removeExpression':
 			isFocused.value = false;
-			isMapperShown.value = false;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1235,8 +1223,6 @@ onUpdated(async () => {
 		}
 	}
 });
-
-onClickOutside(mapperElRef, onClickOutsideMapper);
 </script>
 
 <template>
@@ -1260,13 +1246,11 @@ onClickOutside(mapperElRef, onClickOutsideMapper);
 		/>
 
 		<ExperimentalEmbeddedNdvMapper
-			v-if="node && expressionLocalResolveCtx?.inputNode"
-			ref="mapperRef"
-			:workflow="expressionLocalResolveCtx?.workflow"
+			v-if="wrapper && isMapperAvailable && node && expressionLocalResolveCtx?.inputNode"
+			:workflow="expressionLocalResolveCtx.workflow"
 			:node="node"
-			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-			:visible="isMapperShown"
-			:virtual-ref="wrapper"
+			:input-node-name="expressionLocalResolveCtx.inputNode.name"
+			:reference="wrapper"
 		/>
 
 		<div

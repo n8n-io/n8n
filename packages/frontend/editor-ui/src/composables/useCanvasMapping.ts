@@ -299,12 +299,13 @@ export function useCanvasMapping({
 				if (
 					!!node.disabled ||
 					(triggerNodeName !== undefined && triggerNodeName !== node.name) ||
-					!['new', 'unknown', 'waiting'].includes(nodeExecutionStatusById.value[node.id])
+					!['new', 'unknown', 'waiting'].includes(nodeExecutionStatusById.value[node.id]) ||
+					nodePinnedDataById.value[node.id]
 				) {
 					return acc;
 				}
 
-				if ('eventTriggerDescription' in nodeTypeDescription) {
+				if (typeof nodeTypeDescription.eventTriggerDescription === 'string') {
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
@@ -753,12 +754,18 @@ export function useCanvasMapping({
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 			const runDataTotal =
 				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
+			const hasMultipleRunDataIterations =
+				(nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.iterations ?? 1) >
+				1;
 
 			return runDataTotal > 0
-				? i18n.baseText('ndv.output.items', {
-						adjustToNumber: runDataTotal,
-						interpolate: { count: String(runDataTotal) },
-					})
+				? i18n.baseText(
+						hasMultipleRunDataIterations ? 'ndv.output.itemsTotal' : 'ndv.output.items',
+						{
+							adjustToNumber: runDataTotal,
+							interpolate: { count: String(runDataTotal) },
+						},
+					)
 				: '';
 		}
 

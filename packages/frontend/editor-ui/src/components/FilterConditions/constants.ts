@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { FilterConditionValue, FilterOptionsValue } from 'n8n-workflow';
 import type { FilterOperator, FilterOperatorGroup } from './types';
+import { DATA_TYPE_ICON_MAP } from '@/constants';
 
 export const DEFAULT_MAX_CONDITIONS = 10;
 
@@ -285,37 +286,37 @@ export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'string',
 		name: 'type.string',
-		icon: 'case-upper',
+		icon: DATA_TYPE_ICON_MAP.string,
 		children: OPERATORS.filter((operator) => operator.type === 'string'),
 	},
 	{
 		id: 'number',
 		name: 'type.number',
-		icon: 'hash',
+		icon: DATA_TYPE_ICON_MAP.number,
 		children: OPERATORS.filter((operator) => operator.type === 'number'),
 	},
 	{
 		id: 'dateTime',
 		name: 'type.dateTime',
-		icon: 'calendar',
+		icon: DATA_TYPE_ICON_MAP.date,
 		children: OPERATORS.filter((operator) => operator.type === 'dateTime'),
 	},
 	{
 		id: 'boolean',
 		name: 'type.boolean',
-		icon: 'square-check',
+		icon: DATA_TYPE_ICON_MAP.boolean,
 		children: OPERATORS.filter((operator) => operator.type === 'boolean'),
 	},
 	{
 		id: 'array',
 		name: 'type.array',
-		icon: 'list',
+		icon: DATA_TYPE_ICON_MAP.array,
 		children: OPERATORS.filter((operator) => operator.type === 'array'),
 	},
 	{
 		id: 'object',
 		name: 'type.object',
-		icon: 'box',
+		icon: DATA_TYPE_ICON_MAP.object,
 		children: OPERATORS.filter((operator) => operator.type === 'object'),
 	},
 ];

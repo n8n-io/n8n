@@ -121,19 +121,6 @@
 		},
 		{
 			"parameters": {
-				"content": "### Knowledge store agent\nA chat-based AI agent to retrieve, analyze, and answer questions using documents uploaded to Google Drive and stored in a vector database.\n\n#### Set up\n- Configure credentials in the **Google Drive** and **Open AI** nodes\n- Create a folder in Google Drive to store your documents, then select it in the \"File uploaded\" trigger node\n- Upload a file to that folder, return to n8n and click \"Execute workflow\"\n- Once **Insert documents** has been completed you can Open chat and ask the agent questions about your files.\n\n#### Next steps\nTry connecting other data sources to your knowledge base, using other triggers before the **Insert documents** node.\n",
-				"height": 512,
-				"width": 304,
-				"color": 5
-			},
-			"type": "n8n-nodes-base.stickyNote",
-			"position": [-1024, -16],
-			"typeVersion": 1,
-			"id": "b60fde91-e9bf-4f03-a847-b471af228a95",
-			"name": "Sticky Note"
-		},
-		{
-			"parameters": {
 				"content": "### Embeddings\n\nThe Insert and Retrieve operation use the same embedding node.\n\nThis is to ensure that they are using the **exact same embeddings and settings**.\n\nDifferent embeddings might not work at all, or have unintended consequences.\n",
 				"height": 240,
 				"width": 320,
@@ -178,6 +165,19 @@
 			"position": [640, 368],
 			"id": "4f8a4a45-28a4-4684-b838-66011cc6a4a5",
 			"name": "Retrieve documents"
+		},
+		{
+			"parameters": {
+				"content": "## Start here!\n@[youtube](v28IbZyoQEo)",
+				"height": 320,
+				"width": 464,
+				"color": 5
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1152, 16],
+			"typeVersion": 1,
+			"id": "d5898954-ea28-4093-86d4-085887e8a34e",
+			"name": "Sticky Note1"
 		}
 	],
 	"pinData": {},

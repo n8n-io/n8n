@@ -5,6 +5,8 @@ import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
 
+const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
+
 /**
  * TODO: add tests for all the other methods
  * TODO: getExecutionsForPublicApi -> add test cases for the `includeData` toggle
@@ -289,6 +291,32 @@ describe('ExecutionRepository', () => {
 					expect(result).toBe(mockCount);
 				},
 			);
+		});
+	});
+
+	describe('getConcurrentExecutionsCount', () => {
+		test('should count running executions with mode webhook or trigger', async () => {
+			const mockCount = 5;
+			entityManager.count.mockResolvedValueOnce(mockCount);
+
+			const result = await executionRepository.getConcurrentExecutionsCount();
+
+			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+				where: { status: 'running', mode: In(['webhook', 'trigger']) },
+			});
+			expect(result).toBe(mockCount);
+		});
+	});
+
+	describe('markAsCrashed', () => {
+		test('should batch updates above a threshold', async () => {
+			// Generates a list of many execution ids.
+			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
+			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
+				.fill(undefined)
+				.map((_, i) => i.toString());
+			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
+			expect(entityManager.update).toBeCalledTimes(2);
 		});
 	});
 });

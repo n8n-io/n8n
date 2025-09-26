@@ -2,7 +2,9 @@ import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import FilledSquare from './custom/filled-square.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
@@ -86,6 +88,7 @@ import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
 import IconLucideEqual from '~icons/lucide/equal';
+import IconLucideExpand from '~icons/lucide/expand';
 import IconLucideExternalLink from '~icons/lucide/external-link';
 import IconLucideEye from '~icons/lucide/eye';
 import IconLucideEyeOff from '~icons/lucide/eye-off';
@@ -169,6 +172,7 @@ import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
+import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -227,6 +231,7 @@ export const deprecatedIconSet = {
 	toolbox: Toolbox,
 	spinner: Spinner,
 	xmark: IconLucideX,
+	mcp: Mcp,
 
 	// fontAwesomeIcons
 	'caret-up': IconLucideChevronUp,
@@ -411,6 +416,7 @@ export const updatedIconSet = {
 	// custom icons
 	// NOTE: ensure to replace any colors with "currentColor" in SVG
 	'bolt-filled': BoltFilled,
+	'filled-square': FilledSquare,
 	'grip-lines-vertical': GripLinesVertical,
 	variable: IconLucideVariable,
 	'pop-out': PopOut,
@@ -442,6 +448,7 @@ export const updatedIconSet = {
 	'node-power': NodePower,
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
+	mcp: Mcp,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
@@ -500,6 +507,7 @@ export const updatedIconSet = {
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
 	equal: IconLucideEqual,
+	expand: IconLucideExpand,
 	'external-link': IconLucideExternalLink,
 	eye: IconLucideEye,
 	'eye-off': IconLucideEyeOff,
@@ -572,6 +580,7 @@ export const updatedIconSet = {
 	'refresh-cw': IconLucideRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
 	rss: IconLucideRss,
+	robot: IconLucideBot,
 	'satellite-dish': IconLucideSatelliteDish,
 	save: IconLucideSave,
 	scale: IconLucideScale,
@@ -583,6 +592,7 @@ export const updatedIconSet = {
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
+	sparkles: IconLucideSparkles,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-pen': IconLucideSquarePen,

@@ -96,17 +96,15 @@ export class SourceControlPreferencesService {
 			'features.sourceControl.httpsCredentials',
 		);
 
-		if (!dbSetting?.value) return null;
+		if (!dbSetting?.value) throw new UnexpectedError('No credentials found for https connection');
 
 		type HttpsCredentials = { encryptedUsername: string; encryptedPassword: string };
 
-		return jsonParse<HttpsCredentials | null>(dbSetting.value, { fallbackValue: null });
+		return jsonParse<HttpsCredentials>(dbSetting.value);
 	}
 
-	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string } | null> {
+	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string }> {
 		const credentials = await this.getHttpsCredentialsFromDatabase();
-
-		if (!credentials) return null;
 
 		return {
 			username: this.cipher.decrypt(credentials.encryptedUsername),

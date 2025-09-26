@@ -5,12 +5,15 @@ import { type Project, ProjectTypes } from '@/types/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type Props = {
-	currentProject: Project;
+	currentProject?: Project;
 	isDragging?: boolean;
+	isShared?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
+	currentProject: undefined,
 	isDragging: false,
+	isShared: false,
 });
 
 const emit = defineEmits<{
@@ -21,22 +24,44 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const projectIcon = computed((): IconOrEmoji => {
+	if (props.isShared) {
+		return { type: 'icon', value: 'share' };
+	}
+
 	if (props.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
-	} else if (props.currentProject?.name) {
+	}
+
+	if (props.currentProject?.name) {
 		return isIconOrEmoji(props.currentProject.icon)
 			? props.currentProject.icon
 			: { type: 'icon', value: 'layers' };
-	} else {
-		return { type: 'icon', value: 'house' };
 	}
+
+	return { type: 'icon', value: 'house' };
 });
 
 const projectName = computed(() => {
-	if (props.currentProject.type === ProjectTypes.Personal) {
+	if (props.isShared) {
+		return i18n.baseText('projects.menu.shared');
+	}
+
+	if (props.currentProject?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
-	return props.currentProject.name;
+	return props.currentProject?.name;
+});
+
+const projectLink = computed(() => {
+	if (props.isShared) {
+		return '/shared';
+	}
+
+	if (props.currentProject) {
+		return `/projects/${props.currentProject.id}`;
+	}
+
+	return '/home';
 });
 
 const onHover = () => {
@@ -56,7 +81,7 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<n8n-link :to="`/projects/${currentProject.id}`" :class="[$style['project-link']]">
+		<n8n-link :to="projectLink" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
 			<N8nText size="medium" color="text-base" :class="$style['project-label']">
 				{{ projectName }}

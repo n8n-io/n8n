@@ -1,17 +1,22 @@
 import {
-	DATA_STORE_COLUMN_REGEX,
+	DATA_STORE_COLUMN_ERROR_MESSAGE,
 	type DataStoreCreateColumnSchema,
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
+import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
-import { toTableName } from './utils/sql-utils';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -24,8 +29,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 	}
 
 	async createDataStore(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
-		if (columns.some((c) => !DATA_STORE_COLUMN_REGEX.test(c.name))) {
-			throw new UnexpectedError('bad column name');
+		if (columns.some((c) => !isValidColumnName(c.name))) {
+			throw new DataStoreValidationError(DATA_STORE_COLUMN_ERROR_MESSAGE);
 		}
 
 		let dataTableId: string | undefined;
@@ -75,9 +80,8 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return createdDataStore;
 	}
 
-	async deleteDataStore(dataStoreId: string, entityManager?: EntityManager) {
-		const executor = entityManager ?? this.manager;
-		return await executor.transaction(async (em) => {
+	async deleteDataStore(dataStoreId: string, tx?: EntityManager) {
+		const run = async (em: EntityManager) => {
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -85,8 +89,51 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			await em.delete(DataTable, { id: dataStoreId });
 			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
-
 			return true;
+		};
+
+		if (tx) {
+			return await run(tx);
+		}
+
+		return await this.manager.transaction(run);
+	}
+
+	async transferDataStoreByProjectId(fromProjectId: string, toProjectId: string) {
+		if (fromProjectId === toProjectId) return false;
+
+		return await this.manager.transaction(async (em) => {
+			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
+
+			let transferred = false;
+			for (const existing of existingTables) {
+				let name = existing.name;
+				const hasNameClash = await em.existsBy(DataTable, {
+					name,
+					projectId: toProjectId,
+				});
+
+				if (hasNameClash) {
+					const project = await em.findOneByOrFail(Project, { id: fromProjectId });
+					name = `${existing.name} (${project.name})`;
+
+					const stillHasNameClash = await em.existsBy(DataTable, {
+						name,
+						projectId: toProjectId,
+					});
+
+					if (stillHasNameClash) {
+						throw new DataStoreNameConflictError(
+							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
+						);
+					}
+				}
+
+				await em.update(DataTable, { id: existing.id }, { name, projectId: toProjectId });
+				transferred = true;
+			}
+
+			return transferred;
 		});
 	}
 
@@ -168,12 +215,13 @@ export class DataStoreRepository extends Repository<DataTable> {
 		}
 
 		if (filter?.name) {
-			const nameFilters = typeof filter.name === 'string' ? [filter.name] : filter.name;
-			for (const name of nameFilters) {
-				query.andWhere('LOWER(dataStore.name) LIKE LOWER(:name)', {
-					name: `%${name}%`,
+			const nameFilters = Array.isArray(filter.name) ? filter.name : [filter.name];
+
+			nameFilters.forEach((name, i) => {
+				query.andWhere(`LOWER(dataStore.name) LIKE LOWER(:name${i})`, {
+					['name' + i]: `%${name}%`,
 				});
-			}
+			});
 		}
 	}
 
@@ -211,9 +259,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
-		if (options?.take) {
-			query.skip(options.skip ?? 0).take(options.take);
-		}
+		if (options.take !== undefined) query.take(options.take);
 	}
 
 	private applyDefaultSelect(query: SelectQueryBuilder<DataTable>): void {
@@ -242,49 +288,117 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return [`${alias}.id`, `${alias}.name`, `${alias}.type`, `${alias}.icon`];
 	}
 
-	async findDataTablesSize(): Promise<number> {
+	private parseSize = (bytes: number | string | null): number =>
+		bytes === null ? 0 : typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
+
+	async findDataTablesSize(): Promise<DataTablesSizeData> {
+		const sizeMap = await this.getAllDataTablesSizeMap();
+
+		// Calculate total bytes for the whole instance
+		const totalBytes = Array.from(sizeMap.values()).reduce((sum, size) => sum + size, 0);
+
+		const query = this.createQueryBuilder('dt')
+			.leftJoinAndSelect('dt.project', 'p')
+			.select(['dt.id', 'dt.name', 'p.id', 'p.name']);
+
+		const dataTablesWithProjects = await query.getMany();
+
+		// Combine size data with metadata
+		const dataTables: Record<string, DataTableInfo> = {};
+
+		for (const dt of dataTablesWithProjects) {
+			const sizeBytes = sizeMap.get(dt.id) ?? 0;
+			dataTables[dt.id] = {
+				id: dt.id,
+				name: dt.name,
+				projectId: dt.project.id,
+				projectName: dt.project.name,
+				sizeBytes,
+			};
+		}
+
+		return {
+			totalBytes,
+			dataTables,
+		};
+	}
+
+	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
 		const dbType = this.globalConfig.database.type;
-		const schemaName = this.globalConfig.database.postgresdb.schema;
+		const tablePattern = toTableName('%');
 
 		let sql = '';
 
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
-        	SELECT SUM(pgsize) AS total_bytes
-					FROM dbstat
-					WHERE name LIKE '${toTableName('%')}'
-				`;
+        WITH data_table_names(name) AS (
+          SELECT name
+          FROM sqlite_schema
+          WHERE type = 'table' AND name GLOB '${toTableName('*')}'
+        )
+        SELECT t.name AS table_name, (SELECT SUM(pgsize) FROM dbstat WHERE name = t.name) AS table_bytes
+        FROM data_table_names AS t
+      `;
 				break;
 
-			case 'postgresdb':
+			case 'postgresdb': {
+				const schemaName = this.globalConfig.database.postgresdb?.schema;
 				sql = `
-        	SELECT SUM(pg_relation_size(c.oid)) AS total_bytes
-					FROM pg_class c
-					JOIN pg_namespace n ON n.oid = c.relnamespace
-					WHERE n.nspname = '${schemaName}'
-					AND c.relname LIKE '${toTableName('%')}'
-					AND c.relkind IN ('r', 'm', 'p')
-    		`;
+        SELECT c.relname AS table_name, pg_relation_size(c.oid) AS table_bytes
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = '${schemaName}'
+           AND c.relname LIKE '${tablePattern}'
+           AND c.relkind IN ('r', 'm', 'p')
+      `;
 				break;
+			}
 
 			case 'mysqldb':
 			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
+				const isMariaDb = dbType === 'mariadb';
+				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
+				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
 				sql = `
-        	SELECT SUM((DATA_LENGTH + INDEX_LENGTH)) AS total_bytes
-					FROM information_schema.tables
-					WHERE table_schema = '${databaseName}'
-					AND table_name LIKE '${toTableName('%')}'
-				`;
+        SELECT t.TABLE_NAME AS table_name,
+            COALESCE(
+                (
+                  SELECT SUM(ists.ALLOCATED_SIZE)
+                    FROM information_schema.${innodbTables} ist
+                    JOIN information_schema.${innodbTablespaces} ists
+                      ON ists.SPACE = ist.SPACE
+                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
+                ),
+                (t.DATA_LENGTH + t.INDEX_LENGTH)
+            ) AS table_bytes
+        FROM information_schema.TABLES t
+        WHERE t.TABLE_SCHEMA = '${databaseName}'
+          AND t.TABLE_NAME LIKE '${tablePattern}'
+    `;
 				break;
 			}
 
 			default:
-				return 0;
+				return new Map<string, number>();
 		}
 
-		const result = (await this.query(sql)) as Array<{ total_bytes: number | null }>;
-		return result[0]?.total_bytes ?? 0;
+		const result = (await this.query(sql)) as Array<{
+			table_name: string;
+			table_bytes: number | string | null;
+		}>;
+
+		const sizeMap = new Map<string, number>();
+
+		for (const row of result) {
+			if (row.table_bytes !== null && row.table_name) {
+				const dataStoreId = toTableId(row.table_name as DataStoreUserTableName);
+				const sizeBytes = this.parseSize(row.table_bytes);
+				sizeMap.set(dataStoreId, (sizeMap.get(dataStoreId) ?? 0) + sizeBytes);
+			}
+		}
+
+		return sizeMap;
 	}
 }

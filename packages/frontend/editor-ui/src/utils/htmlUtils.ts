@@ -1,5 +1,6 @@
 import xss, { escapeAttrValue } from 'xss';
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
+import { toValue, type MaybeRef } from 'vue';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
@@ -95,4 +96,11 @@ export function getScrollbarWidth() {
 	outer.parentElement?.removeChild(outer);
 
 	return scrollbarWidth;
+}
+
+export function isEventTargetContainedBy(
+	eventTarget: EventTarget | null | undefined,
+	maybeContainer: MaybeRef<HTMLElement | null | undefined>,
+): boolean {
+	return !!(eventTarget instanceof Node && toValue(maybeContainer)?.contains(eventTarget));
 }

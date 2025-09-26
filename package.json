@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.111.0",
+  "version": "1.113.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
-    "pnpm": ">=10.2.1"
+    "pnpm": ">=10.16.0"
   },
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@10.16.0",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -90,6 +90,7 @@
       "@azure/identity": "^4.3.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
+      "axios": "1.12.0",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
       "multer": "^2.0.2",

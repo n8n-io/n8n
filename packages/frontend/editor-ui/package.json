@@ -1,11 +1,13 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.111.0",
+  "version": "1.113.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "clean": "rimraf dist .turbo",
+    "clean": "rimraf dist .turbo .build",
+    "popularity-cache-marker": "node scripts/cache-marker.mjs",
+    "fetch-popularity": "node scripts/fetch-node-popularity.mjs",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
@@ -114,6 +116,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@pinia/testing": "^0.1.6",
+    "@storybook/types": "^8.6.14",
     "@testing-library/vue": "catalog:frontend",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",

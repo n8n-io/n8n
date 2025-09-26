@@ -19,6 +19,7 @@
     "install-browsers:local": "playwright install chromium --with-deps",
     "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",
+    "prepare-test-image": "node scripts/build-test-image.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit"
@@ -36,6 +37,7 @@
     "n8n-workflow": "workspace:*",
     "flatted": "catalog:",
     "nanoid": "catalog:",
+    "otplib": "^12.0.1",
     "tsx": "catalog:",
     "mockserver-client": "^5.15.0",
     "zod": "catalog:"

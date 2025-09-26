@@ -23,7 +23,7 @@ const onUserAction = (action: string) => {
 <template>
 	<div>
 		<N8nActionToggle
-			v-if="!props.data.isOwner && props.data.signInType !== 'ldap' && props.actions.length > 0"
+			v-if="props.data.signInType !== 'ldap' && props.actions.length > 0"
 			placement="bottom"
 			:actions="props.actions"
 			theme="dark"

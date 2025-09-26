@@ -14,7 +14,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
-import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -30,7 +37,7 @@ const props = defineProps<{
 	data: { eventBus: EventBus; workflowId: string; direction: 'push' | 'pull' };
 }>();
 
-const { selectedDetailId, onNodeClick } = useProvideViewportSync();
+const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
 const telemetry = useTelemetry();
 const $style = useCssModule();
@@ -427,6 +434,12 @@ const modifiers = [
 				</div>
 
 				<div :class="$style.headerRight">
+					<N8nCheckbox
+						v-model="syncIsEnabled"
+						label-size="small"
+						label="Sync views"
+						class="mb-0 mr-s"
+					/>
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -434,10 +447,9 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary">
+						<N8nButton type="secondary" style="--button-border-radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -567,16 +579,17 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
-						class="mr-2xs"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
-					></N8nIconButton>
+					/>
 					<N8nIconButton
 						icon="chevron-right"
 						type="secondary"
 						:class="$style.navigationButton"
+						style="--button-border-radius: 0 4px 4px 0"
 						@click="nextNodeChange"
-					></N8nIconButton>
+					/>
 				</div>
 			</div>
 		</template>

@@ -20,11 +20,13 @@ import type {
 import {
 	ADD_ROW_ROW_ID,
 	DATA_STORE_ID_COLUMN_WIDTH,
+	DEFAULT_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
 } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
+import ElDatePickerFilter from '@/features/dataStore/components/dataGrid/ElDatePickerFilter.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
@@ -39,7 +41,12 @@ import {
 	stringCellEditorParams,
 	dateValueFormatter,
 	numberValueFormatter,
+	getStringColumnFilterOptions,
+	getDateColumnFilterOptions,
+	getNumberColumnFilterOptions,
+	getBooleanColumnFilterOptions,
 } from '@/features/dataStore/utils/columnUtils';
+import { useI18n } from '@n8n/i18n';
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -57,6 +64,7 @@ export const useDataStoreGridBase = ({
 	const isTextEditorOpen = ref(false);
 	const { mapToAGCellType } = useDataStoreTypes();
 	const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
+	const i18n = useI18n();
 	const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
 	const currentSortOrder = ref<SortDirection>('asc');
 
@@ -102,9 +110,15 @@ export const useDataStoreGridBase = ({
 		if (rowNode?.rowIndex === null) return;
 		const rowIndex = rowNode!.rowIndex;
 
-		const firstEditableCol = colDefs.value[1];
-		if (!firstEditableCol?.colId) return;
-		const columnId = firstEditableCol.colId;
+		const displayed = initializedGridApi.value.getAllDisplayedColumns();
+		const firstEditable = displayed.find((col) => {
+			const def = col.getColDef();
+			if (!def) return false;
+			if (def.colId === DEFAULT_ID_COLUMN_NAME) return false;
+			return !!def.editable;
+		});
+		if (!firstEditable) return;
+		const columnId = firstEditable.getColId();
 
 		requestAnimationFrame(() => {
 			initializedGridApi.value.ensureIndexVisible(rowIndex);
@@ -124,7 +138,6 @@ export const useDataStoreGridBase = ({
 			field: col.name,
 			headerName: col.name,
 			sortable: true,
-			flex: 1,
 			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 			resizable: true,
 			lockPinned: true,
@@ -135,6 +148,7 @@ export const useDataStoreGridBase = ({
 			cellClass: getCellClass,
 			valueGetter: createValueGetter(col),
 			cellRendererSelector: createCellRendererSelector(col),
+			width: DEFAULT_COLUMN_WIDTH,
 		};
 
 		if (col.type === 'string') {
@@ -143,13 +157,28 @@ export const useDataStoreGridBase = ({
 			columnDef.cellEditorPopupPosition = 'over';
 			columnDef.cellEditorParams = stringCellEditorParams;
 			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: getStringColumnFilterOptions(i18n),
+			};
 		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,
 			});
 			columnDef.valueFormatter = dateValueFormatter;
+			columnDef.cellEditorPopup = true;
+			columnDef.dateComponent = ElDatePickerFilter;
+			columnDef.filterParams = {
+				filterOptions: getDateColumnFilterOptions(i18n),
+			};
 		} else if (col.type === 'number') {
 			columnDef.valueFormatter = numberValueFormatter;
+			columnDef.filterParams = {
+				filterOptions: getNumberColumnFilterOptions(i18n),
+			};
+		} else if (col.type === 'boolean') {
+			columnDef.filterParams = {
+				filterOptions: getBooleanColumnFilterOptions(i18n),
+			};
 		}
 
 		return {
@@ -183,6 +212,7 @@ export const useDataStoreGridBase = ({
 			},
 			cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
 			headerClass: 'system-column',
+			width: DEFAULT_COLUMN_WIDTH,
 		};
 		return [
 			// Always add the ID column, it's not returned by the back-end but all data stores have it
@@ -197,13 +227,17 @@ export const useDataStoreGridBase = ({
 				{
 					editable: false,
 					sortable: true,
+					filter: false,
 					suppressMovable: true,
-					headerComponent: null,
 					lockPosition: true,
 					minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					resizable: false,
 					headerClass: 'system-column',
+					headerComponentParams: {
+						allowMenuActions: false,
+						showTypeIcon: false,
+					},
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {
@@ -250,6 +284,7 @@ export const useDataStoreGridBase = ({
 					lockPinned: true,
 					lockPosition: 'right',
 					resizable: false,
+					flex: 1,
 					headerComponent: AddColumnButton,
 					headerComponentParams: { onAddColumn },
 				},

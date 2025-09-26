@@ -18,8 +18,9 @@ import type {
 } from 'ag-grid-community';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
-import { isDataStoreValue } from '@/features/dataStore/typeGuards';
-import { useDataStoreTypes } from './useDataStoreTypes';
+import { isDataStoreValue, isAGGridCellType } from '@/features/dataStore/typeGuards';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { areValuesEqual } from '@/features/dataStore/utils/typeUtils';
 
 export type UseDataStoreOperationsParams = {
 	colDefs: Ref<ColDef[]>;
@@ -41,6 +42,7 @@ export type UseDataStoreOperationsParams = {
 	pageSize: Ref<number>;
 	currentSortBy: Ref<string>;
 	currentSortOrder: Ref<string | null>;
+	currentFilterJSON?: Ref<string | undefined>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataStoreRow>) => Promise<void>;
@@ -66,6 +68,7 @@ export const useDataStoreOperations = ({
 	pageSize,
 	currentSortBy,
 	currentSortOrder,
+	currentFilterJSON,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -195,16 +198,22 @@ export const useDataStoreOperations = ({
 
 	const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
 		const { data, api, oldValue, colDef } = params;
-		const value = params.data[colDef.field!];
+		const fieldName = String(colDef.field ?? '');
+		if (!fieldName) return;
 
-		if (value === undefined || value === oldValue) {
+		const value = params.data[fieldName];
+
+		const cellType = isAGGridCellType(colDef.cellDataType)
+			? dataStoreTypes.mapToDataStoreColumnType(colDef.cellDataType)
+			: undefined;
+
+		if (value === undefined || areValuesEqual(oldValue, value, cellType)) {
 			return;
 		}
 
 		if (typeof data.id !== 'number') {
 			throw new Error('Expected row id to be a number');
 		}
-		const fieldName = String(colDef.field);
 		const id = data.id;
 
 		try {
@@ -240,10 +249,11 @@ export const useDataStoreOperations = ({
 				currentPage.value,
 				pageSize.value,
 				`${currentSortBy.value}:${currentSortOrder.value}`,
+				currentFilterJSON?.value,
 			);
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);
-			setGridData({ rowData: rowData.value, colDefs: colDefs.value });
+			setGridData({ rowData: rowData.value });
 			handleClearSelection();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));

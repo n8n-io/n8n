@@ -76,7 +76,7 @@ export async function getDataTableAggregateProxy(
 
 export function isFieldEntry(obj: unknown): obj is FieldEntry {
 	if (obj === null || typeof obj !== 'object') return false;
-	return 'keyName' in obj && 'condition' in obj; // keyValue is optional
+	return 'keyName' in obj; // keyValue and condition are optional
 }
 
 export function isMatchType(obj: unknown): obj is FilterType {
@@ -101,10 +101,22 @@ export function buildGetManyFilter(
 					condition: 'neq' as const,
 					value: null,
 				};
+			case 'isTrue':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: true,
+				};
+			case 'isFalse':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: false,
+				};
 			default:
 				return {
 					columnName: x.keyName,
-					condition: x.condition,
+					condition: x.condition ?? 'eq',
 					value: x.keyValue,
 				};
 		}
