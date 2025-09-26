@@ -418,6 +418,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getIsNodeInstalled = computed(() => {
+		return (nodeTypeName: string) => {
+			return (
+				!!getNodeType.value(nodeTypeName) || !!communityNodeType.value(nodeTypeName)?.isInstalled
+			);
+		};
+	});
+
 	// #endregion
 
 	return {
@@ -452,5 +460,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		setNodeTypes,
 		removeNodeTypes,
 		getCommunityNodeAttributes,
+		getIsNodeInstalled,
 	};
 });

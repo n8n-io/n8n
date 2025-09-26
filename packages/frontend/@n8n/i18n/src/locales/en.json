@@ -1272,6 +1272,7 @@
 	"node.delete": "Delete",
 	"node.add": "Add",
 	"node.issues": "Issues",
+	"node.install-to-use": "Install the package to use this node",
 	"node.dirty": "Node configuration changed. Output data may change when this node is run again",
 	"node.subjectToChange": "Because of changes in the workflow, output data may change when this node is run again",
 	"node.nodeIsExecuting": "Node is executing",

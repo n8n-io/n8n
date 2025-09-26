@@ -183,10 +183,6 @@ export function useCanvasMapping({
 		}, {});
 	});
 
-	// watch(nodeSubtitleById, (value) => {
-	// 	console.log('nodeSubtitleById', value);
-	// }, {immediate: true});
-
 	const nodeInputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];

@@ -40,7 +40,7 @@ const {
 	hasRunData,
 	hasExecutionErrors,
 	render,
-	notInstalled,
+	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
@@ -57,7 +57,8 @@ const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
-		[$style.disabled]: isDisabled.value || (notInstalled.value && !isDemoRoute.value),
+		[$style.disabled]:
+			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,

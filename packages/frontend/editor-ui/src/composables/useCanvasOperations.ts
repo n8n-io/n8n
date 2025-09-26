@@ -1527,14 +1527,16 @@ export function useCanvasOperations() {
 		const blocklist = [STICKY_NODE_TYPE];
 
 		const checkIsNotInstalledCommunityNode = (node: INodeUi) =>
-			isCommunityPackageName(node.type) &&
-			!useNodeTypesStore().communityNodeType(node.type)?.isInstalled;
+			isCommunityPackageName(node.type) && !useNodeTypesStore().getIsNodeInstalled(node.type);
+
+		const isSourceNotInstalled = checkIsNotInstalledCommunityNode(sourceNode);
+		const isTargetNotInstalled = checkIsNotInstalledCommunityNode(targetNode);
 
 		const getNodeType = (node: INodeUi) => {
-			if (checkIsNotInstalledCommunityNode(node)) {
-				return nodeTypesStore.communityNodeType(node.type)?.nodeDescription;
-			}
-			return nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			return (
+				nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+				nodeTypesStore.communityNodeType(node.type)?.nodeDescription
+			);
 		};
 
 		if (sourceConnection.type !== targetConnection.type) {
@@ -1571,7 +1573,8 @@ export function useCanvasOperations() {
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
-		if (isMissingOutputConnection) {
+
+		if (isMissingOutputConnection && !isSourceNotInstalled) {
 			return false;
 		}
 
@@ -1619,7 +1622,7 @@ export function useCanvasOperations() {
 
 		const isMissingInputConnection =
 			!targetNodeHasInputConnectionOfType || !targetNodeHasInputConnectionPortOfType;
-		if (isMissingInputConnection) {
+		if (isMissingInputConnection && !isTargetNotInstalled) {
 			return false;
 		}
 

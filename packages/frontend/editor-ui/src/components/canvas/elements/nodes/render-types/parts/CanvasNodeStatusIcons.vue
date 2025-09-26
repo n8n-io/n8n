@@ -38,7 +38,7 @@ const {
 	runDataIterations,
 	isDisabled,
 	render,
-	notInstalled,
+	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const route = useRoute();
 const { isExecuting } = useCanvas();
@@ -75,12 +75,12 @@ const commonClasses = computed(() => [
 		</div>
 	</div>
 	<div
-		v-else-if="notInstalled && !isDemoRoute"
+		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
-			<template #content> Install the package to use this node </template>
+			<template #content> {{ i18n.baseText('node.install-to-use') }} </template>
 			<N8nIcon icon="hard-drive-download" :size="size" />
 		</N8nTooltip>
 	</div>

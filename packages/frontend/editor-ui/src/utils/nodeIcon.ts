@@ -57,18 +57,11 @@ export function getNodeIconSource(
 		const communityNode = useNodeTypesStore().communityNodeType(removePreviewToken(nodeType));
 		let url: string | null = null;
 		if (communityNode?.nodeDescription?.iconUrl) {
-			if (typeof communityNode.nodeDescription.iconUrl === 'string') {
-				url = communityNode.nodeDescription.iconUrl;
-			} else if (
-				communityNode.nodeDescription.iconUrl &&
-				typeof communityNode.nodeDescription.iconUrl === 'object'
-			) {
-				const themedUrl = getThemedValue(
-					communityNode.nodeDescription.iconUrl,
-					useUIStore().appliedTheme,
-				);
-				url = url ?? themedUrl;
-			}
+			const themedUrl = getThemedValue(
+				communityNode.nodeDescription.iconUrl,
+				useUIStore().appliedTheme,
+			);
+			url = themedUrl;
 		}
 		return url ? { type: 'file', src: url } : undefined;
 	}

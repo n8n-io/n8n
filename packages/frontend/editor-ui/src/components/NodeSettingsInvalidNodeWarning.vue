@@ -3,11 +3,11 @@ import { useInstallNode } from '@/composables/useInstallNode';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, CUSTOM_NODES_DOCS_URL } from '@/constants';
 import type { INodeUi } from '@/Interface';
+import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -37,6 +37,11 @@ const { installNode, loading } = useInstallNode();
 const isNodeDefined = computed(() => !!nodeTypesStore.nodeTypes[node.type]);
 
 async function onViewDetailsClick() {
+	telemetry.track('user clicked cnr docs link', {
+		source: 'missing node modal source',
+		package_name: node.type.split('.')[0],
+		node_type: node.type,
+	});
 	if (isVerifiedCommunityNode.value) {
 		await nodeCreatorStore.openNodeCreatorWithNode(node.name);
 	} else if (npmPackage.value) {
@@ -48,6 +53,7 @@ async function onInstallClick() {
 	telemetry.track('user clicked cnr install button', {
 		source: 'missing node modal source',
 		package_name: node.type.split('.')[0],
+		node_type: node.type,
 	});
 
 	if (isVerifiedCommunityNode.value) {
@@ -109,9 +115,7 @@ watch(isNodeDefined, () => {
 					View details
 				</N8nButton>
 			</div>
-			<N8nText v-else size="large" color="primary" bold
-				>Contact an admin to install this node</N8nText
-			>
+			<ContactAdministratorToInstall v-else :box="false" />
 		</div>
 		<I18nT v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span" scope="global">
 			<template #action>
