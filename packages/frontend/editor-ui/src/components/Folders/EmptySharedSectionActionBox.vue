@@ -37,7 +37,7 @@ const onPersonalLinkClick = (event: MouseEvent) => {
 </script>
 
 <template>
-	<n8n-action-box
+	<N8nActionBox
 		data-test-id="empty-shared-action-box"
 		:heading="heading"
 		:description="i18n.baseText('workflows.empty.shared-with-me.link')"

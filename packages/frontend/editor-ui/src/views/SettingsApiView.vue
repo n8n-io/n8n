@@ -109,15 +109,15 @@ function onEdit(id: string) {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<n8n-heading size="2xlarge">
+			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
 					({{ i18n.baseText('generic.beta') }})
 				</span>
-			</n8n-heading>
+			</N8nHeading>
 		</div>
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
-			<n8n-text>
+			<N8nText>
 				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 					<template #apiAction>
 						<a
@@ -136,21 +136,21 @@ function onEdit(id: string) {
 						/>
 					</template>
 				</I18nT>
-			</n8n-text>
+			</N8nText>
 		</p>
 
 		<div :class="$style.apiKeysContainer">
 			<template v-if="apiKeysSortByCreationDate.length">
-				<el-row
+				<ElRow
 					v-for="(apiKey, index) in apiKeysSortByCreationDate"
 					:key="apiKey.id"
 					:gutter="10"
 					:class="[{ [$style.destinationItem]: index !== apiKeysSortByCreationDate.length - 1 }]"
 				>
-					<el-col>
+					<ElCol>
 						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 			</template>
 		</div>
 
@@ -163,7 +163,7 @@ function onEdit(id: string) {
 				}}
 			</N8nText>
 			{{ ' ' }}
-			<n8n-link
+			<N8nLink
 				v-if="isSwaggerUIEnabled"
 				data-test-id="api-playground-link"
 				:to="apiDocsURL"
@@ -171,8 +171,8 @@ function onEdit(id: string) {
 				size="small"
 			>
 				{{ i18n.baseText('settings.api.view.apiPlayground') }}
-			</n8n-link>
-			<n8n-link
+			</N8nLink>
+			<N8nLink
 				v-else
 				data-test-id="api-endpoint-docs-link"
 				:to="apiDocsURL"
@@ -180,19 +180,19 @@ function onEdit(id: string) {
 				size="small"
 			>
 				{{ i18n.baseText(`settings.api.view.external-docs`) }}
-			</n8n-link>
+			</N8nLink>
 		</div>
 		<div class="mt-m text-right">
-			<n8n-button
+			<N8nButton
 				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
 				size="large"
 				@click="onCreateApiKey"
 			>
 				{{ i18n.baseText('settings.api.create.button') }}
-			</n8n-button>
+			</N8nButton>
 		</div>
 
-		<n8n-action-box
+		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
@@ -201,7 +201,7 @@ function onEdit(id: string) {
 			@click:button="onUpgrade"
 		/>
 
-		<n8n-action-box
+		<N8nActionBox
 			v-if="isPublicApiEnabled && !apiKeysSortByCreationDate.length"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')

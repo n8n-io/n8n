@@ -123,9 +123,11 @@ test.describe('Projects', () => {
 			// Initially should have only the owner (current user)
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
-			// Verify project settings action buttons are present
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeVisible();
+			// Verify save/cancel buttons are not visible initially (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+
+			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
 		});
 
@@ -254,9 +256,9 @@ test.describe('Projects', () => {
 			await n8n.page.goto(`/projects/${projectId}/settings`);
 			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
-			// Initially, save and cancel buttons should be disabled (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+			// Initially, save and cancel buttons should not be visible (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
 
 			// Make a change to the project name
 			await n8n.projectSettings.fillProjectName('Modified Name');
@@ -271,9 +273,9 @@ test.describe('Projects', () => {
 			// Cancel changes
 			await n8n.projectSettings.clickCancelButton();
 
-			// Buttons should be disabled again
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+			// Buttons should not be visible again (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {

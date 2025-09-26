@@ -188,18 +188,13 @@ async function onConnectionStateChange() {
 						:provider="provider"
 						@change="onConnectionStateChange"
 					/>
-					<n8n-button
-						type="primary"
-						:loading="saving"
-						:disabled="!canSave && !saving"
-						@click="save"
-					>
+					<N8nButton type="primary" :loading="saving" :disabled="!canSave && !saving" @click="save">
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,
 							)
 						}}
-					</n8n-button>
+					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -208,7 +203,7 @@ async function onConnectionStateChange() {
 			<div v-if="provider" :class="$style.container">
 				<hr class="mb-l" />
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
-					<n8n-callout
+					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
 						theme="success"
 					>
@@ -235,16 +230,16 @@ async function onConnectionStateChange() {
 									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
 								</template>
 							</I18nT>
-							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
+							<N8nLink :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
 								{{
 									i18n.baseText(
 										'settings.externalSecrets.provider.testConnection.success.connected.docs',
 									)
 								}}
-							</n8n-link>
+							</N8nLink>
 						</span>
-					</n8n-callout>
-					<n8n-callout v-else-if="connectionState === 'error'" theme="danger">
+					</N8nCallout>
+					<N8nCallout v-else-if="connectionState === 'error'" theme="danger">
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.error${
@@ -255,7 +250,7 @@ async function onConnectionStateChange() {
 								},
 							)
 						}}
-					</n8n-callout>
+					</N8nCallout>
 				</div>
 
 				<form
@@ -266,7 +261,7 @@ async function onConnectionStateChange() {
 					data-test-id="external-secrets-provider-properties-form"
 					@submit.prevent
 				>
-					<n8n-notice v-if="property.type === 'notice'" :content="property.displayName" />
+					<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
 					<ParameterInputExpanded
 						v-else
 						class="mb-l"

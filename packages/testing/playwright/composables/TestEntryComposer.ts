@@ -35,7 +35,7 @@ export class TestEntryComposer {
 		await this.n8n.api.setMaxTeamProjectsQuota(-1);
 
 		// Create a project using the API
-		const response = await this.n8n.api.projectApi.createProject();
+		const response = await this.n8n.api.projects.createProject();
 
 		const projectId = response.id;
 		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
@@ -44,13 +44,9 @@ export class TestEntryComposer {
 	}
 
 	async fromNewProject() {
-		// Enable features to allow us to create a new project
-		await this.n8n.api.enableFeature('projectRole:admin');
-		await this.n8n.api.enableFeature('projectRole:editor');
-		await this.n8n.api.setMaxTeamProjectsQuota(-1);
-
+		await this.withProjectFeatures();
 		// Create a project using the API
-		const response = await this.n8n.api.projectApi.createProject();
+		const response = await this.n8n.api.projects.createProject();
 
 		const projectId = response.id;
 		await this.n8n.navigate.toProject(projectId);
@@ -65,5 +61,18 @@ export class TestEntryComposer {
 		const workflowImportResult = await this.n8n.api.workflowApi.importWorkflow(workflowFile);
 		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
 		return workflowImportResult;
+	}
+
+	/**
+	 * Enable project feature set
+	 * Allow project creation, sharing, and folder creation
+	 */
+	async withProjectFeatures() {
+		await this.n8n.api.enableFeature('sharing');
+		await this.n8n.api.enableFeature('folders');
+		await this.n8n.api.enableFeature('advancedPermissions');
+		await this.n8n.api.enableFeature('projectRole:admin');
+		await this.n8n.api.enableFeature('projectRole:editor');
+		await this.n8n.api.setMaxTeamProjectsQuota(-1);
 	}
 }

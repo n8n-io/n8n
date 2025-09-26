@@ -6,9 +6,11 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useUsersStore } from '@/stores/users.store';
 import { MODAL_CONFIRM, NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 import type { WorkflowSuggestion } from '@/constants/workflowSuggestions';
@@ -23,9 +25,11 @@ const telemetry = useTelemetry();
 const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
 const workflowsStore = useWorkflowsStore();
+const usersStore = useUsersStore();
 
 // Services
 const workflowSaver = useWorkflowSaving({ router });
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Component state
 const prompt = ref('');
@@ -34,6 +38,9 @@ const isLoading = ref(false);
 
 // Computed properties
 const hasContent = computed(() => prompt.value.trim().length > 0);
+const creditsQuota = computed(() => builderStore.creditsQuota);
+const creditsRemaining = computed(() => builderStore.creditsRemaining);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner === false);
 
 // Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
@@ -64,6 +71,10 @@ async function onSubmit() {
  * @param suggestion - The workflow suggestion that was clicked
  */
 async function onSuggestionClick(suggestion: WorkflowSuggestion) {
+	if (builderStore.hasNoCreditsRemaining === true) {
+		return;
+	}
+
 	// Track telemetry
 	telemetry.track('User clicked suggestion pill', {
 		prompt: prompt.value,
@@ -125,9 +136,13 @@ function onAddNodeClick() {
 				:streaming="builderStore.streaming"
 				:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 				:max-lines-before-scroll="4"
+				:credits-quota="creditsQuota"
+				:credits-remaining="creditsRemaining"
+				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:min-lines="2"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
+				@upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
 				@stop="builderStore.stopStreaming"
 				@input="userEditedPrompt = true"
 			/>
@@ -139,7 +154,7 @@ function onAddNodeClick() {
 				v-for="suggestion in suggestions"
 				:key="suggestion.id"
 				:class="$style.suggestionPill"
-				:disabled="builderStore.streaming"
+				:disabled="builderStore.streaming || builderStore.hasNoCreditsRemaining"
 				type="button"
 				@click="onSuggestionClick(suggestion)"
 			>
@@ -160,7 +175,7 @@ function onAddNodeClick() {
 				type="button"
 				aria-label="Add node manually"
 			>
-				<n8n-icon icon="plus" :size="40" />
+				<N8nIcon icon="plus" :size="40" />
 			</button>
 			<div :class="$style.startManuallyLabel">
 				<strong :class="$style.startManuallyText">
@@ -231,6 +246,10 @@ function onAddNodeClick() {
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 		background: var(--color-background-xlight);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
 	}
 }
 

@@ -17,6 +17,8 @@ import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { getSubtreeTotalConsumedTokens, isPlaceholderLog } from '@/features/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -28,6 +30,7 @@ const {
 	panels,
 	collapsingInputTableColumnName,
 	collapsingOutputTableColumnName,
+	isHeaderClickable,
 } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
@@ -36,6 +39,7 @@ const {
 	panels: LogDetailsPanelState;
 	collapsingInputTableColumnName: string | null;
 	collapsingOutputTableColumnName: string | null;
+	isHeaderClickable: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,6 +54,8 @@ defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
+const ndvStore = useNDVStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
@@ -64,6 +70,13 @@ const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	allowFullSize: true,
 });
 const shouldResize = computed(() => panels === LOG_DETAILS_PANEL_STATE.BOTH);
+const searchShortcutPriorityPanel = computed(() =>
+	ndvStore.isNDVOpen || experimentalNdvStore.isMapperOpen
+		? undefined
+		: panels === LOG_DETAILS_PANEL_STATE.INPUT
+			? 'input'
+			: 'output',
+);
 
 function handleResizeEnd() {
 	if (resizer.isCollapsed.value) {
@@ -83,6 +96,7 @@ function handleResizeEnd() {
 		<LogsPanelHeader
 			data-test-id="log-details-header"
 			:class="$style.header"
+			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
 			<template #title>
@@ -162,6 +176,7 @@ function handleResizeEnd() {
 						:title="locale.baseText('logs.details.header.actions.input')"
 						:log-entry="logEntry"
 						:collapsing-table-column-name="collapsingInputTableColumnName"
+						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
 						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
 					/>
 				</N8nResizeWrapper>
@@ -173,6 +188,7 @@ function handleResizeEnd() {
 					:title="locale.baseText('logs.details.header.actions.output')"
 					:log-entry="logEntry"
 					:collapsing-table-column-name="collapsingOutputTableColumnName"
+					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
 					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
 				/>
 			</template>

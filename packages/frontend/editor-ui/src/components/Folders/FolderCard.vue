@@ -122,10 +122,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 <template>
 	<div data-test-id="folder-card">
-		<router-link :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
-			<n8n-card :class="$style.card">
+		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
+			<N8nCard :class="$style.card">
 				<template #prepend>
-					<n8n-icon
+					<N8nIcon
 						data-test-id="folder-card-icon"
 						:class="$style['folder-icon']"
 						icon="folder"
@@ -135,9 +135,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
-						<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ data.name }}
-						</n8n-heading>
+						</N8nHeading>
 						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
@@ -145,7 +145,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
-						<n8n-text
+						<N8nText
 							v-if="data.workflowCount > 0"
 							size="small"
 							color="text-light"
@@ -155,8 +155,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 							{{
 								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
 							}}
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							v-if="data.subFolderCount > 0"
 							size="small"
 							color="text-light"
@@ -168,8 +168,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 									interpolate: { count: data.subFolderCount },
 								})
 							}}
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--updated']]"
@@ -177,8 +177,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						>
 							{{ i18n.baseText('workerList.item.lastUpdated') }}
 							<TimeAgo :date="String(data.updatedAt)" />
-						</n8n-text>
-						<n8n-text
+						</N8nText>
+						<N8nText
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--created']]"
@@ -186,7 +186,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						>
 							{{ i18n.baseText('workflows.item.created') }}
 							<TimeAgo :date="String(data.createdAt)" />
-						</n8n-text>
+						</N8nText>
 					</div>
 				</template>
 				<template #append>
@@ -204,7 +204,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								:show-badge-border="false"
 							>
 								<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
-									<n8n-breadcrumbs
+									<N8nBreadcrumbs
 										:items="cardBreadcrumbs"
 										:hidden-items="
 											data.parentFolder?.parentFolderId !== null
@@ -220,11 +220,11 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 										@item-selected="onBreadcrumbItemClick"
 									>
 										<template #prepend></template>
-									</n8n-breadcrumbs>
+									</N8nBreadcrumbs>
 								</div>
 							</ProjectCardBadge>
 						</div>
-						<n8n-action-toggle
+						<N8nActionToggle
 							v-if="actions.length"
 							:actions="actions"
 							theme="dark"
@@ -233,8 +233,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						/>
 					</div>
 				</template>
-			</n8n-card>
-		</router-link>
+			</N8nCard>
+		</RouterLink>
 	</div>
 </template>
 

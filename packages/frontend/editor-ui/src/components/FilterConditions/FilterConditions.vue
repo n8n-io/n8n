@@ -168,7 +168,7 @@ function getIssues(index: number): string[] {
 		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
 		:data-test-id="`filter-${parameter.name}`"
 	>
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="!singleCondition"
 			:label="parameter.displayName"
 			:underline="true"
@@ -177,7 +177,7 @@ function getIssues(index: number): string[] {
 			size="small"
 			color="text-dark"
 		>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<Draggable
@@ -217,7 +217,7 @@ function getIssues(index: number): string[] {
 				</Draggable>
 			</div>
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
-				<n8n-button
+				<N8nButton
 					type="tertiary"
 					block
 					:class="$style.addCondition"

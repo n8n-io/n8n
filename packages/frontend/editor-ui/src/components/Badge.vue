@@ -5,7 +5,7 @@ export default {
 </script>
 
 <template>
-	<el-tag
+	<ElTag
 		v-if="type === 'danger'"
 		type="danger"
 		size="small"
@@ -13,15 +13,15 @@ export default {
 		:disable-transitions="true"
 	>
 		{{ text }}
-	</el-tag>
-	<el-tag
+	</ElTag>
+	<ElTag
 		v-else-if="type === 'warning'"
 		size="small"
 		:class="$style['warning']"
 		:disable-transitions="true"
 	>
 		{{ text }}
-	</el-tag>
+	</ElTag>
 </template>
 
 <style lang="scss" module>

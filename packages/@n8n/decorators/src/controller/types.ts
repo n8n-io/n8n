@@ -43,6 +43,8 @@ export interface RouteMetadata {
 
 export interface ControllerMetadata {
 	basePath: `/${string}`;
+	// If true, the controller will be registered on the root path without the any prefix
+	registerOnRootPath?: boolean;
 	middlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }

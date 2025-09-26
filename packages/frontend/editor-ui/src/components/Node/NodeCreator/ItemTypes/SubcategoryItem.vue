@@ -15,7 +15,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 </script>
 
 <template>
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		:class="$style.subCategory"
 		:title="i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryName}` as BaseTextKey)"
 		:is-trigger="false"
@@ -25,7 +25,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 		:show-action-arrow="true"
 	>
 		<template #icon>
-			<n8n-node-icon
+			<N8nNodeIcon
 				type="icon"
 				:name="item.icon"
 				:circle="false"
@@ -34,7 +34,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 				v-bind="item.iconProps"
 			/>
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>

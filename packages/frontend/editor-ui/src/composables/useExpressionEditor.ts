@@ -43,6 +43,7 @@ import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '@/plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -197,7 +198,7 @@ export const useExpressionEditor = ({
 	}
 
 	function blurOnClickOutside(event: MouseEvent) {
-		if (event.target && !dragging.value && !editor.value?.dom.contains(event.target as Node)) {
+		if (!dragging.value && !isEventTargetContainedBy(event.target, editor.value?.dom)) {
 			blur();
 		}
 		dragging.value = false;
