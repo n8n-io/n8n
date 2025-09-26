@@ -30,11 +30,11 @@ async function getTool(
 	const description = VectorStoreQATool.getDescription(name, toolDescription);
 	const vectorStore = (await ctx.getInputConnectionData(
 		NodeConnectionTypes.AiVectorStore,
-		0,
+		itemIndex,
 	)) as VectorStore;
 	const llm = (await ctx.getInputConnectionData(
 		NodeConnectionTypes.AiLanguageModel,
-		0,
+		itemIndex,
 	)) as BaseLanguageModel;
 
 	const vectorStoreTool = new VectorStoreQATool(name, description, {
@@ -145,7 +145,7 @@ export class ToolVectorStore implements INodeType {
 		const result: INodeExecutionData[][] = [];
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
-			const outputData = await tool.invoke(inputData[itemIndex]);
+			const outputData = await tool.invoke(inputData[itemIndex].json);
 			result.push([
 				{
 					json: {

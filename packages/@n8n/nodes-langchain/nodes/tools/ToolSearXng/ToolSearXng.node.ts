@@ -128,23 +128,21 @@ export class ToolSearXng implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const result: INodeExecutionData[][] = [];
+		const result: INodeExecutionData[] = [];
 		const input = this.getInputData();
 		for (let i = 0; i < input.length; i++) {
 			const item = input[i];
 			const tool = await getTool(this, i);
-			result.push([
-				{
-					json: {
-						response: await tool.invoke(item.json),
-					},
-					pairedItem: {
-						item: i,
-					},
+			result.push({
+				json: {
+					response: await tool.invoke(item.json),
 				},
-			]);
+				pairedItem: {
+					item: i,
+				},
+			});
 		}
 
-		return result;
+		return [result];
 	}
 }

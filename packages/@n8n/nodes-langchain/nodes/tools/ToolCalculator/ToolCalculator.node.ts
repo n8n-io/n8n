@@ -15,7 +15,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): Calculator {
 	const calculator = new Calculator();
 	calculator.name = ctx.getNode().name;
-	return new Calculator();
+	return calculator;
 }
 
 export class ToolCalculator implements INodeType {

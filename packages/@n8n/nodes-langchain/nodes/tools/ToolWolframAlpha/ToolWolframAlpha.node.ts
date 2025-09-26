@@ -69,7 +69,7 @@ export class ToolWolframAlpha implements INodeType {
 			const tool = new WolframAlphaTool({ appid: credentials.appId as string });
 			result.push({
 				json: {
-					response: await tool.invoke(item),
+					response: await tool.invoke(item.json),
 				},
 				pairedItem: {
 					item: i,

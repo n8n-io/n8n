@@ -64,21 +64,19 @@ export class ToolWikipedia implements INodeType {
 
 		const items = this.getInputData();
 
-		const response: INodeExecutionData[][] = [];
+		const response: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < this.getInputData().length; itemIndex++) {
 			const item = items[itemIndex];
 			if (item === undefined) {
 				continue;
 			}
 			const result = await WikiTool.invoke(item.json);
-			response.push([
-				{
-					json: { response: result },
-					pairedItem: { item: itemIndex },
-				},
-			]);
+			response.push({
+				json: { response: result },
+				pairedItem: { item: itemIndex },
+			});
 		}
 
-		return response;
+		return [response];
 	}
 }
