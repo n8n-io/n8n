@@ -183,10 +183,10 @@ describe('InsightsService', () => {
 				type: 'runtime_ms',
 				value: 123,
 				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ days: 13 }),
+				periodStart: now.minus({ days: 13 }),
 			});
 
-			const startDate = DateTime.utc().minus({ days: 6 }).toJSDate();
+			const startDate = now.minus({ days: 6 }).toJSDate();
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
@@ -212,7 +212,7 @@ describe('InsightsService', () => {
 				periodStart: now,
 			});
 
-			const startDate = DateTime.utc().minus({ days: 7 }).toJSDate();
+			const startDate = now.minus({ days: 7 }).toJSDate();
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
