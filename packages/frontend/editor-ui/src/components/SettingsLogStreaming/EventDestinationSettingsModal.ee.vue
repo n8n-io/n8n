@@ -474,6 +474,7 @@ const { width } = useElementSize(defNameRef);
 					<div :class="$style.sidebar">
 						<N8nMenuItem
 							v-for="item in sidebarItems"
+							:key="item.id"
 							:item="item"
 							:active="activeTab === item.id"
 							@on-click="() => onTabSelect(item.id)"
