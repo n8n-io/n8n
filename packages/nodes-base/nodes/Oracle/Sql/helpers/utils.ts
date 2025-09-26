@@ -1051,10 +1051,9 @@ export function getBindDefsForExecuteMany(
 // It will convert the n8n values to compatible bind values.
 export function formatItemValues(item: IDataObject, col: ColumnMap): unknown[] {
 	const result = [];
-	for (const key in item) {
+	for (const key of Object.keys(item)) {
 		const type = col[key].type;
-		let value: any = item[key];
-		value = getCompatibleValue(type, value);
+		const value = getCompatibleValue(type, item[key]);
 		result.push(value);
 	}
 	return result;
