@@ -6,8 +6,21 @@ import { isSafeObjectProperty } from './utils';
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
 
+export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
+
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitIdentifier(path) {
+			this.traverse(path);
+			const node = path.node;
+			// Check if this is a bare $ identifier (not part of a call expression)
+			// path.parent is any from the AST library, so we need to disable unsafe checks
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (node.name === '$' && path.parent?.name !== 'callee') {
+				throw new ExpressionError(DOLLAR_SIGN_ERROR);
+			}
+		},
 		visitMemberExpression(path) {
 			this.traverse(path);
 			const node = path.node;
