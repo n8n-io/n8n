@@ -35,6 +35,7 @@ export interface RouteMetadata {
 	skipAuth: boolean;
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
+	apiKeyAuth: boolean;
 	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;

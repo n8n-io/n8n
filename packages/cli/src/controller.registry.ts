@@ -1,3 +1,4 @@
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
@@ -11,15 +12,14 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
+import { NotFoundError } from './errors/response-errors/not-found.error';
+import { LastActiveAtService } from './services/last-active-at.service';
+
 import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
-
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { LastActiveAtService } from './services/last-active-at.service';
 
 @Service()
 export class ControllerRegistry {
@@ -91,6 +91,7 @@ export class ControllerRegistry {
 							this.authService.createAuthMiddleware({
 								allowSkipMFA: route.allowSkipMFA,
 								allowSkipPreviewAuth: route.allowSkipPreviewAuth,
+								apiKeyAuth: route.apiKeyAuth,
 							}),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
