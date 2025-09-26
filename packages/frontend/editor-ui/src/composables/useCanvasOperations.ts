@@ -2282,6 +2282,36 @@ export function useCanvasOperations() {
 		return true;
 	}
 
+	function replaceNode(
+		previousId: string,
+		newId: string,
+		{ trackHistory = true, trackBulk = true } = {},
+	) {
+		const previousNode = workflowsStore.getNodeById(previousId);
+		const newNode = workflowsStore.getNodeById(newId);
+
+		if (!previousNode || !newNode) return;
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		const [x, y] = previousNode.position;
+		updateNodePosition(newId, { x, y }, { trackHistory });
+		replaceNodeConnections(previousId, newId, {
+			trackBulk: false,
+			trackHistory,
+		});
+		// todo: need to delete connections e.g. to second input like in merge node
+		deleteNode(previousId, { trackHistory, trackBulk: false });
+
+		uiStore.stateIsDirty = true;
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2336,5 +2366,6 @@ export function useCanvasOperations() {
 		importTemplate,
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
+		replaceNode,
 	};
 }

@@ -78,6 +78,8 @@ import {
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
+	isTriggerNode,
+	getNodeInputs,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -259,6 +261,7 @@ const {
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
+	replaceNode,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
@@ -1169,6 +1172,7 @@ function removeImportEventBindings() {
 /**
  * Node creator
  */
+const nodeCreatorReplaceTarget = ref<string | null>(null);
 
 async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
@@ -1177,6 +1181,15 @@ async function onAddNodesAndConnections(
 ) {
 	if (!checkIfEditingIsAllowed()) {
 		return;
+	}
+
+	if (nodeCreatorReplaceTarget.value !== null) {
+		uiStore.resetLastInteractedWith();
+
+		nodes = nodes.map((x) => ({
+			...x,
+			openDetail: false,
+		}));
 	}
 
 	const addedNodes = await addNodes(nodes, {
@@ -1224,7 +1237,13 @@ async function onAddNodesAndConnections(
 	uiStore.resetLastInteractedWith();
 
 	if (addedNodes.length > 0) {
-		selectNodes([addedNodes[addedNodes.length - 1].id]);
+		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
+		selectNodes([lastAddedNodeId]);
+
+		if (nodeCreatorReplaceTarget.value !== null) {
+			replaceNode(nodeCreatorReplaceTarget.value, lastAddedNodeId);
+			nodeCreatorReplaceTarget.value = null;
+		}
 	}
 }
 
@@ -1251,8 +1270,9 @@ function onOpenSelectiveNodeCreator(
 function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.setNodeCreatorState(options);
 
-	if (!options.createNodeActive && !options.hasAddedNodes) {
-		uiStore.resetLastInteractedWith();
+	if (!options.createNodeActive) {
+		// nodeCreatorReplaceTarget.value = null;
+		if (!options.hasAddedNodes) uiStore.resetLastInteractedWith();
 	}
 }
 
@@ -1288,6 +1308,20 @@ function onClickConnectionAdd(connection: Connection) {
 		connection,
 		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 	});
+}
+
+function onClickReplaceNode(nodeId: string) {
+	const node = workflowsStore.getNodeById(nodeId);
+	if (!node) return;
+	const nodeType = nodeTypesStore.getNodeType(node.type);
+	if (!nodeType) return;
+
+	nodeCreatorReplaceTarget.value = nodeId;
+	if (isTriggerNode(nodeType)) {
+		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_REPLACE_ACTION);
+	} else {
+		nodeCreatorStore.openNodeCreatorForRegularNodes(NODE_CREATOR_OPEN_SOURCES.NODE_REPLACE_ACTION);
+	}
 }
 
 /**
@@ -2115,6 +2149,7 @@ onBeforeUnmount(() => {
 			@duplicate:nodes="onDuplicateNodes"
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
+			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
 			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
