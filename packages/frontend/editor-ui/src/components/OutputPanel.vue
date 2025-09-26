@@ -410,9 +410,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			</template>
 
 			<template v-else>
-				<N8nText v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-					i18n.baseText('ndv.output.waitingToRun')
-				}}</N8nText>
+				<div v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">
+					<div :class="$style.spinner">
+						<N8nSpinner type="ring" />
+					</div>
+					<N8nText>
+						{{ i18n.baseText('ndv.output.waitingToRun') }}
+					</N8nText>
+				</div>
 				<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 					<template v-if="isSubNodeType">
 						{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
@@ -522,5 +527,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	padding: 0;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
+}
+
+.spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
 }
 </style>

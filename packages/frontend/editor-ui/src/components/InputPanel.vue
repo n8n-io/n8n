@@ -574,6 +574,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						tooltip-placement="bottom"
+						:show-loading-spinner="false"
 						@execute="onNodeExecute"
 					>
 						<template

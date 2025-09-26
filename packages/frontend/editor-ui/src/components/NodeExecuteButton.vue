@@ -52,11 +52,13 @@ const props = withDefaults(
 		hideLabel?: boolean;
 		tooltip?: string;
 		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
+		showLoadingSpinner?: boolean;
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
 		square: false,
+		showLoadingSpinner: true,
 	},
 );
 
@@ -402,8 +404,8 @@ async function onClick() {
 		</template>
 		<N8nButton
 			v-bind="$attrs"
-			:loading="isLoading"
-			:disabled="disabled || !!disabledHint"
+			:loading="isLoading && showLoadingSpinner"
+			:disabled="disabled || !!disabledHint || (isLoading && !showLoadingSpinner)"
 			:label="buttonLabel"
 			:type="type"
 			:size="size"
