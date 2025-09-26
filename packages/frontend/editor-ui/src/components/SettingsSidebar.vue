@@ -137,7 +137,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			<n8n-text bold>{{ i18n.baseText('settings') }}</n8n-text>
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem v-for="item in sidebarMenuItems" :item="item" />
+			<N8nMenuItem v-for="item in sidebarMenuItems" :key="item.id" :item="item" />
 		</div>
 		<div :class="$style.versionContainer">
 			<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">

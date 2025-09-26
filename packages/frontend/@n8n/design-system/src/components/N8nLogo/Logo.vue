@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
+import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 
 import LogoIcon from './logo-icon.svg';
 import LogoText from './logo-text.svg';

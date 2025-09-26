@@ -55,16 +55,18 @@ const icon = computed<IconName | undefined>(() => {
 
 	return undefined;
 });
+
+const indentArray = computed(() => {
+	if (props.level && props.level > 1) {
+		return new Array(props.level - 1);
+	}
+	return [];
+});
 </script>
 
 <template>
 	<div class="sidebarItemWrapper" @mouseenter="emit('mouseEnter')">
-		<span
-			class="sidebarItemIdent"
-			v-if="level && level > 1"
-			v-for="level in new Array(level - 1)"
-			:key="level"
-		/>
+		<span class="sidebarItemIndent" v-for="level in indentArray" :key="level" />
 		<N8nRoute
 			:to="to"
 			class="sidebarItem"
@@ -202,7 +204,7 @@ const icon = computed<IconName | undefined>(() => {
 	}
 }
 
-.sidebarItemIdent {
+.sidebarItemIndent {
 	display: block;
 	position: relative;
 	width: 0.5rem;
@@ -212,7 +214,7 @@ const icon = computed<IconName | undefined>(() => {
 	border-left: 1px solid var(--color-foreground-light);
 }
 
-.sidebarItemIdent::before {
+.sidebarItemIndent::before {
 	content: '';
 	position: absolute;
 	top: -2px;

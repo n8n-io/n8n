@@ -550,7 +550,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 
 				<div :class="$style.bottomMenu">
-					<template v-for="item in visibleMenuItems">
+					<template v-for="item in visibleMenuItems" :key="item.id">
 						<N8nPopoverReka
 							v-if="item.type === 'popover'"
 							:key="item.id"
