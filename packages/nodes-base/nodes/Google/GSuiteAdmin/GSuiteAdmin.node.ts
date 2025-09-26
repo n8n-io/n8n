@@ -495,6 +495,10 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
+						if (additionalFields.orgUnitPath) {
+							body.orgUnitPath = additionalFields.orgUnitPath as string;
+						}
+
 						if (additionalFields.customFields) {
 							const customFields = (additionalFields.customFields as IDataObject)
 								.fieldValues as IDataObject[];
@@ -721,6 +725,7 @@ export class GSuiteAdmin implements INodeType {
 							phones?: IDataObject[];
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
+							orgUnitPath?: string;
 							customSchemas?: IDataObject;
 						} = {};
 
@@ -765,6 +770,10 @@ export class GSuiteAdmin implements INodeType {
 								directorySyncAdmin: roles.includes('directorySyncAdmin'),
 								mobileAdmin: roles.includes('mobileAdmin'),
 							};
+						}
+
+						if (updateFields.orgUnitPath) {
+							body.orgUnitPath = updateFields.orgUnitPath as string;
 						}
 
 						if (updateFields.customFields) {
