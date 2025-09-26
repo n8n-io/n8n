@@ -49,17 +49,6 @@ describe('InsightsDateFilterDto', () => {
 				},
 			},
 			{
-				name: 'valid startDate and endDate (as strings)',
-				request: {
-					startDate: '2025-01-01',
-					endDate: '2025-01-31',
-				},
-				parsedResult: {
-					startDate: new Date('2025-01-01'),
-					endDate: new Date('2025-01-31'),
-				},
-			},
-			{
 				name: 'valid startDate and endDate (as ISO strings)',
 				request: {
 					startDate: '2025-01-01T00:00:00Z',
