@@ -1050,7 +1050,6 @@ export function useCanvasOperations() {
 			node,
 			nodeTypeDescription,
 		);
-
 		node.parameters = nodeParameters ?? {};
 	}
 
@@ -1685,17 +1684,32 @@ export function useCanvasOperations() {
 
 	function initializeWorkspace(data: IWorkflowDb) {
 		workflowHelpers.initState(data);
-
 		data.nodes.forEach((node) => {
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			const isUnknownNode = !nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			nodeHelpers.matchCredentials(node);
+			// skip this step because nodeTypeDescription is missing for unknown nodes
+			if (!isUnknownNode) {
+				resolveNodeParameters(node, nodeTypeDescription);
+				resolveNodeWebhook(node, nodeTypeDescription);
+			}
+		});
+		workflowsStore.setNodes(data.nodes);
+		workflowsStore.setConnections(data.connections);
+	}
+
+	const initializeUnknownNodes = (nodes: INode[]) => {
+		nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
+			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
+				return n.name === node.name;
+			});
+			workflowsStore.updateNodeAtIndex(nodeIndex, node);
 		});
-
-		workflowsStore.setNodes(data.nodes);
-		workflowsStore.setConnections(data.connections);
-	}
+	};
 
 	/**
 	 * Import operations
@@ -2356,5 +2370,6 @@ export function useCanvasOperations() {
 		importTemplate,
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
+		initializeUnknownNodes,
 	};
 }

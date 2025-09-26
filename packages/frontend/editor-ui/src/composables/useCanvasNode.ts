@@ -69,10 +69,13 @@ export function useCanvasNode() {
 
 	const eventBus = computed(() => node?.eventBus.value);
 
+	// verified community nodes are checked by communityNodeType()
+	// unverified community nodes are checked by getNodeType()
 	const notInstalled = computed(
 		() =>
 			isCommunityPackageName(data.value.type) &&
-			!useNodeTypesStore().communityNodeType(data.value.type)?.isInstalled,
+			!useNodeTypesStore().communityNodeType(data.value.type)?.isInstalled &&
+			!useNodeTypesStore().getNodeType(data.value.type),
 	);
 
 	return {

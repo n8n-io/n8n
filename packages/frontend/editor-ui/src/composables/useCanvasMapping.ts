@@ -183,6 +183,10 @@ export function useCanvasMapping({
 		}, {});
 	});
 
+	// watch(nodeSubtitleById, (value) => {
+	// 	console.log('nodeSubtitleById', value);
+	// }, {immediate: true});
+
 	const nodeInputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypeDescriptionByNodeId.value[node.id];
@@ -614,8 +618,6 @@ export function useCanvasMapping({
 			...nodes.value.map<CanvasNode>((node) => {
 				const outputConnections = connectionsBySourceNode[node.name] ?? {};
 				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
-
-				// console.log(node.name, nodeInputsById.value[node.id]);
 
 				const data: CanvasNodeData = {
 					id: node.id,

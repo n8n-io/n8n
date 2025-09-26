@@ -57,9 +57,9 @@ const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
-		[$style.disabled]: isDisabled.value,
+		[$style.disabled]: isDisabled.value || (notInstalled.value && !isDemoRoute.value),
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
-		[$style.error]: hasExecutionErrors.value || (notInstalled.value && !isDemoRoute.value),
+		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
@@ -159,7 +159,7 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled || (notInstalled && !isDemoRoute)"
+			:disabled="isDisabled"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
