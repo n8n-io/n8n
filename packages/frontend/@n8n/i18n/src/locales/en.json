@@ -2503,6 +2503,7 @@
 	"ndv.search.placeholder.output": "Search output",
 	"ndv.search.placeholder.input": "Search selected node",
 	"ndv.search.placeholder.input.schema": "Search previous nodes' fields",
+	"ndv.search.placeholder.shortcutHint": "Search ({shortcut})",
 	"ndv.search.noMatch.title": "No matching items",
 	"ndv.search.noNodeMatch.title": "No matching fields",
 	"ndv.search.noMatch.description": "Try changing or {link} the filter to see more",

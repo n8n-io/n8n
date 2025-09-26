@@ -90,6 +90,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/types';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -135,7 +136,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -157,7 +158,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -1380,7 +1381,7 @@ defineExpose({ enterEditMode });
 			{
 				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
 		]"
 		@mouseover="activatePane"
@@ -1442,7 +1443,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -2137,15 +2138,17 @@ defineExpose({ enterEditMode });
 	}
 
 	.showActionsOnHover & {
-		visibility: hidden;
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
+	.showActionsOnHover:focus-within &,
 	.showActionsOnHover:hover & {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 
