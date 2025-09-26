@@ -43,4 +43,4 @@ def read_bool_env(env_name: str, default: bool) -> bool:
     value = read_env(env_name)
     if value is None:
         return default
-    return value.lower() == "true"
+    return value.strip().lower() == "true"
