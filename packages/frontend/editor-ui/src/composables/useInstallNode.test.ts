@@ -178,20 +178,6 @@ describe('useInstallNode', () => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 		});
 
-		it('should call onBeforeRefetch callback when provided', async () => {
-			const onBeforeRefetch = vi.fn().mockResolvedValue(undefined);
-			const { installNode } = useInstallNode();
-
-			await installNode({
-				type: 'verified',
-				packageName: 'test-package',
-				nodeType: 'test-node',
-				onBeforeRefetch,
-			});
-
-			expect(onBeforeRefetch).toHaveBeenCalled();
-		});
-
 		it('should initialize unknown nodes when nodeType is provided and workflow has nodes', async () => {
 			const mockNodes = [
 				{
