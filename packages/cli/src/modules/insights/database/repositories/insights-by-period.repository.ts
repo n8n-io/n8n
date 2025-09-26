@@ -464,14 +464,14 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	private getDateRangesDaysLimits({ startDate, endDate }: { startDate: Date; endDate: Date }) {
 		const today = DateTime.now().startOf('day');
 		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
-		const endDateTimeStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
+		const endDateStartOfDay = DateTime.fromJSDate(endDate).startOf('day');
 
 		let daysFromStartDateToToday = today.diff(startDateStartOfDay, 'days').days;
 		// ensure that at least one day is covered
 		if (daysFromStartDateToToday < 1) {
 			daysFromStartDateToToday = 1;
 		}
-		const daysFromEndDateToToday = today.diff(endDateTimeStartOfDay, 'days').days;
+		const daysFromEndDateToToday = today.diff(endDateStartOfDay, 'days').days;
 
 		const dateRangeInDays = daysFromStartDateToToday - daysFromEndDateToToday;
 

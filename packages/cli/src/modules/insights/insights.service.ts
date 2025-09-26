@@ -245,8 +245,8 @@ export class InsightsService {
 	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
 		// we use `startOf('day')` because the license limits are based on full days
 		const today = DateTime.now().startOf('day');
-		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
-		const daysToStartDate = today.diff(currentStart, 'days').days;
+		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
+		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
 
 		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
 
@@ -271,9 +271,9 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: { startDate: Date; endDate: Date }): PeriodUnit {
-		const currentStart = DateTime.fromJSDate(startDate);
-		const currentEnd = DateTime.fromJSDate(endDate);
-		const differenceInDays = currentEnd.diff(currentStart, 'days').days;
+		const startDateTime = DateTime.fromJSDate(startDate);
+		const endDateTime = DateTime.fromJSDate(endDate);
+		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
 
 		if (differenceInDays <= 1) {
 			return 'hour';
