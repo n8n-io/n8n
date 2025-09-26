@@ -105,7 +105,7 @@ export const cssVariables = `
 
   /* Send and File Buttons */
   --chat--input--send--button--background: var(--chat--color-white);
-  --chat--input--send--button--color: var(--chat--color-dark);
+  --chat--input--send--button--color: var(--chat--color-secondary);
   --chat--input--send--button--background-hover: var(--chat--color-primary-shade-50);
   --chat--input--send--button--color-hover: var(--chat--color-secondary-shade-50);
   --chat--input--file--button--background: var(--chat--color-white);
