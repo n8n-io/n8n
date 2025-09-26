@@ -3,12 +3,12 @@ import InputPanel from '@/components/InputPanel.vue';
 import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, useTemplateRef } from 'vue';
 import { N8nPopoverReka } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
@@ -20,22 +20,22 @@ const { node, inputNodeName, visible, virtualRef } = defineProps<{
 
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
-const canvasStore = useCanvasStore();
 const contentElRef = computed(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
 
 watch(
 	isVisible,
 	(value) => {
-		canvasStore.setSuppressInteraction(value);
+		experimentalNdvStore.setMapperOpen(value);
 	},
 	{ immediate: true },
 );
 
 onBeforeUnmount(() => {
-	canvasStore.setSuppressInteraction(false);
+	experimentalNdvStore.setMapperOpen(false);
 });
 
 defineExpose({
@@ -71,6 +71,7 @@ defineExpose({
 				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
+				search-shortcut="ctrl+f"
 			/>
 		</template>
 	</N8nPopoverReka>

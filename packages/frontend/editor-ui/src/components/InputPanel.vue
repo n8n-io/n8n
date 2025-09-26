@@ -30,6 +30,7 @@ import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
+import { type SearchShortcut } from '@/types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
@@ -45,7 +46,7 @@ export type Props = {
 	linkedRuns?: boolean;
 	readOnly?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	displayMode: IRunDataDisplayMode;
 	compact?: boolean;
 	disableDisplayModeSelection?: boolean;
@@ -61,6 +62,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isProductionExecutionPreview: false,
 	isPaneActive: false,
 	nodeNotRunMessageVariant: 'default',
+	searchShortcut: undefined,
 });
 
 const emit = defineEmits<{
@@ -415,7 +417,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:mapping-enabled="isMappingEnabled"
 		:distance-from-active="currentNodeDepth"
 		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
+		:search-shortcut="searchShortcut"
 		:display-mode="displayMode"
 		pane-type="input"
 		data-test-id="ndv-input-panel"
