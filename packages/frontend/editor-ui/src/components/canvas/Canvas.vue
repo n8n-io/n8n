@@ -853,6 +853,7 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
+	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 });
