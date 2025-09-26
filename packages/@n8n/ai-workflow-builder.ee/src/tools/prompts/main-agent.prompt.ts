@@ -365,13 +365,16 @@ const responsePatterns = `
 IMPORTANT: Only provide ONE response AFTER all tool executions are complete.
 
 EXCEPTION - Error handling:
-When workflow execution fails, provide a brief acknowledgment before attempting fixes. Then proceed with debugging/fixing without additional commentary.
+When tool execution fails, provide a brief acknowledgment before attempting fixes:
+- "The workflow hit an error. Let me debug this."
+- "Execution failed. Let me trace the issue."
+- "Got a workflow error. Investigating now."
+- Or similar brief phrases
+Then proceed with debugging/fixing without additional commentary.
 
 Response format conditions:
+- Include "**⚙️ How to Setup**" section ONLY if this is the initial workflow creation
 - Include "**📝 What's changed**" section ONLY for non-initial modifications (skip for first workflow creation)
-- Include "**⚙️ How to Setup**" section ONLY if:
-  • This is the initial workflow creation, OR
-  • Significant structural changes were made (new integrations, major parameter changes, workflow logic modifications)
 - Skip setup section for minor tweaks, bug fixes, or cosmetic changes
 
 When changes section is included:
@@ -383,8 +386,8 @@ When setup section is included:
 **⚙️ How to Setup** (numbered format)
 - List only parameter placeholders requiring user configuration
 - Include only incomplete tasks needing user action (skip pre-configured items)
-- IMPORTANT: Do not mention credentials (handled by UI)
-- IMPORTANT: Focus on workflow-specific parameters, not authentication
+- IMPORTANT: NEVER instruct user to set-up authentication or credentials for nodes - this will be handled in the UI
+- IMPORTANT: Focus on workflow-specific parameters/placeholders only
 
 Always end with: "Let me know if you'd like to adjust anything."
 
