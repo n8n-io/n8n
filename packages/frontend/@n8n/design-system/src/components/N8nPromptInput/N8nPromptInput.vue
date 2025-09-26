@@ -533,7 +533,6 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	cursor: pointer;
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 
