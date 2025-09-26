@@ -1933,6 +1933,155 @@ describe('dataStore', () => {
 			]);
 		});
 
+		it('should simulate deletion with dryRun=true without actually deleting rows', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', condition: 'eq', value: 30 }],
+					},
+				},
+				true,
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				{
+					id: expect.any(Number),
+					name: 'Alice',
+					age: 30,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+
+			// Should not actually delete the rows
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(2);
+			expect(rows.data).toEqual([
+				expect.objectContaining({ name: 'Alice', age: 30 }),
+				expect.objectContaining({ name: 'Bob', age: 25 }),
+			]);
+		});
+
+		it('should return data with dryRun=true even if returnData=false', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', condition: 'eq', value: 25 }],
+					},
+				},
+				false,
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				{
+					id: expect.any(Number),
+					name: 'Bob',
+					age: 25,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+
+			// Should not actually delete the rows
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(2);
+			expect(rows.data).toEqual([
+				expect.objectContaining({ name: 'Alice', age: 30 }),
+				expect.objectContaining({ name: 'Bob', age: 25 }),
+			]);
+		});
+
+		it('should return empty array with dryRun=true when no rows match filter', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ name: 'Alice', age: 30 }],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.deleteRows(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', condition: 'eq', value: 99 }],
+					},
+				},
+				true,
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([]);
+
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(1);
+		});
+
 		it('fails when trying to delete from non-existent data store', async () => {
 			// ACT & ASSERT
 			const result = dataStoreService.deleteRows('non-existent-id', project1.id, {

@@ -54,12 +54,7 @@ export async function execute(
 		throw new NodeOperationError(this.getNode(), 'At least one condition is required');
 	}
 
-	if (dryRun) {
-		const { data: rowsToDelete } = await dataStoreProxy.getManyRowsAndCount({ filter });
-		return rowsToDelete.map((json) => ({ json }));
-	}
-
-	const result = await dataStoreProxy.deleteRows({ filter });
+	const result = await dataStoreProxy.deleteRows({ filter, dryRun });
 
 	return result.map((json) => ({ json }));
 }

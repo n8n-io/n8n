@@ -359,17 +359,29 @@ export class DataStoreRowsRepository {
 		return await this.getManyByIds(dataStoreId, ids, columns, em);
 	}
 
+	/**
+	 * Deletes rows from the data table.
+	 * Note: `dryRun` overrides `returnData` and always returns the affected rows without deleting them.
+	 *
+	 * @param dataTableId - The ID of the data table.
+	 * @param columns - The columns of the data table.
+	 * @param filter - The filter to select rows for deletion.
+	 * @param returnData - Whether to return the deleted rows.
+	 * @param dryRun - If true, simulates deletion and returns affected rows without deleting.
+	 */
 	async deleteRows(
 		dataTableId: string,
 		columns: DataTableColumn[],
 		filter: DataTableFilter | undefined,
 		returnData: boolean = false,
+		dryRun: boolean = false,
 	) {
 		const dbType = this.dataSource.options.type;
-		const useReturning = dbType === 'postgres';
+		const useReturning = !dryRun && dbType === 'postgres';
+		const shouldReturnData = returnData || dryRun;
 		const table = toTableName(dataTableId);
 
-		if (!returnData) {
+		if (!shouldReturnData) {
 			// Just delete and return true
 			await this.dataSource.manager.transaction(async (em) => {
 				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
@@ -395,7 +407,12 @@ export class DataStoreRowsRepository {
 				affectedRows = normalizeRows(rawRows, columns);
 			}
 
-			const query = em.createQueryBuilder().delete().from(table, 'dataTable');
+			// Skip deletion for dry run
+			if (dryRun) {
+				return affectedRows;
+			}
+
+			const deleteQuery = em.createQueryBuilder().delete().from(table, 'dataTable');
 
 			if (useReturning) {
 				const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
@@ -403,18 +420,20 @@ export class DataStoreRowsRepository {
 					this.dataSource.driver.escape(x),
 				);
 				const selectColumns = [...escapedSystemColumns, ...escapedColumns];
-				query.returning(selectColumns.join(','));
+				deleteQuery.returning(selectColumns.join(','));
 			}
 
 			if (filter) {
-				this.applyFilters(query, filter, undefined, columns);
+				this.applyFilters(deleteQuery, filter, undefined, columns);
 			}
 
-			const result = await query.execute();
+			const result = await deleteQuery.execute();
 
 			if (useReturning) {
 				affectedRows = normalizeRows(extractReturningData(result.raw), columns);
 			}
+
+			return affectedRows;
 		});
 
 		return affectedRows;
