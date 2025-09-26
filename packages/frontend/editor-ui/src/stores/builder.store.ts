@@ -29,6 +29,7 @@ import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 
+const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
@@ -110,9 +111,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const creditsRemaining = computed(() => {
 		if (
+			// can be undefined when first loading or if on deprecated builder experiment
 			creditsClaimed.value === undefined ||
 			creditsQuota.value === undefined ||
-			creditsQuota.value === -1
+			// Can be the case if not using proxy service
+			creditsQuota.value === INFINITE_CREDITS
 		) {
 			return undefined;
 		}

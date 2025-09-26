@@ -24,6 +24,8 @@ export interface N8nPromptInputProps {
 	refocusAfterSend?: boolean;
 }
 
+const INFINITE_CREDITS = -1;
+
 const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
@@ -87,7 +89,7 @@ const showCredits = computed(() => {
 	return (
 		props.creditsQuota !== undefined &&
 		props.creditsRemaining !== undefined &&
-		props.creditsQuota !== -1
+		props.creditsQuota !== INFINITE_CREDITS
 	);
 });
 
