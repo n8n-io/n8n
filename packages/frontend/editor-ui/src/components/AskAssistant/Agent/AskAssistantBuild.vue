@@ -42,7 +42,7 @@ const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner !== false);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;

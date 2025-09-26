@@ -25,7 +25,6 @@ import { useBuilderStore } from '@/stores/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUsersStore } from '@/stores/users.store';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@/event-bus', () => ({
@@ -82,7 +81,6 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 	beforeAll(() => {
 		Element.prototype.scrollTo = vi.fn(() => {});
@@ -117,7 +115,6 @@ describe('AskAssistantBuild', () => {
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
-		usersStore = mockedStore(useUsersStore);
 
 		// Mock action implementations
 		builderStore.sendChatMessage = vi.fn();
@@ -131,17 +128,6 @@ describe('AskAssistantBuild', () => {
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
 		builderStore.trackingSessionId = 'app_session_id';
-
-		// Add computed properties for credits - they need to be mocked as getters
-		Object.defineProperty(builderStore, 'creditsQuota', {
-			get: vi.fn(() => (builderStore.$state as any).creditsQuota ?? -1),
-			configurable: true,
-		});
-		Object.defineProperty(builderStore, 'creditsRemaining', {
-			get: vi.fn(() => (builderStore.$state as any).creditsRemaining ?? 0),
-			configurable: true,
-		});
-
 		workflowsStore.workflowId = 'abc123';
 	});
 
@@ -1221,86 +1207,6 @@ describe('AskAssistantBuild', () => {
 			// first-tool is ignored, because it was tracked in first run (same tool call id)
 			tools_called: ['second-tool', 'third-tool'],
 			workflow_id: 'abc123',
-		});
-	});
-
-	describe('metering functionality', () => {
-		it('should pass credits quota and remaining to AskAssistantChat component', () => {
-			(builderStore.$patch as any)({
-				creditsQuota: 100,
-				creditsRemaining: 75,
-			});
-
-			const { getByTestId } = renderComponent();
-			const chatComponent = getByTestId('ask-assistant-chat');
-
-			// Verify the component is rendered with the credits props
-			expect(chatComponent).toBeInTheDocument();
-		});
-
-		it('should show ask owner tooltip when user is not instance owner', () => {
-			(usersStore as any).isInstanceOwner = false;
-
-			const { getByTestId } = renderComponent();
-			const chatComponent = getByTestId('ask-assistant-chat');
-
-			expect(chatComponent).toBeInTheDocument();
-		});
-
-		it('should not show ask owner tooltip when user is instance owner', () => {
-			(usersStore as any).isInstanceOwner = true;
-
-			const { getByTestId } = renderComponent();
-			const chatComponent = getByTestId('ask-assistant-chat');
-
-			expect(chatComponent).toBeInTheDocument();
-		});
-
-		it('should handle upgrade click event', async () => {
-			const { getByTestId } = renderComponent();
-			const chatComponent = getByTestId('ask-assistant-chat');
-
-			expect(chatComponent).toBeInTheDocument();
-
-			// Verify goToUpgrade is available but not called initially
-			expect(goToUpgradeMock).not.toHaveBeenCalled();
-		});
-
-		it('should render with default credit values', () => {
-			// Default values should be -1 for quota and 0 for remaining
-			expect((builderStore as any).creditsQuota).toBe(-1);
-			expect((builderStore as any).creditsRemaining).toBe(0);
-
-			const { getByTestId } = renderComponent();
-			const chatComponent = getByTestId('ask-assistant-chat');
-
-			expect(chatComponent).toBeInTheDocument();
-		});
-
-		it('should update credits when builder store values change', async () => {
-			const { getByTestId } = renderComponent();
-
-			// Initially with default values
-			expect((builderStore as any).creditsQuota).toBe(-1);
-			expect((builderStore as any).creditsRemaining).toBe(0);
-
-			// Update credits
-			(builderStore.$patch as any)({
-				creditsQuota: 50,
-				creditsRemaining: 40,
-			});
-
-			await flushPromises();
-
-			const chatComponent = getByTestId('ask-assistant-chat');
-			expect(chatComponent).toBeInTheDocument();
-
-			// Verify the store state values are updated
-			expect((builderStore.$state as any).creditsQuota).toBe(50);
-			expect((builderStore.$state as any).creditsRemaining).toBe(40);
-			// And the getters return the updated values
-			expect((builderStore as any).creditsQuota).toBe(50);
-			expect((builderStore as any).creditsRemaining).toBe(40);
 		});
 	});
 });

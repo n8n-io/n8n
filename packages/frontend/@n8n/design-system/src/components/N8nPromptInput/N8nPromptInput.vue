@@ -380,11 +380,8 @@ defineExpose({
 				placement="top"
 			>
 				<div :class="$style.creditsInfoWrapper">
-					<span
-						v-n8n-html="creditsInfo"
-						:class="[$style.creditsInfo, { [$style.noCredits]: hasNoCredits }]"
-					></span>
-					<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
+					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+					<N8nIcon icon="info" size="small" />
 				</div>
 			</N8nTooltip>
 			<N8nTooltip
@@ -392,7 +389,7 @@ defineExpose({
 				:content="t('promptInput.askAdminToUpgrade')"
 				placement="top"
 			>
-				<N8nLink size="small" color="text-base" theme="text" @click="() => onUpgradeClick?.()">
+				<N8nLink size="small" theme="text" @click="() => onUpgradeClick?.()">
 					{{ t('promptInput.getMore') }}
 				</N8nLink>
 			</N8nTooltip>

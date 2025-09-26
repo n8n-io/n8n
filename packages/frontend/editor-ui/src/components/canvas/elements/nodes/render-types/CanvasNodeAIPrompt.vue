@@ -40,7 +40,7 @@ const isLoading = ref(false);
 const hasContent = computed(() => prompt.value.trim().length > 0);
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner === false);
 
 // Static data
 const suggestions = ref(WORKFLOW_SUGGESTIONS);
