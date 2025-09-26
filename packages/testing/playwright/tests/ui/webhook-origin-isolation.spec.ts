@@ -1,14 +1,8 @@
 import { test, expect } from '../../fixtures/base';
-import { ApiHelpers } from '../../services/api-helper';
 
 test.describe('Webhook Origin Isolation', () => {
-	test.beforeAll(async ({ browser, baseURL }) => {
-		const context = await browser.newContext({ baseURL });
-		const api = new ApiHelpers(context.request);
-		await api.signin('owner');
+	test.beforeAll(async ({ api }) => {
 		await api.workflowApi.importWorkflow('webhook-origin-isolation.json', { makeUnique: false });
-
-		await context.close();
 	});
 
 	const webhookPaths = [

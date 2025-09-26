@@ -15,11 +15,11 @@ withDefaults(
 <template>
 	<div :class="$style.container">
 		<div :class="$style['message-container']">
-			<transition :name="animationType" mode="out-in">
+			<Transition :name="animationType" mode="out-in">
 				<N8nText v-if="message" :key="message" :class="$style.message" :shimmer="true">{{
 					message
 				}}</N8nText>
-			</transition>
+			</Transition>
 		</div>
 	</div>
 </template>

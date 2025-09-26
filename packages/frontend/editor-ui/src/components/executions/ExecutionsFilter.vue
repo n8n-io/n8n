@@ -160,9 +160,9 @@ onBeforeMount(() => {
 });
 </script>
 <template>
-	<n8n-popover trigger="click" :placement="popoverPlacement" width="440">
+	<N8nPopover trigger="click" :placement="popoverPlacement" width="440">
 		<template #reference>
-			<n8n-button
+			<N8nButton
 				icon="funnel"
 				type="tertiary"
 				size="medium"
@@ -172,21 +172,21 @@ onBeforeMount(() => {
 				:class="$style.filterButton"
 			>
 				<template v-if="!!countSelectedFilterProps" #default>
-					<n8n-badge
+					<N8nBadge
 						theme="primary"
 						class="mr-4xs"
 						data-test-id="execution-filter-badge"
 						:class="$style.filterBadge"
 					>
 						{{ countSelectedFilterProps }}
-					</n8n-badge>
+					</N8nBadge>
 				</template>
-			</n8n-button>
+			</N8nButton>
 		</template>
 		<div data-test-id="execution-filter-form">
 			<div v-if="workflows && workflows.length > 0" :class="$style.group">
 				<label for="execution-filter-workflows">{{ locale.baseText('workflows.heading') }}</label>
-				<n8n-select
+				<N8nSelect
 					id="execution-filter-workflows"
 					v-model="filter.workflowId"
 					:placeholder="locale.baseText('executionsFilter.selectWorkflow')"
@@ -195,14 +195,14 @@ onBeforeMount(() => {
 					:teleported="teleported"
 				>
 					<div>
-						<n8n-option
+						<N8nOption
 							v-for="(item, idx) in props.workflows"
 							:key="idx"
 							:label="item.name"
 							:value="item.id"
 						/>
 					</div>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 			<div v-if="showTags" :class="$style.group">
 				<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
@@ -217,7 +217,7 @@ onBeforeMount(() => {
 			</div>
 			<div :class="$style.group">
 				<label for="execution-filter-status">{{ locale.baseText('executionsList.status') }}</label>
-				<n8n-select
+				<N8nSelect
 					id="execution-filter-status"
 					v-model="filter.status"
 					:placeholder="locale.baseText('executionsFilter.selectStatus')"
@@ -225,20 +225,20 @@ onBeforeMount(() => {
 					data-test-id="executions-filter-status-select"
 					:teleported="teleported"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="(item, idx) in statuses"
 						:key="idx"
 						:label="item.name"
 						:value="item.id"
 					/>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 			<div :class="$style.group">
 				<label for="execution-filter-start-date">{{
 					locale.baseText('executionsFilter.start')
 				}}</label>
 				<div :class="$style.dates">
-					<el-date-picker
+					<ElDatePicker
 						id="execution-filter-start-date"
 						v-model="filter.startDate"
 						type="datetime"
@@ -248,7 +248,7 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-start-date-picker"
 					/>
 					<span :class="$style.divider">to</span>
-					<el-date-picker
+					<ElDatePicker
 						id="execution-filter-end-date"
 						v-model="filter.endDate"
 						type="datetime"
@@ -276,7 +276,7 @@ onBeforeMount(() => {
 				<label for="execution-filter-annotation-vote">{{
 					locale.baseText('executionsFilter.annotation.rating')
 				}}</label>
-				<n8n-select
+				<N8nSelect
 					id="execution-filter-annotation-vote"
 					v-model="filter.vote"
 					:placeholder="locale.baseText('executionsFilter.annotation.selectVoteFilter')"
@@ -284,29 +284,29 @@ onBeforeMount(() => {
 					data-test-id="executions-filter-annotation-vote-select"
 					:teleported="teleported"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="(item, idx) in voteFilterOptions"
 						:key="idx"
 						:label="item.name"
 						:value="item.id"
 					/>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 			<div :class="$style.group">
-				<n8n-tooltip placement="right">
+				<N8nTooltip placement="right">
 					<template #content>
 						<I18nT tag="span" keypath="executionsFilter.customData.docsTooltip" scope="global" />
 					</template>
 					<span :class="[$style.label, $style.savedDataLabel]">
 						<span>{{ locale.baseText('executionsFilter.savedData') }}</span>
-						<n8n-icon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
+						<N8nIcon :class="$style.tooltipIcon" icon="circle-help" size="medium" />
 					</span>
-				</n8n-tooltip>
+				</N8nTooltip>
 				<div :class="$style.subGroup">
 					<label for="execution-filter-saved-data-key">{{
 						locale.baseText('executionsFilter.savedDataKey')
 					}}</label>
-					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+					<N8nTooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
 							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
@@ -319,7 +319,7 @@ onBeforeMount(() => {
 								</template>
 							</I18nT>
 						</template>
-						<n8n-input
+						<N8nInput
 							id="execution-filter-saved-data-key"
 							name="execution-filter-saved-data-key"
 							type="text"
@@ -329,9 +329,9 @@ onBeforeMount(() => {
 							data-test-id="execution-filter-saved-data-key-input"
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
-					</n8n-tooltip>
+					</N8nTooltip>
 					<div :class="$style.checkboxWrapper">
-						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+						<N8nTooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
 								<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 									<template #link>
@@ -341,19 +341,19 @@ onBeforeMount(() => {
 									</template>
 								</I18nT>
 							</template>
-							<n8n-checkbox
+							<N8nCheckbox
 								:label="locale.baseText('executionsFilter.savedDataExactMatch')"
 								:model-value="filter.metadata[0]?.exactMatch"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								data-test-id="execution-filter-saved-data-exact-match-checkbox"
 								@update:model-value="onExactMatchChange"
 							/>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</div>
 					<label for="execution-filter-saved-data-value">{{
 						locale.baseText('executionsFilter.savedDataValue')
 					}}</label>
-					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+					<N8nTooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
 							<I18nT tag="span" keypath="executionsFilter.customData.inputTooltip" scope="global">
 								<template #link>
@@ -363,7 +363,7 @@ onBeforeMount(() => {
 								</template>
 							</I18nT>
 						</template>
-						<n8n-input
+						<N8nInput
 							id="execution-filter-saved-data-value"
 							name="execution-filter-saved-data-value"
 							type="text"
@@ -373,10 +373,10 @@ onBeforeMount(() => {
 							data-test-id="execution-filter-saved-data-value-input"
 							@update:model-value="onFilterMetaChange(0, 'value', $event)"
 						/>
-					</n8n-tooltip>
+					</N8nTooltip>
 				</div>
 			</div>
-			<n8n-button
+			<N8nButton
 				v-if="!!countSelectedFilterProps"
 				:class="$style.resetBtn"
 				size="large"
@@ -385,9 +385,9 @@ onBeforeMount(() => {
 				@click="onFilterReset"
 			>
 				{{ locale.baseText('executionsFilter.reset') }}
-			</n8n-button>
+			</N8nButton>
 		</div>
-	</n8n-popover>
+	</N8nPopover>
 </template>
 <style lang="scss" module>
 .group {

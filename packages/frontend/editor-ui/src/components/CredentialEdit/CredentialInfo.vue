@@ -15,40 +15,40 @@ const i18n = useI18n();
 
 <template>
 	<div :class="$style.container">
-		<el-row v-if="currentCredential">
-			<el-col :span="8" :class="$style.label">
+		<ElRow v-if="currentCredential">
+			<ElCol :span="8" :class="$style.label">
 				<N8nText :compact="true" :bold="true">
 					{{ i18n.baseText('credentialEdit.credentialInfo.created') }}
 				</N8nText>
-			</el-col>
-			<el-col :span="16" :class="$style.valueLabel">
+			</ElCol>
+			<ElCol :span="16" :class="$style.valueLabel">
 				<N8nText :compact="true"
 					><TimeAgo :date="currentCredential.createdAt" :capitalize="true"
 				/></N8nText>
-			</el-col>
-		</el-row>
-		<el-row v-if="currentCredential">
-			<el-col :span="8" :class="$style.label">
+			</ElCol>
+		</ElRow>
+		<ElRow v-if="currentCredential">
+			<ElCol :span="8" :class="$style.label">
 				<N8nText :compact="true" :bold="true">
 					{{ i18n.baseText('credentialEdit.credentialInfo.lastModified') }}
 				</N8nText>
-			</el-col>
-			<el-col :span="16" :class="$style.valueLabel">
+			</ElCol>
+			<ElCol :span="16" :class="$style.valueLabel">
 				<N8nText :compact="true"
 					><TimeAgo :date="currentCredential.updatedAt" :capitalize="true"
 				/></N8nText>
-			</el-col>
-		</el-row>
-		<el-row v-if="currentCredential">
-			<el-col :span="8" :class="$style.label">
+			</ElCol>
+		</ElRow>
+		<ElRow v-if="currentCredential">
+			<ElCol :span="8" :class="$style.label">
 				<N8nText :compact="true" :bold="true">
 					{{ i18n.baseText('credentialEdit.credentialInfo.id') }}
 				</N8nText>
-			</el-col>
-			<el-col :span="16" :class="$style.valueLabel">
+			</ElCol>
+			<ElCol :span="16" :class="$style.valueLabel">
 				<N8nText :compact="true">{{ currentCredential.id }}</N8nText>
-			</el-col>
-		</el-row>
+			</ElCol>
+		</ElRow>
 	</div>
 </template>
 

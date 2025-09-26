@@ -9,7 +9,7 @@ export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterD
 	const workflowsStore = useWorkflowsStore();
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	workflowsStore.updateNodeExecutionData(pushData);
+	workflowsStore.updateNodeExecutionRunData(pushData);
 
 	void schemaPreviewStore.trackSchemaPreviewExecution(pushData);
 }

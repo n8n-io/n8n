@@ -354,6 +354,7 @@ export const DATA_TYPE_ICON_MAP = {
 	date: 'calendar',
 	array: 'list',
 	object: 'box',
+	file: 'file',
 } satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
@@ -783,7 +784,13 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_EXPERIMENT = {
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
@@ -830,7 +837,8 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_EXPERIMENT.name,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
@@ -1023,3 +1031,6 @@ export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
 
 export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
 export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
+
+export const BINARY_DATA_ACCESS_TOOLTIP =
+	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";

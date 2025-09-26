@@ -413,7 +413,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			</div>
 			<div :class="$style.settingsContainerAction">
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-					<el-switch
+					<ElSwitch
 						:model-value="settingsStore.isMFAEnforced"
 						size="large"
 						data-test-id="enable-force-mfa"
@@ -421,7 +421,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					/>
 					<template #fallback>
 						<N8nTooltip>
-							<el-switch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
+							<ElSwitch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
 							<template #content>
 								<I18nT :keypath="tooltipKey" tag="span" scope="global">
 									<template #action>
