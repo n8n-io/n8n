@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import type { IMenuItem } from '@n8n/design-system/types';
-import { N8nMenuItem } from '@n8n/design-system';
+import { N8nMenuItem, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount } from 'vue';
 
@@ -117,10 +117,10 @@ onBeforeMount(async () => {
 				data-test-id="project-shared-menu-item"
 			/>
 		</div>
-		<N8nText
+		<N8nHeading
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
-			bold
+			tag="h3"
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 			<N8nTooltip
@@ -138,7 +138,7 @@ onBeforeMount(async () => {
 					@click="globalEntityCreation.createProject('add_icon')"
 				/>
 			</N8nTooltip>
-		</N8nText>
+		</N8nHeading>
 		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 			:class="$style.projectItems"
