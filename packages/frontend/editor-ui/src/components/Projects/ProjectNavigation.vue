@@ -96,16 +96,14 @@ onBeforeMount(async () => {
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === 'home'"
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
@@ -115,8 +113,7 @@ onBeforeMount(async () => {
 				"
 				:item="shared"
 				:compact="props.collapsed"
-				:active-tab="activeTabId"
-				mode="tabs"
+				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
 			/>
 		</div>
@@ -154,6 +151,7 @@ onBeforeMount(async () => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
+				:active="activeTabId === project.id"
 				data-test-id="project-menu-item"
 			/>
 		</div>
