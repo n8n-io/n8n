@@ -549,7 +549,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					<N8nMenuItem
 						v-for="item in visibleMenuItems"
 						:item="item"
-						:collapsed="isCollapsed"
+						:compact="isCollapsed"
 						@on-click="() => handleSelect(item.id)"
 					/>
 				</div>
@@ -609,7 +609,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	position: relative;
 	height: 100%;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
