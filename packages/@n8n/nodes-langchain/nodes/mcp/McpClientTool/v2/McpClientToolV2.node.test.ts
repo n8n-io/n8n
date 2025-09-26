@@ -2,22 +2,201 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { mock } from 'jest-mock-extended';
-import {
-	NodeConnectionTypes,
-	NodeOperationError,
-	type ILoadOptionsFunctions,
-	type INode,
-	type ISupplyDataFunctions,
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ILoadOptionsFunctions,
+	INode,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import nock from 'nock';
 
 import { getTools } from './loadOptions';
-import { McpClientTool } from './McpClientTool.node';
+import { McpClientToolV2 } from './McpClientToolV2.node';
 import { McpToolkit } from './utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 
-describe('McpClientTool', () => {
+describe('McpClientToolV2', () => {
+	const buildNode = () => {
+		return new McpClientToolV2({ description: 'test', name: '', displayName: '', group: [] });
+	};
+
+	describe('authentication', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool1',
+						description: 'MyTool1 does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+		});
+
+		const buildMocks = (type: string, credentials: ICredentialDataDecryptedObject) => {
+			return mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 2 })),
+				getNodeParameter: jest.fn((key, _index) => {
+					const parameters: Record<string, any> = {
+						authentication: 'genericCredentialType',
+						genericAuthType: type,
+						endpointUrl: 'https://my-mcp-endpoint.ai/sse',
+					};
+					return parameters[key];
+				}),
+				getCredentials: jest.fn().mockResolvedValue(credentials),
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+			});
+		};
+
+		it('should support http basic auth', async () => {
+			await buildNode().supplyData.call(
+				buildMocks('httpBasicAuth', { user: 'my-header', password: 'header-value' }),
+				0,
+			);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: {
+					headers: {
+						Authorization: 'Basic bXktaGVhZGVyOmhlYWRlci12YWx1ZQ==',
+					},
+				},
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: {
+					Accept: 'text/event-stream',
+					Authorization: 'Basic bXktaGVhZGVyOmhlYWRlci12YWx1ZQ==',
+				},
+			});
+		});
+
+		it('should support http custom auth with headers', async () => {
+			const json = { headers: { 'my-header': 'header-value' } };
+			await buildNode().supplyData.call(
+				buildMocks('httpCustomAuth', { json: JSON.stringify(json) }),
+				0,
+			);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: {
+					headers: {
+						'my-header': 'header-value',
+					},
+				},
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: {
+					Accept: 'text/event-stream',
+					'my-header': 'header-value',
+				},
+			});
+		});
+
+		it('should support header auth', async () => {
+			await buildNode().supplyData.call(
+				buildMocks('httpHeaderAuth', { name: 'my-header', value: 'header-value' }),
+				0,
+			);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: {
+					headers: {
+						'my-header': 'header-value',
+					},
+				},
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: {
+					Accept: 'text/event-stream',
+					'my-header': 'header-value',
+				},
+			});
+		});
+
+		it('should support oauth 2', async () => {
+			nock('https://my-mcp-endpoint.ai').post('/token').reply(200, { access_token: 'my-token' });
+
+			await buildNode().supplyData.call(
+				buildMocks('oAuth2Api', {
+					clientId: 'id',
+					scopes: 'read',
+					clientSecret: 'secret',
+					authentication: 'header',
+					accessTokenUrl: 'https://my-mcp-endpoint.ai/token',
+				}),
+				0,
+			);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: {
+					headers: {
+						Authorization: 'Bearer my-token',
+					},
+				},
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: {
+					Accept: 'text/event-stream',
+					Authorization: 'Bearer my-token',
+				},
+			});
+		});
+
+		it('should support bearer auth', async () => {
+			await buildNode().supplyData.call(buildMocks('httpBearerAuth', { token: 'my-token' }), 0);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: {
+					headers: {
+						Authorization: 'Bearer my-token',
+					},
+				},
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: {
+					Accept: 'text/event-stream',
+					Authorization: 'Bearer my-token',
+				},
+			});
+		});
+	});
+
 	describe('loadOptions: getTools', () => {
 		it('should return a list of tools', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
@@ -32,7 +211,7 @@ describe('McpClientTool', () => {
 			});
 
 			const result = await getTools.call(
-				mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })) }),
+				mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => mock<INode>({ typeVersion: 2 })) }),
 			);
 
 			expect(result).toEqual([
@@ -46,9 +225,9 @@ describe('McpClientTool', () => {
 		});
 
 		it('should handle errors', async () => {
+			const node = mock<INode>({ typeVersion: 2 });
 			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Fail!'));
 
-			const node = mock<INode>({ typeVersion: 1 });
 			await expect(
 				getTools.call(mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => node) })),
 			).rejects.toEqual(new NodeOperationError(node, 'Could not connect to your MCP server'));
@@ -80,9 +259,15 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const supplyDataResult = await new McpClientTool().supplyData.call(
+			const supplyDataResult = await buildNode().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 2 })),
+					getNodeParameter: jest.fn((key, _index) => {
+						const parameters: Record<string, any> = {
+							endpointUrl: 'https://my-mcp-endpoint.ai/sse',
+						};
+						return parameters[key];
+					}),
 					logger: { debug: jest.fn(), error: jest.fn() },
 					addInputData: jest.fn(() => ({ index: 0 })),
 				}),
@@ -116,16 +301,17 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const supplyDataResult = await new McpClientTool().supplyData.call(
+			const supplyDataResult = await buildNode().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() =>
 						mock<INode>({
-							typeVersion: 1,
+							typeVersion: 2,
 						}),
 					),
 					getNodeParameter: jest.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'selected',
+							endpointUrl: 'https://my-mcp-endpoint.ai/mcp',
 							includeTools: ['MyTool2'],
 						};
 						return parameters[key];
@@ -161,16 +347,17 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const supplyDataResult = await new McpClientTool().supplyData.call(
+			const supplyDataResult = await buildNode().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() =>
 						mock<INode>({
-							typeVersion: 1,
+							typeVersion: 2,
 						}),
 					),
 					getNodeParameter: jest.fn((key, _index) => {
 						const parameters: Record<string, any> = {
 							include: 'except',
+							endpointUrl: 'https://my-mcp-endpoint.ai/sse',
 							excludeTools: ['MyTool2'],
 						};
 						return parameters[key];
@@ -189,104 +376,6 @@ describe('McpClientTool', () => {
 			expect(tools[0].name).toBe('MyTool1');
 		});
 
-		it('should support header auth', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-				tools: [
-					{
-						name: 'MyTool1',
-						description: 'MyTool1 does something',
-						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
-					},
-				],
-			});
-
-			const supplyDataResult = await new McpClientTool().supplyData.call(
-				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeParameter: jest.fn((key, _index) => {
-						const parameters: Record<string, any> = {
-							include: 'except',
-							excludeTools: ['MyTool2'],
-							authentication: 'headerAuth',
-							sseEndpoint: 'https://my-mcp-endpoint.ai/sse',
-						};
-						return parameters[key];
-					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
-					getCredentials: jest.fn().mockResolvedValue({ name: 'my-header', value: 'header-value' }),
-				}),
-				0,
-			);
-
-			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
-
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
-			const url = new URL('https://my-mcp-endpoint.ai/sse');
-			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
-			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
-				eventSourceInit: { fetch: expect.any(Function) },
-				requestInit: { headers: { 'my-header': 'header-value' } },
-			});
-
-			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
-			await customFetch?.(url);
-			expect(fetchSpy).toHaveBeenCalledWith(url, {
-				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
-			});
-		});
-
-		it('should support bearer auth', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-				tools: [
-					{
-						name: 'MyTool1',
-						description: 'MyTool1 does something',
-						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
-					},
-				],
-			});
-
-			const supplyDataResult = await new McpClientTool().supplyData.call(
-				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeParameter: jest.fn((key, _index) => {
-						const parameters: Record<string, any> = {
-							include: 'except',
-							excludeTools: ['MyTool2'],
-							authentication: 'bearerAuth',
-							sseEndpoint: 'https://my-mcp-endpoint.ai/sse',
-						};
-						return parameters[key];
-					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
-					getCredentials: jest.fn().mockResolvedValue({ token: 'my-token' }),
-				}),
-				0,
-			);
-
-			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
-			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
-
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
-			const url = new URL('https://my-mcp-endpoint.ai/sse');
-			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
-			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
-				eventSourceInit: { fetch: expect.any(Function) },
-				requestInit: { headers: { Authorization: 'Bearer my-token' } },
-			});
-
-			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
-			await customFetch?.(url);
-			expect(fetchSpy).toHaveBeenCalledWith(url, {
-				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
-			});
-		});
-
 		it('should successfully execute a tool', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: 'Sunny' });
@@ -300,13 +389,20 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const supplyDataResult = await new McpClientTool().supplyData.call(
+			const supplyDataResult = await buildNode().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() =>
 						mock<INode>({
-							typeVersion: 1,
+							typeVersion: 2,
 						}),
 					),
+					getNodeParameter: jest.fn((key, _index) => {
+						const parameters: Record<string, any> = {
+							endpointUrl: 'https://my-mcp-endpoint.ai/mcp',
+						};
+						return parameters[key];
+					}),
+
 					logger: { debug: jest.fn(), error: jest.fn() },
 					addInputData: jest.fn(() => ({ index: 0 })),
 				}),
@@ -339,13 +435,19 @@ describe('McpClientTool', () => {
 			const supplyDataFunctions = mock<ISupplyDataFunctions>({
 				getNode: jest.fn(() =>
 					mock<INode>({
-						typeVersion: 1,
+						typeVersion: 2,
 					}),
 				),
+				getNodeParameter: jest.fn((key, _index) => {
+					const parameters: Record<string, any> = {
+						endpointUrl: 'https://my-mcp-endpoint.ai/mcp',
+					};
+					return parameters[key];
+				}),
 				logger: { debug: jest.fn(), error: jest.fn() },
 				addInputData: jest.fn(() => ({ index: 0 })),
 			});
-			const supplyDataResult = await new McpClientTool().supplyData.call(supplyDataFunctions, 0);
+			const supplyDataResult = await buildNode().supplyData.call(supplyDataFunctions, 0);
 
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
@@ -377,21 +479,23 @@ describe('McpClientTool', () => {
 				],
 			});
 
-			const mockNode = mock<INode>({ typeVersion: 1 });
-			const supplyDataResult = await new McpClientTool().supplyData.call(
-				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mockNode),
-					getNodeParameter: jest.fn((key, _index) => {
-						const parameters: Record<string, any> = {
-							'options.timeout': 200,
-						};
-						return parameters[key];
+			const supplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() =>
+					mock<INode>({
+						typeVersion: 2,
 					}),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+				),
+				getNodeParameter: jest.fn((key, _index) => {
+					const parameters: Record<string, any> = {
+						endpointUrl: 'https://my-mcp-endpoint.ai/mcp',
+						'options.timeout': 200,
+					};
+					return parameters[key];
 				}),
-				0,
-			);
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+			});
+			const supplyDataResult = await buildNode().supplyData.call(supplyDataFunctions, 0);
 
 			const tools = (supplyDataResult.response as McpToolkit).getTools();
 
