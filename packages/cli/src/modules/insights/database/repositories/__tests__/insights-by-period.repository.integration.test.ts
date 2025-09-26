@@ -38,6 +38,7 @@ describe('InsightsByPeriodRepository', () => {
 					select: jest.fn().mockReturnThis(),
 					innerJoin: jest.fn().mockReturnThis(),
 					where: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
 					groupBy: jest.fn().mockReturnThis(),
 					orderBy: jest.fn().mockReturnThis(),
 					getRawMany: jest.fn().mockResolvedValue(mockResult),
@@ -48,7 +49,8 @@ describe('InsightsByPeriodRepository', () => {
 					.mockReturnValueOnce(queryBuilderMock as any);
 
 				const result = await insightsByPeriodRepository.getInsightsByTime({
-					maxAgeInDays: 1,
+					startDate: new Date('2023-10-01T00:00:00Z'),
+					endDate: new Date('2023-10-02T00:00:00Z'),
 					periodUnit: 'day',
 					insightTypes: ['success', 'failure', 'time_saved_min'],
 				});

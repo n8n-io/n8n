@@ -9,6 +9,9 @@ const VALID_DATE_RANGE_OPTIONS = insightsDateRangeSchema.shape.key.options;
 const dateRange = z.enum(VALID_DATE_RANGE_OPTIONS).optional();
 
 export class InsightsDateFilterDto extends Z.class({
+	/**
+	 * @deprecated use startDate and endDate instead
+	 */
 	dateRange,
 	startDate: z.coerce.date().optional(),
 	endDate: z.coerce.date().optional(),
