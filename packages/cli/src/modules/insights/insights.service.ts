@@ -243,6 +243,7 @@ export class InsightsService {
 	 * @throws {UserError} if the license does not allow the selected date range
 	 */
 	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		// we use `startOf('day')` because the license limits are based on full days
 		const today = DateTime.now().startOf('day');
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
 		const daysToStartDate = today.diff(currentStart, 'days').days;
@@ -270,11 +271,11 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: { startDate: Date; endDate: Date }): PeriodUnit {
-		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
-		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
+		const currentStart = DateTime.fromJSDate(startDate);
+		const currentEnd = DateTime.fromJSDate(endDate);
 		const differenceInDays = currentEnd.diff(currentStart, 'days').days;
 
-		if (differenceInDays === 0) {
+		if (differenceInDays <= 1) {
 			return 'hour';
 		}
 

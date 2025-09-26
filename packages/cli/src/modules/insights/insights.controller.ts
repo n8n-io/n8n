@@ -149,20 +149,20 @@ export class InsightsController {
 		startDate: Date;
 		endDate: Date;
 	} {
-		const today = DateTime.now().startOf('day').toJSDate();
+		const today = new Date();
 
 		// For backward compatibility, if dateRange is provided it will take precedence over startDate and endDate
 		if (query.dateRange) {
 			const maxAgeInDays = keyRangeToDays[query.dateRange];
 			return {
-				startDate: DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate(),
+				startDate: DateTime.now().minus({ days: maxAgeInDays }).toJSDate(),
 				endDate: today,
 			};
 		}
 
 		if (!query.startDate) {
 			return {
-				startDate: DateTime.now().minus({ days: 7 }).startOf('day').toJSDate(),
+				startDate: DateTime.now().minus({ days: 7 }).toJSDate(),
 				endDate: today,
 			};
 		}

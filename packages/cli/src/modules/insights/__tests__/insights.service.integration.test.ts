@@ -13,7 +13,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import { UserError, type IRun } from 'n8n-workflow';
 
 import {
 	createCompactedInsightsEvent,
@@ -1166,6 +1166,104 @@ describe('InsightsService', () => {
 				{ key: '6months', licensed: false, granularity: 'week' },
 				{ key: 'year', licensed: false, granularity: 'week' },
 			]);
+		});
+	});
+
+	describe('validateDateFiltersLicense', () => {
+		let licenseStateMock: jest.Mocked<LicenseState>;
+		let insightsService: InsightsService;
+
+		beforeEach(() => {
+			licenseStateMock = mock<LicenseState>();
+			insightsService = new InsightsService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsCompactionService>(),
+				mock<InsightsCollectionService>(),
+				mock<InsightsPruningService>(),
+				licenseStateMock,
+				mock<InstanceSettings>(),
+				mockLogger(),
+			);
+		});
+
+		test('throws error if granularity is hour and hourly data is not licensed', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ hours: 12 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
+				new UserError('Hourly data is not available with your current license'),
+			);
+		});
+
+		test('does not throw if granularity is hour and hourly data is licensed', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ hours: 12 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() =>
+				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+			).not.toThrow();
+		});
+
+		test('throws error if startDate is outside max history allowed by license', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(7);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ days: 8 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
+				new UserError(
+					'The selected date range exceeds the maximum history allowed by your license',
+				),
+			);
+		});
+
+		test('does not throw if startDate is within max history allowed by license', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(7);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ days: 7 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() =>
+				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+			).not.toThrow();
+		});
+
+		test('does not throw if max history is unlimited (-1)', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(-1);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ years: 3 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() =>
+				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+			).not.toThrow();
+		});
+
+		test('does not throw for day granularity when hourly data is not licensed', () => {
+			licenseStateMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
+			licenseStateMock.getInsightsMaxHistory.mockReturnValue(30);
+
+			const today = DateTime.now().startOf('day');
+			const startDate = today.minus({ days: 2 }).toJSDate();
+			const endDate = today.toJSDate();
+
+			expect(() =>
+				insightsService.validateDateFiltersLicense({ startDate, endDate }),
+			).not.toThrow();
 		});
 	});
 
