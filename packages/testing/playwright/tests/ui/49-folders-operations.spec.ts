@@ -1,6 +1,12 @@
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Folders - Operations', () => {
+	// Tests are marked as serial because the performance impact in parallel causes instability due to performance.
+	test.describe.configure({ mode: 'serial' });
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.start.withProjectFeatures();
+	});
+
 	test.describe('Rename and delete folders', () => {
 		test('should rename folder from breadcrumb dropdown', async ({ n8n }) => {
 			await n8n.start.fromNewProject();
@@ -73,27 +79,27 @@ test.describe('Folders - Operations', () => {
 		}) => {
 			const { id: projectId } = await n8n.api.projects.createProject();
 			const folderToDelete = await n8n.api.projects.createFolder(projectId);
-			const folderToMoveTo = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
 			await n8n.navigate.toFolder(folderToDelete.id, projectId);
 			await n8n.workflows.addResource.workflow();
 			await n8n.canvas.saveWorkflow();
-			// Ok so now we have a workflow in the folder to delete
 
-			// Lets go to the folder to delete, delete it and make sure they are transferred
 			await n8n.navigate.toProject(projectId);
 
-			const folderToDeleteCard = n8n.workflows.cards.getFolder(folderToDelete.name);
-			await n8n.workflows.cards.openCardActions(folderToDeleteCard);
+			const folderCard = n8n.workflows.cards.getFolder(folderToDelete.name);
+			await n8n.workflows.cards.openCardActions(folderCard);
 			await n8n.workflows.cards.getCardAction('delete').click();
 			await n8n.workflows.deleteModalTransferRadioButton().click();
 			await n8n.workflows.transferFolderDropdown().click();
-			await n8n.workflows.transferFolderOption(folderToMoveTo.name).click();
+			await n8n.workflows.transferFolderOption(destinationFolder.name).click();
 			await n8n.workflows.deleteModalConfirmButton().click();
+
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent('Folder deleted'),
 			).toBeVisible();
 
-			await n8n.navigate.toFolder(folderToMoveTo.id, projectId);
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
 			await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 		});
 	});
@@ -102,35 +108,194 @@ test.describe('Folders - Operations', () => {
 		test('should move empty folder to another folder - from folder card action', async ({
 			n8n,
 		}) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const sourceFolder = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toProject(projectId);
+
+			const sourceFolderCard = n8n.workflows.cards.getFolder(sourceFolder.name);
+			await n8n.workflows.cards.openCardActions(sourceFolderCard);
+			await n8n.workflows.cards.getCardAction('move').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Successfully moved folder'),
+			).toBeVisible();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getFolder(sourceFolder.name)).toBeVisible();
 		});
 
 		test('should move folder with contents to another folder - from folder card action', async ({
 			n8n,
 		}) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const sourceFolder = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await n8n.workflows.addResource.workflow();
+			await n8n.canvas.saveWorkflow();
+
+			await n8n.navigate.toProject(projectId);
+
+			const sourceFolderCard = n8n.workflows.cards.getFolder(sourceFolder.name);
+			await n8n.workflows.cards.openCardActions(sourceFolderCard);
+			await n8n.workflows.cards.getCardAction('move').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Successfully moved folder'),
+			).toBeVisible();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getFolder(sourceFolder.name)).toBeVisible();
+			await n8n.workflows.cards.openFolder(sourceFolder.name);
+			await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 		});
 
 		test('should move empty folder to another folder - from list breadcrumbs', async ({ n8n }) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const sourceFolder = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await n8n.breadcrumbs.getFolderBreadcrumbsActionToggle().click();
+			await n8n.breadcrumbs.getActionToggleDropdown('move').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getFolder(sourceFolder.name)).toBeVisible();
 		});
 
 		test('should move folder with contents to another folder - from list dropdown', async ({
 			n8n,
 		}) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const sourceFolder = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await n8n.workflows.addResource.workflow();
+			await n8n.canvas.saveWorkflow();
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await n8n.breadcrumbs.getFolderBreadcrumbsActionToggle().click();
+			await n8n.breadcrumbs.getActionToggleDropdown('move').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getFolder(sourceFolder.name)).toBeVisible();
+			await n8n.workflows.cards.openFolder(sourceFolder.name);
+			await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 		});
 
 		test('should move folder to project root - from folder card action', async ({ n8n }) => {
-			// TODO: Implement
+			const project = await n8n.api.projects.createProject();
+			const parentFolder = await n8n.api.projects.createFolder(project.id);
+			const childFolderName = 'Child Folder';
+			const childFolder = await n8n.api.projects.createFolder(
+				project.id,
+				childFolderName,
+				parentFolder.id,
+			);
+
+			await n8n.navigate.toFolder(parentFolder.id, project.id);
+
+			const childFolderCard = n8n.workflows.cards.getFolder(childFolder.name);
+			await n8n.workflows.cards.openCardActions(childFolderCard);
+			await n8n.workflows.cards.getCardAction('move').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+
+			const rootOption = 'No folder (project root)';
+			await n8n.workflows.moveFolderOption(rootOption).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Successfully moved folder'),
+			).toBeVisible();
+
+			await n8n.navigate.toProject(project.id);
+			await expect(n8n.workflows.cards.getFolder(childFolder.name)).toBeVisible();
 		});
 
 		test('should move workflow from project root to folder', async ({ n8n }) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toProject(projectId);
+			await n8n.workflows.addResource.workflow();
+			await n8n.canvas.saveWorkflow();
+			const workflowName = 'My workflow';
+
+			await n8n.navigate.toProject(projectId);
+
+			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
+			await n8n.workflows.cards.openCardActions(workflowCard);
+			await n8n.workflows.cards.getCardAction('moveToFolder').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Successfully moved workflow'),
+			).toBeVisible();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
 		});
 
 		test('should move workflow to another folder', async ({ n8n }) => {
-			// TODO: Implement
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const sourceFolder = await n8n.api.projects.createFolder(projectId);
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await n8n.workflows.addResource.workflow();
+			await n8n.canvas.saveWorkflow();
+			const workflowName = 'My workflow';
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+
+			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
+			await n8n.workflows.cards.openCardActions(workflowCard);
+			await n8n.workflows.cards.getCardAction('moveToFolder').click();
+
+			await expect(n8n.workflows.moveFolderModal()).toBeVisible();
+			await n8n.workflows.moveFolderDropdown().click();
+			await n8n.workflows.moveFolderOption(destinationFolder.name).click();
+			await n8n.workflows.moveFolderConfirmButton().click();
+
+			await expect(
+				n8n.notifications.getNotificationByTitleOrContent('Successfully moved workflow'),
+			).toBeVisible();
+
+			await n8n.navigate.toFolder(destinationFolder.id, projectId);
+			await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+
+			await n8n.navigate.toFolder(sourceFolder.id, projectId);
+			await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeHidden();
 		});
 	});
 });

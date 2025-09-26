@@ -46,7 +46,7 @@ export class ResourceCards {
 	}
 
 	getCardActionToggle(card: Locator): Locator {
-		return card.getByTestId('card-append');
+		return card.getByTestId('card-append').locator('[class*="action-toggle"]');
 	}
 
 	getCardAction(actionName: string): Locator {
