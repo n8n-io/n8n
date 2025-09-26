@@ -5,14 +5,24 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
+import {
+	ComponentInstance,
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	watch,
+	type WatchStopHandle,
+} from 'vue';
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
+import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import { useToast } from '@/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
+import { nextTick } from 'vue';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -33,9 +43,8 @@ const toast = useToast();
 const { runWorkflow } = useRunWorkflow({ router });
 
 let executionWatcherStop: WatchStopHandle | undefined;
-let didEmitAfterRun = false;
 
-const containerRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement>();
 
 const stopExecutionWatcher = () => {
 	if (executionWatcherStop) {
@@ -46,13 +55,10 @@ const stopExecutionWatcher = () => {
 
 /**
  * Sets up a watcher that fires exactly once per execution cycle.
- * We cache it so that chat-triggered runs (where onExecute returns early)
- * still emit the completion event after the store toggles back to idle.
  */
 const ensureExecutionWatcher = () => {
 	if (executionWatcherStop) return;
 
-	didEmitAfterRun = false;
 	let wasRunning = workflowsStore.isWorkflowRunning;
 
 	executionWatcherStop = watch(
@@ -60,8 +66,9 @@ const ensureExecutionWatcher = () => {
 		(isRunning) => {
 			if (wasRunning && !isRunning) {
 				stopExecutionWatcher();
-				if (!didEmitAfterRun) {
-					didEmitAfterRun = true;
+				const wasCancelled = workflowsStore.workflowExecutionData?.status === 'canceled';
+
+				if (!wasCancelled) {
 					emit('workflowExecuted');
 				}
 			}
@@ -135,25 +142,22 @@ async function onExecute() {
 		runOptions.triggerNode = selectedTriggerNode;
 	}
 
-	try {
-		await runWorkflow(runOptions);
-	} finally {
-		if (!workflowsStore.isWorkflowRunning) {
-			stopExecutionWatcher();
-			if (!didEmitAfterRun) {
-				didEmitAfterRun = true;
-				emit('workflowExecuted');
-			}
-		}
-	}
+	await runWorkflow(runOptions);
 }
 
-onMounted(() => {
+function scrollIntoView() {
 	containerRef.value?.scrollIntoView({ behavior: 'smooth' });
-});
+}
+
+onMounted(scrollIntoView);
 
 onBeforeUnmount(() => {
 	stopExecutionWatcher();
+});
+
+watch(workflowIssues, async () => {
+	await nextTick();
+	scrollIntoView();
 });
 </script>
 
@@ -199,9 +203,11 @@ onBeforeUnmount(() => {
 				:class="$style.runButton"
 				:disabled="hasValidationIssues"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
-				:hide-label="true"
+				:hide-tooltip="true"
+				:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
 				:executing="isWorkflowRunning"
 				:include-chat-trigger="true"
+				type="secondary"
 				size="medium"
 				:trigger-nodes="availableTriggerNodes"
 				:get-node-type="nodeTypesStore.getNodeType"
