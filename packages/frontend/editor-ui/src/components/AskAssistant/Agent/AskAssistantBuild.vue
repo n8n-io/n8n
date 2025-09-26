@@ -11,6 +11,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import ExecuteMessage from './ExecuteMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -38,7 +39,16 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
-
+const showExecuteMessage = computed(() => {
+	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	return (
+		!builderStore.streaming &&
+		workflowsStore.workflow.nodes.length > 0 &&
+		builderUpdatedWorkflowMessageIndex > -1
+	);
+});
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
 
@@ -102,6 +112,67 @@ function trackWorkflowModifications() {
 
 		workflowUpdated.value = undefined;
 	}
+}
+
+function onWorkflowExecuted() {
+	const executionData = workflowsStore.workflowExecutionData;
+	const executionStatus = executionData?.status ?? 'unknown';
+	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
+	const errorNodeType = errorNodeName
+		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		: undefined;
+
+	if (workflowsStore.executionWaitingForWebhook || executionStatus === 'waiting') {
+		builderStore.sendChatMessage({
+			text: 'Workflow execution is waiting for a webhook or external event to continue.',
+			type: 'execution',
+			executionStatus: 'waiting',
+		});
+		return;
+	}
+
+	if (!executionData) {
+		builderStore.sendChatMessage({
+			text: 'Workflow execution could not be started. Please try again.',
+			type: 'execution',
+			executionStatus: 'error',
+			errorMessage: 'Workflow execution data missing after run attempt.',
+		});
+		return;
+	}
+
+	if (executionStatus === 'success') {
+		builderStore.sendChatMessage({
+			text: 'Workflow executed successfully.',
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	if (executionStatus === 'canceled') {
+		builderStore.sendChatMessage({
+			text: 'Workflow execution was canceled before completion.',
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
+	const scopedErrorMessage = errorNodeName
+		? `Workflow execution failed on node "${errorNodeName}": ${executionError}`
+		: `Workflow execution failed: ${executionError}`;
+
+	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
+
+	builderStore.sendChatMessage({
+		text: scopedErrorMessage,
+		type: 'execution',
+		errorMessage: executionError,
+		errorNodeType,
+		executionStatus: failureStatus,
+	});
 }
 
 // Watch for workflow updates and apply them
@@ -198,6 +269,9 @@ watch(currentRoute, () => {
 		>
 			<template #header>
 				<slot name="header" />
+			</template>
+			<template #messagesFooter>
+				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
 				<n8n-text :class="$style.topText">{{
