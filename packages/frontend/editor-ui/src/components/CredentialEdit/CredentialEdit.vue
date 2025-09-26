@@ -537,7 +537,6 @@ async function loadCurrentCredential() {
 }
 
 function onTabSelect(tab: string) {
-	console.log('onTabSelect', tab);
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
 	const activeNode: INode | null = ndvStore.activeNode;
