@@ -6,7 +6,6 @@ import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput, N8nInput } from '@n8n/design-system';
 import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
-import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '@/stores/projects.store';
 import type { Project, ProjectRelation } from '@/types/projects.types';
@@ -43,6 +42,10 @@ const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+
+const showSaveError = (error: Error) => {
+	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+};
 
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
@@ -86,10 +89,8 @@ const membersTableState = ref<TableOptions>({
 });
 
 const usersList = computed(() =>
-	usersStore.allUsers.filter((user: IUser) => {
-		const isAlreadySharedWithUser = (formData.value.relations || []).find(
-			(r: ProjectRelation) => r.id === user.id,
-		);
+	usersStore.allUsers.filter((user) => {
+		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
 		return !isAlreadySharedWithUser;
 	}),
@@ -145,7 +146,7 @@ const onAddMember = async (userId: string) => {
 	} catch (error) {
 		// Rollback optimistic change
 		formData.value.relations = formData.value.relations.filter((r) => r.id !== userId);
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 	}
 };
 
@@ -216,7 +217,7 @@ async function onRemoveMember(userId: string) {
 		});
 	} catch (error) {
 		formData.value.relations.splice(idx, 0, removed);
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 	}
 }
 
@@ -231,12 +232,16 @@ const onMembersListAction = async ({ action, userId }: { action: string; userId:
 	}
 };
 
-const onCancel = () => {
+const resetFormData = () => {
 	formData.value.relations = projectsStore.currentProject?.relations
 		? deepCopy(projectsStore.currentProject.relations)
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+};
+
+const onCancel = () => {
+	resetFormData();
 	isDirty.value = false;
 };
 
@@ -256,14 +261,14 @@ const makeFormDataDiff = (): FormDataDiff => {
 
 	if (formData.value.relations.length !== projectsStore.currentProject.relations.length) {
 		diff.memberAdded = formData.value.relations.filter(
-			(r: ProjectRelation) => !projectsStore.currentProject?.relations.find((cr) => cr.id === r.id),
+			(r) => !projectsStore.currentProject?.relations.find((cr) => cr.id === r.id),
 		);
 		diff.memberRemoved = projectsStore.currentProject.relations.filter(
-			(cr: ProjectRelation) => !formData.value.relations.find((r) => r.id === cr.id),
+			(cr) => !formData.value.relations.find((r) => r.id === cr.id),
 		);
 	}
 
-	diff.role = formData.value.relations.filter((r: ProjectRelation) => {
+	diff.role = formData.value.relations.filter((r) => {
 		const currentRelation = projectsStore.currentProject?.relations.find((cr) => cr.id === r.id);
 		return currentRelation?.role !== r.role && !diff.memberAdded?.find((ar) => ar.id === r.id);
 	});
@@ -272,41 +277,34 @@ const makeFormDataDiff = (): FormDataDiff => {
 };
 
 const sendTelemetry = (diff: FormDataDiff) => {
+	const projectId = projectsStore.currentProject?.id;
+
 	if (diff.name) {
-		telemetry.track('User changed project name', {
-			project_id: projectsStore.currentProject?.id,
-			name: diff.name,
-		});
+		telemetry.track('User changed project name', { project_id: projectId, name: diff.name });
 	}
 
-	if (diff.memberAdded) {
-		diff.memberAdded.forEach((r) => {
-			telemetry.track('User added member to project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-				role: r.role,
-			});
+	diff.memberAdded?.forEach((r) => {
+		telemetry.track('User added member to project', {
+			project_id: projectId,
+			target_user_id: r.id,
+			role: r.role,
 		});
-	}
+	});
 
-	if (diff.memberRemoved) {
-		diff.memberRemoved.forEach((r) => {
-			telemetry.track('User removed member from project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-			});
+	diff.memberRemoved?.forEach((r) => {
+		telemetry.track('User removed member from project', {
+			project_id: projectId,
+			target_user_id: r.id,
 		});
-	}
+	});
 
-	if (diff.role) {
-		diff.role.forEach((r) => {
-			telemetry.track('User changed member role on project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-				role: r.role,
-			});
+	diff.role?.forEach((r) => {
+		telemetry.track('User changed member role on project', {
+			project_id: projectId,
+			target_user_id: r.id,
+			role: r.role,
 		});
-	}
+	});
 };
 
 const updateProject = async () => {
@@ -314,14 +312,13 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		// Persist only scalar project settings here
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
 		});
 		isDirty.value = false;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 		throw error;
 	}
 };
@@ -385,7 +382,6 @@ const selectProjectNameIfMatchesDefault = () => {
 const onIconUpdated = async () => {
 	if (!projectsStore.currentProject) return;
 	try {
-		// Update only the icon; do not persist name/description here
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			icon: projectIcon.value,
 		});
@@ -394,7 +390,7 @@ const onIconUpdated = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 	}
 };
 
@@ -406,11 +402,7 @@ watch(
 			suppressNextSync.value = false;
 			return;
 		}
-		formData.value.name = projectsStore.currentProject?.name ?? '';
-		formData.value.description = projectsStore.currentProject?.description ?? '';
-		formData.value.relations = projectsStore.currentProject?.relations
-			? deepCopy(projectsStore.currentProject.relations)
-			: [];
+		resetFormData();
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
@@ -423,24 +415,17 @@ watch(
 // Add users property to the relation objects,
 // So that the table has access to the full user data
 const relationUsers = computed(() =>
-	formData.value.relations.map((relation: ProjectRelation) => {
+	formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
-		// Ensure type safety for UI display while preserving original role in formData
-		const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const safeRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
 
-		if (!user) {
-			return {
-				...relation,
-				role: safeRole,
-				firstName: null,
-				lastName: null,
-				email: null,
-			};
-		}
 		return {
 			...user,
 			...relation,
 			role: safeRole,
+			firstName: user?.firstName ?? null,
+			lastName: user?.lastName ?? null,
+			email: user?.email ?? null,
 		};
 	}),
 );
@@ -451,19 +436,16 @@ const membersTableData = computed(() => ({
 }));
 
 const filteredMembersData = computed(() => {
-	if (!search.value.trim()) {
-		return membersTableData.value;
-	}
+	if (!search.value.trim()) return membersTableData.value;
+
 	const searchTerm = search.value.toLowerCase();
 	const filtered = relationUsers.value.filter((member) => {
-		const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
-		const email = (member.email || '').toLowerCase();
+		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
+		const email = (member.email ?? '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
-	return {
-		items: filtered,
-		count: filtered.length,
-	};
+
+	return { items: filtered, count: filtered.length };
 });
 
 const debouncedSearch = useDebounceFn(() => {
