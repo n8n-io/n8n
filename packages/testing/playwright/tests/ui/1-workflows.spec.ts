@@ -51,17 +51,17 @@ test.describe('Workflows', () => {
 		await n8n.goHome();
 
 		// Search for specific workflow
-		await n8n.workflows.searchWorkflows(specificName);
+		await n8n.workflows.search(specificName);
 		await expect(n8n.workflows.cards.getWorkflow(specificName)).toBeVisible();
 
 		// Search with partial term
 		await n8n.workflows.clearSearch();
-		await n8n.workflows.searchWorkflows(uniqueId);
+		await n8n.workflows.search(uniqueId);
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
 		// Search for non-existent
 		await n8n.workflows.clearSearch();
-		await n8n.workflows.searchWorkflows('NonExistentWorkflow123');
+		await n8n.workflows.search('NonExistentWorkflow123');
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 		await expect(n8n.page.getByText('No workflows found')).toBeVisible();
 	});
@@ -135,7 +135,7 @@ test.describe('Workflows', () => {
 		const tags = await n8n.canvas.addTags(2);
 
 		await n8n.goHome();
-		await n8n.workflows.searchWorkflows('Tagged');
+		await n8n.workflows.search('Tagged');
 		await n8n.workflows.filterByTag(tags[0]);
 
 		await expect(n8n.page).toHaveURL(/search=Tagged/);

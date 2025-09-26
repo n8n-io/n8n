@@ -120,9 +120,9 @@ export class WorkerServer {
 				this.app.use(`/${endpoint}`, overwriteEndpointMiddleware);
 			}
 
-			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, (req, res) =>
-				this.handleOverwrites(req, res),
-			);
+			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, async (req, res) => {
+				await this.handleOverwrites(req, res);
+			});
 		}
 
 		if (metrics) {
@@ -142,26 +142,36 @@ export class WorkerServer {
 			: res.status(503).send({ status: 'error' });
 	}
 
-	private handleOverwrites(
+	private async handleOverwrites(
 		req: express.Request<{}, {}, ICredentialsOverwrite>,
 		res: express.Response,
 	) {
-		if (this.overwritesLoaded) {
-			ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesAlreadySetError());
-			return;
+		try {
+			if (this.overwritesLoaded) {
+				ResponseHelper.sendErrorResponse(res, new CredentialsOverwritesAlreadySetError());
+				return;
+			}
+
+			if (req.contentType !== 'application/json') {
+				ResponseHelper.sendErrorResponse(res, new NonJsonBodyError());
+				return;
+			}
+
+			await this.credentialsOverwrites.setData(req.body, true);
+
+			this.overwritesLoaded = true;
+
+			this.logger.debug('Worker loaded credentials overwrites');
+
+			ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+		} catch (error) {
+			this.logger.error('Error handling credentials overwrites', { error });
+			ResponseHelper.sendErrorResponse(
+				res,
+				new Error(
+					'An error occurred while handling credentials overwrites, please check the logs for more details',
+				),
+			);
 		}
-
-		if (req.contentType !== 'application/json') {
-			ResponseHelper.sendErrorResponse(res, new NonJsonBodyError());
-			return;
-		}
-
-		this.credentialsOverwrites.setData(req.body);
-
-		this.overwritesLoaded = true;
-
-		this.logger.debug('Worker loaded credentials overwrites');
-
-		ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 	}
 }
