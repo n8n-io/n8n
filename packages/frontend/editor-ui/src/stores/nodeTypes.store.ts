@@ -387,7 +387,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
 		}
 		try {

@@ -8,9 +8,7 @@ interface Props {
 	box?: boolean;
 }
 
-const { box } = withDefaults(defineProps<Props>(), {
-	box: true,
-});
+const props = defineProps<Props>();
 
 const $style = useCssModule();
 
@@ -23,13 +21,13 @@ const ownerEmailList = computed(() =>
 
 const classes = computed(() => ({
 	[$style.contactOwnerHint]: true,
-	[$style.border]: box,
+	[$style.border]: props.box,
 }));
 </script>
 
 <template>
 	<div :class="classes">
-		<N8nIcon v-if="box" color="text-light" icon="info" size="large" />
+		<N8nIcon v-if="props.box" color="text-light" icon="info" size="large" />
 		<N8nText color="text-base" size="medium">
 			<div style="padding-bottom: 8px">
 				{{ i18n.baseText('communityNodeInfo.contact.admin') }}
