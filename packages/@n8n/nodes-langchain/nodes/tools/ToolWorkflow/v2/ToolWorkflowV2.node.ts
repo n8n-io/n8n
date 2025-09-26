@@ -1,16 +1,41 @@
+import type { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+
 import type {
 	INodeTypeBaseDescription,
 	ISupplyDataFunctions,
 	SupplyData,
 	INodeType,
 	INodeTypeDescription,
+	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
-
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { localResourceMapping } from './methods';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import { versionDescription } from './versionDescription';
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	enableLogging: boolean,
+): Promise<DynamicTool | DynamicStructuredTool> {
+	const node = ctx.getNode();
+	const { typeVersion } = node;
+	const returnAllItems = typeVersion > 2;
+
+	const workflowToolService = new WorkflowToolService(ctx, { returnAllItems });
+	const name =
+		typeVersion <= 2.1 ? (ctx.getNodeParameter('name', 0) as string) : nodeNameToToolName(node);
+	const description = ctx.getNodeParameter('description', 0) as string;
+
+	return await workflowToolService.createTool({
+		ctx,
+		name,
+		description,
+		itemIndex: 0,
+		manualLogging: enableLogging,
+	});
+}
 
 export class ToolWorkflowV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -46,5 +71,22 @@ export class ToolWorkflowV2 implements INodeType {
 		});
 
 		return { response: tool };
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const tool = await getTool(this, false);
+
+		const response: INodeExecutionData[][] = [];
+		for (let itemIndex = 0; itemIndex < this.getInputData().length; itemIndex++) {
+			const item = items[itemIndex];
+			if (item === undefined) {
+				continue;
+			}
+			const result = await tool.invoke(item.json);
+			response.push(result);
+		}
+
+		return response;
 	}
 }
