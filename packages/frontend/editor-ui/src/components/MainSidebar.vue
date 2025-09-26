@@ -80,13 +80,15 @@ const user = ref<Element | null>(null);
 // Component data
 const basePath = ref('');
 const fullyExpanded = ref(false);
-const userMenuItems = ref([
+const userMenuItems = ref<IMenuItem[]>([
 	{
 		id: 'settings',
+		icon: 'settings',
 		label: i18n.baseText('settings'),
 	},
 	{
 		id: 'logout',
+		icon: 'door-open',
 		label: i18n.baseText('auth.signout'),
 	},
 ]);
@@ -590,47 +592,46 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 				<div v-if="showUserArea">
 					<div ref="user" :class="$style.userArea">
-						<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-							<!-- This dropdown is only enabled when sidebar is collapsed -->
-							<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-								<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-									<N8nAvatar
-										:first-name="usersStore.currentUser?.firstName"
-										:last-name="usersStore.currentUser?.lastName"
-										size="small"
+						<N8nPopoverReka side="right" align="end" :side-offset="16">
+							<template #content>
+								<div :class="$style.popover">
+									<N8nMenuItem
+										v-for="action in userMenuItems"
+										:key="action.id"
+										:item="action"
+										@on-click="() => onUserActionToggle(action.id)"
 									/>
 								</div>
-								<template v-if="isCollapsed" #dropdown>
-									<ElDropdownMenu>
-										<ElDropdownItem command="settings">
-											{{ i18n.baseText('settings') }}
-										</ElDropdownItem>
-										<ElDropdownItem command="logout">
-											{{ i18n.baseText('auth.signout') }}
-										</ElDropdownItem>
-									</ElDropdownMenu>
-								</template>
-							</ElDropdown>
-						</div>
-						<div
-							:class="{
-								['ml-2xs']: true,
-								[$style.userName]: true,
-								[$style.expanded]: fullyExpanded,
-							}"
-						>
-							<N8nText size="small" :bold="true" color="text-dark">{{
-								usersStore.currentUser?.fullName
-							}}</N8nText>
-						</div>
-						<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-							<N8nActionDropdown
-								:items="userMenuItems"
-								placement="top-start"
-								data-test-id="user-menu"
-								@select="onUserActionToggle"
-							/>
-						</div>
+							</template>
+							<template #trigger>
+								<div :class="$style.userAreaInner">
+									<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+										<!-- This dropdown is only enabled when sidebar is collapsed -->
+										<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+											<N8nAvatar
+												:first-name="usersStore.currentUser?.firstName"
+												:last-name="usersStore.currentUser?.lastName"
+												size="small"
+											/>
+										</div>
+									</div>
+									<div
+										:class="{
+											['ml-2xs']: true,
+											[$style.userName]: true,
+											[$style.expanded]: fullyExpanded,
+										}"
+									>
+										<N8nText size="small" :bold="true" color="text-dark">{{
+											usersStore.currentUser?.fullName
+										}}</N8nText>
+									</div>
+									<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
+										<N8nIconButton icon="ellipsis" text square type="tertiary" />
+									</div>
+								</div>
+							</template>
+						</N8nPopoverReka>
 					</div>
 				</div>
 			</div>
@@ -642,6 +643,8 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .sideMenu {
 	position: relative;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
@@ -671,7 +674,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .scrollArea {
-	height: calc(100% - 54px);
+	height: 100%;
 	display: flex;
 	flex-direction: column;
 }
@@ -705,6 +708,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 .popover {
 	padding: var(--spacing-xs);
+	min-width: 200px;
 }
 
 .popoverTitle {
@@ -716,7 +720,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	padding: var(--spacing-xs);
 	align-items: center;
-	height: 60px;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
 	.userName {
@@ -743,6 +746,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			display: initial;
 		}
 	}
+}
+
+.userAreaInner {
+	display: flex;
+	align-items: center;
+	width: 100%;
 }
 
 @media screen and (max-height: 470px) {
