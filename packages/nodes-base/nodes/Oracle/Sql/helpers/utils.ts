@@ -676,16 +676,16 @@ function generateBindVariablesList(
 	bindParameters: ObjectQueryValue,
 	query: string,
 ) {
-	const valList: string[] = item.datatype === 'string' ? item.valueString.split(',') : [];
+	if (item.datatype !== 'string') {
+		throw new UserError(
+			`Unsupported datatype '${item.datatype}' for IN clause expansion. Only 'string' of comma-separated values is allowed. `,
+		);
+	}
+
+	const valList: string[] = item.valueString.split(',');
 
 	// Escape bind name for regex safely
 	const escapedName = item.name.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-
-	if (valList.length === 0) {
-		// Empty or undefined, generate "IN (NULL)"
-		const regex = new RegExp(':' + escapedName, 'g');
-		return query.replace(regex, '(NULL)');
-	}
 
 	let generatedSqlString = '(';
 
