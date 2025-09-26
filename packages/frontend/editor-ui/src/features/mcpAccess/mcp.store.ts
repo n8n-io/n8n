@@ -1,0 +1,50 @@
+import { defineStore } from 'pinia';
+import { MCP_STORE } from './mcp.constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { WorkflowListItem } from '@/Interface';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { updateMcpSettings } from '@/features/mcpAccess/mcp.api';
+import { computed } from 'vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { isWorkflowListItem } from '@/utils/typeGuards';
+
+export const useMCPStore = defineStore(MCP_STORE, () => {
+	const workflowsStore = useWorkflowsStore();
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
+
+	async function fetchWorkflowsAvailableForMCP(
+		page = 1,
+		pageSize = 50,
+	): Promise<WorkflowListItem[]> {
+		const workflows = await workflowsStore.fetchWorkflowsPage(
+			undefined, // projectId
+			page,
+			pageSize,
+			'updatedAt:desc',
+			{ isArchived: false, availableInMCP: true },
+			false, // includeFolders
+			false, // includeAllVersions
+		);
+		return workflows.filter(isWorkflowListItem);
+	}
+
+	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
+		const { mcpAccessEnabled: updated } = await updateMcpSettings(
+			rootStore.restApiContext,
+			enabled,
+		);
+		settingsStore.moduleSettings.mcp = {
+			...(settingsStore.moduleSettings.mcp ?? {}),
+			mcpAccessEnabled: updated,
+		};
+		return updated;
+	}
+
+	return {
+		mcpAccessEnabled,
+		fetchWorkflowsAvailableForMCP,
+		setMcpAccessEnabled,
+	};
+});

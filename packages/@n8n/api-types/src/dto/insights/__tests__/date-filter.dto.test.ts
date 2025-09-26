@@ -13,8 +13,39 @@ describe('InsightsDateFilterDto', () => {
 				request: {
 					dateRange: 'week', // Using a valid option from the provided list
 				},
+				parsedResult: {},
+			},
+			{
+				name: 'valid startDate and endDate (as strings)',
+				request: {
+					startDate: '2025-01-01',
+					endDate: '2025-01-31',
+				},
 				parsedResult: {
-					dateRange: 'week',
+					startDate: new Date('2025-01-01'),
+					endDate: new Date('2025-01-31'),
+				},
+			},
+			{
+				name: 'valid startDate and endDate (as ISO strings)',
+				request: {
+					startDate: '2025-01-01T00:00:00Z',
+					endDate: '2025-01-31T23:59:59Z',
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01T00:00:00Z'),
+					endDate: new Date('2025-01-31T23:59:59Z'),
+				},
+			},
+			{
+				name: 'valid startDate and endDate (as timestamps)',
+				request: {
+					startDate: new Date('2025-01-01').getTime(),
+					endDate: new Date('2025-01-31').getTime(),
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01'),
+					endDate: new Date('2025-01-31'),
 				},
 			},
 			{

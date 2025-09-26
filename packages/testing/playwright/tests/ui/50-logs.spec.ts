@@ -250,6 +250,9 @@ test.describe('Logs', () => {
 			.getAttribute('href');
 		await n8n.ndv.clickBackToCanvasButton();
 
+		// [CAT-1454] Assert that no duplicate logs added at this point
+		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+
 		// Trigger the webhook
 		const response = await n8n.page.request.get(webhookUrl!);
 		expect(response.status()).toBe(200);
@@ -262,5 +265,28 @@ test.describe('Logs', () => {
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
 		await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
 		await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText('Success');
+	});
+
+	test('should allow to cancel a workflow with a node that waits for webhook', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Workflow_wait_for_webhook.json');
+		await n8n.canvas.deselectAll();
+		await n8n.canvas.logsPanel.open();
+
+		await n8n.canvas.clickExecuteWorkflowButton();
+
+		await expect(n8n.canvas.getWaitingNodes()).toContainText(NODES.WAIT_NODE);
+		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
+		await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toContainText(
+			'When clicking ‘Test workflow’',
+		);
+		await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
+
+		await n8n.canvas.stopExecutionButton().click();
+		await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
+		await expect(n8n.canvas.logsPanel.getOverviewStatus()).toContainText('Canceled in');
+		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(1);
+		await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toContainText(
+			'When clicking ‘Test workflow’',
+		);
 	});
 });

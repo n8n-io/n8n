@@ -1,16 +1,14 @@
 import logging
 from typing import Any, Optional
 
-from src.errors import TaskCancelledError, TaskRuntimeError, SecurityViolationError
 from src.config.sentry_config import SentryConfig
 from src.constants import (
     EXECUTOR_FILENAMES,
+    IGNORED_ERROR_TYPES,
     LOG_SENTRY_MISSING,
     SENTRY_TAG_SERVER_TYPE_KEY,
     SENTRY_TAG_SERVER_TYPE_VALUE,
 )
-
-IGNORED_ERROR_TYPES = (TaskRuntimeError, TaskCancelledError, SecurityViolationError)
 
 
 class TaskRunnerSentry:

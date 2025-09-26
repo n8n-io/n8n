@@ -49,7 +49,10 @@ describe(useFloatingUiOffsets, () => {
 			'should account for the height of AI assistant floating button in %s only when the button is displayed',
 			async (view) => {
 				currentRouteName = view;
-				useSettingsStore().setSettings({ ...defaultSettings, aiAssistant: { enabled: true } });
+				useSettingsStore().setSettings({
+					...defaultSettings,
+					aiAssistant: { enabled: true, setup: true },
+				});
 
 				const { toastBottomOffset } = useFloatingUiOffsets();
 
