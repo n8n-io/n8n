@@ -13,7 +13,7 @@ def read_env(env_name: str) -> Optional[str]:
         try:
             return Path(file_path).read_text(encoding="utf-8").strip()
         except (OSError, IOError) as e:
-            raise ValueError(f"Failed to read {env_name} from file {file_path}: {e}")
+            raise ValueError(f"Failed to read {env_name}_FILE from file {file_path}: {e}")
 
     return None
 
