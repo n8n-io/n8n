@@ -245,6 +245,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
+	const isBlankRedirect = ref<boolean>(false);
 
 	/**
 	 * Modules can register their ProjectHeader tabs here
@@ -669,6 +670,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeActions,
 		headerHeight,
 		stateIsDirty,
+		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
 		bannersHeight,
