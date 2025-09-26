@@ -753,10 +753,9 @@ describe('InsightsService', () => {
 		});
 	});
 
-	/**
 	describe('getInsightsByTime', () => {
 		let insightsService: InsightsService;
-		beforeAll(async () => {
+		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
 		});
 
@@ -776,9 +775,10 @@ describe('InsightsService', () => {
 		});
 
 		test('returns empty array when no insights exist', async () => {
+			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
 			const byTime = await insightsService.getInsightsByTime({
-				maxAgeInDays: 14,
-				periodUnit: 'day',
+				startDate,
+				endDate: today,
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -791,9 +791,11 @@ describe('InsightsService', () => {
 				periodStart: DateTime.utc().minus({ days: 30 }),
 			});
 
+			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+
 			const byTime = await insightsService.getInsightsByTime({
-				maxAgeInDays: 14,
-				periodUnit: 'day',
+				startDate,
+				endDate: today,
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -852,10 +854,12 @@ describe('InsightsService', () => {
 				});
 			}
 
+			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
-				maxAgeInDays: 14,
-				periodUnit: 'day',
+				startDate,
+				endDate: today,
 			});
 
 			// ASSERT
@@ -927,10 +931,12 @@ describe('InsightsService', () => {
 				});
 			}
 
+			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
-				maxAgeInDays: 14,
-				periodUnit: 'day',
+				startDate,
+				endDate: today,
 				insightTypes: ['time_saved_min', 'failure'],
 			});
 
@@ -1005,10 +1011,12 @@ describe('InsightsService', () => {
 				});
 			}
 
+			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
-				maxAgeInDays: 14,
-				periodUnit: 'day',
+				startDate,
+				endDate: today,
 				projectId: project.id,
 			});
 
@@ -1058,7 +1066,6 @@ describe('InsightsService', () => {
 			});
 		});
 	});
-	*/
 
 	describe('getAvailableDateRanges', () => {
 		let licenseMock: jest.Mocked<LicenseState>;
