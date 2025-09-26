@@ -137,12 +137,15 @@ const fullServerUrl = computed(() => {
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-2xs);
-		padding-left: var(--spacing-3xs);
 		background: var(--color-background-xlight);
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-s);
 		overflow: hidden;
+
+		code {
+			padding: var(--spacing-2xs) var(--spacing-3xs);
+		}
 
 		.copy-url-button {
 			border: none;
