@@ -1,12 +1,30 @@
 import axios from 'axios';
-import { UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const asyncExecFile = promisify(execFile);
+
+const REQUEST_TIMEOUT = 30000;
 
 function isDnsError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
 }
 
-const REQUEST_TIMEOUT = 30000;
+function isNpmError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return (
+		message.includes('npm ERR!') ||
+		message.includes('E404') ||
+		message.includes('404 Not Found') ||
+		message.includes('ENOTFOUND')
+	);
+}
+
+function sanitizeRegistryUrl(registryUrl: string): string {
+	return registryUrl.replace(/\/+$/, '');
+}
 
 export async function verifyIntegrity(
 	packageName: string,
@@ -14,50 +32,86 @@ export async function verifyIntegrity(
 	registryUrl: string,
 	expectedIntegrity: string,
 ) {
-	const timeoutOption = { timeout: REQUEST_TIMEOUT };
+	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
 	try {
-		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
-		const metadata = await axios.get<{ dist: { integrity: string } }>(
-			`${url}/${version}`,
-			timeoutOption,
-		);
+		const metadata = await axios.get<{ dist: { integrity?: string } }>(`${url}/${version}`, {
+			timeout: REQUEST_TIMEOUT,
+		});
 
-		if (metadata?.data?.dist?.integrity !== expectedIntegrity) {
+		const integrity = metadata?.data?.dist?.integrity;
+		if (integrity !== expectedIntegrity) {
 			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
 		}
+		return;
 	} catch (error) {
-		if (isDnsError(error)) {
-			throw new UnexpectedError(
-				'Checksum verification failed. Please check your network connection and try again.',
-			);
+		try {
+			const { stdout } = await asyncExecFile('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
+				'--json',
+			]);
+
+			const integrity = jsonParse(stdout);
+			if (integrity !== expectedIntegrity) {
+				throw new UnexpectedError(
+					'Checksum verification failed. Package integrity does not match.',
+				);
+			}
+			return;
+		} catch (cliError) {
+			if (isDnsError(cliError) || isNpmError(cliError)) {
+				throw new UnexpectedError(
+					'Checksum verification failed. Please check your network connection and try again.',
+				);
+			}
+			throw new UnexpectedError('Checksum verification failed');
 		}
-		throw new UnexpectedError('Checksum verification failed', { cause: error });
 	}
 }
 
-export async function isVersionExists(
+export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
-): Promise<boolean> {
-	const timeoutOption = { timeout: REQUEST_TIMEOUT };
+): Promise<true> {
+	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
 	try {
-		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
-		await axios.get(`${url}/${version}`, timeoutOption);
+		await axios.get(`${url}/${version}`, { timeout: REQUEST_TIMEOUT });
 		return true;
 	} catch (error) {
-		if (axios.isAxiosError(error) && error.response?.status === 404) {
-			throw new UnexpectedError('Package version does not exist', {
-				cause: error,
-			});
+		try {
+			const { stdout } = await asyncExecFile('npm', [
+				'view',
+				`${packageName}@${version}`,
+				'version',
+				`--registry=${sanitizeRegistryUrl(registryUrl)}`,
+				'--json',
+			]);
+
+			const versionInfo = jsonParse(stdout);
+			if (versionInfo === version) {
+				return true;
+			}
+
+			throw new UnexpectedError('Failed to check package version existence');
+		} catch (cliError) {
+			const message = cliError instanceof Error ? cliError.message : String(cliError);
+
+			if (message.includes('E404') || message.includes('404 Not Found')) {
+				throw new UnexpectedError('Package version does not exist');
+			}
+
+			if (isDnsError(cliError) || isNpmError(cliError)) {
+				throw new UnexpectedError(
+					'The community nodes service is temporarily unreachable. Please try again later.',
+				);
+			}
+
+			throw new UnexpectedError('Failed to check package version existence');
 		}
-		if (isDnsError(error)) {
-			throw new UnexpectedError(
-				'The community nodes service is temporarily unreachable. Please try again later.',
-			);
-		}
-		throw new UnexpectedError('Failed to check package version existence', { cause: error });
 	}
 }
