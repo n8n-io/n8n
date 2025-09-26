@@ -640,7 +640,8 @@ export function useCanvasOperations() {
 		version?: INodeUi['typeVersion'],
 	): INodeTypeDescription {
 		return (
-			nodeTypesStore.getNodeType(type, version) ?? {
+			nodeTypesStore.getNodeType(type, version) ??
+			nodeTypesStore.communityNodeType(type)?.nodeDescription ?? {
 				properties: [],
 				displayName: type,
 				name: type,
@@ -1689,7 +1690,9 @@ export function useCanvasOperations() {
 		workflowHelpers.initState(data);
 		data.nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
-			const isUnknownNode = !nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			const isUnknownNode =
+				!nodeTypesStore.getNodeType(node.type, node.typeVersion) &&
+				!nodeTypesStore.communityNodeType(node.type)?.nodeDescription;
 			nodeHelpers.matchCredentials(node);
 			// skip this step because nodeTypeDescription is missing for unknown nodes
 			if (!isUnknownNode) {
