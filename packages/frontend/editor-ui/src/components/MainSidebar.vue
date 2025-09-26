@@ -446,96 +446,95 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
+		<div :class="$style.logo">
+			<N8nLogo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			>
+				<N8nTooltip
+					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
+					placement="bottom"
+				>
+					<template #content>
+						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
+							<template #link>
+								<N8nLink
+									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
+									size="small"
+								>
+									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
+								</N8nLink>
+							</template>
+						</I18nT>
+					</template>
+					<N8nIcon
+						data-test-id="read-only-env-icon"
+						icon="lock"
+						size="xsmall"
+						:class="$style.readOnlyEnvironmentIcon"
+					/>
+				</N8nTooltip>
+			</N8nLogo>
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+				<template #[createWorkflowsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createCredentialsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createProjectAppendSlotName]="{ item }">
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
+						<N8nButton
+							v-else
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(item.id)"
+						>
+							{{ upgradeLabel }}
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</N8nNavigationDropdown>
+		</div>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
-				<div :class="$style.logo">
-					<N8nLogo
-						location="sidebar"
-						:collapsed="isCollapsed"
-						:release-channel="settingsStore.settings.releaseChannel"
-					>
-						<N8nTooltip
-							v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
-							placement="bottom"
-						>
-							<template #content>
-								<I18nT keypath="readOnlyEnv.tooltip" scope="global">
-									<template #link>
-										<N8nLink
-											to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
-											size="small"
-										>
-											{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
-										</N8nLink>
-									</template>
-								</I18nT>
-							</template>
-							<N8nIcon
-								data-test-id="read-only-env-icon"
-								icon="lock"
-								size="xsmall"
-								:class="$style.readOnlyEnvironmentIcon"
-							/>
-						</N8nTooltip>
-					</N8nLogo>
-					<N8nNavigationDropdown
-						ref="createBtn"
-						data-test-id="universal-add"
-						:menu="menu"
-						@select="handleMenuSelect"
-					>
-						<N8nIconButton icon="plus" type="secondary" outline />
-						<template #[createWorkflowsAppendSlotName]>
-							<N8nTooltip
-								v-if="sourceControlStore.preferences.branchReadOnly"
-								placement="right"
-								:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
-							>
-								<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-							</N8nTooltip>
-						</template>
-						<template #[createCredentialsAppendSlotName]>
-							<N8nTooltip
-								v-if="sourceControlStore.preferences.branchReadOnly"
-								placement="right"
-								:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
-							>
-								<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-							</N8nTooltip>
-						</template>
-						<template #[createProjectAppendSlotName]="{ item }">
-							<N8nTooltip
-								v-if="sourceControlStore.preferences.branchReadOnly"
-								placement="right"
-								:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
-							>
-								<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-							</N8nTooltip>
-							<N8nTooltip
-								v-else-if="item.disabled"
-								placement="right"
-								:content="projectsLimitReachedMessage"
-							>
-								<N8nIcon
-									v-if="!hasPermissionToCreateProjects"
-									style="margin-left: auto; margin-right: 5px"
-									icon="lock"
-									size="xsmall"
-								/>
-								<N8nButton
-									v-else
-									:size="'mini'"
-									style="margin-left: auto"
-									type="tertiary"
-									@click="handleMenuSelect(item.id)"
-								>
-									{{ upgradeLabel }}
-								</N8nButton>
-							</N8nTooltip>
-						</template>
-					</N8nNavigationDropdown>
-				</div>
-
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
@@ -637,7 +636,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .scrollArea {
-	height: 100%;
+	height: calc(100% - 54px);
 	display: flex;
 	flex-direction: column;
 }
