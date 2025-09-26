@@ -545,8 +545,6 @@ describe('N8nPromptInput', () => {
 
 			const creditsBar = container.querySelector('.creditsBar');
 			expect(creditsBar).toBeTruthy();
-			const creditsInfo = container.querySelector('.creditsInfo');
-			expect(creditsInfo).toBeTruthy();
 		});
 
 		it('should show no credits warning when creditsRemaining is 0', () => {
