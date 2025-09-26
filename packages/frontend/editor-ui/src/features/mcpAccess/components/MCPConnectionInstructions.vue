@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 
-const MCP_ENDPOINT = 'rest/mcp-control/http';
+const MCP_ENDPOINT = 'mcp-access/http';
 // TODO: Update once docs page is ready
 const DOCS_URL = 'https://docs.n8n.io/';
 
