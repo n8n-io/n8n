@@ -277,7 +277,7 @@ watch(connectionType, () => {
 				<label for="connectionType">{{
 					locale.baseText('settings.sourceControl.connectionType')
 				}}</label>
-				<n8n-form-input
+				<N8nFormInput
 					id="connectionType"
 					v-model="connectionType"
 					label=""
@@ -325,19 +325,19 @@ watch(connectionType, () => {
 						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</N8nButton
 					>
 				</div>
-				<n8n-notice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
+				<N8nNotice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
 					{{ locale.baseText('settings.sourceControl.sshFormatNotice') }}
-				</n8n-notice>
-				<n8n-notice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
+				</N8nNotice>
+				<N8nNotice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
 					{{ locale.baseText('settings.sourceControl.httpsFormatNotice') }}
-				</n8n-notice>
+				</N8nNotice>
 			</div>
 
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
 				<label for="httpsUsername">{{
 					locale.baseText('settings.sourceControl.httpsUsername')
 				}}</label>
-				<n8n-form-input
+				<N8nFormInput
 					id="httpsUsername"
 					v-model="httpsUsername"
 					label=""
@@ -354,7 +354,7 @@ watch(connectionType, () => {
 				<label for="httpsPassword">{{
 					locale.baseText('settings.sourceControl.httpsPersonalAccessToken')
 				}}</label>
-				<n8n-form-input
+				<N8nFormInput
 					id="httpsPassword"
 					v-model="httpsPassword"
 					label=""
@@ -367,7 +367,7 @@ watch(connectionType, () => {
 					"
 					@validate="(value: boolean) => onValidate('httpsPassword', value)"
 				/>
-				<n8n-notice type="warning" class="mt-s">
+				<N8nNotice type="warning" class="mt-s">
 					<I18nT keypath="settings.sourceControl.httpsWarningNotice" tag="span" scope="global">
 						<template #strong>
 							<strong>{{
@@ -381,7 +381,7 @@ watch(connectionType, () => {
 							<code>public_repo</code>
 						</template>
 					</I18nT>
-				</n8n-notice>
+				</N8nNotice>
 			</div>
 
 			<div
