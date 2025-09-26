@@ -7,6 +7,9 @@ name: Data tooling, test exports and imports of data to various db types
 #       - '**'
 #       - '!release/*'
 
+on:
+  workflow_dispatch:
+  
 jobs:
   sqlite-export:
     name: sqlite database export
