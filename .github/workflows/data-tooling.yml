@@ -20,8 +20,8 @@ jobs:
       db_changed: ${{ steps.paths-filter.outputs.db == 'true' }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+        # with:
+        #   ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: Check for frontend changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
