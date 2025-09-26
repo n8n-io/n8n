@@ -274,13 +274,14 @@ export function filterAndManageProcessedItems(
 		if (!processedIdsSet.has(itemId)) {
 			newItems.push(item);
 			newItemIds.push(itemId);
-		} else {
-			processedIdsSet.delete(itemId);
 		}
 	}
 
 	const remainingProcessedIds = Array.from(processedIdsSet);
 	const updatedProcessedIds = remainingProcessedIds.concat(newItemIds);
 
-	return { newItems, updatedProcessedIds };
+	const MAX_IDS = 10000;
+	const trimmedProcessedIds = updatedProcessedIds.slice(-MAX_IDS);
+
+	return { newItems, updatedProcessedIds: trimmedProcessedIds };
 }
