@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
 		:class="{ [$style.container]: true, [$style['dragging']]: isDragging }"
 		data-test-id="folder-breadcrumbs"
 	>
-		<n8n-breadcrumbs
+		<N8nBreadcrumbs
 			v-if="visibleBreadcrumbsItems.length"
 			v-model:drag-active="isDragging"
 			:items="visibleBreadcrumbsItems"
@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
 			<template #append>
 				<slot name="append"></slot>
 			</template>
-		</n8n-breadcrumbs>
+		</N8nBreadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
 		<div v-else-if="currentProject || isSharedContext" :class="$style['home-project']">
 			<ProjectBreadcrumb
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
 		<div v-else>
 			<slot name="append"></slot>
 		</div>
-		<n8n-action-toggle
+		<N8nActionToggle
 			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"
 			:class="$style['action-toggle']"

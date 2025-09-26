@@ -14,7 +14,7 @@ vi.mock('vue-router', () => ({
 const renderComponent = createComponentRenderer(InsightsSummary, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<a><slot /></a>',
 			},
 			N8nIcon: true,

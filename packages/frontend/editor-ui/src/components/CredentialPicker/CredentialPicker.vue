@@ -106,7 +106,7 @@ listenForModalChanges({
 				@new-credential="createNewCredential"
 			/>
 
-			<n8n-icon-button
+			<N8nIconButton
 				icon="pen"
 				type="secondary"
 				:class="{
@@ -119,7 +119,7 @@ listenForModalChanges({
 			/>
 		</div>
 
-		<n8n-button
+		<N8nButton
 			v-else
 			:label="`Create new ${props.appName} credential`"
 			data-test-id="create-credential"

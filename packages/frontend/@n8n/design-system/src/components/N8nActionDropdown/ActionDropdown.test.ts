@@ -19,7 +19,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['n8n-icon', 'el-tooltip', 'el-dropdown', 'el-dropdown-menu', 'el-dropdown-item'],
+					stubs: ['N8nIcon', 'ElTooltip', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -49,7 +49,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['n8n-icon', 'el-dropdown', 'el-dropdown-menu', 'el-dropdown-item'],
+					stubs: ['N8nIcon', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();

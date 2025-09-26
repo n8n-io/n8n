@@ -7,7 +7,7 @@ import { ProjectTypes } from '@/types/projects.types';
 const renderComponent = createComponentRenderer(ProjectMoveSuccessToastMessage, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<a href="#"><slot /></a>',
 			},
 		},

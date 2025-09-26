@@ -21,20 +21,20 @@ function onButtonClick() {
 
 <template>
 	<div :class="$style.container">
-		<n8n-icon icon="triangle-alert" :class="$style.icon" />
+		<N8nIcon icon="triangle-alert" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
-				<n8n-heading size="2xlarge">
+				<N8nHeading size="2xlarge">
 					{{ i18n.baseText(messageKey) }}
-				</n8n-heading>
+				</N8nHeading>
 			</div>
 			<div>
-				<n8n-text v-if="errorCode" size="large">
+				<N8nText v-if="errorCode" size="large">
 					{{ errorCode }} {{ i18n.baseText('error') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 		</div>
-		<n8n-button :label="i18n.baseText(redirectTextKey)" @click="onButtonClick" />
+		<N8nButton :label="i18n.baseText(redirectTextKey)" @click="onButtonClick" />
 	</div>
 </template>
 

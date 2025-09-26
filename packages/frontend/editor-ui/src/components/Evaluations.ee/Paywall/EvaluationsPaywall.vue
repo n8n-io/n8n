@@ -17,11 +17,11 @@ const goToUpgrade = async () => {
 </script>
 
 <template>
-	<n8n-action-box
+	<N8nActionBox
 		data-test-id="evaluations-unlicensed"
 		:heading="i18n.baseText('evaluations.paywall.title')"
 		:description="i18n.baseText('evaluations.paywall.description')"
 		:button-text="i18n.baseText('evaluations.paywall.cta')"
 		@click="goToUpgrade"
-	></n8n-action-box>
+	></N8nActionBox>
 </template>

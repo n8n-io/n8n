@@ -119,9 +119,9 @@ const onTagsEditEsc = () => {
 				@click="onTagsEditEnable"
 			>
 				<span v-for="tag in tags" :key="tag.id" class="clickable">
-					<el-tag :title="tag.name" type="info" size="small" :disable-transitions="true">
+					<ElTag :title="tag.name" type="info" size="small" :disable-transitions="true">
 						{{ tag.name }}
-					</el-tag>
+					</ElTag>
 				</span>
 				<span :class="$style.addTagWrapper">
 					<N8nButton

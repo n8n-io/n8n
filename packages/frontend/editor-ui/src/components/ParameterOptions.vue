@@ -163,10 +163,10 @@ const onViewSelected = (selected: string) => {
 <template>
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
-			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="refresh-cw" size="xsmall" :spin="true" />
+			<N8nText v-if="loading" size="small">
+				<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
-			</n8n-text>
+			</N8nText>
 		</div>
 		<div v-else :class="$style.controlsContainer">
 			<N8nTooltip v-if="canBeOpenedInFocusPanel">
@@ -183,7 +183,7 @@ const onViewSelected = (selected: string) => {
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
 				}"
 			>
-				<n8n-action-toggle
+				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="small"
@@ -195,7 +195,7 @@ const onViewSelected = (selected: string) => {
 					@visible-change="onMenuToggle"
 				/>
 			</div>
-			<n8n-radio-buttons
+			<N8nRadioButtons
 				v-if="shouldShowExpressionSelector"
 				size="small"
 				:model-value="selectedView"

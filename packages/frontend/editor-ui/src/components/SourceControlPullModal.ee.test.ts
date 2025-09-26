@@ -96,7 +96,7 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 				template: '<button><slot></slot></button>',
 				props: ['icon', 'type', 'class'],
 			},
-			'router-link': {
+			RouterLink: {
 				template: '<a><slot /></a>',
 				props: ['to'],
 			},
