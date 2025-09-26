@@ -410,6 +410,7 @@ defineExpose({
 	flex-direction: column;
 	background: var(--color-background-xlight);
 	border: none;
+	border-bottom: 1px transparent solid;
 	border-radius: var(--border-radius-large);
 	transition:
 		border-color 0.2s ease,
