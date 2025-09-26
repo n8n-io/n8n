@@ -814,7 +814,7 @@ describe('InsightsController', () => {
 			});
 
 			it('should default the endDate to today when not provided', async () => {
-				const startDate = DateTime.now().startOf('day').minus({ year: 1 }).toJSDate();
+				const startDate = DateTime.now().startOf('day').minus({ years: 1 }).toJSDate();
 				insightsByPeriodRepository.getInsightsByTime.mockResolvedValue(mockData);
 
 				const response = await controller.getInsightsByTime(
