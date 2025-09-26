@@ -752,4 +752,22 @@ export class CanvasPage extends BasePage {
 	getCanvasPlusButton(): Locator {
 		return this.page.getByTestId('canvas-plus-button');
 	}
+
+	async hitUndo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+z');
+	}
+
+	async hitRedo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+	}
+
+	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Delete').click();
+	}
+
+	async hitDeleteAllNodes(): Promise<void> {
+		await this.selectAll();
+		await this.page.keyboard.press('Backspace');
+	}
 }
