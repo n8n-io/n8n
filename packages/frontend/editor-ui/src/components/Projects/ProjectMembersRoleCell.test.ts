@@ -107,29 +107,37 @@ const mockPersonalOwnerData: ProjectMemberData = {
 	role: 'project:personalOwner',
 };
 
-const mockRoles: Record<ProjectRole, { label: string; desc: string }> = {
-	'project:admin': {
-		label: 'Admin',
-		desc: 'Can manage project settings and members',
+const mockRoles = [
+	{
+		slug: 'project:admin',
+		displayName: 'Admin',
+		description: 'Can manage project settings and members',
 	},
-	'project:editor': {
-		label: 'Editor',
-		desc: 'Can edit workflows and credentials',
+	{
+		slug: 'project:editor',
+		displayName: 'Editor',
+		description: 'Can edit workflows and credentials',
 	},
-	'project:viewer': {
-		label: 'Viewer',
-		desc: 'Can view workflows and executions',
+	{
+		slug: 'project:viewer',
+		displayName: 'Viewer',
+		description: 'Can view workflows and executions',
 	},
-	'project:personalOwner': {
-		label: 'Personal Owner',
-		desc: '',
+	{
+		slug: 'project:personalOwner',
+		displayName: 'Personal Owner',
 	},
-};
+];
 
 const mockActions: Array<ActionDropdownItem<string>> = [
-	{ id: 'project:admin', label: 'Admin' },
-	{ id: 'project:editor', label: 'Editor' },
-	{ id: 'project:viewer', label: 'Viewer', disabled: true },
+	{ id: 'project:admin', label: 'Admin', description: 'Can manage project settings and members' },
+	{ id: 'project:editor', label: 'Editor', description: 'Can edit workflows and credentials' },
+	{
+		id: 'project:viewer',
+		label: 'Viewer',
+		description: 'Can view workflows and executions',
+		disabled: true,
+	},
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -205,14 +213,18 @@ describe('ProjectMembersRoleCell', () => {
 		});
 
 		it('should handle roles prop correctly', () => {
-			const customRoles: Record<ProjectRole, { label: string; desc: string }> = {
+			const customRoles = [
 				...mockRoles,
-				'project:admin': { label: 'Super Admin', desc: 'Ultimate power' },
-			};
+				{
+					slug: 'project:wooooooooo',
+					displayName: 'Super Admin',
+					description: 'Ultimate power',
+				},
+			];
 
 			renderComponent({
 				props: {
-					data: { ...mockMemberData, role: 'project:admin' },
+					data: { ...mockMemberData, role: 'project:wooooooooo' },
 					roles: customRoles,
 				},
 			});
@@ -334,19 +346,6 @@ describe('ProjectMembersRoleCell', () => {
 			renderComponent();
 
 			expect(screen.getAllByText('Editor')).toHaveLength(2); // Shown in activator and dropdown option
-		});
-
-		it('should fallback to role string for unknown roles', () => {
-			const customRoles = { ...mockRoles };
-			delete (customRoles as Record<string, unknown>)['project:editor'];
-
-			renderComponent({
-				props: {
-					roles: customRoles,
-				},
-			});
-
-			expect(screen.getAllByText('project:editor')).toHaveLength(1); // Only shown in activator when role not found
 		});
 	});
 

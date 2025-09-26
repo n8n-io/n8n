@@ -87,7 +87,7 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
 				>
-					{{ roles[data.role]?.label || data.role }}
+					{{ roles.find(role => role.slug === data.role)?.displayName || data.role }}
 				</button>
 			</div>
 		`,

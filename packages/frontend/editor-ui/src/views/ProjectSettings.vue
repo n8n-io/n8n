@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ProjectRole } from '@n8n/permissions';
+import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
@@ -62,11 +62,6 @@ const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
 
-const projectRoleTranslations = ref<{ [key: string]: string }>({
-	'project:viewer': i18n.baseText('projects.settings.role.viewer'),
-	'project:editor': i18n.baseText('projects.settings.role.editor'),
-	'project:admin': i18n.baseText('projects.settings.role.admin'),
-});
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const projectIcon = ref<IconOrEmoji>({
@@ -100,13 +95,9 @@ const projects = computed(() =>
 		(project) => project.id !== projectsStore.currentProjectId,
 	),
 );
-const projectRoles = computed(() =>
-	rolesStore.processedProjectRoles.map((role) => ({
-		...role,
-		displayName: projectRoleTranslations.value[role.slug] ?? role.displayName,
-	})),
+const firstLicensedRole = computed(
+	() => rolesStore.processedProjectRoles.find((role) => role.licensed)?.slug,
 );
-const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
 	{
@@ -132,7 +123,7 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
+const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Role['slug'] }) => {
 	if (!projectsStore.currentProject) {
 		return;
 	}
@@ -418,7 +409,7 @@ const relationUsers = computed(() =>
 	formData.value.relations.map((relation: ProjectRelation) => {
 		const user = usersStore.usersById[relation.id];
 		// Ensure type safety for UI display while preserving original role in formData
-		const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const safeRole: Role['slug'] = isProjectRole(relation.role) ? relation.role : 'project:viewer';
 
 		if (!user) {
 			return {
@@ -561,7 +552,7 @@ onMounted(() => {
 						data-test-id="project-members-table"
 						:data="filteredMembersData"
 						:current-user-id="usersStore.currentUser?.id"
-						:project-roles="projectRoles"
+						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"

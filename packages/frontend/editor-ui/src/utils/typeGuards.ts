@@ -150,9 +150,7 @@ export function isBaseTextKey(key: string): key is BaseTextKey {
 
 // Type guard to check if a string is a valid ProjectRole
 export function isProjectRole(role: string): role is ProjectRole {
-	return ['project:admin', 'project:editor', 'project:viewer', 'project:personalOwner'].includes(
-		role,
-	);
+	return role.startsWith('project:');
 }
 
 // Type guard to check if a role is a valid TeamProjectRole (ProjectRole excluding personalOwner)
