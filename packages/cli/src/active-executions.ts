@@ -203,7 +203,7 @@ export class ActiveExecutions {
 		} catch (cleanupError) {
 			this.logger.error('Error during execution cleanup', {
 				executionId,
-				error: (cleanupError as Error).message,
+				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
 			});
 		}
 
@@ -223,7 +223,7 @@ export class ActiveExecutions {
 			} catch (error) {
 				this.logger.error('Error closing streaming response', {
 					executionId,
-					error: (error as Error).message,
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
