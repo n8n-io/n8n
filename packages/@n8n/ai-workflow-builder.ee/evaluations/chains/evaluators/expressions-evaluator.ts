@@ -1,9 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createEvaluatorChain, invokeEvaluatorChain } from './base';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for expressions evaluation result
@@ -50,13 +48,14 @@ The correct n8n expression syntax uses \`{{ $('Node Name').item.json.field }}\` 
 - Conditional logic: \`={{ $json.status === 'active' ? 'Yes' : 'No' }}\`
 
 ### Special n8n Variables
-- \`$now\` - Current date/time
-- \`$today\` - Today's date
-- \`$execution.id\` - Execution ID
-- \`$workflow.id\` / \`$workflow.name\` - Workflow metadata
-- \`$env\` - Environment variables
-- \`$vars\` - Workflow variables
-- \`$binary\` - Binary data access
+- **Item access helpers**: \`$json\`, \`$binary\`, \`$input.item\`, \`$input.all()\`, \`$input.first()\`, \`$input.last()\`, \`$input.params\`, \`$input.context.noItemsLeft\`
+- **Cross-node helpers**: \`$('Node Name').item\`, \`.all(branchIndex?, runIndex?)\`, \`.first(...)\`, \`.last(...)\`, \`.params\`, \`.context\`, \`.itemMatching(currentNodeInputIndex)\`, \`$('Node Name').isExecuted\`
+- **Execution metadata**: \`$workflow.id\`, \`$workflow.name\`, \`$workflow.active\`, \`$execution.id\`, \`$execution.mode\`, \`$execution.resumeUrl\`, \`$execution.customData\`, \`$runIndex\`, \`$prevNode.name\`, \`$prevNode.outputIndex\`, \`$prevNode.runIndex\`, \`$itemIndex\`, \`$nodeVersion\`, \`$version\`
+- **Environment and variables**: \`$env\`, \`$vars\`, \`$secrets\`, \`$getWorkflowStaticData(type)\`
+- **Utility helpers**: \`$evaluateExpression(expression, itemIndex?)\`, \`$ifEmpty(value, defaultValue)\`
+- **Date and time**: \`$now\`, \`$today\`
+- **HTTP node only**: \`$pageCount\`, \`$request\`, \`$response\`
+- **Context awareness**: Some helpers exist only in specific nodes (Loop Over Items, HTTP Request, etc.); do not assume they should appear everywhere
 
 ## Important: The = Prefix
 - REQUIRED for expressions: \`={{ expression }}\`
@@ -120,36 +119,12 @@ const humanTemplate = `Evaluate the expression syntax of this workflow:
 Provide an expressions evaluation with score, violations, and brief analysis.`;
 
 export function createExpressionsEvaluatorChain(llm: BaseChatModel) {
-	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
-	}
-
-	const prompt = ChatPromptTemplate.fromMessages([
-		new SystemMessage(systemPrompt),
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
-	]);
-
-	const llmWithStructuredOutput = llm.withStructuredOutput(expressionsResultSchema);
-	return prompt.pipe(llmWithStructuredOutput);
+	return createEvaluatorChain(llm, expressionsResultSchema, systemPrompt, humanTemplate);
 }
 
 export async function evaluateExpressions(
 	llm: BaseChatModel,
 	input: EvaluationInput,
 ): Promise<ExpressionsResult> {
-	const chain = createExpressionsEvaluatorChain(llm);
-
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>
-${JSON.stringify(input.referenceWorkflow, null, 2)}
-</reference_workflow>`
-		: '';
-
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
-
-	return result as ExpressionsResult;
+	return await invokeEvaluatorChain(createExpressionsEvaluatorChain(llm), input);
 }

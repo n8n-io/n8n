@@ -1,9 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createEvaluatorChain, invokeEvaluatorChain } from './base';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for maintainability evaluation result
@@ -215,40 +213,18 @@ const humanTemplate = `Evaluate the maintainability of this workflow:
 Provide a maintainability evaluation with naming, organization, and modularity scores, violations, and analysis.`;
 
 export function createMaintainabilityEvaluatorChain(llm: BaseChatModel) {
-	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
-	}
-
-	const prompt = ChatPromptTemplate.fromMessages([
-		new SystemMessage(systemPrompt),
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
-	]);
-
-	const llmWithStructuredOutput = llm.withStructuredOutput(maintainabilityResultSchema);
-	return prompt.pipe(llmWithStructuredOutput);
+	return createEvaluatorChain(llm, maintainabilityResultSchema, systemPrompt, humanTemplate);
 }
 
 export async function evaluateMaintainability(
 	llm: BaseChatModel,
 	input: EvaluationInput,
 ): Promise<MaintainabilityResult> {
-	const chain = createMaintainabilityEvaluatorChain(llm);
-
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>
-${JSON.stringify(input.referenceWorkflow, null, 2)}
-</reference_workflow>`
-		: '';
-
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
+	const result = await invokeEvaluatorChain(createMaintainabilityEvaluatorChain(llm), input);
 
 	// Ensure overall score is calculated as average of metrics
 	const avgScore = (result.nodeNamingQuality + result.workflowOrganization + result.modularity) / 3;
 	result.score = avgScore;
 
-	return result as MaintainabilityResult;
+	return result;
 }

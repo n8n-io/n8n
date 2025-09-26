@@ -1,9 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createEvaluatorChain, invokeEvaluatorChain } from './base';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for functionality evaluation result
@@ -83,36 +81,12 @@ const humanTemplate = `Evaluate the functional correctness of this workflow:
 Provide a functionality evaluation with score, violations, and brief analysis.`;
 
 export function createFunctionalityEvaluatorChain(llm: BaseChatModel) {
-	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
-	}
-
-	const prompt = ChatPromptTemplate.fromMessages([
-		new SystemMessage(systemPrompt),
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
-	]);
-
-	const llmWithStructuredOutput = llm.withStructuredOutput(functionalityResultSchema);
-	return prompt.pipe(llmWithStructuredOutput);
+	return createEvaluatorChain(llm, functionalityResultSchema, systemPrompt, humanTemplate);
 }
 
 export async function evaluateFunctionality(
 	llm: BaseChatModel,
 	input: EvaluationInput,
 ): Promise<FunctionalityResult> {
-	const chain = createFunctionalityEvaluatorChain(llm);
-
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>
-${JSON.stringify(input.referenceWorkflow, null, 2)}
-</reference_workflow>`
-		: '';
-
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
-
-	return result as FunctionalityResult;
+	return await invokeEvaluatorChain(createFunctionalityEvaluatorChain(llm), input);
 }

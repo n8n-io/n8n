@@ -1,9 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createEvaluatorChain, invokeEvaluatorChain } from './base';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for efficiency evaluation result
@@ -112,41 +110,19 @@ const humanTemplate = `Evaluate the efficiency of this workflow:
 Provide an efficiency evaluation with individual metric scores, overall score, violations, and analysis.`;
 
 export function createEfficiencyEvaluatorChain(llm: BaseChatModel) {
-	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
-	}
-
-	const prompt = ChatPromptTemplate.fromMessages([
-		new SystemMessage(systemPrompt),
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
-	]);
-
-	const llmWithStructuredOutput = llm.withStructuredOutput(efficiencyResultSchema);
-	return prompt.pipe(llmWithStructuredOutput);
+	return createEvaluatorChain(llm, efficiencyResultSchema, systemPrompt, humanTemplate);
 }
 
 export async function evaluateEfficiency(
 	llm: BaseChatModel,
 	input: EvaluationInput,
 ): Promise<EfficiencyResult> {
-	const chain = createEfficiencyEvaluatorChain(llm);
-
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>
-${JSON.stringify(input.referenceWorkflow, null, 2)}
-</reference_workflow>`
-		: '';
-
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
+	const result = await invokeEvaluatorChain(createEfficiencyEvaluatorChain(llm), input);
 
 	// Ensure overall score is calculated as average of metrics
 	const avgScore =
 		(result.redundancyScore + result.pathOptimization + result.nodeCountEfficiency) / 3;
 	result.score = avgScore;
 
-	return result as EfficiencyResult;
+	return result;
 }

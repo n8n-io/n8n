@@ -1,9 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { createEvaluatorChain, invokeEvaluatorChain } from './base';
 import type { EvaluationInput } from '../../types/evaluation';
 
 // Schema for node configuration evaluation result
@@ -109,36 +107,12 @@ const humanTemplate = `Evaluate the node configuration of this workflow:
 Provide a node configuration evaluation with score, violations, and brief analysis.`;
 
 export function createNodeConfigurationEvaluatorChain(llm: BaseChatModel) {
-	if (!llm.bindTools) {
-		throw new OperationalError("LLM doesn't support binding tools");
-	}
-
-	const prompt = ChatPromptTemplate.fromMessages([
-		new SystemMessage(systemPrompt),
-		HumanMessagePromptTemplate.fromTemplate(humanTemplate),
-	]);
-
-	const llmWithStructuredOutput = llm.withStructuredOutput(nodeConfigurationResultSchema);
-	return prompt.pipe(llmWithStructuredOutput);
+	return createEvaluatorChain(llm, nodeConfigurationResultSchema, systemPrompt, humanTemplate);
 }
 
 export async function evaluateNodeConfiguration(
 	llm: BaseChatModel,
 	input: EvaluationInput,
 ): Promise<NodeConfigurationResult> {
-	const chain = createNodeConfigurationEvaluatorChain(llm);
-
-	const referenceSection = input.referenceWorkflow
-		? `<reference_workflow>
-${JSON.stringify(input.referenceWorkflow, null, 2)}
-</reference_workflow>`
-		: '';
-
-	const result = await chain.invoke({
-		userPrompt: input.userPrompt,
-		generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
-		referenceSection,
-	});
-
-	return result as NodeConfigurationResult;
+	return await invokeEvaluatorChain(createNodeConfigurationEvaluatorChain(llm), input);
 }
