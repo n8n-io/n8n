@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export class SidebarPage {
 	readonly page: Page;
@@ -9,6 +9,10 @@ export class SidebarPage {
 
 	async clickAddProjectButton() {
 		await this.page.getByTestId('project-plus-button').click();
+	}
+
+	async clickHomeButton() {
+		await this.page.getByTestId('project-home-menu-item').click();
 	}
 
 	async universalAdd() {
@@ -42,5 +46,52 @@ export class SidebarPage {
 
 	getAddFirstProjectButton(): Locator {
 		return this.page.getByTestId('add-first-project-button');
+	}
+
+	getUserMenu(): Locator {
+		return this.page.getByTestId('user-menu');
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('user-menu-item-logout');
+	}
+
+	getAdminPanel(): Locator {
+		return this.page.getByRole('menuitem', { name: 'Admin Panel' });
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	async openUserMenu(): Promise<void> {
+		await this.getUserMenu().click();
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openUserMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async goToWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+	}
+
+	async expand() {
+		const collapseButton = this.page.locator('#collapse-change-button');
+		const chevronRight = this.page.locator(
+			'#collapse-change-button svg[data-icon="chevron-right"]',
+		);
+
+		await expect(collapseButton).toBeVisible();
+		if (await chevronRight.isVisible()) {
+			await collapseButton.click();
+		}
 	}
 }

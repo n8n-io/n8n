@@ -439,15 +439,13 @@ const onDragEnd = (el: HTMLElement) => {
 		]"
 	>
 		<NDVEmptyState v-if="noSearchResults" :title="i18n.baseText('ndv.search.noNodeMatch.title')">
-			<template #description>
-				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
-					<template #link>
-						<a href="#" @click="emit('clear:search')">
-							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
-						</a>
-					</template>
-				</I18nT>
-			</template>
+			<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
+				<template #link>
+					<a href="#" @click.prevent="emit('clear:search')">
+						{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
+					</a>
+				</template>
+			</I18nT>
 		</NDVEmptyState>
 
 		<Draggable

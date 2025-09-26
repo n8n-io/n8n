@@ -5,6 +5,9 @@ export interface UserCredentials {
 	password: string;
 	firstName: string;
 	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
 }
 
 // Simple name generators
@@ -58,6 +61,9 @@ export const INSTANCE_OWNER_CREDENTIALS: UserCredentials = {
 	password: DEFAULT_USER_PASSWORD,
 	firstName: randFirstName(),
 	lastName: randLastName(),
+	mfaEnabled: false,
+	mfaSecret: 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD',
+	mfaRecoveryCodes: ['d04ea17f-e8b2-4afa-a9aa-57a2c735b30e'],
 };
 
 export const INSTANCE_ADMIN_CREDENTIALS: UserCredentials = {

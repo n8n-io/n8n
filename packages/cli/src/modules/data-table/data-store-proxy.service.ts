@@ -26,6 +26,19 @@ import { OwnershipService } from '@/services/ownership.service';
 
 import { DataStoreService } from './data-store.service';
 
+const ALLOWED_NODES = [
+	'n8n-nodes-base.dataTable',
+	'n8n-nodes-base.dataTableTool',
+	'n8n-nodes-base.evaluationTrigger',
+	'n8n-nodes-base.evaluation',
+] as const;
+
+type AllowedNode = (typeof ALLOWED_NODES)[number];
+
+export function isAllowedNode(s: string): s is AllowedNode {
+	return ALLOWED_NODES.includes(s as AllowedNode);
+}
+
 @Service()
 export class DataStoreProxyService implements DataStoreProxyProvider {
 	constructor(
@@ -37,7 +50,7 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	}
 
 	private validateRequest(node: INode) {
-		if (node.type !== 'n8n-nodes-base.dataTable' && node.type !== 'n8n-nodes-base.dataTableTool') {
+		if (!isAllowedNode(node.type)) {
 			throw new Error('This proxy is only available for Data table nodes');
 		}
 	}

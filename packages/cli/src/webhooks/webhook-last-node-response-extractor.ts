@@ -50,17 +50,29 @@ export async function extractWebhookLastNodeResponse(
 }
 
 /**
- * Extracts the JSON data of the first item of the last node
+ * Extracts the JSON data of the first item of the first non-empty branch of the last node
  */
 function extractFirstEntryJsonFromTaskData(
 	context: WebhookExecutionContext,
 	lastNodeTaskData: ITaskData,
 ): Result<StaticResponse, OperationalError> {
-	if (lastNodeTaskData.data!.main[0]![0] === undefined) {
+	const mainOutputs = lastNodeTaskData.data?.main;
+	let firstItem: INodeExecutionData | undefined;
+
+	if (mainOutputs && Array.isArray(mainOutputs)) {
+		for (const branch of mainOutputs) {
+			if (branch && Array.isArray(branch) && branch.length > 0) {
+				firstItem = branch[0];
+				break; // Stop after processing the first non-empty branch
+			}
+		}
+	}
+
+	if (firstItem === undefined) {
 		return createResultError(new OperationalError('No item to return was found'));
 	}
 
-	let lastNodeFirstJsonItem: unknown = lastNodeTaskData.data!.main[0]![0].json;
+	let lastNodeFirstJsonItem: unknown = firstItem.json;
 
 	const responsePropertyName =
 		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
@@ -82,14 +94,24 @@ function extractFirstEntryJsonFromTaskData(
 }
 
 /**
- * Extracts the binary data of the first item of the last node
+ * Extracts the binary data of the first item of the first non-empty branch of the last node
  */
 async function extractFirstEntryBinaryFromTaskData(
 	context: WebhookExecutionContext,
 	lastNodeTaskData: ITaskData,
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
-	// Return the binary data of the first entry
-	const lastNodeFirstJsonItem: INodeExecutionData = lastNodeTaskData.data!.main[0]![0];
+	const mainOutputs = lastNodeTaskData.data?.main;
+	let lastNodeFirstJsonItem: INodeExecutionData | undefined;
+
+	if (mainOutputs && Array.isArray(mainOutputs)) {
+		for (const branch of mainOutputs) {
+			if (branch && Array.isArray(branch) && branch.length > 0) {
+				// Found a non-empty branch, take the first item from it
+				lastNodeFirstJsonItem = branch[0];
+				break; // Stop after processing the first non-empty branch
+			}
+		}
+	}
 
 	if (lastNodeFirstJsonItem === undefined) {
 		return createResultError(new OperationalError('No item was found to return'));
@@ -139,14 +161,24 @@ async function extractFirstEntryBinaryFromTaskData(
 }
 
 /**
- * Extracts the JSON data of all the items of the last node
+ * Extracts the JSON data of all the items from the first non-empty branch of the last node
  */
 function extractAllEntriesJsonFromTaskData(
 	lastNodeTaskData: ITaskData,
 ): Result<StaticResponse, OperationalError> {
 	const data: unknown[] = [];
-	for (const entry of lastNodeTaskData.data!.main[0]!) {
-		data.push(entry.json);
+	const mainOutputs = lastNodeTaskData.data?.main;
+
+	if (mainOutputs && Array.isArray(mainOutputs)) {
+		for (const branch of mainOutputs) {
+			if (branch && Array.isArray(branch) && branch.length > 0) {
+				// Found a non-empty branch, extract all items from it
+				for (const entry of branch) {
+					data.push(entry.json);
+				}
+				break; // Stop after processing the first non-empty branch
+			}
+		}
 	}
 
 	return createResultOk({
