@@ -45,6 +45,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -199,4 +200,5 @@ export const postgresMigrations: Migration[] = [
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 	LinkRoleToProjectRelationTable1753953244168,
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	AddProjectIdToVariableTable1758794506893,
 ];
