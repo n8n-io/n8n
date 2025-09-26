@@ -1267,6 +1267,46 @@ export class Telegram implements INodeType {
 			},
 
 			{
+				displayName: 'Specify Keyboard',
+				name: 'specifyKeyboard',
+				type: 'options',
+				displayOptions: {
+					show: {
+						replyMarkup: ['inlineKeyboard', 'replyKeyboard'],
+						resource: ['message'],
+					},
+				},
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'ui',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'ui',
+				description: 'How to specify the keyboard',
+			},
+
+			{
+				displayName: 'Keyboard (JSON)',
+				name: 'keyboardJson',
+				type: 'json',
+				displayOptions: {
+					show: {
+						replyMarkup: ['inlineKeyboard', 'replyKeyboard'],
+						resource: ['message'],
+						specifyKeyboard: ['json'],
+					},
+				},
+				default: '',
+				description: 'Keyboard as JSON object',
+				placeholder: '{"inline_keyboard": [[{"text": "Button", "callback_data": "data"}]]}',
+			},
+
+			{
 				displayName: 'Inline Keyboard',
 				name: 'inlineKeyboard',
 				placeholder: 'Add Keyboard Row',
@@ -1279,6 +1319,7 @@ export class Telegram implements INodeType {
 					show: {
 						replyMarkup: ['inlineKeyboard'],
 						resource: ['message'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1397,6 +1438,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1489,6 +1531,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1799,6 +1842,7 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+
 			...getSendAndWaitProperties(
 				[
 					{
