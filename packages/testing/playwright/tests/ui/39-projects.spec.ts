@@ -273,9 +273,9 @@ test.describe('Projects', () => {
 			// Cancel changes
 			await n8n.projectSettings.clickCancelButton();
 
-			// Buttons should be disabled again
-			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeDisabled();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeDisabled();
+			// Buttons should not be visible again (no changes)
+			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {
