@@ -7,6 +7,7 @@ import { N8nFormInput } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	modalName: string;
@@ -19,10 +20,12 @@ const props = defineProps<{
 const DEFAULT_WORKFLOW_NAME = 'My Sub-workflow';
 
 const i18n = useI18n();
+const toast = useToast();
 const modalBus = createEventBus();
 
 const workflowExtraction = useWorkflowExtraction();
 const workflowName = ref(DEFAULT_WORKFLOW_NAME);
+const initiatedExtraction = ref(false);
 
 const workflowNameOrDefault = computed(() => {
 	if (workflowName.value) return workflowName.value;
@@ -31,13 +34,21 @@ const workflowNameOrDefault = computed(() => {
 });
 
 const onSubmit = async () => {
+	if (initiatedExtraction.value) return;
+
+	initiatedExtraction.value = true;
 	const { selection, subGraph } = props.data;
-	await workflowExtraction.extractNodesIntoSubworkflow(
-		selection,
-		subGraph,
-		workflowNameOrDefault.value,
-	);
-	modalBus.emit('close');
+	try {
+		await workflowExtraction.extractNodesIntoSubworkflow(
+			selection,
+			subGraph,
+			workflowNameOrDefault.value,
+		);
+	} catch (e) {
+		toast.showError(e, i18n.baseText('workflowExtraction.error.failure'));
+	} finally {
+		modalBus.emit('close');
+	}
 };
 
 const inputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
@@ -77,14 +88,14 @@ onMounted(() => {
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-button"
 					@click="close"
 				/>
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('generic.confirm')"
 					float="right"
 					:disabled="!workflowName"

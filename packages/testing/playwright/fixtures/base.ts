@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
@@ -91,13 +91,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ n8nUrl, n8nContainer, browser }, use) => {
+		async ({ n8nUrl, n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const context = await browser.newContext({ baseURL: n8nUrl });
-				const api = new ApiHelpers(context.request);
+				const apiContext = await request.newContext({ baseURL: n8nUrl });
+				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
-				await context.close();
+				await apiContext.dispose();
 			}
 			await use(undefined);
 		},
@@ -118,7 +118,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		{ scope: 'worker' },
 	],
 
-	baseURL: async ({ n8nUrl }, use) => {
+	baseURL: async ({ n8nUrl, dbSetup }, use) => {
+		void dbSetup; // Ensure dbSetup runs first
 		await use(n8nUrl);
 	},
 
@@ -129,35 +130,29 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		void browser;
 		void baseURL;
 		void dbSetup;
-
 		await setupDefaultInterceptors(context);
 		await use(context);
 	},
 
-	page: async ({ context }, use, testInfo) => {
+	n8n: async ({ context }, use, testInfo) => {
 		const page = await context.newPage();
-		const api = new ApiHelpers(context.request);
-
-		await api.setupFromTags(testInfo.tags);
-
-		await use(page);
-		await page.close();
-	},
-
-	n8n: async ({ page, api }, use) => {
-		const n8nInstance = new n8nPage(page, api);
+		const n8nInstance = new n8nPage(page);
+		await n8nInstance.api.setupFromTags(testInfo.tags);
 		await use(n8nInstance);
 	},
 
-	api: async ({ context }, use, testInfo) => {
-		const api = new ApiHelpers(context.request);
+	// This is a completely isolated API context for tests that don't need the browser
+	api: async ({ baseURL }, use, testInfo) => {
+		const context = await request.newContext({ baseURL });
+		const api = new ApiHelpers(context);
 		await api.setupFromTags(testInfo.tags);
 		await use(api);
+		await context.dispose();
 	},
 
-	setupRequirements: async ({ page, context }, use) => {
+	setupRequirements: async ({ n8n, context }, use) => {
 		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
-			await setupTestRequirements(page, context, requirements);
+			await setupTestRequirements(n8n, context, requirements);
 		};
 
 		await use(setupFunction);
@@ -193,5 +188,9 @@ export { expect };
 /*
 Dependency Graph:
 Worker Scope: containerConfig → n8nContainer → [n8nUrl, chaos] → dbSetup
-Test Scope: n8nUrl → baseURL → context → page → [n8n, api]
+Test Scope:
+  - UI Stream: dbSetup → baseURL → context → page → n8n
+  - API Stream: dbSetup → baseURL → api
+Note: baseURL depends on dbSetup to ensure database is ready before tests run
+Both streams are independent after baseURL, allowing for pure API tests or combined UI+API tests
 */

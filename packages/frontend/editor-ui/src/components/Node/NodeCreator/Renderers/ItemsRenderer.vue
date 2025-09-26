@@ -215,7 +215,7 @@ watch(
 					/>
 				</div>
 			</div>
-			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
+			<N8nLoading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
 	<div v-else :class="$style.empty">

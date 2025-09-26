@@ -392,10 +392,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 }
 
 function getDependentParametersValues(parameter: INodeProperties): string | null {
-	const loadOptionsDependsOn = getParameterTypeOption<string[] | undefined>(
-		parameter,
-		'loadOptionsDependsOn',
-	);
+	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
 		return null;

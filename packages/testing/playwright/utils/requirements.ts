@@ -1,12 +1,11 @@
-import type { Page, BrowserContext } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
 
 import { setContextSettings } from '../config/intercepts';
-import { n8nPage } from '../pages/n8nPage';
-import { ApiHelpers } from '../services/api-helper';
+import type { n8nPage } from '../pages/n8nPage';
 import { TestError, type TestRequirements } from '../Types';
 
 export async function setupTestRequirements(
-	page: Page,
+	n8n: n8nPage,
 	context: BrowserContext,
 	requirements: TestRequirements,
 ): Promise<void> {
@@ -20,9 +19,6 @@ export async function setupTestRequirements(
 		}, requirements.storage);
 	}
 
-	const api = new ApiHelpers(context.request);
-	const n8n = new n8nPage(page, api);
-
 	// 1. Setup frontend settings override
 	if (requirements.config?.settings) {
 		// Store settings for this context
@@ -33,9 +29,9 @@ export async function setupTestRequirements(
 	if (requirements.config?.features) {
 		for (const [feature, enabled] of Object.entries(requirements.config.features)) {
 			if (enabled) {
-				await api.enableFeature(feature);
+				await n8n.api.enableFeature(feature);
 			} else {
-				await api.disableFeature(feature);
+				await n8n.api.disableFeature(feature);
 			}
 		}
 	}
@@ -43,7 +39,7 @@ export async function setupTestRequirements(
 	// 3. Setup API intercepts
 	if (requirements.intercepts) {
 		for (const config of Object.values(requirements.intercepts)) {
-			await page.route(config.url, async (route) => {
+			await n8n.page.route(config.url, async (route) => {
 				await route.fulfill({
 					status: config.status ?? 200,
 					contentType: config.contentType ?? 'application/json',
@@ -65,7 +61,7 @@ export async function setupTestRequirements(
 			try {
 				// Import workflow using the n8n page object
 				await n8n.goHome();
-				await n8n.workflows.clickAddWorkflowButton();
+				await n8n.workflows.addResource.workflow();
 				await n8n.canvas.importWorkflow(name, workflowData);
 			} catch (error) {
 				throw new TestError(`Failed to create workflow ${name}: ${String(error)}`);

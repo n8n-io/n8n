@@ -135,7 +135,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		width="calc(100% - var(--spacing-3xl))"
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		:class="$style.modal"
@@ -231,7 +231,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 			</div>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style module lang="scss">

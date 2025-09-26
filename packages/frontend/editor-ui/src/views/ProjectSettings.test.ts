@@ -312,17 +312,16 @@ describe('ProjectSettings', () => {
 	});
 
 	it('renders core form elements and initializes state', async () => {
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 		await nextTick();
 		expect(getByTestId('project-settings-container')).toBeInTheDocument();
 		const nameInput = getByTestId('project-settings-name-input');
 		const descriptionInput = getByTestId('project-settings-description-input');
-		const saveButton = getByTestId('project-settings-save-button');
-		const cancelButton = getByTestId('project-settings-cancel-button');
 		expect(nameInput).toBeInTheDocument();
 		expect(descriptionInput).toBeInTheDocument();
-		expect(saveButton).toBeDisabled();
-		expect(cancelButton).toBeDisabled();
+		// Save/Cancel are not rendered until form is dirty
+		expect(queryByTestId('project-settings-save-button')).toBeNull();
+		expect(queryByTestId('project-settings-cancel-button')).toBeNull();
 		const actualName = getInput(nameInput);
 		const actualDesc = getTextarea(descriptionInput);
 		expect(actualName.value).toBe('Test Project');
@@ -332,18 +331,19 @@ describe('ProjectSettings', () => {
 	describe('Form interactions', () => {
 		it('marks dirty, cancels reset, and saves via Enter and button', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
-			const cancelButton = getByTestId('project-settings-cancel-button');
 			const actualInput = getInput(nameInput);
 
 			// Dirty then cancel
 			await userEvent.type(actualInput, ' Extra');
-			expect(cancelButton).toBeEnabled();
-			await userEvent.click(cancelButton);
+			const cancelBtn1 = getByTestId('project-settings-cancel-button');
+			expect(cancelBtn1).toBeEnabled();
+			await userEvent.click(cancelBtn1);
 			expect(actualInput.value).toBe('Test Project');
-			expect(cancelButton).toBeDisabled();
+			// Buttons disappear when clean
+			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 
 			// Save via Enter
 			await userEvent.type(actualInput, ' - Updated');
@@ -361,8 +361,9 @@ describe('ProjectSettings', () => {
 
 			// Save via button
 			await userEvent.type(actualInput, ' Again');
-			expect(saveButton).toBeEnabled();
-			await userEvent.click(saveButton);
+			const saveBtn = getByTestId('project-settings-save-button');
+			expect(saveBtn).toBeEnabled();
+			await userEvent.click(saveBtn);
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalledTimes(2);
 			expect(mockShowMessage).toHaveBeenCalledTimes(2);
@@ -375,7 +376,6 @@ describe('ProjectSettings', () => {
 			projectsStore.updateProject.mockRejectedValue(error);
 			const { getByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const saveButton = getByTestId('project-settings-save-button');
 			const actualInput = getInput(nameInput);
 
 			await userEvent.type(actualInput, ' Updated');
@@ -387,8 +387,9 @@ describe('ProjectSettings', () => {
 
 			projectsStore.updateProject.mockClear();
 			await userEvent.clear(actualInput);
-			expect(saveButton).toBeDisabled();
-			await userEvent.click(saveButton);
+			const saveButton2 = getByTestId('project-settings-save-button');
+			expect(saveButton2).toBeDisabled();
+			await userEvent.click(saveButton2);
 			expect(projectsStore.updateProject).not.toHaveBeenCalled();
 		});
 	});
@@ -396,28 +397,28 @@ describe('ProjectSettings', () => {
 	describe('Save state and validation', () => {
 		it('maintains state after save and validation toggles', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
 			const nameInput = getByTestId('project-settings-name-input');
-			const cancelButton = getByTestId('project-settings-cancel-button');
-			const saveButton = getByTestId('project-settings-save-button');
 			const actualInput = getInput(nameInput);
 
 			await userEvent.clear(actualInput);
+			const saveButton = getByTestId('project-settings-save-button');
 			expect(saveButton).toBeDisabled();
 			await userEvent.type(actualInput, 'Valid Project Name');
 			expect(saveButton).toBeEnabled();
-			expect(cancelButton).toBeEnabled();
+			expect(getByTestId('project-settings-cancel-button')).toBeEnabled();
 			await userEvent.click(saveButton);
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalled();
-			expect(cancelButton).toBeDisabled();
-			expect(saveButton).toBeDisabled();
+			// Buttons removed when clean again
+			expect(queryByTestId('project-settings-cancel-button')).toBeNull();
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 		});
 	});
 
 	describe('Members table and role updates', () => {
-		it('adds a member and saves with telemetry', async () => {
-			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+		it('adds a member immediately and emits telemetry', async () => {
+			const addSpy = vi.spyOn(projectsStore, 'addMember').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
@@ -428,14 +429,8 @@ describe('ProjectSettings', () => {
 			emitters.n8nUserSelect.emit('update:model-value', '2');
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('2');
-
-			// Ensure form valid + dirty; name keystroke triggers validate and enables save
-			const nameInput = getByTestId('project-settings-name-input');
-			await userEvent.type(nameInput.querySelector('input')!, ' ');
-			await userEvent.click(getByTestId('project-settings-save-button'));
-			await nextTick();
-
-			expect(updateSpy).toHaveBeenCalled();
+			expect(addSpy).toHaveBeenCalledWith('123', expect.objectContaining({ userId: '2' }));
+			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User added member to project',
 				expect.objectContaining({ project_id: '123', target_user_id: '2' }),
@@ -460,20 +455,13 @@ describe('ProjectSettings', () => {
 		});
 
 		it('inline role change saves immediately with telemetry', async () => {
-			projectsStore.updateProject.mockResolvedValue(undefined);
+			const roleSpy = vi.spyOn(projectsStore, 'updateMemberRole').mockResolvedValue(undefined);
 			renderComponent();
 			await nextTick();
 
 			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:editor' });
 			await nextTick();
-			expect(projectsStore.updateProject).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					relations: expect.arrayContaining([
-						expect.objectContaining({ userId: '1', role: 'project:editor' }),
-					]),
-				}),
-			);
+			expect(roleSpy).toHaveBeenCalledWith('123', '1', 'project:editor');
 			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User changed member role on project',
@@ -483,26 +471,28 @@ describe('ProjectSettings', () => {
 
 		it('rolls back role on save error', async () => {
 			// First, inline update fails and rolls back
-			projectsStore.updateProject.mockRejectedValueOnce(new Error('fail'));
-			const utils = renderComponent();
+			vi.spyOn(projectsStore, 'updateMemberRole').mockRejectedValueOnce(new Error('fail'));
+			const wrapper = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:role', { userId: '1', role: 'project:viewer' });
 			await nextTick();
 			expect(mockShowError).toHaveBeenCalled();
 
-			// Next form save should contain original role (admin) due to rollback
-			const nameInput = utils.getByTestId('project-settings-name-input');
+			// Next form save persists only name/description and succeeds
+			const nameInput = wrapper.getByTestId('project-settings-name-input');
 			await userEvent.type(getInput(nameInput), ' touch');
-			await userEvent.click(utils.getByTestId('project-settings-save-button'));
+			await userEvent.click(wrapper.getByTestId('project-settings-save-button'));
 			await nextTick();
 			const lastCall = projectsStore.updateProject.mock.calls.pop();
-			expect(lastCall?.[1].relations).toEqual(
-				expect.arrayContaining([expect.objectContaining({ userId: '1', role: 'project:admin' })]),
+			const payload = lastCall?.[1];
+			expect(payload).toEqual(
+				expect.objectContaining({ name: expect.any(String), description: expect.any(String) }),
 			);
+			expect(payload).not.toHaveProperty('relations');
 		});
 
 		it('removes member immediately and shows success toast with telemetry', async () => {
-			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
 			const { getByTestId, queryByTestId } = renderComponent();
 			await nextTick();
 			expect(getByTestId('members-count').textContent).toBe('1');
@@ -513,44 +503,45 @@ describe('ProjectSettings', () => {
 
 			// Members list container should now be hidden
 			expect(queryByTestId('members-count')).toBeNull();
-			expect(updateSpy).toHaveBeenCalled();
-			const payload = updateSpy.mock.calls[0][1];
-			expect(payload.relations).toEqual([]);
+			expect(removeSpy).toHaveBeenCalledWith('123', '1');
 			expect(mockShowMessage).toHaveBeenCalled();
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User removed member from project',
 				expect.objectContaining({ project_id: '123', target_user_id: '1' }),
 			);
 
-			// Save should not re-add removed user
-			await userEvent.click(getByTestId('project-settings-save-button'));
-			await nextTick();
-			expect(queryByTestId('members-count')).toBeNull();
+			// Save button is not shown (no form edits)
+			expect(queryByTestId('project-settings-save-button')).toBeNull();
 		});
 
-		it('prevents saving when invalid role selected', async () => {
-			// Set invalid role and try to save
-			const utils = renderComponent();
+		it('saves only name and description with Save button', async () => {
+			const wrapper = renderComponent();
 			await nextTick();
-			emitters.projectMembersTable.emit('update:role', {
-				userId: '1',
-				role: 'project:personalOwner',
-			});
+
+			// Edit name and description
+			const nameInput = wrapper.getByTestId('project-settings-name-input');
+			await userEvent.type(nameInput.querySelector('input')!, ' New');
+			const descInput = wrapper.getByTestId('project-settings-description-input');
+			await userEvent.type(descInput.querySelector('textarea')!, 'New description');
+
+			// Save
+			await userEvent.click(wrapper.getByTestId('project-settings-save-button'));
 			await nextTick();
-			// Clear prior success toast from inline update (if any)
-			mockShowMessage.mockClear();
-			// Mark form dirty so save is enabled
-			const nameInput = utils.getByTestId('project-settings-name-input');
-			await userEvent.type(nameInput.querySelector('input')!, ' ');
-			await userEvent.click(utils.getByTestId('project-settings-save-button'));
-			await nextTick();
-			expect(mockShowError).toHaveBeenCalled();
-			// Should not show success on invalid role
-			expect(mockShowMessage).not.toHaveBeenCalled();
+
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+			const lastCall = projectsStore.updateProject.mock.calls.pop();
+			const [id, payload] = lastCall as unknown as [string, Record<string, unknown>];
+			expect(id).toBe('123');
+			expect(payload).toEqual(
+				expect.objectContaining({ name: expect.any(String), description: expect.any(String) }),
+			);
+			expect(payload).not.toHaveProperty('relations');
+			expect(payload).not.toHaveProperty('icon');
+			expect(mockShowMessage).toHaveBeenCalled();
 		});
 
 		it('resets pagination to first page on search', async () => {
-			const utils = renderComponent();
+			const wrapper = renderComponent();
 			await nextTick();
 			emitters.projectMembersTable.emit('update:options', {
 				page: 2,
@@ -558,14 +549,14 @@ describe('ProjectSettings', () => {
 				sortBy: [],
 			});
 			await nextTick();
-			const searchContainer = utils.getByTestId('project-members-search');
+			const searchContainer = wrapper.getByTestId('project-members-search');
 			const searchInput = searchContainer.querySelector('input')!;
 			await userEvent.type(searchInput, 'john');
 			await new Promise((r) => setTimeout(r, 350));
 			// unmount first to avoid duplicate elements
-			utils.unmount();
-			const utils2 = renderComponent();
-			expect(utils2.getByTestId('members-page').textContent).toBe('0');
+			wrapper.unmount();
+			const wrapper2 = renderComponent();
+			expect(wrapper2.getByTestId('members-page').textContent).toBe('0');
 		});
 	});
 

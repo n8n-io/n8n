@@ -16,7 +16,7 @@ const onVoteClick = (vote: AnnotationVote) => {
 
 <template>
 	<div :class="$style.ratingIcon">
-		<n8n-icon-button
+		<N8nIconButton
 			:class="[$style.icon, vote === 'up' && $style.up]"
 			type="tertiary"
 			text
@@ -24,7 +24,7 @@ const onVoteClick = (vote: AnnotationVote) => {
 			icon="thumbs-up"
 			@click="onVoteClick('up')"
 		/>
-		<n8n-icon-button
+		<N8nIconButton
 			:class="[$style.icon, vote === 'down' && $style.down]"
 			type="tertiary"
 			text

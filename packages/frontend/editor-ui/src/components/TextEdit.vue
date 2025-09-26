@@ -67,7 +67,7 @@ const closeDialog = () => {
 
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog
+		<ElDialog
 			:model-value="dialogVisible"
 			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 			width="80%"
@@ -77,11 +77,11 @@ const closeDialog = () => {
 			:before-close="closeDialog"
 		>
 			<div class="ignore-key-press-canvas">
-				<n8n-input-label
+				<N8nInputLabel
 					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 				>
 					<div @keydown.stop @keydown.esc="onKeyDownEsc">
-						<n8n-input
+						<N8nInput
 							ref="inputField"
 							v-model="tempValue"
 							type="textarea"
@@ -91,8 +91,8 @@ const closeDialog = () => {
 							@update:model-value="valueChanged"
 						/>
 					</div>
-				</n8n-input-label>
+				</N8nInputLabel>
 			</div>
-		</el-dialog>
+		</ElDialog>
 	</div>
 </template>

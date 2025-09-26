@@ -29,12 +29,15 @@ import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { MfaComposer } from '../composables/MfaComposer';
+import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
-import type { ApiHelpers } from '../services/api-helper';
+import { ApiHelpers } from '../services/api-helper';
+import { BaseModal } from './components/BaseModal';
+import { Breadcrumbs } from './components/Breadcrumbs';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -70,6 +73,7 @@ export class n8nPage {
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
+	readonly modal: BaseModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -78,14 +82,16 @@ export class n8nPage {
 	readonly credentialsComposer: CredentialsComposer;
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
+	readonly ndvComposer: NodeDetailsViewComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
 	readonly navigate: NavigationHelper;
+	readonly breadcrumbs: Breadcrumbs;
 
-	constructor(page: Page, api: ApiHelpers) {
+	constructor(page: Page) {
 		this.page = page;
-		this.api = api;
+		this.api = new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
@@ -111,11 +117,11 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
+		this.modal = new BaseModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
@@ -124,10 +130,12 @@ export class n8nPage {
 		this.credentialsComposer = new CredentialsComposer(this);
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
+		this.ndvComposer = new NodeDetailsViewComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers
 		this.navigate = new NavigationHelper(page);
+		this.breadcrumbs = new Breadcrumbs(page);
 	}
 
 	async goHome() {

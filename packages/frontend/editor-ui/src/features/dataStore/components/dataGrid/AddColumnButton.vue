@@ -160,9 +160,9 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 									@input="onInput"
 								/>
 								<div v-if="error" class="error-message">
-									<n8n-text v-if="error.message" size="small" color="danger" tag="span">
+									<N8nText v-if="error.message" size="small" color="danger" tag="span">
 										{{ error.message }}
-									</n8n-text>
+									</N8nText>
 									<Tooltip
 										:content="error.description"
 										placement="top"

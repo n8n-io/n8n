@@ -105,6 +105,8 @@ describe('GlobalConfig', () => {
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
@@ -347,9 +349,6 @@ describe('GlobalConfig', () => {
 		},
 		tags: {
 			disabled: false,
-		},
-		partialExecutions: {
-			version: 2,
 		},
 		workflowHistory: {
 			enabled: true,

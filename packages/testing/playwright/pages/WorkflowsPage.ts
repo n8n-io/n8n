@@ -1,21 +1,19 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { AddResource } from './components/AddResource';
+import { ResourceCards } from './components/ResourceCards';
 
 export class WorkflowsPage extends BasePage {
+	readonly addResource = new AddResource(this.page);
+	readonly cards = new ResourceCards(this.page);
+
 	async clickAddFirstProjectButton() {
 		await this.clickByTestId('add-first-project-button');
 	}
 
 	async clickAddProjectButton() {
 		await this.clickByTestId('project-plus-button');
-	}
-
-	/**
-	 * This is the add workflow button on the workflows page, visible when there are already workflows.
-	 */
-	async clickAddWorkflowButton() {
-		await this.clickByTestId('add-resource-workflow');
 	}
 
 	/**
@@ -27,6 +25,14 @@ export class WorkflowsPage extends BasePage {
 
 	getNewWorkflowCard() {
 		return this.page.getByTestId('new-workflow-card');
+	}
+
+	getEasyAiWorkflowCard() {
+		return this.page.getByTestId('easy-ai-workflow-card');
+	}
+
+	async clickEasyAiWorkflowCard() {
+		await this.clickByTestId('easy-ai-workflow-card');
 	}
 
 	async clearSearch() {
@@ -69,21 +75,13 @@ export class WorkflowsPage extends BasePage {
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
-	async searchWorkflows(searchTerm: string) {
+	async search(searchTerm: string) {
 		await this.clickByTestId('resources-list-search');
 		await this.fillByTestId('resources-list-search', searchTerm);
 	}
 
-	getWorkflowItems() {
-		return this.page.getByTestId('resources-list-item-workflow');
-	}
-
-	getWorkflowByName(name: string) {
-		return this.getWorkflowItems().filter({ hasText: name });
-	}
-
 	async shareWorkflow(workflowName: string) {
-		const workflow = this.getWorkflowByName(workflowName);
+		const workflow = this.cards.getWorkflow(workflowName);
 		await workflow.getByTestId('workflow-card-actions').click();
 		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}
@@ -155,5 +153,43 @@ export class WorkflowsPage extends BasePage {
 
 	async filterByTag(tag: string) {
 		await this.filterByTags([tag]);
+	}
+
+	getFolderBreadcrumbsActions() {
+		return this.page.getByTestId('folder-breadcrumbs-actions');
+	}
+
+	getFolderBreadcrumbsActionToggle() {
+		return this.page.getByTestId('action-toggle-dropdown');
+	}
+
+	getFolderBreadcrumbsAction(actionName: string) {
+		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
+	}
+
+	addFolderButton() {
+		return this.page.getByTestId('add-folder-button');
+	}
+
+	// Add region for actions
+
+	/**
+	 * Add a folder from the add resource dropdown
+	 * @returns The name of the folder
+	 */
+	async addFolder() {
+		const folderName = 'My Test Folder';
+		await this.addResource.folder();
+		await this.fillFolderModal(folderName);
+		return folderName;
+	}
+
+	/**
+	 * Fill the folder modal
+	 * @param folderName - The name of the folder
+	 */
+	async fillFolderModal(folderName: string) {
+		await this.baseModal.fillInput(folderName);
+		await this.baseModal.clickButton('Create');
 	}
 }

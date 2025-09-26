@@ -54,28 +54,28 @@ function onCardClick(e: MouseEvent) {
 		@click="onCardClick"
 	>
 		<div v-if="loading" :class="$style.loading">
-			<n8n-loading :rows="2" :shrink-last="false" :loading="loading" />
+			<N8nLoading :rows="2" :shrink-last="false" :loading="loading" />
 		</div>
 		<div v-else-if="workflow">
-			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
+			<N8nHeading :bold="true" size="small">{{ workflow.name }}</N8nHeading>
 			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
-					<n8n-text size="small" color="text-light">
-						<n8n-icon icon="eye" size="xsmall" />
+					<N8nText size="small" color="text-light">
+						<N8nIcon icon="eye" size="xsmall" />
 						{{ abbreviateNumber(workflow.totalViews) }}
-					</n8n-text>
+					</N8nText>
 				</span>
 				<div v-if="workflow.totalViews" :class="$style.line" v-text="'|'" />
-				<n8n-text size="small" color="text-light">
+				<N8nText size="small" color="text-light">
 					<TimeAgo :date="workflow.createdAt" />
-				</n8n-text>
+				</N8nText>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light">
+				<N8nText v-if="workflow.user" size="small" color="text-light">
 					{{
 						i18n.baseText('template.byAuthor' as BaseTextKey, {
 							interpolate: { name: workflow.user.username },
 						})
-					}}</n8n-text
+					}}</N8nText
 				>
 			</div>
 		</div>
@@ -86,7 +86,7 @@ function onCardClick(e: MouseEvent) {
 			<NodeList v-if="workflow.nodes" :nodes="workflow.nodes" :limit="nodesToBeShown" size="md" />
 		</div>
 		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
-			<n8n-button
+			<N8nButton
 				v-if="useWorkflowButton"
 				outline
 				label="Use workflow"

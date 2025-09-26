@@ -22,16 +22,18 @@ import type {
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
-import type { PushPayload, FrontendSettings } from '@n8n/api-types';
+import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mock } from 'vitest-mock-extended';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import * as apiUtils from '@n8n/rest-api-client';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useLocalStorage } from '@vueuse/core';
-import { ref } from 'vue';
-import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/ndv.store', () => ({
@@ -74,13 +76,11 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		uiStore = useUIStore();
-		settingsStore = mockedStore(useSettingsStore);
 		track.mockReset();
 	});
 
@@ -657,7 +657,90 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('updateNodeExecutionData', () => {
+	describe('updateNodeExecutionRunData', () => {
+		beforeEach(() => {
+			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+				id: 'test-execution',
+				data: {
+					resultData: {
+						runData: {
+							n0: [
+								createTestTaskData({
+									executionIndex: 0,
+									executionStatus: 'success',
+									executionTime: 33,
+								}),
+								createTestTaskData({
+									executionIndex: 1,
+									executionStatus: 'success',
+									executionTime: 44,
+								}),
+								createTestTaskData({
+									executionIndex: 2,
+									executionStatus: 'running',
+									executionTime: undefined,
+								}),
+							],
+						},
+					},
+				},
+			});
+		});
+
+		it('should replace run data at the matched index in the execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 2,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('success');
+			expect(runData?.[2].executionTime).toBe(100);
+		});
+
+		it('should not modify execution data if there is no matched index in execution data', () => {
+			workflowsStore.updateNodeExecutionRunData({
+				executionId: 'test-execution',
+				nodeName: 'n0',
+				data: createTestTaskData({
+					executionIndex: 3,
+					executionStatus: 'success',
+					executionTime: 100,
+				}),
+				itemCountByConnectionType: { main: [1] },
+			});
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData.n0;
+
+			expect(runData).toHaveLength(3);
+			expect(runData?.[0].executionIndex).toBe(0);
+			expect(runData?.[0].executionStatus).toBe('success');
+			expect(runData?.[0].executionTime).toBe(33);
+			expect(runData?.[1].executionIndex).toBe(1);
+			expect(runData?.[1].executionStatus).toBe('success');
+			expect(runData?.[1].executionTime).toBe(44);
+			expect(runData?.[2].executionIndex).toBe(2);
+			expect(runData?.[2].executionStatus).toBe('running');
+			expect(runData?.[2].executionTime).toBe(undefined);
+		});
+	});
+
+	describe('updateNodeExecutionStatus', () => {
 		let successEvent: ReturnType<typeof generateMockExecutionEvents>['successEvent'];
 		let errorEvent: ReturnType<typeof generateMockExecutionEvents>['errorEvent'];
 		let executionResponse: ReturnType<typeof generateMockExecutionEvents>['executionResponse'];
@@ -670,7 +753,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should throw error if not initialized', () => {
-			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
+			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).toThrowError();
 		});
 
 		it('should add node success run data', () => {
@@ -681,7 +764,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -710,7 +793,7 @@ describe('useWorkflowsStore', () => {
 			getNodeType.mockReturnValue(getMockEditFieldsNode());
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(errorEvent);
+			workflowsStore.updateNodeExecutionStatus(errorEvent);
 			await flushPromises();
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
@@ -793,7 +876,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEvent);
+			workflowsStore.updateNodeExecutionStatus(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
@@ -806,6 +889,7 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 		});
+
 		it('should replace existing placeholder task data in new log view', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
@@ -846,7 +930,7 @@ describe('useWorkflowsStore', () => {
 			});
 
 			// ACT
-			workflowsStore.updateNodeExecutionData(successEventWithExecutionIndex);
+			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
@@ -982,40 +1066,6 @@ describe('useWorkflowsStore', () => {
 			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
-
-	test.each([
-		// check userVersion behavior
-		[-1, 1, 1], // userVersion -1, use default (1)
-		[0, 1, 1], // userVersion 0, invalid, use default (1)
-		[1, 1, 1], // userVersion 1, valid, use userVersion (1)
-		[2, 1, 2], // userVersion 2, valid, use userVersion (2)
-		[-1, 2, 2], // userVersion -1, use default (2)
-		[0, 2, 1], // userVersion 0, invalid, use default (2)
-		[1, 2, 1], // userVersion 1, valid, use userVersion (1)
-		[2, 2, 2], // userVersion 2, valid, use userVersion (2)
-	] as Array<[number, 1 | 2, number]>)(
-		'when { userVersion:%s, defaultVersion:%s, enforced:%s } run workflow should use partial execution version %s',
-		async (userVersion, defaultVersion, expectedVersion) => {
-			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(userVersion));
-			settingsStore.settings = {
-				partialExecution: { version: defaultVersion },
-			} as FrontendSettings;
-
-			const workflowData = { id: '1', nodes: [], connections: {} };
-			const makeRestApiRequestSpy = vi
-				.spyOn(apiUtils, 'makeRestApiRequest')
-				.mockImplementation(async () => ({}));
-
-			await workflowsStore.runWorkflow({ workflowData });
-
-			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
-				{ baseUrl: '/rest', pushRef: expect.any(String) },
-				'POST',
-				`/workflows/1/run?partialExecutionVersion=${expectedVersion}`,
-				{ workflowData },
-			);
-		},
-	);
 
 	describe('findNodeByPartialId', () => {
 		test.each([
@@ -1162,6 +1212,144 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
 			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+		});
+	});
+
+	describe('updateWorkflowSetting', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('updates current workflow setting and store state', async () => {
+			workflowsStore.workflow.id = 'w1';
+			workflowsStore.workflow.versionId = 'v1';
+			workflowsStore.workflow.settings = {
+				executionOrder: 'v1',
+				timezone: 'UTC',
+			};
+
+			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w1',
+					versionId: 'v2',
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'UTC',
+						executionTimeout: 10,
+					},
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			// Act
+			const result = await workflowsStore.updateWorkflowSetting('w1', 'executionTimeout', 10);
+
+			// Assert request payload
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'PATCH',
+				'/workflows/w1',
+				expect.objectContaining({
+					versionId: 'v1',
+					settings: expect.objectContaining({ executionTimeout: 10, timezone: 'UTC' }),
+				}),
+			);
+
+			// Assert returned value and store updates
+			expect(result.versionId).toBe('v2');
+			expect(workflowsStore.workflow.versionId).toBe('v2');
+			expect(workflowsStore.workflow.settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'UTC',
+				executionTimeout: 10,
+			});
+		});
+
+		it('updates cached workflow without fetching when present in store', async () => {
+			workflowsStore.workflowsById = {
+				w2: createTestWorkflow({
+					id: 'w2',
+					name: 'Cached',
+					versionId: 'v2',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			};
+
+			const getWorkflowSpy = vi.spyOn(workflowsApi, 'getWorkflow');
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w2',
+					versionId: 'v3',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Europe/Berlin',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w2', 'timezone', 'Europe/Berlin');
+
+			// Should not fetch since cached with versionId exists
+			expect(getWorkflowSpy).not.toHaveBeenCalled();
+			expect(workflowsStore.workflowsById['w2'].versionId).toBe('v3');
+			expect(workflowsStore.workflowsById['w2'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Europe/Berlin',
+			});
+		});
+
+		it('fetches workflow when not cached and updates store', async () => {
+			workflowsStore.workflowsById = {} as Record<string, IWorkflowDb>;
+
+			vi.mocked(workflowsApi).getWorkflow.mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					name: 'Fetched',
+					versionId: 'v100',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: { executionOrder: 'v1' },
+				}),
+			);
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w3',
+					versionId: 'v101',
+					nodes: [],
+					connections: {},
+					active: false,
+					isArchived: false,
+					settings: {
+						executionOrder: 'v1',
+						timezone: 'Asia/Tokyo',
+					},
+				}),
+			);
+
+			await workflowsStore.updateWorkflowSetting('w3', 'timezone', 'Asia/Tokyo');
+
+			expect(workflowsApi.getWorkflow).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: expect.any(String) },
+				'w3',
+			);
+			expect(workflowsStore.workflowsById['w3'].versionId).toBe('v101');
+			expect(workflowsStore.workflowsById['w3'].settings).toEqual({
+				executionOrder: 'v1',
+				timezone: 'Asia/Tokyo',
+			});
 		});
 	});
 
@@ -1357,6 +1545,68 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
 			workflowsStore.setNodeValue({ name: 'n1', key: 'disabled', value: true });
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
+		});
+	});
+
+	describe('markExecutionAsStopped', () => {
+		beforeEach(() => {
+			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+				status: 'running',
+				startedAt: new Date('2023-01-01T09:00:00Z'),
+				stoppedAt: undefined,
+				data: {
+					resultData: {
+						runData: {
+							node1: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'error' }),
+								createTestTaskData({ executionStatus: 'running' }),
+							],
+							node2: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'waiting' }),
+							],
+						},
+					},
+				},
+			});
+		});
+
+		it('should remove non successful node runs', () => {
+			workflowsStore.markExecutionAsStopped();
+
+			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+			expect(runData?.node1).toHaveLength(1);
+			expect(runData?.node1[0].executionStatus).toBe('success');
+			expect(runData?.node2).toHaveLength(1);
+			expect(runData?.node2[0].executionStatus).toBe('success');
+		});
+
+		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
+			workflowsStore.markExecutionAsStopped({
+				status: 'canceled',
+				startedAt: new Date('2023-01-01T10:00:00Z'),
+				stoppedAt: new Date('2023-01-01T10:05:00Z'),
+				mode: 'manual',
+			});
+
+			expect(workflowsStore.workflowExecutionData?.status).toBe('canceled');
+			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
+				new Date('2023-01-01T10:00:00Z'),
+			);
+			expect(workflowsStore.workflowExecutionData?.stoppedAt).toEqual(
+				new Date('2023-01-01T10:05:00Z'),
+			);
+		});
+
+		it('should not update execution data when stopData is not provided', () => {
+			workflowsStore.markExecutionAsStopped();
+
+			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
+			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
+				new Date('2023-01-01T09:00:00Z'),
+			);
+			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
 		});
 	});
 });

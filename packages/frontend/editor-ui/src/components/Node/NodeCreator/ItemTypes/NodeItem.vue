@@ -219,7 +219,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						@click="onCommunityNodeTooltipClick"
 					/>
 				</template>
-				<n8n-icon size="small" :class="$style.icon" icon="box" />
+				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
 		<template #dragContent>
@@ -233,8 +233,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 					:node-type="nodeType"
 					:size="40"
 					:shrink="false"
-					@click.capture.stop
 					color-default="var(--color-foreground-xdark)"
+					@click.capture.stop
 				/>
 			</div>
 		</template>
