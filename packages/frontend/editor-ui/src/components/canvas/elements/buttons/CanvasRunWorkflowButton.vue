@@ -22,7 +22,9 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
-	hideLabel?: boolean;
+	hideTooltip?: boolean;
+	type?: 'primary' | 'secondary';
+	label?: string;
 	size?: 'small' | 'medium' | 'large';
 	includeChatTrigger?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
@@ -37,7 +39,7 @@ const selectableTriggerNodes = computed(() =>
 );
 const label = computed(() => {
 	if (!props.executing) {
-		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
+		return props.label ?? i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
 
 	if (props.waitingForWebhook) {
@@ -82,7 +84,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		<KeyboardShortcutTooltip
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
-			:disabled="executing || hideLabel"
+			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
 				:class="$style.button"
@@ -90,7 +92,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
-				type="primary"
+				:type="type ?? 'primary'"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
@@ -122,7 +124,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						type="primary"
+						:type="type ?? 'primary'"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"
