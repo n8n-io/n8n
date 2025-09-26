@@ -38,8 +38,8 @@ export class ActiveExecutions {
 		private readonly eventService: EventService,
 	) {}
 
-	has(executionId: string) {
-		return this.activeExecutions[executionId] !== undefined;
+	has(executionId: string): boolean {
+		return executionId in this.activeExecutions;
 	}
 
 	/**
@@ -156,24 +156,58 @@ export class ActiveExecutions {
 	}
 
 	/** Cancel the execution promise and reject its post-execution promise. */
-	stopExecution(executionId: string): void {
+	stopExecution(executionId: string, reason?: string, source = 'Manual'): void {
 		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			// There is no execution running with that id
+		if (!execution) {
+			this.logger.warn('Attempted to stop execution that does not exist', {
+				executionId,
+				reason,
+				source,
+			});
 			return;
 		}
-		this.eventService.emit('execution-cancelled', { executionId });
-		const error = new ExecutionCancelledError(executionId);
-		execution.responsePromise?.reject(error);
-		if (execution.status === 'waiting') {
-			// A waiting execution will not have a valid workflowExecution or postExecutePromise
-			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
-			delete this.activeExecutions[executionId];
-		} else {
-			execution.workflowExecution?.cancel();
-			execution.postExecutePromise.reject(error);
+
+		// Prevent duplicate cancellations
+		if (execution.status === 'cancelled' || execution.status === 'crashed') {
+			this.logger.debug('Execution already terminated', { executionId, status: execution.status });
+			return;
 		}
-		this.logger.debug('Execution cancelled', { executionId });
+
+		const workflowId = execution.executionData.workflowData?.id;
+		const duration = Date.now() - execution.startedAt.getTime();
+
+		this.logger.warn('Stopping execution', {
+			executionId,
+			reason: reason || 'No reason provided',
+			source,
+			workflowId,
+			durationMs: duration,
+		});
+
+		execution.status = 'cancelled';
+		this.eventService.emit('execution-cancelled', { executionId, reason, source });
+
+		const error = new ExecutionCancelledError(executionId);
+		if (reason) {
+			error.message = `${error.message} - Reason: ${reason} (Source: ${source})`;
+		}
+
+		try {
+			execution.responsePromise?.reject(error);
+			if (execution.status === 'waiting') {
+				delete this.activeExecutions[executionId];
+			} else {
+				execution.workflowExecution?.cancel();
+				execution.postExecutePromise.reject(error);
+			}
+		} catch (cleanupError) {
+			this.logger.error('Error during execution cleanup', {
+				executionId,
+				error: (cleanupError as Error).message,
+			});
+		}
+
+		this.logger.debug('Execution cancelled', { executionId, reason, source });
 	}
 
 	/** Resolve the post-execution promise in an execution. */
@@ -236,7 +270,7 @@ export class ActiveExecutions {
 				retryOf: data.executionData.retryOf ?? undefined,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
-				workflowId: data.executionData.workflowData.id,
+				workflowId: data.executionData.workflowData?.id,
 				status: data.status,
 			});
 		}
@@ -266,8 +300,8 @@ export class ActiveExecutions {
 		for (const executionId of executionIds) {
 			const { responsePromise, status } = this.activeExecutions[executionId];
 			if (!!responsePromise || (isRegularMode && cancelAll)) {
-				// Cancel all exectutions that have a response promise, because these promises can't be retained between restarts
-				this.stopExecution(executionId);
+				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
+				this.stopExecution(executionId, 'Shutdown requested', 'Shutdown');
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
 				// Remove waiting and new executions to not block shutdown
