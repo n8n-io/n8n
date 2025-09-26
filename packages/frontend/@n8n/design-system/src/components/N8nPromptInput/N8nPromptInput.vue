@@ -376,16 +376,16 @@ defineExpose({
 
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
-			<N8nTooltip
-				:content="creditsTooltipContent"
-				:popper-class="$style.infoPopper"
-				placement="top"
-			>
-				<div :class="$style.creditsInfoWrapper">
-					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+			<div :class="$style.creditsInfoWrapper">
+				<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
+				<N8nTooltip
+					:content="creditsTooltipContent"
+					:popper-class="$style.infoPopper"
+					placement="top"
+				>
 					<N8nIcon icon="info" size="small" />
-				</div>
-			</N8nTooltip>
+				</N8nTooltip>
+			</div>
 			<N8nTooltip
 				:disabled="!showAskOwnerTooltip"
 				:content="t('promptInput.askAdminToUpgrade')"
