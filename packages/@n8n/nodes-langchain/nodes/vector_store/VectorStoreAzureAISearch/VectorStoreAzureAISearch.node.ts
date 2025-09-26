@@ -65,7 +65,7 @@ const resultsCountField: INodeProperties = {
 	displayName: 'Results Count',
 	name: RESULTS_COUNT,
 	type: 'number',
-	default: 4,
+	default: 50,
 	description:
 		'Number of results to return from Azure AI Search (maximum depends on your service tier)',
 	typeOptions: {
@@ -378,7 +378,7 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 
 		// Override the similaritySearch method to use the resultsCount option
 		if (isExecutionContext(context)) {
-			const resultsCount = getOptionValue<number>('resultsCount', context, itemIndex, 4);
+			const resultsCount = getOptionValue<number>('resultsCount', context, itemIndex, 50);
 
 			const originalSearch = vectorStore.similaritySearch.bind(vectorStore);
 			vectorStore.similaritySearch = async (query: string, k?: number, filter?: any) => {

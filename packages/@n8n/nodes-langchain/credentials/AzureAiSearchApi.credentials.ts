@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class AzureAiSearchApi implements ICredentialType {
 	name = 'azureAiSearchApi';
@@ -64,12 +69,25 @@ export class AzureAiSearchApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				'api-key': '={{$credentials.apiKey}}',
-			},
-		},
+	authenticate = async (
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> => {
+		const authType = credentials.authType || 'apiKey';
+
+		// Only add API key header for API key authentication
+		if (authType === 'apiKey') {
+			return {
+				...requestOptions,
+				headers: {
+					...requestOptions.headers,
+					'api-key': credentials.apiKey,
+				},
+			};
+		}
+
+		// For managed identity, don't add any auth headers
+		// The Azure SDK will handle authentication internally
+		return requestOptions;
 	};
 }
