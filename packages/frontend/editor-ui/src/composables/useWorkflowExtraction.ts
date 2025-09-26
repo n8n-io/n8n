@@ -89,7 +89,6 @@ export function useWorkflowExtraction() {
 		name: string,
 		position: [number, number],
 		variables: Map<string, string>,
-		forcePassthrough: boolean,
 	): Omit<INode, 'id'> {
 		return {
 			parameters: {
@@ -101,21 +100,19 @@ export function useWorkflowExtraction() {
 				workflowInputs: {
 					mappingMode: 'defineBelow',
 					value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
-					matchingColumns: forcePassthrough ? [] : [...variables.keys()],
-					schema: forcePassthrough
-						? []
-						: [
-								...variables.keys().map((x) => ({
-									id: x,
-									displayName: x,
-									required: false,
-									defaultMatch: false,
-									display: true,
-									canBeUsedToMatch: true,
-									removed: false,
-									// omitted type implicitly uses our `any` type
-								})),
-							],
+					matchingColumns: [...variables.keys()],
+					schema: [
+						...variables.keys().map((x) => ({
+							id: x,
+							displayName: x,
+							required: false,
+							defaultMatch: false,
+							display: true,
+							canBeUsedToMatch: true,
+							removed: false,
+							// omitted type implicitly uses our `any` type
+						})),
+					],
 					attemptToConvertTypes: false,
 					convertFieldsToString: true,
 				},
@@ -137,7 +134,6 @@ export function useWorkflowExtraction() {
 		selectionChildrenVariables: Map<string, string>,
 		startNodeName: string,
 		returnNodeName: string,
-		forcePassthrough: boolean,
 	): WorkflowDataCreate {
 		const newConnections = Object.fromEntries(
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
@@ -222,7 +218,7 @@ export function useWorkflowExtraction() {
 				]
 			: [];
 		const triggerParameters =
-			forcePassthrough || selectionVariables.size === 0
+			selectionVariables.size === 0
 				? {
 						inputSource: 'passthrough',
 					}
@@ -459,7 +455,7 @@ export function useWorkflowExtraction() {
 					.filter((x) => x !== null)
 			: [];
 
-		const { nodes, variables, forcePassthrough } = extractReferencesInNodeExpressions(
+		const { nodes, variables } = extractReferencesInNodeExpressions(
 			subGraph,
 			allNodeNames,
 			startNodeName,
@@ -487,7 +483,6 @@ export function useWorkflowExtraction() {
 			afterVariables,
 			startNodeName,
 			returnNodeName,
-			forcePassthrough,
 		);
 		const createdWorkflow = await tryCreateWorkflow(workflowData);
 		if (createdWorkflow === null) return false;
@@ -498,7 +493,6 @@ export function useWorkflowExtraction() {
 			executeWorkflowNodeName,
 			executeWorkflowPosition,
 			variables,
-			forcePassthrough,
 		);
 		await replaceSelectionWithNode(
 			executeWorkflowNode,

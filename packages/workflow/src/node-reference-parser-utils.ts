@@ -536,7 +536,6 @@ export function extractReferencesInNodeExpressions(
 	const allData = [];
 	// Additional mappings that should contribute to sub-workflow inputs (e.g. Split Out 'fieldToSplitOut')
 	const extraVariableCandidates: ExpressionMapping[] = [];
-	let forcePassthrough = false;
 
 	for (const node of subGraph) {
 		const [parameterMapping, allMappings] = applyParameterMapping(node.parameters, (s) =>
@@ -557,12 +556,12 @@ export function extractReferencesInNodeExpressions(
 				const trimmed = raw.trim();
 				const isExpression = trimmed.startsWith('=');
 
-				// Expressions in Split Out 'fieldToSplitOut' parameters must force passthrough mode,
-				// as the value of this expression might refer to fields that are not used elsewhere,
-				// and we have no way of knowing what fields the user might want to split out when
-				// the node is run and the expression is evaluated.
+				// Expressions in Split Out 'fieldToSplitOut' parameters are not supported,
+				// as they define the fields to split out only at execution time.
 				if (isExpression) {
-					forcePassthrough = true;
+					throw new OperationalError(
+						`Extracting sub-workflow from Split Out node with 'fieldToSplitOut' parameter having expression "${trimmed}" is not supported.`,
+					);
 				}
 
 				// Parameter value is a CSV of fields to split out.
@@ -639,5 +638,5 @@ export function extractReferencesInNodeExpressions(
 	}
 
 	const variables = new Map(allUsedMappings.map((m) => [m.replacementName, m.originalExpression]));
-	return { nodes: output, variables, forcePassthrough };
+	return { nodes: output, variables };
 }
