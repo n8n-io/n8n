@@ -18,6 +18,7 @@ import {
 	AssignableProjectRole,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
+	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -41,7 +42,7 @@ export class TeamProjectOverQuotaError extends UserError {
 }
 
 export class UnlicensedProjectRoleError extends UserError {
-	constructor(role: string) {
+	constructor(role: AssignableProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
 }
@@ -391,7 +392,7 @@ export class ProjectService {
 			const existing = existingByUserId.get(rel.userId);
 			if (!existing) continue; // will be inserted below
 			const current = existing.role?.slug;
-			if (current && current !== rel.role && this.isAssignableProjectRoleSlug(current)) {
+			if (current && current !== rel.role && isAssignableProjectRoleSlug(current)) {
 				conflicts.push({ userId: rel.userId, currentRole: current, requestedRole: rel.role });
 			}
 		}
@@ -604,17 +605,5 @@ export class ProjectService {
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {
 		return await this.projectRepository.getProjectCounts();
-	}
-
-	/**
-	 * Type guard for assignable project role slugs.
-	 *
-	 * Custom project roles are supported. We consider any slug that:
-	 * - starts with the `project:` prefix, and
-	 * - is not the personal owner role
-	 * to be an assignable project role.
-	 */
-	private isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
-		return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
 	}
 }
