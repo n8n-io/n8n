@@ -1,4 +1,4 @@
-import { type InsightsDateRange, type InsightsSummary } from '@n8n/api-types';
+import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -32,6 +32,9 @@ export class InsightsService {
 		return {
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
+			/**
+			 * @deprecated the frontend should not rely on this anymore since users can select custom ranges
+			 */
 			dateRanges: this.getAvailableDateRanges(),
 		};
 	}
@@ -231,25 +234,14 @@ export class InsightsService {
 		});
 	}
 
-	getMaxAgeInDaysAndGranularity(
-		dateRangeKey: InsightsDateRange['key'],
-	): InsightsDateRange & { maxAgeInDays: number } {
-		const dateRange = this.getAvailableDateRanges().find((range) => range.key === dateRangeKey);
-
-		if (!dateRange) {
-			// Not supposed to happen if we trust the dateRangeKey type
-			throw new UserError('The selected date range is not available');
-		}
-
-		if (!dateRange.licensed) {
-			throw new UserError(
-				'The selected date range exceeds the maximum history allowed by your license.',
-			);
-		}
-
-		return { ...dateRange, maxAgeInDays: keyRangeToDays[dateRangeKey] };
-	}
-
+	/**
+	 * Checks if the selected date range is compliant with the license
+	 *
+	 * - If the granularity is 'hour', checks if the license allows hourly data access
+	 * - Checks if the start date is within the allowed history range
+	 *
+	 * @throws {UserError} if the license does not allow the selected date range
+	 */
 	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
 		const today = DateTime.now().startOf('day');
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
@@ -294,7 +286,7 @@ export class InsightsService {
 	}
 
 	/**
-	 * TODO: Remove
+	 * @deprecated Users can now select custom date ranges
 	 * Returns the available date ranges with their license authorization and time granularity
 	 * when grouped by time.
 	 */

@@ -29,9 +29,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto = { dateRange: 'week' },
 	): Promise<InsightsSummary> {
-		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
-		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
 			startDate,
@@ -48,9 +46,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
-		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
 			skip: query.skip,
@@ -70,9 +66,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
-		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		// Cast to full insights by time type
 		// as the service returns all types by default
@@ -94,9 +88,7 @@ export class InsightsController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
-		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
@@ -139,11 +131,21 @@ export class InsightsController {
 		}
 	}
 
+	private prepareDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
+		startDate: Date;
+		endDate: Date;
+	} {
+		this.validateQueryDates(query);
+		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
+		return { startDate, endDate };
+	}
+
 	/**
 	 * When the `startDate` is not provided, we default to the last 7 days.
 	 * When the `endDate` is not provided, we default to today.
 	 */
-	private getSanitizedDateFilters(query: InsightsDateFilterDto): {
+	private getSanitizedDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
 		startDate: Date;
 		endDate: Date;
 	} {
