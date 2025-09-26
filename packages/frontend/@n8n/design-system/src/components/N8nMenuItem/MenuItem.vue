@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+
+import type { IMenuItem } from '@n8n/design-system/types';
+
 import N8nIcon from '../N8nIcon';
-import { IconName, isSupportedIconName } from '../N8nIcon/icons';
+import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
-import { IMenuItem } from '@n8n/design-system/types';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -38,16 +40,20 @@ function toggleDropdown(event: Event) {
 	emit('toggleDropdown');
 }
 
-const icon = computed<IconName>(() => {
+const icon = computed<IconName | undefined>(() => {
 	if (props.item.type === 'folder') {
 		return props.open ? 'folder-open' : 'folder';
 	}
 
-	if (typeof props.item.icon === 'object' && props.item.icon?.value) {
-		return props.item.icon.value as IconName;
+	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
+		return props.item.icon.value;
 	}
 
-	return props.item.icon as IconName;
+	if (typeof props.item.icon === 'string') {
+		return props.item.icon;
+	}
+
+	return undefined;
 });
 </script>
 
@@ -68,15 +74,11 @@ const icon = computed<IconName>(() => {
 		>
 			<div v-if="item.icon" class="sidebarItemIcon" :class="{ other: item.type === 'other' }">
 				<span
-					v-if="
-						item.icon &&
-						typeof item.icon === 'object' &&
-						!isSupportedIconName(item.icon.value as string)
-					"
+					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 					class="sidebarItemEmoji"
 					>{{ item.icon.value }}</span
 				>
-				<N8nIcon v-else-if="item.icon" :icon="icon" />
+				<N8nIcon v-else-if="icon" :icon="icon" />
 			</div>
 			<button
 				v-if="item.children && item.type !== 'popover'"
