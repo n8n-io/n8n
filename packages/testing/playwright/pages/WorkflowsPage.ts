@@ -75,7 +75,7 @@ export class WorkflowsPage extends BasePage {
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
-	async searchWorkflows(searchTerm: string) {
+	async search(searchTerm: string) {
 		await this.clickByTestId('resources-list-search');
 		await this.fillByTestId('resources-list-search', searchTerm);
 	}
@@ -153,5 +153,43 @@ export class WorkflowsPage extends BasePage {
 
 	async filterByTag(tag: string) {
 		await this.filterByTags([tag]);
+	}
+
+	getFolderBreadcrumbsActions() {
+		return this.page.getByTestId('folder-breadcrumbs-actions');
+	}
+
+	getFolderBreadcrumbsActionToggle() {
+		return this.page.getByTestId('action-toggle-dropdown');
+	}
+
+	getFolderBreadcrumbsAction(actionName: string) {
+		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
+	}
+
+	addFolderButton() {
+		return this.page.getByTestId('add-folder-button');
+	}
+
+	// Add region for actions
+
+	/**
+	 * Add a folder from the add resource dropdown
+	 * @returns The name of the folder
+	 */
+	async addFolder() {
+		const folderName = 'My Test Folder';
+		await this.addResource.folder();
+		await this.fillFolderModal(folderName);
+		return folderName;
+	}
+
+	/**
+	 * Fill the folder modal
+	 * @param folderName - The name of the folder
+	 */
+	async fillFolderModal(folderName: string) {
+		await this.baseModal.fillInput(folderName);
+		await this.baseModal.clickButton('Create');
 	}
 }
