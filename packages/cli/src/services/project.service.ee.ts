@@ -401,13 +401,11 @@ export class ProjectService {
 		if (toInsert.length > 0) {
 			// Use insert to avoid accidental upsert of different role
 			await this.projectRelationRepository.insert(
-				toInsert.map((v) =>
-					this.projectRelationRepository.create({
-						projectId: project.id,
-						userId: v.userId,
-						role: { slug: v.role },
-					}),
-				),
+				toInsert.map((v) => ({
+					projectId: project.id,
+					userId: v.userId,
+					role: { slug: v.role },
+				})),
 			);
 			added.push(...toInsert);
 		}
