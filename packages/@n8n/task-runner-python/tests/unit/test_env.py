@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from src.env import read_env
+from src.env import read_env, read_int_env, read_bool_env
 
 
 class TestReadEnv:
@@ -105,8 +105,7 @@ class TestReadEnv:
             temp_file_path = f.name
 
         try:
-            # Make file unreadable
-            Path(temp_file_path).chmod(0o000)
+            Path(temp_file_path).chmod(0o000)  # Make file unreadable
             with patch.dict(os.environ, {"TEST_VAR_FILE": temp_file_path}):
                 with pytest.raises(ValueError) as exc_info:
                     read_env("TEST_VAR")
@@ -114,3 +113,72 @@ class TestReadEnv:
         finally:
             Path(temp_file_path).chmod(0o644)
             Path(temp_file_path).unlink()
+
+
+class TestReadIntEnv:
+    def test_returns_int_from_direct_env(self):
+        with patch.dict(os.environ, {"TEST_INT": "42"}):
+            result = read_int_env("TEST_INT", default=0)
+            assert result == 42
+
+    def test_returns_int_from_file(self):
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+            f.write("123")
+            temp_file_path = f.name
+
+        try:
+            with patch.dict(os.environ, {"TEST_INT_FILE": temp_file_path}):
+                result = read_int_env("TEST_INT", default=0)
+                assert result == 123
+        finally:
+            Path(temp_file_path).unlink()
+
+    def test_returns_default_when_not_set(self):
+        with patch.dict(os.environ, clear=True):
+            result = read_int_env("TEST_INT", default=999)
+            assert result == 999
+
+    def test_raises_error_for_invalid_int(self):
+        with patch.dict(os.environ, {"TEST_INT": "not_a_number"}):
+            with pytest.raises(ValueError) as exc_info:
+                read_int_env("TEST_INT", default=0)
+            assert "must be an integer" in str(exc_info.value)
+
+    def test_handles_negative_numbers(self):
+        with patch.dict(os.environ, {"TEST_INT": "-42"}):
+            result = read_int_env("TEST_INT", default=0)
+            assert result == -42
+
+
+class TestReadBoolEnv:
+    def test_returns_true_for_true_string(self):
+        with patch.dict(os.environ, {"TEST_BOOL": "true"}):
+            result = read_bool_env("TEST_BOOL", default=False)
+            assert result is True
+
+    def test_returns_false_for_false_string(self):
+        with patch.dict(os.environ, {"TEST_BOOL": "false"}):
+            result = read_bool_env("TEST_BOOL", default=True)
+            assert result is False
+
+    def test_returns_true_from_file(self):
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+            f.write("true")
+            temp_file_path = f.name
+
+        try:
+            with patch.dict(os.environ, {"TEST_BOOL_FILE": temp_file_path}):
+                result = read_bool_env("TEST_BOOL", default=False)
+                assert result is True
+        finally:
+            Path(temp_file_path).unlink()
+
+    def test_returns_default_when_not_set(self):
+        with patch.dict(os.environ, clear=True):
+            result = read_bool_env("TEST_BOOL", default=True)
+            assert result is True
+
+    def test_returns_false_default_when_not_set(self):
+        with patch.dict(os.environ, clear=True):
+            result = read_bool_env("TEST_BOOL", default=False)
+            assert result is False

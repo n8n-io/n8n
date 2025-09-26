@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Set
 
-from src.env import read_env
+from src.env import read_env, read_int_env
 from src.constants import (
     BUILTINS_DENY_DEFAULT,
     DEFAULT_MAX_CONCURRENCY,
@@ -65,46 +65,28 @@ class TaskRunnerConfig:
         if not grant_token:
             raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
 
-        task_timeout_str = read_env(ENV_TASK_TIMEOUT)
-        task_timeout = (
-            int(task_timeout_str) if task_timeout_str else DEFAULT_TASK_TIMEOUT
-        )
+        task_timeout = read_int_env(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)
         if task_timeout <= 0:
             raise ValueError(f"Task timeout must be positive, got {task_timeout}")
 
-        auto_shutdown_timeout_str = read_env(ENV_AUTO_SHUTDOWN_TIMEOUT)
-        auto_shutdown_timeout = (
-            int(auto_shutdown_timeout_str)
-            if auto_shutdown_timeout_str
-            else DEFAULT_AUTO_SHUTDOWN_TIMEOUT
+        auto_shutdown_timeout = read_int_env(
+            ENV_AUTO_SHUTDOWN_TIMEOUT, DEFAULT_AUTO_SHUTDOWN_TIMEOUT
         )
         if auto_shutdown_timeout < 0:
             raise ValueError(
                 f"Auto shutdown timeout must be non-negative, got {auto_shutdown_timeout}"
             )
 
-        graceful_shutdown_timeout_str = read_env(ENV_GRACEFUL_SHUTDOWN_TIMEOUT)
-        graceful_shutdown_timeout = (
-            int(graceful_shutdown_timeout_str)
-            if graceful_shutdown_timeout_str
-            else DEFAULT_SHUTDOWN_TIMEOUT
+        graceful_shutdown_timeout = read_int_env(
+            ENV_GRACEFUL_SHUTDOWN_TIMEOUT, DEFAULT_SHUTDOWN_TIMEOUT
         )
         if graceful_shutdown_timeout <= 0:
             raise ValueError(
                 f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
             )
 
-        max_concurrency_str = read_env(ENV_MAX_CONCURRENCY)
-        max_concurrency = (
-            int(max_concurrency_str) if max_concurrency_str else DEFAULT_MAX_CONCURRENCY
-        )
-
-        max_payload_size_str = read_env(ENV_MAX_PAYLOAD_SIZE)
-        max_payload_size = (
-            int(max_payload_size_str)
-            if max_payload_size_str
-            else DEFAULT_MAX_PAYLOAD_SIZE
-        )
+        max_concurrency = read_int_env(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)
+        max_payload_size = read_int_env(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
 
         return cls(
             grant_token=grant_token,

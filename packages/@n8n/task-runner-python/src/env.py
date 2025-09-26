@@ -16,3 +16,22 @@ def read_env(env_name: str) -> Optional[str]:
             raise ValueError(f"Failed to read {env_name} from file {file_path}: {e}")
 
     return None
+
+
+def read_int_env(env_name: str, default: int) -> int:
+    value = read_env(env_name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(
+            f"Environment variable {env_name} must be an integer, got '{value}'"
+        )
+
+
+def read_bool_env(env_name: str, default: bool) -> bool:
+    value = read_env(env_name)
+    if value is None:
+        return default
+    return value.lower() == "true"
