@@ -334,9 +334,9 @@ const onAddResourceClicked = async () => {
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
-					<n8n-text color="text-dark" align="center" tag="div">
+					<N8nText color="text-dark" align="center" tag="div">
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 			</template>
 			<div
@@ -353,7 +353,7 @@ const onAddResourceClicked = async () => {
 					}"
 				/>
 				<div :class="$style.modeSelector">
-					<n8n-select
+					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
@@ -361,7 +361,7 @@ const onAddResourceClicked = async () => {
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSwitched"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="mode in supportedModes"
 							:key="mode.name"
 							:value="mode.name"
@@ -374,8 +374,8 @@ const onAddResourceClicked = async () => {
 							"
 						>
 							{{ getModeLabel(mode) }}
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
@@ -404,7 +404,7 @@ const onAddResourceClicked = async () => {
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"
 								/>
-								<n8n-input
+								<N8nInput
 									v-else
 									ref="input"
 									:class="{ [$style.selectInput]: isListMode }"
@@ -430,7 +430,7 @@ const onAddResourceClicked = async () => {
 											}"
 										/>
 									</template>
-								</n8n-input>
+								</N8nInput>
 							</div>
 						</template>
 					</DraggableTarget>
@@ -445,9 +445,9 @@ const onAddResourceClicked = async () => {
 						:class="$style.openResourceLink"
 						data-test-id="rlc-open-resource-link"
 					>
-						<n8n-link theme="text" @click.stop="openWorkflow()">
-							<n8n-icon icon="external-link" :title="'Open resource link'" />
-						</n8n-link>
+						<N8nLink theme="text" @click.stop="openWorkflow()">
+							<N8nIcon icon="external-link" :title="'Open resource link'" />
+						</N8nLink>
 					</div>
 				</div>
 			</div>

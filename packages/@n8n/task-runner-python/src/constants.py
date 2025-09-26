@@ -1,3 +1,5 @@
+from src.errors import TaskCancelledError, TaskRuntimeError, SecurityViolationError
+
 # Messages
 BROKER_INFO_REQUEST = "broker:inforequest"
 BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
@@ -65,6 +67,12 @@ ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
 SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
+IGNORED_ERROR_TYPES = (
+    TaskRuntimeError,
+    TaskCancelledError,
+    SecurityViolationError,
+    SyntaxError,
+)
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"

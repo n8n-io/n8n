@@ -39,24 +39,24 @@ function goToUpgrade() {
 
 <template>
 	<div class="pb-3xl">
-		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</n8n-heading>
+		<N8nHeading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</N8nHeading>
 		<div
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="external-secrets-content-licensed"
 		>
-			<n8n-callout theme="secondary" class="mt-2xl mb-l">
+			<N8nCallout theme="secondary" class="mt-2xl mb-l">
 				{{ i18n.baseText('settings.externalSecrets.info') }}
 				<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}
 				</a>
-			</n8n-callout>
+			</N8nCallout>
 			<ExternalSecretsProviderCard
 				v-for="provider in sortedProviders"
 				:key="provider.name"
 				:provider="provider"
 			/>
 		</div>
-		<n8n-action-box
+		<N8nActionBox
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
@@ -75,6 +75,6 @@ function goToUpgrade() {
 					</template>
 				</I18nT>
 			</template>
-		</n8n-action-box>
+		</N8nActionBox>
 	</div>
 </template>

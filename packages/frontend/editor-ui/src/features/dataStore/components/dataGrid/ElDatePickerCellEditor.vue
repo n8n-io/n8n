@@ -38,7 +38,7 @@ defineExpose({
 
 <template>
 	<div ref="wrapperRef" class="datastore-datepicker-wrapper">
-		<el-date-picker
+		<ElDatePicker
 			id="datastore-datepicker"
 			ref="pickerRef"
 			v-model="dateValue"

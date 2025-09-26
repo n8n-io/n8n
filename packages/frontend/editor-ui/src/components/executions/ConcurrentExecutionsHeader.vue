@@ -42,8 +42,8 @@ const headerText = computed(() => {
 
 <template>
 	<div data-test-id="concurrent-executions-header">
-		<n8n-text>{{ headerText }}</n8n-text>
-		<n8n-tooltip>
+		<N8nText>{{ headerText }}</N8nText>
+		<N8nTooltip>
 			<template #content>
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
@@ -65,8 +65,8 @@ const headerText = computed(() => {
 					>
 				</div>
 			</template>
-			<n8n-icon icon="info" class="ml-2xs" />
-		</n8n-tooltip>
+			<N8nIcon icon="info" class="ml-2xs" />
+		</N8nTooltip>
 	</div>
 </template>
 

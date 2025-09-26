@@ -296,6 +296,7 @@ export type WorkflowResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
+	settings?: Partial<IWorkflowSettings>;
 };
 
 export type VariableResource = BaseResource & {
@@ -344,7 +345,7 @@ export type SortingAndPaginationUpdates = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 };
@@ -569,6 +570,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	availableInMCP?: boolean;
 }
 
 export interface ITimeoutHMS {
@@ -1125,7 +1127,9 @@ export type CloudUpdateLinkSourceType =
 	| 'rbac'
 	| 'debug'
 	| 'insights'
-	| 'evaluations';
+	| 'evaluations'
+	| 'ai-builder-sidebar'
+	| 'ai-builder-canvas';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1150,7 +1154,8 @@ export type UTMCampaign =
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
 	| 'upgrade-insights'
-	| 'upgrade-evaluations';
+	| 'upgrade-evaluations'
+	| 'upgrade-builder';
 
 export type N8nBanners = {
 	[key in BannerName]: {

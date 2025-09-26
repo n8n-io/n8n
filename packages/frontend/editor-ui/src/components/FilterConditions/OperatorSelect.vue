@@ -58,7 +58,7 @@ function onGroupSelect(group: string) {
 </script>
 
 <template>
-	<n8n-select
+	<N8nSelect
 		:key="selectedGroupIcon"
 		data-test-id="filter-operator-select"
 		size="small"
@@ -69,11 +69,11 @@ function onGroupSelect(group: string) {
 		@mouseenter="shouldRenderItems = true"
 	>
 		<template v-if="selectedGroupIcon" #prefix>
-			<n8n-icon :class="$style.icon" :icon="selectedGroupIcon" color="text-light" size="small" />
+			<N8nIcon :class="$style.icon" :icon="selectedGroupIcon" color="text-light" size="small" />
 		</template>
 		<div v-if="shouldRenderItems" :class="$style.groups">
 			<div v-for="group of groups" :key="group.name">
-				<n8n-popover
+				<N8nPopover
 					:visible="submenu === group.id"
 					placement="right-start"
 					:show-arrow="false"
@@ -94,30 +94,30 @@ function onGroupSelect(group: string) {
 							@click="() => onGroupSelect(group.id)"
 						>
 							<div :class="$style.groupTitle">
-								<n8n-icon v-if="group.icon" :icon="group.icon" :class="$style.icon" size="small" />
+								<N8nIcon v-if="group.icon" :icon="group.icon" :class="$style.icon" size="small" />
 								<span>{{ i18n.baseText(group.name) }}</span>
 							</div>
-							<n8n-icon icon="chevron-right" color="text-light" size="xsmall" />
+							<N8nIcon icon="chevron-right" color="text-light" size="xsmall" />
 						</div>
 					</template>
 					<div>
-						<n8n-option
+						<N8nOption
 							v-for="operator in group.children"
 							:key="getOperatorId(operator)"
 							:value="getOperatorId(operator)"
 							:label="i18n.baseText(operator.name)"
 						/>
 					</div>
-				</n8n-popover>
+				</N8nPopover>
 			</div>
 		</div>
-		<n8n-option
+		<N8nOption
 			v-else
 			:key="selected"
 			:value="selected"
 			:label="i18n.baseText(selectedOperator.name)"
 		/>
-	</n8n-select>
+	</N8nSelect>
 </template>
 
 <style lang="scss" module>

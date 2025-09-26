@@ -53,6 +53,7 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+	open: undefined,
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,

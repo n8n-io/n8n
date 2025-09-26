@@ -7,7 +7,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe('Canvas Node Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
+		await n8n.workflows.addResource.workflow();
 	});
 
 	test.describe('Node Search and Add', () => {

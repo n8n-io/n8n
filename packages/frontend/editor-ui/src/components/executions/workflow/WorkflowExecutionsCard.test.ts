@@ -33,7 +33,7 @@ const initialState = {
 const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<div><slot /></div>',
 			},
 		},

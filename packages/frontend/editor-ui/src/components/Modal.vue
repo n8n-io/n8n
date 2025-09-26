@@ -165,10 +165,10 @@ function getCustomClass() {
 		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
+					<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
+					<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
 				</div>
 			</div>
 		</template>
@@ -180,7 +180,7 @@ function getCustomClass() {
 		>
 			<slot v-if="!loading" name="content" />
 			<div v-else :class="$style.loader">
-				<n8n-spinner />
+				<N8nSpinner />
 			</div>
 		</div>
 		<div v-if="!loading && $slots.footer" :class="$style.footer">
