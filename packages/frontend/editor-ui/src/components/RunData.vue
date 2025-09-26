@@ -1663,6 +1663,18 @@ defineExpose({ enterEditMode });
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
@@ -1717,24 +1729,6 @@ defineExpose({ enterEditMode });
 					</N8nLink>
 				</N8nText>
 			</div>
-
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<NDVEmptyState
-				v-else-if="isTrimmedManualExecutionDataItem"
-				:class="$style.center"
-				:title="i18n.baseText('runData.trimmedData.title')"
-			>
-				{{ i18n.baseText('runData.trimmedData.message') }}
-			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
