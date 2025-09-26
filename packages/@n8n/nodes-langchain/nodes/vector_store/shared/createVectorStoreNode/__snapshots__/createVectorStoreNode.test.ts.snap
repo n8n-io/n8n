@@ -52,7 +52,7 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
 					return inputs;
 				}
 
-				if (['insert', 'load', 'update'].includes(mode)) {
+				if (['insert', 'load', 'update', 'delete'].includes(mode)) {
 					inputs.push({ displayName: "", type: "main"})
 				}
 
