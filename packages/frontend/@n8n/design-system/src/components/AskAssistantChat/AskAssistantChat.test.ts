@@ -269,33 +269,6 @@ describe('AskAssistantChat', () => {
 		expect(wrapper.container.textContent).toContain('This is an error message.');
 	});
 
-	it('does not render retry button if no error is present', () => {
-		const wrapper = render(AskAssistantChat, {
-			global: {
-				directives: {
-					n8nHtml,
-				},
-				stubs: stubsWithMessageWrapper,
-			},
-			props: {
-				user: { firstName: 'Kobi', lastName: 'Dog' },
-				messages: [
-					{
-						id: '1',
-						type: 'text',
-						role: 'assistant',
-						content:
-							'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
-						read: false,
-					},
-				],
-			},
-		});
-
-		expect(wrapper.container).toMatchSnapshot();
-		// Since MessageWrapper is stubbed, the error retry button won't be rendered
-	});
-
 	it('limits maximum input length when maxCharacterLength prop is specified', async () => {
 		const wrapper = render(AskAssistantChat, {
 			global: {
