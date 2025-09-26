@@ -105,6 +105,7 @@ export function useLogsExecutionData() {
 			() => workflowsStore.workflowExecutionData?.id,
 			() => workflowsStore.workflowExecutionData?.workflowData.id,
 			() => workflowsStore.workflowExecutionData?.status,
+			() => workflowsStore.workflowExecutionData?.stoppedAt,
 			() => workflowsStore.workflowExecutionResultDataLastUpdate,
 			() => workflowsStore.workflowExecutionStartedData,
 		],

@@ -22,7 +22,7 @@ const executionStatusText = computed(() =>
 		? locale.baseText('logs.overview.body.summaryText.for', {
 				interpolate: {
 					status: upperFirst(status),
-					time: locale.displayTimer(Math.floor((now.value - startTime) / 1000) * 1000, true),
+					time: locale.displayTimer(Math.max(0, now.value - startTime), false),
 				},
 			})
 		: timeTook === undefined
@@ -30,7 +30,7 @@ const executionStatusText = computed(() =>
 			: locale.baseText('logs.overview.body.summaryText.in', {
 					interpolate: {
 						status: upperFirst(status),
-						time: locale.displayTimer(timeTook, true),
+						time: locale.displayTimer(Math.max(0, timeTook), true),
 					},
 				}),
 );
