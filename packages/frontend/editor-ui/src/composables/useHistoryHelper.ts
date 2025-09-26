@@ -11,6 +11,7 @@ import { getNodeViewTab } from '@/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
+import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
@@ -124,7 +125,14 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 		const isAnyModalOpen = uiStore.isAnyModalOpen || isMessageDialogOpen();
 		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 
-		if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
+		if (
+			event.repeat ||
+			currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW ||
+			(event.target instanceof HTMLElement && shouldIgnoreCanvasShortcut(event.target))
+		) {
+			return;
+		}
+
 		if (isNDVOpen || isAnyModalOpen) {
 			if (isNDVOpen && undoKeysPressed && !event.shiftKey) {
 				trackUndoAttempt();

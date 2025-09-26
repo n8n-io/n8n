@@ -105,12 +105,13 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 		:reference="reference"
 		:suppress-auto-focus="true"
 		:z-index="APP_Z_INDEXES.NDV + 1"
+		content-class="ignore-key-press-canvas ignore-key-press-node-creator"
 	>
 		<template #content>
 			<InputPanel
 				ref="content"
 				:tabindex="-1"
-				:class="[$style.inputPanel, 'ignore-key-press-canvas']"
+				:class="$style.inputPanel"
 				:workflow-object="workflow"
 				:run-index="0"
 				compact
