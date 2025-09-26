@@ -33,6 +33,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -227,6 +228,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();

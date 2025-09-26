@@ -525,7 +525,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			);
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+			workflowData.homeProject,
+			workflowData.sharedWithProjects,
+		);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({

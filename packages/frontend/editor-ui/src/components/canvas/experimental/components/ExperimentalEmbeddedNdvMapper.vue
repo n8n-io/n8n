@@ -123,6 +123,7 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
 				:truncate-limit="60"
+				search-shortcut="ctrl+f"
 			/>
 		</template>
 	</N8nPopoverReka>

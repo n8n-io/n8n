@@ -1423,6 +1423,7 @@ export interface INodePropertyTypeOptions {
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
 	calloutAction?: CalloutAction; // Supported by: callout
+	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
 }
 
@@ -2406,7 +2407,7 @@ export interface IRunExecutionData {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
 export type SchemaType =
@@ -2564,13 +2565,6 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
-	/**
-	 * Defines which version of the partial execution flow is used.
-	 * Possible values are:
-	 *  1 - use the old flow
-	 *  2 - use the new flow
-	 */
-	partialExecutionVersion?: 1 | 2;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
