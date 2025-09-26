@@ -291,16 +291,17 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			total_value: string | number;
 		}>
 	> {
-		const { daysToStartDate, daysToEndDate, daysDifference } = this.getDateRangesDaysLimits({
-			startDate,
-			endDate,
-		});
+		const { daysFromStartDateToToday, daysFromEndDateToToday, dateRangeInDays } =
+			this.getDateRangesDaysLimits({
+				startDate,
+				endDate,
+			});
 
 		const cte = sql`
 			SELECT
-				${this.getAgeLimitQuery(daysToStartDate)} AS current_start,
-				${this.getAgeLimitQuery(daysToEndDate)} AS current_end,
-				${this.getAgeLimitQuery(daysToStartDate + daysDifference)}  AS previous_start
+				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS current_start,
+				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS current_end,
+				${this.getAgeLimitQuery(daysFromStartDateToToday + dateRangeInDays)}  AS previous_start
 		`;
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
@@ -359,12 +360,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const { daysToStartDate, daysToEndDate } = this.getDateRangesDaysLimits({ startDate, endDate });
+		const { daysFromStartDateToToday, daysFromEndDateToToday } = this.getDateRangesDaysLimits({
+			startDate,
+			endDate,
+		});
 
 		const cte = sql`
 			SELECT
-				${this.getAgeLimitQuery(daysToStartDate)} AS start_date,
-				${this.getAgeLimitQuery(daysToEndDate)} AS end_date
+				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS start_date,
+				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS end_date
 		`;
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
@@ -422,12 +426,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate: Date;
 		endDate: Date;
 	}) {
-		const { daysToStartDate, daysToEndDate } = this.getDateRangesDaysLimits({ startDate, endDate });
+		const { daysFromStartDateToToday, daysFromEndDateToToday } = this.getDateRangesDaysLimits({
+			startDate,
+			endDate,
+		});
 
 		const cte = sql`
 			SELECT
-				${this.getAgeLimitQuery(daysToStartDate)} AS start_date,
-				${this.getAgeLimitQuery(daysToEndDate)} AS end_date
+				${this.getAgeLimitQuery(daysFromStartDateToToday)} AS start_date,
+				${this.getAgeLimitQuery(daysFromEndDateToToday)} AS end_date
 		`;
 
 		const typesAggregation = insightTypes.map((type) => {
@@ -459,19 +466,19 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const currentStart = DateTime.fromJSDate(startDate).startOf('day');
 		const currentEnd = DateTime.fromJSDate(endDate).startOf('day');
 
-		let daysToStartDate = today.diff(currentStart, 'days').days;
+		let daysFromStartDateToToday = today.diff(currentStart, 'days').days;
 		// ensure that at least one day is covered
-		if (daysToStartDate < 1) {
-			daysToStartDate = 1;
+		if (daysFromStartDateToToday < 1) {
+			daysFromStartDateToToday = 1;
 		}
-		const daysToEndDate = today.diff(currentEnd, 'days').days;
+		const daysFromEndDateToToday = today.diff(currentEnd, 'days').days;
 
-		const daysDifference = daysToStartDate - daysToEndDate;
+		const dateRangeInDays = daysFromStartDateToToday - daysFromEndDateToToday;
 
 		return {
-			daysToStartDate,
-			daysToEndDate,
-			daysDifference,
+			daysFromStartDateToToday,
+			daysFromEndDateToToday,
+			dateRangeInDays,
 		};
 	}
 
