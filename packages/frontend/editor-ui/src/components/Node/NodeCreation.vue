@@ -113,7 +113,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['Tab'] }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				icon="plus"
 				type="tertiary"
@@ -126,7 +126,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['s'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				size="large"
 				type="tertiary"
 				icon="sticky-note"
@@ -139,7 +139,7 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button
+			<N8nIconButton
 				type="tertiary"
 				size="large"
 				icon="panel-right"
@@ -149,9 +149,9 @@ function onAskAssistantButtonClick() {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
+		<N8nTooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
-			<n8n-button
+			<N8nButton
 				type="tertiary"
 				size="large"
 				square
@@ -164,8 +164,8 @@ function onAskAssistantButtonClick() {
 						<AssistantIcon size="large" />
 					</div>
 				</template>
-			</n8n-button>
-		</n8n-tooltip>
+			</N8nButton>
+		</N8nTooltip>
 	</div>
 	<Suspense>
 		<LazyNodeCreator

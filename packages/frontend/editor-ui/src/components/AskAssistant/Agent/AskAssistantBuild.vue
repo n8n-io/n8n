@@ -11,6 +11,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const emit = defineEmits<{
 	close: [];
@@ -24,6 +25,7 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const workflowSaver = useWorkflowSaving({ router });
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
@@ -38,6 +40,9 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
+const creditsQuota = computed(() => builderStore.creditsQuota);
+const creditsRemaining = computed(() => builderStore.creditsRemaining);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner !== false);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -190,9 +195,13 @@ watch(currentRoute, () => {
 			:title="'n8n AI'"
 			:show-stop="true"
 			:scroll-on-new-message="true"
+			:credits-quota="creditsQuota"
+			:credits-remaining="creditsRemaining"
+			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.stopStreaming"
 		>
@@ -200,9 +209,9 @@ watch(currentRoute, () => {
 				<slot name="header" />
 			</template>
 			<template #placeholder>
-				<n8n-text :class="$style.topText">{{
+				<N8nText :class="$style.topText">{{
 					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
-				}}</n8n-text>
+				}}</N8nText>
 			</template>
 		</AskAssistantChat>
 	</div>

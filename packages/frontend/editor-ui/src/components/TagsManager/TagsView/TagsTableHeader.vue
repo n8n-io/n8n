@@ -33,9 +33,9 @@ const onSearchChange = (search: string) => {
 </script>
 
 <template>
-	<el-row class="tags-header">
-		<el-col :span="10">
-			<n8n-input
+	<ElRow class="tags-header">
+		<ElCol :span="10">
+			<N8nInput
 				:placeholder="i18n.baseText('tagsTableHeader.searchTags')"
 				:model-value="search"
 				:disabled="disabled"
@@ -44,12 +44,12 @@ const onSearchChange = (search: string) => {
 				@update:model-value="onSearchChange"
 			>
 				<template #prefix>
-					<n8n-icon icon="search" />
+					<N8nIcon icon="search" />
 				</template>
-			</n8n-input>
-		</el-col>
-		<el-col :span="14">
-			<n8n-button
+			</N8nInput>
+		</ElCol>
+		<ElCol :span="14">
+			<N8nButton
 				:disabled="disabled"
 				icon="plus"
 				:label="i18n.baseText('tagsTableHeader.addNew')"
@@ -57,8 +57,8 @@ const onSearchChange = (search: string) => {
 				float="right"
 				@click="onAddNew"
 			/>
-		</el-col>
-	</el-row>
+		</ElCol>
+	</ElRow>
 </template>
 
 <style lang="scss" scoped>

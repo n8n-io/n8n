@@ -105,26 +105,26 @@ onMounted(async () => {
 <template>
 	<div :class="$style['data-store-details-view']">
 		<div v-if="loading" data-test-id="data-store-details-loading">
-			<n8n-loading
+			<N8nLoading
 				variant="h1"
 				:loading="true"
 				:rows="1"
 				:shrink-last="false"
 				:class="$style['header-loading']"
 			/>
-			<n8n-loading :loading="true" variant="h1" :rows="10" :shrink-last="false" />
+			<N8nLoading :loading="true" variant="h1" :rows="10" :shrink-last="false" />
 		</div>
 		<div v-else-if="dataStore">
 			<div :class="$style.header">
 				<DataStoreBreadcrumbs :data-store="dataStore" />
 				<div v-if="saving" :class="$style.saving">
-					<n8n-spinner />
-					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
+					<N8nSpinner />
+					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
-					<n8n-button @click="dataStoreTableRef?.addRow">{{
+					<N8nButton @click="dataStoreTableRef?.addRow">{{
 						i18n.baseText('dataStore.addRow.label')
-					}}</n8n-button>
+					}}</N8nButton>
 					<AddColumnButton
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"

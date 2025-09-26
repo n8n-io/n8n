@@ -125,23 +125,46 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
-		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
+		const { name, icon, description } = projectData;
+		const payload: UpdateProjectDto = {};
+		if (name !== undefined) payload.name = name;
+		if (icon !== undefined) payload.icon = icon;
+		if (description !== undefined) payload.description = description;
+		await projectsApi.updateProject(rootStore.restApiContext, id, payload);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon, description, relations } = projectData;
+		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {
-			if (typeof name !== 'undefined') myProjects.value[projectIndex].name = name;
-			if (typeof icon !== 'undefined') myProjects.value[projectIndex].icon = icon;
-			if (typeof description !== 'undefined')
-				myProjects.value[projectIndex].description = description;
+			if (nm !== undefined) myProjects.value[projectIndex].name = nm;
+			if (ic !== undefined) myProjects.value[projectIndex].icon = ic;
+			if (desc !== undefined) myProjects.value[projectIndex].description = desc;
 		}
 		if (currentProject.value) {
-			if (typeof name !== 'undefined') currentProject.value.name = name;
-			if (typeof icon !== 'undefined') currentProject.value.icon = icon;
-			if (typeof description !== 'undefined') currentProject.value.description = description;
+			if (nm !== undefined) currentProject.value.name = nm;
+			if (ic !== undefined) currentProject.value.icon = ic;
+			if (desc !== undefined) currentProject.value.description = desc;
 		}
-		if (relations) {
-			await getProject(id);
-		}
+	};
+
+	const addMember = async (
+		projectId: string,
+		{ userId, role }: { userId: string; role: string },
+	): Promise<void> => {
+		await projectsApi.addProjectMembers(rootStore.restApiContext, projectId, [{ userId, role }]);
+		await getProject(projectId);
+	};
+
+	const updateMemberRole = async (
+		projectId: string,
+		userId: string,
+		role: string,
+	): Promise<void> => {
+		await projectsApi.updateProjectMemberRole(rootStore.restApiContext, projectId, userId, role);
+		await getProject(projectId);
+	};
+
+	const removeMember = async (projectId: string, userId: string): Promise<void> => {
+		await projectsApi.deleteProjectMember(rootStore.restApiContext, projectId, userId);
+		await getProject(projectId);
 	};
 
 	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
@@ -286,6 +309,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProject,
 		createProject,
 		updateProject,
+		addMember,
+		updateMemberRole,
+		removeMember,
 		deleteProject,
 		getProjectsCount,
 		setProjectNavActiveIdByWorkflowHomeProject,

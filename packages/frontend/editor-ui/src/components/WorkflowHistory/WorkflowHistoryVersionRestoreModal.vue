@@ -30,13 +30,13 @@ const closeModal = () => {
 <template>
 	<Modal width="500px" :name="props.modalName" :before-close="props.data.beforeClose">
 		<template #header>
-			<n8n-heading tag="h2" size="xlarge">
+			<N8nHeading tag="h2" size="xlarge">
 				{{ i18n.baseText('workflowHistory.action.restore.modal.title') }}
-			</n8n-heading>
+			</N8nHeading>
 		</template>
 		<template #content>
 			<div>
-				<n8n-text>
+				<N8nText>
 					<I18nT keypath="workflowHistory.action.restore.modal.subtitle" tag="span" scope="global">
 						<template #date>
 							<strong>{{ props.data.formattedCreatedAt }}</strong>
@@ -56,12 +56,12 @@ const closeModal = () => {
 							}}&rdquo;
 						</template>
 					</I18nT>
-				</n8n-text>
+				</N8nText>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					v-for="(button, index) in props.data.buttons"
 					:key="index"
 					size="medium"
@@ -74,7 +74,7 @@ const closeModal = () => {
 					"
 				>
 					{{ button.text }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>

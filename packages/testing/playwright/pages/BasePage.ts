@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test';
 
+import { BaseModal } from './components/BaseModal';
+
 export abstract class BasePage {
+	protected readonly baseModal = new BaseModal(this.page);
 	constructor(protected readonly page: Page) {}
 
 	protected async clickByTestId(testId: string) {

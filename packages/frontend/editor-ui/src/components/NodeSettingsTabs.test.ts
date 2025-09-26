@@ -1,21 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { ref } from 'vue';
+import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 const renderComponent = createComponentRenderer(NodeSettingsTabs);
 
-vi.mock('@/stores/communityNodes.store', () => ({
-	useCommunityNodesStore: vi.fn(() => ({
-		getInstalledPackage: vi.fn(),
+vi.mock('@/composables/useInstalledCommunityPackage', () => ({
+	useInstalledCommunityPackage: vi.fn(() => ({
+		installedPackage: ref<ExtendedPublicInstalledPackage | undefined>(undefined),
+		isCommunityNode: ref(false),
+		isUpdateCheckAvailable: ref(false),
+		initInstalledPackage: vi.fn(),
 	})),
 }));
+
+let installedCommunityPackage: ReturnType<typeof useInstalledCommunityPackage>;
 
 describe('NodeSettingsTabs', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		installedCommunityPackage = useInstalledCommunityPackage();
 	});
 
 	afterEach(() => {
@@ -30,10 +38,16 @@ describe('NodeSettingsTabs', () => {
 	});
 
 	it('displays notification when updateAvailable', async () => {
-		const communityNodesStore = useCommunityNodesStore();
-		vi.spyOn(communityNodesStore, 'getInstalledPackage').mockResolvedValue({
-			updateAvailable: '1.0.1',
-		} as PublicInstalledPackage);
+		vi.spyOn(installedCommunityPackage.isUpdateCheckAvailable, 'value', 'get').mockReturnValue(
+			true,
+		);
+		vi.spyOn(installedCommunityPackage.installedPackage, 'value', 'get').mockReturnValue(
+			mock<ExtendedPublicInstalledPackage>({
+				packageName: 'test-package',
+				installedVersion: '1.0.0',
+				updateAvailable: '1.0.1',
+			}),
+		);
 
 		const { findByTestId } = renderComponent({
 			props: {},
@@ -43,12 +57,8 @@ describe('NodeSettingsTabs', () => {
 		expect(notification).toBeDefined();
 	});
 
-	it('does not display notification when not updateAvailable', async () => {
-		const communityNodesStore = useCommunityNodesStore();
-		vi.spyOn(communityNodesStore, 'getInstalledPackage').mockResolvedValue(
-			{} as PublicInstalledPackage,
-		);
-
+	it('does not display notification when not updateAvailable', () => {
+		// Default mock values (from beforeEach) should not trigger notification
 		const { queryByTestId } = renderComponent({
 			props: {},
 		});

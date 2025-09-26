@@ -1932,7 +1932,7 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
 				v-else-if="showFolders && currentFolder"
