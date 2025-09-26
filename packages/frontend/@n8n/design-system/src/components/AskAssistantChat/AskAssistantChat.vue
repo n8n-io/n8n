@@ -32,7 +32,6 @@ interface Props {
 	showStop?: boolean;
 	creditsQuota?: number;
 	creditsRemaining?: number;
-	onUpgradeClick?: () => void;
 	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 }
@@ -44,6 +43,7 @@ const emit = defineEmits<{
 	codeReplace: [number];
 	codeUndo: [number];
 	feedback: [RatingFeedback];
+	'upgrade-click': [];
 }>();
 
 const onClose = () => emit('close');
@@ -428,10 +428,10 @@ defineExpose({
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"
-				:on-upgrade-click="onUpgradeClick"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
+				@upgrade-click="emit('upgrade-click')"
 				data-test-id="chat-input"
 				@submit="onSendMessage"
 				@stop="emit('stop')"

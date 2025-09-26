@@ -625,14 +625,12 @@ describe('N8nPromptInput', () => {
 		});
 	});
 
-	describe('onUpgradeClick callback', () => {
-		it('should pass onUpgradeClick prop to the component', () => {
-			const onUpgradeClick = vi.fn();
+	describe('upgrade-click event', () => {
+		it('should emit upgrade-click event when upgrade link is clicked', async () => {
 			const wrapper = mount(N8nPromptInput, {
 				props: {
 					creditsQuota: 100,
 					creditsRemaining: 10,
-					onUpgradeClick,
 				},
 				global: {
 					stubs: [
@@ -646,18 +644,13 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Verify the onUpgradeClick prop is passed to the component
-			expect(wrapper.props('onUpgradeClick')).toBe(onUpgradeClick);
+			// Find and click the upgrade link
+			const upgradeLink = wrapper.find('.n8n-link');
+			await upgradeLink.trigger('click');
 
-			// Verify it's a function
-			expect(typeof wrapper.props('onUpgradeClick')).toBe('function');
-
-			// Call it directly to ensure it works
-			const upgradeCallback = wrapper.props('onUpgradeClick');
-			if (upgradeCallback && typeof upgradeCallback === 'function') {
-				upgradeCallback();
-			}
-			expect(onUpgradeClick).toHaveBeenCalled();
+			// Verify the upgrade-click event was emitted
+			expect(wrapper.emitted('upgrade-click')).toBeTruthy();
+			expect(wrapper.emitted('upgrade-click')).toHaveLength(1);
 
 			wrapper.unmount();
 		});

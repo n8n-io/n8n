@@ -40,7 +40,7 @@ export default {
 
 const methods = {
 	onUpdateModelValue: action('update:modelValue'),
-	onUpgradeClick: action('update:modelValue'),
+	onUpgradeClick: action('upgrade-click'),
 	onSubmit: action('submit'),
 	onStop: action('stop'),
 	onFocus: action('focus'),
@@ -289,13 +289,6 @@ WithCreditsAndUpgrade.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 119,
-	onUpgradeClick: () => {
-		action('onUpgradeClick')('Opening n8n pricing page');
-		window.open(
-			'https://n8n.io/pricing?utm_source=storybook&utm_campaign=ai-builder-credits',
-			'_blank',
-		);
-	},
 };
 WithCreditsAndUpgrade.storyName = 'With Credits and Upgrade Button';
 
@@ -304,13 +297,6 @@ WithCreditsNoUpgrade.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 23,
-	onUpgradeClick: () => {
-		action('onUpgradeClick')('Opening n8n pricing page (non-owner)');
-		window.open(
-			'https://n8n.io/pricing?utm_source=storybook&utm_campaign=ai-builder-credits',
-			'_blank',
-		);
-	},
 	showAskOwnerTooltip: true,
 };
 WithCreditsNoUpgrade.storyName = 'With Credits (Shows Ask Admin Tooltip)';
@@ -320,13 +306,6 @@ LowCredits.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 5,
-	onUpgradeClick: () => {
-		action('onUpgradeClick')('Opening n8n pricing page (low credits)');
-		window.open(
-			'https://n8n.io/pricing?utm_source=storybook&utm_campaign=ai-builder-credits',
-			'_blank',
-		);
-	},
 };
 LowCredits.storyName = 'Low Credits Remaining';
 
@@ -335,13 +314,6 @@ NoCreditsRemaining.args = {
 	placeholder: 'Type your message here...',
 	creditsQuota: 150,
 	creditsRemaining: 0,
-	onUpgradeClick: () => {
-		action('onUpgradeClick')('Opening n8n pricing page (no credits)');
-		window.open(
-			'https://n8n.io/pricing?utm_source=storybook&utm_campaign=ai-builder-credits',
-			'_blank',
-		);
-	},
 };
 NoCreditsRemaining.storyName = 'No Credits Remaining';
 
@@ -369,7 +341,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 			onStop: methods.onStop,
 			onFocus: methods.onFocus,
 			onBlur: methods.onBlur,
-			onUpgradeClick: args.onUpgradeClick || methods.onUpgradeClick,
+			onUpgradeClick: methods.onUpgradeClick,
 		};
 	},
 	template: `
@@ -392,7 +364,7 @@ const CreditsInteractiveTemplate: StoryFn = (args) => ({
 				@stop="onStop"
 				@focus="onFocus"
 				@blur="onBlur"
-				@onUpgradeClick="onUpgradeClick"
+				@upgrade-click="onUpgradeClick"
 			/>
 		</div>
 	`,
@@ -403,12 +375,5 @@ CreditsInteractive.args = {
 	placeholder: 'Type a message (uses 1 credit)...',
 	creditsQuota: 150,
 	creditsRemaining: 2,
-	onUpgradeClick: () => {
-		action('onUpgradeClick')('Opening n8n pricing page (interactive demo)');
-		window.open(
-			'https://n8n.io/pricing?utm_source=storybook&utm_campaign=ai-builder-credits',
-			'_blank',
-		);
-	},
 };
 CreditsInteractive.storyName = 'Credits Interactive Demo';

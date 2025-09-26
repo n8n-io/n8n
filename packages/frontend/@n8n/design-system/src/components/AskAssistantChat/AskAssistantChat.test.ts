@@ -1068,11 +1068,10 @@ describe('AskAssistantChat', () => {
 								'maxLength',
 								'creditsQuota',
 								'creditsRemaining',
-								'onUpgradeClick',
 								'showAskOwnerTooltip',
 								'refocusAfterSend',
 							],
-							emits: ['update:modelValue', 'submit', 'stop'],
+							emits: ['update:modelValue', 'submit', 'stop', 'upgrade-click'],
 							setup(
 								props: unknown,
 								{

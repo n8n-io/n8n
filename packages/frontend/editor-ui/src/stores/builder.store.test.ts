@@ -1225,6 +1225,90 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('hasNoCreditsRemaining', () => {
+		it('should return false when creditsRemaining is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			// No credits initialized
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when creditsRemaining is 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when creditsRemaining is greater than 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 30);
+
+			expect(builderStore.creditsRemaining).toBe(70);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when quota is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(undefined, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when claimed is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, undefined);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when unlimited credits (quota = -1)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(-1, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when claimed exceeds quota', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(50, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when user has credits available', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 25);
+
+			expect(builderStore.creditsRemaining).toBe(75);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true immediately after all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+
+			// Start with some credits
+			builderStore.updateBuilderCredits(100, 99);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+
+			// Consume last credit
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+	});
+
 	describe('fetchBuilderCredits', () => {
 		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 

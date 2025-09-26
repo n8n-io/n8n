@@ -122,6 +122,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return remaining > 0 ? remaining : 0;
 	});
 
+	const hasNoCreditsRemaining = computed(() => {
+		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
+	});
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -477,8 +481,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
-		creditsQuota.value = quota;
-		creditsClaimed.value = claimed;
+		creditsQuota.value = 10;
+		creditsClaimed.value = 10;
 	}
 
 	// Public API
@@ -503,6 +507,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration,
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
+		hasNoCreditsRemaining,
 
 		// Methods
 		updateWindowWidth,

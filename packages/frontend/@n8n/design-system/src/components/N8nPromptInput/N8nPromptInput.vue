@@ -20,7 +20,6 @@ export interface N8nPromptInputProps {
 	disabled?: boolean;
 	creditsQuota?: number;
 	creditsRemaining?: number;
-	onUpgradeClick?: () => void;
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
 }
@@ -45,6 +44,7 @@ const emit = defineEmits<{
 	stop: [];
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
+	'upgrade-click': [];
 }>();
 
 const { t } = useI18n();
@@ -389,7 +389,7 @@ defineExpose({
 				:content="t('promptInput.askAdminToUpgrade')"
 				placement="top"
 			>
-				<N8nLink size="small" theme="text" @click="() => onUpgradeClick?.()">
+				<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
 					{{ t('promptInput.getMore') }}
 				</N8nLink>
 			</N8nTooltip>

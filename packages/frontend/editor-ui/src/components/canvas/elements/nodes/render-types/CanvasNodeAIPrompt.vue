@@ -71,6 +71,10 @@ async function onSubmit() {
  * @param suggestion - The workflow suggestion that was clicked
  */
 async function onSuggestionClick(suggestion: WorkflowSuggestion) {
+	if (builderStore.hasNoCreditsRemaining === true) {
+		return;
+	}
+
 	// Track telemetry
 	telemetry.track('User clicked suggestion pill', {
 		prompt: prompt.value,
@@ -134,11 +138,11 @@ function onAddNodeClick() {
 				:max-lines-before-scroll="4"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"
-				:on-upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:min-lines="2"
 				data-test-id="ai-builder-prompt"
 				@submit="onSubmit"
+				@upgrade-click="() => goToUpgrade('ai-builder-canvas', 'upgrade-builder')"
 				@stop="builderStore.stopStreaming"
 				@input="userEditedPrompt = true"
 			/>
@@ -150,7 +154,7 @@ function onAddNodeClick() {
 				v-for="suggestion in suggestions"
 				:key="suggestion.id"
 				:class="$style.suggestionPill"
-				:disabled="builderStore.streaming"
+				:disabled="builderStore.streaming || builderStore.hasNoCreditsRemaining"
 				type="button"
 				@click="onSuggestionClick(suggestion)"
 			>
@@ -242,6 +246,10 @@ function onAddNodeClick() {
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 		background: var(--color-background-xlight);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
 	}
 }
 

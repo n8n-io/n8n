@@ -197,11 +197,11 @@ watch(currentRoute, () => {
 			:scroll-on-new-message="true"
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
-			:on-upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.stopStreaming"
 		>
