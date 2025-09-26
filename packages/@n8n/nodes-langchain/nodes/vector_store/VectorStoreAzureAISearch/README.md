@@ -38,9 +38,9 @@ Create an Azure AI Search credential with the following settings:
   - `Vector`: Vector similarity search only
   - `Hybrid`: Combines vector and keyword search (recommended)
   - `Semantic Hybrid`: Hybrid search with semantic ranking
-- **Results Count**: Number of results to return from Azure AI Search (default: 4)
+- **Results Count**: Number of results to return from Azure AI Search (default: 50)
 - **Filter**: Optional OData filter expression (e.g., `category eq 'technology'`)
-- **Semantic Configuration**: Optional name of the semantic configuration for semantic hybrid search (if not provided, semantic hybrid search will run without a specific configuration)
+- **Semantic Configuration**: Optional name of the semantic configuration for semantic hybrid search
 
 ## Operation Modes
 
@@ -81,7 +81,7 @@ Configure the retrieve operation with:
 2. **Semantic Configuration**: Set up semantic ranking in Azure portal for better relevance with semantic hybrid search
 3. **Authentication**: Use Managed Identity in production environments for enhanced security
 4. **Filter Optimization**: Use specific filters to improve search performance and relevance
-5. **Batch Size**: When inserting documents, configure the batch size for uploading to Azure AI Search based on your service tier (this is separate from embedding batch size which is configured upstream)
+5. **Batch Size**: Configure the batch size for uploading documents to Azure AI Search based on your service tier. This controls indexing batches, not embedding batches (which are configured upstream in embedding nodes)
 
 ## Troubleshooting
 
@@ -92,6 +92,6 @@ Configure the retrieve operation with:
 
 ## Links
 
-- [Azure AI Search Documentation](https://docs.microsoft.com/en-us/azure/search/)
+- [Azure AI Search Documentation](https://docs.microsoft.com/azure/search/)
 - [LangChain Azure AI Search Integration](https://js.langchain.com/docs/integrations/vectorstores/azure_aisearch/)
-- [OData Filter Syntax](https://docs.microsoft.com/en-us/odata/concepts/queryoptions-overview)
+- [OData Filter Syntax](https://docs.microsoft.com/odata/concepts/queryoptions-overview)
