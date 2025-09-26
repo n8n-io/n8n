@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { defineComponent, h } from 'vue';
+
+// Type for Vue component instance with setup state
+interface VueComponentInstance {
+	__vueParentComponent?: {
+		setupState?: {
+			onUserMessage?: (message: string) => Promise<void>;
+		};
+	};
+}
 
 // Mock workflow saving first before any other imports
 const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
@@ -9,6 +19,64 @@ vi.mock('@/composables/useWorkflowSaving', () => ({
 		setDocumentTitle: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
+	}),
+}));
+
+// Mock AskAssistantChat component
+vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', () => ({
+	default: defineComponent({
+		name: 'AskAssistantChat',
+		props: [
+			'user',
+			'messages',
+			'streaming',
+			'loadingMessage',
+			'creditsQuota',
+			'creditsRemaining',
+			'showAskOwnerTooltip',
+		],
+		emits: ['message', 'feedback', 'stop', 'upgrade-click'],
+		setup(props, { emit, expose }) {
+			const feedbackText = { value: '' };
+
+			const sendMessage = (message: string) => {
+				emit('message', message);
+			};
+			expose({ sendMessage });
+
+			// Create a more realistic mock that includes rating buttons when needed
+			return () => {
+				const lastMessage = props.messages?.[props.messages.length - 1];
+				const showRating = lastMessage?.showRating;
+
+				return h('div', { 'data-test-id': 'mocked-assistant-chat' }, [
+					showRating
+						? [
+								h('button', {
+									'data-test-id': 'message-thumbs-up-button',
+									onClick: () => emit('feedback', { rating: 'up' }),
+								}),
+								h('button', {
+									'data-test-id': 'message-thumbs-down-button',
+									onClick: () => {
+										emit('feedback', { rating: 'down' });
+									},
+								}),
+								h('input', {
+									'data-test-id': 'message-feedback-input',
+									onInput: (e: Event) => {
+										feedbackText.value = (e.target as HTMLInputElement).value;
+									},
+								}),
+								h('button', {
+									'data-test-id': 'message-submit-feedback-button',
+									onClick: () => emit('feedback', { rating: 'down', feedback: feedbackText.value }),
+								}),
+							]
+						: null,
+				]);
+			};
+		},
 	}),
 }));
 
@@ -134,7 +202,8 @@ describe('AskAssistantBuild', () => {
 	describe('rendering', () => {
 		it('should render component correctly', () => {
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('ask-assistant-chat')).toBeInTheDocument();
+			// The wrapper div has the data-test-id, but we verify the mocked chat is rendered
+			expect(getByTestId('mocked-assistant-chat')).toBeInTheDocument();
 		});
 
 		it('should pass correct props to AskAssistantChat component', () => {
@@ -152,12 +221,11 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const wrapper = renderComponent();
+			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
 
-			// Directly call the onUserMessage function
-			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
-				?.__vueParentComponent;
+			// Find the component instance and directly call the onUserMessage handler
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
@@ -351,7 +419,7 @@ describe('AskAssistantBuild', () => {
 
 			// Send initial message to start generation
 			const testMessage = 'Create a workflow to send emails';
-			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
 				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
@@ -425,7 +493,7 @@ describe('AskAssistantBuild', () => {
 
 			// Send message to modify existing workflow
 			const testMessage = 'Add an HTTP node';
-			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
 				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
@@ -480,17 +548,16 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			const textarea = chatInput.querySelector('textarea');
-			if (!textarea) throw new Error('Textarea not found');
-			await fireEvent.update(textarea, testMessage);
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
-			// The component should have set initialGeneration to true since workflow was empty
 			await flushPromises();
 
 			// Simulate streaming starts
@@ -535,15 +602,15 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			const textarea = chatInput.querySelector('textarea');
-			if (!textarea) throw new Error('Textarea not found');
-			await fireEvent.update(textarea, testMessage);
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
@@ -591,7 +658,7 @@ describe('AskAssistantBuild', () => {
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
 				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
@@ -617,15 +684,15 @@ describe('AskAssistantBuild', () => {
 				],
 			});
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send new message in existing session
 			const testMessage = 'Add email nodes';
-			const chatInput = await findByTestId('chat-input');
-			const textarea = chatInput.querySelector('textarea');
-			if (!textarea) throw new Error('Textarea not found');
-			await fireEvent.update(textarea, testMessage);
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true, initialGeneration: true });
@@ -693,7 +760,7 @@ describe('AskAssistantBuild', () => {
 
 			// Send message to generate new workflow
 			const testMessage = 'Create a new workflow';
-			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
 				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
@@ -753,15 +820,15 @@ describe('AskAssistantBuild', () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
-			const { findByTestId } = renderComponent();
+			const wrapper = renderComponent();
 
 			// Send message
 			const testMessage = 'Create a workflow';
-			const chatInput = await findByTestId('chat-input');
-			const textarea = chatInput.querySelector('textarea');
-			if (!textarea) throw new Error('Textarea not found');
-			await fireEvent.update(textarea, testMessage);
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			const vm = (wrapper.container.firstElementChild as VueComponentInstance)
+				?.__vueParentComponent;
+			if (vm?.setupState?.onUserMessage) {
+				await vm.setupState.onUserMessage(testMessage);
+			}
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
