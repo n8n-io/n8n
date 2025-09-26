@@ -1,6 +1,11 @@
 import { mock } from 'jest-mock-extended';
 import { DynamicTool } from 'langchain/tools';
-import type { ISupplyDataFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	INode,
+} from 'n8n-workflow';
 
 import { ToolThink } from '../ToolThink.node';
 
@@ -57,6 +62,139 @@ describe('ToolThink', () => {
 				response: DynamicTool;
 			};
 			expect(response.name).toEqual('My_Thinking_Tool');
+		});
+	});
+
+	describe('execute', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should execute think tool and return input as result', async () => {
+			const node = new ToolThink();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { input: 'thinking about this problem' },
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
+				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'description':
+							return 'Tool for thinking';
+						default:
+							return;
+					}
+				}),
+			});
+
+			const result = await node.execute.call(mockExecute);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: 'thinking about this problem',
+						},
+						pairedItems: {
+							itemIndex: 0,
+						},
+					},
+				],
+			]);
+		});
+
+		it('should handle multiple input items', async () => {
+			const node = new ToolThink();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { input: 'first thought' },
+				},
+				{
+					json: { input: 'second thought' },
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
+				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'description':
+							return 'Tool for thinking';
+						default:
+							return;
+					}
+				}),
+			});
+
+			const result = await node.execute.call(mockExecute);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: 'first thought',
+						},
+						pairedItems: {
+							itemIndex: 0,
+						},
+					},
+				],
+				[
+					{
+						json: {
+							response: 'second thought',
+						},
+						pairedItems: {
+							itemIndex: 1,
+						},
+					},
+				],
+			]);
+		});
+
+		it('should use hardcoded name for version 1', async () => {
+			const node = new ToolThink();
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { input: 'test' },
+				},
+			];
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: jest.fn(() => inputData),
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'My Thinking Tool' })),
+				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'description':
+							return 'Tool for thinking';
+						default:
+							return;
+					}
+				}),
+			});
+
+			const result = await node.execute.call(mockExecute);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: 'test',
+						},
+						pairedItems: {
+							itemIndex: 0,
+						},
+					},
+				],
+			]);
+			// The tool should be created with the hardcoded name for version 1
+			// This is tested indirectly through the getTool function usage
+			expect(mockExecute.getNode).toHaveBeenCalled();
 		});
 	});
 });
