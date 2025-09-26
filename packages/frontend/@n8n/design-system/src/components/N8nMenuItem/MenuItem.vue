@@ -66,7 +66,12 @@ const indentArray = computed(() => {
 
 <template>
 	<div class="sidebarItemWrapper" @mouseenter="emit('mouseEnter')">
-		<span class="sidebarItemIndent" v-for="level in indentArray" :key="level" />
+		<span
+			class="sidebarItemIndent"
+			v-if="level && level > 1"
+			v-for="level in indentArray"
+			:key="level"
+		/>
 		<N8nRoute
 			:to="to"
 			class="sidebarItem"
@@ -74,7 +79,12 @@ const indentArray = computed(() => {
 			:aria-label="props.ariaLabel"
 			@click="emit('onClick')"
 		>
-			<div v-if="item.icon" class="sidebarItemIcon" :class="{ other: item.type === 'other' }">
+			<div
+				v-if="item.icon"
+				:data-test-id="item.id"
+				class="sidebarItemIcon"
+				:class="{ other: item.type === 'other' }"
+			>
 				<span
 					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 					class="sidebarItemEmoji"
