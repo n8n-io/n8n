@@ -1,14 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
-// Type for Vue component instance with setup state
-interface VueComponentInstance {
-	__vueParentComponent?: {
-		setupState?: {
-			onUserMessage?: (message: string) => Promise<void>;
-		};
-	};
-}
-
 // Mock workflow saving first before any other imports
 const saveCurrentWorkflowMock = vi.hoisted(() => vi.fn());
 vi.mock('@/composables/useWorkflowSaving', () => ({
@@ -165,11 +156,8 @@ describe('AskAssistantBuild', () => {
 			const testMessage = 'Create a workflow to send emails';
 
 			// Directly call the onUserMessage function
-			const vm = (
-				wrapper.container.querySelector(
-					'[data-test-id="ask-assistant-chat"]',
-				) as VueComponentInstance
-			)?.__vueParentComponent;
+			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
@@ -363,11 +351,8 @@ describe('AskAssistantBuild', () => {
 
 			// Send initial message to start generation
 			const testMessage = 'Create a workflow to send emails';
-			const vm = (
-				wrapper.container.querySelector(
-					'[data-test-id="ask-assistant-chat"]',
-				) as VueComponentInstance
-			)?.__vueParentComponent;
+			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
@@ -440,11 +425,8 @@ describe('AskAssistantBuild', () => {
 
 			// Send message to modify existing workflow
 			const testMessage = 'Add an HTTP node';
-			const vm = (
-				wrapper.container.querySelector(
-					'[data-test-id="ask-assistant-chat"]',
-				) as VueComponentInstance
-			)?.__vueParentComponent;
+			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
@@ -609,11 +591,8 @@ describe('AskAssistantBuild', () => {
 
 			// Send initial message
 			const testMessage = 'Create a workflow';
-			const vm = (
-				wrapper.container.querySelector(
-					'[data-test-id="ask-assistant-chat"]',
-				) as VueComponentInstance
-			)?.__vueParentComponent;
+			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
@@ -714,11 +693,8 @@ describe('AskAssistantBuild', () => {
 
 			// Send message to generate new workflow
 			const testMessage = 'Create a new workflow';
-			const vm = (
-				wrapper.container.querySelector(
-					'[data-test-id="ask-assistant-chat"]',
-				) as VueComponentInstance
-			)?.__vueParentComponent;
+			const vm = (wrapper.container.querySelector('[data-test-id="ask-assistant-chat"]') as any)
+				?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage(testMessage);
 			}
