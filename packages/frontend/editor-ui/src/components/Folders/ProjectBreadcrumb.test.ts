@@ -141,11 +141,11 @@ describe('ProjectBreadcrumb', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					isShared: true,
-					currentProject: {
+					currentProject: createTestProject({
 						id: '1',
 						name: 'Some Project',
 						type: ProjectTypes.Personal,
-					} satisfies Partial<Project>,
+					}),
 				},
 			});
 			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
@@ -166,11 +166,11 @@ describe('ProjectBreadcrumb', () => {
 			const { container } = renderComponent({
 				props: {
 					isShared: false,
-					currentProject: {
+					currentProject: createTestProject({
 						id: 'project-123',
 						name: 'My Project',
 						type: ProjectTypes.Team,
-					} satisfies Partial<Project>,
+					}),
 				},
 			});
 			const link = container.querySelector('a');

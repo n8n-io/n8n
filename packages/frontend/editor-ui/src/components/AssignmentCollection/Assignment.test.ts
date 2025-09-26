@@ -93,6 +93,7 @@ describe('Assignment.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: {
+					id: '1',
 					name: 'binaryField',
 					type: 'binary',
 					value: 'data',
