@@ -234,10 +234,12 @@ export function useNodeSettingsParameters() {
 				} else {
 					// Contains probably no expression with a missing parameter so resolve
 					try {
-						nodeParams[key] = workflowHelpers.resolveExpression(
+						const resolved = workflowHelpers.resolveExpression(
 							value,
 							nodeParams,
 						) as NodeParameterValue;
+						// Ensure we never pass undefined/null to displayParameter
+						nodeParams[key] = resolved ?? '';
 					} catch {
 						// If expression is invalid ignore
 						nodeParams[key] = '';

@@ -319,7 +319,8 @@ const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					// return false if propertyValue is undefined or null
+					return propertyValue && (propertyValue as string).includes(targetValue);
 				}
 				if (key === 'startsWith') {
 					return (propertyValue as string).startsWith(targetValue);
