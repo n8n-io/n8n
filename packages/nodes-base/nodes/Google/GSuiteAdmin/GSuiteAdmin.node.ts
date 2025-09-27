@@ -119,6 +119,12 @@ export class GSuiteAdmin implements INodeType {
 					}>;
 				};
 
+				// push default orgUnit (root), which is not returned from the API call above
+				returnData.push({
+					name: '/',
+					value: '/',
+				});
+
 				for (const unit of orgUnits.organizationUnits) {
 					returnData.push({
 						name: unit.name,
@@ -495,8 +501,8 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
-						if (additionalFields.orgUnitPath) {
-							body.orgUnitPath = additionalFields.orgUnitPath as string;
+						if (additionalFields.orgUnitPath && typeof additionalFields.orgUnitPath === 'string') {
+							body.orgUnitPath = additionalFields.orgUnitPath;
 						}
 
 						if (additionalFields.customFields) {
@@ -772,8 +778,8 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
-						if (updateFields.orgUnitPath) {
-							body.orgUnitPath = updateFields.orgUnitPath as string;
+						if (updateFields.orgUnitPath && typeof updateFields.orgUnitPath === 'string') {
+							body.orgUnitPath = updateFields.orgUnitPath;
 						}
 
 						if (updateFields.customFields) {

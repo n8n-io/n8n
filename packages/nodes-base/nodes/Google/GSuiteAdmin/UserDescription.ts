@@ -495,9 +495,9 @@ export const userFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getOrgUnits',
 				},
-				default: [],
+				default: '/',
 				description:
-					'Specify the organizational unit name or ID. Choose from the list or use an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -1200,9 +1200,9 @@ export const userFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getOrgUnits',
 				},
-				default: [],
+				default: '/',
 				description:
-					'Specify the organizational unit name or ID. Choose from the list or use an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
