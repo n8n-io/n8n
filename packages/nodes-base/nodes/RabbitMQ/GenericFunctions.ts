@@ -63,13 +63,16 @@ export async function rabbitmqCreateChannel(
 }
 
 export const parseQueueArguments = (options: Options) => {
-	const queueArguments: IDataObject = {};
-	if (options.arguments?.argument.length) {
-		options.arguments.argument.forEach((argument) => {
-			queueArguments[argument.key] = argument.value;
-		});
+	const args = options?.arguments?.argument ?? [];
+
+	if (!Array.isArray(args) || args.length === 0) {
+		return options?.arguments;
 	}
-	return queueArguments;
+
+	return args.reduce<IDataObject>((acc, { key, value }) => {
+		acc[key] = value;
+		return acc;
+	}, {});
 };
 
 export async function rabbitmqConnectQueue(
@@ -84,7 +87,7 @@ export async function rabbitmqConnectQueue(
 			if (options.assertQueue) {
 				// Parse arguments to the format expected by amqplib
 				const queueArguments = parseQueueArguments(options);
-				
+
 				/**
 				 * since the expected format for arguments is different from the expected format for options, we need to parse the arguments to the format expected by amqplib
 				 * and then merge the options with the parsed arguments
@@ -94,14 +97,12 @@ export async function rabbitmqConnectQueue(
 						"durable": true
 					}
 				 */
-				const assertOptions: amqplib.Options.AssertQueue = {
-					...options,
+
+				this.logger.info('🔍 [RabbitMQ] Assert options for queue', {
+					queue,
 					arguments: queueArguments,
-				};
-				
-				this.logger.info('🔍 [RabbitMQ] Assert options for queue', { queue, assertOptions });
-				await channel.assertQueue(queue, assertOptions);
-				
+				});
+				await channel.assertQueue(queue, { ...options, arguments: queueArguments });
 			} else {
 				await channel.checkQueue(queue);
 			}

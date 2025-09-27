@@ -17,7 +17,7 @@ import {
 	MessageTracker,
 	handleMessage,
 } from '../GenericFunctions';
-import type { TriggerOptions } from '../types';
+import type { Options, TriggerOptions } from '../types';
 
 describe('RabbitMQ GenericFunctions', () => {
 	const credentials = {
@@ -119,7 +119,12 @@ describe('RabbitMQ GenericFunctions', () => {
 			const options = mock<TriggerOptions>({ assertQueue: true });
 			await rabbitmqConnectQueue.call(context, 'queue', options);
 
-			expect(mockChannel.assertQueue).toHaveBeenCalledWith('queue', options);
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+				'queue',
+				expect.objectContaining({
+					assertQueue: true,
+				}),
+			);
 			expect(mockChannel.checkQueue).not.toHaveBeenCalled();
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
 		});
@@ -131,6 +136,54 @@ describe('RabbitMQ GenericFunctions', () => {
 
 			expect(mockChannel.assertQueue).not.toHaveBeenCalled();
 			expect(mockChannel.checkQueue).toHaveBeenCalledWith('queue');
+			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
+		});
+
+		it('should assert a queue with no arguments', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options = mock<Options>({
+				assertQueue: true,
+				arguments: { argument: [] },
+			});
+			await rabbitmqConnectQueue.call(context, 'queue', options);
+
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+				'queue',
+				expect.objectContaining({
+					assertQueue: true,
+				}),
+			);
+			expect(mockChannel.checkQueue).not.toHaveBeenCalled();
+			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
+		});
+
+		it('should assert a quorum queue with x-queue-type argument', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options = mock<TriggerOptions>({
+				assertQueue: true,
+				durable: true,
+				autoDelete: false,
+				arguments: {
+					argument: [{ key: 'x-queue-type', value: 'quorum' }],
+				},
+			});
+
+			await rabbitmqConnectQueue.call(context, 'quorum-queue', options);
+
+			// Check that the created queue has the x-queue-type argument = quorum and the other options are the same as the options passed in
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+				'quorum-queue',
+				expect.objectContaining({
+					assertQueue: true,
+					durable: true,
+					autoDelete: false,
+					arguments: expect.objectContaining({
+						'x-queue-type': 'quorum',
+					}),
+				}),
+			);
+
+			expect(mockChannel.checkQueue).not.toHaveBeenCalled();
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
 		});
 	});
