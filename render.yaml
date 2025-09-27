@@ -1,0 +1,58 @@
+services:
+  # n8n Web Service (your existing paid service)
+  - type: web
+    name: n8n-with-python  
+    env: docker
+    dockerfile: Dockerfile
+    plan: starter  
+    envVars:
+      # BASIC AUTHENTICATION
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: true
+      - key: N8N_BASIC_AUTH_USER
+        generateValue: true
+      - key: N8N_BASIC_AUTH_PASSWORD
+        generateValue: true
+      
+      # DATABASE CONFIGURATION 
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        fromService:
+          name: n8n-database  
+          type: postgres
+          property: host
+      - key: DB_POSTGRESDB_USER
+        fromService:
+          name: n8n-database
+          type: postgres
+          property: user
+      - key: DB_POSTGRESDB_PASSWORD
+        fromService:
+          name: n8n-database
+          type: postgres
+          property: password
+      - key: DB_POSTGRESDB_DATABASE
+        fromService:
+          name: n8n-database
+          type: postgres
+          property: database
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+      
+      # ADDITIONAL SETTINGS
+      - key: N8N_HOST
+        value: n8n-with-python.onrender.com  
+      - key: NODE_ENV
+        value: production
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+    
+    numInstances: 1
+
+  # NEW PostgreSQL Database Service 
+  - type: postgres
+    name: n8n-database  
+    plan: free  
+    databaseName: n8n
+    user: n8n_user
