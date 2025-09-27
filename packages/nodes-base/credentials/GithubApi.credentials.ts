@@ -36,16 +36,14 @@ export class GithubApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
+		authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{ $credentials?.accessToken?.startsWith("github_pat_") ? "Bearer " + $credentials?.accessToken : "token " + $credentials?.accessToken }}',
+				Authorization: '={{ ($credentials?.accessToken && typeof $credentials.accessToken === "string" && $credentials.accessToken.startsWith("github_pat_")) ? "Bearer " + $credentials.accessToken : "token " + ($credentials?.accessToken || "") }}',
 			},
 		},
-	};
-
-	test: ICredentialTestRequest = {
+	};	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.server}}',
 			url: '/user',

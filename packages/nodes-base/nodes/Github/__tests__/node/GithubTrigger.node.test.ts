@@ -1,5 +1,177 @@
 import { GithubTrigger } from '../../GithubTrigger.node';
 import * as GenericFunctions from '../../GenericFunctions';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+// Mock the GenericFunctions module
+jest.mock('../../GenericFunctions');
+
+describe('GithubTrigger Node', () => {
+	let mockThis: any;
+	let webhookData: Record<string, any>;
+
+	beforeEach(() => {
+		webhookData = {
+			webhookId: null,
+			webhookEvents: [],
+		};
+
+		mockThis = {
+			getWorkflowStaticData: () => webhookData,
+			getNodeParameter: jest.fn().mockImplementation((name: string) => {
+				if (name === 'owner') return 'testowner';
+				if (name === 'repository') return 'testrepo';
+				if (name === 'events') return ['push', 'pull_request'];
+				return null;
+			}),
+		};
+
+		// Clear all mocks before each test
+		jest.clearAllMocks();
+	});
+
+	describe('webhook creation', () => {
+		it('should successfully create webhook with fine-grained PAT', async () => {
+			const mockWebhook = {
+				id: '12345',
+				active: true,
+				events: ['push', 'pull_request'],
+			};
+
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(mockWebhook);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.create?.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('12345');
+			expect(webhookData.webhookEvents).toEqual(['push', 'pull_request']);
+		});
+
+		it('should handle 403 error with specific message for fine-grained PAT', async () => {
+			const mockCredentials = { accessToken: 'github_pat_11ABC123' };
+			mockThis.getCredentials = jest.fn().mockResolvedValue(mockCredentials);
+
+			const error = new NodeApiError(mockThis, { httpCode: '403' } as any);
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValueOnce(error);
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods?.default?.create?.call(mockThis)).rejects.toThrow(
+				'GitHub API request failed with status 403',
+			);
+		});
+
+		it('should handle 403 error with specific message for classic PAT', async () => {
+			const mockCredentials = { accessToken: 'ghp_abc123' };
+			mockThis.getCredentials = jest.fn().mockResolvedValue(mockCredentials);
+
+			const error = new NodeApiError(mockThis, { httpCode: '403' } as any);
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValueOnce(error);
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods?.default?.create?.call(mockThis)).rejects.toThrow(
+				'GitHub API request failed with status 403',
+			);
+		});
+
+		it('should handle 422 error by checking existing webhooks', async () => {
+			const error = new NodeApiError(mockThis, { httpCode: '422' } as any);
+			const existingWebhooks = [
+				{
+					id: '67890',
+					config: { url: 'https://hooks.n8n.cloud/webhook/existing' },
+					events: ['push'],
+					active: true,
+				},
+			];
+
+			jest
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockRejectedValueOnce(error) // First call fails with 422
+				.mockResolvedValueOnce(existingWebhooks); // Second call returns existing webhooks
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.create?.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('67890');
+		});
+
+		it('should handle 404 error with repository not found message', async () => {
+			const error = new NodeApiError(mockThis, { httpCode: '404' } as any);
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValueOnce(error);
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods?.default?.create?.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+		});
+	});
+
+	describe('webhook deletion', () => {
+		beforeEach(() => {
+			webhookData.webhookId = '12345';
+		});
+
+		it('should successfully delete webhook', async () => {
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce({});
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.delete?.call(mockThis);
+
+			expect(result).toBe(true);
+		});
+
+		it('should handle 404 error during deletion gracefully', async () => {
+			const error = new NodeApiError(mockThis, { httpCode: '404' } as any);
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValueOnce(error);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.delete?.call(mockThis);
+
+			expect(result).toBe(true); // Should still return true as webhook is effectively gone
+		});
+	});
+
+	describe('webhook existence check', () => {
+		it('should return true when webhook exists and is active', async () => {
+			webhookData.webhookId = '12345';
+			const mockWebhook = { id: '12345', active: true };
+
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(mockWebhook);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.checkExists?.call(mockThis);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when webhook does not exist (404)', async () => {
+			webhookData.webhookId = '12345';
+			const error = new NodeApiError(mockThis, { httpCode: '404' } as any);
+
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValueOnce(error);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.checkExists?.call(mockThis);
+
+			expect(result).toBe(false);
+			expect(webhookData.webhookId).toBeNull();
+		});
+
+		it('should return false when no webhookId is stored', async () => {
+			webhookData.webhookId = null;
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods?.default?.checkExists?.call(mockThis);
+
+			expect(result).toBe(false);
+		});
+	});
+});
+import * as GenericFunctions from '../../GenericFunctions';
 import { NodeOperationError } from 'n8n-workflow';
 
 describe('GithubTrigger Node', () => {
@@ -188,6 +360,38 @@ describe('GithubTrigger Node', () => {
 			);
 		});
 
+		it('should handle empty access token gracefully (403)', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				accessToken: '', // Empty token
+			});
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '403' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/Access token appears to be empty or invalid/,
+			);
+		});
+
+		it('should handle malformed webhook response with null values', async () => {
+			const malformedResponse = { id: null, active: true };
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(malformedResponse);
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/Expected: id \(string\) and active \(true\)/,
+			);
+		});
+
 		it('should handle webhook creation response missing required data', async () => {
 			const badResponse = { id: undefined, active: false };
 			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(badResponse);
@@ -260,9 +464,9 @@ describe('GithubTrigger Node', () => {
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.delete.call(mockThis);
 
-			expect(result).toBe(true);
-			expect(webhookData.webhookId).toBeUndefined();
-			expect(webhookData.webhookEvents).toBeUndefined();
+			expect(result).toBe(false);
+			expect(webhookData.webhookId).toBe('123'); // Should preserve data on error
+			expect(webhookData.webhookEvents).toEqual(['push']); // Should preserve data on error
 		});
 	});
 });

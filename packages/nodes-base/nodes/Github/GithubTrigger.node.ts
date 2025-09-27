@@ -550,32 +550,41 @@ export class GithubTrigger implements INodeType {
 						);
 					}
 
-					if (error.httpCode === '403') {
-						const authentication = this.getNodeParameter('authentication');
-						let permissionMessage = 'Insufficient permissions to create webhooks. ';
-						
-						if (authentication === 'accessToken') {
-							try {
-								const credentials = await this.getCredentials('githubApi');
-								const accessToken = credentials.accessToken;
-								
-								// Type guard for string
-								if (typeof accessToken === 'string' && accessToken.startsWith('github_pat_')) {
+				if (error.httpCode === '403') {
+					let authentication: string;
+					try {
+						authentication = this.getNodeParameter('authentication') as string;
+					} catch (paramError) {
+						// Fallback if authentication parameter is not available
+						authentication = 'accessToken';
+					}
+					
+					let permissionMessage = 'Insufficient permissions to create webhooks. ';
+					
+					if (authentication === 'accessToken') {
+						try {
+							const credentials = await this.getCredentials('githubApi');
+							const accessToken = credentials.accessToken;
+							
+							// Enhanced type guard with null/undefined checks
+							if (typeof accessToken === 'string' && accessToken.length > 0) {
+								if (accessToken.startsWith('github_pat_')) {
 									permissionMessage += 'For fine-grained tokens, ensure you have "Webhooks: Write" permission for the repository.';
 								} else {
 									permissionMessage += 'For classic tokens, ensure you have "repo" or "admin:repo_hook" scope.';
 								}
-							} catch (credentialError) {
-								// If credential fetching fails, provide generic access token guidance
-								permissionMessage += 'Please check your access token has the required permissions: "repo" scope for classic tokens or "Webhooks: Write" for fine-grained tokens.';
+							} else {
+								permissionMessage += 'Access token appears to be empty or invalid. Please check your GitHub credentials.';
 							}
-						} else if (authentication === 'oAuth2') {
-							permissionMessage += 'For OAuth2 authentication, ensure your OAuth app has sufficient permissions to create webhooks.';
-						} else {
-							permissionMessage += 'Please check your GitHub credentials have webhook creation permissions.';
+						} catch (credentialError) {
+							// If credential fetching fails, provide generic access token guidance
+							permissionMessage += 'Please check your access token has the required permissions: "repo" scope for classic tokens or "Webhooks: Write" for fine-grained tokens.';
 						}
-						
-						throw new NodeOperationError(
+					} else if (authentication === 'oAuth2') {
+						permissionMessage += 'For OAuth2 authentication, ensure your OAuth app has sufficient permissions to create webhooks.';
+					} else {
+						permissionMessage += 'Please check your GitHub credentials have webhook creation permissions.';
+					}						throw new NodeOperationError(
 							this.getNode(),
 							permissionMessage,
 							{ level: 'warning' },
@@ -593,17 +602,24 @@ export class GithubTrigger implements INodeType {
 					throw error;
 				}
 
-				if (responseData.id === undefined || responseData.active !== true) {
-					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
-						message: 'Github webhook creation response did not contain the expected data.',
-					});
-				}
+			// Enhanced validation for webhook response
+			if (!responseData || 
+				typeof responseData !== 'object' || 
+				responseData.id === undefined || 
+				responseData.id === null ||
+				responseData.active !== true) {
+				// Required data is missing so was not successful
+				throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+					message: 'Github webhook creation response did not contain the expected data. Expected: id (string) and active (true).',
+				});
+			}
 
-				webhookData.webhookId = responseData.id as string;
-				webhookData.webhookEvents = responseData.events as string[];
-
-				return true;
+			// Type-safe assignment with validation
+			const webhookId = String(responseData.id);
+			const webhookEvents = Array.isArray(responseData.events) ? responseData.events : [];
+			
+			webhookData.webhookId = webhookId;
+			webhookData.webhookEvents = webhookEvents;				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
