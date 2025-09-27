@@ -72,6 +72,7 @@ const indentArray = computed(() => {
 			class="sidebarItem"
 			:class="{ active }"
 			:aria-label="props.ariaLabel"
+			data-test-id="menu-item"
 			@click="emit('onClick')"
 		>
 			<div
