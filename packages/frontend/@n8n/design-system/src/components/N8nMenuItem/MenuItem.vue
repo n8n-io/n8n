@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
-import type { IMenuItem } from '@n8n/design-system/types';
+import type { IconColor, IMenuItem } from '@n8n/design-system/types';
 
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -62,6 +62,14 @@ const indentArray = computed(() => {
 	}
 	return [];
 });
+
+const iconColor = computed(() => {
+	if (typeof props.item.icon === 'string') {
+		return undefined;
+	}
+
+	return props.item.icon?.color;
+});
 </script>
 
 <template>
@@ -80,12 +88,13 @@ const indentArray = computed(() => {
 				v-if="item.icon"
 				:data-test-id="item.id"
 				class="sidebarItemIcon"
-				:class="{ other: item.type === 'other' }"
+				:class="{ other: item.type === 'other', notification: item.notification }"
 			>
-				<span
+				<N8nText
 					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 					class="sidebarItemEmoji"
-					>{{ item.icon.value }}</span
+					:color="iconColor"
+					>{{ item.icon.value }}</N8nText
 				>
 				<N8nIcon v-else-if="icon" :icon="icon" />
 			</div>
@@ -112,7 +121,7 @@ const indentArray = computed(() => {
 
 .router-link-active,
 .active {
-	background-color: var(--color-foreground-light);
+	background-color: var(--color-foreground-base);
 }
 
 .sidebarItem {
@@ -135,7 +144,7 @@ const indentArray = computed(() => {
 }
 
 .sidebarItem:hover {
-	background-color: var(--color-foreground-light);
+	background-color: var(--color-foreground-base);
 	color: var(--color-text-dark);
 }
 
@@ -162,6 +171,17 @@ const indentArray = computed(() => {
 	width: var(--spacing-s);
 	height: var(--spacing-s);
 	min-width: var(--spacing-s);
+
+	&.notification::after {
+		content: '';
+		position: absolute;
+		top: -2px;
+		right: -2px;
+		width: 4px;
+		height: 4px;
+		background-color: var(--color-danger);
+		border-radius: 50%;
+	}
 }
 
 .sidebarItemDropdown {
