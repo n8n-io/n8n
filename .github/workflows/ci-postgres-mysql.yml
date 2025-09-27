@@ -66,4 +66,5 @@ jobs:
 
       - name: Print logs
         if: always()
-        run: cat ./mysql/log/general.log
+        run: |
+          ls -lh . && ls -lh ./mysql && ls -lh ./mysql/log && cat ./mysql/log/general.log
