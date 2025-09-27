@@ -69,6 +69,7 @@ const indentArray = computed(() => {
 		<span class="sidebarItemIndent" v-for="level in indentArray" :key="level" />
 		<N8nRoute
 			:to="to"
+			role="menuitem"
 			class="sidebarItem"
 			:class="{ active }"
 			:aria-label="props.ariaLabel"
