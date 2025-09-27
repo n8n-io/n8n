@@ -66,11 +66,13 @@ export const parseQueueArguments = (options: Options) => {
 	const args = options?.arguments?.argument ?? [];
 
 	if (!Array.isArray(args) || args.length === 0) {
-		return options?.arguments;
+		return {};
 	}
 
 	return args.reduce<IDataObject>((acc, { key, value }) => {
-		acc[key] = value;
+		if (key && value !== undefined) {
+			acc[key] = value;
+		}
 		return acc;
 	}, {});
 };
@@ -97,11 +99,6 @@ export async function rabbitmqConnectQueue(
 						"durable": true
 					}
 				 */
-
-				this.logger.info('🔍 [RabbitMQ] Assert options for queue', {
-					queue,
-					arguments: queueArguments,
-				});
 				await channel.assertQueue(queue, { ...options, arguments: queueArguments });
 			} else {
 				await channel.checkQueue(queue);
