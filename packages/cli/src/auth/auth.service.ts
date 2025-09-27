@@ -9,7 +9,6 @@ import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
-import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
 import { AuthError } from '@/errors/response-errors/auth.error';
