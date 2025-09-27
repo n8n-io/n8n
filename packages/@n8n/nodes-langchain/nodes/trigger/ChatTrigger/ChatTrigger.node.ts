@@ -210,6 +210,19 @@ ${cssVariables}
 `.trim(),
 		description: 'Override default styling of the public chat interface with CSS',
 	},
+	{
+		displayName: 'Include Request Headers',
+		name: 'includeRequestHeaders',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to include request headers. Headers are only available in public chat mode.',
+		displayOptions: {
+			show: {
+				'/mode': ['hostedChat', 'webhook'],
+			},
+		},
+	},
 ];
 
 export class ChatTrigger extends Node {
@@ -530,6 +543,10 @@ export class ChatTrigger extends Node {
 			json: data,
 		};
 
+		if (options.includeRequestHeaders) {
+			returnItem.json.headers = context.getHeaderData();
+		}
+
 		if (files && Object.keys(files).length) {
 			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
 			returnItem.binary = {};
@@ -613,6 +630,7 @@ export class ChatTrigger extends Node {
 				allowedFilesMimeTypes: { type: 'string' },
 				customCss: { type: 'string' },
 				responseMode: { type: 'string' },
+				includeRequestHeaders: { type: 'boolean' },
 			},
 			ctx.getNode(),
 		);
@@ -727,7 +745,14 @@ export class ChatTrigger extends Node {
 			if (req.contentType === 'multipart/form-data') {
 				returnData = [await this.handleFormData(ctx)];
 			} else {
-				returnData = [{ json: bodyData }];
+				returnData = [
+					{
+						json: {
+							...bodyData,
+							...(options.includeRequestHeaders ? { headers: ctx.getHeaderData() } : {}),
+						},
+					},
+				];
 			}
 
 			return {
@@ -743,7 +768,14 @@ export class ChatTrigger extends Node {
 				workflowData: [returnData],
 			};
 		} else {
-			returnData = [{ json: bodyData }];
+			returnData = [
+				{
+					json: {
+						...bodyData,
+						...(options.includeRequestHeaders ? { headers: ctx.getHeaderData() } : {}),
+					},
+				},
+			];
 		}
 
 		return {
