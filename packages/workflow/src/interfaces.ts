@@ -904,7 +904,11 @@ export interface FunctionsBase {
 	): NodeTypeAndVersion[];
 	getParentNodes(
 		nodeName: string,
-		options?: { includeNodeParameters?: boolean },
+		options?: {
+			includeNodeParameters?: boolean;
+			connectionType?: NodeConnectionType;
+			depth?: number;
+		},
 	): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
