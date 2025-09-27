@@ -4,7 +4,17 @@ import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import {
+	N8nNavigationDropdown,
+	N8nTooltip,
+	N8nLink,
+	N8nIconButton,
+	N8nMenuItem,
+	isCustomMenuItem,
+	N8nLogo,
+	N8nPopoverReka,
+	N8nScrollArea,
+} from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
@@ -31,7 +41,6 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
@@ -72,13 +81,15 @@ const user = ref<Element | null>(null);
 // Component data
 const basePath = ref('');
 const fullyExpanded = ref(false);
-const userMenuItems = ref([
+const userMenuItems = ref<IMenuItem[]>([
 	{
 		id: 'settings',
+		icon: 'settings',
 		label: i18n.baseText('settings'),
 	},
 	{
 		id: 'logout',
+		icon: 'door-open',
 		label: i18n.baseText('auth.signout'),
 	},
 ]);
@@ -173,6 +184,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
+		type: 'popover',
 		children: [
 			{
 				id: 'quickstart',
@@ -234,6 +246,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.whatsNew'),
 		position: 'bottom',
 		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+		type: 'popover',
 		children: [
 			...versionsStore.whatsNewArticles.map(
 				(article) =>
@@ -274,6 +287,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 ]);
+
+const visibleMenuItems = computed(() =>
+	mainMenuItems.value.filter((item) => item.available !== false),
+);
+
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
@@ -435,7 +453,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<Logo
+			<N8nLogo
 				location="sidebar"
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
@@ -463,7 +481,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						:class="$style.readOnlyEnvironmentIcon"
 					/>
 				</N8nTooltip>
-			</Logo>
+			</N8nLogo>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -521,75 +539,117 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</template>
 			</N8nNavigationDropdown>
 		</div>
-		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
-			<template #header>
+		<N8nScrollArea as-child>
+			<div :class="$style.scrollArea">
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
-			</template>
 
-			<template #beforeLowerMenu>
-				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-			</template>
-			<template #menuSuffix>
-				<div>
+				<div :class="$style.bottomMenu">
+					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+					<div :class="$style.bottomMenuItems">
+						<template v-for="item in visibleMenuItems" :key="item.id">
+							<N8nPopoverReka
+								v-if="item.type === 'popover'"
+								:key="item.id"
+								side="right"
+								align="end"
+								:side-offset="16"
+							>
+								<template #content>
+									<div :class="$style.popover">
+										<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
+											item.label
+										}}</N8nText>
+										<template v-for="child in item.children" :key="child.id">
+											<component
+												v-if="isCustomMenuItem(child)"
+												:is="child.component"
+												v-bind="child.props"
+											/>
+											<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
+										</template>
+									</div>
+								</template>
+								<template #trigger>
+									<N8nMenuItem
+										:item="item"
+										:compact="isCollapsed"
+										@on-click="() => handleSelect(item.id)"
+									/>
+								</template>
+							</N8nPopoverReka>
+							<N8nMenuItem
+								v-else
+								:item="item"
+								:compact="isCollapsed"
+								@on-click="() => handleSelect(item.id)"
+							/>
+						</template>
+					</div>
 				</div>
-			</template>
-			<template v-if="showUserArea" #footer>
-				<div ref="user" :class="$style.userArea">
-					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<N8nAvatar
-									:first-name="usersStore.currentUser?.firstName"
-									:last-name="usersStore.currentUser?.lastName"
-									size="small"
-								/>
-							</div>
-							<template v-if="isCollapsed" #dropdown>
-								<ElDropdownMenu>
-									<ElDropdownItem command="settings">
-										{{ i18n.baseText('settings') }}
-									</ElDropdownItem>
-									<ElDropdownItem command="logout">
-										{{ i18n.baseText('auth.signout') }}
-									</ElDropdownItem>
-								</ElDropdownMenu>
+
+				<div v-if="showUserArea">
+					<div ref="user" :class="$style.userArea">
+						<N8nPopoverReka side="right" align="end" :side-offset="16">
+							<template #content>
+								<div :class="$style.popover">
+									<N8nMenuItem
+										v-for="action in userMenuItems"
+										:key="action.id"
+										:item="action"
+										@on-click="() => onUserActionToggle(action.id)"
+									/>
+								</div>
 							</template>
-						</ElDropdown>
-					</div>
-					<div
-						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
-					>
-						<N8nText size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser?.fullName
-						}}</N8nText>
-					</div>
-					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<N8nActionDropdown
-							:items="userMenuItems"
-							placement="top-start"
-							data-test-id="user-menu"
-							@select="onUserActionToggle"
-						/>
+							<template #trigger>
+								<div :class="$style.userAreaInner">
+									<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+										<!-- This dropdown is only enabled when sidebar is collapsed -->
+										<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+											<N8nAvatar
+												:first-name="usersStore.currentUser?.firstName"
+												:last-name="usersStore.currentUser?.lastName"
+												size="small"
+											/>
+										</div>
+									</div>
+									<div
+										:class="{
+											['ml-2xs']: true,
+											[$style.userName]: true,
+											[$style.expanded]: fullyExpanded,
+										}"
+									>
+										<N8nText size="small" :bold="true" color="text-dark">{{
+											usersStore.currentUser?.fullName
+										}}</N8nText>
+									</div>
+									<div
+										data-test-id="user-menu"
+										:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
+									>
+										<N8nIconButton icon="ellipsis" text square type="tertiary" />
+									</div>
+								</div>
+							</template>
+						</N8nPopoverReka>
 					</div>
 				</div>
-			</template>
-		</N8nMenu>
+			</div>
+		</N8nScrollArea>
 	</div>
 </template>
 
 <style lang="scss" module>
 .sideMenu {
-	display: grid;
 	position: relative;
 	height: 100%;
-	grid-template-rows: auto 1fr auto;
+	display: flex;
+	flex-direction: column;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
@@ -617,6 +677,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	}
 }
 
+.scrollArea {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 .sideMenuCollapseButton {
 	position: absolute;
 	right: -10px;
@@ -637,36 +703,30 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	}
 }
 
-.updates {
+.bottomMenu {
 	display: flex;
-	align-items: center;
-	cursor: pointer;
-	padding: var(--spacing-2xs) var(--spacing-l);
-	margin: var(--spacing-2xs) 0 0;
+	flex-direction: column;
+	margin-top: auto;
+}
 
-	svg {
-		color: var(--color-text-base) !important;
-	}
-	span {
-		display: none;
-		&.expanded {
-			display: initial;
-		}
-	}
+.bottomMenuItems {
+	padding: var(--spacing-xs);
+}
 
-	&:hover {
-		&,
-		& svg {
-			color: var(--color-text-dark) !important;
-		}
-	}
+.popover {
+	padding: var(--spacing-s);
+	min-width: 200px;
+}
+
+.popoverTitle {
+	display: block;
+	margin-bottom: var(--spacing-3xs);
 }
 
 .userArea {
 	display: flex;
 	padding: var(--spacing-xs);
 	align-items: center;
-	height: 60px;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
 	.userName {
@@ -693,6 +753,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			display: initial;
 		}
 	}
+}
+
+.userAreaInner {
+	display: flex;
+	align-items: center;
+	width: 100%;
 }
 
 @media screen and (max-height: 470px) {
