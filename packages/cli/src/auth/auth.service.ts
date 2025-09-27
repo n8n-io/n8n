@@ -48,10 +48,6 @@ interface CreateAuthMiddlewareOptions {
 	 * If true, authentication becomes optional in preview mode
 	 */
 	allowSkipPreviewAuth?: boolean;
-	/**
-	 * If true, the middleware will check for an API key in the Authorization header
-	 */
-	apiKeyAuth?: boolean;
 }
 
 @Service()
@@ -89,18 +85,8 @@ export class AuthService {
 		];
 	}
 
-	createAuthMiddleware({
-		allowSkipMFA,
-		allowSkipPreviewAuth,
-		apiKeyAuth,
-	}: CreateAuthMiddlewareOptions) {
+	createAuthMiddleware({ allowSkipMFA, allowSkipPreviewAuth }: CreateAuthMiddlewareOptions) {
 		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			// If route requests API key authentication, we need to check it first and skip the rest of the auth checks
-			if (apiKeyAuth) {
-				await this.checkAPIKey(req, res, next);
-				return;
-			}
-
 			const token = req.cookies[AUTH_COOKIE_NAME];
 			if (token) {
 				try {
@@ -151,55 +137,6 @@ export class AuthService {
 			return apiKeyMatch[1];
 		}
 		throw new AuthError('Invalid authorization header format');
-	}
-
-	async checkAPIKey(req: AuthenticatedRequest, response: Response, next: NextFunction) {
-		const headerValue = req.headers['authorization'];
-		if (!headerValue || typeof headerValue !== 'string') {
-			response.status(401).json({ status: 'error', message: 'API key is required' });
-			return;
-		}
-		try {
-			const apiKey = this.extractAPIKeyFromHeader(headerValue);
-
-			const keyOwner = await this.userRepository.findByAPIKey(apiKey);
-
-			if (!keyOwner) {
-				response.status(401).json({ status: 'error', message: 'Invalid API key' });
-				return;
-			}
-
-			if (keyOwner.disabled) {
-				response.status(403).json({ status: 'error', message: 'User is disabled' });
-				return;
-			}
-			req.user = keyOwner;
-
-			// If API key looks like a JWT, verify it to ensure it's not expired
-			// Legacy API keys (e.g. starting with "n8n_api_") are not JWTs and skip verification
-			const decoded = this.jwtService.decode(apiKey);
-			if (decoded) {
-				try {
-					this.jwtService.verify(apiKey);
-				} catch (e) {
-					if (e instanceof TokenExpiredError || e instanceof JsonWebTokenError) {
-						response.status(401).json({ status: 'error', message: 'Invalid API key' });
-						return;
-					}
-					this.errorReporter.error(e);
-					throw e;
-				}
-			}
-
-			next();
-		} catch (error) {
-			if (error instanceof AuthError) {
-				response.status(401).json({ status: 'error', message: 'Invalid API key' });
-			} else {
-				this.errorReporter.error(error);
-				response.status(500).json({ status: 'error', message: 'Internal server error' });
-			}
-		}
 	}
 
 	clearCookie(res: Response) {
