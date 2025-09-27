@@ -62,6 +62,16 @@ export async function rabbitmqCreateChannel(
 	});
 }
 
+export const parseQueueArguments = (options: Options) => {
+	const queueArguments: IDataObject = {};
+	if (options.arguments?.argument.length) {
+		options.arguments.argument.forEach((argument) => {
+			queueArguments[argument.key] = argument.value;
+		});
+	}
+	return queueArguments;
+};
+
 export async function rabbitmqConnectQueue(
 	this: IExecuteFunctions | ITriggerFunctions,
 	queue: string,
@@ -72,7 +82,26 @@ export async function rabbitmqConnectQueue(
 	return await new Promise(async (resolve, reject) => {
 		try {
 			if (options.assertQueue) {
-				await channel.assertQueue(queue, options);
+				// Parse arguments to the format expected by amqplib
+				const queueArguments = parseQueueArguments(options);
+				
+				/**
+				 * since the expected format for arguments is different from the expected format for options, we need to parse the arguments to the format expected by amqplib
+				 * and then merge the options with the parsed arguments
+				 * {
+						"arguments": { "x-queue-type": "quorum" },
+						"autoDelete": true,
+						"durable": true
+					}
+				 */
+				const assertOptions: amqplib.Options.AssertQueue = {
+					...options,
+					arguments: queueArguments,
+				};
+				
+				this.logger.info('🔍 [RabbitMQ] Assert options for queue', { queue, assertOptions });
+				await channel.assertQueue(queue, assertOptions);
+				
 			} else {
 				await channel.checkQueue(queue);
 			}
