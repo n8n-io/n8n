@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 /**
@@ -58,6 +60,21 @@ export class TestEntryComposer {
 		const workflowImportResult = await this.n8n.api.workflowApi.importWorkflow(workflowFile);
 		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
 		return workflowImportResult;
+	}
+
+	/**
+	 * Start UI test on a new page created by an action
+	 * @param action - The action that will create a new page
+	 * @returns n8nPage instance for the new page
+	 */
+	async fromNewPage(action: () => Promise<void>): Promise<n8nPage> {
+		const newPagePromise = this.n8n.page.waitForEvent('popup');
+		await action();
+		const newPage = await newPagePromise;
+		await newPage.waitForLoadState('domcontentloaded');
+		// Use the constructor from the current instance to avoid circular dependency
+		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
+		return new n8nPageConstructor(newPage);
 	}
 
 	/**

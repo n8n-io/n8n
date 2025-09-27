@@ -58,11 +58,9 @@ test.describe('Projects', () => {
 
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
-		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
-
-		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
-
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = await n8n.start.fromNewPage(() =>
+			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+		);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
