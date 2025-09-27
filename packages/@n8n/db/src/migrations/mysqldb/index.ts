@@ -201,4 +201,5 @@ export const mysqlMigrations: Migration[] = [
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 	LinkRoleToProjectRelationTable1753953244168,
 	AddTimestampsToRoleAndRoleIndexes1756906557570,
+	UpdateParentFolderIdColumn1740445074052,
 ];

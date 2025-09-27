@@ -10,10 +10,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { EventService } from '@/events/event.service';
-
 import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';
+
+import { EventService } from '@/events/event.service';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -47,6 +47,7 @@ export class PublicApiKeyService {
 				apiKey,
 				label,
 				scopes,
+				audience: API_KEY_AUDIENCE,
 			}),
 		);
 
@@ -58,7 +59,10 @@ export class PublicApiKeyService {
 	 * @param user - The user for whom to retrieve and redact API keys.
 	 */
 	async getRedactedApiKeysForUser(user: User) {
-		const apiKeys = await this.apiKeyRepository.findBy({ userId: user.id });
+		const apiKeys = await this.apiKeyRepository.findBy({
+			userId: user.id,
+			audience: API_KEY_AUDIENCE,
+		});
 		return apiKeys.map((apiKeyRecord) => ({
 			...apiKeyRecord,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
