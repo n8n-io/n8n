@@ -628,7 +628,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 										}}</N8nText>
 									</div>
 									<div
-										data-test-id="user-area"
+										data-test-id="user-menu"
 										:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
 									>
 										<N8nIconButton icon="ellipsis" text square type="tertiary" />
