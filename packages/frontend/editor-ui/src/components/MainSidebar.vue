@@ -11,6 +11,9 @@ import {
 	N8nIconButton,
 	N8nMenuItem,
 	isCustomMenuItem,
+	N8nLogo,
+	N8nPopoverReka,
+	N8nScrollArea,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
@@ -38,14 +41,12 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import { N8nLogo } from '@n8n/design-system';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import N8nScrollArea from '@n8n/design-system/components/N8nScrollArea/N8nScrollArea.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -545,49 +546,49 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
 
-				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-
-				<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-
 				<div :class="$style.bottomMenu">
-					<template v-for="item in visibleMenuItems" :key="item.id">
-						<N8nPopoverReka
-							v-if="item.type === 'popover'"
-							:key="item.id"
-							side="right"
-							align="end"
-							:side-offset="16"
-						>
-							<template #content>
-								<div :class="$style.popover">
-									<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
-										item.label
-									}}</N8nText>
-									<template v-for="child in item.children" :key="child.id">
-										<component
-											v-if="isCustomMenuItem(child)"
-											:is="child.component"
-											v-bind="child.props"
-										/>
-										<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
-									</template>
-								</div>
-							</template>
-							<template #trigger>
-								<N8nMenuItem
-									:item="item"
-									:compact="isCollapsed"
-									@on-click="() => handleSelect(item.id)"
-								/>
-							</template>
-						</N8nPopoverReka>
-						<N8nMenuItem
-							v-else
-							:item="item"
-							:compact="isCollapsed"
-							@on-click="() => handleSelect(item.id)"
-						/>
-					</template>
+					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+					<div :class="$style.bottomMenuItems">
+						<template v-for="item in visibleMenuItems" :key="item.id">
+							<N8nPopoverReka
+								v-if="item.type === 'popover'"
+								:key="item.id"
+								side="right"
+								align="end"
+								:side-offset="16"
+							>
+								<template #content>
+									<div :class="$style.popover">
+										<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
+											item.label
+										}}</N8nText>
+										<template v-for="child in item.children" :key="child.id">
+											<component
+												v-if="isCustomMenuItem(child)"
+												:is="child.component"
+												v-bind="child.props"
+											/>
+											<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
+										</template>
+									</div>
+								</template>
+								<template #trigger>
+									<N8nMenuItem
+										:item="item"
+										:compact="isCollapsed"
+										@on-click="() => handleSelect(item.id)"
+									/>
+								</template>
+							</N8nPopoverReka>
+							<N8nMenuItem
+								v-else
+								:item="item"
+								:compact="isCollapsed"
+								@on-click="() => handleSelect(item.id)"
+							/>
+						</template>
+					</div>
 				</div>
 
 				<div v-if="showUserArea">
@@ -703,11 +704,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	flex-direction: column;
 	margin-top: auto;
+}
+
+.bottomMenuItems {
 	padding: var(--spacing-xs);
 }
 
 .popover {
-	padding: var(--spacing-xs);
+	padding: var(--spacing-s);
 	min-width: 200px;
 }
 
