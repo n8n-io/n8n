@@ -17,7 +17,7 @@ import {
 	MessageTracker,
 	handleMessage,
 } from '../GenericFunctions';
-import type { Options, TriggerOptions } from '../types';
+import type { TriggerOptions } from '../types';
 
 describe('RabbitMQ GenericFunctions', () => {
 	const credentials = {
