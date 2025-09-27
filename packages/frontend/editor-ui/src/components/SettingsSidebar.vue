@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import { N8nIcon, N8nMenuItem, type IMenuItem } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -134,15 +134,15 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			<i>
 				<N8nIcon icon="arrow-left" />
 			</i>
-			<n8n-text bold>{{ i18n.baseText('settings') }}</n8n-text>
+			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<div :class="$style.items">
 			<N8nMenuItem v-for="item in sidebarMenuItems" :key="item.id" :item="item" />
 		</div>
 		<div :class="$style.versionContainer">
-			<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
 				{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-			</n8n-link>
+			</N8nLink>
 		</div>
 	</div>
 </template>
