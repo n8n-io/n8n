@@ -1,14 +1,15 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { ApiKey, GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
+import type { ApiKey, GLOBAL_OWNER_ROLE, AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { UpdateMcpSettingsDto } from '../update-mcp-settings.dto';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const createReq = (body: unknown, roleSlug: string): AuthenticatedRequest =>
 	({ body, user: { role: { slug: roleSlug } } }) as unknown as AuthenticatedRequest;
