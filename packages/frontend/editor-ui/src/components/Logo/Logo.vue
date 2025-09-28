@@ -81,9 +81,16 @@ onMounted(() => {
 	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
 
+	svg > path {
+		fill: var(--color-text-dark, #13285a);
+	}
+
 	.logo,
 	.logoText {
 		transform: scale(1.3) translateY(-2px);
+		path {
+			fill: var(--color-text-dark);
+		}
 	}
 
 	.logoText {
@@ -94,11 +101,17 @@ onMounted(() => {
 
 .sidebarExpanded .logo {
 	margin-left: var(--spacing-2xs);
+	path {
+		fill: var(--color-text-dark);
+	}
 }
 
 .sidebarCollapsed .logo {
 	width: 40px;
 	height: 30px;
 	padding: 0 var(--spacing-4xs);
+	path {
+		fill: var(--color-text-dark);
+	}
 }
 </style>
