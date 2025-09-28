@@ -44,9 +44,9 @@ test.describe('Folders - Operations', () => {
 		}) => {
 			const { id: projectId } = await n8n.api.projects.createProject();
 			const folder = await n8n.api.projects.createFolder(projectId);
-			await n8n.navigate.toFolder(folder.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
+			await n8n.api.workflows.createInProject(projectId, {
+				folder: folder.id,
+			});
 			await n8n.navigate.toFolder(folder.id, projectId);
 			await n8n.breadcrumbs.getFolderBreadcrumbsActionToggle().click();
 			await n8n.breadcrumbs.getActionToggleDropdown('delete').click();
@@ -57,9 +57,9 @@ test.describe('Folders - Operations', () => {
 		test('should warn before deleting non-empty folder from card dropdown', async ({ n8n }) => {
 			const { id: projectId } = await n8n.api.projects.createProject();
 			const folder = await n8n.api.projects.createFolder(projectId);
-			await n8n.navigate.toFolder(folder.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
+			await n8n.api.workflows.createInProject(projectId, {
+				folder: folder.id,
+			});
 			await n8n.navigate.toProject(projectId);
 			const folderCard = n8n.workflows.cards.getFolder(folder.name);
 			await n8n.workflows.cards.openCardActions(folderCard);
@@ -73,11 +73,10 @@ test.describe('Folders - Operations', () => {
 		}) => {
 			const { id: projectId } = await n8n.api.projects.createProject();
 			const folderToDelete = await n8n.api.projects.createFolder(projectId);
+			await n8n.api.workflows.createInProject(projectId, {
+				folder: folderToDelete.id,
+			});
 			const destinationFolder = await n8n.api.projects.createFolder(projectId);
-
-			await n8n.navigate.toFolder(folderToDelete.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
 
 			await n8n.navigate.toProject(projectId);
 
@@ -132,9 +131,9 @@ test.describe('Folders - Operations', () => {
 			const sourceFolder = await n8n.api.projects.createFolder(projectId);
 			const destinationFolder = await n8n.api.projects.createFolder(projectId);
 
-			await n8n.navigate.toFolder(sourceFolder.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
+			await n8n.api.workflows.createInProject(projectId, {
+				folder: sourceFolder.id,
+			});
 
 			await n8n.navigate.toProject(projectId);
 
@@ -182,9 +181,9 @@ test.describe('Folders - Operations', () => {
 			const sourceFolder = await n8n.api.projects.createFolder(projectId);
 			const destinationFolder = await n8n.api.projects.createFolder(projectId);
 
-			await n8n.navigate.toFolder(sourceFolder.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
+			await n8n.api.workflows.createInProject(projectId, {
+				folder: sourceFolder.id,
+			});
 
 			await n8n.navigate.toFolder(sourceFolder.id, projectId);
 			await n8n.breadcrumbs.getFolderBreadcrumbsActionToggle().click();
@@ -236,14 +235,11 @@ test.describe('Folders - Operations', () => {
 			const { id: projectId } = await n8n.api.projects.createProject();
 			const destinationFolder = await n8n.api.projects.createFolder(projectId);
 
-			await n8n.navigate.toProject(projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
-			const workflowName = 'My workflow';
+			await n8n.api.workflows.createInProject(projectId);
 
 			await n8n.navigate.toProject(projectId);
 
-			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
+			const workflowCard = n8n.workflows.cards.getWorkflows().first();
 			await n8n.workflows.cards.openCardActions(workflowCard);
 			await n8n.workflows.cards.getCardAction('moveToFolder').click();
 
@@ -257,7 +253,7 @@ test.describe('Folders - Operations', () => {
 			).toBeVisible();
 
 			await n8n.navigate.toFolder(destinationFolder.id, projectId);
-			await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+			await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 		});
 
 		test('should move workflow to another folder', async ({ n8n }) => {
@@ -265,10 +261,9 @@ test.describe('Folders - Operations', () => {
 			const sourceFolder = await n8n.api.projects.createFolder(projectId);
 			const destinationFolder = await n8n.api.projects.createFolder(projectId);
 
-			await n8n.navigate.toFolder(sourceFolder.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.saveWorkflow();
-			const workflowName = 'My workflow';
+			const { name: workflowName } = await n8n.api.workflows.createInProject(projectId, {
+				folder: sourceFolder.id,
+			});
 
 			await n8n.navigate.toFolder(sourceFolder.id, projectId);
 

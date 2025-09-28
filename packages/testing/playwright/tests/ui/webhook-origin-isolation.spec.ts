@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('Webhook Origin Isolation', () => {
 	test.beforeAll(async ({ api }) => {
-		await api.workflowApi.importWorkflow('webhook-origin-isolation.json', { makeUnique: false });
+		await api.workflows.importWorkflow('webhook-origin-isolation.json', { makeUnique: false });
 	});
 
 	const webhookPaths = [

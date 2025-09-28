@@ -3,87 +3,64 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Folders - Advanced Operations', () => {
-	test.describe.configure({ mode: 'serial' });
 	test.describe('Duplicate workflows', () => {
 		test('should duplicate workflow within root folder from personal projects', async ({ n8n }) => {
-			const projectId = await n8n.start.fromNewProject();
-			const workflowName = `Test Workflow ${nanoid(8)}`;
-			await n8n.workflows.addResource.workflow();
-			await n8n.canvas.setWorkflowName(workflowName);
-
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const { name: workflowName } = await n8n.api.workflows.createInProject(projectId);
 			await n8n.navigate.toProject(projectId);
-
-			await n8n.workflows.cards.getWorkflow(workflowName).waitFor({ state: 'visible' });
 			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
 			await n8n.workflows.cards.openCardActions(workflowCard);
 			await n8n.workflows.cards.getCardAction('duplicate').click();
-			await n8n.modal.clickButton('Duplicate');
+			const duplicatePage = await n8n.start.fromNewPage(async () => {
+				await n8n.modal.clickButton('Duplicate');
+			});
 
 			const duplicatedName = `${workflowName} copy`;
-			await n8n.navigate.toProject(projectId);
-			await expect(n8n.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
+			await duplicatePage.navigate.toProject(projectId);
+			await expect(duplicatePage.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
 		});
 
 		test('should duplicate workflow within a folder from personal projects', async ({ n8n }) => {
 			const projectId = await n8n.start.fromNewProject();
-			const folderName = await n8n.api.projects.createFolder(projectId);
-			await n8n.navigate.toFolder(folderName.id, projectId);
-
-			await n8n.workflows.addResource.workflow();
-			const workflowName = `Folder Workflow ${nanoid(8)}`;
-			await n8n.canvas.setWorkflowName(workflowName);
-
-			await n8n.navigate.toProject(projectId);
-			await n8n.workflows.cards.openFolder(folderName.name);
+			const folder = await n8n.api.projects.createFolder(projectId);
+			const { name: workflowName } = await n8n.api.workflows.createInProject(projectId, {
+				folder: folder.id,
+			});
+			await n8n.navigate.toFolder(folder.id, projectId);
 
 			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
 			await n8n.workflows.cards.openCardActions(workflowCard);
 			await n8n.workflows.cards.getCardAction('duplicate').click();
 
+			const duplicatePage = await n8n.start.fromNewPage(async () => {
+				await n8n.modal.clickButton('Duplicate');
+			});
+
+			await duplicatePage.navigate.toFolder(folder.id);
 			const duplicatedName = `${workflowName} copy`;
-			await n8n.modal.clickButton('Duplicate');
-			await n8n.navigate.toFolder(folderName.id, projectId);
-			await expect(n8n.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
-		});
-
-		test('should duplicate workflow within a folder from overview', async ({ n8n }) => {
-			const projectId = await n8n.start.fromNewProject();
-			const folderName = await n8n.api.projects.createFolder(projectId);
-
-			await n8n.navigate.toFolder(folderName.id, projectId);
-			await n8n.workflows.addResource.workflow();
-			const workflowName = `Overview Test ${nanoid(8)}`;
-			await n8n.canvas.setWorkflowName(workflowName);
-
-			await n8n.navigate.toFolder(folderName.id, projectId);
-
-			const workflowCard = n8n.workflows.cards.getWorkflow(workflowName);
-			await n8n.workflows.cards.openCardActions(workflowCard);
-			await n8n.workflows.cards.getCardAction('duplicate').click();
-
-			const duplicatedName = `${workflowName} copy`;
-			await n8n.modal.clickButton('Duplicate');
-			await n8n.navigate.toFolder(folderName.id, projectId);
-			await expect(n8n.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
+			await expect(duplicatePage.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
 		});
 
 		test('should duplicate workflow within a folder from workflow page', async ({ n8n }) => {
-			const projectId = await n8n.start.fromNewProject();
-			const folderName = await n8n.workflows.addFolder();
-
-			await n8n.workflows.cards.openFolder(folderName);
-			await n8n.workflows.addResource.workflow();
-			const workflowName = `Settings Test ${nanoid(8)}`;
-			await n8n.canvas.setWorkflowName(workflowName);
+			const { id: projectId } = await n8n.api.projects.createProject();
+			const folder = await n8n.api.projects.createFolder(projectId);
+			const { name: workflowName, id: workflowId } = await n8n.api.workflows.createInProject(
+				projectId,
+				{
+					folder: folder.id,
+				},
+			);
+			await n8n.navigate.toCanvas(workflowId);
 
 			await n8n.workflowSettingsModal.getWorkflowMenu().click();
 			await n8n.workflowSettingsModal.getDuplicateMenuItem().click();
-			await n8n.modal.clickButton('Duplicate');
+			const duplicatePage = await n8n.start.fromNewPage(async () => {
+				await n8n.modal.clickButton('Duplicate');
+			});
 
 			const duplicatedName = `${workflowName} copy`;
-			await n8n.navigate.toProject(projectId);
-			await n8n.workflows.cards.openFolder(folderName);
-			await expect(n8n.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
+			await duplicatePage.navigate.toFolder(folder.id, projectId);
+			await expect(duplicatePage.workflows.cards.getWorkflow(duplicatedName)).toBeVisible();
 		});
 	});
 
@@ -144,18 +121,10 @@ test.describe('Folders - Advanced Operations', () => {
 		});
 
 		test('should drag and drop workflows into folders', async ({ n8n }) => {
-			const project = await n8n.api.projects.createProject('Drag and Drop WF Test');
-			await n8n.navigate.toProject(project.id);
-			const destinationFolder = await n8n.api.projects.createFolder(
-				project.id,
-				'Workflow Destination',
-			);
-
-			await n8n.workflows.addResource.workflow();
-			const workflowName = `Drag Drop Test ${nanoid(8)}`;
-			await n8n.canvas.setWorkflowName(workflowName);
-
-			await n8n.navigate.toProject(project.id);
+			const { id: projectId } = await n8n.api.projects.createProject('Drag and Drop WF Test');
+			const { name: workflowName } = await n8n.api.workflows.createInProject(projectId, {});
+			const destinationFolder = await n8n.api.projects.createFolder(projectId);
+			await n8n.navigate.toProject(projectId);
 
 			const sourceWorkflowCard = n8n.workflows.cards.getWorkflow(workflowName);
 			const destinationFolderCard = n8n.workflows.cards.getFolder(destinationFolder.name);

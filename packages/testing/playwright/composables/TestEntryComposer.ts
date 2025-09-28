@@ -57,7 +57,7 @@ export class TestEntryComposer {
 	 * Returns the workflow import result for use in the test
 	 */
 	async fromImportedWorkflow(workflowFile: string) {
-		const workflowImportResult = await this.n8n.api.workflowApi.importWorkflow(workflowFile);
+		const workflowImportResult = await this.n8n.api.workflows.importWorkflow(workflowFile);
 		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
 		return workflowImportResult;
 	}
