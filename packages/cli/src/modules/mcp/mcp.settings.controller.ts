@@ -1,12 +1,11 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
+import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { UpdateMcpSettingsDto } from './update-mcp-settings.dto';
 import { BadRequestError } from '../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
 
 @RestController('/mcp')
 export class McpSettingsController {
