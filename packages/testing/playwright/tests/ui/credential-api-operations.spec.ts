@@ -96,7 +96,7 @@ test.describe('Credential API Operations', () => {
 			await api.enableFeature('projectRole:editor');
 			await api.setMaxTeamProjectsQuota(-1);
 
-			const project = await api.projectApi.createProject('Test Project for Credentials');
+			const project = await api.projects.createProject('Test Project for Credentials');
 
 			const credential = await api.credentialApi.createCredentialFromDefinition({
 				name: 'Project Credential',
@@ -121,8 +121,8 @@ test.describe('Credential API Operations', () => {
 			await api.enableFeature('projectRole:editor');
 			await api.setMaxTeamProjectsQuota(-1);
 
-			const sourceProject = await api.projectApi.createProject('Source Project');
-			const destinationProject = await api.projectApi.createProject('Destination Project');
+			const sourceProject = await api.projects.createProject('Source Project');
+			const destinationProject = await api.projects.createProject('Destination Project');
 
 			const credential = await api.credentialApi.createCredentialFromDefinition({
 				name: 'Transfer Test Credential',

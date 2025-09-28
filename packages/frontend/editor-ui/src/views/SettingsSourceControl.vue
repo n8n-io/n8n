@@ -7,12 +7,12 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import type { SshKeyTypes } from '@/types/sourceControl.types';
+import type { SshKeyTypes, SourceControlPreferences } from '@/types/sourceControl.types';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 const locale = useI18n();
@@ -24,6 +24,10 @@ const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);
+const connectionType = ref<'ssh' | 'https'>('ssh');
+const httpsUsername = ref('');
+const httpsPassword = ref('');
+
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
 		value: branch,
@@ -31,13 +35,29 @@ const branchNameOptions = computed(() =>
 	})),
 );
 
+const connectionTypeOptions = [
+	{ value: 'ssh', label: 'SSH' },
+	{ value: 'https', label: 'HTTPS' },
+];
+
 const onConnect = async () => {
 	loadingService.startLoading();
 	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
-		await sourceControlStore.savePreferences({
+		const connectionData: Partial<SourceControlPreferences> & {
+			httpsUsername?: string;
+			httpsPassword?: string;
+		} = {
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
-		});
+			connectionType: connectionType.value,
+		};
+
+		if (connectionType.value === 'https') {
+			connectionData.httpsUsername = httpsUsername.value;
+			connectionData.httpsPassword = httpsPassword.value;
+		}
+
+		await sourceControlStore.savePreferences(connectionData);
 		await sourceControlStore.getBranches();
 		isConnected.value = true;
 		toast.showMessage({
@@ -66,6 +86,8 @@ const onDisconnect = async () => {
 			loadingService.startLoading();
 			await sourceControlStore.disconnect(true);
 			isConnected.value = false;
+			httpsUsername.value = '';
+			httpsPassword.value = '';
 			toast.showMessage({
 				title: locale.baseText('settings.sourceControl.toast.disconnected.title'),
 				message: locale.baseText('settings.sourceControl.toast.disconnected.message'),
@@ -91,7 +113,7 @@ const onSave = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, 'Error setting branch');
+		toast.showError(error, locale.baseText('settings.sourceControl.saved.error'));
 	}
 	loadingService.stopLoading();
 };
@@ -111,6 +133,7 @@ const initialize = async () => {
 	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
+		connectionType.value = sourceControlStore.preferences.connectionType || 'ssh';
 		void sourceControlStore.getBranches();
 	}
 };
@@ -124,27 +147,54 @@ onMounted(async () => {
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
 	keyGeneratorType: false,
+	httpsUsername: false,
+	httpsPassword: false,
 });
 
 function onValidate(key: string, value: boolean) {
 	formValidationStatus[key] = value;
 }
 
-const repoUrlValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex:
-				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
-			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
-		},
-	},
-];
+const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
+	const baseRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+
+	if (connectionType.value === 'ssh') {
+		baseRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex:
+					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
+			},
+		});
+	} else {
+		baseRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^https:\/\/.+$/,
+				message: locale.baseText('settings.sourceControl.enterValidHttpsUrl'),
+			},
+		});
+	}
+
+	return baseRules;
+});
 
 const keyGeneratorTypeValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+const httpsCredentialValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
-const validForConnection = computed(() => formValidationStatus.repoUrl);
+const validForConnection = computed(() => {
+	if (connectionType.value === 'ssh') {
+		return formValidationStatus.repoUrl;
+	} else {
+		return (
+			formValidationStatus.repoUrl &&
+			formValidationStatus.httpsUsername &&
+			formValidationStatus.httpsPassword
+		);
+	}
+});
+
 const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
 async function refreshSshKey() {
@@ -189,18 +239,28 @@ const onSelectSshKeyType = (value: Validatable) => {
 	}
 	sourceControlStore.preferences.keyGeneratorType = sshKeyType;
 };
+
+watch(connectionType, () => {
+	formValidationStatus.repoUrl = false;
+	formValidationStatus.httpsUsername = false;
+	formValidationStatus.httpsPassword = false;
+
+	if (!isConnected.value) {
+		sourceControlStore.preferences.repositoryUrl = '';
+	}
+});
 </script>
 
 <template>
 	<div>
-		<n8n-heading size="2xlarge" tag="h1">{{
+		<N8nHeading size="2xlarge" tag="h1">{{
 			locale.baseText('settings.sourceControl.title')
-		}}</n8n-heading>
+		}}</N8nHeading>
 		<div
 			v-if="sourceControlStore.isEnterpriseSourceControlEnabled"
 			data-test-id="source-control-content-licensed"
 		>
-			<n8n-callout theme="secondary" icon="info" class="mt-2xl mb-l">
+			<N8nCallout theme="secondary" icon="info" class="mt-2xl mb-l">
 				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
@@ -208,14 +268,37 @@ const onSelectSshKeyType = (value: Validatable) => {
 						</a>
 					</template>
 				</I18nT>
-			</n8n-callout>
-			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
+			</N8nCallout>
+			<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
-			}}</n8n-heading>
+			}}</N8nHeading>
+
+			<div v-if="!isConnected" :class="$style.group">
+				<label for="connectionType">{{
+					locale.baseText('settings.sourceControl.connectionType')
+				}}</label>
+				<N8nFormInput
+					id="connectionType"
+					v-model="connectionType"
+					label=""
+					type="select"
+					name="connectionType"
+					:options="connectionTypeOptions"
+					data-test-id="source-control-connection-type-select"
+				/>
+			</div>
+
+			<!-- Repository URL -->
 			<div :class="$style.group">
-				<label for="repoUrl">{{ locale.baseText('settings.sourceControl.repoUrl') }}</label>
+				<label for="repoUrl">
+					{{
+						connectionType === 'ssh'
+							? locale.baseText('settings.sourceControl.sshRepoUrl')
+							: locale.baseText('settings.sourceControl.httpsRepoUrl')
+					}}
+				</label>
 				<div :class="$style.groupFlex">
-					<n8n-form-input
+					<N8nFormInput
 						id="repoUrl"
 						v-model="sourceControlStore.preferences.repositoryUrl"
 						label=""
@@ -224,10 +307,14 @@ const onSelectSshKeyType = (value: Validatable) => {
 						validate-on-blur
 						:validation-rules="repoUrlValidationRules"
 						:disabled="isConnected"
-						:placeholder="locale.baseText('settings.sourceControl.repoUrlPlaceholder')"
+						:placeholder="
+							connectionType === 'ssh'
+								? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
+								: locale.baseText('settings.sourceControl.httpsRepoUrlPlaceholder')
+						"
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
-					<n8n-button
+					<N8nButton
 						v-if="isConnected"
 						:class="$style.disconnectButton"
 						type="tertiary"
@@ -235,14 +322,75 @@ const onSelectSshKeyType = (value: Validatable) => {
 						icon="trash-2"
 						data-test-id="source-control-disconnect-button"
 						@click="onDisconnect"
-						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
+						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</N8nButton
 					>
 				</div>
+				<N8nNotice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
+					{{ locale.baseText('settings.sourceControl.sshFormatNotice') }}
+				</N8nNotice>
+				<N8nNotice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
+					{{ locale.baseText('settings.sourceControl.httpsFormatNotice') }}
+				</N8nNotice>
 			</div>
-			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
+
+			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+				<label for="httpsUsername">{{
+					locale.baseText('settings.sourceControl.httpsUsername')
+				}}</label>
+				<N8nFormInput
+					id="httpsUsername"
+					v-model="httpsUsername"
+					label=""
+					name="httpsUsername"
+					type="text"
+					validate-on-blur
+					:validation-rules="httpsCredentialValidationRules"
+					:placeholder="locale.baseText('settings.sourceControl.httpsUsernamePlaceholder')"
+					@validate="(value: boolean) => onValidate('httpsUsername', value)"
+				/>
+			</div>
+
+			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+				<label for="httpsPassword">{{
+					locale.baseText('settings.sourceControl.httpsPersonalAccessToken')
+				}}</label>
+				<N8nFormInput
+					id="httpsPassword"
+					v-model="httpsPassword"
+					label=""
+					name="httpsPassword"
+					type="password"
+					validate-on-blur
+					:validation-rules="httpsCredentialValidationRules"
+					:placeholder="
+						locale.baseText('settings.sourceControl.httpsPersonalAccessTokenPlaceholder')
+					"
+					@validate="(value: boolean) => onValidate('httpsPassword', value)"
+				/>
+				<N8nNotice type="warning" class="mt-s">
+					<I18nT keypath="settings.sourceControl.httpsWarningNotice" tag="span" scope="global">
+						<template #strong>
+							<strong>{{
+								locale.baseText('settings.sourceControl.httpsWarningNotice.strong')
+							}}</strong>
+						</template>
+						<template #repo>
+							<code>repo</code>
+						</template>
+						<template #publicRepo>
+							<code>public_repo</code>
+						</template>
+					</I18nT>
+				</N8nNotice>
+			</div>
+
+			<div
+				v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
+				:class="$style.group"
+			>
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
-					<n8n-form-input
+					<N8nFormInput
 						v-if="!isConnected"
 						id="keyGeneratorType"
 						:class="$style.sshKeyTypeSelect"
@@ -264,7 +412,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 						:value="sourceControlStore.preferences.publicKey"
 						:copy-button-text="locale.baseText('generic.clickToCopy')"
 					/>
-					<n8n-button
+					<N8nButton
 						v-if="!isConnected"
 						size="large"
 						type="tertiary"
@@ -273,9 +421,9 @@ const onSelectSshKeyType = (value: Validatable) => {
 						@click="refreshSshKey"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
-					</n8n-button>
+					</N8nButton>
 				</div>
-				<n8n-notice type="info" class="mt-s">
+				<N8nNotice type="info" class="mt-s">
 					<I18nT keypath="settings.sourceControl.sshKeyDescription" tag="span" scope="global">
 						<template #link>
 							<a
@@ -285,26 +433,27 @@ const onSelectSshKeyType = (value: Validatable) => {
 							>
 						</template>
 					</I18nT>
-				</n8n-notice>
+				</N8nNotice>
 			</div>
-			<n8n-button
+			<N8nButton
 				v-if="!isConnected"
 				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
 				data-test-id="source-control-connect-button"
 				@click="onConnect"
-				>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
+				>{{ locale.baseText('settings.sourceControl.button.connect') }}</N8nButton
 			>
+
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
 				<div :class="$style.group">
 					<hr />
-					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
+					<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.sourceControl.instanceSettings')
-					}}</n8n-heading>
+					}}</N8nHeading>
 					<label>{{ locale.baseText('settings.sourceControl.branches') }}</label>
 					<div :class="$style.branchSelection">
-						<n8n-form-input
+						<N8nFormInput
 							id="branchName"
 							label=""
 							type="select"
@@ -318,13 +467,13 @@ const onSelectSshKeyType = (value: Validatable) => {
 							@validate="(value: boolean) => onValidate('branchName', value)"
 							@update:model-value="onSelect"
 						/>
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<span>
 									{{ locale.baseText('settings.sourceControl.refreshBranches.tooltip') }}
 								</span>
 							</template>
-							<n8n-button
+							<N8nButton
 								size="small"
 								type="tertiary"
 								icon="refresh-cw"
@@ -333,9 +482,9 @@ const onSelectSshKeyType = (value: Validatable) => {
 								data-test-id="source-control-refresh-branches-button"
 								@click="refreshBranches"
 							/>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</div>
-					<n8n-checkbox
+					<N8nCheckbox
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
@@ -344,26 +493,26 @@ const onSelectSshKeyType = (value: Validatable) => {
 								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
 						</I18nT>
-					</n8n-checkbox>
+					</N8nCheckbox>
 				</div>
 				<div :class="$style.group">
 					<label>{{ locale.baseText('settings.sourceControl.color') }}</label>
 					<div>
-						<n8n-color-picker v-model="sourceControlStore.preferences.branchColor" size="small" />
+						<N8nColorPicker v-model="sourceControlStore.preferences.branchColor" size="small" />
 					</div>
 				</div>
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button
+					<N8nButton
 						size="large"
 						:disabled="!sourceControlStore.preferences.branchName"
 						data-test-id="source-control-save-settings-button"
 						@click="onSave"
-						>{{ locale.baseText('settings.sourceControl.button.save') }}</n8n-button
+						>{{ locale.baseText('settings.sourceControl.button.save') }}</N8nButton
 					>
 				</div>
 			</div>
 		</div>
-		<n8n-action-box
+		<N8nActionBox
 			v-else
 			data-test-id="source-control-content-unlicensed"
 			:class="$style.actionBox"
@@ -380,7 +529,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
 				</a>
 			</template>
-		</n8n-action-box>
+		</N8nActionBox>
 	</div>
 </template>
 

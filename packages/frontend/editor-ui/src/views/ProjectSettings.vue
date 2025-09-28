@@ -6,10 +6,9 @@ import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput, N8nInput } from '@n8n/design-system';
 import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
-import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '@/stores/projects.store';
-import type { Project, ProjectRelation } from '@/types/projects.types';
+import type { Project, ProjectRelation, ProjectMemberData } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -23,7 +22,6 @@ import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
-import type { ProjectMemberData } from '@/types/projects.types';
 import { isProjectRole } from '@/utils/typeGuards';
 
 type FormDataDiff = {
@@ -43,6 +41,10 @@ const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+
+const showSaveError = (error: Error) => {
+	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+};
 
 const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
@@ -86,10 +88,8 @@ const membersTableState = ref<TableOptions>({
 });
 
 const usersList = computed(() =>
-	usersStore.allUsers.filter((user: IUser) => {
-		const isAlreadySharedWithUser = (formData.value.relations || []).find(
-			(r: ProjectRelation) => r.id === user.id,
-		);
+	usersStore.allUsers.filter((user) => {
+		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
 		return !isAlreadySharedWithUser;
 	}),
@@ -117,19 +117,36 @@ const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() 
 	},
 ]);
 
-const onAddMember = (userId: string) => {
-	isDirty.value = true;
+const onAddMember = async (userId: string) => {
+	if (!projectsStore.currentProject) return;
 	const user = usersStore.usersById[userId];
 	if (!user) return;
 
-	const { id, firstName, lastName, email } = user;
-	const relation = { id, firstName, lastName, email } as ProjectRelation;
+	const role = firstLicensedRole.value;
+	if (!role) return;
 
-	if (firstLicensedRole.value) {
-		relation.role = firstLicensedRole.value;
+	// Optimistically update UI
+	if (!formData.value.relations.find((r) => r.id === userId)) {
+		formData.value.relations.push({ id: userId, role });
 	}
 
-	formData.value.relations.push(relation);
+	try {
+		suppressNextSync.value = true;
+		await projectsStore.addMember(projectsStore.currentProject.id, { userId, role });
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('projects.settings.member.added.title'),
+		});
+		telemetry.track('User added member to project', {
+			project_id: projectsStore.currentProject.id,
+			target_user_id: userId,
+			role,
+		});
+	} catch (error) {
+		// Rollback optimistic change
+		formData.value.relations = formData.value.relations.filter((r) => r.id !== userId);
+		showSaveError(error);
+	}
 };
 
 const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
@@ -149,13 +166,8 @@ const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: Proj
 	formData.value.relations[memberIndex].role = role;
 
 	try {
-		await projectsStore.updateProject(projectsStore.currentProject.id, {
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
-		});
-
+		suppressNextSync.value = true;
+		await projectsStore.updateMemberRole(projectsStore.currentProject.id, userId, role);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.memberRole.updated.title'),
@@ -193,11 +205,7 @@ async function onRemoveMember(userId: string) {
 	try {
 		// Prevent next sync from wiping unsaved edits
 		suppressNextSync.value = true;
-		await projectsStore.updateProject(current.id, {
-			relations: current.relations
-				.filter((r) => r.id !== userId)
-				.map((r) => ({ userId: r.id, role: r.role })),
-		});
+		await projectsStore.removeMember(current.id, userId);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('projects.settings.member.removed.title'),
@@ -208,7 +216,7 @@ async function onRemoveMember(userId: string) {
 		});
 	} catch (error) {
 		formData.value.relations.splice(idx, 0, removed);
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 	}
 }
 
@@ -223,12 +231,16 @@ const onMembersListAction = async ({ action, userId }: { action: string; userId:
 	}
 };
 
-const onCancel = () => {
+const resetFormData = () => {
 	formData.value.relations = projectsStore.currentProject?.relations
 		? deepCopy(projectsStore.currentProject.relations)
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+};
+
+const onCancel = () => {
+	resetFormData();
 	isDirty.value = false;
 };
 
@@ -248,14 +260,14 @@ const makeFormDataDiff = (): FormDataDiff => {
 
 	if (formData.value.relations.length !== projectsStore.currentProject.relations.length) {
 		diff.memberAdded = formData.value.relations.filter(
-			(r: ProjectRelation) => !projectsStore.currentProject?.relations.find((cr) => cr.id === r.id),
+			(r) => !projectsStore.currentProject?.relations.find((cr) => cr.id === r.id),
 		);
 		diff.memberRemoved = projectsStore.currentProject.relations.filter(
-			(cr: ProjectRelation) => !formData.value.relations.find((r) => r.id === cr.id),
+			(cr) => !formData.value.relations.find((r) => r.id === cr.id),
 		);
 	}
 
-	diff.role = formData.value.relations.filter((r: ProjectRelation) => {
+	diff.role = formData.value.relations.filter((r) => {
 		const currentRelation = projectsStore.currentProject?.relations.find((cr) => cr.id === r.id);
 		return currentRelation?.role !== r.role && !diff.memberAdded?.find((ar) => ar.id === r.id);
 	});
@@ -264,41 +276,34 @@ const makeFormDataDiff = (): FormDataDiff => {
 };
 
 const sendTelemetry = (diff: FormDataDiff) => {
+	const projectId = projectsStore.currentProject?.id;
+
 	if (diff.name) {
-		telemetry.track('User changed project name', {
-			project_id: projectsStore.currentProject?.id,
-			name: diff.name,
-		});
+		telemetry.track('User changed project name', { project_id: projectId, name: diff.name });
 	}
 
-	if (diff.memberAdded) {
-		diff.memberAdded.forEach((r) => {
-			telemetry.track('User added member to project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-				role: r.role,
-			});
+	diff.memberAdded?.forEach((r) => {
+		telemetry.track('User added member to project', {
+			project_id: projectId,
+			target_user_id: r.id,
+			role: r.role,
 		});
-	}
+	});
 
-	if (diff.memberRemoved) {
-		diff.memberRemoved.forEach((r) => {
-			telemetry.track('User removed member from project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-			});
+	diff.memberRemoved?.forEach((r) => {
+		telemetry.track('User removed member from project', {
+			project_id: projectId,
+			target_user_id: r.id,
 		});
-	}
+	});
 
-	if (diff.role) {
-		diff.role.forEach((r) => {
-			telemetry.track('User changed member role on project', {
-				project_id: projectsStore.currentProject?.id,
-				target_user_id: r.id,
-				role: r.role,
-			});
+	diff.role?.forEach((r) => {
+		telemetry.track('User changed member role on project', {
+			project_id: projectId,
+			target_user_id: r.id,
+			role: r.role,
 		});
-	}
+	});
 };
 
 const updateProject = async () => {
@@ -306,22 +311,13 @@ const updateProject = async () => {
 		return;
 	}
 	try {
-		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
-			throw new Error('Invalid role selected for this project.');
-		}
-
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
-			icon: projectIcon.value,
 			description: formData.value.description ?? '',
-			relations: formData.value.relations.map((r: ProjectRelation) => ({
-				userId: r.id,
-				role: r.role,
-			})),
 		});
 		isDirty.value = false;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
+		showSaveError(error);
 		throw error;
 	}
 };
@@ -383,11 +379,18 @@ const selectProjectNameIfMatchesDefault = () => {
 };
 
 const onIconUpdated = async () => {
-	await updateProject();
-	toast.showMessage({
-		title: i18n.baseText('projects.settings.icon.update.successful.title'),
-		type: 'success',
-	});
+	if (!projectsStore.currentProject) return;
+	try {
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			icon: projectIcon.value,
+		});
+		toast.showMessage({
+			title: i18n.baseText('projects.settings.icon.update.successful.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		showSaveError(error);
+	}
 };
 
 // Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits
@@ -398,11 +401,7 @@ watch(
 			suppressNextSync.value = false;
 			return;
 		}
-		formData.value.name = projectsStore.currentProject?.name ?? '';
-		formData.value.description = projectsStore.currentProject?.description ?? '';
-		formData.value.relations = projectsStore.currentProject?.relations
-			? deepCopy(projectsStore.currentProject.relations)
-			: [];
+		resetFormData();
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
 		if (projectsStore.currentProject?.icon && isIconOrEmoji(projectsStore.currentProject.icon)) {
@@ -415,24 +414,17 @@ watch(
 // Add users property to the relation objects,
 // So that the table has access to the full user data
 const relationUsers = computed(() =>
-	formData.value.relations.map((relation: ProjectRelation) => {
+	formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
-		// Ensure type safety for UI display while preserving original role in formData
-		const safeRole: ProjectRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const safeRole = isProjectRole(relation.role) ? relation.role : 'project:viewer';
 
-		if (!user) {
-			return {
-				...relation,
-				role: safeRole,
-				firstName: null,
-				lastName: null,
-				email: null,
-			};
-		}
 		return {
 			...user,
 			...relation,
 			role: safeRole,
+			firstName: user?.firstName ?? null,
+			lastName: user?.lastName ?? null,
+			email: user?.email ?? null,
 		};
 	}),
 );
@@ -443,19 +435,16 @@ const membersTableData = computed(() => ({
 }));
 
 const filteredMembersData = computed(() => {
-	if (!search.value.trim()) {
-		return membersTableData.value;
-	}
+	if (!search.value.trim()) return membersTableData.value;
+
 	const searchTerm = search.value.toLowerCase();
 	const filtered = relationUsers.value.filter((member) => {
-		const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
-		const email = (member.email || '').toLowerCase();
+		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
+		const email = (member.email ?? '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
-	return {
-		items: filtered,
-		count: filtered.length,
-	};
+
+	return { items: filtered, count: filtered.length };
 });
 
 const debouncedSearch = useDebounceFn(() => {
@@ -485,11 +474,14 @@ onMounted(() => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
+			<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
+				{{ i18n.baseText('projects.settings.info') }}
+			</N8nText>
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
-				<div :class="$style['project-name']">
+				<div :class="$style.projectName">
 					<N8nIconPicker
 						v-model="projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
@@ -504,7 +496,7 @@ onMounted(() => {
 						name="name"
 						required
 						data-test-id="project-settings-name-input"
-						:class="$style['project-name-input']"
+						:class="$style.projectNameInput"
 						@enter="onSubmit"
 						@input="onTextInput"
 						@validate="isValid = $event"
@@ -522,15 +514,42 @@ onMounted(() => {
 					:maxlength="512"
 					:autosize="true"
 					data-test-id="project-settings-description-input"
+					:class="$style.projectDescriptionInput"
 					@enter="onSubmit"
 					@input="onTextInput"
 					@validate="isValid = $event"
 				/>
 			</fieldset>
+			<fieldset v-if="isDirty" :class="$style.buttons">
+				<div>
+					<small class="mr-2xs">{{
+						i18n.baseText('projects.settings.message.unsavedChanges')
+					}}</small>
+					<N8nButton
+						type="secondary"
+						native-type="button"
+						class="mr-2xs"
+						data-test-id="project-settings-cancel-button"
+						@click.stop.prevent="onCancel"
+						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
+					>
+				</div>
+				<N8nButton
+					:disabled="!isValid"
+					type="primary"
+					data-test-id="project-settings-save-button"
+					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
+				>
+			</fieldset>
 			<fieldset>
-				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
+				<h3>
+					<label for="projectMembers">{{
+						i18n.baseText('projects.settings.projectMembers')
+					}}</label>
+				</h3>
 				<N8nUserSelect
 					id="projectMembers"
+					:class="$style.userSelect"
 					class="mb-s"
 					size="large"
 					:users="usersList"
@@ -569,30 +588,7 @@ onMounted(() => {
 					/>
 				</div>
 			</fieldset>
-			<fieldset :class="$style.buttons">
-				<div>
-					<small v-if="isDirty" class="mr-2xs">{{
-						i18n.baseText('projects.settings.message.unsavedChanges')
-					}}</small>
-					<N8nButton
-						:disabled="!isDirty"
-						type="secondary"
-						native-type="button"
-						class="mr-2xs"
-						data-test-id="project-settings-cancel-button"
-						@click.stop.prevent="onCancel"
-						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
-					>
-				</div>
-				<N8nButton
-					:disabled="!isDirty || !isValid"
-					type="primary"
-					data-test-id="project-settings-save-button"
-					>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
-				>
-			</fieldset>
 			<fieldset>
-				<hr class="mb-2xl" />
 				<h3 class="mb-xs">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 				<small>{{ i18n.baseText('projects.settings.danger.message') }}</small>
 				<br />
@@ -623,6 +619,8 @@ onMounted(() => {
 
 <style lang="scss" module>
 .projectSettings {
+	--project-field-width: 560px;
+
 	display: grid;
 	width: 100%;
 	justify-items: center;
@@ -634,12 +632,18 @@ onMounted(() => {
 		padding: 0 var(--spacing-2xl);
 
 		fieldset {
-			padding-bottom: var(--spacing-2xl);
+			padding-bottom: var(--spacing-xl);
+
+			h3 {
+				label {
+					font-size: var(--font-size-l);
+				}
+			}
 
 			label {
 				display: block;
 				margin-bottom: var(--spacing-xs);
-				font-size: var(--font-size-xl);
+				font-size: var(--font-size-s);
 			}
 		}
 	}
@@ -657,7 +661,7 @@ onMounted(() => {
 
 .buttons {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	align-items: center;
 }
 
@@ -666,16 +670,28 @@ onMounted(() => {
 }
 
 .search {
-	max-width: 300px;
+	max-width: var(--project-field-width);
 	margin-bottom: var(--spacing-s);
 }
 
-.project-name {
+.projectName {
 	display: flex;
 	gap: var(--spacing-2xs);
+	max-width: var(--project-field-width);
 
-	.project-name-input {
+	.projectNameInput {
 		flex: 1;
 	}
+}
+
+.projectDescriptionInput,
+.userSelect {
+	max-width: var(--project-field-width);
+	width: 100%;
+}
+
+/* Ensure textarea uses regular UI font, not monospace */
+.projectDescriptionInput :global(textarea) {
+	font-family: var(--font-family);
 }
 </style>

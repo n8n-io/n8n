@@ -262,5 +262,28 @@ describe('DeprecationService', () => {
 				expect(logger.warn).not.toHaveBeenCalled();
 			},
 		);
+
+		test('should not warn when Git node is excluded', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: ['n8n-nodes-base.git'] },
+			});
+			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
+
+			deprecationService.warn();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		test('should not warn when deployment type is cloud', () => {
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: { exclude: [] },
+				deployment: { type: 'cloud' },
+			});
+			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
+
+			deprecationService.warn();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 });

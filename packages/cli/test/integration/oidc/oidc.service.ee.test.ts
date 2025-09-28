@@ -54,6 +54,7 @@ describe('OIDC service', () => {
 				clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
 				discoveryEndpoint: 'http://n8n.io/not-set',
 				loginEnabled: false,
+				prompt: 'select_account',
 			});
 		});
 
@@ -64,6 +65,7 @@ describe('OIDC service', () => {
 				clientSecret: '',
 				discoveryEndpoint: new URL('http://n8n.io/not-set'),
 				loginEnabled: false,
+				prompt: 'select_account',
 			});
 		});
 
@@ -73,6 +75,7 @@ describe('OIDC service', () => {
 				clientSecret: 'test-client-secret',
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -94,6 +97,7 @@ describe('OIDC service', () => {
 				clientSecret: 'test-client-secret',
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -114,6 +118,7 @@ describe('OIDC service', () => {
 				clientSecret: 'test-client-secret',
 				discoveryEndpoint: 'Not an url',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
@@ -125,6 +130,7 @@ describe('OIDC service', () => {
 				clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -146,6 +152,7 @@ describe('OIDC service', () => {
 				clientSecret: 'test-client-secret',
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
@@ -165,6 +172,7 @@ describe('OIDC service', () => {
 				clientSecret: 'initial-client-secret',
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			const mockConfiguration = new real_odic_client.Configuration(
@@ -194,6 +202,7 @@ describe('OIDC service', () => {
 				clientSecret: 'new-client-secret',
 				discoveryEndpoint: 'https://newprovider.example.com/.well-known/openid-configuration',
 				loginEnabled: true,
+				prompt: 'select_account',
 			};
 
 			const newMockConfiguration = new real_odic_client.Configuration(
@@ -244,6 +253,7 @@ describe('OIDC service', () => {
 			clientSecret: 'test-client-secret',
 			discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 			loginEnabled: true,
+			prompt: 'consent',
 		};
 
 		await oidcService.updateConfig(initialConfig);
@@ -257,6 +267,8 @@ describe('OIDC service', () => {
 		);
 		expect(authUrl.url.searchParams.get('response_type')).toEqual('code');
 		expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile');
+		expect(authUrl.url.searchParams.get('prompt')).toBeDefined();
+		expect(authUrl.url.searchParams.get('prompt')).toEqual('consent');
 		expect(authUrl.url.searchParams.get('state')).toBeDefined();
 		expect(authUrl.url.searchParams.get('state')?.startsWith('n8n_state:')).toBe(true);
 

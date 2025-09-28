@@ -98,29 +98,29 @@ const handleCheckboxChange = (checkboxValue: boolean) => {
 	>
 		<template #content>
 			<div>
-				<n8n-text>{{ triggerContent }}</n8n-text>
+				<N8nText>{{ triggerContent }}</N8nText>
 			</div>
 			<div :class="$style.spaced">
-				<n8n-text>
-					<n8n-text :bold="true">
+				<N8nText>
+					<N8nText :bold="true">
 						{{ i18n.baseText('activationModal.theseExecutionsWillNotShowUp') }}
-					</n8n-text>
+					</N8nText>
 					{{ i18n.baseText('activationModal.butYouCanSeeThem') }}
 					<a @click="showExecutionsList">
 						{{ i18n.baseText('activationModal.executionList') }}
 					</a>
 					{{ i18n.baseText('activationModal.ifYouChooseTo') }}
 					<a @click="showSettings">{{ i18n.baseText('activationModal.saveExecutions') }}</a>
-				</n8n-text>
+				</N8nText>
 			</div>
 		</template>
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
+				<ElCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
 					i18n.baseText('generic.dontShowAgain')
-				}}</el-checkbox>
-				<n8n-button :label="i18n.baseText('activationModal.gotIt')" @click="close" />
+				}}</ElCheckbox>
+				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
 	</Modal>

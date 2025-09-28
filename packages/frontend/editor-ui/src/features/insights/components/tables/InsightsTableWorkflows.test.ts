@@ -110,7 +110,7 @@ describe('InsightsTableWorkflows', () => {
 			},
 			global: {
 				stubs: {
-					'router-link': {
+					RouterLink: {
 						template: '<a><slot /></a>',
 					},
 				},
