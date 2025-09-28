@@ -15,6 +15,13 @@
 	--diff-del-light: #7a524e;
 	--diff-del-faint: #4d3e3d;
 
+	// Primary
+	--color-primary-shade-1: var(--p-color-primary-420);
+	--color-primary: var(--p-color-primary-120);
+	--color-primary-tint-1: var(--p-color-primary-120);
+	--color-primary-tint-2: var(--p-color-primary-070);
+	--color-primary-tint-3: var(--p-color-primary-030);
+
 	// Text
 	--color-text-dark: var(--p-gray-040);
 	--color-text-base: var(--p-gray-200);
