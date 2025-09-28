@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ApiKey, GLOBAL_OWNER_ROLE, AuthenticatedRequest } from '@n8n/db';
+import { ApiKey, GLOBAL_OWNER_ROLE, AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
