@@ -325,20 +325,20 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.container" data-test-id="personal-settings-container">
 		<div :class="$style.header">
-			<n8n-heading size="2xlarge">{{
+			<N8nHeading size="2xlarge">{{
 				i18n.baseText('settings.personal.personalSettings')
-			}}</n8n-heading>
+			}}</N8nHeading>
 			<div v-if="currentUser" :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
-					<n8n-text color="text-base" bold>{{ currentUser.fullName }}</n8n-text>
+					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
 					<N8nTooltip placement="bottom">
 						<template #content>{{ currentUserRole.description }}</template>
-						<n8n-text :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
+						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
 							currentUserRole.name
-						}}</n8n-text>
+						}}</N8nText>
 					</N8nTooltip>
 				</span>
-				<n8n-avatar
+				<N8nAvatar
 					:first-name="currentUser.firstName"
 					:last-name="currentUser.lastName"
 					size="large"
@@ -347,12 +347,12 @@ onBeforeUnmount(() => {
 		</div>
 		<div>
 			<div class="mb-s">
-				<n8n-heading size="large">{{
+				<N8nHeading size="large">{{
 					i18n.baseText('settings.personal.basicInformation')
-				}}</n8n-heading>
+				}}</N8nHeading>
 			</div>
 			<div data-test-id="personal-data-form">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-if="formInputs"
 					:inputs="formInputs"
 					:event-bus="formBus"
@@ -364,35 +364,35 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="isPersonalSecurityEnabled">
 			<div class="mb-s">
-				<n8n-heading size="large">{{ i18n.baseText('settings.personal.security') }}</n8n-heading>
+				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
 			<div class="mb-s">
-				<n8n-input-label :label="i18n.baseText('auth.password')">
-					<n8n-link data-test-id="change-password-link" @click="openPasswordModal">{{
+				<N8nInputLabel :label="i18n.baseText('auth.password')">
+					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
-					}}</n8n-link>
-				</n8n-input-label>
+					}}</N8nLink>
+				</N8nInputLabel>
 			</div>
 			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
 				<div class="mb-xs">
-					<n8n-input-label :label="i18n.baseText('settings.personal.mfa.section.title')" />
-					<n8n-text :bold="false" :class="$style.infoText">
+					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
+					<N8nText :bold="false" :class="$style.infoText">
 						{{
 							mfaDisabled
 								? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
 								: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
 						}}
-						<n8n-link :to="MFA_DOCS_URL" size="small" :bold="true">
+						<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
 							{{ i18n.baseText('generic.learnMore') }}
-						</n8n-link>
-					</n8n-text>
+						</N8nLink>
+					</N8nText>
 				</div>
-				<n8n-notice
+				<N8nNotice
 					v-if="mfaDisabled && mfaEnforced"
 					:content="i18n.baseText('settings.personal.mfa.enforced')"
 				/>
 
-				<n8n-button
+				<N8nButton
 					v-if="mfaDisabled"
 					:class="$style.button"
 					type="tertiary"
@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
-				<n8n-button
+				<N8nButton
 					v-else
 					:class="$style.disableMfaButton"
 					type="tertiary"
@@ -412,32 +412,32 @@ onBeforeUnmount(() => {
 		</div>
 		<div>
 			<div class="mb-s">
-				<n8n-heading size="large">{{
+				<N8nHeading size="large">{{
 					i18n.baseText('settings.personal.personalisation')
-				}}</n8n-heading>
+				}}</N8nHeading>
 			</div>
 			<div>
-				<n8n-input-label :label="i18n.baseText('settings.personal.theme')">
-					<n8n-select
+				<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
+					<N8nSelect
 						v-model="currentSelectedTheme"
 						:class="$style.themeSelect"
 						data-test-id="theme-select"
 						size="small"
 						filterable
 					>
-						<n8n-option
+						<N8nOption
 							v-for="item in themeOptions"
 							:key="item.name"
 							:label="i18n.baseText(item.label)"
 							:value="item.name"
 						>
-						</n8n-option>
-					</n8n-select>
-				</n8n-input-label>
+						</N8nOption>
+					</N8nSelect>
+				</N8nInputLabel>
 			</div>
 		</div>
 		<div>
-			<n8n-button
+			<N8nButton
 				float="right"
 				:label="i18n.baseText('settings.personal.save')"
 				size="large"

@@ -103,21 +103,18 @@ onMounted(() => {
 		<slot :formatted-created-at="formattedCreatedAt">
 			<p @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
-				<n8n-tooltip
-					placement="right-end"
-					:disabled="authors.size < 2 && !isAuthorElementTruncated"
-				>
+				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 					<template #content>{{ props.item.authors }}</template>
 					<span ref="authorElement">{{ authors.label }}</span>
-				</n8n-tooltip>
+				</N8nTooltip>
 				<data :value="item.versionId">{{ idLabel }}</data>
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<n8n-badge v-if="props.index === 0">
+			<N8nBadge v-if="props.index === 0">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
-			</n8n-badge>
-			<n8n-action-toggle
+			</N8nBadge>
+			<N8nActionToggle
 				theme="dark"
 				:class="$style.actions"
 				:actions="props.actions"
@@ -127,7 +124,7 @@ onMounted(() => {
 				@visible-change="onVisibleChange"
 			>
 				<slot name="action-toggle-button" />
-			</n8n-action-toggle>
+			</N8nActionToggle>
 		</div>
 	</li>
 </template>

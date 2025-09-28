@@ -5,7 +5,7 @@ import N8nInfoTip from './InfoTip.vue';
 const slots = {
 	default: ['Need help doing something?', '<a href="/docs" target="_blank">Open docs</a>'],
 };
-const stubs = ['n8n-tooltip', 'n8n-icon'];
+const stubs = ['N8nTooltip', 'N8nIcon'];
 
 describe('N8nInfoTip', () => {
 	it('should render correctly as note', () => {

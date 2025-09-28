@@ -168,7 +168,7 @@ watch(
 				</div>
 			</div>
 		</template>
-		<router-view v-else-if="isReady" />
+		<RouterView v-else-if="isReady" />
 	</div>
 </template>
 

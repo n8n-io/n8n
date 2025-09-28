@@ -154,7 +154,6 @@ export class WorkflowsPage extends BasePage {
 	async filterByTag(tag: string) {
 		await this.filterByTags([tag]);
 	}
-
 	getFolderBreadcrumbsActions() {
 		return this.page.getByTestId('folder-breadcrumbs-actions');
 	}

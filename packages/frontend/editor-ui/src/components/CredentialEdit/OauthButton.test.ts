@@ -10,7 +10,7 @@ const renderComponent = createComponentRenderer(OauthButton, {
 describe('OauthButton', () => {
 	test.each([
 		['GoogleAuthButton', true],
-		['n8n-button', false],
+		['N8nButton', false],
 	])('should emit click event only once when %s is clicked', async (_, isGoogleOAuthType) => {
 		const { emitted, getByRole } = renderComponent({
 			props: { isGoogleOAuthType },

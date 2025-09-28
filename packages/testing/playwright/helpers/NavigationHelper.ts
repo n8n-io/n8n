@@ -119,7 +119,7 @@ export class NavigationHelper {
 
 	/**
 	 * Navigate to a specific folder
-	 * URL: /projects/{projectId}/folders/{folderId}
+	 * URL: /projects/{projectId}/folders/{folderId}/workflows or /home/folders/{folderId}/workflows
 	 */
 	async toFolder(folderId: string, projectId?: string): Promise<void> {
 		const url = projectId

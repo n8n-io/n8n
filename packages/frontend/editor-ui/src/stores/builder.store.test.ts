@@ -1168,4 +1168,243 @@ describe('AI Builder store', () => {
 			);
 		});
 	});
+
+	describe('Credits management', () => {
+		it('should update builder credits correctly', () => {
+			const builderStore = useBuilderStore();
+
+			// Initially undefined
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+
+			// Update credits
+			builderStore.updateBuilderCredits(100, 30);
+
+			expect(builderStore.creditsQuota).toBe(100);
+			expect(builderStore.creditsRemaining).toBe(70);
+		});
+
+		it('should handle unlimited credits (quota = -1)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(-1, 50);
+
+			expect(builderStore.creditsQuota).toBe(-1);
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should handle edge case where claimed > quota', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(50, 100);
+
+			expect(builderStore.creditsQuota).toBe(50);
+			expect(builderStore.creditsRemaining).toBe(0);
+		});
+
+		it('should return undefined when credits are not initialized', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when only quota is set', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, undefined);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when only claimed is set', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(undefined, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+	});
+
+	describe('hasNoCreditsRemaining', () => {
+		it('should return false when creditsRemaining is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			// No credits initialized
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when creditsRemaining is 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when creditsRemaining is greater than 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 30);
+
+			expect(builderStore.creditsRemaining).toBe(70);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when quota is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(undefined, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when claimed is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, undefined);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when unlimited credits (quota = -1)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(-1, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when claimed exceeds quota', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(50, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when user has credits available', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 25);
+
+			expect(builderStore.creditsRemaining).toBe(75);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true immediately after all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+
+			// Start with some credits
+			builderStore.updateBuilderCredits(100, 99);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+
+			// Consume last credit
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+	});
+
+	describe('fetchBuilderCredits', () => {
+		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+
+		beforeEach(() => {
+			mockGetBuilderCredits.mockClear();
+		});
+
+		it('should fetch and update credits when release experiment is variant', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API response
+			mockGetBuilderCredits.mockResolvedValueOnce({
+				creditsQuota: 200,
+				creditsClaimed: 50,
+			});
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBe(200);
+			expect(builderStore.creditsRemaining).toBe(150);
+		});
+
+		it('should not fetch credits when release experiment is not variant', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return control for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
+			});
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).not.toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should handle API errors gracefully', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API to throw error
+			mockGetBuilderCredits.mockRejectedValueOnce(new Error('API error'));
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			// Credits should remain undefined on error
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should call fetchBuilderCredits when opening chat', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API response
+			mockGetBuilderCredits.mockResolvedValueOnce({
+				creditsQuota: 100,
+				creditsClaimed: 20,
+			});
+
+			// Mock loadSessions to prevent actual API call
+			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
+
+			await builderStore.openChat();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBe(100);
+			expect(builderStore.creditsRemaining).toBe(80);
+		});
+	});
 });

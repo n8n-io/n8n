@@ -106,3 +106,10 @@ export async function getAiSessions(
 		workflowId,
 	} as IDataObject);
 }
+
+export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsClaimed: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
+}

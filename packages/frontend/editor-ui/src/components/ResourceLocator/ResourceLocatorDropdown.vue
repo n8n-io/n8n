@@ -222,7 +222,7 @@ defineExpose({ isWithinDropdown });
 </script>
 
 <template>
-	<n8n-popover
+	<N8nPopover
 		placement="bottom"
 		:width="props.width"
 		:popper-class="$style.popover"
@@ -251,7 +251,7 @@ defineExpose({ isWithinDropdown });
 				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
-					<n8n-icon :class="$style.searchIcon" icon="search" />
+					<N8nIcon :class="$style.searchIcon" icon="search" />
 				</template>
 			</N8nInput>
 		</div>
@@ -293,7 +293,7 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span :class="$style.addResourceText">{{ props.allowNewResources.label }}</span>
-					<n8n-icon :class="$style.addResourceIcon" icon="plus" />
+					<N8nIcon :class="$style.addResourceIcon" icon="plus" />
 				</div>
 			</div>
 			<div
@@ -319,7 +319,7 @@ defineExpose({ isWithinDropdown });
 					</span>
 				</div>
 				<div :class="$style.urlLink">
-					<n8n-icon
+					<N8nIcon
 						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link"
 						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
@@ -336,7 +336,7 @@ defineExpose({ isWithinDropdown });
 		<template #reference>
 			<slot />
 		</template>
-	</n8n-popover>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

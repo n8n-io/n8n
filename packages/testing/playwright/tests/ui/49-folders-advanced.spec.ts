@@ -1,5 +1,3 @@
-import { nanoid } from 'nanoid';
-
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Folders - Advanced Operations', () => {
