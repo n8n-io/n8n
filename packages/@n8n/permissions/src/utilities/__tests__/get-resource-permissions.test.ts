@@ -100,6 +100,7 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			mcp: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {
