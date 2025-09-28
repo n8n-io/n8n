@@ -92,7 +92,6 @@
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
       "dist/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.js",
       "dist/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.js",
-      "dist/nodes/llms/LmFakeTesting/LmFakeTesting.node.js",
       "dist/nodes/llms/LmFakeSimple/LmFakeSimple.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
