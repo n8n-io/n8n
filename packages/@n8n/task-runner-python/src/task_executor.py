@@ -79,7 +79,7 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs]:
+    ) -> tuple[list, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
@@ -137,11 +137,11 @@ class TaskExecutor:
 
             print_args = returned.get("print_args", [])
 
-            return result, print_args
+            return result, print_args, shm_size
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}], print_args
+                return [{"json": {"error": str(e)}}], print_args, 0
             raise
 
     @staticmethod
