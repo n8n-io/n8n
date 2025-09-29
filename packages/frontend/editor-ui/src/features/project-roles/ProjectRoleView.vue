@@ -88,10 +88,10 @@ const project = (['read', 'update', 'delete'] as const).map(
 const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `folder:${action}` as const,
 );
-const workflow = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+const workflow = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `workflow:${action}` as const,
 );
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
+const credential = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `credential:${action}` as const,
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
@@ -148,7 +148,26 @@ async function createProjectRole() {
 	}
 }
 
+async function confirmRoleUpdate(usedByUsers?: number) {
+	if (!usedByUsers) return true;
+
+	const confirmed = await message.confirm(
+		`These changes will instantly affect all ${usedByUsers} users with this role. Are you sure you want to continue?`,
+		`Update role for "${usedByUsers}" users?`,
+		{
+			type: 'warning',
+			confirmButtonText: 'Update role',
+			cancelButtonText: 'Cancel',
+		},
+	);
+
+	return confirmed === MODAL_CONFIRM;
+}
+
 async function updateProjectRole(slug: string) {
+	const proceed = await confirmRoleUpdate(initialState?.value?.usedByUsers);
+	if (!proceed) return;
+
 	try {
 		const role = await rolesStore.updateProjectRole(slug, {
 			...form.value,
