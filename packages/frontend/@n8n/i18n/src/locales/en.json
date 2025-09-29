@@ -3499,6 +3499,7 @@
 	"insights.dashboard.table.title": "Breakdown by workflow",
 	"insights.dashboard.table.estimate": "Estimate",
 	"insights.dashboard.title": "Insights",
+	"insights.dashboard.search.placeholder": "All projects",
 	"insights.dashboard.paywall.title": "Upgrade to access more detailed insights",
 	"insights.dashboard.paywall.description": "Gain access to more granular, per-workflow insights and visual breakdown of production executions over different time periods.",
 	"insights.banner.title.timeSaved.tooltip": "Total time saved calculated from your estimated time savings per execution across all workflows",
