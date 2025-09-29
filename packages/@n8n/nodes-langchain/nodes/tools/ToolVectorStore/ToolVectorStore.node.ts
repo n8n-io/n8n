@@ -142,22 +142,20 @@ export class ToolVectorStore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const inputData = this.getInputData();
-		const result: INodeExecutionData[][] = [];
+		const result: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
 			const outputData = await tool.invoke(inputData[itemIndex].json);
-			result.push([
-				{
-					json: {
-						response: outputData,
-					},
-					pairedItem: {
-						item: itemIndex,
-					},
+			result.push({
+				json: {
+					response: outputData,
 				},
-			]);
+				pairedItem: {
+					item: itemIndex,
+				},
+			});
 		}
 
-		return result;
+		return [result];
 	}
 }

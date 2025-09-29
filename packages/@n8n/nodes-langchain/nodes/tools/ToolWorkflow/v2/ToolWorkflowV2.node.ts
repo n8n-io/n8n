@@ -59,7 +59,7 @@ export class ToolWorkflowV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const response: INodeExecutionData[][] = [];
+		const response: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < this.getInputData().length; itemIndex++) {
 			const item = items[itemIndex];
 			const tool = await getTool(this, false, itemIndex);
@@ -71,6 +71,6 @@ export class ToolWorkflowV2 implements INodeType {
 			response.push(result);
 		}
 
-		return response;
+		return [response];
 	}
 }

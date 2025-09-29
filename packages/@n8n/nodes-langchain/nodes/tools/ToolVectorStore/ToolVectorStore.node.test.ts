@@ -212,8 +212,6 @@ describe('ToolVectorStore', () => {
 							item: 0,
 						},
 					},
-				],
-				[
 					{
 						json: {
 							response: 'Answer to second question',
