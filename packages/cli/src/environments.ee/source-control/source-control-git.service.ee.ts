@@ -27,6 +27,15 @@ import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
+/**
+ * Service for interacting with locally cloned git repositories.
+ *
+ * For local development:
+ * Keep in mind that when running n8n locally using a pnpm dev script,
+ * the git credentials on your machine will be picked up by the git client
+ * used in this service.
+ * See the README for the environments feature for instructions to run n8n in a docker container.
+ */
 @Service()
 export class SourceControlGitService {
 	git: SimpleGit | null = null;
