@@ -385,7 +385,6 @@ describe('ImportService', () => {
 			const mockContent = JSON.stringify(mockEntities[0]);
 			jest.mocked(readFile).mockResolvedValue(mockContent);
 
-			// @ts-expect-error Accessing private method for testing
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
@@ -403,7 +402,6 @@ describe('ImportService', () => {
 				tableNames: [],
 			};
 
-			// @ts-expect-error Accessing private method for testing
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
@@ -421,7 +419,6 @@ describe('ImportService', () => {
 				tableNames: [],
 			};
 
-			// @ts-expect-error Accessing private method for testing
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
@@ -444,7 +441,6 @@ describe('ImportService', () => {
 			const mockContent = '';
 			jest.mocked(readFile).mockResolvedValue(mockContent);
 
-			// @ts-expect-error Accessing private method for testing
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
