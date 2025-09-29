@@ -1124,22 +1124,28 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
+
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 	});
 
+	await nextTick();
 	fitView();
+
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
 		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
-		setTimeout(() => {
+		setTimeout(async () => {
 			canvasEventBus.emit('tidyUp', {
 				source: 'import-workflow-data',
 				nodeIdsFilter: nodesIdsToTidyUp,
 				trackEvents,
 			});
+
+			await nextTick();
+			fitView();
 		}, 0);
 	}
 }
