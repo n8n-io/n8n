@@ -287,6 +287,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			value: string | string[];
 		}> = [];
 
+		const isStringOrStringArray = (value: unknown): value is string | string[] =>
+			typeof value === 'string' || Array.isArray(value);
+
 		workflow.value.nodes.forEach((node) => {
 			if (!node.issues || node.disabled) return;
 
@@ -315,7 +318,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					issues.push({
 						node: node.name,
 						type: issueType,
-						value: issueValue as string | string[],
+						value: isStringOrStringArray(issueValue) ? issueValue : String(issueValue),
 					});
 				}
 			});

@@ -154,8 +154,8 @@ describe('useWorkflowsStore', () => {
 	describe('workflowValidationIssues', () => {
 		it('collects issues only from connected, enabled nodes', () => {
 			const connections: IConnections = {
-				main: {
-					Start: [
+				Start: {
+					main: [
 						[
 							{
 								node: 'Fetch',

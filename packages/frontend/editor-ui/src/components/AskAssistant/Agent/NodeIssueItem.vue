@@ -34,7 +34,7 @@ function handleEditClick() {
 		@click="handleEditClick"
 	>
 		<!-- Node icon with tooltip -->
-		<NodeIcon
+		<node-icon
 			:node-type="getNodeType(issue.node)"
 			:size="14"
 			:shrink="false"

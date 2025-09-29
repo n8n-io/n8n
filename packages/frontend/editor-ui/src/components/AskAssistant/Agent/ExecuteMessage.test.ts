@@ -10,7 +10,6 @@ import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { nextTick } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useLogsStore } from '@/stores/logs.store';
@@ -107,8 +106,9 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(workflowsStore, 'workflowValidationIssues', {
 			get: () => workflowValidationIssuesRef.value,
 		});
-		workflowsStore.formatIssueMessage = (value: string | string[]) =>
-			Array.isArray(value) ? value.join(', ') : String(value);
+		workflowsStore.formatIssueMessage = vi.fn((value: string | string[]) =>
+			Array.isArray(value) ? value.join(', ') : String(value),
+		);
 		Object.defineProperty(workflowsStore, 'isWorkflowRunning', {
 			get: () => isWorkflowRunningRef.value,
 		});
@@ -162,7 +162,7 @@ describe('ExecuteMessage', () => {
 		await nextTick();
 
 		expect(runWorkflowMock).toHaveBeenCalledWith({ triggerNode: 'Start Trigger' });
-		expect(emitted()['workflowExecuted']).toHaveLength(1);
+		expect(emitted().workflowExecuted).toHaveLength(1);
 	});
 
 	it('opens chat logs and shows info toast for chat trigger nodes', async () => {
@@ -189,14 +189,14 @@ describe('ExecuteMessage', () => {
 			type: 'info',
 		});
 		expect(logsStore.toggleOpen).toHaveBeenCalledWith(true);
-		expect(emitted()['workflowExecuted']).toBeUndefined();
+		expect(emitted().workflowExecuted).toBeUndefined();
 
 		isWorkflowRunningRef.value = true;
 		await nextTick();
 		isWorkflowRunningRef.value = false;
 		await nextTick();
 
-		expect(emitted()['workflowExecuted']).toHaveLength(1);
+		expect(emitted().workflowExecuted).toHaveLength(1);
 	});
 
 	it('emits completion after multiple run state toggles', async () => {
@@ -217,7 +217,7 @@ describe('ExecuteMessage', () => {
 		isWorkflowRunningRef.value = false;
 		await nextTick();
 
-		expect(emitted()['workflowExecuted']).toHaveLength(1);
+		expect(emitted().workflowExecuted).toHaveLength(1);
 	});
 
 	it('supports consecutive manual executions', async () => {
@@ -240,6 +240,6 @@ describe('ExecuteMessage', () => {
 		await nextTick();
 
 		expect(runWorkflowMock).toHaveBeenCalledTimes(2);
-		expect(emitted()['workflowExecuted']).toHaveLength(2);
+		expect(emitted().workflowExecuted).toHaveLength(2);
 	});
 });

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
 import { usePostHog } from './posthog.store';
@@ -22,7 +22,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -52,8 +52,6 @@ let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
-let removeAllConnectionsSpy: ReturnType<typeof vi.fn>;
-let removeAllNodesSpy: ReturnType<typeof vi.fn>;
 let getNodeTypeSpy: ReturnType<typeof vi.fn>;
 let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
 let getCredentialTypeByNameSpy: ReturnType<typeof vi.fn>;
@@ -121,15 +119,9 @@ describe('AI Builder store', () => {
 		workflowsStore.nodesByName = {} as never;
 		workflowsStore.workflowExecutionData = null;
 
-		setWorkflowNameSpy = vi
-			.spyOn(workflowsStore, 'setWorkflowName')
-			.mockImplementation(({ newName }) => {
-				workflowsStore.workflow.name = newName;
-			});
-		removeAllConnectionsSpy = vi
-			.spyOn(workflowsStore, 'removeAllConnections')
-			.mockImplementation(() => {});
-		removeAllNodesSpy = vi.spyOn(workflowsStore, 'removeAllNodes').mockImplementation(() => {});
+		setWorkflowNameSpy = workflowsStore.setWorkflowName.mockImplementation(({ newName }) => {
+			workflowsStore.workflow.name = newName;
+		});
 
 		getNodeTypeSpy = vi.fn();
 		nodeTypesStore.getNodeType = getNodeTypeSpy as unknown as typeof nodeTypesStore.getNodeType;
@@ -1165,7 +1157,7 @@ describe('AI Builder store', () => {
 
 				const result = builderStore.applyWorkflowUpdate(workflowJson);
 				expect(result.success).toBe(true);
-				const [node] = result.workflowData.nodes ?? [];
+				const [node] = result.workflowData?.nodes ?? [];
 				expect(node.credentials).toEqual({
 					testApi: { id: 'cred-id', name: 'API Credential' },
 				});
@@ -1197,7 +1189,7 @@ describe('AI Builder store', () => {
 
 				const result = builderStore.applyWorkflowUpdate(workflowJson);
 				expect(result.success).toBe(true);
-				const [node] = result.workflowData.nodes ?? [];
+				const [node] = result.workflowData?.nodes ?? [];
 				expect(node.credentials).toEqual({
 					testApi: { id: 'existing', name: 'Existing Credential' },
 				});

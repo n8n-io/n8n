@@ -52,7 +52,7 @@ const showExecuteMessage = computed(() => {
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner !== false);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -127,18 +127,9 @@ function onWorkflowExecuted() {
 		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
 		: undefined;
 
-	if (workflowsStore.executionWaitingForWebhook || executionStatus === 'waiting') {
-		builderStore.sendChatMessage({
-			text: 'Workflow execution is waiting for a webhook or external event to continue.',
-			type: 'execution',
-			executionStatus: 'waiting',
-		});
-		return;
-	}
-
 	if (!executionData) {
 		builderStore.sendChatMessage({
-			text: 'Workflow execution could not be started. Please try again.',
+			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
 			type: 'execution',
 			executionStatus: 'error',
 			errorMessage: 'Workflow execution data missing after run attempt.',
@@ -148,16 +139,7 @@ function onWorkflowExecuted() {
 
 	if (executionStatus === 'success') {
 		builderStore.sendChatMessage({
-			text: 'Workflow executed successfully.',
-			type: 'execution',
-			executionStatus,
-		});
-		return;
-	}
-
-	if (executionStatus === 'canceled') {
-		builderStore.sendChatMessage({
-			text: 'Workflow execution was canceled before completion.',
+			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
 			executionStatus,
 		});
@@ -166,8 +148,15 @@ function onWorkflowExecuted() {
 
 	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
 	const scopedErrorMessage = errorNodeName
-		? `Workflow execution failed on node "${errorNodeName}": ${executionError}`
-		: `Workflow execution failed: ${executionError}`;
+		? i18n.baseText('aiAssistant.builder.executeMessage.executionFailedOnNode', {
+				interpolate: {
+					nodeName: errorNodeName,
+					errorMessage: executionError,
+				},
+			})
+		: i18n.baseText('aiAssistant.builder.executeMessage.executionFailed', {
+				interpolate: { errorMessage: executionError },
+			});
 
 	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
 
@@ -197,14 +186,10 @@ watch(
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
-						const isFirstUserMessage =
-							builderStore.chatMessages.filter((m) => m.role === 'user')?.length === 1;
-
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
 							tidyUp: true,
-							zoomToFit: isFirstUserMessage,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
@@ -272,7 +257,7 @@ watch(currentRoute, () => {
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
-			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"

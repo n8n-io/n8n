@@ -1124,12 +1124,6 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
-	const fitViewIfRequested = async () => {
-		if (data.zoomToFit === undefined || data.zoomToFit === true) {
-			await nextTick();
-			fitView();
-		}
-	};
 
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
@@ -1137,7 +1131,8 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		trackEvents,
 	});
 
-	await fitViewIfRequested();
+	await nextTick();
+	fitView();
 
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
@@ -1149,7 +1144,8 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 				trackEvents,
 			});
 
-			await fitViewIfRequested();
+			await nextTick();
+			fitView();
 		}, 0);
 	}
 }
