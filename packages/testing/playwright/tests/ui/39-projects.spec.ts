@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/base';
-import { n8nPage } from '../../pages/n8nPage';
+import type { n8nPage } from '../../pages/n8nPage';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
@@ -18,12 +18,6 @@ async function getCredentialsForProject(n8n: n8nPage, projectId?: string) {
 
 test.describe('Projects', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.api.enableFeature('sharing');
-		await n8n.api.enableFeature('folders');
-		await n8n.api.enableFeature('advancedPermissions');
-		await n8n.api.enableFeature('projectRole:admin');
-		await n8n.api.enableFeature('projectRole:editor');
-		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
@@ -64,11 +58,9 @@ test.describe('Projects', () => {
 
 		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
-		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
-
-		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
-
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = await n8n.start.fromNewPage(() =>
+			n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`),
+		);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
