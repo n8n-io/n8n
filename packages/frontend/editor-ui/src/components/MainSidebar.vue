@@ -569,7 +569,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 												v-if="isCustomMenuItem(child)"
 												v-bind="child.props"
 											/>
-											<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
+											<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
 										</template>
 									</div>
 								</template>
@@ -577,7 +577,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 									<N8nMenuItem
 										:item="item"
 										:compact="isCollapsed"
-										@on-click="() => handleSelect(item.id)"
+										@click="() => handleSelect(item.id)"
 									/>
 								</template>
 							</N8nPopoverReka>
@@ -585,7 +585,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 								v-else
 								:item="item"
 								:compact="isCollapsed"
-								@on-click="() => handleSelect(item.id)"
+								@click="() => handleSelect(item.id)"
 							/>
 						</template>
 					</div>
@@ -600,7 +600,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 										v-for="action in userMenuItems"
 										:key="action.id"
 										:item="action"
-										@on-click="() => onUserActionToggle(action.id)"
+										@click="() => onUserActionToggle(action.id)"
 									/>
 								</div>
 							</template>

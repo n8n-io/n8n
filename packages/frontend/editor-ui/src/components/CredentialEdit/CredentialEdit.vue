@@ -1138,7 +1138,7 @@ const { width } = useElementSize(credNameRef);
 						:item="item"
 						:key="item.id"
 						:active="activeTab === item.id"
-						@on-click="() => onTabSelect(item.id)"
+						@click="() => onTabSelect(item.id)"
 					/>
 				</div>
 				<div

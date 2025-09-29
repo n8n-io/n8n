@@ -19,7 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	onClick: [];
+	click: [];
 }>();
 
 const to = computed(() => {
@@ -61,7 +61,7 @@ const iconColor = computed(() => {
 			:class="[$style.menuItem, { [$style.active]: active }]"
 			:aria-label="props.ariaLabel"
 			data-test-id="menu-item"
-			@click="emit('onClick')"
+			@click="emit('click')"
 		>
 			<div
 				v-if="item.icon"

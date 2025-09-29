@@ -477,7 +477,7 @@ const { width } = useElementSize(defNameRef);
 							:key="item.id"
 							:item="item"
 							:active="activeTab === item.id"
-							@on-click="() => onTabSelect(item.id)"
+							@click="() => onTabSelect(item.id)"
 						/>
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
