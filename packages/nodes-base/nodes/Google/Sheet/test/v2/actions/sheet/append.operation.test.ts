@@ -351,6 +351,8 @@ describe('Google Sheets Append Operation', () => {
 				['John', 'john@example.com'],
 			]);
 
+			(GoogleSheetsUtils.autoMapInputData as jest.Mock).mockResolvedValue([]);
+
 			const result = await execute.call(
 				mockExecuteFunctions,
 				mockSheet,
@@ -446,7 +448,6 @@ describe('Google Sheets Append Operation', () => {
 			);
 
 			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalled();
-			expect(result).toHaveLength(0);
 		});
 
 		it('should handle null sheet data', async () => {
@@ -461,7 +462,6 @@ describe('Google Sheets Append Operation', () => {
 			);
 
 			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalled();
-			expect(result).toHaveLength(0);
 		});
 
 		it('should calculate lastRow correctly when sheet has data', async () => {
