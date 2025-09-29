@@ -132,7 +132,6 @@
     "fake-indexeddb": "^6.0.0",
     "miragejs": "^0.1.48",
     "unplugin-icons": "catalog:frontend",
-    "unplugin-vue-components": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-static-copy": "2.2.0",

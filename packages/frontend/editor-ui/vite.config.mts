@@ -7,8 +7,6 @@ import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver';
-import components from 'unplugin-vue-components/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
 import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
@@ -80,18 +78,6 @@ const plugins: UserConfig['plugins'] = [
 	icons({
 		compiler: 'vue3',
 		autoInstall: true,
-	}),
-	components({
-		dts: './src/components.d.ts',
-		resolvers: [
-			(componentName) => {
-				if (componentName.startsWith('N8n'))
-					return { name: componentName, from: '@n8n/design-system' };
-			},
-			iconsResolver({
-				prefix: 'Icon',
-			}),
-		],
 	}),
 	viteStaticCopy({
 		targets: [
