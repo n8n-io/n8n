@@ -51,27 +51,3 @@ export const exitSafeMode = async (): Promise<void> => {
 	instanceSettings.setSafeMode(false);
 	Container.get(Logger).info('Safe mode exited');
 };
-
-export const startSafeModeAutoExit = (): void => {
-	const AUTO_EXIT_DELAY = 5 * 60 * 1000;
-
-	Container.get(Logger).info('Starting safe mode auto-exit timer (5 minutes)');
-
-	setTimeout(async () => {
-		const instanceSettings = Container.get(InstanceSettings);
-
-		if (instanceSettings.isSafeMode) {
-			Container.get(Logger).info('Auto-exiting safe mode after 5 minutes of stability');
-			await exitSafeMode();
-
-			try {
-				const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
-				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-				await activeWorkflowManager.init();
-				Container.get(Logger).info('Workflows reactivated after auto-exit');
-			} catch (error) {
-				Container.get(Logger).error('Failed to reactivate workflows after auto-exit', { error });
-			}
-		}
-	}, AUTO_EXIT_DELAY);
-};

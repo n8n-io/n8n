@@ -6,7 +6,7 @@ Safe Mode prevents workflow execution and activation when n8n detects repeated c
 
 - **Automatic activation**: Enters safe mode after 3 consecutive crashes
 - **Manual activation**: Set `N8N_SAFE_MODE=true` environment variable
-- **Auto-exit**: Automatically exits after 5 minutes of stable operation
+- **Exit on shutdown**: Automatically exits when n8n is gracefully stopped
 - **UI indicator**: Shows banner with highest priority when active
 
 ## What's disabled in Safe Mode
@@ -26,7 +26,7 @@ Safe Mode prevents workflow execution and activation when n8n detects repeated c
 
 1. **Queue flooding**: Queue webhook requests with low concurrency, then kill instance repeatedly
 2. **Scheduled workflows**: Create cron jobs, kill instance during execution
-3. **Crash file**: Create `willcrash` file in packages/cli/bin directory for intentional crashes (remove when finished)
+3. **Process killing**: Kill the n8n process repeatedly to simulate crashes
 
 ## Files
 
