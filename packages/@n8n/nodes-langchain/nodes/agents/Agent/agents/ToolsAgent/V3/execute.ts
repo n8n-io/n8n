@@ -336,9 +336,6 @@ export async function toolsAgentExecute(
 		);
 	}
 
-	// Check if streaming is enabled
-	const enableStreaming = this.getNodeParameter('options.enableStreaming', 0, true) as boolean;
-
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
 		const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -361,11 +358,12 @@ export async function toolsAgentExecute(
 			}
 			const outputParser = await getOptionalOutputParser(this, itemIndex);
 			const tools = await getTools(this, outputParser);
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
+			const options = this.getNodeParameter('options', itemIndex, { enableStreaming: true }) as {
 				systemMessage?: string;
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				enableStreaming?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -401,7 +399,7 @@ export async function toolsAgentExecute(
 
 			if (
 				'isStreaming' in this &&
-				enableStreaming &&
+				options.enableStreaming &&
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
