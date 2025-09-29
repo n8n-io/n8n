@@ -175,7 +175,7 @@ describe('useWorkflowsStore', () => {
 					typeVersion: 1,
 					parameters: {},
 					position: [0, 0],
-				} as unknown as INodeUi,
+				},
 				{
 					id: 'fetch',
 					name: 'Fetch',
@@ -187,11 +187,11 @@ describe('useWorkflowsStore', () => {
 							url: ['Missing URL', 'Invalid URL.'],
 						},
 						credentials: {
-							httpBasicAuth: 'Credentials not set',
+							httpBasicAuth: ['Credentials not set'],
 						},
 					},
 					position: [300, 0],
-				} as unknown as INodeUi,
+				},
 				{
 					id: 'orphan',
 					name: 'Disconnected',
@@ -199,10 +199,10 @@ describe('useWorkflowsStore', () => {
 					typeVersion: 1,
 					parameters: {},
 					issues: {
-						parameters: { field: 'Should be ignored' },
+						parameters: { field: ['Should be ignored'] },
 					},
 					position: [0, 400],
-				} as unknown as INodeUi,
+				},
 				{
 					id: 'disabled',
 					name: 'Disabled Node',
@@ -211,17 +211,17 @@ describe('useWorkflowsStore', () => {
 					disabled: true,
 					parameters: {},
 					issues: {
-						parameters: { field: 'Disabled issue' },
+						parameters: { field: ['Disabled issue'] },
 					},
 					position: [0, 600],
-				} as unknown as INodeUi,
+				},
 			];
 			workflowsStore.workflow.connections = connections;
 
 			const issues = workflowsStore.workflowValidationIssues;
 			expect(issues).toEqual([
 				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
-				{ node: 'Fetch', type: 'credentials', value: 'Credentials not set' },
+				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
 			]);
 		});
 	});
