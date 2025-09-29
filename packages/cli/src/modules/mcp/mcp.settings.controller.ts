@@ -2,8 +2,8 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Patch, RestController } from '@n8n/decorators';
 
+import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { McpSettingsService } from './mcp.settings.service';
-import { UpdateMcpSettingsDto } from './update-mcp-settings.dto';
 import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
 
 @RestController('/mcp')
