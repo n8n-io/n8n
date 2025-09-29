@@ -28,6 +28,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
@@ -45,6 +46,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowHandle = injectWorkflowHandle();
 	const uiStore = useUIStore();
 	const route = useRoute();
 	const locale = useI18n();
@@ -403,8 +405,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
-		workflowsStore.removeAllConnections({ setStateDirty: false });
-		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowHandle.removeAllConnections({ setStateDirty: false });
+		workflowHandle.removeAllNodes({ setStateDirty: false, removePinData: true });
 
 		// For the initial generation, we want to apply auto-generated workflow name
 		// but only if the workflow has default name

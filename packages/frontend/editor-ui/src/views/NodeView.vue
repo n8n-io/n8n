@@ -13,6 +13,7 @@ import {
 	h,
 	onBeforeUnmount,
 	useTemplateRef,
+	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -69,6 +70,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
+	WorkflowHandleKey,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -147,6 +149,7 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 defineOptions({
 	name: 'NodeView',
@@ -210,6 +213,9 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+
+const workflowHandle = useWorkflowHandle();
+provide(WorkflowHandleKey, workflowHandle);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,

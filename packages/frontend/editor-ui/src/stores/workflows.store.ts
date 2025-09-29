@@ -685,24 +685,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value = createEmptyWorkflow();
 	}
 
-	function resetState() {
-		removeAllConnections({ setStateDirty: false });
-		removeAllNodes({ setStateDirty: false, removePinData: true });
-
-		setWorkflowExecutionData(null);
-		resetAllNodesIssues();
-
-		setActive(defaults.active);
-		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...defaults.settings });
-		setWorkflowTagIds([]);
-
-		setActiveExecutionId(undefined);
-		executingNode.value.length = 0;
-		executionWaitingForWebhook.value = false;
-	}
-
 	function setWorkflowId(id?: string) {
 		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 		workflowObject.value.id = workflow.value.id;
@@ -1157,15 +1139,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
-	function removeAllConnections(data: { setStateDirty: boolean }): void {
-		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		workflow.value.connections = {};
-		workflowObject.value.setConnections({});
-	}
-
 	function removeAllNodeConnection(
 		node: INodeUi,
 		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
@@ -1399,20 +1372,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 		}
-	}
-
-	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
-		}
-
-		if (data.removePinData) {
-			workflow.value.pinData = {};
-		}
-
-		workflow.value.nodes.splice(0, workflow.value.nodes.length);
-		workflowObject.value.setNodes(workflow.value.nodes);
-		nodeMetadata.value = {};
 	}
 
 	function updateNodeProperties(updateInformation: INodeUpdatePropertiesInformation): void {
@@ -2051,7 +2010,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowData,
 		makeNewWorkflowShareable,
 		resetWorkflow,
-		resetState,
 		addNodeExecutionStartedData,
 		addExecutingNode,
 		removeExecutingNode,
@@ -2087,7 +2045,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unpinData,
 		addConnection,
 		removeConnection,
-		removeAllConnections,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
 		resetAllNodesIssues,
@@ -2095,7 +2052,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeIssue,
 		addNode,
 		removeNode,
-		removeAllNodes,
 		updateNodeProperties,
 		setNodeValue,
 		setNodeParameters,
@@ -2132,5 +2088,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		defaults,
 	};
 });

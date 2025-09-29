@@ -37,7 +37,6 @@ vi.mock('@/composables/useToast', () => ({
 
 // Mock the workflows store
 const mockSetWorkflowName = vi.fn();
-const mockRemoveAllConnections = vi.fn();
 const mockRemoveAllNodes = vi.fn();
 const mockWorkflow = {
 	name: DEFAULT_NEW_WORKFLOW_NAME,
@@ -53,7 +52,6 @@ vi.mock('./workflows.store', () => ({
 		nodesByName: {},
 		workflowExecutionData: null,
 		setWorkflowName: mockSetWorkflowName,
-		removeAllConnections: mockRemoveAllConnections,
 		removeAllNodes: mockRemoveAllNodes,
 	})),
 }));
@@ -112,7 +110,6 @@ describe('AI Builder store', () => {
 		track.mockReset();
 		// Reset workflow store mocks
 		mockSetWorkflowName.mockReset();
-		mockRemoveAllConnections.mockReset();
 		mockRemoveAllNodes.mockReset();
 		// Reset workflow to default state
 		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
