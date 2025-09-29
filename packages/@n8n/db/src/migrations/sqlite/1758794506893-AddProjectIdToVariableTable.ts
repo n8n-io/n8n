@@ -20,7 +20,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 
 		await createTable(VARIABLES_TEMP_TABLE_NAME)
 			.withColumns(
-				column('id').int.primary.notNull.autoGenerate2,
+				column('id').varchar(36).primary.notNull,
 				column('key').text.notNull,
 				column('type').text.notNull.default("'string'"),
 				column('value').text,
@@ -69,7 +69,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 
 		// Create temp table with the old schema (no projectId)
 		await createTable(VARIABLES_TEMP_TABLE_NAME).withColumns(
-			column('id').int.primary.notNull.autoGenerate2,
+			column('id').varchar(36).primary.notNull,
 			column('key').text.notNull,
 			column('type').text.notNull.default("'string'"),
 			column('value').text,

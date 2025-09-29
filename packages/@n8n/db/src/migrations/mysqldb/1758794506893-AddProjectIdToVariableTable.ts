@@ -24,14 +24,6 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		// Add projectId and globalKey columns
 		await addColumns(VARIABLES_TABLE_NAME, [column('projectId').varchar(36)]);
 
-		// Add foreign key to project
-		await addForeignKey(
-			VARIABLES_TABLE_NAME,
-			'projectId',
-			['project', 'id'],
-			PROJECT_ID_FOREIGN_KEY_NAME,
-		);
-
 		// Add generated column for global uniqueness
 		// Null values are considered unique in MySQL, so we create a generated column
 		// that contains the key when projectId is null, and null otherwise.
@@ -41,6 +33,17 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 				CASE WHEN projectId IS NULL THEN \`key\` ELSE NULL END
 			) STORED;
 		`);
+
+		// Add foreign key to project
+		// Create it after the generated column to avoid limits of mysql
+		// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html
+		// "A foreign key constraint on a stored generated column cannot use CASCADE"
+		await addForeignKey(
+			VARIABLES_TABLE_NAME,
+			'projectId',
+			['project', 'id'],
+			PROJECT_ID_FOREIGN_KEY_NAME,
+		);
 
 		// Unique index for project-specific variables
 		await queryRunner.query(`
