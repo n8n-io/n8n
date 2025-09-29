@@ -68,7 +68,6 @@ const iconColor = computed(() => {
 		>
 			<div
 				v-if="item.icon"
-				:data-test-id="item.id"
 				:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
 			>
 				<N8nText
