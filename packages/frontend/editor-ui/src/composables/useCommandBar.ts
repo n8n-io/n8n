@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { type Component, computed, ref } from 'vue';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -23,19 +23,19 @@ import uniqBy from 'lodash/uniqBy';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from './useWorkflowActivate';
 
-export type CommandBarAction = {
+export interface CommandBarItem {
 	id: string;
 	title: string;
-	hotkey?: string;
-	handler?: () => void;
-	icon?: string;
-	parent?: string;
-	keywords?: string;
-	children?: string[];
+	icon?: string | { html: string } | { component: Component; props?: Record<string, unknown> }; // currently we only use the html option here but I'm not yet sure how to leave it. Probably will simplify
 	section?: string;
-};
+	keywords?: string[]; // changed the type from string
+	handler?: () => void | Promise<void>;
+	href?: string; // new one for convenience
+	children?: CommandBarItem[];
+	placeholder?: string; // this replaces the root placeholder if passed and item is selected. Eg if you select "Open workflow" will change the input placeholder to sth like "Search by workflow name, node etc"
+}
 
-export function useCommandBar(workflowId: Ref<string | undefined>) {
+export function useCommandBar() {
 	const { addNodes, setNodeActive, editableWorkflow, openWorkflowTemplate } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
@@ -51,6 +51,8 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 	const workflowActivate = useWorkflowActivate();
 	const { runEntireWorkflow } = useRunWorkflow({ router });
 	const { generateMergedNodesAndActions } = useActionsGenerator();
+
+	const lastQuery = ref('');
 
 	function getIconSource(nodeType: SimplifiedNodeType | null) {
 		if (!nodeType) return {};
@@ -73,7 +75,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		return {};
 	}
 
-	const addNodeCommands = computed<CommandBarAction[]>(() => {
+	const addNodeCommands = computed<CommandBarItem[]>(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
 		const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
@@ -83,11 +85,12 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			return {
 				id: name,
 				title: `Add node > ${displayName}`,
-				keywords: 'Insert node',
+				keywords: ['insert', 'add', 'create', 'node'],
 				icon: src?.path
-					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+					? {
+							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
+						}
 					: '',
-				parent: 'Add node',
 				handler: async () => {
 					await addNodes([{ type: name }]);
 				},
@@ -95,7 +98,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		});
 	});
 
-	const openNodeCommnds = computed<CommandBarAction[]>(() => {
+	const openNodeCommnds = computed<CommandBarItem[]>(() => {
 		return editableWorkflow.value.nodes.map((node) => {
 			const { id, name, type } = node;
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -103,28 +106,30 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			return {
 				id,
 				title: `Open node > ${name}`,
-				parent: 'Open node',
-				keywords: `${type}`,
+				section: 'Nodes',
+				keywords: [type],
 				icon: src?.path
-					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+					? {
+							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
+						}
 					: '',
 				handler: () => {
 					setNodeActive(id, 'command_bar');
 				},
+				placeholder: 'Search by node name, type, etc.',
 			};
 		});
 	});
 
-	const nodeCommands = computed<CommandBarAction[]>(() => {
+	const nodeCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
 				id: 'Add node',
 				title: 'Add node',
 				section: 'Nodes',
-				children: addNodeCommands.value.map((cmd) => cmd.id),
+				children: [...addNodeCommands.value],
 				hotkey: 'tab',
 			},
-			...addNodeCommands.value,
 			{
 				id: 'Add sticky note',
 				title: 'Add sticky note',
@@ -137,15 +142,14 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			{
 				id: 'Open node',
 				title: 'Open node',
-				children: openNodeCommnds.value.map((cmd) => cmd.id),
+				children: [...openNodeCommnds.value],
 				section: 'Nodes',
 				hotkey: 'enter',
 			},
-			...openNodeCommnds.value,
 		];
 	});
 
-	const importTemplateCommands = computed<CommandBarAction[]>(() => {
+	const importTemplateCommands = computed<CommandBarItem[]>(() => {
 		const templateWorkflows = Object.values(templatesStore.workflows);
 		return templateWorkflows.map((template) => {
 			const { id, name } = template;
@@ -160,19 +164,18 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		});
 	});
 
-	const templateCommands = computed<CommandBarAction[]>(() => {
+	const templateCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
 				id: 'Import template',
 				title: 'Import template',
-				children: importTemplateCommands.value.map((cmd) => cmd.id),
+				children: [...importTemplateCommands.value],
 				section: 'Templates',
 			},
-			...importTemplateCommands.value,
 		];
 	});
 
-	const subworkflowCommands = computed<CommandBarAction[]>(() => {
+	const subworkflowCommands = computed<CommandBarItem[]>(() => {
 		const subworkflows = editableWorkflow.value.nodes
 			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
 			.map((node) => node?.parameters?.workflowId)
@@ -190,30 +193,31 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			{
 				id: 'Open subworkflow',
 				title: 'Open subworkflow',
-				children: subworkflows.map((workflow) => workflow.id),
+				children: [
+					...subworkflows.map((workflow) => ({
+						id: workflow.id,
+						title: workflow.name,
+						parent: 'Open subworkflow',
+						handler: () => {
+							const { href } = router.resolve({
+								name: VIEWS.WORKFLOW,
+								params: { name: workflow.id },
+							});
+							window.open(href, '_blank', 'noreferrer');
+						},
+					})),
+				],
 			},
-			...subworkflows.map((workflow) => ({
-				id: workflow.id,
-				title: workflow.name,
-				parent: 'Open subworkflow',
-				handler: () => {
-					const { href } = router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: workflow.id },
-					});
-					window.open(href, '_blank', 'noreferrer');
-				},
-			})),
 		];
 	});
 
-	const workflowCommands = computed<CommandBarAction[]>(() => {
+	const workflowCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
 				id: 'Test workflow',
 				title: 'Test workflow',
 				section: 'Workflow',
-				keywords: 'Execute workflow',
+				keywords: ['test', 'execute', 'run', 'workflow'],
 				handler: () => {
 					void runEntireWorkflow('main');
 				},
@@ -237,7 +241,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 							title: 'Deactivate workflow',
 							section: 'Workflow',
 							handler: () => {
-								void workflowActivate.updateWorkflowActivation(workflowId.value, false);
+								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
 							},
 						},
 					]
@@ -247,7 +251,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 							title: 'Activate workflow',
 							section: 'Workflow',
 							handler: () => {
-								void workflowActivate.updateWorkflowActivation(workflowId.value, true);
+								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
 							},
 						},
 					]),
@@ -279,7 +283,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 					uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
 						data: {
-							id: workflowId.value,
+							id: workflowsStore.workflowId,
 							name: editableWorkflow.value.name,
 							tags: editableWorkflow.value.tags,
 						},
@@ -300,8 +304,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 							instanceId: rootStore.instanceId,
 						},
 						tags: (tags ?? []).map((tagId) => {
-							const { usageCount, ...tag } = tagsStore.tagsById[tagId];
-							return tag;
+							return tagsStore.tagsById[tagId];
 						}),
 					};
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -316,8 +319,8 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		];
 	});
 
-	const hotkeys = computed<CommandBarAction[]>(() => {
-		const credentialCommands = computed<CommandBarAction[]>(() => {
+	const items = computed<CommandBarItem[]>(() => {
+		const credentialCommands = computed<CommandBarItem[]>(() => {
 			const credentials = uniqBy(
 				editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
 				(cred) => cred.id,
@@ -330,16 +333,17 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 					id: 'Open credential',
 					title: 'Open credential',
 					section: 'Credentials',
-					children: credentials.map((credential) => credential.id as string),
+					children: [
+						...credentials.map((credential) => ({
+							id: credential.id as string,
+							title: credential.name,
+							parent: 'Open credential',
+							handler: () => {
+								uiStore.openExistingCredential(credential.id as string);
+							},
+						})),
+					],
 				},
-				...credentials.map((credential) => ({
-					id: credential.id as string,
-					title: credential.name,
-					parent: 'Open credential',
-					handler: () => {
-						uiStore.openExistingCredential(credential.id as string);
-					},
-				})),
 			];
 		});
 
@@ -352,12 +356,13 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		];
 	});
 
-	function onCommandBarChange(event: CustomEvent) {
-		// rootCommandBar.onCommandBarChange(event);
+	function onCommandBarChange(event: CustomEvent<{ detail?: { search?: string } }>) {
+		const query = (event as unknown as { detail?: { search?: string } }).detail?.search ?? '';
+		lastQuery.value = query;
 	}
 
 	return {
-		hotkeys,
+		items,
 		onCommandBarChange,
 	};
 }
