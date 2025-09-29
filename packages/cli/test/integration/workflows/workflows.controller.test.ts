@@ -658,6 +658,11 @@ describe('GET /workflows', () => {
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
+					nodes: [
+						objectContaining({
+							type: 'n8n-nodes-base.actionNetwork',
+						}),
+					],
 				}),
 				objectContaining({
 					id: any(String),
@@ -682,7 +687,6 @@ describe('GET /workflows', () => {
 			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
-		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
@@ -1013,6 +1017,124 @@ describe('GET /workflows', () => {
 
 			expect(response2.body.data).toHaveLength(1);
 			expect(response2.body.data[0].id).toBe(workflow2.id);
+		});
+
+		test('should filter workflows by nodeTypes', async () => {
+			const httpWorkflow = await createWorkflow(
+				{
+					name: 'HTTP Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			const slackWorkflow = await createWorkflow(
+				{
+					name: 'Slack Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			const mixedWorkflow = await createWorkflow(
+				{
+					name: 'Mixed Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: uuid(),
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							parameters: {},
+							typeVersion: 1,
+							position: [100, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			// Filter by single node type
+			const httpResponse = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest"] }')
+				.expect(200);
+
+			expect(httpResponse.body.data).toHaveLength(2);
+			const httpWorkflowIds = httpResponse.body.data.map((w: any) => w.id);
+			expect(httpWorkflowIds).toContain(httpWorkflow.id);
+			expect(httpWorkflowIds).toContain(mixedWorkflow.id);
+
+			// Filter by multiple node types (OR operation - returns workflows containing ANY of the specified node types)
+			const multipleResponse = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest", "n8n-nodes-base.slack"] }')
+				.expect(200);
+
+			expect(multipleResponse.body.data).toHaveLength(3);
+			const multipleWorkflowIds = multipleResponse.body.data.map((w: any) => w.id);
+			expect(multipleWorkflowIds).toContain(httpWorkflow.id);
+			expect(multipleWorkflowIds).toContain(slackWorkflow.id);
+			expect(multipleWorkflowIds).toContain(mixedWorkflow.id);
+
+			// Filter by non-existent node type
+			const emptyResponse = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "nodeTypes": ["n8n-nodes-base.nonExistent"] }')
+				.expect(200);
+
+			expect(emptyResponse.body.data).toHaveLength(0);
+		});
+
+		test('should return empty result when filtering by empty nodeTypes array', async () => {
+			await createWorkflow(
+				{
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "nodeTypes": [] }')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1); // Should return all workflows when nodeTypes is empty
 		});
 	});
 
@@ -1473,6 +1595,11 @@ describe('GET /workflows?includeFolders=true', () => {
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
+					nodes: [
+						objectContaining({
+							type: 'n8n-nodes-base.actionNetwork',
+						}),
+					],
 				}),
 				objectContaining({
 					id: any(String),
@@ -1514,7 +1641,6 @@ describe('GET /workflows?includeFolders=true', () => {
 			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
-		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
@@ -1876,6 +2002,61 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response.body.data[0].homeProject).not.toBeNull();
 			expect(response.body.data[1].id).toBe(workflow.id);
 			expect(response.body.data[1].homeProject).not.toBeNull();
+		});
+
+		test('should filter workflows and folders by nodeTypes', async () => {
+			const pp = await getPersonalProject(owner);
+
+			const httpWorkflow = await createWorkflow(
+				{
+					name: 'HTTP Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			await createWorkflow(
+				{
+					name: 'Slack Workflow',
+					nodes: [
+						{
+							id: uuid(),
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+				},
+				owner,
+			);
+
+			const folder = await createFolder(pp, { name: 'Test Folder' });
+
+			// Filter by node type should only return workflows, not folders
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest"] }&includeFolders=true')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(2); // 1 folder + 1 matching workflow
+			const workflowItems = response.body.data.filter((item: any) => item.resource === 'workflow');
+			const folderItems = response.body.data.filter((item: any) => item.resource === 'folder');
+
+			expect(workflowItems).toHaveLength(1);
+			expect(workflowItems[0].id).toBe(httpWorkflow.id);
+			expect(folderItems).toHaveLength(1);
+			expect(folderItems[0].id).toBe(folder.id);
 		});
 	});
 
