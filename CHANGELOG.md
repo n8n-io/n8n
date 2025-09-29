@@ -1,3 +1,68 @@
+# [1.114.0](https://github.com/n8n-io/n8n/compare/n8n@1.113.0...n8n@1.114.0) (2025-09-29)
+
+
+### Bug Fixes
+
+* **ChatTrigger Node:** Chat submit button, fix disabled state coloring ([#20085](https://github.com/n8n-io/n8n/issues/20085)) ([47cbd72](https://github.com/n8n-io/n8n/commit/47cbd72834f8e30d5f509d8d42bc23a88f88ff07))
+* **core:** Allow accessing nodes.json in preview mode ([#19920](https://github.com/n8n-io/n8n/issues/19920)) ([a26810b](https://github.com/n8n-io/n8n/commit/a26810b8ae45eef7d0b6ad169c311e5954d842a1))
+* **core:** Batch markAsCrashed updates to avoid oversized queries ([#19904](https://github.com/n8n-io/n8n/issues/19904)) ([2db47fd](https://github.com/n8n-io/n8n/commit/2db47fd8c4dc0e083efcd52430180dca5268929c))
+* **core:** Ensure cancellation interrupts runner tasks in worker ([#19864](https://github.com/n8n-io/n8n/issues/19864)) ([fac005b](https://github.com/n8n-io/n8n/commit/fac005b1654530f7162d448ba7bde00b50a22392))
+* **core:** Fix PKCE OAuth2 flows to work without client secret ([#19601](https://github.com/n8n-io/n8n/issues/19601)) ([199d919](https://github.com/n8n-io/n8n/commit/199d919df149e4aae871987d6957242c95607b04))
+* **core:** Iterate over all main output branches when extracting response ([#19963](https://github.com/n8n-io/n8n/issues/19963)) ([0b7db24](https://github.com/n8n-io/n8n/commit/0b7db24070ae4da35b1b0ebf9dc687ee9319dc6d))
+* **core:** Only print deprecation notices on start command ([#19987](https://github.com/n8n-io/n8n/issues/19987)) ([4d024ec](https://github.com/n8n-io/n8n/commit/4d024ecb9d1d3806e2d8d0eeed230ebfa3ffde76))
+* **core:** Preserve sourceOverwrite in pairedItem data during workflow execution ([#20064](https://github.com/n8n-io/n8n/issues/20064)) ([7de2edd](https://github.com/n8n-io/n8n/commit/7de2eddc8ae960bd80ebaa5e91eaa47a1b278423))
+* **core:** Remove Data Table experimental warning log ([#19978](https://github.com/n8n-io/n8n/issues/19978)) ([7273d41](https://github.com/n8n-io/n8n/commit/7273d4150018ee3c76f76146819fca3268fc20c8))
+* **core:** Surface workflow config errors to the webhook caller  ([#19858](https://github.com/n8n-io/n8n/issues/19858)) ([8327257](https://github.com/n8n-io/n8n/commit/83272570e4b9175c5cbe73d784805a3563485ec2))
+* **core:** Use different query to get sqlite data table sizes ([#19878](https://github.com/n8n-io/n8n/issues/19878)) ([24f08e1](https://github.com/n8n-io/n8n/commit/24f08e12f087c55aae4ace6e5c17fbc735ac4c04))
+* **editor:** Adjust insight's project filter placeholder ([#19909](https://github.com/n8n-io/n8n/issues/19909)) ([4c0e19f](https://github.com/n8n-io/n8n/commit/4c0e19f637821ac4f2a734c74f7e593ee7951694))
+* **editor:** Clean up NDV RunData loading states ([#20082](https://github.com/n8n-io/n8n/issues/20082)) ([874c890](https://github.com/n8n-io/n8n/commit/874c89085b2ff96ef2426181f044f585271d9fd7))
+* **editor:** Fix data tables id column sort icon ([#19981](https://github.com/n8n-io/n8n/issues/19981)) ([0475599](https://github.com/n8n-io/n8n/commit/04755999576713150b981cf93d836fa42d4587c1))
+* **editor:** Fix empty credential translation ([#20019](https://github.com/n8n-io/n8n/issues/20019)) ([fa66401](https://github.com/n8n-io/n8n/commit/fa664010f169a643eb2d46134cab017f24f7f326))
+* **editor:** Fix keyboard navigation in node creator with pre-built agents experiment ([#19853](https://github.com/n8n-io/n8n/issues/19853)) ([a56d6ab](https://github.com/n8n-io/n8n/commit/a56d6ab94627902441f86046c60756c464589764))
+* **editor:** Fix reka popover issue when uncontrolled ([#19952](https://github.com/n8n-io/n8n/issues/19952)) ([36df7da](https://github.com/n8n-io/n8n/commit/36df7dada28923409458743b29a37869c93ba93f))
+* **editor:** Fix rlc input selection issue when not in list mode ([#20004](https://github.com/n8n-io/n8n/issues/20004)) ([c6443c3](https://github.com/n8n-io/n8n/commit/c6443c39dad2f08251492ea969e7de9f02df8eb7))
+* **editor:** Fix UI being blocked from loading while data table limits are being fetched ([#19871](https://github.com/n8n-io/n8n/issues/19871)) ([436c5ab](https://github.com/n8n-io/n8n/commit/436c5abd830732cf12cb5fd5269529c089b7daad))
+* **editor:** Improve arrow key navigation in chat message panel ([#19926](https://github.com/n8n-io/n8n/issues/19926)) ([0f19655](https://github.com/n8n-io/n8n/commit/0f19655f95bda214d80aa168788b6923dc50c32e))
+* **editor:** Make shortcuts for toggling input/output panel work in the popped out log view ([#19911](https://github.com/n8n-io/n8n/issues/19911)) ([8049da2](https://github.com/n8n-io/n8n/commit/8049da2971978bfffbe2f2151b2aa115e86623c5))
+* **editor:** Make the data table size cache longer by default ([#19875](https://github.com/n8n-io/n8n/issues/19875)) ([71cf584](https://github.com/n8n-io/n8n/commit/71cf58473b0a60f0a65b006a39fce551f39c118f))
+* **editor:** Mark Workflow Extraction Modal Submit Button as loading and show error toast on error  ([#19976](https://github.com/n8n-io/n8n/issues/19976)) ([60560ba](https://github.com/n8n-io/n8n/commit/60560ba6d605b00a0c3a6fe60c7852fe62535f2d))
+* **editor:** Reflect Wait node's execution status correctly in log view ([#19898](https://github.com/n8n-io/n8n/issues/19898)) ([a679359](https://github.com/n8n-io/n8n/commit/a6793593b93496f2bee1a43b158ea628983fd5bc))
+* **Gmail Trigger Node:** Show warning about multiple items returned ([#19896](https://github.com/n8n-io/n8n/issues/19896)) ([83173fb](https://github.com/n8n-io/n8n/commit/83173fb04ccb59029774c56f092e05bbcccc3199))
+* **MCP Client Tool Node:** Change default transport to HTTP Streamable ([#20053](https://github.com/n8n-io/n8n/issues/20053)) ([e0a9de7](https://github.com/n8n-io/n8n/commit/e0a9de7fe3ef1cca52d602d3de030803cb94a29d))
+* **Microsoft Excel 365 Node:** Allow appending to empty sheets ([#19642](https://github.com/n8n-io/n8n/issues/19642)) ([c96e6ae](https://github.com/n8n-io/n8n/commit/c96e6aef21e41939bbf7b770f3039d98fcfaf685))
+* Only show AI assistant when AI service URL is setup ([#18774](https://github.com/n8n-io/n8n/issues/18774)) ([002f380](https://github.com/n8n-io/n8n/commit/002f380934e5c4b1e6b9b2ef9276bebaa1dda216))
+* **OpenAI Node:** Missing header for assistant API calls ([#20060](https://github.com/n8n-io/n8n/issues/20060)) ([a6c7e39](https://github.com/n8n-io/n8n/commit/a6c7e39cb8cd82c3d03af984bdb52a2541140038))
+* Pass project ID to the wf execution demo iframe ([#19785](https://github.com/n8n-io/n8n/issues/19785)) ([a0efb97](https://github.com/n8n-io/n8n/commit/a0efb97904d5b9bb3ba70357bc40603d670fa942))
+* **Postgres Node:** Fix citext and user defined field type mapping ([#19780](https://github.com/n8n-io/n8n/issues/19780)) ([669a7b5](https://github.com/n8n-io/n8n/commit/669a7b5a9d76f2d3056b7c1ba8ed1a69bd23b1f7))
+* **Slack Node:** Reply to message ([#19760](https://github.com/n8n-io/n8n/issues/19760)) ([977d37f](https://github.com/n8n-io/n8n/commit/977d37f6588d4ce884495d1248e8816124a803ad))
+* **WhatsApp Business Cloud Node:** Include whatsapp id in contact properties ([#19762](https://github.com/n8n-io/n8n/issues/19762)) ([ea9093c](https://github.com/n8n-io/n8n/commit/ea9093c39c4708929fc860440548a687ff353e9d))
+* **Wordpress Node:** Handle `before` query parameter when getting many posts or pages ([#20041](https://github.com/n8n-io/n8n/issues/20041)) ([3963e97](https://github.com/n8n-io/n8n/commit/3963e97c1f8774ee0bb516b2b07288a3f81f199b))
+
+
+### Features
+
+* Add community node ESLint plugin, use in scanner ([#19660](https://github.com/n8n-io/n8n/issues/19660)) ([b55c95c](https://github.com/n8n-io/n8n/commit/b55c95c863bad90df16fa708b90b9e00a5e64afa))
+* Binary data access improvements ([#19629](https://github.com/n8n-io/n8n/issues/19629)) ([182a40e](https://github.com/n8n-io/n8n/commit/182a40e10482988271b388fc399b04dc91767c61))
+* **core:** Add custom data range query to insights endpoints ([#20009](https://github.com/n8n-io/n8n/issues/20009)) ([24ea97a](https://github.com/n8n-io/n8n/commit/24ea97a77f6f99807c55153bc294bef8754feab7))
+* **core:** Add HTTPS protocol support for environments ([#19482](https://github.com/n8n-io/n8n/issues/19482)) ([9806e6f](https://github.com/n8n-io/n8n/commit/9806e6fc7203ac606e03a0adcf77931399d3ec55))
+* **core:** Add startDate and endDate filter query to insights endpoints ([#19954](https://github.com/n8n-io/n8n/issues/19954)) ([7c3e1c9](https://github.com/n8n-io/n8n/commit/7c3e1c9e01606d4dcae2c17dcdde308609c2d021))
+* **core:** Adjust n8n email template styling ([#19969](https://github.com/n8n-io/n8n/issues/19969)) ([dbf3284](https://github.com/n8n-io/n8n/commit/dbf328452cca0d4591aae1521f93fec0a1fead85))
+* **core:** Throw customized error on assigned custom role deletion ([#19900](https://github.com/n8n-io/n8n/issues/19900)) ([a01e5a5](https://github.com/n8n-io/n8n/commit/a01e5a5bc21979144f7e0a299006556db9817aaf))
+* **editor:** Add keyboard shortcut for run data search in the log view and mapper popover ([#19745](https://github.com/n8n-io/n8n/issues/19745)) ([1ca9bbe](https://github.com/n8n-io/n8n/commit/1ca9bbed68c35c1ad68590fd027533692090eadc))
+* **editor:** Show node update button in ndv and nodecreator ([#19696](https://github.com/n8n-io/n8n/issues/19696)) ([ef5ec8a](https://github.com/n8n-io/n8n/commit/ef5ec8a6882d6e3590c2dded9d9024dc62e53bac))
+* Make project member updates immediate ([#19837](https://github.com/n8n-io/n8n/issues/19837)) ([b59f976](https://github.com/n8n-io/n8n/commit/b59f97631da06dfd825ea7b44718e132421bc399))
+* PAY-3774 entities import logic ([#19770](https://github.com/n8n-io/n8n/issues/19770)) ([560c951](https://github.com/n8n-io/n8n/commit/560c95126a78ed1ecf4d3205167d0e5214f5dd79))
+* PAY-3775 disable ref to use master ([#20086](https://github.com/n8n-io/n8n/issues/20086)) ([03d351a](https://github.com/n8n-io/n8n/commit/03d351a29063fa79ae1bcf4c40d2a10835352a3c))
+* PAY-3775 github action to test exporting to sqlite ([#20069](https://github.com/n8n-io/n8n/issues/20069)) ([0e9464a](https://github.com/n8n-io/n8n/commit/0e9464a32c96b0ad84ec8cf7430dcff6c71fc1ec))
+* PAY-3855 ensure latest migrations run ([#19917](https://github.com/n8n-io/n8n/issues/19917)) ([2160c55](https://github.com/n8n-io/n8n/commit/2160c550f93ae2f9fbfbb6fe6b457deff735d397))
+
+
+### Performance Improvements
+
+* **editor:** Skip calculating log tree entirely when the panel is closed ([#19870](https://github.com/n8n-io/n8n/issues/19870)) ([677cdda](https://github.com/n8n-io/n8n/commit/677cddab31e882792a7053f9bc2c3d685cb9ed66))
+
+
+
 # [1.113.0](https://github.com/n8n-io/n8n/compare/n8n@1.112.0...n8n@1.113.0) (2025-09-22)
 
 
