@@ -1,7 +1,7 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { IWorkflowDb } from '@n8n/db';
-import type { INode, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type z from 'zod';
+
+import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;
@@ -36,35 +36,6 @@ export type SearchWorkflowsResult = {
 	count: number;
 };
 
-export type WorkflowDetailsNode = Omit<INode, 'credentials'>;
-
-/**
- * Workflow object used in 'Get workflow details' tool
- * We are deriving this from IWorkflowDB by omitting fields that are not surfaced through MCP
- * and overriding types for some
- */
-export type WorkflowDetailsWorkflow = Omit<
-	IWorkflowDb,
-	| 'staticData'
-	| 'pinData'
-	| 'createdAt'
-	| 'updatedAt'
-	| 'nodes'
-	| 'tags'
-	| 'parentFolder'
-	| 'settings'
-> & {
-	name: string | null;
-	createdAt: string | null;
-	updatedAt: string | null;
-	nodes: WorkflowDetailsNode[];
-	tags: Array<{ id: string; name: string }>;
-	parentFolderId: string | null;
-	settings: IWorkflowSettings | null;
-	meta: WorkflowFEMeta | null;
-};
-
-export type WorkflowDetailsResult = {
-	workflow: WorkflowDetailsWorkflow;
-	triggerInfo: string;
-};
+export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
+export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
+export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];

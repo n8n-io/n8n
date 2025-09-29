@@ -3,7 +3,7 @@ import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ToolDefinition, WorkflowDetailsResult } from '../mcp.types';
-import { nodeSchema, tagSchema } from './schemas';
+import { workflowDetailsOutputSchema } from './schemas';
 import { getWebhookDetails, type WebhookEndpoints } from './webhook-utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -13,30 +13,9 @@ const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
 } satisfies z.ZodRawShape;
 
-const outputSchema = {
-	workflow: z
-		.object({
-			id: z.string(),
-			name: z.string().nullable(),
-			active: z.boolean(),
-			isArchived: z.boolean(),
-			versionId: z.string(),
-			triggerCount: z.number(),
-			createdAt: z.string().nullable(),
-			updatedAt: z.string().nullable(),
-			settings: z.record(z.unknown()).nullable(),
-			connections: z.record(z.unknown()),
-			nodes: z.array(nodeSchema),
-			tags: z.array(tagSchema),
-			meta: z.record(z.unknown()).nullable(),
-			parentFolderId: z.string().nullable(),
-		})
-		.passthrough()
-		.describe('Sanitized workflow data safe for MCP consumption'),
-	triggerInfo: z
-		.string()
-		.describe('Human-readable instructions describing how to trigger the workflow'),
-} satisfies z.ZodRawShape;
+export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
+
+const outputSchema = workflowDetailsOutputSchema.shape satisfies z.ZodRawShape;
 
 /**
  * Creates mcp tool definition for retrieving detailed information about a specific workflow, including its trigger details.
@@ -115,7 +94,7 @@ export async function getWorkflowDetails(
 		triggerCount: workflow.triggerCount,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
-		settings: workflow.settings,
+		settings: workflow.settings ?? null,
 		connections: workflow.connections,
 		nodes: workflow.nodes.map(({ credentials: _credentials, ...node }) => node),
 		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
