@@ -88,14 +88,14 @@ onMounted(() => {
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-button"
 					@click="close"
 				/>
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('generic.confirm')"
 					float="right"
 					:disabled="!workflowName"

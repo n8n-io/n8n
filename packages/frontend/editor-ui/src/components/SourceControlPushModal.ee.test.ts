@@ -121,7 +121,7 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 					</div>
 				`,
 			},
-			'router-link': {
+			RouterLink: {
 				template: '<a><slot /></a>',
 				props: ['to'],
 			},

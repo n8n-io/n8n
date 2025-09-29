@@ -77,7 +77,7 @@ test.describe('04 - Credentials', () => {
 		const uniqueCredentialName = `credential-${nanoid()}`;
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 
-		await n8n.api.credentialApi.createCredential({
+		await n8n.api.credentials.createCredential({
 			name: uniqueCredentialName,
 			type: 'notionApi',
 			data: {

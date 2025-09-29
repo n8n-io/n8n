@@ -38,7 +38,7 @@ const simplyText = computed(() => {
 </script>
 
 <template>
-	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
+	<N8nText v-if="hint" size="small" color="text-base" tag="div">
 		<div
 			v-if="!renderHTML"
 			:class="{
@@ -54,7 +54,7 @@ const simplyText = computed(() => {
 			v-n8n-html="sanitizeHtml(hint)"
 			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
 		></div>
-	</n8n-text>
+	</N8nText>
 </template>
 
 <style lang="scss" module>

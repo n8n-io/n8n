@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, type StyleValue, watch } from 'vue';
+import { computed, inject, ref, type StyleValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useDebounce } from '@/composables/useDebounce';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useEventListener } from '@vueuse/core';
+import { PopOutWindowKey } from '@/constants';
+import { type SearchShortcut } from '@/types';
 
 type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;
 	displayMode?: IRunDataDisplayMode;
-	isAreaActive?: boolean;
+	/**
+	 * Keyboard shortcut for focusing search input.
+	 * Shortcut is disabled if not specified.
+	 */
+	shortcut?: SearchShortcut;
 };
 
 const COLLAPSED_WIDTH = '30px';
@@ -23,16 +31,27 @@ const emit = defineEmits<{
 const props = withDefaults(defineProps<Props>(), {
 	paneType: 'output',
 	displayMode: 'schema',
-	isAreaActive: false,
+	shortcut: undefined,
 });
 
 const locale = useI18n();
 const { debounce } = useDebounce();
+const { isCtrlKeyPressed, controlKeyText } = useDeviceSupport();
+
+const popOutWindow = inject(PopOutWindowKey, undefined);
+const keyboardEventTarget = computed(() => popOutWindow?.value?.document ?? window.document);
+const focusReturnTo = ref<Element | null>(null);
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const search = ref(props.modelValue ?? '');
 const opened = ref(!!search.value);
 const placeholder = computed(() => {
+	if (props.shortcut === 'ctrl+f') {
+		return locale.baseText('ndv.search.placeholder.shortcutHint', {
+			interpolate: { shortcut: `${controlKeyText.value}+F` },
+		});
+	}
+
 	if (props.paneType === 'output') {
 		return locale.baseText('ndv.search.placeholder.output');
 	}
@@ -49,15 +68,29 @@ const style = computed<StyleValue>(() =>
 );
 
 const documentKeyHandler = (event: KeyboardEvent) => {
-	const isTargetFormElementOrEditable =
-		event.target instanceof HTMLInputElement ||
-		event.target instanceof HTMLTextAreaElement ||
-		event.target instanceof HTMLSelectElement ||
-		(event.target as HTMLElement)?.getAttribute?.('contentEditable') === 'true';
+	const action = getKeyboardActionToTrigger(event);
 
-	if (event.key === '/' && props.isAreaActive && !isTargetFormElementOrEditable) {
-		inputRef.value?.focus();
-		inputRef.value?.select();
+	if (!action) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopImmediatePropagation();
+
+	switch (action) {
+		case 'open':
+			focusReturnTo.value = document.activeElement;
+			inputRef.value?.focus();
+			inputRef.value?.select();
+			break;
+		case 'cancel':
+			inputRef.value?.blur();
+			opened.value = false;
+			emit('update:modelValue', '');
+
+			if (focusReturnTo.value instanceof HTMLElement) {
+				focusReturnTo.value.focus();
+			}
 	}
 };
 
@@ -83,24 +116,52 @@ const onBlur = () => {
 	}
 };
 
-onMounted(() => {
-	document.addEventListener('keyup', documentKeyHandler);
-});
+function isTargetEditable(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) {
+		return false;
+	}
 
-onUnmounted(() => {
-	document.removeEventListener('keyup', documentKeyHandler);
-});
+	return (
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target.getAttribute('contentEditable') === 'true'
+	);
+}
+
+function getKeyboardActionToTrigger(event: KeyboardEvent): 'open' | 'cancel' | undefined {
+	if (opened.value && event.key === 'Escape') {
+		return 'cancel';
+	}
+
+	switch (props.shortcut) {
+		case '/': {
+			return event.key === '/' && !isTargetEditable(event.target) ? 'open' : undefined;
+		}
+		case 'ctrl+f':
+			return event.key === 'f' && isCtrlKeyPressed(event) ? 'open' : undefined;
+		case undefined:
+			return undefined;
+	}
+}
+
+useEventListener(keyboardEventTarget, 'keydown', documentKeyHandler, { capture: true });
 
 watch(
 	() => props.modelValue,
 	(value) => {
+		const searchClearedFromOutside = search.value && !value;
 		search.value = value;
+
+		if (searchClearedFromOutside) {
+			opened.value = false;
+		}
 	},
 );
 </script>
 
 <template>
-	<n8n-input
+	<N8nInput
 		ref="inputRef"
 		data-test-id="ndv-search"
 		:class="{
@@ -116,9 +177,9 @@ watch(
 		@blur="onBlur"
 	>
 		<template #prefix>
-			<n8n-icon :class="$style.ioSearchIcon" icon="search" size="large" />
+			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
 		</template>
-	</n8n-input>
+	</N8nInput>
 </template>
 
 <style lang="scss" module>

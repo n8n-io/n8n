@@ -77,7 +77,6 @@ import {
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from './ViewSubExecution.vue';
@@ -90,6 +89,7 @@ import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
 import { hasTrimmedRunData } from '@/utils/executionUtils';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/types';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -135,7 +135,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -149,6 +149,7 @@ type Props = {
 	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,7 +158,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -232,7 +233,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
@@ -1380,7 +1380,7 @@ defineExpose({ enterEditMode });
 			{
 				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
-				[$style.showActionsOnHover]: showActionsOnHover,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
 		]"
 		@mouseover="activatePane"
@@ -1442,7 +1442,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -1662,6 +1662,18 @@ defineExpose({ enterEditMode });
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
@@ -1716,24 +1728,6 @@ defineExpose({ enterEditMode });
 					</N8nLink>
 				</N8nText>
 			</div>
-
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<NDVEmptyState
-				v-else-if="isTrimmedManualExecutionDataItem"
-				:class="$style.center"
-				:title="i18n.baseText('runData.trimmedData.title')"
-			>
-				{{ i18n.baseText('runData.trimmedData.message') }}
-			</NDVEmptyState>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
@@ -1924,6 +1918,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:class="$style.schema"
 					:compact="props.compact"
+					:truncate-limit="props.truncateLimit"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -2137,15 +2132,17 @@ defineExpose({ enterEditMode });
 	}
 
 	.showActionsOnHover & {
-		visibility: hidden;
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
+	.showActionsOnHover:focus-within &,
 	.showActionsOnHover:hover & {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 

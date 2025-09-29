@@ -47,6 +47,7 @@ import {
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -132,6 +133,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
+				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -245,6 +247,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
+	const isBlankRedirect = ref<boolean>(false);
 
 	/**
 	 * Modules can register their ProjectHeader tabs here
@@ -669,6 +672,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeActions,
 		headerHeight,
 		stateIsDirty,
+		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
 		bannersHeight,

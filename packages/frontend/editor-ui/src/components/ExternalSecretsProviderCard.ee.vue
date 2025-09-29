@@ -106,12 +106,12 @@ async function onActionDropdownClick(id: string) {
 </script>
 
 <template>
-	<n8n-card :class="$style.card">
+	<N8nCard :class="$style.card">
 		<div :class="$style.cardBody">
 			<ExternalSecretsProviderImage :class="$style.cardImage" :provider="provider" />
 			<div :class="$style.cardContent">
-				<n8n-text bold>{{ provider.displayName }}</n8n-text>
-				<n8n-text v-if="provider.connected" color="text-light" size="small">
+				<N8nText bold>{{ provider.displayName }}</N8nText>
+				<N8nText v-if="provider.connected" color="text-light" size="small">
 					<span>
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
@@ -131,10 +131,10 @@ async function onActionDropdownClick(id: string) {
 							})
 						}}
 					</span>
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div v-if="provider.name === 'infisical'" :class="$style.deprecationWarning">
-				<n8n-icon :class="$style['warningTriangle']" icon="triangle-alert" />
+				<N8nIcon :class="$style['warningTriangle']" icon="triangle-alert" />
 				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
 					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
 				</N8nBadge>
@@ -145,18 +145,18 @@ async function onActionDropdownClick(id: string) {
 					:before-update="onBeforeConnectionUpdate"
 					:disabled="connectionState === 'error' && !provider.connected"
 				/>
-				<n8n-action-toggle
+				<N8nActionToggle
 					class="ml-s"
 					theme="dark"
 					:actions="actionDropdownOptions"
 					@action="onActionDropdownClick"
 				/>
 			</div>
-			<n8n-button v-else type="tertiary" @click="openExternalSecretProvider()">
+			<N8nButton v-else type="tertiary" @click="openExternalSecretProvider()">
 				{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
-			</n8n-button>
+			</N8nButton>
 		</div>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

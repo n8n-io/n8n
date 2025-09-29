@@ -28,11 +28,11 @@ const categoryName = computed(() => {
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
 			<span :class="$style.name">
 				<span v-text="categoryName" />
-				<n8n-icon v-if="isTrigger" icon="bolt-filled" size="xsmall" :class="$style.triggerIcon" />
+				<N8nIcon v-if="isTrigger" icon="bolt-filled" size="xsmall" :class="$style.triggerIcon" />
 				<slot />
 			</span>
-			<n8n-icon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
-			<n8n-icon v-else icon="chevron-up" color="text-light" size="large" />
+			<N8nIcon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
+			<N8nIcon v-else icon="chevron-up" color="text-light" size="large" />
 		</div>
 	</div>
 </template>

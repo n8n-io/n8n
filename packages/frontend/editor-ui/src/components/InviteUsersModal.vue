@@ -304,34 +304,34 @@ function getEmail(email: string): string {
 		@enter="onSubmit"
 	>
 		<template #content>
-			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
+			<N8nNotice v-if="!isAdvancedPermissionsEnabled">
 				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
-						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
+						<N8nLink size="small" @click="goToUpgradeAdvancedPermissions">
 							{{ i18n.baseText('generic.upgrade') }}
-						</n8n-link>
+						</N8nLink>
 					</template>
 				</I18nT>
-			</n8n-notice>
+			</N8nNotice>
 			<div v-if="showInviteUrls">
-				<n8n-users-list :users="invitedUsers">
+				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">
-						<n8n-tooltip>
+						<N8nTooltip>
 							<template #content>
 								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>
-							<n8n-icon-button
+							<N8nIconButton
 								icon="link"
 								type="tertiary"
 								data-test-id="copy-invite-link-button"
 								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"
-							></n8n-icon-button>
-						</n8n-tooltip>
+							></N8nIconButton>
+						</N8nTooltip>
 					</template>
-				</n8n-users-list>
+				</N8nUsersList>
 			</div>
-			<n8n-form-inputs
+			<N8nFormInputs
 				v-else-if="config"
 				:inputs="config"
 				:event-bus="formBus"
@@ -341,7 +341,7 @@ function getEmail(email: string): string {
 			/>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"

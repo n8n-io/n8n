@@ -23,7 +23,7 @@ function toggle(value: boolean) {
 </script>
 
 <template>
-	<n8n-radio-buttons
+	<N8nRadioButtons
 		size="small"
 		:model-value="isBuildMode"
 		:options="options"

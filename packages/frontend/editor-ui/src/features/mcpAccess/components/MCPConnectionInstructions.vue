@@ -64,7 +64,7 @@ const fullServerUrl = computed(() => {
 					</span>
 					<span :class="$style.url">
 						<code>{{ fullServerUrl }}</code>
-						<n8n-button
+						<N8nButton
 							v-if="isSupported"
 							type="tertiary"
 							:icon="copied ? 'check' : 'copy'"
@@ -79,7 +79,7 @@ const fullServerUrl = computed(() => {
 				<div :class="$style.item">
 					<span :class="$style.label">
 						{{ i18n.baseText('settings.mcp.instructions.apiKey.part1') }}
-						<n8n-link to="/settings/api">{{ i18n.baseText('generic.apiKey') }}</n8n-link
+						<N8nLink to="/settings/api">{{ i18n.baseText('generic.apiKey') }}</N8nLink
 						>.
 						{{ i18n.baseText('settings.mcp.instructions.apiKey.part2') }}
 					</span>
@@ -87,10 +87,10 @@ const fullServerUrl = computed(() => {
 			</li>
 		</ol>
 		<div :class="$style.connectionString">
-			<n8n-info-accordion :title="i18n.baseText('settings.mcp.instructions.json')">
+			<N8nInfoAccordion :title="i18n.baseText('settings.mcp.instructions.json')">
 				<template #customContent>
-					<n8n-markdown :content="connectionCode"></n8n-markdown>
-					<n8n-button
+					<N8nMarkdown :content="connectionCode"></N8nMarkdown>
+					<N8nButton
 						v-if="isSupported"
 						type="tertiary"
 						:icon="copied ? 'check' : 'copy'"
@@ -99,14 +99,14 @@ const fullServerUrl = computed(() => {
 						@click="copy(connectionString)"
 					/>
 				</template>
-			</n8n-info-accordion>
+			</N8nInfoAccordion>
 		</div>
-		<n8n-text size="small" class="mt-m">
+		<N8nText size="small" class="mt-m">
 			{{ i18n.baseText('settings.mcp.instructions.docs.part1') }}
 			<a :href="DOCS_URL" target="_blank">
 				{{ i18n.baseText('settings.mcp.instructions.docs.part2') }}
 			</a>
-		</n8n-text>
+		</N8nText>
 	</div>
 </template>
 

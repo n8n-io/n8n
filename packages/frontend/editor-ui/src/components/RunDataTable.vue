@@ -621,7 +621,7 @@ watch(
 											/>
 										</N8nTooltip>
 										<div v-if="mappingEnabled" :class="$style.dragButton">
-											<n8n-icon icon="grip-vertical" />
+											<N8nIcon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
@@ -647,7 +647,7 @@ watch(
 								</div>
 							</template>
 							<span>
-								<n8n-icon :class="$style['warningTooltip']" icon="triangle-alert" />
+								<N8nIcon :class="$style['warningTooltip']" icon="triangle-alert" />
 								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</N8nTooltip>

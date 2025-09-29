@@ -35,17 +35,17 @@ const DB_TAGS = {
 
 export class ApiHelpers {
 	request: APIRequestContext;
-	workflowApi: WorkflowApiHelper;
-	projectApi: ProjectApiHelper;
-	credentialApi: CredentialApiHelper;
-	variablesApi: VariablesApiHelper;
+	workflows: WorkflowApiHelper;
+	projects: ProjectApiHelper;
+	credentials: CredentialApiHelper;
+	variables: VariablesApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
-		this.workflowApi = new WorkflowApiHelper(this);
-		this.projectApi = new ProjectApiHelper(this);
-		this.credentialApi = new CredentialApiHelper(this);
-		this.variablesApi = new VariablesApiHelper(this);
+		this.workflows = new WorkflowApiHelper(this);
+		this.projects = new ProjectApiHelper(this);
+		this.credentials = new CredentialApiHelper(this);
+		this.variables = new VariablesApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====

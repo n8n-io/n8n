@@ -57,20 +57,20 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" data-test-id="api-key-card" @click="onAction('edit')">
+	<N8nCard :class="$style.cardLink" data-test-id="api-key-card" @click="onAction('edit')">
 		<template #header>
 			<div>
-				<n8n-text tag="h2" bold :class="$style.cardHeading">
+				<N8nText tag="h2" bold :class="$style.cardHeading">
 					{{ apiKey.label }}
-				</n8n-text>
+				</N8nText>
 				<div :class="[$style.cardDescription]">
-					<n8n-text :color="!hasApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
+					<N8nText :color="!hasApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
 						<span>{{ getExpirationTime(apiKey) }}</span>
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 			<div v-if="apiKey.apiKey.includes('*')" :class="$style.cardApiKey">
-				<n8n-text color="text-light" size="small"> {{ apiKey.apiKey }}</n8n-text>
+				<N8nText color="text-light" size="small"> {{ apiKey.apiKey }}</N8nText>
 			</div>
 		</template>
 
@@ -79,7 +79,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 				<N8nActionToggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

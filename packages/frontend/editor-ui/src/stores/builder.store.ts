@@ -21,14 +21,18 @@ import { usePostHog } from './posthog.store';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 import { useWorkflowsStore } from './workflows.store';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
-import { chatWithBuilder, getAiSessions } from '@/api/ai';
+import { chatWithBuilder, getAiSessions, getBuilderCredits } from '@/api/ai';
 import { generateMessageId, createBuilderPayload } from '@/helpers/builderHelpers';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useCredentialsStore } from './credentials.store';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
 
+const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
@@ -40,12 +44,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
+	const creditsQuota = ref<number | undefined>();
+	const creditsClaimed = ref<number | undefined>();
 
 	// Store dependencies
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
+
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -106,6 +115,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
 	);
 
+	const creditsRemaining = computed(() => {
+		if (
+			// can be undefined when first loading or if on deprecated builder experiment
+			creditsClaimed.value === undefined ||
+			creditsQuota.value === undefined ||
+			// Can be the case if not using proxy service
+			creditsQuota.value === INFINITE_CREDITS
+		) {
+			return undefined;
+		}
+
+		// some edge cases could lead to claimed being higher than quota
+		const remaining = creditsQuota.value - creditsClaimed.value;
+		return remaining > 0 ? remaining : 0;
+	});
+
+	const hasNoCreditsRemaining = computed(() => {
+		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
+	});
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -128,6 +157,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			...uiStore.appGridDimensions,
 			width: window.innerWidth - chatWidth.value,
 		};
+		await fetchBuilderCredits();
 		await loadSessions();
 	}
 
@@ -250,12 +280,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
 		initialGeneration?: boolean;
+		type?: 'message' | 'execution';
+		errorMessage?: string;
+		errorNodeType?: string;
+		executionStatus?: string;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
-		const { text, source = 'chat', quickReplyType } = options;
+		const {
+			text,
+			source = 'chat',
+			quickReplyType,
+			errorMessage,
+			type = 'message',
+			errorNodeType,
+			executionStatus,
+		} = options;
 
 		// Set initial generation flag if provided
 		if (options.initialGeneration !== undefined) {
@@ -264,13 +306,24 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
-		telemetry.track('User submitted builder message', {
+		const trackingPayload: Record<string, string> = {
 			source,
 			message: text,
 			session_id: trackingSessionId.value,
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
-		});
+			type,
+		};
+
+		if (type === 'execution') {
+			trackingPayload.execution_status = executionStatus ?? '';
+			if (executionStatus === 'error') {
+				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_node_type = errorNodeType ?? '';
+			}
+		}
+
+		telemetry.track('User submitted builder message', trackingPayload);
 
 		prepareForStreaming(text, messageId);
 
@@ -386,6 +439,48 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
+	function setDefaultNodesCredentials(workflowData: WorkflowDataUpdate) {
+		// Set default credentials for new nodes if available
+		workflowData.nodes?.forEach((node) => {
+			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
+			if (hasCredentials) {
+				return;
+			}
+
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			if (!nodeType?.credentials) {
+				return;
+			}
+
+			// Try to find and set the first available credential
+			for (const credentialConfig of nodeType.credentials) {
+				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
+				// No credentials of this type exist, try the next one
+				if (!credentials || credentials.length === 0) {
+					continue;
+				}
+
+				// Found valid credentials - set them and exit the loop
+				const credential = credentials[0];
+
+				node.credentials = {
+					[credential.type]: {
+						id: credential.id,
+						name: credential.name,
+					},
+				};
+
+				const authField = getMainAuthField(nodeType);
+				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
+				if (authField && authType) {
+					node.parameters[authField.name] = authType.value;
+				}
+
+				break; // Exit loop after setting the first valid credential
+			}
+		});
+	}
+
 	function applyWorkflowUpdate(workflowJson: string) {
 		let workflowData: WorkflowDataUpdate;
 		try {
@@ -431,6 +526,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			});
 		}
 
+		setDefaultNodesCredentials(workflowData);
+
 		return {
 			success: true,
 			workflowData,
@@ -441,6 +538,27 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+	}
+
+	async function fetchBuilderCredits() {
+		const releaseExperimentVariant = posthogStore.getVariant(
+			WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
+		);
+		if (releaseExperimentVariant !== WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant) {
+			return;
+		}
+
+		try {
+			const response = await getBuilderCredits(rootStore.restApiContext);
+			updateBuilderCredits(response.creditsQuota, response.creditsClaimed);
+		} catch (error) {
+			// Keep default values on error
+		}
+	}
+
+	function updateBuilderCredits(quota?: number, claimed?: number) {
+		creditsQuota.value = quota;
+		creditsClaimed.value = claimed;
 	}
 
 	// Public API
@@ -463,6 +581,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		trackingSessionId,
 		streamingAbortController,
 		initialGeneration,
+		creditsQuota: computed(() => creditsQuota.value),
+		creditsRemaining,
+		hasNoCreditsRemaining,
 
 		// Methods
 		updateWindowWidth,
@@ -474,5 +595,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadSessions,
 		applyWorkflowUpdate,
 		getWorkflowSnapshot,
+		fetchBuilderCredits,
+		updateBuilderCredits,
 	};
 });

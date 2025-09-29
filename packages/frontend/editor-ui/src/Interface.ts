@@ -1127,7 +1127,9 @@ export type CloudUpdateLinkSourceType =
 	| 'rbac'
 	| 'debug'
 	| 'insights'
-	| 'evaluations';
+	| 'evaluations'
+	| 'ai-builder-sidebar'
+	| 'ai-builder-canvas';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1152,7 +1154,8 @@ export type UTMCampaign =
 	| 'upgrade-rbac'
 	| 'upgrade-debug'
 	| 'upgrade-insights'
-	| 'upgrade-evaluations';
+	| 'upgrade-evaluations'
+	| 'upgrade-builder';
 
 export type N8nBanners = {
 	[key in BannerName]: {

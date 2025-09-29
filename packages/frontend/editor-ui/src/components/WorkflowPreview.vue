@@ -228,10 +228,10 @@ watch(
 <template>
 	<div :class="$style.container">
 		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
-			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<n8n-spinner type="dots" />
+			<N8nSpinner type="dots" />
 		</div>
 		<iframe
 			ref="iframeRef"
