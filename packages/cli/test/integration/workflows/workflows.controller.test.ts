@@ -18,15 +18,10 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { createFolder } from '@test-integration/db/folders';
 
 import { saveCredential } from '../shared/db/credentials';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
@@ -34,6 +29,11 @@ import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 let owner: User;
 let member: User;
@@ -658,11 +658,6 @@ describe('GET /workflows', () => {
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
-					nodes: [
-						objectContaining({
-							type: 'n8n-nodes-base.actionNetwork',
-						}),
-					],
 				}),
 				objectContaining({
 					id: any(String),
@@ -687,6 +682,7 @@ describe('GET /workflows', () => {
 			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
+		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
@@ -1082,13 +1078,15 @@ describe('GET /workflows', () => {
 			// Filter by single node type
 			const httpResponse = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest"] }')
+				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest"] }&select=["nodes"]')
 				.expect(200);
 
 			expect(httpResponse.body.data).toHaveLength(2);
 			const httpWorkflowIds = httpResponse.body.data.map((w: any) => w.id);
 			expect(httpWorkflowIds).toContain(httpWorkflow.id);
 			expect(httpWorkflowIds).toContain(mixedWorkflow.id);
+			expect(httpResponse.body.data[0].nodes).toHaveLength(1);
+			expect(httpResponse.body.data[1].nodes).toHaveLength(2);
 
 			// Filter by multiple node types (OR operation - returns workflows containing ANY of the specified node types)
 			const multipleResponse = await authOwnerAgent
@@ -1111,7 +1109,7 @@ describe('GET /workflows', () => {
 			expect(emptyResponse.body.data).toHaveLength(0);
 		});
 
-		test('should return empty result when filtering by empty nodeTypes array', async () => {
+		test('should all workflows when filtering by empty nodeTypes array', async () => {
 			await createWorkflow(
 				{
 					name: 'Test Workflow',
@@ -1595,11 +1593,6 @@ describe('GET /workflows?includeFolders=true', () => {
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
-					nodes: [
-						objectContaining({
-							type: 'n8n-nodes-base.actionNetwork',
-						}),
-					],
 				}),
 				objectContaining({
 					id: any(String),
@@ -1641,6 +1634,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
+		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
