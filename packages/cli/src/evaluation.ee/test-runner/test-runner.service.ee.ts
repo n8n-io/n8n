@@ -280,7 +280,7 @@ export class TestRunnerService {
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
-			this.activeExecutions.stopExecution(executionId);
+			this.activeExecutions.stopExecution(executionId, 'manual');
 		});
 
 		// Wait for the execution to finish

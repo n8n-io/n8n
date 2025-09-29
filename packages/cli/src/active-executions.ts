@@ -21,6 +21,7 @@ import { isWorkflowIdValid } from '@/utils';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 import { EventService } from './events/event.service';
+import { ExecutionCancellationReason } from 'n8n-workflow/src/errors/execution-cancelled.error';
 
 @Service()
 export class ActiveExecutions {
@@ -156,14 +157,14 @@ export class ActiveExecutions {
 	}
 
 	/** Cancel the execution promise and reject its post-execution promise. */
-	stopExecution(executionId: string): void {
+	stopExecution(executionId: string, reason: ExecutionCancellationReason): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
 		}
 		this.eventService.emit('execution-cancelled', { executionId });
-		const error = new ExecutionCancelledError(executionId, 'manual');
+		const error = new ExecutionCancelledError(executionId, reason);
 		execution.responsePromise?.reject(error);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
@@ -266,8 +267,8 @@ export class ActiveExecutions {
 		for (const executionId of executionIds) {
 			const { responsePromise, status } = this.activeExecutions[executionId];
 			if (!!responsePromise || (isRegularMode && cancelAll)) {
-				// Cancel all exectutions that have a response promise, because these promises can't be retained between restarts
-				this.stopExecution(executionId);
+				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
+				this.stopExecution(executionId, 'system');
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
 				// Remove waiting and new executions to not block shutdown

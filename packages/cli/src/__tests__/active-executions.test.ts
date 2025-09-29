@@ -275,7 +275,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should cancel ongoing executions', async () => {
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, 'manual');
 
 			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
 			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
@@ -284,7 +284,7 @@ describe('ActiveExecutions', () => {
 
 		test('Should cancel waiting executions', async () => {
 			activeExecutions.setStatus(executionId, 'waiting');
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, 'manual');
 
 			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
@@ -336,8 +336,8 @@ describe('ActiveExecutions', () => {
 			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1, 'system');
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1, 'system');
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
 
@@ -362,10 +362,10 @@ describe('ActiveExecutions', () => {
 			);
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(4);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1, 'system');
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1, 'system');
+			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2, 'system');
+			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2, 'system');
 		});
 	});
 });

@@ -528,7 +528,7 @@ export class ExecutionService {
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
-			this.activeExecutions.stopExecution(execution.id);
+			this.activeExecutions.stopExecution(execution.id, 'manual');
 		}
 
 		if (this.waitTracker.has(execution.id)) {
@@ -540,7 +540,7 @@ export class ExecutionService {
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
 		if (this.activeExecutions.has(execution.id)) {
-			this.activeExecutions.stopExecution(execution.id);
+			this.activeExecutions.stopExecution(execution.id, 'manual');
 		}
 
 		if (this.waitTracker.has(execution.id)) {

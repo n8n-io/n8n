@@ -316,10 +316,10 @@ export class WorkflowRunner {
 					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
 				}
 				if (timeout === 0) {
-					this.activeExecutions.stopExecution(executionId);
+					this.activeExecutions.stopExecution(executionId, 'timeout');
 				} else {
 					executionTimeout = setTimeout(() => {
-						void this.activeExecutions.stopExecution(executionId);
+						void this.activeExecutions.stopExecution(executionId, 'timeout');
 					}, timeout);
 				}
 			}
