@@ -18,6 +18,7 @@ import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { Cipher } from 'n8n-core';
 
 @Service()
 export class ImportService {
@@ -47,6 +48,7 @@ export class ImportService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
+		private readonly cipher: Cipher,
 	) {}
 
 	async initRecords() {
@@ -245,7 +247,7 @@ export class ImportService {
 
 		// For JSONL, we need to split by actual line endings (\n or \r\n)
 		// Each line should contain exactly one complete JSON object
-		const lines = content.split(/\r?\n/);
+		const lines = this.cipher.decrypt(content).split(/\r?\n/);
 		const entities: unknown[] = [];
 
 		for (let i = 0; i < lines.length; i++) {
@@ -446,7 +448,8 @@ export class ImportService {
 
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = migrationsFileContent
+		const importMigrations = this.cipher
+			.decrypt(migrationsFileContent)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())

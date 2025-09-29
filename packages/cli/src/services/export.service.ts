@@ -7,12 +7,14 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
+import { Cipher } from 'n8n-core';
 
 @Service()
 export class ExportService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
+		private readonly cipher: Cipher,
 	) {}
 
 	private async clearExistingEntityFiles(outputDir: string, entityName: string): Promise<void> {
@@ -64,7 +66,7 @@ export class ExportService {
 			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
 				.join('\n');
-			await appendFile(filePath, migrationsJsonl ?? '' + '\n', 'utf8');
+			await appendFile(filePath, this.cipher.encrypt(migrationsJsonl ?? '' + '\n'), 'utf8');
 
 			this.logger.info(
 				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
@@ -160,7 +162,7 @@ export class ExportService {
 				const entitiesJsonl = pageEntities
 					.map((entity: unknown) => JSON.stringify(entity))
 					.join('\n');
-				await appendFile(filePath, entitiesJsonl + '\n', 'utf8');
+				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl + '\n'), 'utf8');
 
 				totalEntityCount += pageEntities.length;
 				currentFileEntityCount += pageEntities.length;
