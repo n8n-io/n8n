@@ -5,7 +5,6 @@ import textwrap
 import json
 import os
 import sys
-import tempfile
 import logging
 
 from src.errors import (
@@ -27,6 +26,7 @@ from src.constants import (
 from typing import Any, Set
 
 from multiprocessing.context import ForkServerProcess
+from multiprocessing import shared_memory
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs]:
+    ) -> tuple[list, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
@@ -119,23 +119,29 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            if "result_file" not in returned:
+            if "shm_name" not in returned:
                 raise TaskResultMissingError()
 
-            result_file = returned["result_file"]
+            shm_name = returned["shm_name"]
+            shm_size = returned["shm_size"]
             try:
-                with open(result_file, "r", encoding="utf-8") as f:
-                    result = json.load(f)
-            finally:
-                os.unlink(result_file)
+                shm = shared_memory.SharedMemory(name=shm_name)
+                try:
+                    json_str = bytes(shm.buf[:shm_size]).decode("utf-8")
+                    result = json.loads(json_str)
+                finally:
+                    shm.close()
+                    shm.unlink()
+            except FileNotFoundError:
+                raise TaskResultMissingError()
 
             print_args = returned.get("print_args", [])
 
-            return result, print_args
+            return result, print_args, shm_size
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}], print_args
+                return [{"json": {"error": str(e)}}], print_args, 0
             raise
 
     @staticmethod
@@ -249,18 +255,22 @@ class TaskExecutor:
     def _put_result(
         queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
     ):
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            prefix="n8n_result_",
-            suffix=".json",
-            encoding="utf-8",
-        ) as f:
-            json.dump(result, f, default=str, ensure_ascii=False)
-            result_file = f.name
+        json_bytes = json.dumps(result, default=str, ensure_ascii=False).encode("utf-8")
+        json_bytes_size = len(json_bytes)
+
+        shm = shared_memory.SharedMemory(create=True, size=json_bytes_size)
+        shm.buf[:json_bytes_size] = json_bytes
 
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put({"result_file": result_file, "print_args": print_args_to_send})
+        queue.put(
+            {
+                "shm_name": shm.name,
+                "shm_size": json_bytes_size,  # stay exact, shm.size can round up for alignment
+                "print_args": print_args_to_send,
+            }
+        )
+
+        shm.close()
 
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
