@@ -1,6 +1,6 @@
-import { type Component, computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { isResourceLocatorValue } from 'n8n-workflow';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -14,37 +14,42 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/event-bus/canvas';
+import debounce from 'lodash/debounce';
 import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
-import type { IWorkflowToShare, SimplifiedNodeType } from '@/Interface';
+import type { IWorkflowDb, IWorkflowToShare, SimplifiedNodeType } from '@/Interface';
 import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
 
 import { saveAs } from 'file-saver';
 import uniqBy from 'lodash/uniqBy';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from './useWorkflowActivate';
+import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useFoldersStore } from '@/stores/folders.store';
 
-export interface CommandBarItem {
-	id: string;
-	title: string;
-	icon?: string | { html: string } | { component: Component; props?: Record<string, unknown> }; // currently we only use the html option here but I'm not yet sure how to leave it. Probably will simplify
-	section?: string;
-	keywords?: string[]; // changed the type from string
-	handler?: () => void | Promise<void>;
-	href?: string; // new one for convenience
-	children?: CommandBarItem[];
-	placeholder?: string; // this replaces the root placeholder if passed and item is selected. Eg if you select "Open workflow" will change the input placeholder to sth like "Search by workflow name, node etc"
-}
+const Section = {
+	WORKFLOW: 'Workflow',
+	NODES: 'Nodes',
+	TEMPLATES: 'Templates',
+	CREDENTIALS: 'Credentials',
+	WORKFLOWS: 'Workflows',
+} as const;
 
 export function useCommandBar() {
 	const { addNodes, setNodeActive, editableWorkflow, openWorkflowTemplate } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const templatesStore = useTemplatesStore();
-	const router = useRouter();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
+	const projectsStore = useProjectsStore();
+	const foldersStore = useFoldersStore();
+
+	const router = useRouter();
+	const route = useRoute();
+
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
 	const workflowSaving = useWorkflowSaving({ router });
@@ -53,6 +58,89 @@ export function useCommandBar() {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const lastQuery = ref('');
+
+	const initialWorkflows = ref<IWorkflowDb[]>([]);
+	const workflowResults = ref<IWorkflowDb[]>([]);
+
+	const personalProjectId = computed(() => {
+		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
+	});
+
+	const currentProjectName = computed(() => {
+		if (!route.params.projectId || route.params.projectId === personalProjectId.value) {
+			return 'Personal';
+		}
+		return projectsStore.myProjects.find((p) => p.id === (route.params.projectId as string))?.name;
+	});
+
+	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
+		const currentProjectId = (route.params.projectId as string) || personalProjectId.value;
+		return results.sort((a, b) => {
+			if (a.homeProject?.id === currentProjectId) return -1;
+			if (b.homeProject?.id === currentProjectId) return 1;
+			return 0;
+		});
+	}
+
+	async function fetchInitialWorkflows() {
+		try {
+			const workflows = await workflowsStore.searchWorkflows({});
+			initialWorkflows.value = workflows;
+			// If there is no active query, show initial results
+			if ((lastQuery.value || '').trim().length === 0) {
+				initialWorkflows.value = orderResultByCurrentProjectFirst(initialWorkflows.value);
+			}
+		} catch {
+			workflowResults.value = [];
+		}
+	}
+
+	const fetchWorkflows = debounce(async (query: string) => {
+		try {
+			const trimmed = (query || '').trim();
+			if (trimmed.length === 0) {
+				workflowResults.value = initialWorkflows.value;
+				return;
+			}
+			// Search by workflow name
+			const nameSearchPromise = workflowsStore.searchWorkflows({
+				name: trimmed,
+			});
+
+			// Find matching node types from available nodes
+			const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
+			const visibleNodeTypes = nodeTypesStore.allNodeTypes;
+			const { mergedNodes } = generateMergedNodesAndActions(visibleNodeTypes, httpOnlyCredentials);
+			const trimmedLower = trimmed.toLowerCase();
+			const matchedNodeTypeNames = Array.from(
+				new Set(
+					mergedNodes
+						.filter(
+							(node) =>
+								node.displayName?.toLowerCase().includes(trimmedLower) ||
+								node.name?.toLowerCase().includes(trimmedLower),
+						)
+						.map((node) => node.name),
+				),
+			);
+
+			const nodeTypeSearchPromise =
+				matchedNodeTypeNames.length > 0
+					? workflowsStore.searchWorkflows({
+							// nodeTypes: matchedNodeTypeNames, TODO
+						})
+					: Promise.resolve([]);
+
+			const [byName, byNodeTypes] = await Promise.all([nameSearchPromise, nodeTypeSearchPromise]);
+
+			// Merge and dedupe by id
+			const merged = [...byName, ...byNodeTypes];
+			const uniqueById = Array.from(new Map(merged.map((w) => [w.id, w])).values());
+			workflowResults.value = orderResultByCurrentProjectFirst(uniqueById);
+		} catch {
+			workflowResults.value = [];
+		}
+	}, 300);
 
 	function getIconSource(nodeType: SimplifiedNodeType | null) {
 		if (!nodeType) return {};
@@ -86,11 +174,11 @@ export function useCommandBar() {
 				id: name,
 				title: `Add node > ${displayName}`,
 				keywords: ['insert', 'add', 'create', 'node'],
-				icon: src?.path
+				icon: src.path
 					? {
 							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
 						}
-					: '',
+					: undefined,
 				handler: async () => {
 					await addNodes([{ type: name }]);
 				},
@@ -106,13 +194,13 @@ export function useCommandBar() {
 			return {
 				id,
 				title: `Open node > ${name}`,
-				section: 'Nodes',
+				section: Section.NODES,
 				keywords: [type],
 				icon: src?.path
 					? {
 							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
 						}
-					: '',
+					: undefined,
 				handler: () => {
 					setNodeActive(id, 'command_bar');
 				},
@@ -124,26 +212,26 @@ export function useCommandBar() {
 	const nodeCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
-				id: 'Add node',
+				id: 'add-node',
 				title: 'Add node',
-				section: 'Nodes',
+				section: Section.NODES,
 				children: [...addNodeCommands.value],
 				hotkey: 'tab',
 			},
 			{
-				id: 'Add sticky note',
+				id: 'add-sticky-note',
 				title: 'Add sticky note',
-				section: 'Nodes',
+				section: Section.NODES,
 				hotkey: 'shift+s',
 				handler: () => {
 					canvasEventBus.emit('create:sticky');
 				},
 			},
 			{
-				id: 'Open node',
+				id: 'open-node',
 				title: 'Open node',
+				section: Section.NODES,
 				children: [...openNodeCommnds.value],
-				section: 'Nodes',
 				hotkey: 'enter',
 			},
 		];
@@ -156,7 +244,7 @@ export function useCommandBar() {
 			return {
 				id: id.toString(),
 				title: `Import template > ${name}`,
-				parent: 'Import template',
+				section: Section.TEMPLATES,
 				handler: async () => {
 					await openWorkflowTemplate(id.toString());
 				},
@@ -167,10 +255,10 @@ export function useCommandBar() {
 	const templateCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
-				id: 'Import template',
+				id: 'import-template',
 				title: 'Import template',
 				children: [...importTemplateCommands.value],
-				section: 'Templates',
+				section: Section.TEMPLATES,
 			},
 		];
 	});
@@ -191,7 +279,7 @@ export function useCommandBar() {
 		}
 		return [
 			{
-				id: 'Open subworkflow',
+				id: 'open-sub-workflow',
 				title: 'Open subworkflow',
 				children: [
 					...subworkflows.map((workflow) => ({
@@ -214,19 +302,18 @@ export function useCommandBar() {
 	const workflowCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
-				id: 'Test workflow',
+				id: 'test-workflow',
 				title: 'Test workflow',
-				section: 'Workflow',
+				section: Section.WORKFLOW,
 				keywords: ['test', 'execute', 'run', 'workflow'],
 				handler: () => {
 					void runEntireWorkflow('main');
 				},
 			},
 			{
-				id: 'Save workflow',
+				id: 'save-workflow',
 				title: 'Save workflow',
-				section: 'Workflow',
-				hotkey: 'command+s',
+				section: Section.WORKFLOW,
 				handler: async () => {
 					const saved = await workflowSaving.saveCurrentWorkflow();
 					if (saved) {
@@ -237,9 +324,9 @@ export function useCommandBar() {
 			...(workflowsStore.isWorkflowActive
 				? [
 						{
-							id: 'Deactivate workflow',
+							id: 'deactivate-workflow',
 							title: 'Deactivate workflow',
-							section: 'Workflow',
+							section: Section.WORKFLOW,
 							handler: () => {
 								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
 							},
@@ -247,28 +334,26 @@ export function useCommandBar() {
 					]
 				: [
 						{
-							id: 'Activate workflow',
+							id: 'activate-workflow',
 							title: 'Activate workflow',
-							section: 'Workflow',
+							section: Section.WORKFLOW,
 							handler: () => {
 								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
 							},
 						},
 					]),
 			{
-				id: 'Select all',
+				id: 'select-all',
 				title: 'Select all',
-				section: 'Workflow',
-				hotkey: 'command+a',
+				section: Section.WORKFLOW,
 				handler: () => {
 					canvasEventBus.emit('nodes:selectAll');
 				},
 			},
 			{
-				id: 'Tidy up workflow',
+				id: 'tidy-up-workflow',
 				title: 'Tidy up workflow',
-				section: 'Workflow',
-				hotkey: 'shift+option+t',
+				section: Section.WORKFLOW,
 				handler: () => {
 					canvasEventBus.emit('tidyUp', {
 						source: 'command-bar',
@@ -276,9 +361,9 @@ export function useCommandBar() {
 				},
 			},
 			{
-				id: 'Duplicate workflow',
+				id: 'duplicate-workflow',
 				title: 'Duplicate workflow',
-				section: 'Workflow',
+				section: Section.WORKFLOW,
 				handler: () => {
 					uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
@@ -291,9 +376,9 @@ export function useCommandBar() {
 				},
 			},
 			{
-				id: 'Download workflow',
+				id: 'download-workflow',
 				title: 'Download workflow',
-				section: 'Workflow',
+				section: Section.WORKFLOW,
 				handler: async () => {
 					const workflowData = await workflowHelpers.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
@@ -319,7 +404,84 @@ export function useCommandBar() {
 		];
 	});
 
-	const items = computed<CommandBarItem[]>(() => {
+	const getWorkflowTitle = (workflow: IWorkflowDb) => {
+		let prefix = '';
+		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
+			prefix = 'Open workflow > [Personal] > ';
+		} else {
+			prefix = `Open workflow > [${workflow.homeProject?.name}] > `;
+		}
+		return prefix + workflow.name || '(unnamed workflow)';
+	};
+
+	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
+		return workflowResults.value.map((workflow) => {
+			// const matchedNode = workflow.nodes.find(
+			// 	(node) => lastQuery.value && node.type.includes(lastQuery.value),
+			// );
+			// const nodeType = matchedNode
+			// 	? nodeTypesStore.getNodeType(matchedNode?.type, matchedNode.typeVersion)
+			// 	: null;
+			// const src = getIconSource(nodeType);
+			return {
+				id: workflow.id,
+				title: getWorkflowTitle(workflow),
+				section: Section.WORKFLOWS,
+				// icon: src?.path
+				// 	? {
+				// 			html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
+				// 		}
+				// 	: undefined,
+				handler: () => {
+					const targetRoute = router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: workflow.id },
+					});
+					window.location.href = targetRoute.fullPath;
+				},
+			};
+		});
+	});
+
+	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
+		return [
+			{
+				id: 'open-workflow',
+				title: 'Open workflow',
+				section: Section.WORKFLOWS,
+				children: openWorkflowCommands.value,
+			},
+		];
+	});
+
+	const baseitems = computed<CommandBarItem[]>(() => {
+		return [
+			{
+				id: 'demo-action',
+				title: 'This is available everywhere',
+				section: 'Demo',
+				handler: () => {
+					console.log('hello');
+				},
+			},
+			{
+				id: 'create-workflow',
+				title: `Create new workflow in ${currentProjectName.value}`,
+				section: Section.WORKFLOWS,
+				handler: () => {
+					void router.push({
+						name: VIEWS.NEW_WORKFLOW,
+						query: {
+							projectId: route.params.projectId as string,
+							parentFolderId: route.params.folderId as string,
+						},
+					});
+				},
+			},
+		];
+	});
+
+	const nodeViewItems = computed<CommandBarItem[]>(() => {
 		const credentialCommands = computed<CommandBarItem[]>(() => {
 			const credentials = uniqBy(
 				editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
@@ -332,12 +494,11 @@ export function useCommandBar() {
 				{
 					id: 'Open credential',
 					title: 'Open credential',
-					section: 'Credentials',
+					section: Section.CREDENTIALS,
 					children: [
 						...credentials.map((credential) => ({
 							id: credential.id as string,
 							title: credential.name,
-							parent: 'Open credential',
 							handler: () => {
 								uiStore.openExistingCredential(credential.id as string);
 							},
@@ -356,10 +517,32 @@ export function useCommandBar() {
 		];
 	});
 
-	function onCommandBarChange(event: CustomEvent<{ detail?: { search?: string } }>) {
-		const query = (event as unknown as { detail?: { search?: string } }).detail?.search ?? '';
+	const workflowsViewItems = computed<CommandBarItem[]>(() => {
+		return [...workflowNavigationCommands.value];
+	});
+
+	const items = computed<CommandBarItem[]>(() => {
+		const itemsToDisplay = [...baseitems.value];
+
+		if (router.currentRoute.value.name === VIEWS.WORKFLOW) {
+			itemsToDisplay.push(...nodeViewItems.value);
+		} else if (router.currentRoute.value.name === VIEWS.WORKFLOWS) {
+			itemsToDisplay.push(...workflowsViewItems.value);
+		}
+
+		return itemsToDisplay;
+	});
+
+	function onCommandBarChange(query: string) {
 		lastQuery.value = query;
+
+		void fetchWorkflows(query);
 	}
+
+	onMounted(async () => {
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+		await fetchInitialWorkflows();
+	});
 
 	return {
 		items,

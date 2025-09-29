@@ -22,7 +22,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import LoadingView from '@/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { locale, N8nCommandBar } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -43,7 +43,7 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 
-const commandBar = useCommandBar();
+const { items, onCommandBarChange } = useCommandBar();
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -152,6 +152,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
+			<N8nCommandBar :items="items" @input-change="onCommandBarChange" />
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</div>
