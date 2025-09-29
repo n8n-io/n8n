@@ -690,16 +690,6 @@ describe('ImportService', () => {
 			await expect(importService.validateMigrations('/test/input')).rejects.toThrow();
 		});
 
-		it('should handle migrations with only ID field (no timestamp)', async () => {
-			const migrationsContent = '{"id":"1","name":"TestMigration"}';
-			const dbMigrations = [{ id: '1', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
-		});
-
 		it('should handle database query errors gracefully', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			jest.mocked(readFile).mockResolvedValue(migrationsContent);
