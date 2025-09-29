@@ -49,7 +49,6 @@ jobs:
       DB_POSTGRESDB_PORT: 5432
       DB_POSTGRESDB_USER: postgres
       DB_POSTGRESDB_PASSWORD: password
-      DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
