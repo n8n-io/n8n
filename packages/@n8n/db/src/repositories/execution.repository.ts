@@ -796,7 +796,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ExecutionCancelledError(execution.id);
+		const error = new ExecutionCancelledError(execution.id, 'manual');
 
 		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {

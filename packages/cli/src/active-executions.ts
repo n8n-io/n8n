@@ -163,7 +163,7 @@ export class ActiveExecutions {
 			return;
 		}
 		this.eventService.emit('execution-cancelled', { executionId });
-		const error = new ExecutionCancelledError(executionId);
+		const error = new ExecutionCancelledError(executionId, 'manual');
 		execution.responsePromise?.reject(error);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise

@@ -296,7 +296,10 @@ describe('ScalingService', () => {
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
 			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
+			expect(job.moveToFailed).toHaveBeenCalledWith(
+				new ExecutionCancelledError('123', 'manual'),
+				true,
+			);
 			expect(result).toBe(true);
 		});
 
