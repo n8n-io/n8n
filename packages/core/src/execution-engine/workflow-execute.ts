@@ -8,39 +8,6 @@ import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
-import type {
-	ExecutionBaseError,
-	ExecutionStatus,
-	GenericValue,
-	IConnection,
-	IDataObject,
-	IExecuteData,
-	INode,
-	INodeExecutionData,
-	IPairedItemData,
-	IPinData,
-	IRun,
-	IRunData,
-	ITaskData,
-	ITaskDataConnections,
-	ITaskMetadata,
-	NodeApiError,
-	NodeOperationError,
-	Workflow,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
-	CloseFunction,
-	IRunNodeResponse,
-	IWorkflowIssues,
-	INodeIssues,
-	INodeType,
-	ITaskStartedData,
-	AiAgentRequest,
-	IWorkflowExecutionDataProcess,
-	EngineRequest,
-	EngineResponse,
-} from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
 	NodeHelpers,
@@ -60,19 +27,14 @@ import {
 	type IDataObject,
 	type IExecuteData,
 	type INode,
-	type INodeConnections,
 	type INodeExecutionData,
 	type IPairedItemData,
 	type IPinData,
 	type IRun,
 	type IRunData,
-	type ISourceData,
 	type ITaskData,
 	type ITaskDataConnections,
-	type ITaskDataConnectionsSource,
 	type ITaskMetadata,
-	type IWaitingForExecution,
-	type IWaitingForExecutionSource,
 	type NodeApiError,
 	type NodeOperationError,
 	type Workflow,
@@ -80,7 +42,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
 	type CloseFunction,
-	type StartNodeData,
 	type IRunNodeResponse,
 	type IWorkflowIssues,
 	type INodeIssues,
@@ -92,11 +53,6 @@ import {
 	type EngineResponse,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
@@ -115,6 +71,11 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
