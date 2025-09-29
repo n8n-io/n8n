@@ -277,6 +277,66 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}),
 	);
 
+	/**
+	 * Get detailed validation issues for all connected, enabled nodes
+	 */
+	const workflowValidationIssues = computed(() => {
+		const issues: Array<{
+			node: string;
+			type: string;
+			value: string | string[];
+		}> = [];
+
+		const isStringOrStringArray = (value: unknown): value is string | string[] =>
+			typeof value === 'string' || Array.isArray(value);
+
+		workflow.value.nodes.forEach((node) => {
+			if (!node.issues || node.disabled) return;
+
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+
+			if (!isConnected) return;
+
+			Object.entries(node.issues).forEach(([issueType, issueValue]) => {
+				if (!issueValue) return;
+
+				if (typeof issueValue === 'object' && !Array.isArray(issueValue)) {
+					// Handle nested issues (parameters, credentials)
+					Object.entries(issueValue).forEach(([_key, value]) => {
+						if (value) {
+							issues.push({
+								node: node.name,
+								type: issueType,
+								value,
+							});
+						}
+					});
+				} else {
+					// Handle direct issues
+					issues.push({
+						node: node.name,
+						type: issueType,
+						value: isStringOrStringArray(issueValue) ? issueValue : String(issueValue),
+					});
+				}
+			});
+		});
+
+		return issues;
+	});
+
+	/**
+	 * Format issue message for display
+	 */
+	function formatIssueMessage(issue: string | string[]): string {
+		if (Array.isArray(issue)) {
+			return issue.join(', ').replace(/\.$/, '');
+		}
+		return String(issue);
+	}
+
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
@@ -2013,6 +2073,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		canvasNames,
 		nodesByName,
 		nodesIssuesExist,
+		workflowValidationIssues,
+		formatIssueMessage,
 		pinnedWorkflowData,
 		executedNode,
 		getAllLoadedFinishedExecutions,

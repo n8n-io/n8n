@@ -303,7 +303,7 @@ class TaskRunner:
 
             task_state.process = process
 
-            result, print_args = await asyncio.to_thread(
+            result, print_args, result_size_bytes = await asyncio.to_thread(
                 self.executor.execute_process,
                 process=process,
                 queue=queue,
@@ -323,6 +323,7 @@ class TaskRunner:
                 LOG_TASK_COMPLETE.format(
                     task_id=task_id,
                     duration=self._get_duration(start_time),
+                    result_size=self._get_result_size(result_size_bytes),
                     **task_state.context(),
                 )
             )
@@ -380,6 +381,8 @@ class TaskRunner:
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
 
+    # ========== Formatting ==========
+
     def _get_duration(self, start_time: float) -> str:
         elapsed = time.time() - start_time
 
@@ -390,6 +393,14 @@ class TaskRunner:
             return f"{int(elapsed)}s"
 
         return f"{int(elapsed) // 60}m"
+
+    def _get_result_size(self, size_bytes: int) -> str:
+        if size_bytes < 1024:
+            return f"{size_bytes} bytes"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
 
     # ========== Offers ==========
 

@@ -620,6 +620,12 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	emit('update:modelValue', params);
 }
 
+function onInputMouseDown(event: MouseEvent): void {
+	if (isListMode.value) {
+		event.preventDefault();
+	}
+}
+
 function onModeSelected(value: string): void {
 	if (typeof props.modelValue !== 'object') {
 		emit('update:modelValue', { __rl: true, value: props.modelValue, mode: value });
@@ -1094,7 +1100,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
-									@mousedown.prevent
+									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
 										<i
