@@ -1958,8 +1958,6 @@
 	"runData.aiContentBlock.tokens": "{count} Tokens",
 	"runData.aiContentBlock.tokens.prompt": "Prompt:",
 	"runData.aiContentBlock.tokens.completion": "Completion:",
-	"runData.trimmedData.title": "No data yet",
-	"runData.trimmedData.message": "Data will be available here once the execution has finished.",
 	"runData.trimmedData.loading": "Loading data",
 	"runData.panel.actions.collapse": "Collapse panel",
 	"runData.panel.actions.open": "Open panel",
