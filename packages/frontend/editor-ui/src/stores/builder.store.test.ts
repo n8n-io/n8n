@@ -54,7 +54,6 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
 let getNodeTypeSpy: ReturnType<typeof vi.fn>;
 let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
-let getCredentialTypeByNameSpy: ReturnType<typeof vi.fn>;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -114,9 +113,9 @@ describe('AI Builder store', () => {
 		workflowsStore.workflowId = 'test-workflow-id';
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
-		workflowsStore.workflow.connections = {} as never;
+		workflowsStore.workflow.connections = {};
 		workflowsStore.allNodes = [];
-		workflowsStore.nodesByName = {} as never;
+		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
 		setWorkflowNameSpy = workflowsStore.setWorkflowName.mockImplementation(({ newName }) => {
@@ -124,14 +123,15 @@ describe('AI Builder store', () => {
 		});
 
 		getNodeTypeSpy = vi.fn();
-		nodeTypesStore.getNodeType = getNodeTypeSpy as unknown as typeof nodeTypesStore.getNodeType;
+		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
 
 		getCredentialsByTypeSpy = vi.fn().mockReturnValue([]);
-		credentialsStore.getCredentialsByType =
-			getCredentialsByTypeSpy as unknown as typeof credentialsStore.getCredentialsByType;
-		getCredentialTypeByNameSpy = vi.fn().mockReturnValue(undefined);
-		credentialsStore.getCredentialTypeByName =
-			getCredentialTypeByNameSpy as unknown as typeof credentialsStore.getCredentialTypeByName;
+		vi.spyOn(credentialsStore, 'getCredentialsByType', 'get').mockReturnValue(
+			getCredentialsByTypeSpy,
+		);
+		vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(
+			vi.fn().mockReturnValue(undefined),
+		);
 	});
 
 	afterEach(() => {
