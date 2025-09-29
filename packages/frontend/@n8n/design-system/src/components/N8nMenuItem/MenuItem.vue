@@ -26,9 +26,11 @@ const to = computed(() => {
 	if (props.item.route) {
 		return props.item.route.to;
 	}
+
 	if (props.item.link) {
 		return props.item.link.href;
 	}
+
 	return undefined;
 });
 
@@ -45,6 +47,7 @@ const icon = computed<IconName | undefined>(() => {
 });
 
 const iconColor = computed(() => {
+	// If the icon is a string, we use the default color
 	if (typeof props.item.icon === 'string') {
 		return undefined;
 	}
