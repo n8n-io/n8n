@@ -74,7 +74,7 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 	global: {
 		stubs: {
 			// UN STUB router-link
-			'router-link': RouterLink,
+			RouterLink,
 		},
 		plugins: [router],
 	},

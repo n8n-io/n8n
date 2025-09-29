@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { ref } from 'vue';
 
 import N8nPromptInput from './N8nPromptInput.vue';
 
@@ -39,6 +40,7 @@ export default {
 
 const methods = {
 	onUpdateModelValue: action('update:modelValue'),
+	onUpgradeClick: action('upgrade-click'),
 	onSubmit: action('submit'),
 	onStop: action('stop'),
 	onFocus: action('focus'),
@@ -280,3 +282,98 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const DifferentSizes = MultipleInstancesTemplate.bind({});
 DifferentSizes.args = {};
+
+// Credit Tracking Stories
+export const WithCreditsAndUpgrade: StoryFn = Template.bind({});
+WithCreditsAndUpgrade.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsRemaining: 119,
+};
+WithCreditsAndUpgrade.storyName = 'With Credits and Upgrade Button';
+
+export const WithCreditsNoUpgrade: StoryFn = Template.bind({});
+WithCreditsNoUpgrade.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsRemaining: 23,
+	showAskOwnerTooltip: true,
+};
+WithCreditsNoUpgrade.storyName = 'With Credits (Shows Ask Admin Tooltip)';
+
+export const LowCredits: StoryFn = Template.bind({});
+LowCredits.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsRemaining: 5,
+};
+LowCredits.storyName = 'Low Credits Remaining';
+
+export const NoCreditsRemaining: StoryFn = Template.bind({});
+NoCreditsRemaining.args = {
+	placeholder: 'Type your message here...',
+	creditsQuota: 150,
+	creditsRemaining: 0,
+};
+NoCreditsRemaining.storyName = 'No Credits Remaining';
+
+const CreditsInteractiveTemplate: StoryFn = (args) => ({
+	components: { N8nPromptInput },
+	setup() {
+		const inputValue = ref('');
+		const creditsRemaining = ref(args.creditsRemaining || 150);
+		const creditsQuota = ref(args.creditsQuota || 150);
+
+		const handleSubmit = () => {
+			if (inputValue.value.trim() && creditsRemaining.value > 0) {
+				creditsRemaining.value--;
+				inputValue.value = '';
+			}
+			action('submit')();
+		};
+
+		return {
+			args,
+			inputValue,
+			creditsRemaining,
+			creditsQuota,
+			handleSubmit,
+			onStop: methods.onStop,
+			onFocus: methods.onFocus,
+			onBlur: methods.onBlur,
+			onUpgradeClick: methods.onUpgradeClick,
+		};
+	},
+	template: `
+		<div style="max-width: 600px; margin: 20px;">
+			<div style="margin-bottom: 20px; padding: 20px; background: var(--color-background-base); border-radius: var(--border-radius-base);">
+				<h3 style="color: var(--color-text-dark); margin-bottom: 10px;">Credits Tracking Demo</h3>
+				<p style="color: var(--color-text-base); margin-bottom: 10px;">
+					Each message consumes 1 credit. Credits renew at the beginning of next month.
+				</p>
+				<p style="color: var(--color-text-light); font-size: var(--font-size-s);">
+					Credits remaining: {{ creditsRemaining }} / {{ creditsQuota }}
+				</p>
+			</div>
+			<n8n-prompt-input
+				v-bind="args"
+				v-model="inputValue"
+				:credits-quota="creditsQuota"
+				:credits-remaining="creditsRemaining"
+				@submit="handleSubmit"
+				@stop="onStop"
+				@focus="onFocus"
+				@blur="onBlur"
+				@upgrade-click="onUpgradeClick"
+			/>
+		</div>
+	`,
+});
+
+export const CreditsInteractive: StoryFn = CreditsInteractiveTemplate.bind({});
+CreditsInteractive.args = {
+	placeholder: 'Type a message (uses 1 credit)...',
+	creditsQuota: 150,
+	creditsRemaining: 2,
+};
+CreditsInteractive.storyName = 'Credits Interactive Demo';

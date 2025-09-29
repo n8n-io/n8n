@@ -270,9 +270,9 @@ onMounted(() => {
 		@click:add="addEmptyVariableForm"
 	>
 		<template #header>
-			<n8n-heading size="2xlarge" class="mb-m">
+			<N8nHeading size="2xlarge" class="mb-m">
 				{{ i18n.baseText('variables.heading') }}
-			</n8n-heading>
+			</N8nHeading>
 		</template>
 		<template #add-button>
 			<N8nTooltip placement="top" :disabled="canCreateVariables">

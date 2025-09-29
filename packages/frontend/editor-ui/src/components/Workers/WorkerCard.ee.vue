@@ -59,9 +59,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<n8n-card v-if="worker" :class="$style.cardLink">
+	<N8nCard v-if="worker" :class="$style.cardLink">
 		<template #header>
-			<n8n-heading
+			<N8nHeading
 				tag="h2"
 				bold
 				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
@@ -71,10 +71,10 @@ onBeforeUnmount(() => {
 				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free Memory:
 				{{ memAsGb(worker.freeMem).toFixed(2) }}GB / {{ memAsGb(worker.totalMem).toFixed(2) }}GB
 				{{ stale ? ' (stale)' : '' }}
-			</n8n-heading>
+			</N8nHeading>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small" :class="$style.container">
+			<N8nText color="text-light" size="small" :class="$style.container">
 				<span
 					>{{ i18n.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
 					ago | n8n-Version: {{ worker.version }} | Architecture: {{ worker.arch }} (
@@ -83,14 +83,14 @@ onBeforeUnmount(() => {
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
 				<WorkerNetAccordion :items="sortedWorkerInterfaces" />
 				<WorkerChartsAccordion :worker-id="worker.senderId" />
-			</n8n-text>
+			</N8nText>
 		</div>
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
 				<!-- For future Worker actions -->
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

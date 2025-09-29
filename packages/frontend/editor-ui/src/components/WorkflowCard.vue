@@ -467,7 +467,7 @@ const tags = computed(
 </script>
 
 <template>
-	<n8n-card
+	<N8nCard
 		:class="{
 			[$style.cardLink]: true,
 			[$style.cardArchived]: data.isArchived,
@@ -476,7 +476,7 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<n8n-text
+			<N8nText
 				tag="h2"
 				bold
 				:class="{
@@ -489,7 +489,7 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-			</n8n-text>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
@@ -505,20 +505,20 @@ const tags = computed(
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
 				data-test-id="workflow-card-mcp"
 			>
-				<n8n-tooltip
+				<N8nTooltip
 					placement="right"
 					:content="locale.baseText('workflows.item.availableInMCP')"
 					data-test-id="workflow-card-mcp-tooltip"
 				>
-					<n8n-icon icon="mcp" size="medium"></n8n-icon>
-				</n8n-tooltip>
+					<N8nIcon icon="mcp" size="medium"></N8nIcon>
+				</N8nTooltip>
 			</span>
 			<span
 				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
 				v-show="data"
 				:class="$style.cardTags"
 			>
-				<n8n-tags
+				<N8nTags
 					:tags="tags"
 					:truncate-at="3"
 					truncate
@@ -540,7 +540,7 @@ const tags = computed(
 					:show-badge-border="false"
 				>
 					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
-						<n8n-breadcrumbs
+						<N8nBreadcrumbs
 							:items="cardBreadcrumbs"
 							:hidden-items="
 								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
@@ -554,11 +554,11 @@ const tags = computed(
 							@item-selected="onBreadcrumbItemClick"
 						>
 							<template #prepend></template>
-						</n8n-breadcrumbs>
+						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
 
-				<n8n-text
+				<N8nText
 					v-if="data.isArchived"
 					color="text-light"
 					size="small"
@@ -567,7 +567,7 @@ const tags = computed(
 					data-test-id="workflow-card-archived"
 				>
 					{{ locale.baseText('workflows.item.archived') }}
-				</n8n-text>
+				</N8nText>
 				<WorkflowActivator
 					v-else
 					class="mr-s"
@@ -579,7 +579,7 @@ const tags = computed(
 					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
 
-				<n8n-action-toggle
+				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
 					data-test-id="workflow-card-actions"
@@ -587,7 +587,7 @@ const tags = computed(
 				/>
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>

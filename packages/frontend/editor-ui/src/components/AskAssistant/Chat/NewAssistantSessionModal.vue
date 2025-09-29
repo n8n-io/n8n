@@ -57,17 +57,17 @@ const startNewSession = async () => {
 		<template #content>
 			<div :class="$style.container">
 				<p>
-					<n8n-text>{{ i18n.baseText('aiAssistant.newSessionModal.message') }}</n8n-text>
+					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.message') }}</N8nText>
 				</p>
 				<p>
-					<n8n-text>{{ i18n.baseText('aiAssistant.newSessionModal.question') }}</n8n-text>
+					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.question') }}</N8nText>
 				</p>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button :label="i18n.baseText('generic.cancel')" type="secondary" @click="close" />
-				<n8n-button
+				<N8nButton :label="i18n.baseText('generic.cancel')" type="secondary" @click="close" />
+				<N8nButton
 					:label="i18n.baseText('aiAssistant.newSessionModal.confirm')"
 					@click="startNewSession"
 				/>

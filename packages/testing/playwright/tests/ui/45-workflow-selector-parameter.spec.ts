@@ -48,7 +48,7 @@ test.describe('Workflow Selector Parameter @db:reset', () => {
 		await expect(link).toBeVisible();
 
 		await n8n.ndv.getExpressionModeToggle().click();
-		await expect(link).not.toBeVisible();
+		await expect(link).toBeHidden();
 	});
 
 	test('should switch to ID mode on expression', async ({ n8n }) => {

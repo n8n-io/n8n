@@ -108,7 +108,7 @@ const onClaimCreditsClicked = async () => {
 			})
 		}}
 		<template #trailingContent>
-			<n8n-button
+			<N8nButton
 				type="tertiary"
 				size="small"
 				:label="i18n.baseText('freeAi.credits.callout.claim.button.label')"

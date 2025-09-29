@@ -465,7 +465,7 @@ async function onAskAssistantClick() {
 			></div>
 
 			<div v-if="isSubNodeError">
-				<n8n-button
+				<N8nButton
 					icon="arrow-right"
 					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
@@ -488,7 +488,7 @@ async function onAskAssistantClick() {
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}
 				</p>
-				<n8n-tooltip
+				<N8nTooltip
 					class="item"
 					:content="i18n.baseText('nodeErrorView.copyToClipboard.tooltip')"
 					placement="left"
@@ -503,7 +503,7 @@ async function onAskAssistantClick() {
 							@click="copyErrorDetails"
 						/>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 
 			<div class="node-error-view__info-content">
@@ -517,7 +517,7 @@ async function onAskAssistantClick() {
 					class="node-error-view__details"
 				>
 					<summary class="node-error-view__details-summary">
-						<n8n-icon class="node-error-view__details-icon" icon="chevron-right" />
+						<N8nIcon class="node-error-view__details-icon" icon="chevron-right" />
 						{{
 							i18n.baseText('nodeErrorView.details.from', {
 								interpolate: { node: `${nodeDefaultName}` },
@@ -572,7 +572,7 @@ async function onAskAssistantClick() {
 
 				<details class="node-error-view__details">
 					<summary class="node-error-view__details-summary">
-						<n8n-icon class="node-error-view__details-icon" icon="chevron-right" />
+						<N8nIcon class="node-error-view__details-icon" icon="chevron-right" />
 						{{ i18n.baseText('nodeErrorView.details.info') }}
 					</summary>
 					<div class="node-error-view__details-content">

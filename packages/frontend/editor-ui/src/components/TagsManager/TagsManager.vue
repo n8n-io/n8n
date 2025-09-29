@@ -155,7 +155,7 @@ function onEnter() {
 		@enter="onEnter"
 	>
 		<template #content>
-			<el-row>
+			<ElRow>
 				<TagsView
 					v-if="hasTags || isCreating"
 					:is-loading="isLoading"
@@ -173,10 +173,10 @@ function onEnter() {
 					:description-locale-key="noTagsDescriptionLocaleKey"
 					@enable-create="onEnableCreate"
 				/>
-			</el-row>
+			</ElRow>
 		</template>
 		<template #footer="{ close }">
-			<n8n-button :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
+			<N8nButton :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
 		</template>
 	</Modal>
 </template>
