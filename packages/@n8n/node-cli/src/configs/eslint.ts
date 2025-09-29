@@ -47,7 +47,10 @@ function createConfig(supportCloud = true): ConfigArray {
 			files: ['./credentials/**/*.ts'],
 			rules: {
 				...n8nNodesPlugin.configs.credentials.rules,
+				// Not valid for community nodes
 				'n8n-nodes-base/cred-class-field-documentation-url-miscased': 'off',
+				// @n8n/eslint-plugin-community-nodes credential-password-field rule is more accurate
+				'n8n-nodes-base/cred-class-field-type-options-password-missing': 'off',
 			},
 		},
 		{
@@ -59,8 +62,6 @@ function createConfig(supportCloud = true): ConfigArray {
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'off',
 				// Sometimes the 3rd party API does have a maximum limit, so maxValue is valid
 				'n8n-nodes-base/node-param-type-options-max-value-present': 'off',
-				// @n8n/eslint-plugin-community-nodes credential-password-field rule is more accurate
-				'node-param-type-options-password-missing': 'off',
 			},
 		},
 	);
