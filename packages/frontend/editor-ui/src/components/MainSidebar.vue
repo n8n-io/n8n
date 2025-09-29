@@ -565,8 +565,8 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 										}}</N8nText>
 										<template v-for="child in item.children" :key="child.id">
 											<component
-												v-if="isCustomMenuItem(child)"
 												:is="child.component"
+												v-if="isCustomMenuItem(child)"
 												v-bind="child.props"
 											/>
 											<N8nMenuItem v-else :item="child" @on-click="() => handleSelect(child.id)" />
