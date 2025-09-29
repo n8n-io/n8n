@@ -92,9 +92,9 @@ describe('MainSidebar', () => {
 			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = false;
 
-			const { getByTestId, findByTestId } = renderComponent();
+			const { findByTestId, getByText } = renderComponent();
 
-			getByTestId('whats-new').click();
+			getByText('What’s New').click();
 
 			const updateButton = await findByTestId('version-update-cta-button');
 			expect(updateButton).toBeInTheDocument();
@@ -106,9 +106,9 @@ describe('MainSidebar', () => {
 			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = true;
 
-			const { getByTestId, findByTestId } = renderComponent();
+			const { getByText, findByTestId } = renderComponent();
 
-			getByTestId('whats-new').click();
+			getByText('What’s New').click();
 
 			const updateButton = await findByTestId('version-update-cta-button');
 			expect(updateButton).toBeInTheDocument();
