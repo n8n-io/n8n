@@ -108,7 +108,7 @@ const statusColor = computed(() => {
 .titleRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-2xs);
 }
 
 .status {

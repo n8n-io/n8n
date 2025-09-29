@@ -515,13 +515,9 @@ defineExpose({
 }
 
 .message {
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
-
-	&.loading {
-		margin-top: var(--spacing-m);
-	}
 }
 
 .chatTitle {
