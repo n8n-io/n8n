@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
