@@ -1984,7 +1984,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 
 			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			workflowHandle.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 			return true;
 		},

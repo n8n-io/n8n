@@ -20,9 +20,23 @@ import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
+
+vi.mock('@/composables/useWorkflowHandle', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+	return {
+		...actual,
+		injectWorkflowHandle: vi.fn(),
+	};
+});
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowHandle: WorkflowHandle;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -30,6 +44,10 @@ describe('useWorkflowHelpers', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = mockedStore(useWorkflowsStore);
+
+		workflowHandle = useWorkflowHandle();
+		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
 		uiStore = useUIStore();
@@ -212,8 +230,8 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowsStore, 'setActive');
-			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
+			const setActiveSpy = vi.spyOn(workflowHandle, 'setActive');
+			const setWorkflowIdSpy = vi.spyOn(workflowHandle, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowsStore, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowsStore, 'setWorkflowSettings');
 			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');

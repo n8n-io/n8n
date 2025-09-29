@@ -64,6 +64,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -533,6 +534,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowHandle = injectWorkflowHandle();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
@@ -876,7 +878,7 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowsStore.setActive(!!workflow.active);
+			workflowHandle.setActive(!!workflow.active);
 			uiStore.stateIsDirty = false;
 		}
 
@@ -966,9 +968,9 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowsStore.setActive(workflowData.active || false);
+		workflowHandle.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowsStore.setWorkflowId(workflowData.id);
+		workflowHandle.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,

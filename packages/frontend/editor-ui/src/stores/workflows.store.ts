@@ -684,11 +684,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value = createEmptyWorkflow();
 	}
 
-	function setWorkflowId(id?: string) {
-		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
-		workflowObject.value.id = workflow.value.id;
-	}
-
 	function setUsedCredentials(data: IUsedCredential[]) {
 		workflow.value.usedCredentials = data;
 		usedCredentials.value = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
@@ -821,7 +816,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
-			setActive(true);
+			workflow.value.active = true;
 		}
 	}
 
@@ -834,7 +829,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[targetWorkflowId].active = false;
 		}
 		if (targetWorkflowId === workflow.value.id) {
-			setActive(false);
+			workflow.value.active = false;
 		}
 	}
 
@@ -842,10 +837,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
 		return data;
-	}
-
-	function setActive(active: boolean) {
-		workflow.value.active = active;
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -1263,13 +1254,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function setConnections(value: IConnections): void {
 		workflow.value.connections = value;
 		workflowObject.value.setConnections(value);
-	}
-
-	function resetAllNodesIssues(): boolean {
-		workflow.value.nodes.forEach((node) => {
-			node.issues = undefined;
-		});
-		return true;
 	}
 
 	/**
@@ -2000,7 +1984,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNodeExecutionStartedData,
 		addExecutingNode,
 		removeExecutingNode,
-		setWorkflowId,
 		setUsedCredentials,
 		setWorkflowName,
 		setWorkflowVersionId,
@@ -2013,7 +1996,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
-		setActive,
 		setIsArchived,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
@@ -2033,7 +2015,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeConnection,
 		removeAllNodeConnection,
 		renameNodeSelectedAndExecution,
-		resetAllNodesIssues,
 		updateNodeAtIndex,
 		setNodeIssue,
 		addNode,

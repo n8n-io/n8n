@@ -44,15 +44,31 @@ export function useWorkflowHandle() {
 		ws.workflowExecutionStartedData = undefined;
 	}
 
+	function resetAllNodesIssues(): boolean {
+		ws.workflow.nodes.forEach((node) => {
+			node.issues = undefined;
+		});
+		return true;
+	}
+
+	function setActive(active: boolean) {
+		ws.workflow.active = active;
+	}
+
+	function setWorkflowId(id?: string) {
+		ws.workflow.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		ws.workflowObject.id = ws.workflow.id;
+	}
+
 	function resetState() {
 		removeAllConnections({ setStateDirty: false });
 		removeAllNodes({ setStateDirty: false, removePinData: true });
 
 		setWorkflowExecutionData(null);
-		ws.resetAllNodesIssues();
+		resetAllNodesIssues();
 
-		ws.setActive(ws.defaults.active);
-		ws.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		setActive(ws.defaults.active);
+		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		ws.setWorkflowName({ newName: '', setStateDirty: false });
 		ws.setWorkflowSettings({ ...ws.defaults.settings });
 		ws.setWorkflowTagIds([]);
@@ -67,8 +83,13 @@ export function useWorkflowHandle() {
 		removeAllConnections,
 		removeAllNodes,
 		setWorkflowExecutionData,
+		resetAllNodesIssues,
+		setActive,
+		setWorkflowId,
 	};
 }
+
+export type WorkflowHandle = ReturnType<typeof useWorkflowHandle>;
 
 export function injectWorkflowHandle() {
 	return inject(

@@ -49,7 +49,11 @@ import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
-import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
 
 import { TelemetryHelpers } from 'n8n-workflow';
 
@@ -128,7 +132,7 @@ describe('useCanvasOperations', () => {
 		},
 	};
 
-	let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+	let workflowHandle: WorkflowHandle;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ initialState });

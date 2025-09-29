@@ -179,7 +179,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return false for an existing workflow', () => {
-			workflowsStore.setWorkflowId('123');
+			useWorkflowHandle().setWorkflowId('123');
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});
