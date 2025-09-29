@@ -228,8 +228,8 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toEqual([]);
 		});
 
 		it('should detect missing node type', () => {
@@ -248,8 +248,12 @@ describe('evaluateConnections', () => {
 				connections: {},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain('Node type n8n-nodes-test.unknown not found for node Unknown Node');
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: 'Node type n8n-nodes-test.unknown not found for node Unknown Node',
+				}),
+			);
 		});
 
 		it('should detect missing required inputs', () => {
@@ -268,12 +272,18 @@ describe('evaluateConnections', () => {
 				connections: {},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain(
-				'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type main',
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description:
+						'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type main',
+				}),
 			);
-			expect(issues).toContain(
-				'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type ai_languageModel',
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description:
+						'Node LLM Chain (n8n-nodes-test.llmChain) is missing required input of type ai_languageModel',
+				}),
 			);
 		});
 
@@ -313,9 +323,12 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain(
-				'Node Code Node (n8n-nodes-test.code) received unsupported connection type ai_languageModel',
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description:
+						'Node Code Node (n8n-nodes-test.code) received unsupported connection type ai_languageModel',
+				}),
 			);
 		});
 	});
@@ -358,9 +371,9 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			// Should not have any issues - the node's dynamic inputs should be resolved
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			// Should not have any violations - the node's dynamic inputs should be resolved
+			expect(violations).toEqual([]);
 		});
 
 		it('should resolve vector store inputs based on mode', () => {
@@ -379,10 +392,13 @@ describe('evaluateConnections', () => {
 				connections: {},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
 			// Should report missing required ai_embedding input
-			expect(issues).toContain(
-				'Node Vector Store (n8n-nodes-test.vectorStore) is missing required input of type ai_embedding',
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description:
+						'Node Vector Store (n8n-nodes-test.vectorStore) is missing required input of type ai_embedding',
+				}),
 			);
 		});
 
@@ -446,9 +462,9 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
 			// Should be valid - Vector Store outputs ai_tool when in retrieve-as-tool mode
-			expect(issues).toEqual([]);
+			expect(violations).toEqual([]);
 		});
 	});
 
@@ -527,8 +543,8 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toEqual([]);
 		});
 
 		it('should handle workflows with no connections', () => {
@@ -547,8 +563,8 @@ describe('evaluateConnections', () => {
 				connections: undefined,
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toEqual([]);
 		});
 
 		it('should handle multiple connections to the same node', () => {
@@ -630,8 +646,8 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toEqual([]);
 		});
 	});
 
@@ -681,13 +697,15 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain(
-				'Node Code2 (n8n-nodes-test.code) is missing required input of type main',
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: 'Node Code2 (n8n-nodes-test.code) is missing required input of type main',
+				}),
 			);
 		});
 
-		it('should not report issues for trigger nodes without inputs', () => {
+		it('should not report violations for trigger nodes without inputs', () => {
 			const workflow = mock<SimpleWorkflow>({
 				name: 'Test Workflow',
 				nodes: [
@@ -703,9 +721,9 @@ describe('evaluateConnections', () => {
 				connections: {},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			// Trigger nodes don't have inputs, so no issues
-			expect(issues).toEqual([]);
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			// Trigger nodes don't have inputs, so no violations
+			expect(violations).toEqual([]);
 		});
 	});
 
@@ -746,9 +764,12 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			expect(issues).toContain(
-				'Merge node Merge Data has only 1 input connection(s). Merge nodes require at least 2 inputs to function properly.',
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description:
+						'Merge node Merge Data has only 1 input connection(s). Merge nodes require at least 2 inputs to function properly.',
+				}),
 			);
 		});
 
@@ -807,9 +828,11 @@ describe('evaluateConnections', () => {
 				},
 			});
 
-			const { issues } = evaluateConnections(workflow, mockNodeTypes);
-			// Should not contain merge node issues
-			expect(issues).not.toContain(expect.stringMatching(/Merge node.*has only.*input connection/));
+			const { violations } = evaluateConnections(workflow, mockNodeTypes);
+			// Should not contain merge node violations
+			expect(violations).not.toContain(
+				expect.stringMatching(/Merge node.*has only.*input connection/),
+			);
 		});
 	});
 
@@ -837,11 +860,15 @@ describe('evaluateConnections', () => {
 				connections: {},
 			});
 
-			const { issues } = evaluateConnections(workflow, [
+			const { violations } = evaluateConnections(workflow, [
 				...mockNodeTypes,
 				nodeTypeWithBadExpression,
 			]);
-			expect(issues.some((issue) => issue.includes('Failed to resolve inputs'))).toBe(true);
+			expect(violations).toContainEqual(
+				expect.objectContaining({
+					description: expect.stringContaining('Failed to resolve inputs'),
+				}),
+			);
 		});
 	});
 });

@@ -62,7 +62,9 @@ describe('evaluateTrigger', () => {
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
 			expect(result.hasTrigger).toBe(false);
-			expect(result.issues).toContain('Workflow has no nodes');
+			expect(result.violations).toContainEqual(
+				expect.objectContaining({ description: 'Workflow has no nodes' }),
+			);
 			expect(result.triggerNodes).toEqual([]);
 		});
 
@@ -93,8 +95,10 @@ describe('evaluateTrigger', () => {
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
 			expect(result.hasTrigger).toBe(false);
-			expect(result.issues).toContain(
-				'Workflow must have at least one trigger node to start execution',
+			expect(result.violations).toContainEqual(
+				expect.objectContaining({
+					description: 'Workflow must have at least one trigger node to start execution',
+				}),
 			);
 			expect(result.triggerNodes).toEqual([]);
 		});
@@ -126,7 +130,7 @@ describe('evaluateTrigger', () => {
 			const result = evaluateTrigger(workflow, mockNodeTypes);
 
 			expect(result.hasTrigger).toBe(true);
-			expect(result.issues).toEqual([]);
+			expect(result.violations).toEqual([]);
 			expect(result.triggerNodes).toEqual(['Manual Trigger']);
 		});
 	});
@@ -160,7 +164,7 @@ describe('evaluateTrigger', () => {
 
 			// Should still find the valid trigger
 			expect(result.hasTrigger).toBe(true);
-			expect(result.issues).toEqual([]);
+			expect(result.violations).toEqual([]);
 			expect(result.triggerNodes).toEqual(['Manual Trigger']);
 		});
 

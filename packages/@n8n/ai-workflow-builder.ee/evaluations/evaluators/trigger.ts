@@ -2,9 +2,12 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-export interface TriggerEvaluationResult {
+import type { Violation } from '../types/evaluation';
+import type { SingleEvaluatorResult } from '../types/test-result';
+import { calcSingleEvaluatorScore } from '../utils/score';
+
+export interface TriggerEvaluationResult extends SingleEvaluatorResult {
 	hasTrigger: boolean;
-	issues: string[];
 	triggerNodes: string[];
 }
 
@@ -14,13 +17,13 @@ export function evaluateTrigger(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
 ): TriggerEvaluationResult {
-	const issues: string[] = [];
+	const violations: Violation[] = [];
 	const triggerNodes: string[] = [];
 
 	// Check if workflow has nodes
 	if (!workflow.nodes || workflow.nodes.length === 0) {
-		issues.push('Workflow has no nodes');
-		return { hasTrigger: false, issues, triggerNodes };
+		violations.push({ type: 'critical', description: 'Workflow has no nodes', pointsDeducted: 50 });
+		return { hasTrigger: false, violations, triggerNodes, score: 0 };
 	}
 
 	// Find all trigger nodes
@@ -28,7 +31,6 @@ export function evaluateTrigger(
 		const nodeType = nodeTypes.find((type) => type.name === node.type);
 
 		if (!nodeType) {
-			// Node type not found - already reported in connection evaluator
 			continue;
 		}
 
@@ -41,12 +43,17 @@ export function evaluateTrigger(
 	const hasTrigger = triggerNodes.length > 0;
 
 	if (!hasTrigger) {
-		issues.push('Workflow must have at least one trigger node to start execution');
+		violations.push({
+			type: 'critical',
+			description: 'Workflow must have at least one trigger node to start execution',
+			pointsDeducted: 50,
+		});
 	}
 
 	return {
 		hasTrigger,
-		issues,
+		violations,
 		triggerNodes,
+		score: calcSingleEvaluatorScore({ violations }),
 	};
 }

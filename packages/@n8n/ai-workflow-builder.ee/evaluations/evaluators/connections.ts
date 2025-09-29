@@ -1,12 +1,16 @@
 import type {
 	ExpressionString,
 	INodeInputConfiguration,
-	NodeConnectionType,
 	INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+
+import type { Violation } from '../types/evaluation';
+import type { SingleEvaluatorResult } from '../types/test-result';
+import { calcSingleEvaluatorScore } from '../utils/score';
 
 export function resolveConnections<T = INodeInputConfiguration>(
 	connections: Array<NodeConnectionType | T> | ExpressionString,
@@ -160,8 +164,8 @@ function getProvidedInputTypes(
 function checkMissingRequiredInputs(
 	nodeInfo: NodeInfo,
 	providedInputTypes: Map<NodeConnectionType, number>,
-): string[] {
-	const issues: string[] = [];
+): Violation[] {
+	const issues: Violation[] = [];
 
 	if (!nodeInfo.resolvedInputs) return issues;
 
@@ -169,9 +173,11 @@ function checkMissingRequiredInputs(
 		const providedCount = providedInputTypes.get(input.type) ?? 0;
 
 		if (input.required && providedCount === 0) {
-			issues.push(
-				`Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
-			);
+			issues.push({
+				type: 'critical',
+				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
+				pointsDeducted: 50,
+			});
 		}
 	}
 
@@ -181,17 +187,19 @@ function checkMissingRequiredInputs(
 function checkUnsupportedConnections(
 	nodeInfo: NodeInfo,
 	providedInputTypes: Map<NodeConnectionType, number>,
-): string[] {
-	const issues: string[] = [];
+): Violation[] {
+	const issues: Violation[] = [];
 
 	if (!nodeInfo.resolvedInputs) return issues;
 
 	const supportedTypes = new Set(nodeInfo.resolvedInputs.map((input) => input.type));
 	for (const [type] of providedInputTypes) {
 		if (!supportedTypes.has(type)) {
-			issues.push(
-				`Node ${nodeInfo.node.name} (${nodeInfo.node.type}) received unsupported connection type ${type}`,
-			);
+			issues.push({
+				type: 'critical',
+				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) received unsupported connection type ${type}`,
+				pointsDeducted: 50,
+			});
 		}
 	}
 
@@ -201,30 +209,42 @@ function checkUnsupportedConnections(
 function checkMergeNodeConnections(
 	nodeInfo: NodeInfo,
 	providedInputTypes: Map<NodeConnectionType, number>,
-): string[] {
-	const issues: string[] = [];
+): Violation[] {
+	const issues: Violation[] = [];
 
 	// Check if this is a merge node
-	const nodeName = nodeInfo.node.type.toLowerCase();
-	if (nodeName.includes('merge') || nodeName.includes('join')) {
+	if (/\.merge$/.test(nodeInfo.node.type)) {
 		// Calculate total number of input connections
-		let totalInputConnections = 0;
-		for (const [_type, count] of providedInputTypes) {
-			totalInputConnections += count;
-		}
+		const totalInputConnections = providedInputTypes.get('main') ?? 0;
 
 		if (totalInputConnections < 2) {
-			issues.push(
-				`Merge node ${nodeInfo.node.name} has only ${totalInputConnections} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
-			);
+			issues.push({
+				type: 'major',
+				description: `Merge node ${nodeInfo.node.name} has only ${totalInputConnections} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
+				pointsDeducted: 20,
+			});
+		}
+
+		const expectedInputs =
+			nodeInfo.resolvedInputs?.filter((input) => input.type === 'main').length ?? 1;
+
+		if (totalInputConnections !== expectedInputs) {
+			issues.push({
+				type: 'major',
+				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
+				pointsDeducted: 10,
+			});
 		}
 	}
 
 	return issues;
 }
 
-export function evaluateConnections(workflow: SimpleWorkflow, nodeTypes: INodeTypeDescription[]) {
-	const issues: string[] = [];
+export function evaluateConnections(
+	workflow: SimpleWorkflow,
+	nodeTypes: INodeTypeDescription[],
+): SingleEvaluatorResult {
+	const violations: Violation[] = [];
 
 	// Ensure workflow has connections object
 	if (!workflow.connections) {
@@ -237,20 +257,30 @@ export function evaluateConnections(workflow: SimpleWorkflow, nodeTypes: INodeTy
 	// Build node information map
 	const nodeInfoMap = new Map<string, NodeInfo>();
 
-	// First pass: resolve outputs for all nodes
 	for (const node of workflow.nodes) {
 		const nodeType = nodeTypes.find((type) => type.name === node.type);
 		if (!nodeType) {
-			issues.push(`Node type ${node.type} not found for node ${node.name}`);
+			violations.push({
+				type: 'critical',
+				description: `Node type ${node.type} not found for node ${node.name}`,
+				pointsDeducted: 50,
+			});
 			continue;
 		}
 
 		const nodeInfo: NodeInfo = { node, nodeType };
 
+		// Resolve inputs
+		const inputResult = resolveNodeInputs(nodeInfo);
+		if (inputResult.error) {
+			violations.push({ type: 'critical', description: inputResult.error, pointsDeducted: 50 });
+		}
+		nodeInfo.resolvedInputs = inputResult.inputs;
+
 		// Resolve outputs
 		const outputResult = resolveNodeOutputs(nodeInfo);
 		if (outputResult.error) {
-			issues.push(outputResult.error);
+			violations.push({ type: 'critical', description: outputResult.error, pointsDeducted: 50 });
 		}
 		nodeInfo.resolvedOutputs = outputResult.outputs;
 
@@ -265,7 +295,7 @@ export function evaluateConnections(workflow: SimpleWorkflow, nodeTypes: INodeTy
 		// Resolve inputs
 		const inputResult = resolveNodeInputs(nodeInfo);
 		if (inputResult.error) {
-			issues.push(inputResult.error);
+			violations.push({ type: 'critical', description: inputResult.error, pointsDeducted: 50 });
 			continue;
 		}
 		nodeInfo.resolvedInputs = inputResult.inputs;
@@ -274,14 +304,14 @@ export function evaluateConnections(workflow: SimpleWorkflow, nodeTypes: INodeTy
 		const providedInputTypes = getProvidedInputTypes(node.name, connectionsByDestination);
 
 		// Check for missing required inputs
-		issues.push(...checkMissingRequiredInputs(nodeInfo, providedInputTypes));
+		violations.push(...checkMissingRequiredInputs(nodeInfo, providedInputTypes));
 
 		// Check for unsupported connection types
-		issues.push(...checkUnsupportedConnections(nodeInfo, providedInputTypes));
+		violations.push(...checkUnsupportedConnections(nodeInfo, providedInputTypes));
 
 		// Check merge node specific requirements
-		issues.push(...checkMergeNodeConnections(nodeInfo, providedInputTypes));
+		violations.push(...checkMergeNodeConnections(nodeInfo, providedInputTypes));
 	}
 
-	return { issues };
+	return { violations, score: calcSingleEvaluatorScore({ violations }) };
 }
