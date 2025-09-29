@@ -24,7 +24,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		);
 
 		await addColumns(VARIABLES_TABLE_NAME, [column('projectId').varchar(36)]);
-		await addForeignKey(VARIABLES_TABLE_NAME, 'projectId', ['project', 'id']);
+		await addForeignKey(VARIABLES_TABLE_NAME, 'projectId', ['project', 'id'], undefined, 'CASCADE');
 
 		// Create index for unique project key (projectId not null)
 		await queryRunner.query(`
