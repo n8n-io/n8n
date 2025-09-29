@@ -494,6 +494,7 @@ export function extractReferencesInNodeExpressions(
 	insertedStartName: string,
 	graphInputNodeNames?: string[],
 ) {
+	const [start] = graphInputNodeNames ?? [];
 	////
 	// STEP 1 - Validate input invariants
 	////
@@ -550,7 +551,7 @@ export function extractReferencesInNodeExpressions(
 		parameterTreeMappingByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
 
-		if (node.type === SPLIT_OUT_NODE_TYPE) {
+		if (node.name === start && node.type === SPLIT_OUT_NODE_TYPE) {
 			const raw = node.parameters?.fieldToSplitOut;
 			if (typeof raw === 'string' && raw.trim() !== '') {
 				const trimmed = raw.trim();
