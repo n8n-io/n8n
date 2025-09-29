@@ -176,7 +176,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						show: {
-							fieldType: ['hiddenField'],
+							fieldType: ['hiddenField', 'text'],
 						},
 					},
 				},
@@ -197,6 +197,7 @@ export const formFields: INodeProperties = {
 					typeOptions: {
 						multipleValues: true,
 						sortable: true,
+						maxAllowedFields: 16,
 					},
 					options: [
 						{
