@@ -34,7 +34,7 @@ function handleEditClick() {
 		@click="handleEditClick"
 	>
 		<!-- Node icon with tooltip -->
-		<node-icon
+		<NodeIcon
 			:node-type="getNodeType(issue.node)"
 			:size="14"
 			:shrink="false"
@@ -51,7 +51,7 @@ function handleEditClick() {
 		</div>
 
 		<!-- Edit button -->
-		<n8n-icon size="large" icon="pencil" />
+		<N8nIcon size="large" icon="pencil" />
 	</li>
 </template>
 
