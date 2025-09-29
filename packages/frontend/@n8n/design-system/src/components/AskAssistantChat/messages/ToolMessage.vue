@@ -114,7 +114,9 @@ const statusColor = computed(() => {
 .status {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	justify-content: center;
+	width: var(--spacing-m);
+	flex-shrink: 0;
 }
 
 .running {
