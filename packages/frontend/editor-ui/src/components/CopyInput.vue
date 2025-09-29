@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 
 type Props = {
@@ -49,7 +49,7 @@ function copy() {
 
 <template>
 	<div>
-		<n8n-input-label :label="label">
+		<N8nInputLabel :label="label">
 			<div
 				:class="{
 					[$style.copyText]: true,
@@ -66,7 +66,7 @@ function copy() {
 					<span>{{ copyButtonText }}</span>
 				</div>
 			</div>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
 	</div>
 </template>

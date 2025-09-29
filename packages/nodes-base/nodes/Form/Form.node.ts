@@ -19,12 +19,12 @@ import {
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
-import { renderFormCompletion } from './formCompletionUtils';
-import { renderFormNode } from './formNodeUtils';
+import { renderFormCompletion } from './utils/formCompletionUtils';
+import { renderFormNode } from './utils/formNodeUtils';
+import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, resolveRawData } from '../Form/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -71,7 +71,7 @@ export const formFieldsProperties: INodeProperties[] = [
 			rows: 5,
 		},
 		default:
-			'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
+			'[\n  {\n    "fieldLabel": "Name",\n    "placeholder": "enter your name",\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Age",\n    "fieldType": "number",\n    "placeholder": "enter your age"\n  },\n  {\n    "fieldLabel": "Email",\n    "fieldType": "email",\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Textarea",\n    "fieldType": "textarea"\n  },\n  {\n    "fieldLabel": "Dropdown Options",\n    "fieldType": "dropdown",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    },\n    "requiredField": true\n  },\n  {\n    "fieldLabel": "Checkboxes",\n    "fieldType": "checkbox",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    }\n  },\n  {\n    "fieldLabel": "Radio",\n    "fieldType": "radio",\n    "fieldOptions": {\n      "values": [\n        {\n          "option": "option 1"\n        },\n        {\n          "option": "option 2"\n        }\n      ]\n    }\n  },\n  {\n    "fieldLabel": "Email",\n    "fieldType": "email",\n    "placeholder": "me@mail.con"\n  },\n  {\n    "fieldLabel": "File",\n    "fieldType": "file",\n    "multipleFiles": true,\n    "acceptFileTypes": ".jpg, .png"\n  },\n  {\n    "fieldLabel": "Number",\n    "fieldType": "number"\n  },\n  {\n    "fieldLabel": "Password",\n    "fieldType": "password"\n  }\n]\n',
 		validateType: 'form-fields',
 		ignoreValidationDuringExecution: true,
 		hint: '<a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/" target="_blank">See docs</a> for field syntax',
@@ -253,7 +253,7 @@ const completionProperties = updateDisplayOptions(
 			],
 			displayOptions: {
 				show: {
-					respondWith: ['text', 'returnBinary'],
+					respondWith: ['text', 'returnBinary', 'redirect'],
 				},
 			},
 		},
@@ -268,7 +268,9 @@ export class Form extends Node {
 		name: 'form',
 		icon: 'file:form.svg',
 		group: ['input'],
-		version: 1,
+		// since trigger and node are sharing descriptions and logic we need to sync the versions
+		// and keep them aligned in both nodes
+		version: [1, 2.3],
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',
@@ -297,7 +299,6 @@ export class Form extends Node {
 		],
 		properties: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'An n8n Form Trigger node must be set up before this node',
 				name: 'triggerNotice',
 				type: 'notice',

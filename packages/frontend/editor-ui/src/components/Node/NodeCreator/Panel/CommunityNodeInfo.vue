@@ -2,11 +2,12 @@
 import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { captureException } from '@sentry/vue';
 import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
+import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 const { activeViewStack } = useViewStacks();
 
@@ -19,7 +20,11 @@ interface DownloadData {
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
-const communityNodesStore = useCommunityNodesStore();
+const official = ref(false);
+const packageName = computed(() => communityNodeDetails?.packageName);
+const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(packageName);
+
 const nodeTypesStore = useNodeTypesStore();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
@@ -39,17 +44,21 @@ async function fetchPackageInfo(packageName: string) {
 	const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(
 		activeViewStack.communityNodeDetails?.key || '',
 	);
+	let packageInfo = installedPackage.value;
+	if (communityNodeDetails?.installed && !packageInfo) {
+		packageInfo = await initInstalledPackage();
+	}
 
 	if (communityNodeAttributes) {
-		publisherName.value = communityNodeAttributes.authorName;
+		publisherName.value = communityNodeAttributes.companyName ?? communityNodeAttributes.authorName;
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
-		const packageInfo = communityNodesStore.getInstalledPackages.find(
-			(p) => p.packageName === communityNodeAttributes.packageName,
-		);
+		official.value = communityNodeAttributes.isOfficialNode;
+
 		if (!packageInfo) {
 			verified.value = true;
 		} else {
-			verified.value = packageInfo.installedVersion === communityNodeAttributes.npmVersion;
+			const verifiedVersions = communityNodeAttributes.nodeVersions?.map((v) => v.npmVersion) ?? [];
+			verified.value = verifiedVersions.includes(packageInfo.installedVersion);
 		}
 
 		return;
@@ -82,7 +91,7 @@ async function fetchPackageInfo(packageName: string) {
 		}
 
 		const downloadsData: DownloadData = await downloadsResponse.json();
-		if (!downloadsData.downloads || !downloadsData.downloads.length) return;
+		if (!downloadsData.downloads?.length) return;
 
 		const total = downloadsData.downloads.reduce((sum, day) => sum + day.downloads, 0);
 
@@ -104,22 +113,31 @@ onMounted(async () => {
 		<N8nText :class="$style.description" color="text-base" size="medium">
 			{{ communityNodeDetails?.description }}
 		</N8nText>
-		<div :class="$style.separator"></div>
+		<CommunityNodeUpdateInfo
+			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+			data-test-id="update-available"
+			:package-name="communityNodeDetails?.packageName"
+		/>
+		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">
-			<N8nTooltip placement="top" v-if="verified">
-				<template #content>{{ i18n.baseText('communityNodeInfo.approved') }}</template>
+			<N8nTooltip v-if="verified" placement="top">
+				<template #content>{{
+					official
+						? i18n.baseText('communityNodeInfo.officialApproved')
+						: i18n.baseText('communityNodeInfo.approved')
+				}}</template>
 				<div>
-					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
+					<ShieldIcon :class="$style.tooltipIcon" />
 					<N8nText color="text-light" size="xsmall" bold data-test-id="verified-tag">
 						{{ i18n.baseText('communityNodeInfo.approved.label') }}
 					</N8nText>
 				</div>
 			</N8nTooltip>
 
-			<N8nTooltip placement="top" v-else>
+			<N8nTooltip v-else placement="top">
 				<template #content>{{ i18n.baseText('communityNodeInfo.unverified') }}</template>
 				<div>
-					<FontAwesomeIcon :class="$style.tooltipIcon" icon="cube" />
+					<N8nIcon :class="$style.tooltipIcon" icon="box" />
 					<N8nText color="text-light" size="xsmall" bold>
 						{{ i18n.baseText('communityNodeInfo.unverified.label') }}
 					</N8nText>
@@ -127,26 +145,26 @@ onMounted(async () => {
 			</N8nTooltip>
 
 			<div v-if="downloads">
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
+				<N8nIcon :class="$style.tooltipIcon" icon="hard-drive-download" />
 				<N8nText color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
 					{{ i18n.baseText('communityNodeInfo.downloads', { interpolate: { downloads } }) }}
 				</N8nText>
 			</div>
 
 			<div v-if="publisherName">
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
+				<N8nIcon :class="$style.tooltipIcon" icon="user" />
 				<N8nText color="text-light" size="xsmall" bold data-test-id="publisher-name">
 					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
 				</N8nText>
 			</div>
 		</div>
 		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
-			<N8nIcon color="text-light" icon="info-circle" size="large" />
+			<N8nIcon color="text-light" icon="info" size="large" />
 			<N8nText color="text-base" size="medium">
 				<div style="padding-bottom: 8px">
 					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
 				</div>
-				<N8nText bold v-if="ownerEmailList.length">
+				<N8nText v-if="ownerEmailList.length" bold>
 					{{ ownerEmailList.join(', ') }}
 				</N8nText>
 			</N8nText>
@@ -188,12 +206,13 @@ onMounted(async () => {
 .info div {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-4xs);
 }
 
 .tooltipIcon {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
+	width: 12px;
 }
 
 .contactOwnerHint {

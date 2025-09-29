@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type NodePanelType, type IRunDataDisplayMode } from '@/Interface';
 import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import { computed, watch } from 'vue';
@@ -65,7 +65,7 @@ watch(
 			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" />
 			<N8nIcon v-else-if="option.value === 'binary'" icon="binary" size="small" />
 			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
-			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" />
+			<N8nIcon v-else-if="option.value === 'html'" icon="file-code" size="small" />
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>

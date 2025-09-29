@@ -1,6 +1,8 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
 
+import { getProxyAgent } from '@utils/httpProxyAgent';
+
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -11,7 +13,13 @@ export async function searchModels(
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
 
-	const openai = new OpenAI({ baseURL, apiKey: credentials.apiKey as string });
+	const openai = new OpenAI({
+		baseURL,
+		apiKey: credentials.apiKey as string,
+		fetchOptions: {
+			dispatcher: getProxyAgent(baseURL),
+		},
+	});
 	const { data: models = [] } = await openai.models.list();
 
 	const filteredModels = models.filter((model: { id: string }) => {

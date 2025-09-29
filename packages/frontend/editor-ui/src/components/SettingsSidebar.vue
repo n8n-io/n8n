@@ -5,10 +5,10 @@ import { useUserHelpers } from '@/composables/useUserHelpers';
 import type { IMenuItem } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useRoute, useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	return: [];
@@ -28,7 +28,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
 		{
 			id: 'settings-usage-and-plan',
-			icon: 'chart-bar',
+			icon: 'chart-column-decreasing',
 			label: i18n.baseText('settings.usageAndPlan.title'),
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.USAGE),
@@ -36,7 +36,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 		{
 			id: 'settings-personal',
-			icon: 'user-circle',
+			icon: 'circle-user-round',
 			label: i18n.baseText('settings.personal'),
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
@@ -44,7 +44,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 		{
 			id: 'settings-users',
-			icon: 'user-friends',
+			icon: 'user-round',
 			label: i18n.baseText('settings.users'),
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
@@ -69,7 +69,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 		{
 			id: 'settings-source-control',
-			icon: 'code-branch',
+			icon: 'git-branch',
 			label: i18n.baseText('settings.sourceControl.title'),
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
@@ -85,7 +85,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 		{
 			id: 'settings-ldap',
-			icon: 'network-wired',
+			icon: 'network',
 			label: i18n.baseText('settings.ldap'),
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
@@ -93,7 +93,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 		{
 			id: 'settings-workersview',
-			icon: 'project-diagram',
+			icon: 'waypoints',
 			label: i18n.baseText('mainSidebar.workersView'),
 			position: 'top',
 			available:
@@ -105,7 +105,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 	menuItems.push({
 		id: 'settings-log-streaming',
-		icon: 'sign-in-alt',
+		icon: 'log-in',
 		label: i18n.baseText('settings.log-streaming'),
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
@@ -114,36 +114,39 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 	menuItems.push({
 		id: 'settings-community-nodes',
-		icon: 'cube',
+		icon: 'box',
 		label: i18n.baseText('settings.communityNodes'),
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
 
-	return menuItems;
+	// Append module-registered settings sidebar items.
+	const moduleItems = uiStore.settingsSidebarItems;
+
+	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
 });
 </script>
 
 <template>
 	<div :class="$style.container">
-		<n8n-menu :items="sidebarMenuItems">
+		<N8nMenu :items="sidebarMenuItems">
 			<template #header>
 				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
 					<i class="mr-xs">
-						<font-awesome-icon icon="arrow-left" />
+						<N8nIcon icon="arrow-left" />
 					</i>
-					<n8n-heading size="large" :bold="true">{{ i18n.baseText('settings') }}</n8n-heading>
+					<N8nHeading size="large" :bold="true">{{ i18n.baseText('settings') }}</N8nHeading>
 				</div>
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
-					<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+					<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
 						{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-					</n8n-link>
+					</N8nLink>
 				</div>
 			</template>
-		</n8n-menu>
+		</N8nMenu>
 	</div>
 </template>
 

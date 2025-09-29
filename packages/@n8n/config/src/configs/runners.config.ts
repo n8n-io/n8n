@@ -62,4 +62,26 @@ export class TaskRunnersConfig {
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
+
+	/**
+	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
+	 * Set to `true` for compatibility with modules that rely on insecure JS features.
+	 */
+	@Env('N8N_RUNNERS_INSECURE_MODE')
+	insecureMode: boolean = false;
+
+	/**
+	 * Whether to enable the Python task runner (beta). This will replace the
+	 * Pyodide option with the native Python option in the Code node. Expects a
+	 * Python task runner to be available, typically in a sidecar container.
+	 *
+	 * Actions required:
+	 * - Any Code node set to the legacy `python` parameter will need to be manually
+	 * updated to use the new `pythonNative` parameter.
+	 * - Any Code node script relying on Pyodide syntax is likely to need to be manually
+	 * adjusted to account for breaking changes:
+	 * https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta
+	 */
+	@Env('N8N_NATIVE_PYTHON_RUNNER')
+	isNativePythonRunnerEnabled: boolean = false;
 }

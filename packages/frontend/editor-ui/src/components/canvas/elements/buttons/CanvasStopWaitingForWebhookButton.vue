@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
 </script>
 <template>
 	<N8nIconButton
 		class="stop-execution"
-		icon="stop"
+		icon="square"
 		size="large"
 		:title="i18n.baseText('nodeView.stopWaitingForWebhookCall')"
 		type="secondary"

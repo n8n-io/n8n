@@ -3,11 +3,12 @@ import { ref, computed } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
+import type { ChangeLocationSearchResult } from '@/Interface';
 
 const props = defineProps<{
 	modalName: string;
@@ -32,7 +33,7 @@ const projectsStore = useProjectsStore();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string; type: 'folder' | 'project' } | null>(null);
+const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
@@ -106,7 +107,7 @@ async function onSubmit() {
 		loading.value = true;
 
 		const newParentId =
-			selectedFolder.value?.type === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
+			selectedFolder.value?.resource === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
 
 		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId, newParentId);
 
@@ -134,7 +135,7 @@ async function onSubmit() {
 	}
 }
 
-const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 'project' }) => {
+const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
 </script>
@@ -151,62 +152,62 @@ const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 
 		<template #content>
 			<div>
 				<div v-if="isPending">
-					<n8n-text color="text-base">{{
-						i18n.baseText('folders.delete.confirm.message')
-					}}</n8n-text>
+					<N8nText color="text-base">{{ i18n.baseText('folders.delete.confirm.message') }}</N8nText>
 				</div>
 				<div v-else :class="$style.content">
 					<div>
-						<n8n-text color="text-base">{{ folderContentWarningMessage }}</n8n-text>
+						<N8nText color="text-base">{{ folderContentWarningMessage }}</N8nText>
 					</div>
-					<el-radio
+					<ElRadio
 						v-model="operation"
 						data-test-id="transfer-content-radio"
 						label="transfer"
 						@update:model-value="operation = 'transfer'"
 					>
-						<n8n-text v-if="currentProjectName">{{
+						<N8nText v-if="currentProjectName">{{
 							i18n.baseText('folders.transfer.action', {
 								interpolate: { projectName: currentProjectName },
 							})
-						}}</n8n-text>
-						<n8n-text v-else color="text-dark">{{
+						}}</N8nText>
+						<N8nText v-else color="text-dark">{{
 							i18n.baseText('folders.transfer.action.noProject')
-						}}</n8n-text>
-					</el-radio>
+						}}</N8nText>
+					</ElRadio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<n8n-text color="text-dark">{{
+						<N8nText color="text-dark">{{
 							i18n.baseText('folders.transfer.selectFolder')
-						}}</n8n-text>
+						}}</N8nText>
 						<MoveToFolderDropdown
 							v-if="projectsStore.currentProject"
-							:current-folder-id="props.activeId"
+							:selected-location="selectedFolder"
+							:selected-project-id="projectsStore.currentProject?.id"
 							:current-project-id="projectsStore.currentProject?.id"
+							:current-folder-id="props.activeId"
 							:parent-folder-id="folderToDelete?.parentFolder"
 							@location:selected="onFolderSelected"
 						/>
 					</div>
-					<el-radio
+					<ElRadio
 						v-model="operation"
 						data-test-id="delete-content-radio"
 						label="delete"
 						@update:model-value="operation = 'delete'"
 					>
-						<n8n-text color="text-dark">{{ i18n.baseText('folders.delete.action') }}</n8n-text>
-					</el-radio>
+						<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
+					</ElRadio>
 					<div
 						v-if="operation === 'delete'"
 						:class="$style.optionInput"
 						data-test-id="delete-data-input"
 					>
-						<n8n-input-label
+						<N8nInputLabel
 							:label="
 								i18n.baseText('folders.delete.confirmation.message', {
 									interpolate: { folderName: folderToDelete?.name ?? '' },
 								})
 							"
 						>
-							<n8n-input
+							<N8nInput
 								v-model="deleteConfirmText"
 								data-test-id="delete-data-input"
 								:placeholder="
@@ -215,13 +216,13 @@ const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 
 									})
 								"
 							/>
-						</n8n-input-label>
+						</N8nInputLabel>
 					</div>
 				</div>
 			</div>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('generic.delete')"

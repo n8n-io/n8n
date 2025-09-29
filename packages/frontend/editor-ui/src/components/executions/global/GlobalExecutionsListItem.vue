@@ -2,9 +2,9 @@
 import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import {
 	N8nButton,
@@ -18,6 +18,7 @@ import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -74,40 +75,41 @@ const EXECUTION_STATUS = {
 	CANCELED: 'canceled',
 } as const;
 
-const executionIconStatusDictionary: Record<ExecutionStatus, { icon: string; color: IconColor }> = {
-	[EXECUTION_STATUS.CRASHED]: {
-		icon: 'status-error',
-		color: 'danger',
-	},
-	[EXECUTION_STATUS.ERROR]: {
-		icon: 'status-error',
-		color: 'danger',
-	},
-	[EXECUTION_STATUS.WAITING]: {
-		icon: 'status-waiting',
-		color: 'secondary',
-	},
-	[EXECUTION_STATUS.SUCCESS]: {
-		icon: 'status-completed',
-		color: 'success',
-	},
-	[EXECUTION_STATUS.NEW]: {
-		icon: 'status-new',
-		color: 'foreground-xdark',
-	},
-	[EXECUTION_STATUS.RUNNING]: {
-		icon: 'spinner',
-		color: 'secondary',
-	},
-	[EXECUTION_STATUS.UNKNOWN]: {
-		icon: 'status-unknown',
-		color: 'foreground-xdark',
-	},
-	[EXECUTION_STATUS.CANCELED]: {
-		icon: 'status-canceled',
-		color: 'foreground-xdark',
-	},
-};
+const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; color: IconColor }> =
+	{
+		[EXECUTION_STATUS.CRASHED]: {
+			icon: 'status-error',
+			color: 'danger',
+		},
+		[EXECUTION_STATUS.ERROR]: {
+			icon: 'status-error',
+			color: 'danger',
+		},
+		[EXECUTION_STATUS.WAITING]: {
+			icon: 'status-waiting',
+			color: 'secondary',
+		},
+		[EXECUTION_STATUS.SUCCESS]: {
+			icon: 'status-completed',
+			color: 'success',
+		},
+		[EXECUTION_STATUS.NEW]: {
+			icon: 'status-new',
+			color: 'foreground-xdark',
+		},
+		[EXECUTION_STATUS.RUNNING]: {
+			icon: 'spinner',
+			color: 'secondary',
+		},
+		[EXECUTION_STATUS.UNKNOWN]: {
+			icon: 'status-unknown',
+			color: 'foreground-xdark',
+		},
+		[EXECUTION_STATUS.CANCELED]: {
+			icon: 'status-canceled',
+			color: 'foreground-xdark',
+		},
+	};
 
 const errorStatuses: ExecutionStatus[] = [EXECUTION_STATUS.ERROR, EXECUTION_STATUS.CRASHED];
 const classes = computed(() => {
@@ -225,7 +227,13 @@ async function handleActionItemClick(commandData: Command) {
 					>
 						<AnimatedSpinner />
 					</N8nText>
-					<N8nIcon v-else :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+					<N8nIcon
+						v-else
+						size="medium"
+						:icon="statusRender.icon"
+						:color="statusRender.color"
+						class="mr-2xs"
+					/>
 					{{ statusRender.label }}
 				</div>
 			</N8nTooltip>
@@ -253,7 +261,7 @@ async function handleActionItemClick(commandData: Command) {
 			</span>
 		</td>
 		<td>
-			<FontAwesomeIcon v-if="execution.mode === 'manual'" icon="flask" />
+			<N8nIcon v-if="execution.mode === 'manual'" icon="flask-conical" />
 		</td>
 		<td>
 			<N8nButton
@@ -269,7 +277,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton text type="tertiary" size="mini" icon="ellipsis-v" />
+				<N8nIconButton text type="tertiary" icon="ellipsis-vertical" />
 				<template #dropdown>
 					<ElDropdownMenu
 						:class="{

@@ -1,4 +1,10 @@
-import { isObjectOrArray, isObject, searchInObject, getObjectSizeInKB } from '@/utils/objectUtils';
+import {
+	isObjectOrArray,
+	isObject,
+	searchInObject,
+	getObjectSizeInKB,
+	omitKey,
+} from '@/utils/objectUtils';
 
 const testData = [1, '', true, null, undefined, new Date(), () => {}].map((value) => [
 	value,
@@ -152,6 +158,39 @@ describe('objectUtils', () => {
 		it('handles special characters correctly', () => {
 			const obj = { name: '测试' };
 			expect(getObjectSizeInKB(obj)).toBe(0.02);
+		});
+	});
+
+	describe('omitKey', () => {
+		it('should remove a top-level key from a flat object', () => {
+			const input = { a: 1, b: 2, c: 3 };
+			const result = omitKey(input, 'b');
+			expect(result).toEqual({ a: 1, c: 3 });
+		});
+
+		it('should not mutate the original object', () => {
+			const input = { a: 1, b: 2 };
+			const copy = { ...input };
+			omitKey(input, 'b');
+			expect(input).toEqual(copy);
+		});
+
+		it('should return the same object if the key does not exist', () => {
+			const input = { a: 1, b: 2 };
+			const result = omitKey(input, 'z');
+			expect(result).toEqual(input);
+		});
+
+		it('should remove a key with an undefined value', () => {
+			const input = { a: 1, b: undefined };
+			const result = omitKey(input, 'b');
+			expect(result).toEqual({ a: 1 });
+		});
+
+		it('should work with nested objects but only remove the top-level key', () => {
+			const input = { a: { nested: true }, b: 2 };
+			const result = omitKey(input, 'a');
+			expect(result).toEqual({ b: 2 });
 		});
 	});
 });

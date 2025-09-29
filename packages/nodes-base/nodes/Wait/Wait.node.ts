@@ -14,6 +14,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { validateWaitAmount, validateWaitUnit } from './validation';
 import { updateDisplayOptions } from '../../utils/utilities';
 import {
 	formDescription,
@@ -23,7 +24,7 @@ import {
 	formTitle,
 	appendAttributionToForm,
 } from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
+import { formWebhook } from '../Form/utils/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -47,6 +48,7 @@ const toWaitAmount: INodeProperties = {
 	},
 	default: 1,
 	description: 'The time to wait',
+	validateType: 'number',
 };
 
 const unitSelector: INodeProperties = {
@@ -487,9 +489,24 @@ export class Wait extends Webhook {
 
 		let waitTill: Date;
 		if (resume === 'timeInterval') {
-			const unit = context.getNodeParameter('unit', 0) as string;
+			const unit = context.getNodeParameter('unit', 0);
 
-			let waitAmount = context.getNodeParameter('amount', 0) as number;
+			if (!validateWaitUnit(unit)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					"Invalid wait unit. Valid units are 'seconds', 'minutes', 'hours', or 'days'.",
+				);
+			}
+
+			let waitAmount = context.getNodeParameter('amount', 0);
+
+			if (!validateWaitAmount(waitAmount)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'Invalid wait amount. Please enter a number that is 0 or greater.',
+				);
+			}
+
 			if (unit === 'minutes') {
 				waitAmount *= 60;
 			}
@@ -514,7 +531,7 @@ export class Wait extends Webhook {
 			} catch (e) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
+					'Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
 				);
 			}
 		}

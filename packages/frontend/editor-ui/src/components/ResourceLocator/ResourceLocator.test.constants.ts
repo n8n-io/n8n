@@ -49,6 +49,27 @@ export const TEST_PARAMETER_SINGLE_MODE: INodeProperties = {
 	],
 };
 
+export const TEST_PARAMETER_ADD_RESOURCE: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterAddResource',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'testSearch',
+				searchable: true,
+				allowNewResource: {
+					label: 'resourceLocator.mode.list.addNewResource.vectorStoreInMemory',
+					method: 'testAddResource',
+					defaultName: 'test',
+				},
+			},
+		},
+	],
+};
+
 export const TEST_NODE_MULTI_MODE: INode = {
 	type: 'n8n-nodes-base.airtable',
 	typeVersion: 2.1,
@@ -78,6 +99,69 @@ export const TEST_NODE_SINGLE_MODE: INode = {
 		resource: 'test',
 		operation: 'get',
 		testParameterSingleMode: TEST_MODEL_VALUE,
+		id: '',
+		options: {},
+	},
+};
+
+export const TEST_PARAMETER_SKIP_CREDENTIALS_CHECK: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterSkipCredentialsCheck',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'testSearch',
+				searchable: true,
+				skipCredentialsCheckInRLC: true,
+			},
+		},
+	],
+};
+
+export const TEST_NODE_NO_CREDENTIALS: INode = {
+	...TEST_NODE_MULTI_MODE,
+	name: 'Test Node - No Credentials',
+	parameters: {
+		authentication: undefined,
+		resource: 'test',
+		operation: 'get',
+		testParameterSkipCredentialsCheck: TEST_MODEL_VALUE,
+		id: '',
+		options: {},
+	},
+	credentials: undefined,
+};
+
+export const TEST_PARAMETER_URL_REDIRECT: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterUrlRedirect',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'testSearch',
+				searchable: true,
+				allowNewResource: {
+					label: 'resourceLocator.dataTable.createNew',
+					url: '/projects/{{$projectId}}/datatables/new',
+				},
+			},
+		},
+	],
+};
+
+export const TEST_NODE_URL_REDIRECT: INode = {
+	...TEST_NODE_MULTI_MODE,
+	name: 'Test Node - URL Redirect',
+	parameters: {
+		resource: 'test',
+		operation: 'get',
+		testParameterUrlRedirect: TEST_MODEL_VALUE,
 		id: '',
 		options: {},
 	},

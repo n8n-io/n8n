@@ -3,6 +3,7 @@ export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
+export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -26,8 +27,10 @@ export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
-export { UpdateProjectDto } from './project/update-project.dto';
+export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
+export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
+export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -50,7 +53,6 @@ export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-ma
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
-export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
@@ -69,3 +71,27 @@ export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
+export {
+	UsersListFilterDto,
+	type UsersListSortOptions,
+	USERS_LIST_SORT_OPTIONS,
+} from './user/users-list-filter.dto';
+
+export { UpdateRoleDto } from './roles/update-role.dto';
+export { CreateRoleDto } from './roles/create-role.dto';
+export { RoleListQueryDto } from './roles/role-list-query.dto';
+export { RoleGetQueryDto } from './roles/role-get-query.dto';
+
+export { OidcConfigDto } from './oidc/config.dto';
+
+export { CreateDataStoreDto } from './data-store/create-data-store.dto';
+export { UpdateDataStoreDto } from './data-store/update-data-store.dto';
+export { UpdateDataTableRowDto } from './data-store/update-data-store-row.dto';
+export { DeleteDataTableRowsDto } from './data-store/delete-data-table-rows.dto';
+export { UpsertDataStoreRowDto } from './data-store/upsert-data-store-row.dto';
+export { ListDataStoreQueryDto } from './data-store/list-data-store-query.dto';
+export { ListDataStoreContentQueryDto } from './data-store/list-data-store-content-query.dto';
+export { CreateDataStoreColumnDto } from './data-store/create-data-store-column.dto';
+export { AddDataStoreRowsDto } from './data-store/add-data-store-rows.dto';
+export { AddDataStoreColumnDto } from './data-store/add-data-store-column.dto';
+export { MoveDataStoreColumnDto } from './data-store/move-data-store-column.dto';

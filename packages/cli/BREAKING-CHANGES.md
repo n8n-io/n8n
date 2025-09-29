@@ -2,6 +2,120 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.113.0
+
+### What changed?
+
+Support for bare repositories in Git Node was dropped in the cloud version of n8n due to security reasons. Also, an environment variable `N8N_GIT_NODE_DISABLE_BARE_REPOS` was added that allows self-hosted users to disable bare repositories as well.
+
+### When is action necessary?
+
+If you have workflows that use the Git Node and work with bare git repositories.
+
+# 1.109.0
+
+### What changed?
+
+Webhook HTML responses were sandboxed to an iframe starting from 1.103.1 due to security. The sandboxing mechanism is now changed to use `Content-Security-Policy` header instead of an `iframe`. The security guarantees stay the same, but the mechanism is less breaking.
+
+### When is action necessary?
+
+If you have workflows that return HTML responses from `Webhook Trigger` node or `Respond to Webhook` node.
+
+# 1.107.0
+
+## What changed?
+
+The CLI flag `--reinstallMissingPackages`, deprecated a year ago in version 1.154.0, has been removed.
+
+### When is action necessary?
+
+If you are using this flag, please switch to the environment variable `N8N_REINSTALL_MISSING_PACKAGES`.
+
+## 1.103.0
+
+### What changed?
+
+We will no longer be allowing users to use `responseData` within the Webhook node since this is now sandboxed in an iframe, which may break workflows relying on browser APIs like `localStorage` and `fetch` from within custom code.
+
+### When is action necessary?
+
+If your workflow is using the Webhook node and uses JavaScript in `responseData` to make `fetch` calls or access `localStorage`, you may need to refactor it due to the new iframe sandboxing.
+
+## 1.102.0
+
+### What changed?
+
+The `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag has been replaced with `N8N_RUNNERS_INSECURE_MODE`. The new flag
+disables all task runner security measures and is intended as an escape hatch for users who value compatibility
+with libraries like `puppeteer` at the cost of security.
+
+### When is action necessary?
+
+If you are using the `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` flag, or if you find that the task runner does not
+currently support an external module that you rely on, then consider setting `N8N_RUNNERS_INSECURE_MODE=true`,
+at your own risk.
+
+## 1.98.0
+
+### What changed?
+
+The `last_activity` metric included as a part of route metrics has been changed to output a Unix time in seconds from
+the previous timestamp label approach. The labeling approach could result in high cardinality within Prometheus and
+thus result in poorer performance.
+
+Stricter parameters for `iframe`, `video`, and `source` tags when using the Form node.
+
+### When is action necessary?
+
+If you've been ingesting route metrics from your n8n instance (version 1.81.0 and newer), you should analyze
+how the `last_activity` metric has affected your Prometheus instance and potentially clean up the old data. Future
+metrics will also be served in a different format, which needs to be taken into account.
+
+If you are using `iframe`, `video`, or `source` tags with attributes beyond those listed [here](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Form/utils/utils.ts#L61-L71) or are using schemes which are neither `http` or `https`, you will need to update your node or workflow.
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v20.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v20 or above.
+
+## 1.83.0
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.82.1
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.81.3
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
 ## 1.65.0
 
 ### What changed?

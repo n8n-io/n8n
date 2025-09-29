@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
-import type {
-	ITimeoutHMS,
-	IWorkflowDataUpdate,
-	IWorkflowSettings,
-	IWorkflowShortResponse,
-} from '@/Interface';
+import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -17,16 +13,17 @@ import {
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
-import { getResourcePermissions } from '@/permissions';
-import { useI18n } from '@/composables/useI18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDebounce } from '@/composables/useDebounce';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -70,6 +67,7 @@ const helpTexts = computed(() => ({
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 }));
+
 const defaultValues = ref({
 	timezone: 'America/New_York',
 	saveDataErrorExecution: 'all',
@@ -77,7 +75,10 @@ const defaultValues = ref({
 	saveExecutionProgress: false,
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
+	availableInMCP: false,
 });
+
+const isMCPEnabled = computed(() => settingsStore.isModuleActive('mcp'));
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -265,8 +266,10 @@ const loadTimezones = async () => {
 	}
 };
 
-const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+const loadWorkflows = async (searchTerm?: string) => {
+	const workflowsData = (await workflowsStore.searchWorkflows({
+		name: searchTerm,
+	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -285,6 +288,9 @@ const loadWorkflows = async () => {
 	workflows.value = workflowsData;
 };
 
+const { debounce } = useDebounce();
+const debouncedLoadWorkflows = debounce(loadWorkflows, { debounceTime: 300, trailing: true });
+
 const convertToHMS = (num: number): ITimeoutHMS => {
 	if (num > 0) {
 		const hours = Math.floor(num / 3600);
@@ -298,7 +304,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveSettings = async () => {
 	// Set that the active state should be changed
-	const data: IWorkflowDataUpdate & { settings: IWorkflowSettings } = {
+	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
 	};
 
@@ -379,6 +385,10 @@ const saveSettings = async () => {
 
 const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
+};
+
+const toggleAvailableInMCP = () => {
+	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
 const updateTimeSavedPerExecution = (value: string) => {
@@ -462,6 +472,9 @@ onMounted(async () => {
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
 	}
+	if (workflowSettingsData.availableInMCP === undefined) {
+		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
+	}
 
 	workflowSettings.value = workflowSettingsData;
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
@@ -473,6 +486,10 @@ onMounted(async () => {
 	telemetry.track('User opened workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 	});
+});
+
+onBeforeUnmount(() => {
+	debouncedLoadWorkflows.cancel?.();
 });
 </script>
 
@@ -490,12 +507,16 @@ onMounted(async () => {
 		:scrollable="true"
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.executionOrder') + ':' }}
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+			<div
+				v-loading="isLoading"
+				:class="$style['workflow-settings']"
+				data-test-id="workflow-settings-dialog"
+			>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.executionOrder') }}
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.executionOrder"
 							placeholder="Select Execution Order"
@@ -513,24 +534,27 @@ onMounted(async () => {
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 
-				<el-row data-test-id="error-workflow">
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.errorWorkflow') + ':' }}
+				<ElRow data-test-id="error-workflow">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.errorWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
+							remote
+							:remote-method="debouncedLoadWorkflows"
+							remote-show-suffix
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
@@ -543,21 +567,21 @@ onMounted(async () => {
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
-					<el-row>
-						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.callerPolicy') + ':' }}
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
-						</el-col>
+						</ElCol>
 
-						<el-col :span="14" class="ignore-key-press-canvas">
+						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="workflowSettings.callerPolicy"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -573,19 +597,19 @@ onMounted(async () => {
 								>
 								</N8nOption>
 							</N8nSelect>
-						</el-col>
-					</el-row>
-					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
-						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.callerIds') + ':' }}
+						</ElCol>
+					</ElRow>
+					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.callerIds') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
-						</el-col>
-						<el-col :span="14">
+						</ElCol>
+						<ElCol :span="14">
 							<N8nInput
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -594,20 +618,20 @@ onMounted(async () => {
 								data-test-id="workflow-caller-policy-workflow-ids"
 								@update:model-value="onCallerIdsInput"
 							/>
-						</el-col>
-					</el-row>
+						</ElCol>
+					</ElRow>
 				</div>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.timezone') + ':' }}
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.timezone') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
@@ -624,19 +648,19 @@ onMounted(async () => {
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -653,19 +677,19 @@ onMounted(async () => {
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -682,19 +706,19 @@ onMounted(async () => {
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveManualExecutions') + ':' }}
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.saveManualExecutions') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -705,25 +729,25 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveManualOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveExecutionProgress') + ':' }}
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.saveExecutionProgress') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press-canvas">
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="i18n.baseText('workflowSettings.selectOption')"
@@ -734,52 +758,51 @@ onMounted(async () => {
 						>
 							<N8nOption
 								v-for="option of saveExecutionProgressOptions"
-								:key="option.key"
+								:key="`${option.key}`"
 								:label="option.value"
 								:value="option.key"
 							>
 							</N8nOption>
 						</N8nSelect>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.timeoutWorkflow') + ':' }}
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
-							<font-awesome-icon icon="question-circle" />
+							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
-					</el-col>
-					<el-col :span="14">
+					</ElCol>
+					<ElCol :span="14">
 						<div>
-							<el-switch
+							<ElSwitch
 								ref="inputField"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
-								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
-							></el-switch>
+							></ElSwitch>
 						</div>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 				<div
 					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
-					<el-row>
-						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.timeoutAfter') + ':' }}
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
-						</el-col>
-						<el-col :span="4">
+						</ElCol>
+						<ElCol :span="4">
 							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
@@ -788,8 +811,8 @@ onMounted(async () => {
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
 							</N8nInput>
-						</el-col>
-						<el-col :span="4" class="timeout-input">
+						</ElCol>
+						<ElCol :span="4" :class="$style['timeout-input']">
 							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.minutes"
@@ -799,8 +822,8 @@ onMounted(async () => {
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
 							</N8nInput>
-						</el-col>
-						<el-col :span="4" class="timeout-input">
+						</ElCol>
+						<ElCol :span="4" :class="$style['timeout-input']">
 							<N8nInput
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.seconds"
@@ -810,23 +833,47 @@ onMounted(async () => {
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
 							</N8nInput>
-						</el-col>
-					</el-row>
+						</ElCol>
+					</ElRow>
 				</div>
-				<el-row>
-					<el-col :span="10" class="setting-name">
+				<ElRow v-if="isMCPEnabled" data-test-id="workflow-settings-available-in-mcp">
+					<ElCol :span="10" :class="$style['setting-name']">
+						<label for="availableInMCP">
+							{{ i18n.baseText('workflowSettings.availableInMCP') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.availableInMCP.tooltip') }}
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</ElCol>
+					<ElCol :span="14">
+						<div>
+							<ElSwitch
+								ref="inputField"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:model-value="workflowSettings.availableInMCP ?? false"
+								data-test-id="workflow-settings-available-in-mcp"
+								@update:model-value="toggleAvailableInMCP"
+							></ElSwitch>
+						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
 						<label for="timeSavedPerExecution">
-							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') + ':' }}
+							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip') }}
 								</template>
-								<font-awesome-icon icon="question-circle" />
+								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</label>
-					</el-col>
-					<el-col :span="14">
-						<div class="time-saved">
+					</ElCol>
+					<ElCol :span="14">
+						<div :class="$style['time-saved']">
 							<N8nInput
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
@@ -838,12 +885,12 @@ onMounted(async () => {
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
 						</div>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 			</div>
 		</template>
 		<template #footer>
-			<div class="action-buttons" data-test-id="workflow-settings-save-button">
+			<div :class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
 				<N8nButton
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
@@ -856,16 +903,30 @@ onMounted(async () => {
 	</Modal>
 </template>
 
-<style scoped lang="scss">
+<style module lang="scss">
 .workflow-settings {
 	font-size: var(--font-size-s);
-	.el-row {
-		padding: 0.25em 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-3xs);
+
+	:global(.el-row) {
+		display: flex;
+		align-items: center;
+	}
+
+	:global(.el-switch) {
+		padding: var(--spacing-m) 0;
 	}
 }
 
 .setting-name {
-	line-height: 32px;
+	&,
+	& label {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+	}
 
 	svg {
 		display: inline-flex;
@@ -881,15 +942,15 @@ onMounted(async () => {
 }
 
 .timeout-input {
-	margin-left: 5px;
+	margin-left: var(--spacing-3xs);
 }
 
 .time-saved {
 	display: flex;
 	align-items: center;
 
-	:deep(.el-input) {
-		width: 64px;
+	:global(.el-input) {
+		width: var(--spacing-3xl);
 	}
 
 	span {

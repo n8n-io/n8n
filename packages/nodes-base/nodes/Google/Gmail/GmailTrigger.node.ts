@@ -33,7 +33,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -63,6 +63,15 @@ export class GmailTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Multiple items will be returned if multiple messages are received within the polling interval. Make sure your workflow can handle multiple items.',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -325,6 +334,13 @@ export class GmailTrigger implements INodeType {
 					if (fullMessage.labelIds?.includes('DRAFT')) {
 						continue;
 					}
+				}
+				if (
+					node.typeVersion > 1.2 &&
+					fullMessage.labelIds?.includes('SENT') &&
+					!fullMessage.labelIds?.includes('INBOX')
+				) {
+					continue;
 				}
 
 				if (!simple) {

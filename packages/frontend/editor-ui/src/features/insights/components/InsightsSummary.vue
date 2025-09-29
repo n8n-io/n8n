@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
-	TIME_RANGE_LABELS,
 } from '@/features/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
+import { I18nT } from 'vue-i18n';
+import { RouterLink, useRoute } from 'vue-router';
+import { getTimeRangeLabels } from '../insights.utils';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -23,6 +24,8 @@ const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
 const telemetry = useTelemetry();
+
+const timeRangeLabels = getTimeRangeLabels();
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -75,15 +78,15 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			>
 				<N8nTooltip placement="top" :disabled="!(summaryHasNoData && id === 'total')">
 					<template #content>
-						<i18n-t keypath="insights.banner.noData.tooltip">
+						<I18nT keypath="insights.banner.noData.tooltip" scope="global">
 							<template #link>
 								<a :href="i18n.baseText('insights.banner.noData.tooltip.link.url')" target="_blank">
 									{{ i18n.baseText('insights.banner.noData.tooltip.link') }}
 								</a>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
-					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+					<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
 						<strong>
 							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 								<template #content>
@@ -93,20 +96,20 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 							</N8nTooltip>
 						</strong>
 						<small :class="$style.days">
-							{{ TIME_RANGE_LABELS[timeRange] }}
+							{{ timeRangeLabels[timeRange] }}
 						</small>
 						<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 							<em>--</em>
 							<small>
 								<N8nTooltip placement="bottom">
 									<template #content>
-										<i18n-t keypath="insights.banner.timeSaved.tooltip">
+										<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
 											<template #link>{{
 												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
 											}}</template>
-										</i18n-t>
+										</I18nT>
 									</template>
-									<N8nIcon :class="$style.icon" icon="info-circle" />
+									<N8nIcon :class="$style.icon" icon="info" size="medium" />
 								</N8nTooltip>
 							</small>
 						</span>
@@ -118,7 +121,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								<N8nIcon
 									:class="[$style.icon, getImpactStyle(id, deviation)]"
 									:icon="
-										deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'
+										deviation === 0
+											? 'chevron-right'
+											: deviation > 0
+												? 'chevron-up'
+												: 'chevron-down'
 									"
 								/>
 								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
@@ -129,7 +136,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</N8nTooltip>
 							</small>
 						</span>
-					</router-link>
+					</RouterLink>
 				</N8nTooltip>
 			</li>
 		</ul>
@@ -218,8 +225,6 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						font-weight: var(--font-weight-bold);
 
 						.icon {
-							height: 20px;
-							width: 8px;
 							top: 5px;
 							transform: translateY(0);
 							color: var(--color-text-light);

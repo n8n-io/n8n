@@ -1,4 +1,4 @@
-import { bannerNameSchema } from '../../../schemas/bannerName.schema';
+import { bannerNameSchema } from '../../../schemas/banner-name.schema';
 import { DismissBannerRequestDto } from '../dismiss-banner-request.dto';
 
 describe('DismissBannerRequestDto', () => {
@@ -56,6 +56,8 @@ describe('DismissBannerRequestDto', () => {
 				'TRIAL',
 				'NON_PRODUCTION_LICENSE',
 				'EMAIL_CONFIRMATION',
+				'DATA_STORE_STORAGE_LIMIT_WARNING',
+				'DATA_STORE_STORAGE_LIMIT_ERROR',
 			];
 
 			expect(bannerNameSchema.options).toEqual(expectedBanners);

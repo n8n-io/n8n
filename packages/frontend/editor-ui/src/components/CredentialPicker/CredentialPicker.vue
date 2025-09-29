@@ -4,7 +4,7 @@ import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { listenForCredentialChanges, useCredentialsStore } from '@/stores/credentials.store';
 import { assert } from '@n8n/utils/assert';
 import CredentialsDropdown from './CredentialsDropdown.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/constants';
 
 const props = defineProps<{
@@ -106,7 +106,7 @@ listenForModalChanges({
 				@new-credential="createNewCredential"
 			/>
 
-			<n8n-icon-button
+			<N8nIconButton
 				icon="pen"
 				type="secondary"
 				:class="{
@@ -119,7 +119,7 @@ listenForModalChanges({
 			/>
 		</div>
 
-		<n8n-button
+		<N8nButton
 			v-else
 			:label="`Create new ${props.appName} credential`"
 			data-test-id="create-credential"

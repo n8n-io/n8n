@@ -1,9 +1,10 @@
 import { vi, describe, it, expect } from 'vitest';
-import { merge } from 'lodash-es';
+import merge from 'lodash/merge';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
-import { STORES, VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { VIEWS } from '@/constants';
 import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { randomInt, type ExecutionSummary } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
@@ -23,6 +24,23 @@ vi.mock('vue-router', () => ({
 	}),
 	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		displayTimer: (timer: number) => timer,
+		baseText: (key: string, options: { interpolate: { count: string } }) => {
+			if (key === 'generic.list.selected') {
+				return `${options.interpolate.count} executions selected`;
+			} else if (key === 'executionsList.retryOf') {
+				return 'Retry of';
+			} else if (key === 'executionsList.successRetry') {
+				return 'Success retry';
+			}
+			return key;
+		},
+	}),
 }));
 
 let settingsStore: MockedStore<typeof useSettingsStore>;
@@ -88,7 +106,7 @@ const renderComponent = createComponentRenderer(ExecutionsList, {
 				params: {},
 			},
 		},
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 	},
 });
 
@@ -147,7 +165,7 @@ describe('GlobalExecutionsList', () => {
 				).toBe(10),
 			);
 			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
-			expect(getByTestId('selected-executions-info').textContent).toContain(10);
+			expect(getByTestId('selected-items-info').textContent).toContain(10);
 
 			await userEvent.click(getByTestId('load-more-button'));
 			await rerender({
@@ -169,7 +187,7 @@ describe('GlobalExecutionsList', () => {
 					el.contains(el.querySelector(':checked')),
 				).length,
 			).toBe(20);
-			expect(getByTestId('selected-executions-info').textContent).toContain(20);
+			expect(getByTestId('selected-items-info').textContent).toContain(20);
 
 			await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
 			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
@@ -178,7 +196,7 @@ describe('GlobalExecutionsList', () => {
 					el.contains(el.querySelector(':checked')),
 				).length,
 			).toBe(19);
-			expect(getByTestId('selected-executions-info').textContent).toContain(19);
+			expect(getByTestId('selected-items-info').textContent).toContain(19);
 			expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
 			expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
 		},

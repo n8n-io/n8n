@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { computed } from 'vue';
 
@@ -38,9 +38,9 @@ function prevItem() {
 
 <template>
 	<div :class="$style.item">
-		<n8n-text size="small" color="text-base" compact>
+		<N8nText size="small" color="text-base" compact>
 			{{ i18n.baseText('parameterInput.item') }}
-		</n8n-text>
+		</N8nText>
 
 		<div :class="$style.controls">
 			<N8nInputNumber

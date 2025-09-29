@@ -1,3 +1,4 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import type {
 	INode,
 	IConnections,
@@ -9,7 +10,7 @@ import type {
 	AiAgentRequest,
 } from 'n8n-workflow';
 
-import type { AuthenticatedRequest, ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -24,6 +25,7 @@ export declare namespace WorkflowRequest {
 		meta: Record<string, unknown>;
 		projectId: string;
 		parentFolderId?: string;
+		uiContext?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -51,6 +53,7 @@ export declare namespace WorkflowRequest {
 			includeScopes?: string;
 			includeFolders?: string;
 			onlySharedWithMe?: string;
+			availableInMCP?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;

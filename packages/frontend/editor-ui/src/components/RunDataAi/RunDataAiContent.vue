@@ -6,10 +6,11 @@ import type { INodeTypeDescription, NodeConnectionType, NodeError } from 'n8n-wo
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
-import { useI18n } from '@/composables/useI18n';
-import { formatTokenUsageCount, getConsumedTokens } from '@/components/RunDataAi/utils';
+import { useI18n } from '@n8n/i18n';
+import { getConsumedTokens } from '@/components/RunDataAi/utils';
 import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '../ViewSubExecution.vue';
+import { formatTokenUsageCount } from '@/utils/aiUtils';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -91,7 +92,7 @@ const outputError = computed(() => {
 				<ul :class="$style.meta">
 					<li v-if="runMeta?.startTimeMs">{{ runMeta?.executionTimeMs }}ms</li>
 					<li v-if="runMeta?.startTimeMs">
-						<n8n-tooltip>
+						<N8nTooltip>
 							<template #content>
 								{{ new Date(runMeta?.startTimeMs).toLocaleString() }}
 							</template>
@@ -102,7 +103,7 @@ const outputError = computed(() => {
 									},
 								})
 							}}
-						</n8n-tooltip>
+						</N8nTooltip>
 					</li>
 					<li v-if="runMeta">
 						<ViewSubExecution :task-metadata="runMeta" :display-mode="'ai'" :inline="true" />
@@ -115,9 +116,9 @@ const outputError = computed(() => {
 								},
 							})
 						}}
-						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
+						<N8nInfoTip type="tooltip" theme="info-light" tooltip-placement="right">
 							<ConsumedTokensDetails :consumed-tokens="consumedTokensSum" />
-						</n8n-info-tip>
+						</N8nInfoTip>
 					</li>
 				</ul>
 			</div>

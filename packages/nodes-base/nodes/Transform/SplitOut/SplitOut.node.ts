@@ -38,6 +38,7 @@ export class SplitOut implements INodeType {
 				description:
 					'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 				requiresDataPath: 'multiple',
+				hint: 'Use $binary to split out the input item by binary data',
 			},
 			{
 				displayName: 'Include',
@@ -173,7 +174,7 @@ export class SplitOut implements INodeType {
 					}
 
 					if (typeof entityToSplit !== 'object' || entityToSplit === null) {
-						entityToSplit = [entityToSplit];
+						entityToSplit = [entityToSplit] as unknown as IDataObject[];
 					}
 
 					if (!Array.isArray(entityToSplit)) {

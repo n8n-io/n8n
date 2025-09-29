@@ -4,6 +4,8 @@ import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
+import DataStoreStorageLimitWarningBanner from '@/components/banners/DataStoreStorageLimitWarningBanner.vue';
+import DataStoreStorageLimitErrorBanner from '@/components/banners/DataStoreStorageLimitErrorBanner.vue';
 import type { Component } from 'vue';
 import type { N8nBanners } from '@/Interface';
 
@@ -17,6 +19,14 @@ export const N8N_BANNERS: N8nBanners = {
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
 	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
+	DATA_STORE_STORAGE_LIMIT_WARNING: {
+		priority: 300,
+		component: DataStoreStorageLimitWarningBanner as Component,
+	},
+	DATA_STORE_STORAGE_LIMIT_ERROR: {
+		priority: 400,
+		component: DataStoreStorageLimitErrorBanner as Component,
+	},
 };
 </script>
 

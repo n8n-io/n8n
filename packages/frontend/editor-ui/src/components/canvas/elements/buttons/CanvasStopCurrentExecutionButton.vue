@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -17,7 +17,7 @@ const title = computed(() =>
 
 <template>
 	<N8nIconButton
-		icon="stop"
+		icon="square"
 		size="large"
 		class="stop-execution"
 		type="secondary"

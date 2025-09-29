@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';
@@ -14,6 +14,8 @@ import type {
 import { computed, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { storeToRefs } from 'pinia';
 
 type Props = {
 	parameter: INodeProperties;
@@ -35,11 +37,14 @@ const focused = ref(false);
 const blurredEver = ref(false);
 const menuExpanded = ref(false);
 const eventBus = ref(createEventBus());
+const uiStore = useUIStore();
 
 const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+
+const { activeCredentialType } = storeToRefs(uiStore);
 
 const showRequiredErrors = computed(() => {
 	if (!props.parameter.required) {
@@ -68,7 +73,7 @@ const hint = computed(() => {
 		return null;
 	}
 
-	return i18n.credText().hint(props.parameter);
+	return i18n.credText(activeCredentialType.value).hint(props.parameter);
 });
 
 const isValueExpression = computed(() => {
@@ -109,9 +114,9 @@ function onDocumentationUrlClick(): void {
 </script>
 
 <template>
-	<n8n-input-label
-		:label="i18n.credText().inputLabelDisplayName(parameter)"
-		:tooltip-text="i18n.credText().inputLabelDescription(parameter)"
+	<N8nInputLabel
+		:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
+		:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:show-tooltip="focused"
 		:show-options="menuExpanded"
@@ -148,9 +153,9 @@ function onDocumentationUrlClick(): void {
 			@update="valueChanged"
 		/>
 		<div v-if="showRequiredErrors" :class="$style.errors">
-			<n8n-text color="danger" size="small">
+			<N8nText color="danger" size="small">
 				{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<n8n-link
+				<N8nLink
 					v-if="documentationUrl"
 					:to="documentationUrl"
 					size="small"
@@ -158,10 +163,10 @@ function onDocumentationUrlClick(): void {
 					@click="onDocumentationUrlClick"
 				>
 					{{ i18n.baseText('parameterInputExpanded.openDocs') }}
-				</n8n-link>
-			</n8n-text>
+				</N8nLink>
+			</N8nText>
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <style lang="scss" module>

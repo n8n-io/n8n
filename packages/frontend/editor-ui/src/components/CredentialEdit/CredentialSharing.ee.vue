@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { AllRolesMap } from '@n8n/permissions';
+import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
-import type { PermissionsRecord } from '@/permissions';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -83,12 +82,17 @@ const credentialRoleTranslations = computed<Record<string, string>>(() => {
 });
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
-	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed }) => ({
-		role,
-		name: credentialRoleTranslations.value[role],
-		scopes,
-		licensed,
-	}));
+	return rolesStore.processedCredentialRoles.map(
+		({ slug, scopes, licensed, description, systemRole, roleType }) => ({
+			slug,
+			displayName: credentialRoleTranslations.value[slug],
+			scopes,
+			licensed,
+			description,
+			systemRole,
+			roleType,
+		}),
+	);
 });
 
 const sharingSelectPlaceholder = computed(() =>

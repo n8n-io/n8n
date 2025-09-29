@@ -14,7 +14,8 @@ exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
         40,
         40
       ],
-      "typeVersion": 1
+      "typeVersion": 1,
+      "draggable": true
     },
     {
       "parameters": {},
@@ -25,7 +26,8 @@ exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
         40,
         40
       ],
-      "typeVersion": 1
+      "typeVersion": 1,
+      "draggable": true
     }
   ],
   "connections": {},
@@ -52,7 +54,8 @@ exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
         40,
         40
       ],
-      "typeVersion": 1
+      "typeVersion": 1,
+      "draggable": true
     },
     {
       "parameters": {},
@@ -63,7 +66,8 @@ exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
         40,
         40
       ],
-      "typeVersion": 1
+      "typeVersion": 1,
+      "draggable": true
     }
   ],
   "connections": {},

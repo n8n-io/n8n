@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	items: RunningJobSummary[];
@@ -20,7 +20,7 @@ function runningSince(started: Date): string {
 </script>
 
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
+	<WorkerAccordion icon="list-checks" icon-color="text-dark" :initial-expanded="true">
 		<template #title>
 			{{ i18n.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
 		</template>
@@ -30,12 +30,12 @@ function runningSince(started: Date): string {
 					<a :href="'/workflow/' + item.workflowId + '/executions/' + item.executionId">
 						Execution {{ item.executionId }} - {{ item.workflowName }}</a
 					>
-					<n8n-text color="text-base" size="small" align="left">
+					<N8nText color="text-base" size="small" align="left">
 						| Started at:
 						{{ new Date(item.startedAt)?.toLocaleTimeString() }} | Running for
 						{{ runningSince(new Date(item.startedAt)) }}
 						{{ item.retryOf ? `| Retry of: ${item.retryOf}` : '' }} |
-					</n8n-text>
+					</N8nText>
 					<a target="_blank" :href="'/workflow/' + item.workflowId"> (Open workflow)</a>
 				</div>
 			</div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useBecomeTemplateCreatorStore } from './becomeTemplateCreatorStore';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
 const store = useBecomeTemplateCreatorStore();
@@ -28,11 +28,11 @@ const onClick = () => {
 				data-test-id="close-become-template-creator-cta"
 				@click="store.dismissCta()"
 			>
-				<n8n-icon icon="times" size="xsmall" :title="i18n.baseText('generic.close')" />
+				<N8nIcon icon="x" size="xsmall" :title="i18n.baseText('generic.close')" />
 			</button>
 		</div>
 
-		<n8n-button
+		<N8nButton
 			:class="$style.becomeCreatorButton"
 			:label="i18n.baseText('becomeCreator.buttonText')"
 			size="xmini"
@@ -72,7 +72,6 @@ const onClick = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-2xs);
 	height: var(--spacing-2xs);
 	border: none;
 	color: var(--color-text-light);

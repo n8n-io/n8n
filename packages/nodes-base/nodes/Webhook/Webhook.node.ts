@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
+import { rm, stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -27,6 +27,7 @@ import {
 	responseCodeProperty,
 	responseDataProperty,
 	responseModeProperty,
+	responseModePropertyStreaming,
 } from './description';
 import { WebhookAuthorizationError } from './error';
 import {
@@ -45,7 +46,8 @@ export class Webhook extends Node {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2],
+		version: [1, 1.1, 2, 2.1],
+		defaultVersion: 2.1,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -130,12 +132,12 @@ export class Webhook extends Node {
 				type: 'string',
 				default: '',
 				placeholder: 'webhook',
-				required: true,
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},
 			authenticationProperty(this.authPropertyName),
 			responseModeProperty,
+			responseModePropertyStreaming,
 			{
 				displayName:
 					'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details</a>',
@@ -144,6 +146,18 @@ export class Webhook extends Node {
 				displayOptions: {
 					show: {
 						responseMode: ['responseNode'],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName:
+					'Insert a node that supports streaming (e.g. \'AI Agent\') and enable streaming to stream directly to the response while the workflow is executed. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details</a>',
+				name: 'webhookStreamingNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						responseMode: ['streaming'],
 					},
 				},
 				default: '',
@@ -161,6 +175,18 @@ export class Webhook extends Node {
 			},
 			responseDataProperty,
 			responseBinaryPropertyNameProperty,
+			{
+				displayName:
+					'If you are sending back a response, add a "Content-Type" response header with the appropriate value to avoid unexpected behavior',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						responseMode: ['onReceived'],
+					},
+				},
+			},
 
 			{
 				...optionsProperty,
@@ -179,6 +205,7 @@ export class Webhook extends Node {
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
+		const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 
 		if (nodeVersion >= 2 && nodeType === 'n8n-nodes-base.webhook') {
 			checkResponseModeConfiguration(context);
@@ -254,6 +281,26 @@ export class Webhook extends Node {
 				: undefined,
 		};
 
+		if (responseMode === 'streaming') {
+			const res = context.getResponseObject();
+
+			// Set up streaming response headers
+			res.writeHead(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache',
+				Connection: 'keep-alive',
+			});
+
+			// Flush headers immediately
+			res.flushHeaders();
+
+			return {
+				noWebhookResponse: true,
+				workflowData: prepareOutput(response),
+			};
+		}
+
 		return {
 			webhookResponse: options.responseData,
 			workflowData: prepareOutput(response),
@@ -315,6 +362,9 @@ export class Webhook extends Node {
 					file.originalFilename ?? file.newFilename,
 					file.mimetype,
 				);
+
+				// Delete original file to prevent tmp directory from growing too large
+				await rm(file.filepath, { force: true });
 
 				count += 1;
 			}

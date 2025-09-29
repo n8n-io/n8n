@@ -6,12 +6,13 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import type { IWorkflowDb } from '@/Interface';
-import { useRouter } from 'vue-router';
+import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@/stores/settings.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -21,7 +22,10 @@ vi.mock('vue-router', () => {
 			push,
 			resolve,
 		}),
-		useRoute: () => ({}),
+		useRoute: () => ({
+			params: {},
+			location: {},
+		}),
 		RouterLink: vi.fn(),
 	};
 });
@@ -65,15 +69,17 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 
 describe('WorkflowCard', () => {
 	let windowOpenSpy: MockInstance;
-	let router: ReturnType<typeof useRouter>;
+	let router: ReturnType<typeof vueRouter.useRouter>;
 	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
 	beforeEach(async () => {
-		router = useRouter();
+		router = vueRouter.useRouter();
 		projectsStore = mockedStore(useProjectsStore);
+		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		message = useMessage();
 		toast = useToast();
@@ -128,7 +134,7 @@ describe('WorkflowCard', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -178,12 +184,73 @@ describe('WorkflowCard', () => {
 		expect(badge).toHaveTextContent('John Doe');
 	});
 
-	it('should show Move action only if there is resource permission and team projects available', async () => {
+	it("should show 'Move' action if there is move resource permission and team projects available", async () => {
 		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
 
 		const data = createWorkflow({
 			scopes: ['workflow:move'],
 		});
+		const { getByTestId } = renderComponent({ props: { data, areFoldersEnabled: true } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Move');
+	});
+
+	it("should show 'Move' action if there is update resource permission and folders available", async () => {
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+		});
+
+		const { getByTestId } = renderComponent({ props: { data, areFoldersEnabled: true } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Move');
+	});
+
+	it("should not show 'Move' action on the 'Shared with you' page", async () => {
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.SHARED_WORKFLOWS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
 		const { getByTestId } = renderComponent({ props: { data } });
 		const cardActions = getByTestId('workflow-card-actions');
 
@@ -195,11 +262,40 @@ describe('WorkflowCard', () => {
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Change owner');
+		expect(actions).not.toHaveTextContent('Move');
+	});
+
+	it("should not show 'Move' action on the 'Workflows' page", async () => {
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+		});
+
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.WORKFLOWS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Move');
 	});
 
 	it("should have 'Archive' action on non archived nonactive workflows", async () => {
@@ -220,7 +316,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -256,7 +352,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -291,7 +387,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -325,7 +421,7 @@ describe('WorkflowCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 		await userEvent.click(cardActions);
-		const actions = document.querySelector(`#${controllingId}`);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
@@ -349,6 +445,143 @@ describe('WorkflowCard', () => {
 
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
+	});
+
+	it('should show Enable MCP action when module is enabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: false,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).getByTestId('action-enableMCPAccess')).toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should show Disable MCP action when workflow is available in MCP and module is enabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should hide MCP actions when module is disabled', async () => {
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+			settings: {
+				availableInMCP: true,
+			},
+			isArchived: false,
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const actionsToggle = getByTestId('workflow-card-actions');
+		const toggleButton = within(actionsToggle).getByRole('button');
+		const controllingId = toggleButton.getAttribute('aria-controls');
+
+		await userEvent.click(actionsToggle);
+
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+
+		expect(within(actions).queryByTestId('action-enableMCPAccess')).not.toBeInTheDocument();
+		expect(within(actions).queryByTestId('action-removeMCPAccess')).not.toBeInTheDocument();
+	});
+
+	it('should show MCP indicator when module is enabled and workflow is available', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const indicator = getByTestId('workflow-card-mcp');
+		expect(indicator).toBeVisible();
+	});
+
+	it('should hide MCP indicator when module is disabled', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: true,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const indicator = queryByTestId('workflow-card-mcp');
+		expect(indicator).not.toBeVisible();
+	});
+
+	it('should hide MCP indicator when workflow is not available in MCP', () => {
+		const data = createWorkflow({
+			settings: {
+				availableInMCP: false,
+			},
+		});
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				data,
+				isMcpEnabled: true,
+			},
+		});
+
+		const indicator = queryByTestId('workflow-card-mcp');
+		expect(indicator).not.toBeVisible();
 	});
 
 	it('should show Archived text on archived workflows', async () => {

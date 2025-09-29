@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-export interface Props {
-	type: 'primary' | 'tertiary';
-	label: string;
-}
+import { type ButtonProps } from '@n8n/design-system';
+
+export type Props = Pick<ButtonProps, 'label' | 'type'>;
+
 defineProps<Props>();
 </script>
 <template>
 	<N8nButton
 		:label="label"
 		size="large"
-		icon="comment"
+		icon="message-circle"
 		:type="type"
 		data-test-id="workflow-chat-button"
 	/>

@@ -54,10 +54,12 @@ describe('searchModels', () => {
 	it('should return filtered models if custom API endpoint is not provided', async () => {
 		const result = await searchModels.call(mockContext);
 
-		expect(mockOpenAI).toHaveBeenCalledWith({
-			baseURL: 'https://api.openai.com/v1',
-			apiKey: 'test-api-key',
-		});
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseURL: 'https://api.openai.com/v1',
+				apiKey: 'test-api-key',
+			}),
+		);
 		expect(result.results).toEqual([
 			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
 			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
@@ -74,10 +76,12 @@ describe('searchModels', () => {
 		});
 		await searchModels.call(mockContext);
 
-		expect(mockOpenAI).toHaveBeenCalledWith({
-			baseURL: 'https://test-url.com',
-			apiKey: 'test-api-key',
-		});
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseURL: 'https://test-url.com',
+				apiKey: 'test-api-key',
+			}),
+		);
 	});
 
 	it('should use default OpenAI URL if no custom URL provided', async () => {
@@ -87,10 +91,12 @@ describe('searchModels', () => {
 
 		await searchModels.call(mockContext);
 
-		expect(mockOpenAI).toHaveBeenCalledWith({
-			baseURL: 'https://api.openai.com/v1',
-			apiKey: 'test-api-key',
-		});
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseURL: 'https://api.openai.com/v1',
+				apiKey: 'test-api-key',
+			}),
+		);
 	});
 
 	it('should include all models for custom API endpoints', async () => {

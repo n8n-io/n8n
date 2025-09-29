@@ -156,9 +156,6 @@
 		}
 		//
 		& .btn--cancel {
-			@include button.button-small();
-			@include button.button-outline;
-
 			--button-active-background-color: var(--color-primary-tint-2);
 			--button-active-color: var(--color-primary);
 			--button-active-border-color: var(--color-primary);
@@ -166,6 +163,9 @@
 			--button-hover-color: var(--color-primary);
 			--button-hover-border-color: var(--color-primary);
 			--button-focus-outline-color: var(--color-primary-tint-1);
+
+			@include button.button-small();
+			@include button.button-outline;
 		}
 	}
 

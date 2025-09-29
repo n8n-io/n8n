@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
+	type INode,
 	type FromAIArgument,
 	type IDataObject,
 	NodeConnectionTypes,
 	traverseNodeParameters,
 } from 'n8n-workflow';
-import type { IFormInput } from '@n8n/design-system';
+import type { FormFieldValueUpdate, IFormInput } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -38,6 +40,7 @@ const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
+const projectsStore = useProjectsStore();
 
 const node = computed(() =>
 	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
@@ -45,14 +48,14 @@ const node = computed(() =>
 
 const parentNode = computed(() => {
 	if (!node.value) return undefined;
-	const workflow = workflowsStore.getCurrentWorkflow();
-	const parentNodes = workflow.getChildNodes(node.value.name, 'ALL', 1);
+	const parentNodes = workflowsStore.workflowObject.getChildNodes(node.value.name, 'ALL', 1);
 	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
 
 const parameters = ref<IFormInput[]>([]);
 const selectedTool = ref<string>('');
+const error = ref<Error | undefined>(undefined);
 
 const nodeRunData = computed(() => {
 	if (!node.value) return undefined;
@@ -87,9 +90,71 @@ const mapTypes: {
 	},
 };
 
+const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFormInput[]> => {
+	const result: IFormInput[] = [];
+
+	const tools = await nodeTypesStore.getNodeParameterOptions({
+		nodeTypeAndVersion: {
+			name: newNode.type,
+			version: newNode.typeVersion,
+		},
+		path: 'parameters.includedTools',
+		methodName: 'getTools',
+		currentNodeParameters: newNode.parameters,
+		credentials: newNode.credentials,
+		projectId: projectsStore.currentProjectId,
+	});
+
+	// Load available tools
+	const toolOptions = tools?.map((tool) => ({
+		label: tool.name,
+		value: String(tool.value),
+		disabled: false,
+	}));
+
+	result.push({
+		name: 'toolName',
+		initialValue: '',
+		properties: {
+			label: 'Tool name',
+			type: 'select',
+			options: toolOptions,
+			required: true,
+		},
+	});
+
+	// Only show parameters for selected tool
+	if (newSelectedTool) {
+		const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
+		const schema = selectedToolData?.inputSchema as JSONSchema7;
+		if (schema.properties) {
+			for (const [propertyName, value] of Object.entries(schema.properties)) {
+				const type =
+					typeof value === 'object' && 'type' in value && typeof value.type === 'string'
+						? value.type
+						: 'text';
+
+				result.push({
+					name: 'query.' + propertyName,
+					initialValue: '',
+					properties: {
+						label: propertyName,
+						type: mapTypes[type].inputType,
+						required: true,
+					},
+				});
+			}
+		}
+	}
+
+	return result;
+};
+
 watch(
 	[node, selectedTool],
 	async ([newNode, newSelectedTool]) => {
+		error.value = undefined;
+
 		if (!newNode) {
 			parameters.value = [];
 			return;
@@ -99,59 +164,14 @@ watch(
 
 		// Handle MCPClientTool nodes differently
 		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
-			const tools = await nodeTypesStore.getNodeParameterOptions({
-				nodeTypeAndVersion: {
-					name: newNode.type,
-					version: newNode.typeVersion,
-				},
-				path: 'parmeters.includedTools',
-				methodName: 'getTools',
-				currentNodeParameters: newNode.parameters,
-			});
+			try {
+				const mcpResult = await getMCPTools(newNode, newSelectedTool);
+				parameters.value = mcpResult;
 
-			// Load available tools
-			const toolOptions = tools?.map((tool) => ({
-				label: tool.name,
-				value: String(tool.value),
-				disabled: false,
-			}));
-
-			result.push({
-				name: 'toolName',
-				initialValue: '',
-				properties: {
-					label: 'Tool name',
-					type: 'select',
-					options: toolOptions,
-					required: true,
-				},
-			});
-
-			// Only show parameters for selected tool
-			if (newSelectedTool) {
-				const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-				const schema = selectedToolData?.inputSchema as JSONSchema7;
-				if (schema.properties) {
-					for (const [propertyName, value] of Object.entries(schema.properties)) {
-						const typedValue = value as {
-							type: string;
-							description: string;
-						};
-
-						result.push({
-							name: 'query.' + propertyName,
-							initialValue: '',
-							properties: {
-								label: propertyName,
-								type: mapTypes[typedValue.type ?? 'text'].inputType,
-								required: true,
-							},
-						});
-					}
-				}
+				return;
+			} catch (e: unknown) {
+				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
 			}
-
-			parameters.value = result;
 		}
 
 		// Handle regular tool nodes
@@ -166,11 +186,8 @@ watch(
 			const inputQuery = inputOverrides?.query as IDataObject;
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
-				: (agentRequestStore.getAgentRequest(
-						workflowsStore.workflowId,
-						newNode.id,
-						'query.' + value.key,
-					) ?? mapTypes[type]?.defaultValue);
+				: (agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, value.key) ??
+					mapTypes[type]?.defaultValue);
 
 			result.push({
 				name: 'query.' + value.key,
@@ -189,7 +206,7 @@ watch(
 			}
 			const queryValue =
 				inputQuery ??
-				agentRequestStore.getAgentRequest(workflowsStore.workflowId, newNode.id, 'query') ??
+				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, 'query') ??
 				'';
 
 			result.push({
@@ -216,7 +233,24 @@ const onExecute = async () => {
 	const inputValues = inputs.value?.getValues() ?? {};
 
 	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
-	agentRequestStore.addAgentRequests(workflowsStore.workflowId, node.value.id, inputValues);
+
+	// Structure the input values as IAgentRequest
+	const agentRequest: IAgentRequest = {
+		query: {},
+		toolName: inputValues.toolName as string,
+	};
+
+	// Move all query.* fields to query object
+	Object.entries(inputValues).forEach(([key, value]) => {
+		if (key === 'query') {
+			agentRequest.query = value as string;
+		} else if (key.startsWith('query.') && 'string' !== typeof agentRequest.query) {
+			const queryKey = key.replace('query.', '');
+			agentRequest.query[queryKey] = value;
+		}
+	});
+
+	agentRequestStore.setAgentRequestForNode(workflowsStore.workflowId, node.value.id, agentRequest);
 
 	const telemetryPayload = {
 		node_type: node.value.type,
@@ -235,9 +269,11 @@ const onExecute = async () => {
 };
 
 // Add handler for tool selection change
-const onUpdate = (change: { name: string; value: string }) => {
+const onUpdate = (change: FormFieldValueUpdate) => {
 	if (change.name !== 'toolName') return;
-	selectedTool.value = change.value;
+	if (typeof change.value === 'string') {
+		selectedTool.value = change.value;
+	}
 };
 </script>
 
@@ -252,20 +288,25 @@ const onUpdate = (change: { name: string; value: string }) => {
 		:center="true"
 		:close-on-click-modal="false"
 	>
-		<template #content>
-			<el-col>
-				<el-row :class="$style.row">
-					<n8n-text data-testid="from-ai-parameters-modal-description">
+		<template v-if="error" #content>
+			<N8nCallout v-if="error" theme="danger">
+				{{ error.message }}
+			</N8nCallout>
+		</template>
+		<template v-else #content>
+			<ElCol>
+				<ElRow :class="$style.row">
+					<N8nText data-testid="from-ai-parameters-modal-description">
 						{{
 							i18n.baseText('fromAiParametersModal.description', {
 								interpolate: { parentNodeName: parentNode || '' },
 							})
 						}}
-					</n8n-text>
-				</el-row>
-			</el-col>
-			<el-col>
-				<el-row :class="$style.row">
+					</N8nText>
+				</ElRow>
+			</ElCol>
+			<ElCol>
+				<ElRow :class="$style.row">
 					<N8nFormInputs
 						ref="inputs"
 						:inputs="parameters"
@@ -274,20 +315,20 @@ const onUpdate = (change: { name: string; value: string }) => {
 						@submit="onExecute"
 						@update="onUpdate"
 					></N8nFormInputs>
-				</el-row>
-			</el-col>
+				</ElRow>
+			</ElCol>
 		</template>
-		<template #footer>
-			<el-row justify="end">
-				<el-col :span="5" :offset="19">
-					<n8n-button
+		<template v-if="!error" #footer>
+			<ElRow justify="end">
+				<ElCol :span="5" :offset="19">
+					<N8nButton
 						data-test-id="execute-workflow-button"
-						icon="flask"
+						icon="flask-conical"
 						:label="i18n.baseText('fromAiParametersModal.execute')"
 						@click="onExecute"
 					/>
-				</el-col>
-			</el-row>
+				</ElCol>
+			</ElRow>
 		</template>
 	</Modal>
 </template>

@@ -3,10 +3,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { EntityNotFoundError, In } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -28,7 +34,13 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ICredentialsHelper, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
+import {
+	ICredentialsHelper,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	isExpression,
+} from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -208,7 +220,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		workflow: Workflow,
 		node: INode,
 	): string {
-		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
+		if (!isExpression(parameterValue)) {
 			return parameterValue;
 		}
 
@@ -257,7 +269,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 				type,
 			});
 		} catch (error) {
-			throw new CredentialNotFoundError(nodeCredential.id, type);
+			if (error instanceof EntityNotFoundError) {
+				throw new CredentialNotFoundError(nodeCredential.id, type);
+			}
+
+			throw error;
 		}
 
 		return new Credentials(
@@ -327,8 +343,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		await additionalData?.secretsHelpers?.waitForInit();
-
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
@@ -374,6 +388,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// The OAuth data gets removed as it is not defined specifically as a parameter
 			// on the credentials so add it back in case it was set
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
+		}
+
+		if (
+			decryptedData.allowedHttpRequestDomains === undefined &&
+			decryptedDataOriginal.allowedHttpRequestDomains !== undefined
+		) {
+			decryptedData.allowedHttpRequestDomains = decryptedDataOriginal.allowedHttpRequestDomains;
+		}
+		if (
+			decryptedData.allowedDomains === undefined &&
+			decryptedDataOriginal.allowedDomains !== undefined
+		) {
+			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
@@ -445,6 +472,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
+		// @ts-ignore CAT-957
+		await this.credentialsRepository.update(findQuery, newCredentialsData);
+	}
+
+	/**
+	 * Updates credential's oauth token data in the database
+	 */
+	async updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		const credentials = await this.getCredentials(nodeCredentials, type);
+
+		credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
+
+		// Add special database related data
+		newCredentialsData.updatedAt = new Date();
+
+		// Save the credentials in DB
+		const findQuery = {
+			id: credentials.id,
+			type,
+		};
+
+		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -461,9 +515,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 							role: 'credential:owner',
 							project: {
 								projectRelations: {
-									role: In(['project:personalOwner', 'project:admin']),
+									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 									user: {
-										role: In(['global:owner', 'global:admin']),
+										role: { slug: In([GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug]) },
 									},
 								},
 							},

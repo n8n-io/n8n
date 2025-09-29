@@ -4,8 +4,8 @@ import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
 import { onMounted, ref, watch } from 'vue';
 import { N8nInput } from '@n8n/design-system';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	rows: ITagRow[];
@@ -118,7 +118,7 @@ const focusOnCreate = (): void => {
 watch(
 	() => props.rows,
 	(newValue: ITagRow[] | undefined) => {
-		if (newValue?.[0] && newValue[0].create) {
+		if (newValue?.[0]?.create) {
 			focusOnCreate();
 		}
 	},
@@ -143,10 +143,10 @@ onMounted(() => {
 		:span-method="getSpan"
 		:row-class-name="getRowClasses"
 	>
-		<el-table-column :label="i18n.baseText('tagsTable.name')">
+		<ElTableColumn :label="i18n.baseText('tagsTable.name')">
 			<template #default="scope">
 				<div :key="scope.row.id" :class="$style.name" @keydown.stop>
-					<transition name="fade" mode="out-in">
+					<Transition name="fade" mode="out-in">
 						<N8nInput
 							v-if="scope.row.create || scope.row.update"
 							ref="nameInput"
@@ -161,82 +161,82 @@ onMounted(() => {
 						<span v-else :class="{ [$style.disabled]: scope.row.disable }">
 							{{ scope.row.tag.name }}
 						</span>
-					</transition>
+					</Transition>
 				</div>
 			</template>
-		</el-table-column>
-		<el-table-column :label="i18n.baseText(usageColumnTitleLocaleKey)" width="170">
+		</ElTableColumn>
+		<ElTableColumn :label="i18n.baseText(usageColumnTitleLocaleKey)" width="170">
 			<template #default="scope">
-				<transition name="fade" mode="out-in">
+				<Transition name="fade" mode="out-in">
 					<div
 						v-if="!scope.row.create && !scope.row.delete"
 						:class="{ [$style.disabled]: scope.row.disable }"
 					>
 						{{ scope.row.usage }}
 					</div>
-				</transition>
+				</Transition>
 			</template>
-		</el-table-column>
-		<el-table-column>
+		</ElTableColumn>
+		<ElTableColumn>
 			<template #default="scope">
-				<transition name="fade" mode="out-in">
+				<Transition name="fade" mode="out-in">
 					<div v-if="scope.row.create" :class="$style.ops">
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.createTag')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="scope.row.update" :class="$style.ops">
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.saveChanges')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="scope.row.delete" :class="$style.ops">
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.cancel')"
 							type="secondary"
 							:disabled="isSaving"
 							@click.stop="cancel"
 						/>
-						<n8n-button
+						<N8nButton
 							:label="i18n.baseText('tagsTable.deleteTag')"
 							:loading="isSaving"
 							@click.stop="apply"
 						/>
 					</div>
 					<div v-else-if="!scope.row.disable" :class="[$style.ops, $style.main]">
-						<n8n-icon-button
+						<N8nIconButton
 							:title="i18n.baseText('tagsTable.editTag')"
 							icon="pen"
 							data-test-id="edit-tag-button"
 							@click.stop="enableUpdate(scope.row)"
 						/>
-						<n8n-icon-button
+						<N8nIconButton
 							v-if="scope.row.canDelete"
 							:title="i18n.baseText('tagsTable.deleteTag')"
-							icon="trash"
+							icon="trash-2"
 							data-test-id="delete-tag-button"
 							@click.stop="enableDelete(scope.row)"
 						/>
 					</div>
-				</transition>
+				</Transition>
 			</template>
-		</el-table-column>
+		</ElTableColumn>
 	</ElTable>
 </template>
 

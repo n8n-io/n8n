@@ -6,14 +6,14 @@ import CredentialIcon from '@/components/CredentialIcon.vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 
 describe('CredentialIcon', () => {
 	const renderComponent = createComponentRenderer(CredentialIcon, {
 		pinia: createTestingPinia(),
 		global: {
-			stubs: ['n8n-tooltip'],
+			stubs: ['N8nTooltip'],
 		},
 	});
 	let pinia: TestingPinia;

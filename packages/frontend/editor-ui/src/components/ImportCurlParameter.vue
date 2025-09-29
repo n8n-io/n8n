@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -17,7 +17,7 @@ function onImportCurlClicked() {
 
 <template>
 	<div :class="$style.importSection">
-		<n8n-button
+		<N8nButton
 			type="secondary"
 			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"

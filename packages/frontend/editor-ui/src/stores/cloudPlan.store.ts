@@ -1,14 +1,19 @@
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { getAdminPanelLoginCode, getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
+import {
+	getAdminPanelLoginCode,
+	getCurrentPlan,
+	getCurrentUsage,
+} from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/utils/rbac/permissions';
+import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -20,11 +25,12 @@ const DEFAULT_STATE: CloudPlanState = {
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
+	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 
 	const reset = () => {
+		currentUserCloudInfo.value = null;
 		state.data = null;
 		state.usage = null;
 	};
@@ -34,6 +40,26 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const currentPlanData = computed(() => state.data);
 
 	const currentUsageData = computed(() => state.usage);
+
+	const selectedApps = computed(() => currentUserCloudInfo.value?.selectedApps);
+	const codingSkill = computed(() => {
+		const information = currentUserCloudInfo.value?.information;
+		if (!information) {
+			return 0;
+		}
+
+		if (
+			!(
+				'which_of_these_do_you_feel_comfortable_doing' in information &&
+				information.which_of_these_do_you_feel_comfortable_doing &&
+				Array.isArray(information.which_of_these_do_you_feel_comfortable_doing)
+			)
+		) {
+			return 0;
+		}
+
+		return information.which_of_these_do_you_feel_comfortable_doing.length;
+	});
 
 	const trialExpired = computed(
 		() =>
@@ -46,18 +72,17 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const hasCloudPlan = computed(() => {
+	const hasCloudPlan = computed<boolean>(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && cloudUserId;
+		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && !!cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
+		let cloudUser: Cloud.UserAccount | null = null;
 		try {
-			await usersStore.fetchUserCloudAccount();
-			if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
-				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
-			}
+			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
+			currentUserCloudInfo.value = cloudUser;
 		} catch (error) {
 			throw new Error(error.message);
 		}
@@ -75,14 +100,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			plan = await getCurrentPlan(rootStore.restApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
-
-			if (userIsTrialing.value) {
-				if (trialExpired.value) {
-					useUIStore().pushBannerToStack('TRIAL_OVER');
-				} else {
-					useUIStore().pushBannerToStack('TRIAL');
-				}
-			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);
@@ -167,9 +184,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state.initialized = true;
 	};
 
-	const generateCloudDashboardAutoLoginLink = async (data: {
-		redirectionPath: string;
-	}) => {
+	const generateCloudDashboardAutoLoginLink = async (data: { redirectionPath: string }) => {
 		const searchParams = new URLSearchParams();
 
 		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
@@ -190,6 +205,8 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
+		hasCloudPlan,
+		currentUserCloudInfo,
 		generateCloudDashboardAutoLoginLink,
 		initialize,
 		getOwnerCurrentPlan,
@@ -198,5 +215,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		checkForCloudPlanData,
 		fetchUserCloudAccount,
 		getAutoLoginCode,
+		selectedApps,
+		codingSkill,
 	};
 });

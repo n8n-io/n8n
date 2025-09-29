@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -12,6 +14,7 @@ const props = withDefaults(
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
 		executionId?: string;
 		executionMode?: string;
+		nodeId?: string;
 		loaderType?: 'image' | 'spinner';
 		canOpenNDV?: boolean;
 		hideNodeIssues?: boolean;
@@ -23,6 +26,7 @@ const props = withDefaults(
 		workflow: undefined,
 		executionId: undefined,
 		executionMode: undefined,
+		nodeId: undefined,
 		loaderType: 'image',
 		canOpenNDV: true,
 		hideNodeIssues: false,
@@ -37,6 +41,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const executionsStore = useExecutionsStore();
+const projectsStore = useProjectsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
 const nodeViewDetailsOpened = ref(false);
@@ -72,6 +77,7 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
@@ -94,7 +100,9 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode ?? '',
+				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
@@ -220,10 +228,10 @@ watch(
 <template>
 	<div :class="$style.container">
 		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
-			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<n8n-spinner type="dots" />
+			<N8nSpinner type="dots" />
 		</div>
 		<iframe
 			ref="iframeRef"

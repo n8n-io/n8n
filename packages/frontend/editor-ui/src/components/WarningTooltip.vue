@@ -1,11 +1,11 @@
 <template>
 	<span>
-		<n8n-tooltip content=" " placement="top">
+		<N8nTooltip content=" " placement="top">
 			<template #content>
 				<slot />
 			</template>
-			<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
-		</n8n-tooltip>
+			<N8nIcon :class="$style['icon']" icon="triangle-alert" />
+		</N8nTooltip>
 	</span>
 </template>
 

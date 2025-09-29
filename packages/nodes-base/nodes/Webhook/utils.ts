@@ -1,6 +1,6 @@
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
-import { NodeOperationError } from 'n8n-workflow';
+import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -135,7 +135,7 @@ export const isIpWhitelisted = (
 	}
 
 	for (const address of whitelist) {
-		if (ip && ip.includes(address)) {
+		if (ip?.includes(address)) {
 			return true;
 		}
 
@@ -156,7 +156,7 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	);
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('No Respond to Webhook node found in the workflow'),
 			{
@@ -166,10 +166,10 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
-		throw new NodeOperationError(
+	if (isRespondToWebhookConnected && !['responseNode', 'streaming'].includes(responseMode)) {
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error('Webhook node not correctly configured'),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',

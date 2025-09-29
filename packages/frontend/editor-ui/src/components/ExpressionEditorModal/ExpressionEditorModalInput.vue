@@ -15,15 +15,18 @@ import { removeExpressionPrefix } from '@/utils/expressions';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	path: string;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 	isReadOnly?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -52,7 +55,11 @@ const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEdit
 	editorValue,
 	extensions,
 	isReadOnly: computed(() => props.isReadOnly),
-	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
+	autocompleteTelemetry: {
+		enabled: true,
+		parameterPath: props.path,
+	},
+	targetNodeParameterContext: props.targetNodeParameterContext,
 });
 
 watch(
@@ -79,7 +86,7 @@ onMounted(() => {
 	focus();
 });
 
-defineExpose({ editor });
+defineExpose({ editor, focus });
 </script>
 
 <template>

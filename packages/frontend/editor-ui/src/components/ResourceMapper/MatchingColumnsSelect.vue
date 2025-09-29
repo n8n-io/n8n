@@ -6,7 +6,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import { N8nInputLabel, N8nNotice, N8nSelect } from '@n8n/design-system';
@@ -199,14 +199,14 @@ defineExpose({
 				:teleported="teleported"
 				@update:model-value="onSelectionChange"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="field in availableMatchingFields"
 					:key="field.id"
 					:value="field.id"
 					:data-test-id="`matching-column-option-${field.id}`"
 				>
 					{{ field.displayName }}
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 			<N8nText size="small">
 				{{ fieldDescription }}

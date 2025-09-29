@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -7,6 +7,7 @@ import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
@@ -38,24 +39,24 @@ function goToUpgrade() {
 
 <template>
 	<div class="pb-3xl">
-		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</n8n-heading>
+		<N8nHeading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</N8nHeading>
 		<div
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="external-secrets-content-licensed"
 		>
-			<n8n-callout theme="secondary" class="mt-2xl mb-l">
+			<N8nCallout theme="secondary" class="mt-2xl mb-l">
 				{{ i18n.baseText('settings.externalSecrets.info') }}
 				<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}
 				</a>
-			</n8n-callout>
+			</N8nCallout>
 			<ExternalSecretsProviderCard
 				v-for="provider in sortedProviders"
 				:key="provider.name"
 				:provider="provider"
 			/>
 		</div>
-		<n8n-action-box
+		<N8nActionBox
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
@@ -66,14 +67,14 @@ function goToUpgrade() {
 				<span>{{ i18n.baseText('settings.externalSecrets.actionBox.title') }}</span>
 			</template>
 			<template #description>
-				<i18n-t keypath="settings.externalSecrets.actionBox.description">
+				<I18nT keypath="settings.externalSecrets.actionBox.description" scope="global">
 					<template #link>
 						<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
 							{{ i18n.baseText('settings.externalSecrets.actionBox.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</template>
-		</n8n-action-box>
+		</N8nActionBox>
 	</div>
 </template>

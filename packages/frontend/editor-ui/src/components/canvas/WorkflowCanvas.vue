@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { computed, ref, toRef, useCssModule } from 'vue';
+import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
@@ -9,6 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 defineOptions({
 	inheritAttrs: false,
@@ -24,18 +25,21 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
+		suppressInteraction?: boolean;
 	}>(),
 	{
 		id: 'canvas',
 		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
+		suppressInteraction: false,
 	},
 );
 
+const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 
-const { onNodesInitialized } = useVueFlow({ id: props.id });
+const { onNodesInitialized } = useVueFlow(props.id);
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -63,18 +67,26 @@ onNodesInitialized(() => {
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
+
+defineExpose({
+	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
+		canvasRef.value?.executeContextMenuAction(action, nodeIds),
+});
 </script>
 
 <template>
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
-		<div :class="$style.canvas">
+		<div id="canvas" :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
 				:id="id"
+				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:executing="executing"
+				:suppress-interaction="suppressInteraction"
 				v-bind="$attrs"
 			/>
 		</div>
@@ -84,7 +96,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 
 <style lang="scss" module>
 .wrapper {
-	display: block;
+	display: flex;
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -96,5 +108,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 	height: 100%;
 	position: relative;
 	display: block;
+	align-items: stretch;
+	justify-content: stretch;
 }
 </style>

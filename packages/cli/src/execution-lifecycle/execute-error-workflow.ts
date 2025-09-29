@@ -1,11 +1,13 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
+// eslint-disable-next-line import-x/no-cycle
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 /**

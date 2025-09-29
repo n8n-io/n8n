@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
+
+import { useI18n } from '@n8n/i18n';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import type { IMenuItem } from '@n8n/design-system';
+import {
+	ABOUT_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	RELEASE_NOTES_URL,
+	VIEWS,
+	WHATS_NEW_MODAL_KEY,
+} from '@/constants';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -11,22 +24,23 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
-import Logo from './Logo/Logo.vue';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import Logo from '@/components/Logo/Logo.vue';
+import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
+import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
+import { I18nT } from 'vue-i18n';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
+import { useKeybindings } from '@/composables/useKeybindings';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -38,6 +52,8 @@ const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
+const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -47,7 +63,11 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
+const calloutHelpers = useCalloutHelpers();
 
+useKeybindings({
+	ctrl_alt_o: () => handleSelect('about'),
+});
 useUserHelpers(router, route);
 
 // Template refs
@@ -67,7 +87,15 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = computed(() => [
+const showWhatsNewNotification = computed(
+	() =>
+		versionsStore.hasVersionUpdates ||
+		versionsStore.whatsNewArticles.some(
+			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
+		),
+);
+
+const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
@@ -76,21 +104,59 @@ const mainMenuItems = computed(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled
+		// Link to in-app pre-built agent templates, available experiment is enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
+		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
+	},
+	{
+		// Link to personalized template modal, available when V2 or V3 experiment is enabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			(personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()),
+	},
+	{
+		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			templatesStore.hasCustomTemplatesHost &&
+			!(
+				personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()
+			),
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
-		icon: 'box-open',
+		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!templatesStore.hasCustomTemplatesHost &&
+			!(
+				personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()
+			),
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -100,24 +166,22 @@ const mainMenuItems = computed(() => [
 		id: 'variables',
 		icon: 'variable',
 		label: i18n.baseText('mainSidebar.variables'),
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
 		id: 'insights',
-		icon: 'chart-bar',
+		icon: 'chart-column-decreasing',
 		label: 'Insights',
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
-			settingsStore.settings.insights.enabled &&
+			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
 		id: 'help',
-		icon: 'question',
+		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
@@ -126,7 +190,7 @@ const mainMenuItems = computed(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
 					target: '_blank',
 				},
 			},
@@ -174,16 +238,57 @@ const mainMenuItems = computed(() => [
 			},
 		],
 	},
+	{
+		id: 'whats-new',
+		icon: 'bell',
+		notification: showWhatsNewNotification.value,
+		label: i18n.baseText('mainSidebar.whatsNew'),
+		position: 'bottom',
+		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+		children: [
+			...versionsStore.whatsNewArticles.map(
+				(article) =>
+					({
+						id: `whats-new-article-${article.id}`,
+						label: article.title,
+						size: 'small',
+						customIconSize: 'small',
+						icon: {
+							type: 'emoji',
+							value: '•',
+							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+						},
+					}) satisfies IMenuItem,
+			),
+			{
+				id: 'full-changelog',
+				icon: 'external-link',
+				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+				link: {
+					href: RELEASE_NOTES_URL,
+					target: '_blank',
+				},
+				size: 'small',
+				customIconSize: 'small',
+			},
+			{
+				id: 'version-upgrade-cta',
+				component: VersionUpdateCTA,
+				available: versionsStore.hasVersionUpdates,
+				props: {
+					disabled: !usersStore.canUserUpdateVersion,
+					tooltipText: !usersStore.canUserUpdateVersion
+						? i18n.baseText('whatsNew.updateNudgeTooltip')
+						: undefined,
+				},
+			},
+		],
+	},
 ]);
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const hasVersionUpdates = computed(
-	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
-);
-
-const nextVersions = computed(() => versionsStore.nextVersions);
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
@@ -205,13 +310,6 @@ onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
 	window.removeEventListener('resize', onResize);
 });
-
-const trackTemplatesClick = () => {
-	telemetry.track('User clicked on templates', {
-		role: usersStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
-	});
-};
 
 const trackHelpItemClick = (itemType: string) => {
 	telemetry.track('User clicked help resource', {
@@ -249,15 +347,24 @@ const toggleCollapse = () => {
 	}
 };
 
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
-
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick();
+			if (personalizedTemplatesV3Store.isFeatureEnabled()) {
+				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
+				uiStore.openModalWithData({
+					name: EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+					data: {},
+				});
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			} else if (personalizedTemplatesV2Store.isFeatureEnabled()) {
+				uiStore.openModalWithData({
+					name: EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+					data: {},
+				});
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			} else if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
 			}
 			break;
 		case 'about': {
@@ -279,6 +386,20 @@ const handleSelect = (key: string) => {
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 		default:
+			if (key.startsWith('whats-new-article-')) {
+				const articleId = Number(key.replace('whats-new-article-', ''));
+
+				telemetry.track("User clicked on what's new section", {
+					article_id: articleId,
+				});
+				uiStore.openModalWithData({
+					name: WHATS_NEW_MODAL_KEY,
+					data: {
+						articleId,
+					},
+				});
+			}
+
 			break;
 	}
 };
@@ -288,7 +409,7 @@ function onResize() {
 }
 
 async function onResizeEnd() {
-	if (window.outerWidth < 900) {
+	if (window.innerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
 	} else {
 		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
@@ -342,7 +463,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					placement="bottom"
 				>
 					<template #content>
-						<i18n-t keypath="readOnlyEnv.tooltip">
+						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
 								<N8nLink
 									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
@@ -351,7 +472,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
 								</N8nLink>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</template>
 					<N8nIcon
 						data-test-id="read-only-env-icon"
@@ -431,24 +552,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			</template>
 			<template #menuSuffix>
 				<div>
-					<div
-						v-if="hasVersionUpdates"
-						data-test-id="version-updates-panel-button"
-						:class="$style.updates"
-						@click="openUpdatesPanel"
-					>
-						<div :class="$style.giftContainer">
-							<GiftNotificationIcon />
-						</div>
-						<N8nText
-							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-							color="text-base"
-						>
-							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-								nextVersions.length > 1 ? 's' : ''
-							}}
-						</N8nText>
-					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
@@ -494,6 +597,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</div>
 			</template>
 		</N8nMenu>
+		<TemplateTooltip />
 	</div>
 </template>
 
@@ -505,8 +609,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
-	min-width: $sidebar-expanded-width;
-	max-width: 244px;
+	width: $sidebar-expanded-width;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {

@@ -1,0 +1,82 @@
+{
+	"createdAt": "2024-03-04T20:44:38.763Z",
+	"updatedAt": "2024-03-04T20:44:44.000Z",
+	"id": "246",
+	"name": "BasicLLMChain:OpenAIChat",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"model": "gpt-3.5-turbo-0125",
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "7b0bb72a-9a3e-4dbf-a875-cdc429bf333a",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [640, 600],
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "4832e182-9823-45c4-9289-51299debbe4c",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "How much is 1+1? Only provide the numerical answer without any other text.\n"
+			},
+			"id": "6f978929-e85a-44cc-999b-8e670bd65314",
+			"name": "Open AI Chat",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"typeVersion": 1.5,
+			"position": [620, 460]
+		}
+	],
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Open AI Chat",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Open AI Chat",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "76b6f624-b785-4b06-9cb0-57deed8b47a0",
+	"triggerCount": 0,
+	"tags": []
+}

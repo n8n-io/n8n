@@ -1,9 +1,15 @@
-import { useActiveElement, useEventListener } from '@vueuse/core';
+import { PopOutWindowKey } from '@/constants';
+import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import type { MaybeRef, Ref } from 'vue';
-import { computed, unref } from 'vue';
+import { useActiveElement, useEventListener } from '@vueuse/core';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed, inject, ref, toValue } from 'vue';
 
-type KeyMap = Record<string, (event: KeyboardEvent) => void>;
+type KeyboardEventHandler =
+	| ((event: KeyboardEvent) => void)
+	| { disabled: () => boolean; run: (event: KeyboardEvent) => void };
+
+export type KeyMap = Partial<Record<string, KeyboardEventHandler>>;
 
 /**
  * Binds a `keydown` event to `document` and calls the approriate
@@ -20,30 +26,24 @@ type KeyMap = Record<string, (event: KeyboardEvent) => void>;
  * ```
  */
 export const useKeybindings = (
-	keymap: Ref<KeyMap>,
+	keymap: MaybeRefOrGetter<KeyMap>,
 	options?: {
-		disabled: MaybeRef<boolean>;
+		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
-	const activeElement = useActiveElement();
+	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+	const activeElement = useActiveElement({ window: popOutWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const isDisabled = computed(() => unref(options?.disabled));
+	const isDisabled = computed(() => toValue(options?.disabled));
 
-	const ignoreKeyPresses = computed(() => {
-		if (!activeElement.value) return false;
-
-		const active = activeElement.value;
-		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
-		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
-
-		return isInput || isContentEditable || isIgnoreClass;
-	});
+	const ignoreKeyPresses = computed(
+		() => activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value),
+	);
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(keymap.value).flatMap(([shortcut, handler]) => {
+			Object.entries(toValue(keymap)).flatMap(([shortcut, handler]) => {
 				const shortcuts = shortcut.split('|');
 				return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
 			}),
@@ -134,13 +134,15 @@ export const useKeybindings = (
 		// - Dvorak works correctly
 		// - Non-ansi layouts work correctly
 		const handler = normalizedKeymap.value[byKey] ?? normalizedKeymap.value[byCode];
+		const run =
+			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 
-		if (handler) {
+		if (run) {
 			event.preventDefault();
 			event.stopPropagation();
-			handler(event);
+			run(event);
 		}
 	}
 
-	useEventListener(document, 'keydown', onKeyDown);
+	useEventListener(popOutWindow?.value?.document ?? document, 'keydown', onKeyDown);
 };

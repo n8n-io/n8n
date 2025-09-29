@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
@@ -13,7 +13,7 @@ import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
@@ -116,26 +116,34 @@ onMounted(async () => {
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
-					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
+					<N8nHeading v-if="collection && collection.name" tag="h1" size="2xlarge">
 						{{ collection.name }}
-					</n8n-heading>
-					<n8n-text v-if="collection && collection.name" color="text-base" size="small">
+					</N8nHeading>
+					<N8nText v-if="collection && collection.name" color="text-base" size="small">
 						{{ i18n.baseText('templates.collection') }}
-					</n8n-text>
-					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
+					</N8nText>
+					<N8nLoading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
 			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</n8n-text>
+				<N8nText color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</N8nText>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div v-if="loading || isFullTemplatesCollection(collection)" :class="$style.markdown">
-						<n8n-markdown
-							:content="isFullTemplatesCollection(collection) && collection.description"
-							:images="isFullTemplatesCollection(collection) && collection.image"
+						<N8nMarkdown
+							:content="
+								isFullTemplatesCollection(collection) && collection.description
+									? collection.description
+									: ''
+							"
+							:images="
+								isFullTemplatesCollection(collection) && collection.image
+									? collection.image
+									: undefined
+							"
 							:loading="loading"
 						/>
 					</div>

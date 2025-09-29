@@ -1,0 +1,84 @@
+{
+	"createdAt": "2021-02-16T12:21:52.835Z",
+	"updatedAt": "2021-07-15T14:40:02.810Z",
+	"id": "16",
+	"name": "OpenWeatherMap:: current-weather 5-day-forecast",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "3af2c46a-cc25-4094-8889-0539e80bbbfb"
+		},
+		{
+			"parameters": {
+				"cityName": "berlin",
+				"language": "en"
+			},
+			"name": "OpenWeatherMap",
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [490, 300],
+			"credentials": {
+				"openWeatherMapApi": {
+					"id": "9",
+					"name": "openweathermap token"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=rain",
+			"id": "e12fb37d-8207-4219-a3df-20cbd5b9a4d8"
+		},
+		{
+			"parameters": {
+				"operation": "5DayForecast",
+				"cityName": "berlin",
+				"language": "en"
+			},
+			"name": "OpenWeatherMap1",
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [690, 300],
+			"credentials": {
+				"openWeatherMapApi": {
+					"id": "9",
+					"name": "openweathermap token"
+				}
+			},
+			"id": "4923e536-3bc8-4659-b3bc-c15b7cf7352f"
+		}
+	],
+	"connections": {
+		"OpenWeatherMap": {
+			"main": [
+				[
+					{
+						"node": "OpenWeatherMap1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "OpenWeatherMap",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

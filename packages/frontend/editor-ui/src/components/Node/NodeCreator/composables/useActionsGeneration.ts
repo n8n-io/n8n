@@ -6,7 +6,8 @@ import {
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
-import { memoize, startCase } from 'lodash-es';
+import memoize from 'lodash/memoize';
+import startCase from 'lodash/startCase';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -15,10 +16,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -52,6 +55,25 @@ const customNodeActionsParsers: {
 			}),
 		);
 	},
+	['n8n-nodes-base.code']: (matchedProperty, nodeTypeDescription) => {
+		if (matchedProperty.name !== 'language') return;
+
+		const languageOptions = matchedProperty.options as INodePropertyOptions[] | undefined;
+		if (!languageOptions) return;
+
+		return languageOptions.map(
+			(option): ActionTypeDescription => ({
+				...getNodeTypeBase(nodeTypeDescription),
+				actionKey: `language_${option.value}`,
+				displayName: `Code in ${option.name}`,
+				description: `Run custom ${option.name} code`,
+				displayOptions: matchedProperty.displayOptions,
+				values: {
+					language: option.value,
+				},
+			}),
+		);
+	},
 };
 
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
@@ -75,7 +97,27 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 }
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
-	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const languageProperty = nodeTypeDescription.properties.find(
+			(property) =>
+				property.name === 'language' && property.displayOptions?.show?.['@version']?.[0] === 2,
+		);
+
+		if (languageProperty) {
+			const customParsedItems = customNodeActionsParsers[nodeTypeDescription.name]?.(
+				languageProperty,
+				nodeTypeDescription,
+			);
+			if (customParsedItems) {
+				// temporary until native Python runner is GA
+				return useSettingsStore().isNativePythonRunnerEnabled
+					? customParsedItems.filter((item) => item.actionKey !== 'language_python')
+					: customParsedItems.filter((item) => item.actionKey !== 'language_pythonNative');
+			}
+		}
+	}
 
 	const matchedProperty = nodeTypeDescription.properties.find(
 		(property) => property.name?.toLowerCase() === 'operation',
@@ -330,7 +372,18 @@ export function useActionsGenerator() {
 		nodeTypes: INodeTypeDescription[],
 		httpOnlyCredentials: ICredentialType[],
 	) {
-		const visibleNodeTypes = [...nodeTypes];
+		const evaluationStore = useEvaluationStore();
+
+		const visibleNodeTypes = nodeTypes.filter((node) => {
+			if (evaluationStore.isEvaluationEnabled) {
+				return true;
+			}
+			return (
+				node.name !== 'n8n-nodes-base.evaluation' &&
+				node.name !== 'n8n-nodes-base.evaluationTrigger'
+			);
+		});
+
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
 		visibleNodeTypes

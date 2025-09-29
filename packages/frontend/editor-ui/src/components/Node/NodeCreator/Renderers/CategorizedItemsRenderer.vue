@@ -22,7 +22,7 @@ export interface Props {
 	expanded?: boolean;
 }
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
@@ -112,19 +112,21 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			@click="toggleExpanded"
 		>
 			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" />
 					<template #content>
 						<div v-n8n-html="mouseOverTooltip" />
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</span>
 		</CategoryItem>
+
 		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
+
 		<CommunityNodeInstallHint
-			v-if="isPreview"
+			v-if="isPreview && expanded"
 			:hint="i18n.baseText('communityNodeItem.actions.hint')"
 		/>
 

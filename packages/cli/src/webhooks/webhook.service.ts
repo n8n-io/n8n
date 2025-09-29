@@ -1,7 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { HookContext, WebhookContext, Logger } from 'n8n-core';
+import { HookContext, WebhookContext } from 'n8n-core';
 import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
@@ -31,11 +32,11 @@ export class WebhookService {
 	) {}
 
 	async populateCache() {
-		const allWebhooks = await this.webhookRepository.find();
+		const staticWebhooks = await this.webhookRepository.getStaticWebhooks();
 
-		if (!allWebhooks) return;
+		if (staticWebhooks.length === 0) return;
 
-		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
+		void this.cacheService.setMany(staticWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
 	async findAll() {
@@ -56,7 +57,7 @@ export class WebhookService {
 			return dbStaticWebhook;
 		}
 
-		return await this.findDynamicWebhook(method, path);
+		return await this.findDynamicWebhook(path, method);
 	}
 
 	/**
@@ -70,7 +71,7 @@ export class WebhookService {
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
-	private async findDynamicWebhook(method: Method, path: string) {
+	private async findDynamicWebhook(path: string, method?: Method) {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
@@ -132,10 +133,30 @@ export class WebhookService {
 		return await this.webhookRepository.remove(webhooks);
 	}
 
-	async getWebhookMethods(path: string) {
-		return await this.webhookRepository
-			.find({ select: ['method'], where: { webhookPath: path } })
+	async getWebhookMethods(rawPath: string) {
+		// Try to find static webhooks first
+		const staticMethods = await this.webhookRepository
+			.find({ select: ['method'], where: { webhookPath: rawPath } })
 			.then((rows) => rows.map((r) => r.method));
+
+		if (staticMethods.length > 0) {
+			return staticMethods;
+		}
+
+		// Otherwise, try to find dynamic webhooks based on path only
+		const dynamicWebhooks = await this.findDynamicWebhook(rawPath);
+		return dynamicWebhooks ? [dynamicWebhooks.method] : [];
+	}
+
+	private isDynamicPath(rawPath: string) {
+		const firstSlashIndex = rawPath.indexOf('/');
+		const path = firstSlashIndex !== -1 ? rawPath.substring(firstSlashIndex + 1) : rawPath;
+
+		// if dynamic, first segment is webhook ID so disregard it
+
+		if (path === '' || path === ':' || path === '/:') return false;
+
+		return path.startsWith(':') || path.includes('/:');
 	}
 
 	/**
@@ -231,7 +252,8 @@ export class WebhookService {
 			}
 
 			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+
+			if (this.isDynamicPath(path) && node.webhookId) {
 				webhookId = node.webhookId;
 			}
 

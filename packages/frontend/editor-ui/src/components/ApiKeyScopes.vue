@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-// eslint-disable-next-line import/no-extraneous-dependencies
+
 import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 // Define props
 const props = defineProps({
@@ -30,6 +31,7 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 const checkAll = ref(false);
 const indeterminate = ref(false);
+const popperContainer = ref(null);
 
 const groupedScopes = computed(() => {
 	const groups = {};
@@ -93,14 +95,14 @@ function goToUpgradeApiKeyScopes() {
 				:append-to="popperContainer"
 			>
 				<template #header>
-					<el-checkbox
+					<ElCheckbox
 						v-model="checkAll"
 						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 					>
 						{{ i18n.baseText('settings.api.scopes.selectAll') }}
-					</el-checkbox>
+					</ElCheckbox>
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
@@ -116,13 +118,13 @@ function goToUpgradeApiKeyScopes() {
 			</ElSelect>
 		</N8nInputLabel>
 		<N8nNotice v-if="!enabled">
-			<i18n-t keypath="settings.api.scopes.upgrade">
+			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
 				<template #link>
-					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
-						{{ i18n.baseText('settings.api.scopes.upgrade.link') }}
-					</n8n-link>
+					<N8nLink size="small" @click="goToUpgradeApiKeyScopes">
+						{{ i18n.baseText('generic.upgrade') }}
+					</N8nLink>
 				</template>
-			</i18n-t>
+			</I18nT>
 		</N8nNotice>
 	</div>
 </template>
@@ -162,7 +164,7 @@ function goToUpgradeApiKeyScopes() {
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap:not(:last-of-type)) {
-	padding: 0px;
+	padding: 0;
 	margin-bottom: var(--spacing-xs);
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '@/components/SetupWorkflowCredentialsModal/useSetupWorkflowCredentialsModalState';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nHeading from '@n8n/design-system/components/N8nHeading';
 import AppsRequiringCredsNotice from '@/views/SetupWorkflowFromTemplateView/AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from '@/views/SetupWorkflowFromTemplateView/SetupTemplateFormStep.vue';
@@ -33,7 +33,7 @@ const {
 onMounted(() => {
 	setInitialCredentialSelection();
 
-	telemetry.track('User opened cred setup', { source: 'canvas' }, { withPostHog: true });
+	telemetry.track('User opened cred setup', { source: 'canvas' });
 });
 
 onUnmounted(() => {
@@ -79,7 +79,7 @@ onUnmounted(() => {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					size="large"
 					:label="i18n.baseText('templateSetup.continue.button')"
 					:disabled="numFilledCredentials === 0"

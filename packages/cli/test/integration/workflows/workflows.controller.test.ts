@@ -1,10 +1,21 @@
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import type { WorkflowFolderUnionFull } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { WorkflowHistoryRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	createWorkflow,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
+import {
+	ProjectRepository,
+	WorkflowHistoryRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -17,18 +28,9 @@ import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
-import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import {
-	createWorkflow,
-	shareWorkflowWithProjects,
-	shareWorkflowWithUsers,
-} from '../shared/db/workflows';
-import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
@@ -54,7 +56,6 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -68,7 +69,6 @@ beforeEach(async () => {
 		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
-	projectService = Container.get(ProjectService);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -143,6 +143,38 @@ describe('POST /workflows', () => {
 				'workflow:update',
 			].sort(),
 		);
+	});
+
+	test('should create workflow with uiContext parameter', async () => {
+		const payload = {
+			name: 'testing with context',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			uiContext: 'workflow_list',
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, name },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(name).toBe('testing with context');
 	});
 
 	test('should create workflow history version when licensed', async () => {
@@ -288,7 +320,10 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await projectService.addUser(project.id, owner.id, 'project:admin');
+		await Container.get(ProjectService).addUser(project.id, {
+			userId: owner.id,
+			role: 'project:admin',
+		});
 
 		//
 		// ACT
@@ -362,7 +397,10 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await projectService.addUser(project.id, member.id, 'project:viewer');
+		await Container.get(ProjectService).addUser(project.id, {
+			userId: member.id,
+			role: 'project:viewer',
+		});
 
 		//
 		// ACT
@@ -651,7 +689,7 @@ describe('GET /workflows', () => {
 
 	test('should return workflows with scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -818,6 +856,21 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 1,
 				data: [objectContaining({ active: true })],
+			});
+		});
+
+		test('should filter workflows by field: availableInMCP', async () => {
+			const workflow1 = await createWorkflow({ settings: { availableInMCP: true } }, owner);
+			await createWorkflow({ settings: {} }, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "availableInMCP": true }')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 1,
+				data: [objectContaining({ id: workflow1.id })],
 			});
 		});
 
@@ -1468,7 +1521,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -2158,6 +2211,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		console.log(response.body);
 
 		const {
 			data: { id },

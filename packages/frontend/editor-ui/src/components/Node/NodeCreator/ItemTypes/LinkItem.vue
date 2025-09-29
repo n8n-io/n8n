@@ -9,7 +9,7 @@ defineProps<Props>();
 </script>
 
 <template>
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		:class="$style.creatorLink"
 		:title="link.title"
 		:is-trigger="false"
@@ -18,9 +18,15 @@ defineProps<Props>();
 		:show-action-arrow="true"
 	>
 		<template #icon>
-			<n8n-node-icon type="icon" :name="link.icon" :circle="false" :show-tooltip="false" />
+			<N8nNodeIcon
+				type="icon"
+				:name="link.icon"
+				:circle="false"
+				:show-tooltip="false"
+				:use-updated-icons="true"
+			/>
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>

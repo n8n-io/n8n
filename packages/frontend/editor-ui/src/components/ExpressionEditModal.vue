@@ -16,7 +16,7 @@ import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import VirtualSchema from '@/components/VirtualSchema.vue';
 import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
@@ -66,12 +66,11 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 
 const activeNode = computed(() => ndvStore.activeNode);
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflow.value.getParentNodesByDepth(node.name);
+	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -136,7 +135,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<el-dialog
+	<ElDialog
 		width="calc(100% - var(--spacing-3xl))"
 		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		:class="$style.modal"
@@ -232,7 +231,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 			</div>
 		</div>
-	</el-dialog>
+	</ElDialog>
 </template>
 
 <style module lang="scss">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
@@ -106,20 +106,20 @@ watchDebounced(
 
 <template>
 	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
-		<n8n-text size="small" :class="$style.tipText"
+		<N8nText size="small" :class="$style.tipText"
 			>{{ i18n.baseText('parameterInput.tip') }}:
-		</n8n-text>
+		</N8nText>
 
 		<div v-if="tip === 'drag'" :class="$style.content">
-			<n8n-text size="small" :class="$style.text">
+			<N8nText size="small" :class="$style.text">
 				{{ i18n.baseText('parameterInput.dragTipBeforePill') }}
-			</n8n-text>
+			</N8nText>
 			<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
 				{{ i18n.baseText('parameterInput.inputField') }}
 			</div>
-			<n8n-text size="small" :class="$style.text">
+			<N8nText size="small" :class="$style.text">
 				{{ i18n.baseText('parameterInput.dragTipAfterPill') }}
-			</n8n-text>
+			</N8nText>
 		</div>
 
 		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
@@ -163,9 +163,10 @@ watchDebounced(
 }
 
 .tipText {
-	display: inline;
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+	align-self: flex-start;
 }
 
 .drag .tipText {

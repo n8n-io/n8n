@@ -4,7 +4,7 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	displayData: IBinaryData;
@@ -74,7 +74,7 @@ function closeWindow() {
 
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
-		<n8n-button
+		<N8nButton
 			size="small"
 			class="binary-data-window-back"
 			:title="i18n.baseText('binaryDataDisplay.backToOverviewPage')"
@@ -95,11 +95,11 @@ function closeWindow() {
 <style lang="scss">
 .binary-data-window {
 	position: absolute;
-	top: 50px;
+	top: 0;
 	left: 0;
 	z-index: 10;
 	width: 100%;
-	height: calc(100% - 50px);
+	height: 100%;
 	background-color: var(--color-run-data-background);
 	overflow: hidden;
 	text-align: center;
@@ -111,7 +111,7 @@ function closeWindow() {
 	.binary-data-window-wrapper {
 		margin-top: 0.5em;
 		padding: 0 1em;
-		height: calc(100% - 50px);
+		height: 100%;
 
 		.el-row,
 		.el-col {

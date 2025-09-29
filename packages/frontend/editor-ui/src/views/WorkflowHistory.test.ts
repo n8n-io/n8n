@@ -11,12 +11,13 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { STORES, VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { VIEWS } from '@/constants';
 import {
 	workflowHistoryDataFactory,
 	workflowVersionDataFactory,
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
-import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/plugins/telemetry';
 
@@ -49,8 +50,8 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
-			'workflow-history-content': true,
-			'workflow-history-list': defineComponent({
+			WorkflowHistoryContent: true,
+			WorkflowHistoryList: defineComponent({
 				props: {
 					id: {
 						type: String,

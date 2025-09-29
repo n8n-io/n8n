@@ -2,20 +2,30 @@
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
-import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
-import {
-	EnterpriseEditionFeature,
-	VALID_EMAIL_REGEX,
-	INVITE_USER_MODAL_KEY,
-	ROLE,
-} from '@/constants';
+import type {
+	FormFieldValueUpdate,
+	IFormInputs,
+	IInviteResponse,
+	InvitableRoleName,
+} from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
+
+const props = defineProps<{
+	modalName: string;
+	data: {
+		afterInvite?: () => Promise<void>;
+	};
+}>();
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -131,11 +141,15 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 	return false;
 };
 
-function onInput(e: { name: string; value: InvitableRoleName }) {
-	if (e.name === 'emails') {
+function isInvitableRoleName(val: unknown): val is InvitableRoleName {
+	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
+}
+
+function onInput(e: FormFieldValueUpdate) {
+	if (e.name === 'emails' && typeof e.value === 'string') {
 		emails.value = e.value;
 	}
-	if (e.name === 'role') {
+	if (e.name === 'role' && isInvitableRoleName(e.value)) {
 		role.value = e.value;
 	}
 }
@@ -220,6 +234,8 @@ async function onSubmit() {
 		} else {
 			modalBus.emit('close');
 		}
+
+		await props.data.afterInvite?.();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.usersInvitedError'));
 	}
@@ -288,35 +304,35 @@ function getEmail(email: string): string {
 		@enter="onSubmit"
 	>
 		<template #content>
-			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
-				<i18n-t keypath="settings.users.advancedPermissions.warning">
+			<N8nNotice v-if="!isAdvancedPermissionsEnabled">
+				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
-						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
-						</n8n-link>
+						<N8nLink size="small" @click="goToUpgradeAdvancedPermissions">
+							{{ i18n.baseText('generic.upgrade') }}
+						</N8nLink>
 					</template>
-				</i18n-t>
-			</n8n-notice>
+				</I18nT>
+			</N8nNotice>
 			<div v-if="showInviteUrls">
-				<n8n-users-list :users="invitedUsers">
+				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">
-						<n8n-tooltip>
+						<N8nTooltip>
 							<template #content>
 								{{ i18n.baseText('settings.users.inviteLink.copy') }}
 							</template>
-							<n8n-icon-button
+							<N8nIconButton
 								icon="link"
 								type="tertiary"
 								data-test-id="copy-invite-link-button"
 								:data-invite-link="user.inviteAcceptUrl"
 								@click="onCopyInviteLink(user)"
-							></n8n-icon-button>
-						</n8n-tooltip>
+							></N8nIconButton>
+						</N8nTooltip>
 					</template>
-				</n8n-users-list>
+				</N8nUsersList>
 			</div>
-			<n8n-form-inputs
-				v-else
+			<N8nFormInputs
+				v-else-if="config"
 				:inputs="config"
 				:event-bus="formBus"
 				:column-view="true"
@@ -325,7 +341,7 @@ function getEmail(email: string): string {
 			/>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"

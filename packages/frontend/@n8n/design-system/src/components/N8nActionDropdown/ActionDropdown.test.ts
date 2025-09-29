@@ -19,7 +19,7 @@ describe('components', () => {
 					],
 				},
 				global: {
-					stubs: ['n8n-icon', 'el-tooltip', 'el-dropdown', 'el-dropdown-menu', 'el-dropdown-item'],
+					stubs: ['N8nIcon', 'ElTooltip', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
@@ -43,13 +43,13 @@ describe('components', () => {
 						{
 							id: 'item3',
 							label: 'Action 3',
-							icon: 'heart',
+							icon: 'house',
 							divided: true,
 						},
 					],
 				},
 				global: {
-					stubs: ['n8n-icon', 'el-dropdown', 'el-dropdown-menu', 'el-dropdown-item'],
+					stubs: ['N8nIcon', 'ElDropdown', 'ElDropdownMenu', 'ElDropdownItem'],
 				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();

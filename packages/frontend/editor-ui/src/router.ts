@@ -11,7 +11,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
@@ -19,17 +18,19 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import { insightsRoutes } from '@/features/insights/insights.router';
-import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
+import { MfaRequiredError } from '@n8n/rest-api-client';
+import { useCalloutHelpers } from './composables/useCalloutHelpers';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
+const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
+const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const CanvasChatSwitch = async () => await import('@/components/CanvasChat/CanvasChatSwitch.vue');
-const DemoFooter = async () =>
-	await import('@/components/CanvasChat/future/components/DemoFooter.vue');
+const LogsPanel = async () => await import('@/features/logs/components/LogsPanel.vue');
+const DemoFooter = async () => await import('@/features/logs/components/DemoFooter.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -62,14 +63,11 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
-const TestDefinitionListView = async () =>
-	await import('./views/TestDefinition/TestDefinitionListView.vue');
-const TestDefinitionNewView = async () =>
-	await import('./views/TestDefinition/TestDefinitionNewView.vue');
-const TestDefinitionEditView = async () =>
-	await import('./views/TestDefinition/TestDefinitionEditView.vue');
-const TestDefinitionRootView = async () =>
-	await import('./views/TestDefinition/TestDefinitionRootView.vue');
+const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
+const EvaluationRootView = async () =>
+	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
+const PrebuiltAgentTemplatesView = async () =>
+	await import('@/views/PrebuiltAgentTemplatesView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -109,6 +107,29 @@ export const routes: RouteRecordRaw[] = [
 			},
 			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/templates/agents',
+		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
+		components: {
+			default: PrebuiltAgentTemplatesView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: getTemplatesRedirect,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const calloutHelpers = useCalloutHelpers();
+			const templatesStore = useTemplatesStore();
+
+			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
+			} else {
+				next();
+			}
 		},
 	},
 	// Following two routes are kept in-app:
@@ -213,6 +234,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -250,7 +272,7 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: ':executionId',
+				path: ':executionId/:nodeId?',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
 					executionPreview: WorkflowExecutionsPreview,
@@ -264,47 +286,31 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
+		name: VIEWS.EVALUATION,
 		components: {
-			default: TestDefinitionRootView,
+			default: EvaluationRootView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
-		props: true,
+		props: {
+			default: true,
+		},
 		meta: {
 			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'custom'],
-			middlewareOptions: {
-				custom: () => useTestDefinitionStore().isFeatureEnabled,
-			},
+			middleware: ['authenticated'],
 		},
 		children: [
 			{
 				path: '',
-				name: VIEWS.TEST_DEFINITION,
-				component: TestDefinitionListView,
+				name: VIEWS.EVALUATION_EDIT,
+				component: EvaluationsView,
 				props: true,
 			},
 			{
-				path: 'new',
-				name: VIEWS.NEW_TEST_DEFINITION,
-				component: TestDefinitionNewView,
+				path: 'test-runs/:runId',
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				component: TestRunDetailView,
 				props: true,
-			},
-			{
-				path: ':testId',
-				name: VIEWS.TEST_DEFINITION_EDIT,
-				props: true,
-				components: {
-					default: TestDefinitionEditView,
-				},
-			},
-			{
-				path: ':testId/runs/:runId',
-				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
-				props: true,
-				components: {
-					default: TestDefinitionRunDetailView,
-				},
 			},
 		],
 	},
@@ -361,7 +367,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChatSwitch,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -395,7 +401,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChatSwitch,
+			footer: LogsPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -738,7 +744,24 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
-	...insightsRoutes,
+	{
+		path: '/entity-not-found/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_NOT_FOUND,
+		components: {
+			default: EntityNotFound,
+			sidebar: MainSidebar,
+		},
+	},
+	{
+		path: '/entity-not-authorized/:entityType(credential|workflow)',
+		props: true,
+		name: VIEWS.ENTITY_UNAUTHORIZED,
+		components: {
+			default: EntityUnAuthorised,
+			sidebar: MainSidebar,
+		},
+	},
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
@@ -791,7 +814,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
-		await initializeAuthenticatedFeatures();
+		// Pass undefined for first param to use default
+		await initializeAuthenticatedFeatures(undefined, to.name as string);
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
@@ -830,6 +854,14 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 
 		return next();
 	} catch (failure) {
+		const settingsStore = useSettingsStore();
+		if (failure instanceof MfaRequiredError && settingsStore.isMFAEnforced) {
+			if (to.name !== VIEWS.PERSONAL_SETTINGS) {
+				return next({ name: VIEWS.PERSONAL_SETTINGS });
+			} else {
+				return next();
+			}
+		}
 		if (isNavigationFailure(failure)) {
 			console.log(failure);
 		} else {

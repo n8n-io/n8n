@@ -3,7 +3,14 @@ import CanvasControlButtons from './CanvasControlButtons.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
-const renderComponent = createComponentRenderer(CanvasControlButtons);
+const renderComponent = createComponentRenderer(CanvasControlButtons, {
+	global: {
+		stubs: {
+			N8nIconButton: true,
+			N8nButton: true,
+		},
+	},
+});
 
 describe('CanvasControlButtons', () => {
 	beforeAll(() => {

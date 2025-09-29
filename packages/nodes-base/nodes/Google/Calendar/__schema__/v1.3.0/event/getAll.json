@@ -9,9 +9,6 @@
             "properties": {
                 "email": {
                     "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
                 }
             }
         },
@@ -90,5 +87,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 7
 }

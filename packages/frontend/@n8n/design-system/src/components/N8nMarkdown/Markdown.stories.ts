@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nMarkdown from './Markdown.vue';
 
@@ -65,5 +65,21 @@ const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
 export const WithCheckboxes = TemplateWithCheckboxes.bind({});
 WithCheckboxes.args = {
 	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
+	loading: false,
+};
+
+const TemplateWithYoutubeEmbed: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nMarkdown,
+	},
+	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
+});
+
+export const WithYoutubeEmbed = TemplateWithYoutubeEmbed.bind({});
+WithYoutubeEmbed.args = {
+	content:
+		"## I'm markdown \n**Please check** this out. [Guide](https://docs.n8n.io/workflows/sticky-notes/)\n@[youtube](ZCuL2e4zC_4)\n",
 	loading: false,
 };

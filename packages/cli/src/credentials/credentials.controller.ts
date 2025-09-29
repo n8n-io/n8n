@@ -4,8 +4,14 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { SharedCredentials, ProjectRelationRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	SharedCredentials,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	AuthenticatedRequest,
+} from '@n8n/db';
 import {
 	Delete,
 	Get,
@@ -19,12 +25,16 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialsService } from './credentials.service';
+import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -32,14 +42,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, CredentialRequest } from '@/requests';
+import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -187,6 +193,7 @@ export class CredentialsController {
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
+			uiContext: payload.uiContext,
 		});
 
 		return newCredential;
@@ -358,7 +365,7 @@ export class CredentialsController {
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),
-			role: 'project:personalOwner',
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
 		});
 
 		await this.userManagementMailer.notifyCredentialsShared({

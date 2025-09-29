@@ -5,14 +5,11 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useNDVStore } from '@/stores/ndv.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -29,19 +26,13 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
-	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
-	const canvasStore = useCanvasStore();
-	const ndvStore = useNDVStore();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
 			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-			offset:
-				(settingsStore.isAiAssistantEnabled ? 64 : 0) +
-				(ndvStore.activeNode === null ? canvasStore.panelHeight : 0),
 			appendTo: '#app-grid',
 			customClass: 'content-toast',
 		};

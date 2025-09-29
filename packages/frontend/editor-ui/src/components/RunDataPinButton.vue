@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { usePinnedData } from '@/composables/usePinnedData';
 import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 
@@ -56,7 +56,7 @@ const visible = computed(() =>
 			:class="$style.pinDataButton"
 			type="tertiary"
 			:active="props.pinnedData.hasData.value"
-			icon="thumbtack"
+			icon="pin"
 			:disabled="props.disabled"
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"

@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes, type Project } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { IUser } from 'n8n-workflow';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -41,7 +42,7 @@ const TEST_FOLDER_CHILD: FolderShortInfo = {
 	parentFolder: TEST_FOLDER.id,
 };
 
-const TEST_ACTIONS: UserAction[] = [
+const TEST_ACTIONS: Array<UserAction<IUser>> = [
 	{ label: 'Action 1', value: 'action1', disabled: false },
 	{ label: 'Action 2', value: 'action2', disabled: true },
 ];
@@ -122,5 +123,42 @@ describe('FolderBreadcrumbs', () => {
 		expect(getByTestId('home-project')).toBeVisible();
 		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(2);
 		expect(queryByTestId('ellipsis')).not.toBeInTheDocument();
+	});
+
+	it('should use personal project as fallback and show folder breadcrumbs when currentProject is null', () => {
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = TEST_PROJECT;
+
+		const { getByTestId, queryAllByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER_CHILD,
+				visibleLevels: 2,
+			},
+		});
+
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(getByTestId('home-project')).toBeVisible();
+		// Should show folder breadcrumbs (parent + current folder)
+		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(2);
+	});
+
+	it('should not show folder breadcrumbs in shared context even with personal project available', () => {
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = TEST_PROJECT; // Should be ignored
+		projectsStore.projectNavActiveId = 'shared';
+
+		const { getByTestId, queryAllByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER_CHILD,
+			},
+		});
+
+		// Should render project breadcrumb (shows "Shared with you")
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(getByTestId('home-project')).toBeVisible();
+		// Should NOT show any folder breadcrumbs in shared context (even though folder has parent)
+		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(0);
 	});
 });

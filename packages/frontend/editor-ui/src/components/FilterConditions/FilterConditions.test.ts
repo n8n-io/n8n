@@ -1,13 +1,14 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within, waitFor } from '@testing-library/vue';
 import { getFilterOperator } from './utils';
-import { get } from 'lodash-es';
+import get from 'lodash/get';
+import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -35,13 +36,8 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
 describe('FilterConditions.vue', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
 	afterEach(() => {
 		vi.clearAllMocks();
-		cleanupAppModals();
 	});
 
 	it('renders default state properly', async () => {
@@ -444,5 +440,50 @@ describe('FilterConditions.vue', () => {
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-right').querySelector('input'),
 		).toHaveValue(6);
+	});
+
+	it('emits once with updated caseSensitive when typeOptions.filter.caseSensitive changes', async () => {
+		const { rerender, emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				parameter: {
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: { caseSensitive: true },
+					},
+				},
+				node: {
+					...DEFAULT_SETUP.props.node,
+					parameters: {},
+				},
+			},
+		});
+
+		// No emission on initial render
+		expect(emitted('valueChanged')).toBeUndefined();
+
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockReturnValue({ caseSensitive: false });
+
+		// Change caseSensitive and also change node.parameters to trigger the watcher
+		await rerender({
+			parameter: {
+				...DEFAULT_SETUP.props.parameter,
+				typeOptions: {
+					filter: { caseSensitive: false },
+				},
+			},
+			node: {
+				...DEFAULT_SETUP.props.node,
+				parameters: { foo: 'bar' },
+			},
+		});
+
+		await waitFor(() => {
+			expect(emitted('valueChanged') ?? []).toHaveLength(1);
+		});
+
+		const events = emitted('valueChanged') ?? [];
+		expect(get(events[0], '0.value.options.caseSensitive')).toBe(false);
 	});
 });

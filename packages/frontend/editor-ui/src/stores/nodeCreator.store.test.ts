@@ -21,9 +21,6 @@ const node_type = 'node-type';
 const node_id = 'node-id';
 const node_version = 1;
 const input_node_type = 'input-node-type';
-const action = 'action';
-const source_mode = 'source-mode';
-const resource = 'resource';
 const actions = ['action1'];
 
 vi.mock('@/composables/useTelemetry', () => {
@@ -46,12 +43,12 @@ vi.mock('@/stores/workflows.store', () => {
 			}),
 			workflowTriggerNodes: [],
 			workflowId: 'dummy-workflow-id',
-			getCurrentWorkflow: vi.fn(() => ({
+			workflowObject: {
 				getNode: vi.fn(() => ({
 					type: 'n8n-node.example',
 					typeVersion: 1,
 				})),
-			})),
+			},
 		}),
 	};
 });
@@ -80,18 +77,12 @@ describe('useNodeCreatorStore', () => {
 			workflow_id,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User opened nodes panel',
-			{
-				mode,
-				source,
-				nodes_panel_session_id: getSessionId(now),
-				workflow_id,
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User opened nodes panel', {
+			mode,
+			source,
+			nodes_panel_session_id: getSessionId(now),
+			workflow_id,
+		});
 	});
 
 	it('resets session id every time node creator is opened', () => {
@@ -101,18 +92,12 @@ describe('useNodeCreatorStore', () => {
 			workflow_id,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User opened nodes panel',
-			{
-				mode,
-				source,
-				nodes_panel_session_id: getSessionId(now),
-				workflow_id,
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User opened nodes panel', {
+			mode,
+			source,
+			nodes_panel_session_id: getSessionId(now),
+			workflow_id,
+		});
 
 		vi.setSystemTime(now1);
 
@@ -122,18 +107,12 @@ describe('useNodeCreatorStore', () => {
 			workflow_id,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User opened nodes panel',
-			{
-				mode,
-				source,
-				nodes_panel_session_id: getSessionId(now1),
-				workflow_id,
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User opened nodes panel', {
+			mode,
+			source,
+			nodes_panel_session_id: getSessionId(now1),
+			workflow_id,
+		});
 	});
 
 	it('tracks event on category expanded', () => {
@@ -144,18 +123,12 @@ describe('useNodeCreatorStore', () => {
 		});
 		nodeCreatorStore.onCategoryExpanded({ workflow_id, category_name });
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User viewed node category',
-			{
-				category_name,
-				is_subcategory: false,
-				nodes_panel_session_id: getSessionId(now),
-				workflow_id,
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User viewed node category', {
+			category_name,
+			is_subcategory: false,
+			nodes_panel_session_id: getSessionId(now),
+			workflow_id,
+		});
 	});
 
 	it('tracks event when node is added to canvas', () => {
@@ -174,50 +147,16 @@ describe('useNodeCreatorStore', () => {
 			input_node_type,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User added node to workflow canvas',
-			{
-				node_id,
-				node_type,
-				node_version,
-				is_auto_add: true,
-				drag_and_drop: true,
-				input_node_type,
-				nodes_panel_session_id: getSessionId(now),
-				workflow_id,
-			},
-			{
-				withPostHog: true,
-			},
-		);
-	});
-
-	it('tracks event when action is added', () => {
-		nodeCreatorStore.onCreatorOpened({
-			source,
-			mode,
+		expect(useTelemetry().track).toHaveBeenCalledWith('User added node to workflow canvas', {
+			node_id,
+			node_type,
+			node_version,
+			is_auto_add: true,
+			drag_and_drop: true,
+			input_node_type,
+			nodes_panel_session_id: getSessionId(now),
 			workflow_id,
 		});
-		nodeCreatorStore.onAddActions({
-			node_type,
-			action,
-			source_mode,
-			resource,
-		});
-
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User added action',
-			{
-				node_type,
-				action,
-				source_mode,
-				resource,
-				nodes_panel_session_id: getSessionId(now),
-			},
-			{
-				withPostHog: false,
-			},
-		);
 	});
 
 	it('tracks when custom api action is clicked', () => {
@@ -230,16 +169,10 @@ describe('useNodeCreatorStore', () => {
 			app_identifier: node_type,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User clicked custom API from node actions',
-			{
-				app_identifier: node_type,
-				nodes_panel_session_id: getSessionId(now),
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User clicked custom API from node actions', {
+			app_identifier: node_type,
+			nodes_panel_session_id: getSessionId(now),
+		});
 	});
 
 	it('tracks when action is viewed', () => {
@@ -255,19 +188,13 @@ describe('useNodeCreatorStore', () => {
 			trigger_action_count: 2,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User viewed node actions',
-			{
-				app_identifier: node_type,
-				actions,
-				regular_action_count: 1,
-				trigger_action_count: 2,
-				nodes_panel_session_id: getSessionId(now),
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User viewed node actions', {
+			app_identifier: node_type,
+			actions,
+			regular_action_count: 1,
+			trigger_action_count: 2,
+			nodes_panel_session_id: getSessionId(now),
+		});
 	});
 
 	it('tracks when search filter is updated, ignoring custom actions in count', () => {
@@ -308,22 +235,16 @@ describe('useNodeCreatorStore', () => {
 			title,
 		});
 
-		expect(useTelemetry().track).toHaveBeenCalledWith(
-			'User entered nodes panel search term',
-			{
-				search_string: newValue,
-				filter_mode: 'regular',
-				category_name: subcategory,
-				results_count: 2,
-				trigger_count: 1,
-				regular_count: 1,
-				nodes_panel_session_id: getSessionId(now),
-				title,
-			},
-			{
-				withPostHog: false,
-			},
-		);
+		expect(useTelemetry().track).toHaveBeenCalledWith('User entered nodes panel search term', {
+			search_string: newValue,
+			filter_mode: 'regular',
+			category_name: subcategory,
+			results_count: 2,
+			trigger_count: 1,
+			regular_count: 1,
+			nodes_panel_session_id: getSessionId(now),
+			title,
+		});
 	});
 	describe('selective connection view', () => {
 		const mockedParseCanvasConnectionHandleString = vi.mocked(
@@ -386,6 +307,34 @@ describe('useNodeCreatorStore', () => {
 			});
 
 			expect(nodeCreatorStore.selectedView).not.toEqual(REGULAR_NODE_CREATOR_VIEW);
+		});
+	});
+
+	it('tracks when node is added to canvas with action parameter', () => {
+		nodeCreatorStore.onCreatorOpened({
+			source,
+			mode,
+			workflow_id,
+		});
+		nodeCreatorStore.onNodeAddedToCanvas({
+			node_id,
+			node_type,
+			node_version,
+			workflow_id,
+			action: 'Create Contact',
+			resource: 'contact',
+			operation: 'create',
+		});
+
+		expect(useTelemetry().track).toHaveBeenCalledWith('User added node to workflow canvas', {
+			node_id,
+			node_type,
+			node_version,
+			workflow_id,
+			action: 'Create Contact',
+			resource: 'contact',
+			operation: 'create',
+			nodes_panel_session_id: getSessionId(now),
 		});
 	});
 });

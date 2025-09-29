@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type {
 	INodeParameterResourceLocator,
 	INodePropertyMode,
@@ -49,7 +49,7 @@ export function useWorkflowResourceLocatorModes(
 		};
 	}
 
-	function getModeLabel(mode: INodePropertyMode): string | null {
+	function getModeLabel(mode: INodePropertyMode): string | undefined {
 		if (mode.name === 'id' || mode.name === 'list') {
 			return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 		}

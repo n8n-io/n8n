@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -12,8 +12,9 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import N8nInfoTip from '@n8n/design-system/components/N8nInfoTip';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -73,11 +74,7 @@ const showActivationSuccess = () => {
 };
 
 const showActivationError = (error: Error) => {
-	toast.showError(
-		error,
-		locale.baseText('settings.usageAndPlan.license.activation.error.title'),
-		error.message,
-	);
+	toast.showError(error, locale.baseText('settings.usageAndPlan.license.activation.error.title'));
 };
 
 const onLicenseActivation = async () => {
@@ -159,12 +156,12 @@ const openCommunityRegisterModal = () => {
 
 <template>
 	<div class="settings-usage-and-plan">
-		<n8n-heading tag="h2" size="2xlarge">{{
+		<N8nHeading tag="h2" size="2xlarge">{{
 			locale.baseText('settings.usageAndPlan.title')
-		}}</n8n-heading>
+		}}</N8nHeading>
 		<div v-if="!usageStore.isLoading">
-			<n8n-heading tag="h3" :class="$style.title" size="large">
-				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
+			<N8nHeading tag="h3" :class="$style.title" size="large">
+				<I18nT keypath="settings.usageAndPlan.description" tag="span" scope="global">
 					<template #name>{{ badgedPlanName.name ?? usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -172,23 +169,24 @@ const openCommunityRegisterModal = () => {
 						}}</span>
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
-				</i18n-t>
+				</I18nT>
 				<span v-if="badgedPlanName.badge && badgedPlanName.name" :class="$style.titleTooltip">
 					<N8nTooltip placement="top">
 						<template #content>
-							<i18n-t
+							<I18nT
 								v-if="isCommunityEditionRegistered"
 								keypath="settings.usageAndPlan.license.communityRegistered.tooltip"
+								scope="global"
 							>
-							</i18n-t>
+							</I18nT>
 						</template>
 						<N8nBadge>{{ badgedPlanName.badge }}</N8nBadge>
 					</N8nTooltip>
 				</span>
-			</n8n-heading>
+			</N8nHeading>
 
 			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
-				<i18n-t keypath="settings.usageAndPlan.callOut">
+				<I18nT keypath="settings.usageAndPlan.callOut" scope="global">
 					<template #link>
 						<N8nButton
 							class="pl-0 pr-0"
@@ -197,13 +195,13 @@ const openCommunityRegisterModal = () => {
 							@click="openCommunityRegisterModal"
 						/>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nNotice>
 
 			<div :class="$style.quota">
-				<n8n-text size="medium" color="text-light">
+				<N8nText size="medium" color="text-light">
 					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
-				</n8n-text>
+				</N8nText>
 				<div :class="$style.chart">
 					<span v-if="usageStore.activeWorkflowTriggersLimit > 0" :class="$style.chartLine">
 						<span
@@ -211,10 +209,11 @@ const openCommunityRegisterModal = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n-t
+					<I18nT
 						tag="span"
 						:class="$style.count"
 						keypath="settings.usageAndPlan.activeWorkflows.count"
+						scope="global"
 					>
 						<template #count>{{ usageStore.activeWorkflowTriggersCount }}</template>
 						<template #limit>
@@ -223,14 +222,14 @@ const openCommunityRegisterModal = () => {
 							}}</span>
 							<span v-else>{{ usageStore.activeWorkflowTriggersLimit }}</span>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</div>
 			</div>
 
 			<N8nInfoTip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</N8nInfoTip>
 
 			<div :class="$style.buttons">
-				<n8n-button
+				<N8nButton
 					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
 					type="tertiary"
@@ -238,20 +237,20 @@ const openCommunityRegisterModal = () => {
 					@click="onAddActivationKey"
 				>
 					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
-				</n8n-button>
-				<n8n-button v-if="usageStore.managementToken" size="large" @click="onManagePlan">
+				</N8nButton>
+				<N8nButton v-if="usageStore.managementToken" size="large" @click="onManagePlan">
 					<a :href="managePlanUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
-				</n8n-button>
-				<n8n-button v-else size="large" @click.prevent="onViewPlans">
+				</N8nButton>
+				<N8nButton v-else size="large" @click.prevent="onViewPlans">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
-				</n8n-button>
+				</N8nButton>
 			</div>
 
-			<el-dialog
+			<ElDialog
 				v-model="activationKeyModal"
 				width="480px"
 				top="0"
@@ -261,27 +260,27 @@ const openCommunityRegisterModal = () => {
 				@opened="onDialogOpened"
 			>
 				<template #default>
-					<n8n-input
+					<N8nInput
 						ref="activationKeyInput"
 						v-model="activationKey"
 						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 					/>
 				</template>
 				<template #footer>
-					<n8n-button type="secondary" @click="activationKeyModal = false">
+					<N8nButton type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-					</n8n-button>
-					<n8n-button @click="onLicenseActivation">
+					</N8nButton>
+					<N8nButton @click="onLicenseActivation">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-					</n8n-button>
+					</N8nButton>
 				</template>
-			</el-dialog>
+			</ElDialog>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
+@use '@/styles/variables' as *;
 
 .center > div {
 	justify-content: center;

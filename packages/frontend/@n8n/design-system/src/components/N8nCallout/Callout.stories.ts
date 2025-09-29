@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
@@ -73,7 +73,7 @@ defaultCallout.args = {
 export const customCallout = template.bind({});
 customCallout.args = {
 	theme: 'custom',
-	icon: 'code-branch',
+	icon: 'git-branch',
 	default: `
 		This is a custom callout.
 	`,
@@ -87,7 +87,7 @@ customCallout.args = {
 export const secondaryCallout = template.bind({});
 secondaryCallout.args = {
 	theme: 'secondary',
-	icon: 'thumbtack',
+	icon: 'pin',
 	default: `
 		This data is pinned.
 	`,

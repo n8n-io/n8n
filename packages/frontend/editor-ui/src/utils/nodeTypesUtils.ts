@@ -1,10 +1,5 @@
-import type {
-	AppliedThemeOption,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	ITemplatesNode,
-	NodeAuthenticationOption,
-} from '@/Interface';
+import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -12,7 +7,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -36,8 +31,8 @@ import {
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
-const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -105,10 +100,13 @@ export function isValueExpression(
 }
 
 export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] =>
-	inputData.reduce<IDataObject[]>(
-		(acc, item) => (isJsonKeyObject(item) ? acc.concat(item.json) : acc),
-		[],
-	);
+	inputData.reduce<IDataObject[]>((acc, item) => {
+		if (isJsonKeyObject(item)) {
+			acc.push(item.json);
+		}
+
+		return acc;
+	}, []);
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (
@@ -281,9 +279,8 @@ export const getNodeCredentialForSelectedAuthType = (
 	const authField = getMainAuthField(nodeType);
 	const authFieldName = authField ? authField.name : '';
 	return (
-		nodeType.credentials?.find(
-			(cred) =>
-				cred.displayOptions?.show && cred.displayOptions.show[authFieldName]?.includes(authType),
+		nodeType.credentials?.find((cred) =>
+			cred.displayOptions?.show?.[authFieldName]?.includes(authType),
 		) || null
 	);
 };
@@ -297,10 +294,8 @@ export const getAuthTypeForNodeCredential = (
 		const authFieldName = authField ? authField.name : '';
 		const nodeAuthOptions = getNodeAuthOptions(nodeType);
 		return (
-			nodeAuthOptions.find(
-				(option) =>
-					credentialType.displayOptions?.show &&
-					credentialType.displayOptions?.show[authFieldName]?.includes(option.value),
+			nodeAuthOptions.find((option) =>
+				credentialType.displayOptions?.show?.[authFieldName]?.includes(option.value),
 			) || null
 		);
 	}
@@ -389,8 +384,8 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 						...node.parameters,
 						[nodeAuthField.name]: type,
 					},
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+				},
+			};
 			useWorkflowsStore().updateNodeProperties(updateInformation);
 		}
 	}

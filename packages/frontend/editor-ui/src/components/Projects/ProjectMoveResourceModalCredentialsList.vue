@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RouteLocationNamedRaw } from 'vue-router';
 import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
 
 const props = withDefaults(
@@ -45,13 +45,13 @@ const getCredentialRouterLocation = (
 <template>
 	<ul :class="$style.credentialsList">
 		<li v-for="credential in props.credentials" :key="credential.id">
-			<router-link
+			<RouterLink
 				v-if="isCredentialReadable(credential)"
 				target="_blank"
 				:to="getCredentialRouterLocation(credential)"
 			>
 				{{ credential.name }}
-			</router-link>
+			</RouterLink>
 			<span v-else>{{ credential.name }}</span>
 		</li>
 	</ul>

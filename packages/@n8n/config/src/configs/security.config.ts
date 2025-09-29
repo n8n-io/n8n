@@ -32,4 +32,23 @@ export class SecurityConfig {
 	// TODO: create a new type that parses and validates this string into a strongly-typed object
 	@Env('N8N_CONTENT_SECURITY_POLICY')
 	contentSecurityPolicy: string = '{}';
+
+	/**
+	 * Whether to set the `Content-Security-Policy-Report-Only` header instead of `Content-Security-Policy`.
+	 */
+	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
+	contentSecurityPolicyReportOnly: boolean = false;
+
+	/**
+	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,
+	 * but the name is kept for backwards compatibility.
+	 */
+	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
+	disableWebhookHtmlSandboxing: boolean = false;
+
+	/**
+	 * Whether to disable bare repositories support in the Git node.
+	 */
+	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
+	disableBareRepos: boolean = false;
 }

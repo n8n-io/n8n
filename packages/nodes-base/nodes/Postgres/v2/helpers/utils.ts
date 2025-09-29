@@ -486,20 +486,24 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
-	const enumsData = await db.any(
+export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
+	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
 	);
-	return enumsData as EnumInfo[];
+
+	return enums.reduce((map, { typname, enumlabel }) => {
+		const existingValues = map.get(typname) ?? [];
+		map.set(typname, [...existingValues, enumlabel]);
+		return map;
+	}, new Map<string, string[]>());
 }
 
-export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
-	return enumInfo.reduce((acc, current) => {
-		if (current.typname === enumName) {
-			acc.push({ name: current.enumlabel, value: current.enumlabel });
-		}
-		return acc;
-	}, [] as INodePropertyOptions[]);
+export function getEnumValues(
+	enumInfo: Map<string, string[]>,
+	enumName: string,
+): INodePropertyOptions[] {
+	const values = enumInfo.get(enumName) ?? [];
+	return values.map((value) => ({ name: value, value }));
 }
 
 export async function doesRowExist(
@@ -619,30 +623,3 @@ export const convertArraysToPostgresFormat = (
 		}
 	}
 };
-
-export function addExecutionHints(
-	context: IExecuteFunctions,
-	items: INodeExecutionData[],
-	operation: string,
-	executeOnce: boolean | undefined,
-) {
-	if (operation === 'select' && items.length > 1 && !executeOnce) {
-		context.addExecutionHints({
-			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
-			location: 'outputPane',
-		});
-	}
-
-	if (
-		operation === 'executeQuery' &&
-		items.length > 1 &&
-		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
-		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
-	) {
-		context.addExecutionHints({
-			message:
-				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
-			location: 'outputPane',
-		});
-	}
-}

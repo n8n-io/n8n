@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	generateLinearGradient,
 	generateLineChartOptions,
@@ -72,7 +72,10 @@ const chartData = computed<ChartData<'line'>>(() => {
 </script>
 
 <template>
-	<Line :data="chartData" :options="chartOptions" :plugins="[Filler]" />
+	<Line
+		data-test-id="insights-chart-time-saved"
+		:data="chartData"
+		:options="chartOptions"
+		:plugins="[Filler]"
+	/>
 </template>
-
-<style lang="scss" module></style>

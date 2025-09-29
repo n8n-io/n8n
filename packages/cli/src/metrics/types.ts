@@ -4,6 +4,7 @@ export type MetricLabel =
 	| 'credentialsType'
 	| 'nodeType'
 	| 'workflowId'
+	| 'workflowName'
 	| 'apiPath'
 	| 'apiMethod'
 	| 'apiStatusCode';

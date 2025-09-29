@@ -1,8 +1,10 @@
+import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { Toolkit } from 'langchain/agents';
-import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
 import {
 	createResultError,
 	createResultOk,
@@ -10,11 +12,14 @@ import {
 	type IExecuteFunctions,
 	type Result,
 } from 'n8n-workflow';
-import { type ZodTypeAny } from 'zod';
+import { z } from 'zod';
 
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
-
-import type { McpAuthenticationOption, McpTool, McpToolIncludeMode } from './types';
+import type {
+	McpAuthenticationOption,
+	McpServerTransport,
+	McpTool,
+	McpToolIncludeMode,
+} from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -72,17 +77,27 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string | undefined) => void) =>
+	(name: string, client: Client, timeout: number, onError: (error: string) => void) =>
 	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
+
+		function handleError(error: unknown) {
+			const errorDescription =
+				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
+			onError(errorDescription);
+			return errorDescription;
+		}
+
 		try {
-			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
+			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
+				timeout,
+			});
 		} catch (error) {
-			return onError(getErrorDescriptionFromToolCall(error));
+			return handleError(error);
 		}
 
 		if (result.isError) {
-			return onError(getErrorDescriptionFromToolCall(result));
+			return handleError(result);
 		}
 
 		if (result.toolResult !== undefined) {
@@ -99,18 +114,24 @@ export const createCallTool =
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
-) {
+): DynamicStructuredTool {
+	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
+
+	// Ensure we always have an object schema for structured tools
+	const objectSchema =
+		rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
+
 	return new DynamicStructuredTool({
 		name: tool.name,
 		description: tool.description ?? '',
-		schema: convertJsonSchemaToZod(tool.inputSchema),
+		schema: objectSchema,
 		func: onCallTool,
 		metadata: { isFromToolkit: true },
 	});
 }
 
 export class McpToolkit extends Toolkit {
-	constructor(public tools: Array<DynamicStructuredTool<ZodTypeAny>>) {
+	constructor(public tools: DynamicStructuredTool[]) {
 		super();
 	}
 }
@@ -139,23 +160,39 @@ type ConnectMcpClientError =
 	| { type: 'connection'; error: Error };
 export async function connectMcpClient({
 	headers,
-	sseEndpoint,
+	serverTransport,
+	endpointUrl,
 	name,
 	version,
 }: {
-	sseEndpoint: string;
+	serverTransport: McpServerTransport;
+	endpointUrl: string;
 	headers?: Record<string, string>;
 	name: string;
 	version: number;
 }): Promise<Result<Client, ConnectMcpClientError>> {
-	try {
-		const endpoint = normalizeAndValidateUrl(sseEndpoint);
+	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
-		if (!endpoint.ok) {
-			return createResultError({ type: 'invalid_url', error: endpoint.error });
+	if (!endpoint.ok) {
+		return createResultError({ type: 'invalid_url', error: endpoint.error });
+	}
+
+	const client = new Client({ name, version: version.toString() }, { capabilities: { tools: {} } });
+
+	if (serverTransport === 'httpStreamable') {
+		try {
+			const transport = new StreamableHTTPClientTransport(endpoint.result, {
+				requestInit: { headers },
+			});
+			await client.connect(transport);
+			return createResultOk(client);
+		} catch (error) {
+			return createResultError({ type: 'connection', error });
 		}
+	}
 
-		const transport = new SSEClientTransport(endpoint.result, {
+	try {
+		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
 					await fetch(url, {
@@ -168,13 +205,7 @@ export async function connectMcpClient({
 			},
 			requestInit: { headers },
 		});
-
-		const client = new Client(
-			{ name, version: version.toString() },
-			{ capabilities: { tools: {} } },
-		);
-
-		await client.connect(transport);
+		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
 		return createResultError({ type: 'connection', error });

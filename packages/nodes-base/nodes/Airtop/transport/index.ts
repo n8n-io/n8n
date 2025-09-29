@@ -7,23 +7,27 @@ import type {
 } from 'n8n-workflow';
 
 import type { IAirtopResponse } from './types';
-import { BASE_URL } from '../constants';
+import { BASE_URL, N8N_VERSION } from '../constants';
 
-export async function apiRequest(
+const defaultHeaders = {
+	'Content-Type': 'application/json',
+	'x-airtop-sdk-environment': 'n8n',
+	'x-airtop-sdk-version': N8N_VERSION,
+};
+
+export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-) {
+): Promise<T> {
 	const options: IHttpRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
+		headers: defaultHeaders,
 		method,
 		body,
 		qs: query,
-		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
+		url: `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 
@@ -31,9 +35,9 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		'airtopApi',
-		options,
-	)) as IAirtopResponse;
+	return await this.helpers.httpRequestWithAuthentication.call<
+		IExecuteFunctions | ILoadOptionsFunctions,
+		[string, IHttpRequestOptions],
+		Promise<T>
+	>(this, 'airtopApi', options);
 }

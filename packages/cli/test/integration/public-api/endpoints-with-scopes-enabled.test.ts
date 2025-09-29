@@ -1,10 +1,20 @@
-import type { TagEntity } from '@n8n/db';
-import { ApiKeyRepository } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
+import type { CredentialPayload } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getProjectByNameOrFail,
+	createWorkflow,
+	randomName,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { TagEntity, Variables } from '@n8n/db';
+import {
+	ApiKeyRepository,
+	CredentialsRepository,
+	ProjectRepository,
+	TagRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
@@ -12,7 +22,6 @@ import validator from 'validator';
 
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
-import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
 import {
 	createAdminWithApiKey,
@@ -22,13 +31,10 @@ import {
 	createUser,
 	getUserById,
 } from '@test-integration/db/users';
-import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
-import { createWorkflow } from '@test-integration/db/workflows';
-import { randomName } from '@test-integration/random';
-import type { CredentialPayload, SaveCredentialFunction } from '@test-integration/types';
+import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
+import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
-import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
 
 let saveCredential: SaveCredentialFunction;
@@ -57,6 +63,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			'quota:maxTeamProjects': -1,
 		},
 	});
+
 	let apiKeyRepository: ApiKeyRepository;
 
 	beforeAll(async () => {
@@ -215,7 +222,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					expect(returnedUser.id).toBe(storedUser.id);
 					expect(returnedUser.email).toBe(storedUser.email);
 					expect(returnedUser.email).toBe(payloadUser.email);
-					expect(storedUser.role).toBe(payloadUser.role);
+					expect(storedUser.role.slug).toBe(payloadUser.role);
 				});
 
 				test('should fail to create user when API key doesn\'t have "user:create" scope', async () => {
@@ -260,7 +267,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					expect(response.status).toBe(204);
 					const storedUser = await getUserById(member.id);
-					expect(storedUser.role).toBe(payload.newRoleName);
+					expect(storedUser.role.slug).toBe(payload.newRoleName);
 				});
 
 				test('should fail to change role when API key doesn\'t have "user:changeRole" scope', async () => {
@@ -979,7 +986,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Assert
 					 */
 					expect(response.status).toBe(201);
-					await expect(getVariableOrFail(response.body.id)).resolves.toEqual(
+					await expect(getVariableByIdOrFail(response.body.id)).resolves.toEqual(
 						expect.objectContaining(variablePayload),
 					);
 				});
@@ -1003,6 +1010,36 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Assert
 					 */
 					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('PUT /variables/:id', () => {
+				const variablePayload = { key: 'updatedKey', value: 'updatedValue' };
+				let variable: Variables;
+				beforeEach(async () => {
+					variable = await createVariable();
+				});
+
+				it('should update a variable if API key has scope "variable:update"', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:update'] });
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.put(`/variables/${variable.id}`)
+						.send(variablePayload);
+
+					expect(response.status).toBe(204);
+					const updatedVariable = await getVariableByIdOrFail(variable.id);
+					expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
+				});
+
+				test('should fail to update variable when API key doesn\'t have "variable:update" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+
+					await testServer
+						.publicApiAgentFor(owner)
+						.put(`/variables/${variable.id}`)
+						.send(variablePayload);
 				});
 			});
 		});
@@ -1032,6 +1069,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						name: 'some-project',
 						icon: null,
 						type: 'team',
+						description: null,
 						id: expect.any(String),
 						createdAt: expect.any(String),
 						updatedAt: expect.any(String),

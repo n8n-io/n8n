@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
@@ -10,7 +12,6 @@ import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
 import { WebSocketPush } from '@/push/websocket.push';
-import { mockInstance } from '@test/mocking';
 
 import type { PushConfig } from '../push.config';
 
@@ -30,12 +31,16 @@ describe('Push', () => {
 	const host = 'example.com';
 	const user = mock<User>({ id: 'user-id' });
 	const config = mock<PushConfig>();
+	const logger = mock<Logger>();
 
 	let push: Push;
 	const sseBackend = mockInstance(SSEPush);
 	const wsBackend = mockInstance(WebSocketPush);
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => {
+		jest.resetAllMocks();
+		logger.scoped.mockReturnValue(logger);
+	});
 
 	describe('setupPushServer', () => {
 		const restEndpoint = 'rest';
@@ -47,7 +52,7 @@ describe('Push', () => {
 		describe('sse backend', () => {
 			test('should not create a WebSocket server', () => {
 				config.backend = 'sse';
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 
 				push.setupPushServer(restEndpoint, server, app);
 
@@ -64,7 +69,7 @@ describe('Push', () => {
 
 			beforeEach(() => {
 				config.backend = 'websocket';
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 				wssSpy.mockReturnValue(wsServer);
 
 				push.setupPushServer(restEndpoint, server, app);
@@ -115,12 +120,16 @@ describe('Push', () => {
 	});
 
 	describe('handleRequest', () => {
-		const req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
-		const res = mock<PushResponse>();
-		const ws = mock<WebSocket>();
 		const backendNames = ['sse', 'websocket'] as const;
+		let req: ReturnType<typeof mock<SSEPushRequest | WebSocketPushRequest>>;
+		let res: ReturnType<typeof mock<PushResponse>>;
+		let ws: ReturnType<typeof mock<WebSocket>>;
 
 		beforeEach(() => {
+			req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
+			res = mock<PushResponse>();
+			ws = mock<WebSocket>();
+
 			res.status.mockReturnThis();
 
 			req.headers.host = host;
@@ -133,16 +142,137 @@ describe('Push', () => {
 
 			beforeEach(() => {
 				config.backend = backendName;
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 				req.ws = backendName === 'sse' ? undefined : ws;
 			});
 
 			describe('should throw on invalid origin', () => {
-				test.each(['https://subdomain.example.com', 'https://123example.com', undefined])(
-					'%s',
-					(origin) => {
-						req.headers.origin = origin;
+				test.each([
+					{
+						name: 'origin is undefined',
+						origin: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin does not match host',
+						origin: 'https://123example.com',
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin does not match host (subdomain)',
+						origin: `https://subdomain.${host}`,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin does not match x-forwarded-host',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: '123example.com', // this is not
+					},
+					{
+						name: 'origin does not match x-forwarded-host (subdomain)',
+						origin: `https://${host}`, // this is correct
+						xForwardedHost: `subdomain.${host}`, // this is not
+					},
+				])('$name', ({ origin, xForwardedHost }) => {
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
 
+					if (backendName === 'sse') {
+						expect(() => push.handleRequest(req, res)).toThrow(
+							new BadRequestError('Invalid origin!'),
+						);
+					} else {
+						push.handleRequest(req, res);
+						expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+						expect(ws.close).toHaveBeenCalledWith(1008);
+					}
+					expect(backend.add).not.toHaveBeenCalled();
+				});
+			});
+
+			describe('should not throw on invalid origin if `X-Forwarded-Host` is set correctly', () => {
+				test.each([
+					{
+						name: 'origin matches forward headers (https)',
+						origin: `https://${host}`,
+						xForwardedHost: host,
+					},
+					{
+						name: 'origin matches forward headers (http)',
+						origin: `http://${host}`,
+						xForwardedHost: host,
+					},
+					{
+						name: 'origin matches host (https)',
+						origin: `https://${host}`,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin matches host (http)',
+						origin: `http://${host}`,
+						xForwardedHost: undefined,
+					},
+				])('$name', ({ origin, xForwardedHost }) => {
+					// ARRANGE
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
+
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
+
+					// ACT
+					push.handleRequest(req, res);
+
+					// ASSERT
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+			});
+
+			describe('port normalization bug reproduction', () => {
+				test.each([
+					{
+						name: 'HTTPS origin without port should match x-forwarded-host with default HTTPS port (443)',
+						origin: `https://${host}`,
+						xForwardedHost: `${host}:443`,
+						shouldPass: true,
+					},
+					{
+						name: 'HTTP origin without port should match x-forwarded-host with default HTTP port (80)',
+						origin: `http://${host}`,
+						xForwardedHost: `${host}:80`,
+						shouldPass: true,
+					},
+					{
+						name: 'origin with explicit port should match x-forwarded-host with same port',
+						origin: `https://${host}:8080`,
+						xForwardedHost: `${host}:8080`,
+						shouldPass: true,
+					},
+					{
+						name: 'origin without port should NOT match x-forwarded-host with non-default port',
+						origin: `https://${host}`,
+						xForwardedHost: `${host}:8080`,
+						shouldPass: false,
+					},
+				])('$name', ({ origin, xForwardedHost, shouldPass }) => {
+					// ARRANGE
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
+
+					if (shouldPass) {
+						// Expected behavior: connection should be established
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						// ACT
+						push.handleRequest(req, res);
+
+						// ASSERT
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					} else {
+						// Expected behavior: connection should be rejected
 						if (backendName === 'sse') {
 							expect(() => push.handleRequest(req, res)).toThrow(
 								new BadRequestError('Invalid origin!'),
@@ -153,8 +283,8 @@ describe('Push', () => {
 							expect(ws.close).toHaveBeenCalledWith(1008);
 						}
 						expect(backend.add).not.toHaveBeenCalled();
-					},
-				);
+					}
+				});
 			});
 
 			test('should throw if pushRef is invalid', () => {
@@ -193,6 +323,61 @@ describe('Push', () => {
 					expect(backend.add).not.toHaveBeenCalled();
 				});
 			}
+
+			describe('additional edge cases', () => {
+				test('should handle array x-forwarded-host header (use first)', () => {
+					req.headers['x-forwarded-host'] = [host, 'other-host.com'] as any;
+					req.headers.origin = `https://${host}`;
+
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
+
+					push.handleRequest(req, res);
+
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+
+				test('should handle Forwarded header with precedence over x-forwarded-*', () => {
+					req.headers.forwarded = `proto=https;host=${host}`;
+					req.headers['x-forwarded-host'] = 'wrong-host.com'; // Should be ignored
+					req.headers.origin = `https://${host}`;
+
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
+
+					push.handleRequest(req, res);
+
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+
+				test('should normalize default ports in Forwarded header', () => {
+					req.headers.forwarded = `proto=https;host=${host}:443`;
+					req.headers.origin = `https://${host}`;
+
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
+
+					push.handleRequest(req, res);
+
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+
+				test('should handle IPv6 addresses correctly', () => {
+					req.headers.origin = 'https://[::1]:443';
+					req.headers['x-forwarded-host'] = '[::1]:443';
+
+					const emitSpy = jest.spyOn(push, 'emit');
+					const connection = backendName === 'sse' ? { req, res } : ws;
+
+					push.handleRequest(req, res);
+
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+			});
 		});
 	});
 });

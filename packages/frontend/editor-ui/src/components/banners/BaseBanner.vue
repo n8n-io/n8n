@@ -2,12 +2,14 @@
 import { useUIStore } from '@/stores/ui.store';
 import { computed, useSlots } from 'vue';
 import type { BannerName } from '@n8n/api-types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { CalloutTheme } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 interface Props {
 	name: BannerName;
-	theme?: string;
-	customIcon?: string;
+	theme?: CalloutTheme;
+	customIcon?: IconName;
 	dismissible?: boolean;
 }
 
@@ -19,6 +21,7 @@ const slots = useSlots();
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
 	dismissible: true,
+	customIcon: undefined,
 });
 
 const emit = defineEmits<{
@@ -35,7 +38,7 @@ async function onCloseClick() {
 }
 </script>
 <template>
-	<n8n-callout
+	<N8nCallout
 		:class="$style.callout"
 		:theme="props.theme"
 		:icon="props.customIcon"
@@ -50,10 +53,10 @@ async function onCloseClick() {
 		<template #trailingContent>
 			<div :class="$style.trailingContent">
 				<slot name="trailingContent" />
-				<n8n-icon
+				<N8nIcon
 					v-if="dismissible"
 					size="small"
-					icon="times"
+					icon="x"
 					:title="i18n.baseText('generic.dismiss')"
 					class="clickable"
 					:data-test-id="`banner-${props.name}-close`"
@@ -61,7 +64,7 @@ async function onCloseClick() {
 				/>
 			</div>
 		</template>
-	</n8n-callout>
+	</N8nCallout>
 </template>
 
 <style lang="scss" module>

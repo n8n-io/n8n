@@ -2,7 +2,7 @@
 import type { WorkerStatus } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { useClipboard } from '@/composables/useClipboard';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ function onCopyToClipboard(content: string) {
 </script>
 
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
+	<WorkerAccordion icon="list-checks" icon-color="text-dark" :initial-expanded="false">
 		<template #title>
 			{{ i18n.baseText('workerList.item.netListTitle') }} ({{ items.length }})
 		</template>

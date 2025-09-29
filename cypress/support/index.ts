@@ -1,7 +1,7 @@
 // Load type definitions that come with Cypress module
 /// <reference types="cypress" />
 
-import type { FrontendSettings, PushPayload, PushType } from '@n8n/api-types';
+import type { FrontendSettings, PushPayload, PushType, N8nEnvFeatFlags } from '@n8n/api-types';
 
 Cypress.Keyboard.defaults({
 	keystrokeDelay: 0,
@@ -28,15 +28,13 @@ declare global {
 				selector: string,
 				...args: Array<Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined>
 			): Chainable<JQuery<HTMLElement>>;
-			ifCanvasVersion<T1, T2>(getterV1: () => T1, getterV2: () => T2): T1 | T2;
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			/**
 			 * Creates a workflow from the given fixture and optionally renames it.
 			 *
 			 * @param fixtureKey
-			 * @param [workflowName] Optional name for the workflow. A random nanoid is used if not given
 			 */
-			createFixtureWorkflow(fixtureKey: string, workflowName?: string): void;
+			createFixtureWorkflow(fixtureKey: string): void;
 			/** @deprecated use signinAsOwner, signinAsAdmin or signinAsMember instead */
 			signin(payload: SigninPayload): void;
 			signinAsOwner(): void;
@@ -52,6 +50,11 @@ declare global {
 			enableQueueMode(): void;
 			disableQueueMode(): void;
 			changeQuota(feature: string, value: number): void;
+			setEnvFeatureFlags(
+				flags: N8nEnvFeatFlags,
+			): Chainable<{ success: boolean; flags?: N8nEnvFeatFlags; error?: string }>;
+			clearEnvFeatureFlags(): Chainable<{ success: boolean; flags: N8nEnvFeatFlags }>;
+			getEnvFeatureFlags(): Chainable<N8nEnvFeatFlags>;
 			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
@@ -86,7 +89,10 @@ declare global {
 				}
 			>;
 			resetDatabase(): void;
+			clearIndexedDB(dbName: string, storeName?: string): Chainable<void>;
 			setAppDate(targetDate: number | Date): void;
+			interceptNewTab(): Chainable<void>;
+			visitInterceptedTab(): Chainable<void>;
 		}
 	}
 }

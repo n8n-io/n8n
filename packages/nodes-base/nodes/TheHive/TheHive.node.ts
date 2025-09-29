@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/dot-notation */
 import set from 'lodash/set';
 import {
 	NodeConnectionTypes,

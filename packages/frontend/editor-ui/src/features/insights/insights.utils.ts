@@ -1,3 +1,4 @@
+import { useI18n } from '@n8n/i18n';
 import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import {
@@ -19,14 +20,23 @@ export const transformInsightsValues: Record<InsightsSummaryType, (value: number
 	failureRate: transformInsightsFailureRate,
 };
 
+const getPreviousValue = (value: number, deviation: number): number => value - deviation;
+
+const getDeviation = (value: number, deviation: number): number | null => {
+	if (value === 0 && deviation === 0) return 0;
+
+	const previousValue = getPreviousValue(value, deviation);
+	if (previousValue === 0) return null; // avoid division by zero
+
+	return (deviation / previousValue) * 100;
+};
+
 export const transformInsightsDeviation: Record<
 	InsightsSummaryType,
-	(value: number, deviation: number) => number
+	(value: number, deviation: number) => number | null
 > = {
-	total: (value: number, deviation: number) =>
-		value === 0 && deviation === 0 ? 0 : (deviation / value) * 100,
-	failed: (value: number, deviation: number) =>
-		value === 0 && deviation === 0 ? 0 : (deviation / value) * 100,
+	total: getDeviation,
+	failed: getDeviation,
 	timeSaved: (_: number, deviation: number) => transformInsightsTimeSaved(deviation),
 	averageRunTime: (_: number, deviation: number) => transformInsightsAverageRunTime(deviation),
 	failureRate: (_: number, deviation: number) => transformInsightsFailureRate(deviation),
@@ -48,3 +58,17 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 				unit: INSIGHTS_UNIT_MAPPING[key](data[key].value),
 			}))
 		: [];
+
+export const getTimeRangeLabels = () => {
+	const i18n = useI18n();
+
+	return {
+		day: i18n.baseText('insights.lastNHours', { interpolate: { count: 24 } }),
+		week: i18n.baseText('insights.lastNDays', { interpolate: { count: 7 } }),
+		'2weeks': i18n.baseText('insights.lastNDays', { interpolate: { count: 14 } }),
+		month: i18n.baseText('insights.lastNDays', { interpolate: { count: 30 } }),
+		quarter: i18n.baseText('insights.lastNDays', { interpolate: { count: 90 } }),
+		'6months': i18n.baseText('insights.months', { interpolate: { count: 6 } }),
+		year: i18n.baseText('insights.oneYear'),
+	};
+};

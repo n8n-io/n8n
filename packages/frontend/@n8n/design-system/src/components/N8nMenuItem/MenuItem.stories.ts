@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import { ElMenu } from 'element-plus';
 
 import N8nMenuItem from '.';
@@ -28,7 +28,7 @@ export const defaultMenuItem = template.bind({});
 defaultMenuItem.args = {
 	item: {
 		id: 'workflows',
-		icon: 'heart',
+		icon: 'home',
 		label: 'Workflows',
 	},
 };
@@ -37,7 +37,7 @@ export const withSecondaryIcon = template.bind({});
 withSecondaryIcon.args = {
 	item: {
 		id: 'workflows',
-		icon: 'heart',
+		icon: 'home',
 		label: 'Workflows',
 		secondaryIcon: { name: 'lock', size: 'small' },
 	},
@@ -47,7 +47,7 @@ export const withSecondaryIconTooltip = template.bind({});
 withSecondaryIconTooltip.args = {
 	item: {
 		id: 'workflows',
-		icon: 'heart',
+		icon: 'home',
 		label: 'Workflows',
 		secondaryIcon: {
 			name: 'lock',

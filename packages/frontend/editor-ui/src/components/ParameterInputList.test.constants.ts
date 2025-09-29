@@ -33,6 +33,33 @@ export const TEST_PARAMETERS: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName:
+			'Note: This is a notice with <a href="notice.n8n.io" target="_blank">notice link</a>',
+		name: 'testNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+		},
+	},
+	{
+		displayName:
+			'Tip: This is a callout with <a href="callout.n8n.io" target="_blank">callout link</a>',
+		name: 'testCallout',
+		type: 'callout',
+		default: '',
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+		},
+		typeOptions: {
+			calloutAction: {
+				label: 'and action!',
+				type: 'openSampleWorkflowTemplate',
+				templateId: 'test-template-id',
+			},
+		},
+	},
 ];
 
 export const FIXED_COLLECTION_PARAMETERS: INodeProperties[] = TEST_PARAMETERS.filter(

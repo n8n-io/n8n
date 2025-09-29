@@ -1,10 +1,10 @@
 import xss, { escapeAttrValue } from 'xss';
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
+import { toValue, type MaybeRef } from 'vue';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
 */
-
 export function sanitizeHtml(dirtyHtml: string) {
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {
@@ -48,21 +48,6 @@ export const sanitizeIfString = <T>(message: T): string | T => {
 	return message;
 };
 
-export function convertRemToPixels(rem: string) {
-	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-}
-
-export function isChildOf(parent: Element, child: Element): boolean {
-	if (child.parentElement === null) {
-		return false;
-	}
-	if (child.parentElement === parent) {
-		return true;
-	}
-
-	return isChildOf(parent, child.parentElement);
-}
-
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
 };
@@ -74,3 +59,48 @@ export const getBannerRowHeight = async (): Promise<number> => {
 		}, 0);
 	});
 };
+
+export function isOutsideSelected(el: HTMLElement | null) {
+	const selection = document.getSelection();
+
+	if (!selection?.anchorNode || !selection.focusNode || !el) {
+		return false;
+	}
+
+	return (
+		!el.contains(selection.anchorNode) &&
+		!el.contains(selection.focusNode) &&
+		(selection.anchorNode !== selection.focusNode ||
+			selection.anchorOffset !== selection.focusOffset)
+	);
+}
+
+let scrollbarWidth: number | undefined;
+
+export function getScrollbarWidth() {
+	if (scrollbarWidth !== undefined) {
+		return scrollbarWidth;
+	}
+
+	const outer = document.createElement('div');
+	const inner = document.createElement('div');
+
+	outer.style.visibility = 'hidden';
+	outer.style.overflow = 'scroll';
+	document.body.appendChild(outer);
+
+	outer.appendChild(inner);
+
+	scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+
+	outer.parentElement?.removeChild(outer);
+
+	return scrollbarWidth;
+}
+
+export function isEventTargetContainedBy(
+	eventTarget: EventTarget | null | undefined,
+	maybeContainer: MaybeRef<HTMLElement | null | undefined>,
+): boolean {
+	return !!(eventTarget instanceof Node && toValue(maybeContainer)?.contains(eventTarget));
+}

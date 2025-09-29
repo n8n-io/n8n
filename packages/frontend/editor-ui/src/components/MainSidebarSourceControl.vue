@@ -1,94 +1,66 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useToast } from '@/composables/useToast';
-import { useLoadingService } from '@/composables/useLoadingService';
-import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import { sourceControlEventBus } from '@/event-bus/source-control';
-import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useRoute, useRouter } from 'vue-router';
 
 defineProps<{
 	isCollapsed: boolean;
 }>();
 
-const responseStatuses = {
-	CONFLICT: 409,
-};
-
-const loadingService = useLoadingService();
-const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
-const toast = useToast();
+const projectStore = useProjectsStore();
 const i18n = useI18n();
-
-const eventBus = createEventBus();
+const route = useRoute();
+const router = useRouter();
 const tooltipOpenDelay = ref(300);
 
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
+
+// Check if the user has permission to push for at least one project
+const hasPushPermission = computed(() => {
+	return (
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } }) ||
+		projectStore.myProjects.some(
+			(project) =>
+				project.type === 'team' && getResourcePermissions(project?.scopes)?.sourceControl?.push,
+		)
+	);
+});
+
+const hasPullPermission = computed(() => {
+	return hasPermission(['rbac'], { rbac: { scope: 'sourceControl:pull' } });
+});
+
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
-		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
+		(hasPullPermission.value || hasPushPermission.value),
 );
 
 async function pushWorkfolder() {
-	loadingService.startLoading();
-	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
-	try {
-		const status = await sourceControlStore.getAggregatedStatus();
-
-		if (!status.length) {
-			toast.showMessage({
-				title: 'No changes to commit',
-				message: 'Everything is up to date',
-				type: 'info',
-			});
-			return;
-		}
-
-		uiStore.openModalWithData({
-			name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-			data: { eventBus, status },
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
-	} finally {
-		loadingService.stopLoading();
-		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
-	}
+	// Navigate to route with sourceControl param - modal will handle data loading and loading states
+	void router.push({
+		query: {
+			...route.query,
+			sourceControl: 'push',
+		},
+	});
 }
 
-async function pullWorkfolder() {
-	loadingService.startLoading();
-	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
-
-	try {
-		const status = await sourceControlStore.pullWorkfolder(false);
-
-		await notifyUserAboutPullWorkFolderOutcome(status, toast);
-
-		sourceControlEventBus.emit('pull');
-	} catch (error) {
-		const errorResponse = error.response;
-
-		if (errorResponse?.status === responseStatuses.CONFLICT) {
-			uiStore.openModalWithData({
-				name: SOURCE_CONTROL_PULL_MODAL_KEY,
-				data: { eventBus, status: errorResponse.data.data },
-			});
-		} else {
-			toast.showError(error, 'Error');
-		}
-	} finally {
-		loadingService.stopLoading();
-		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
-	}
+function pullWorkfolder() {
+	// Navigate to route with sourceControl param - modal will handle the pull operation
+	void router.push({
+		query: {
+			...route.query,
+			sourceControl: 'pull',
+		},
+	});
 }
 </script>
 
@@ -109,21 +81,31 @@ async function pullWorkfolder() {
 			data-test-id="main-sidebar-source-control-connected"
 		>
 			<span :class="$style.branchName">
-				<n8n-icon icon="code-branch" />
+				<N8nIcon icon="git-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+				<N8nTooltip
+					:disabled="!isCollapsed && hasPullPermission"
+					:show-after="tooltipOpenDelay"
+					:placement="isCollapsed ? 'right' : 'top'"
+				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.pull') }}
+							{{
+								!hasPullPermission
+									? i18n.baseText('settings.sourceControl.button.pull.forbidden')
+									: i18n.baseText('settings.sourceControl.button.pull')
+							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:class="{
 							'mr-2xs': !isCollapsed,
-							'mb-2xs': isCollapsed && !sourceControlStore.preferences.branchReadOnly,
+							'mb-2xs': isCollapsed,
 						}"
+						:disabled="!hasPullPermission"
+						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						type="tertiary"
 						size="mini"
@@ -131,27 +113,34 @@ async function pullWorkfolder() {
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
-				</n8n-tooltip>
-				<n8n-tooltip
-					v-if="!sourceControlStore.preferences.branchReadOnly"
-					:disabled="!isCollapsed"
+				</N8nTooltip>
+				<N8nTooltip
+					:disabled="
+						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
+					"
 					:show-after="tooltipOpenDelay"
-					placement="right"
+					:placement="isCollapsed ? 'right' : 'top'"
 				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.push') }}
+							{{
+								sourceControlStore.preferences.branchReadOnly || !hasPushPermission
+									? i18n.baseText('settings.sourceControl.button.push.forbidden')
+									: i18n.baseText('settings.sourceControl.button.push')
+							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
+						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
 						@click="pushWorkfolder"
 					/>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>

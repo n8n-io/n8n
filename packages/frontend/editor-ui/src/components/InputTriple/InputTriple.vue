@@ -6,7 +6,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 </script>
 
 <template>
-	<n8n-resize-observer
+	<N8nResizeObserver
 		:class="{ [$style.observer]: true }"
 		:breakpoints="[
 			{ bp: 'stacked', width: 400 },
@@ -40,7 +40,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 				</div>
 			</div>
 		</template>
-	</n8n-resize-observer>
+	</N8nResizeObserver>
 </template>
 
 <style lang="scss" module>
@@ -68,13 +68,20 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 }
 
 .item {
+	position: relative;
 	flex-shrink: 0;
 	flex-basis: 240px;
 	flex-grow: 1;
+	z-index: 0;
+
 	--input-border-radius: 0;
+
+	&:focus-within {
+		z-index: 1;
+	}
 }
 
-.default .item:not(:first-child):not(:focus-within + .item) {
+.default .item:not(:first-child) {
 	margin-left: -1px;
 }
 
@@ -102,12 +109,10 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	flex-wrap: wrap;
 
 	.middle {
+		margin-left: -1px;
+
 		--input-border-top-right-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: 0;
-
-		&:not(:focus-within + .item) {
-			margin-left: -1px;
-		}
 	}
 
 	.item:first-of-type {
@@ -118,15 +123,12 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.item:last-of-type {
 		flex-basis: 400px;
+		margin-top: -1px;
 
 		--input-border-top-left-radius: 0;
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: var(--border-radius-base);
-
-		&:not(:focus-within ~ .item) {
-			margin-top: -1px;
-		}
 	}
 }
 
@@ -149,7 +151,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 		--input-border-bottom-right-radius: 0;
 	}
 
-	.item:not(:first-of-type):not(:focus-within + .item) {
+	.item:not(:first-of-type) {
 		margin-top: -1px;
 	}
 

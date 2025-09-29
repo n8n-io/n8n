@@ -1,9 +1,14 @@
+import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
-import { access as fsAccess, writeFile as fsWriteFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import {
+	access as fsAccess,
+	writeFile as fsWriteFile,
+	realpath as fsRealpath,
+} from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -28,62 +33,44 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-export function isFilePathBlocked(filePath: string): boolean {
+export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = resolve(filePath);
+	let resolvedFilePath = '';
+	try {
+		resolvedFilePath = await fsRealpath(filePath);
+	} catch (error: unknown) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+			resolvedFilePath = resolve(filePath);
+		} else {
+			throw error;
+		}
+	}
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
-	//if allowed paths are defined, allow access only to those paths
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return false;
-			}
-		}
-
+	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];
+	if (
+		restrictedPaths.some((restrictedPath) => isContainedWithin(restrictedPath, resolvedFilePath))
+	) {
 		return true;
 	}
 
-	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
-	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder, staticCacheDir];
-
-		if (process.env[CONFIG_FILES]) {
-			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-		}
-
-		if (process.env[CUSTOM_EXTENSION_ENV]) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-			restrictedPaths.push(...customExtensionFolders);
-		}
-
-		if (process.env[BINARY_DATA_STORAGE_PATH]) {
-			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-		}
-
-		//check if the file path is restricted
-		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return true;
-			}
-		}
+	if (allowedPaths.length) {
+		return !allowedPaths.some((allowedPath) => isContainedWithin(allowedPath, resolvedFilePath));
 	}
 
-	//path is not restricted
 	return false;
 }
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
+		if (await isFilePathBlocked(filePath.toString())) {
+			const allowedPaths = getAllowedPaths();
+			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
+			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
+				level: 'warning',
+			});
+		}
+
 		try {
 			await fsAccess(filePath);
 		} catch (error) {
@@ -96,22 +83,16 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 					})
 				: error;
 		}
-		if (isFilePathBlocked(filePath as string)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
-		}
+
 		return createReadStream(filePath);
 	},
 
 	getStoragePath() {
-		return join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
+		return safeJoinPath(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
 	},
 
 	async writeContentToFile(filePath, content, flag) {
-		if (isFilePathBlocked(filePath as string)) {
+		if (await isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
 				level: 'warning',
 			});
@@ -119,3 +100,34 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
 });
+
+/**
+ * @returns The restricted paths for the n8n instance.
+ */
+function getN8nRestrictedPaths() {
+	const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
+	const restrictedPaths = [n8nFolder, staticCacheDir];
+
+	if (process.env[CONFIG_FILES]) {
+		restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
+	}
+
+	if (process.env[CUSTOM_EXTENSION_ENV]) {
+		const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+		restrictedPaths.push(...customExtensionFolders);
+	}
+
+	if (process.env[BINARY_DATA_STORAGE_PATH]) {
+		restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
+	}
+
+	return restrictedPaths;
+}

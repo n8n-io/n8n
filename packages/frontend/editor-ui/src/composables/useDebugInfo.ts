@@ -1,4 +1,4 @@
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -8,6 +8,7 @@ type DebugInfo = {
 		n8nVersion: string;
 		platform: 'docker (cloud)' | 'docker (self-hosted)' | 'npm';
 		nodeJsVersion: string;
+		nodeEnv: string | undefined;
 		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
 		executionMode: 'regular' | 'scaling (single-main)' | 'scaling (multi-main)';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
@@ -58,6 +59,7 @@ export function useDebugInfo() {
 						? 'docker (self-hosted)'
 						: 'npm',
 			nodeJsVersion: settingsStore.nodeJsVersion,
+			nodeEnv: settingsStore.nodeEnv,
 			database:
 				settingsStore.databaseType === 'postgresdb'
 					? 'postgres'

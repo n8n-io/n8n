@@ -2,7 +2,7 @@
 import WorkerList from '@/components/WorkerList.ee.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -18,7 +18,7 @@ const goToUpgrade = () => {
 		v-if="settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable"
 		data-test-id="worker-view-licensed"
 	/>
-	<n8n-action-box
+	<N8nActionBox
 		v-else
 		data-test-id="worker-view-unlicensed"
 		:class="$style.actionBox"
@@ -35,7 +35,7 @@ const goToUpgrade = () => {
 				{{ i18n.baseText('workerList.actionBox.description.link') }}
 			</a>
 		</template>
-	</n8n-action-box>
+	</N8nActionBox>
 </template>
 
 <style module lang="scss">

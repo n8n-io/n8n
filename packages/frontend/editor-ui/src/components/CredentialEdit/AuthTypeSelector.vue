@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -135,13 +135,13 @@ defineExpose({
 			/>
 		</div>
 		<div>
-			<n8n-input-label
+			<N8nInputLabel
 				:label="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
 				:tooltip-text="i18n.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
 				:required="true"
 			/>
 		</div>
-		<el-radio
+		<ElRadio
 			v-for="prop in filteredNodeAuthOptions"
 			:key="prop.value"
 			v-model="selected"
@@ -149,7 +149,7 @@ defineExpose({
 			:class="$style.authRadioButton"
 			border
 			@update:model-value="onAuthTypeChange"
-			>{{ prop.name }}</el-radio
+			>{{ prop.name }}</ElRadio
 		>
 	</div>
 </template>

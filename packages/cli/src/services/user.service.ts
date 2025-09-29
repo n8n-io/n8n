@@ -1,9 +1,9 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
-import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -16,6 +16,7 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
+import { RoleService } from './role.service';
 
 @Service()
 export class UserService {
@@ -26,6 +27,7 @@ export class UserService {
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly roleService: RoleService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -61,16 +63,19 @@ export class UserService {
 			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
+			mfaAuthenticated?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
+			user;
 
-		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
-			signInType: ldapIdentity ? 'ldap' : 'email',
-			isOwner: user.role === 'global:owner',
+			role: role?.slug,
+			signInType: providerType ?? 'email',
+			isOwner: user.role.slug === 'global:owner',
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
@@ -89,6 +94,8 @@ export class UserService {
 		if (options?.withScopes) {
 			publicUser.globalScopes = getGlobalScopes(user);
 		}
+
+		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
 	}
@@ -205,13 +212,24 @@ export class UserService {
 				: 'Creating 1 user shell...',
 		);
 
+		// Check that all roles in the invitations exist in the database
+		await this.roleService.checkRolesExist(
+			invitations.map(({ role }) => role),
+			'global',
+		);
+
 		try {
 			await this.getManager().transaction(
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
 							const { user: savedUser } = await this.userRepository.createUserWithProject(
-								{ email, role },
+								{
+									email,
+									role: {
+										slug: role,
+									},
+								},
 								transactionManager,
 							);
 							createdUsers.set(email, savedUser.id);
@@ -236,12 +254,15 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+		// Check that new role exists
+		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
+
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
+			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 
 			const adminDowngradedToMember =
-				user.role === 'global:owner' &&
-				targetUser.role === 'global:admin' &&
+				user.role.slug === 'global:owner' &&
+				targetUser.role.slug === 'global:admin' &&
 				newRole.newRoleName === 'global:member';
 
 			if (adminDowngradedToMember) {

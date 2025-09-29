@@ -1,6 +1,6 @@
 import { type INodeTypeDescription } from 'n8n-workflow';
-import type { IVersionNode } from '../Interface';
-import { useRootStore } from '../stores/root.store';
+import type { VersionNode } from '@n8n/rest-api-client/api/versions';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
 import { isNodePreviewKey } from '../components/Node/NodeCreator/utils';
@@ -20,7 +20,7 @@ type IconNodeTypeDescription = Pick<
 	INodeTypeDescription,
 	'icon' | 'iconUrl' | 'iconColor' | 'defaults' | 'badgeIconUrl' | 'name'
 >;
-type IconVersionNode = Pick<IVersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
+type IconVersionNode = Pick<VersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
 export const getNodeIcon = (nodeType: IconNodeType): string | null => {
@@ -73,13 +73,25 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		}
 	}
 
-	if (nodeType.name && isNodePreviewKey(nodeType.name) && typeof nodeType.iconUrl === 'string') {
-		// If node type is a node preview it would have full icon url
-		return {
-			type: 'file',
-			src: nodeType.iconUrl,
-			badge: undefined,
-		};
+	if (nodeType.name && isNodePreviewKey(nodeType.name)) {
+		// Handle both string and object iconUrl for preview nodes
+		if (typeof nodeType.iconUrl === 'string') {
+			return {
+				type: 'file',
+				src: nodeType.iconUrl,
+				badge: undefined,
+			};
+		} else if (nodeType.iconUrl && typeof nodeType.iconUrl === 'object') {
+			// Use getThemedValue to get the appropriate theme URL
+			const themedUrl = getThemedValue(nodeType.iconUrl, useUIStore().appliedTheme);
+			if (themedUrl) {
+				return {
+					type: 'file',
+					src: themedUrl,
+					badge: undefined,
+				};
+			}
+		}
 	}
 
 	const iconUrl = getNodeIconUrl(nodeType);

@@ -5,7 +5,9 @@ type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: string;
+	role: {
+		slug: string;
+	};
 };
 
 export class RedactableError extends UnexpectedError {
@@ -22,7 +24,7 @@ function toRedactable(userLike: UserLike) {
 		_email: userLike.email,
 		_firstName: userLike.firstName,
 		_lastName: userLike.lastName,
-		globalRole: userLike.role,
+		globalRole: userLike.role.slug,
 	};
 }
 
@@ -43,7 +45,7 @@ type FieldName = 'user' | 'inviter' | 'invitee';
 export const Redactable =
 	(fieldName: FieldName = 'user'): MethodDecorator =>
 	(_target, _propertyName, propertyDescriptor: PropertyDescriptor) => {
-		// eslint-disable-next-line @typescript-eslint/ban-types
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const originalMethod = propertyDescriptor.value as Function;
 
 		type MethodArgs = Array<{ [fieldName: string]: UserLike }>;

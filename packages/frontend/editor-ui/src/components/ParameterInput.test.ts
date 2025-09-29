@@ -4,22 +4,28 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { createMockEnterpriseSettings } from '@/__tests__/mocks';
+import {
+	createTestExpressionLocalResolveContext,
+	createMockEnterpriseSettings,
+	createTestNode,
+	createTestWorkflowObject,
+	createTestNodeProperties,
+} from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
+import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
+import { mock } from 'vitest-mock-extended';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { nextTick } from 'vue';
 
-let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
-let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
-let mockCompletionResult: Partial<CompletionResult>;
-
-beforeEach(() => {
-	mockNdvState = {
+function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
+	return {
 		hasInputData: true,
 		activeNode: {
 			id: faker.string.uuid(),
@@ -31,12 +37,30 @@ beforeEach(() => {
 		},
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
+		ndvInputDataWithPinnedData: [],
+		getHoveringItem: undefined,
+		expressionOutputItemIndex: 0,
+		isTableHoverOnboarded: false,
+		setHighlightDraggables: vi.fn(),
+		setNDVPanelDataIsEmpty: vi.fn(),
+		setNDVBranchIndex: vi.fn(),
 	};
-	mockNodeTypesState = {
+}
+
+function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
+	return {
 		allNodeTypes: [],
 	};
+}
+
+let mockNdvState = getNdvStateMock();
+let mockNodeTypesState = getNodeTypesStateMock();
+let mockCompletionResult: Partial<CompletionResult> = {};
+
+beforeEach(() => {
+	mockNdvState = getNdvStateMock();
+	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
-	createAppModals();
 });
 
 vi.mock('@/stores/ndv.store', () => {
@@ -92,17 +116,22 @@ describe('ParameterInput.vue', () => {
 			},
 			isInputPanelEmpty: false,
 			isOutputPanelEmpty: false,
+			ndvInputDataWithPinnedData: [],
+			getHoveringItem: undefined,
+			expressionOutputItemIndex: 0,
+			isTableHoverOnboarded: false,
+			setHighlightDraggables: vi.fn(),
+			setNDVPanelDataIsEmpty: vi.fn(),
+			setNDVBranchIndex: vi.fn(),
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],
 			getNodeType: vi.fn().mockReturnValue(null),
 		};
-		createAppModals();
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
 	});
 
 	afterEach(() => {
-		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 
@@ -201,7 +230,9 @@ describe('ParameterInput.vue', () => {
 
 		await userEvent.click(options[1]);
 
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]);
+		await waitFor(() =>
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]),
+		);
 	});
 
 	test('should render a string parameter', async () => {
@@ -221,42 +252,78 @@ describe('ParameterInput.vue', () => {
 
 		await userEvent.type(input, 'foo');
 
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+		await waitFor(() =>
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
+		);
 	});
 
-	test('should correctly handle paste events', async () => {
-		const { container, emitted } = renderComponent({
-			props: {
-				path: 'tag',
-				parameter: {
-					displayName: 'Tag',
-					name: 'tag',
-					type: 'string',
-				},
-				modelValue: '',
-			},
-		});
-		const input = container.querySelector('input') as HTMLInputElement;
-		expect(input).toBeInTheDocument();
-		await userEvent.click(input);
-
-		async function paste(text: string) {
+	describe('paste events', () => {
+		async function paste(input: HTMLInputElement, text: string) {
 			const expression = new DataTransfer();
 			expression.setData('text', text);
 			await userEvent.clear(input);
 			await userEvent.paste(expression);
 		}
 
-		await paste('foo');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+		test('should handle pasting into a string parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'tag',
+					parameter: {
+						displayName: 'Tag',
+						name: 'tag',
+						type: 'string',
+					},
+					modelValue: '',
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
 
-		await paste('={{ $json.foo }}');
-		expect(emitted('update')).toContainEqual([
-			expect.objectContaining({ value: '={{ $json.foo }}' }),
-		]);
+			await paste(input, 'foo');
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
+			);
 
-		await paste('=flDvzj%y1nP');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '==flDvzj%y1nP' })]);
+			await paste(input, '={{ $json.foo }}');
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '={{ $json.foo }}' }),
+				]),
+			);
+
+			await paste(input, '=flDvzj%y1nP');
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '==flDvzj%y1nP' }),
+				]),
+			);
+		});
+
+		test('should handle pasting an expression into a number parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'percentage',
+					parameter: {
+						displayName: 'Percentage',
+						name: 'percentage',
+						type: 'number',
+					},
+					modelValue: 1,
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
+
+			await paste(input, '{{ $json.foo }}');
+			await waitFor(() =>
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ value: '={{ $json.foo }}' }),
+				]),
+			);
+		});
 	});
 
 	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {
@@ -335,19 +402,19 @@ describe('ParameterInput.vue', () => {
 			value: workflowId,
 		};
 
-		workflowsStore.allWorkflows = [
-			{
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+			mock<WorkflowListResource>({
 				id: workflowId,
 				name: 'Test',
 				active: false,
 				isArchived: false,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
-				nodes: [],
-				connections: {},
+				// nodes: [],
+				// connections: {},
 				versionId: faker.string.uuid(),
-			},
-		];
+			}),
+		]);
 
 		const { emitted, container, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -388,19 +455,17 @@ describe('ParameterInput.vue', () => {
 			value: workflowId,
 		};
 
-		workflowsStore.allWorkflows = [
-			{
-				id: workflowId,
-				name: 'Test',
-				active: false,
-				isArchived: true,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				nodes: [],
-				connections: {},
-				versionId: faker.string.uuid(),
-			},
-		];
+		const workflowBase = {
+			id: workflowId,
+			name: 'Test',
+			active: false,
+			isArchived: true,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			versionId: faker.string.uuid(),
+		};
+		workflowsStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([mock<WorkflowListResource>(workflowBase)]);
 
 		const { emitted, container, getByTestId } = renderComponent({
 			props: {
@@ -511,5 +576,185 @@ describe('ParameterInput.vue', () => {
 
 		eventBus.emit('optionSelected', 'removeExpression');
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '{{ }}' })]);
+	});
+
+	test('should maintain focus after changing to expression', async () => {
+		const { rerender, getByRole, getByTestId } = renderComponent({
+			props: {
+				path: 'name',
+				parameter: {
+					displayName: 'Name',
+					name: 'name',
+					type: 'string',
+				},
+				modelValue: 'test',
+			},
+		});
+		const input = getByRole('textbox');
+		expect(input).toBeInTheDocument();
+		await userEvent.click(input);
+		await rerender({ modelValue: '={{ $json.foo }}' });
+
+		const expressionEditor = getByTestId('inline-expression-editor-input');
+		expect(expressionEditor).toBeInTheDocument();
+		const expressionEditorInput = within(expressionEditor).getByRole('textbox');
+		await waitFor(() => expect(expressionEditorInput).toHaveFocus());
+	});
+
+	describe('when not in focus', () => {
+		test('should not focus after changing to expression ', async () => {
+			const { rerender, getByRole, getByTestId } = renderComponent({
+				props: {
+					path: 'name',
+					parameter: {
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+					},
+					modelValue: 'test',
+				},
+			});
+			const input = getByRole('textbox');
+			expect(input).toBeInTheDocument();
+			await rerender({ modelValue: '={{ $json.foo }}' });
+
+			const expressionEditor = getByTestId('inline-expression-editor-input');
+			expect(expressionEditor).toBeInTheDocument();
+			const expressionEditorInput = within(expressionEditor).getByRole('textbox');
+			await waitFor(() => expect(expressionEditorInput).not.toHaveFocus());
+		});
+	});
+
+	describe('debounced input', () => {
+		test('should debounce text input and emit update event only once', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'textField',
+					parameter: {
+						displayName: 'Text Field',
+						name: 'textField',
+						type: 'string',
+					},
+					modelValue: '',
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+
+			await userEvent.click(input);
+
+			await userEvent.type(input, 'h');
+			await userEvent.type(input, 'e');
+			await userEvent.type(input, 'l');
+			await userEvent.type(input, 'l');
+			await userEvent.type(input, 'o');
+			// by now the update event should not have been emitted because of debouncing
+			expect(emitted('update')).not.toContainEqual([expect.objectContaining({ value: 'hello' })]);
+
+			// Now the update event should have been emitted
+			await waitFor(() => {
+				const updateEvents = emitted('update');
+				expect(updateEvents).toBeDefined();
+				expect(updateEvents.length).toBeLessThan(5);
+				expect(updateEvents).toContainEqual([expect.objectContaining({ value: 'hello' })]);
+			});
+		});
+	});
+
+	describe('data mapper', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
+			connections: {
+				n1: {
+					[NodeConnectionTypes.Main]: [[{ node: 'n0', index: 0, type: NodeConnectionTypes.Main }]],
+				},
+			},
+		});
+		const ctx = createTestExpressionLocalResolveContext({
+			workflow,
+			nodeName: 'n0',
+			inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
+		});
+
+		it('should render mapper when the current value is empty', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties(),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when editor type is specified in the parameter', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ typeOptions: { editor: 'sqlEditor' } }),
+					modelValue: 'SELECT 1;',
+				},
+			});
+
+			await nextTick();
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should render mapper when the current value is an expression', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties(),
+					modelValue: '={{$today}}',
+				},
+			});
+
+			await nextTick();
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
+		});
+
+		it('should not render mapper if given node property is a node setting', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ isNodeSetting: true }),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
+		});
+
+		it('should not render mapper if given node property has datetime type', async () => {
+			const rendered = renderComponent({
+				global: { provide: { [ExpressionLocalResolveContextSymbol]: ctx } },
+				props: {
+					path: 'name',
+					parameter: createTestNodeProperties({ type: 'dateTime' }),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
+
+			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
+		});
 	});
 });

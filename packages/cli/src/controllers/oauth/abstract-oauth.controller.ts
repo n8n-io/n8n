@@ -1,21 +1,23 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
+import { Time } from '@n8n/constants';
+import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials, Logger } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
-import type { AuthenticatedRequest, OAuthRequest } from '@/requests';
+import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -32,9 +34,13 @@ type CsrfStateParam = {
 
 const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
 
-// TODO: Flip this flag in v2
-// https://linear.app/n8n/issue/CAT-329
-export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK !== 'true';
+export function shouldSkipAuthOnOAuthCallback() {
+	// TODO: Flip this flag in v2 https://linear.app/n8n/issue/CAT-329
+	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'true';
+	return value === 'true';
+}
+
+export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 @Service()
 export abstract class AbstractOAuthController {

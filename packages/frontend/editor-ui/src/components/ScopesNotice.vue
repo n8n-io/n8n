@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const credentialsStore = useCredentialsStore();
@@ -46,5 +46,5 @@ const scopesFullContent = computed((): string => {
 </script>
 
 <template>
-	<n8n-notice :content="scopesShortContent" :full-content="scopesFullContent" />
+	<N8nNotice :content="scopesShortContent" :full-content="scopesFullContent" />
 </template>

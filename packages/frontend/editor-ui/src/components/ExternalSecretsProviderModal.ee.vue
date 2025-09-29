@@ -4,7 +4,7 @@ import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants'
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -18,6 +18,7 @@ import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };
@@ -187,18 +188,13 @@ async function onConnectionStateChange() {
 						:provider="provider"
 						@change="onConnectionStateChange"
 					/>
-					<n8n-button
-						type="primary"
-						:loading="saving"
-						:disabled="!canSave && !saving"
-						@click="save"
-					>
+					<N8nButton type="primary" :loading="saving" :disabled="!canSave && !saving" @click="save">
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,
 							)
 						}}
-					</n8n-button>
+					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -207,7 +203,7 @@ async function onConnectionStateChange() {
 			<div v-if="provider" :class="$style.container">
 				<hr class="mb-l" />
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
-					<n8n-callout
+					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
 						theme="success"
 					>
@@ -226,23 +222,24 @@ async function onConnectionStateChange() {
 						}}
 						<span v-if="provider.connected">
 							<br />
-							<i18n-t
+							<I18nT
 								keypath="settings.externalSecrets.provider.testConnection.success.connected.usage"
+								scope="global"
 							>
 								<template #code>
 									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
 								</template>
-							</i18n-t>
-							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
+							</I18nT>
+							<N8nLink :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
 								{{
 									i18n.baseText(
 										'settings.externalSecrets.provider.testConnection.success.connected.docs',
 									)
 								}}
-							</n8n-link>
+							</N8nLink>
 						</span>
-					</n8n-callout>
-					<n8n-callout v-else-if="connectionState === 'error'" theme="danger">
+					</N8nCallout>
+					<N8nCallout v-else-if="connectionState === 'error'" theme="danger">
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.error${
@@ -253,7 +250,7 @@ async function onConnectionStateChange() {
 								},
 							)
 						}}
-					</n8n-callout>
+					</N8nCallout>
 				</div>
 
 				<form
@@ -264,7 +261,7 @@ async function onConnectionStateChange() {
 					data-test-id="external-secrets-provider-properties-form"
 					@submit.prevent
 				>
-					<n8n-notice v-if="property.type === 'notice'" :content="property.displayName" />
+					<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
 					<ParameterInputExpanded
 						v-else
 						class="mb-l"

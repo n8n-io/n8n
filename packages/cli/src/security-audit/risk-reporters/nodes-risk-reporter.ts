@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import glob from 'fast-glob';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -14,14 +13,14 @@ import {
 } from '@/security-audit/constants';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { getNodeTypes } from '@/security-audit/utils';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+
+import { PackagesRepository } from '../security-audit.repository';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly globalConfig: GlobalConfig,
+		private readonly packagesRepository: PackagesRepository,
 	) {}
 
 	async report(workflows: IWorkflowBase[]) {
@@ -87,9 +86,7 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!this.globalConfig.nodes.communityPackages.enabled) return [];
-
-		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
+		const installedPackages = await this.packagesRepository.find({ relations: ['installedNodes'] });
 
 		return installedPackages.reduce<Risk.CommunityNodeDetails[]>((acc, pkg) => {
 			pkg.installedNodes.forEach((node) =>

@@ -1,14 +1,21 @@
 import type { InsightsSummaryType } from '@n8n/api-types';
-import { useI18n } from '@/composables/useI18n';
 import dateformat from 'dateformat';
 
+export const INSIGHT_TYPES = {
+	TOTAL: 'total',
+	FAILED: 'failed',
+	FAILURE_RATE: 'failureRate',
+	TIME_SAVED: 'timeSaved',
+	AVERAGE_RUN_TIME: 'averageRunTime',
+} as const;
+
 export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
-	'total',
-	'failed',
-	'failureRate',
-	'timeSaved',
-	'averageRunTime',
-];
+	INSIGHT_TYPES.TOTAL,
+	INSIGHT_TYPES.FAILED,
+	INSIGHT_TYPES.FAILURE_RATE,
+	INSIGHT_TYPES.TIME_SAVED,
+	INSIGHT_TYPES.AVERAGE_RUN_TIME,
+] as const;
 
 export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) => string> = {
 	total: () => '',
@@ -69,16 +76,6 @@ export const TELEMETRY_TIME_RANGE = {
 	quarter: 90,
 	'6months': 180,
 	year: 365,
-};
-
-export const TIME_RANGE_LABELS = {
-	day: useI18n().baseText('insights.lastNHours', { interpolate: { count: 24 } }),
-	week: useI18n().baseText('insights.lastNDays', { interpolate: { count: 7 } }),
-	'2weeks': useI18n().baseText('insights.lastNDays', { interpolate: { count: 14 } }),
-	month: useI18n().baseText('insights.lastNDays', { interpolate: { count: 30 } }),
-	quarter: useI18n().baseText('insights.lastNDays', { interpolate: { count: 90 } }),
-	'6months': useI18n().baseText('insights.months', { interpolate: { count: 6 } }),
-	year: useI18n().baseText('insights.oneYear'),
 };
 
 export const UNLICENSED_TIME_RANGE = 'UNLICENSED_TIME_RANGE' as const;

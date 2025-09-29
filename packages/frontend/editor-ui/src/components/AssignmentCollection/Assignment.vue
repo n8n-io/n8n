@@ -10,7 +10,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 interface Props {
 	path: string;
@@ -25,12 +27,14 @@ interface Props {
 const props = defineProps<Props>();
 
 const assignment = ref<AssignmentValue>(props.modelValue);
+const valueInputHovered = ref(false);
 
 const emit = defineEmits<{
 	'update:model-value': [value: AssignmentValue];
 	remove: [];
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
 
@@ -49,6 +53,8 @@ const assignmentTypeToNodeProperty = (
 			};
 		case 'array':
 		case 'object':
+		case 'binary':
+			return { type: 'string' };
 		case 'any':
 			return { type: 'string' };
 		default:
@@ -66,11 +72,15 @@ const nameParameter = computed<INodeProperties>(() => ({
 }));
 
 const valueParameter = computed<INodeProperties>(() => {
+	const placeholder =
+		assignment.value.type === 'binary'
+			? i18n.baseText('assignment.binaryData.placeholder')
+			: 'value';
 	return {
 		name: 'value',
 		displayName: 'Value',
 		default: '',
-		placeholder: 'value',
+		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
 	};
 });
@@ -113,6 +123,10 @@ const onRemove = (): void => {
 const onBlur = (): void => {
 	emit('update:model-value', assignment.value);
 };
+
+const onValueInputHoverChange = (hovered: boolean): void => {
+	valueInputHovered.value = hovered;
+};
 </script>
 
 <template>
@@ -128,20 +142,20 @@ const onBlur = (): void => {
 			v-if="!isReadOnly"
 			type="tertiary"
 			text
-			size="mini"
+			size="small"
 			icon="grip-vertical"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
-		></N8nIconButton>
+		/>
 		<N8nIconButton
 			v-if="!isReadOnly"
 			type="tertiary"
 			text
-			size="mini"
-			icon="trash"
+			size="small"
+			icon="trash-2"
 			data-test-id="assignment-remove"
 			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
-		></N8nIconButton>
+		/>
 
 		<div :class="$style.inputs">
 			<InputTriple middle-width="100px">
@@ -161,13 +175,18 @@ const onBlur = (): void => {
 					/>
 				</template>
 				<template v-if="!hideType" #middle>
-					<TypeSelect
-						:class="$style.select"
-						:model-value="assignment.type ?? 'string'"
-						:is-read-only="disableType || isReadOnly"
-						@update:model-value="onAssignmentTypeChange"
-					>
-					</TypeSelect>
+					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+						<template #content>
+							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+						</template>
+						<TypeSelect
+							:class="$style.select"
+							:model-value="assignment.type ?? 'string'"
+							:is-read-only="disableType || isReadOnly"
+							@update:model-value="onAssignmentTypeChange"
+						>
+						</TypeSelect>
+					</N8nTooltip>
 				</template>
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">
@@ -186,11 +205,16 @@ const onBlur = (): void => {
 							data-test-id="assignment-value"
 							@update="onAssignmentValueChange"
 							@blur="onBlur"
+							@hover="onValueInputHoverChange"
 						/>
 						<ParameterInputHint
 							v-if="resolvedExpressionString"
 							data-test-id="parameter-expression-preview-value"
-							:class="$style.hint"
+							:class="{
+								[$style.hint]: true,
+								[$style.optionsPadding]:
+									breakpoint !== 'default' && !isReadOnly && valueInputHovered,
+							}"
 							:highlight="highlightHint"
 							:hint="hint"
 							single-line
@@ -247,6 +271,10 @@ const onBlur = (): void => {
 		bottom: calc(var(--spacing-s) * -1);
 		left: 0;
 		right: 0;
+	}
+
+	.optionsPadding {
+		width: calc(100% - 140px);
 	}
 }
 

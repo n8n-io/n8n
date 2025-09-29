@@ -1,10 +1,11 @@
-<script lang="ts" setup generic="Value extends string">
+<script lang="ts" setup generic="Value extends string | boolean">
 import RadioButton from './RadioButton.vue';
 
 interface RadioOption {
 	label: string;
 	value: Value;
 	disabled?: boolean;
+	data?: Record<string, string | number | boolean | undefined>;
 }
 
 interface RadioButtonsProps {
@@ -47,8 +48,9 @@ const onClick = (
 	>
 		<RadioButton
 			v-for="option in options"
-			:key="option.value"
+			:key="`${option.value}`"
 			v-bind="option"
+			:value="`${option.value}`"
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"

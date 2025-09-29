@@ -7,7 +7,7 @@ import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output
 import type { BaseChatMemory } from 'langchain/memory';
 import { DynamicStructuredTool, type Tool } from 'langchain/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
@@ -42,7 +42,7 @@ export function getOutputParserSchema(
  * @returns A HumanMessage containing the binary image messages.
  */
 export async function extractBinaryMessages(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
@@ -103,7 +103,6 @@ export function fixEmptyContentMessage(
 			if (Array.isArray(step.messageLog)) {
 				step.messageLog.forEach((message: BaseMessage) => {
 					if ('content' in message && Array.isArray(message.content)) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						(message.content as Array<{ input?: string | object }>).forEach((content) => {
 							if (content.input === '') {
 								content.input = {};
@@ -230,10 +229,22 @@ export const getAgentStepsParser =
 			if (finalResponse instanceof Object) {
 				if ('output' in finalResponse) {
 					try {
-						// If the output is an object, we will try to parse it as JSON
-						// this is because parser expects stringified JSON object like { "output": { .... } }
-						// so we try to parse the output before wrapping it and then stringify it
-						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+						const parsedOutput = jsonParse<Record<string, unknown>>(finalResponse.output);
+						// Check if the parsed output already has the expected structure
+						// If it already has { output: ... }, use it as-is to avoid double wrapping
+						// Otherwise, wrap it in { output: ... } as expected by the parser
+						if (
+							parsedOutput !== null &&
+							typeof parsedOutput === 'object' &&
+							'output' in parsedOutput &&
+							Object.keys(parsedOutput).length === 1
+						) {
+							// Already has the expected structure, use as-is
+							parserInput = JSON.stringify(parsedOutput);
+						} else {
+							// Needs wrapping for the parser
+							parserInput = JSON.stringify({ output: parsedOutput });
+						}
 					} catch (error) {
 						// Fallback to the raw output if parsing fails.
 						parserInput = finalResponse.output;
@@ -263,8 +274,25 @@ export const getAgentStepsParser =
  * @param ctx - The execution context
  * @returns The validated chat model
  */
-export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
-	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+export async function getChatModel(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	index: number = 0,
+): Promise<BaseChatModel | undefined> {
+	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+
+	let model;
+
+	if (Array.isArray(connectedModels) && index !== undefined) {
+		if (connectedModels.length <= index) {
+			return undefined;
+		}
+		// We get the models in reversed order from the workflow so we need to reverse them to match the right index
+		const reversedModels = [...connectedModels].reverse();
+		model = reversedModels[index] as BaseChatModel;
+	} else {
+		model = connectedModels as BaseChatModel;
+	}
+
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
@@ -281,7 +309,7 @@ export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatMode
  * @returns The connected memory (if any)
  */
 export async function getOptionalMemory(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<BaseChatMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
@@ -297,7 +325,7 @@ export async function getOptionalMemory(
  * @returns The array of connected tools
  */
 export async function getTools(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	outputParser?: N8nOutputParser,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
@@ -327,7 +355,7 @@ export async function getTools(
  * @returns The array of prompt messages
  */
 export async function prepareMessages(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	options: {
 		systemMessage?: string;

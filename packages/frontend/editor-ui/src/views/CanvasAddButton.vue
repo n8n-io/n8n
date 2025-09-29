@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export interface Props {
 	showTooltip: boolean;
@@ -27,7 +27,7 @@ const containerCssVars = computed(() => ({
 		:style="containerCssVars"
 		data-test-id="canvas-add-button"
 	>
-		<n8n-tooltip
+		<N8nTooltip
 			placement="top"
 			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
@@ -35,12 +35,12 @@ const containerCssVars = computed(() => ({
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
-				<font-awesome-icon icon="plus" size="lg" />
+				<N8nIcon icon="plus" size="large" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
-		</n8n-tooltip>
+		</N8nTooltip>
 		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
 	</div>
 </template>

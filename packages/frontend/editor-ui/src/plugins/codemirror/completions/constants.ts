@@ -1,7 +1,9 @@
 import type { Completion, CompletionSection } from '@codemirror/autocomplete';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { withSectionHeader } from './utils';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
+import { Facet } from '@codemirror/state';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
@@ -436,3 +438,10 @@ export const STRING_SECTIONS: Record<string, CompletionSection> = {
 		rank: 5,
 	}),
 };
+
+export const TARGET_NODE_PARAMETER_FACET = Facet.define<
+	TargetNodeParameterContext | undefined,
+	TargetNodeParameterContext | undefined
+>({
+	combine: (values) => values[0],
+});

@@ -13,28 +13,11 @@ exports[`V1 Banner > should render banner 1`] = `
       <div
         class="icon"
       >
-        <span
-          class="n8n-text compact size-medium regular n8n-icon n8n-icon"
-        >
-          
-          <svg
-            aria-hidden="true"
-            class="svg-inline--fa fa-info-circle fa-w-16 medium"
-            data-icon="info-circle"
-            data-prefix="fas"
-            focusable="false"
-            role="img"
-            viewBox="0 0 512 512"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              class=""
-              d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"
-              fill="currentColor"
-            />
-          </svg>
-          
-        </span>
+        <n8n-icon-stub
+          icon="info"
+          size="medium"
+          spin="false"
+        />
       </div>
       <span
         class="n8n-text size-small regular"
@@ -71,30 +54,14 @@ exports[`V1 Banner > should render banner 1`] = `
     >
       
       
-      <span
-        class="n8n-text compact size-small regular n8n-icon clickable clickable n8n-icon clickable clickable"
+      <n8n-icon-stub
+        class="clickable"
         data-test-id="banner-V1-close"
+        icon="x"
+        size="small"
+        spin="false"
         title="Dismiss"
-      >
-        
-        <svg
-          aria-hidden="true"
-          class="svg-inline--fa fa-times fa-w-11 small"
-          data-icon="times"
-          data-prefix="fas"
-          focusable="false"
-          role="img"
-          viewBox="0 0 352 512"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            class=""
-            d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"
-            fill="currentColor"
-          />
-        </svg>
-        
-      </span>
+      />
     </div>
     
   </div>
@@ -114,28 +81,11 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
       <div
         class="icon"
       >
-        <span
-          class="n8n-text compact size-medium regular n8n-icon n8n-icon"
-        >
-          
-          <svg
-            aria-hidden="true"
-            class="svg-inline--fa fa-info-circle fa-w-16 medium"
-            data-icon="info-circle"
-            data-prefix="fas"
-            focusable="false"
-            role="img"
-            viewBox="0 0 512 512"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              class=""
-              d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"
-              fill="currentColor"
-            />
-          </svg>
-          
-        </span>
+        <n8n-icon-stub
+          icon="info"
+          size="medium"
+          spin="false"
+        />
       </div>
       <span
         class="n8n-text size-small regular"
@@ -179,30 +129,14 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
     >
       
       
-      <span
-        class="n8n-text compact size-small regular n8n-icon clickable clickable n8n-icon clickable clickable"
+      <n8n-icon-stub
+        class="clickable"
         data-test-id="banner-V1-close"
+        icon="x"
+        size="small"
+        spin="false"
         title="Dismiss"
-      >
-        
-        <svg
-          aria-hidden="true"
-          class="svg-inline--fa fa-times fa-w-11 small"
-          data-icon="times"
-          data-prefix="fas"
-          focusable="false"
-          role="img"
-          viewBox="0 0 352 512"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            class=""
-            d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"
-            fill="currentColor"
-          />
-        </svg>
-        
-      </span>
+      />
     </div>
     
   </div>

@@ -1,9 +1,9 @@
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { CHAT_EMBED_MODAL_KEY, STORES, WEBHOOK_NODE_TYPE } from '@/constants';
+import { CHAT_EMBED_MODAL_KEY, WEBHOOK_NODE_TYPE } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(ChatEmbedModal, {
 	props: {
@@ -27,13 +27,6 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 });
 
 describe('ChatEmbedModal', () => {
-	beforeEach(() => {
-		createAppModals();
-	});
-
-	afterEach(() => {
-		cleanupAppModals();
-	});
 	it('should render correctly', async () => {
 		const { getByTestId } = renderComponent();
 

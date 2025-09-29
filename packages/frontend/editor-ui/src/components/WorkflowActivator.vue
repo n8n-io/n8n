@@ -5,8 +5,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import type { PermissionsRecord } from '@/permissions';
+import { useI18n } from '@n8n/i18n';
+import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -19,7 +19,6 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	isArchived: boolean;
@@ -37,8 +36,7 @@ const workflowActivate = useWorkflowActivate();
 
 const uiStore = useUIStore();
 
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -145,7 +143,7 @@ async function activeChanged(newActiveState: boolean) {
 			uiStore.openModalWithData({
 				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 				data: {
-					triggerName: trigger.name,
+					triggerType: trigger.type,
 					workflowName: conflictingWorkflow.name,
 					...conflict,
 				},
@@ -209,19 +207,19 @@ watch(
 <template>
 	<div class="workflow-activator">
 		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
-			<n8n-text
+			<N8nText
 				v-if="workflowActive"
 				:color="couldNotBeStarted ? 'danger' : 'success'"
 				size="small"
 				bold
 			>
 				{{ i18n.baseText('workflowActivator.active') }}
-			</n8n-text>
-			<n8n-text v-else color="text-base" size="small" bold>
+			</N8nText>
+			<N8nText v-else color="text-base" size="small" bold>
 				{{ i18n.baseText('workflowActivator.inactive') }}
-			</n8n-text>
+			</N8nText>
 		</div>
-		<n8n-tooltip :disabled="!disabled" placement="bottom">
+		<N8nTooltip :disabled="!disabled" placement="bottom">
 			<template #content>
 				<div>
 					{{
@@ -235,7 +233,7 @@ watch(
 					}}
 				</div>
 			</template>
-			<el-switch
+			<ElSwitch
 				v-loading="workflowActivate.updatingWorkflowActivation.value"
 				:model-value="workflowActive"
 				:title="
@@ -253,26 +251,25 @@ watch(
 				data-test-id="workflow-activate-switch"
 				@update:model-value="activeChanged"
 			>
-			</el-switch>
-		</n8n-tooltip>
+			</ElSwitch>
+		</N8nTooltip>
 
 		<div v-if="couldNotBeStarted" class="could-not-be-started">
-			<n8n-tooltip placement="top">
+			<N8nTooltip placement="top">
 				<template #content>
 					<div
 						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 						@click="displayActivationError"
 					></div>
 				</template>
-				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
-			</n8n-tooltip>
+				<N8nIcon icon="triangle-alert" @click="displayActivationError" />
+			</N8nTooltip>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .activeStatusText {
-	width: 64px; // Required to avoid jumping when changing active state
 	padding-right: var(--spacing-2xs);
 	box-sizing: border-box;
 	display: inline-block;

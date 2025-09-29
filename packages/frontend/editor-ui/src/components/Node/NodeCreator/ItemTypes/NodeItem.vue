@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -8,17 +7,21 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 } from '@/constants';
+import { computed, ref } from 'vue';
 
-import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import OfficialIcon from 'virtual:icons/mdi/verified';
 
+import { useNodeType } from '@/composables/useNodeType';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useNodeType } from '@/composables/useNodeType';
-import { isNodePreviewKey } from '../utils';
+import { isNodePreviewKey, removePreviewToken, shouldShowCommunityNodeDetails } from '../utils';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -40,6 +43,7 @@ const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });
+const nodeTypesStore = useNodeTypesStore();
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
@@ -64,9 +68,9 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
+
 const showActionArrow = computed(() => {
-	// show action arrow if it's a community node and the community node details are not opened
-	if (isCommunityNode.value && !activeViewStack.communityNodeDetails) {
+	if (shouldShowCommunityNodeDetails(isCommunityNode.value, activeViewStack)) {
 		return true;
 	}
 
@@ -108,6 +112,31 @@ const isTrigger = computed<boolean>(() => {
 	return props.nodeType.group.includes('trigger') && !hasActions.value;
 });
 
+const communityNodeType = computed(() => {
+	return nodeTypesStore.communityNodeType(removePreviewToken(props.nodeType.name));
+});
+
+const isOfficial = computed(() => {
+	return communityNodeType.value?.isOfficialNode ?? false;
+});
+
+const author = computed(() => {
+	return communityNodeType.value?.displayName ?? displayName.value;
+});
+
+const tag = computed(() => {
+	if (props.nodeType.tag) {
+		return { text: props.nodeType.tag };
+	}
+	if (description.value.toLowerCase().includes('deprecated')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };
+	}
+	if (props.nodeType.name.includes('dataTable')) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.beta'), type: 'info' };
+	}
+	return undefined;
+});
+
 function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
@@ -145,32 +174,53 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
+		:is-official="isOfficial"
 		:data-test-id="dataTestId"
-		:tag="nodeType.tag"
+		:tag="tag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>
 		<template #icon>
 			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
+			<NodeIcon
+				:class="$style.nodeIcon"
+				:node-type="nodeType"
+				color-default="var(--color-foreground-xdark)"
+			/>
+		</template>
+
+		<template v-if="isOfficial" #extraDetails>
+			<N8nTooltip placement="top" :show-after="500">
+				<template #content>
+					{{ i18n.baseText('generic.officialNode.tooltip', { interpolate: { author: author } }) }}
+				</template>
+				<OfficialIcon :class="[$style.icon, $style.official]" />
+			</N8nTooltip>
 		</template>
 
 		<template
-			v-if="isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails"
-			#tooltip
+			v-else-if="
+				isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails
+			"
+			#extraDetails
 		>
-			<p
-				v-n8n-html="
-					i18n.baseText('generic.communityNode.tooltip', {
-						interpolate: {
-							packageName: nodeType.name.split('.')[0],
-							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-						},
-					})
-				"
-				:class="$style.communityNodeIcon"
-				@click="onCommunityNodeTooltipClick"
-			/>
+			<N8nTooltip placement="top" :show-after="500">
+				<template #content>
+					<p
+						v-n8n-html="
+							i18n.baseText('generic.communityNode.tooltip', {
+								interpolate: {
+									packageName: nodeType.name.split('.')[0],
+									docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+								},
+							})
+						"
+						:class="$style.communityNodeIcon"
+						@click="onCommunityNodeTooltipClick"
+					/>
+				</template>
+				<N8nIcon size="small" :class="$style.icon" icon="box" />
+			</N8nTooltip>
 		</template>
 		<template #dragContent>
 			<div
@@ -179,7 +229,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 				:class="$style.draggable"
 				:style="draggableStyle"
 			>
-				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
+				<NodeIcon
+					:node-type="nodeType"
+					:size="40"
+					:shrink="false"
+					color-default="var(--color-foreground-xdark)"
+					@click.capture.stop
+				/>
 			</div>
 		</template>
 	</N8nNodeCreatorNode>
@@ -229,5 +285,15 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 .draggableDataTransfer {
 	width: 1px;
 	height: 1px;
+}
+
+.icon {
+	display: inline-flex;
+	color: var(--color-text-base);
+	width: 12px;
+
+	&.official {
+		width: 14px;
+	}
 }
 </style>

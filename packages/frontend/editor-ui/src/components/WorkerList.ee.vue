@@ -2,12 +2,12 @@
 import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/composables/useTelemetry';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 
@@ -69,10 +69,10 @@ onBeforeUnmount(() => {
 	<div>
 		<PushConnectionTracker class="actions"></PushConnectionTracker>
 		<div :class="$style.workerListHeader">
-			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+			<N8nHeading tag="h1" size="2xlarge">{{ pageTitle }}</N8nHeading>
 		</div>
 		<div v-if="!initialStatusReceived">
-			<n8n-spinner />
+			<N8nSpinner />
 		</div>
 		<div v-else>
 			<div v-if="workerIds.length === 0">{{ i18n.baseText('workerList.empty') }}</div>

@@ -1,7 +1,9 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { InferenceProviderOrPolicy } from '@huggingface/inference';
+import { PROVIDERS_OR_POLICIES } from '@huggingface/inference';
 import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -41,9 +43,9 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -77,6 +79,13 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 						description: 'Custom endpoint URL',
 						type: 'string',
 					},
+					{
+						displayName: 'Provider',
+						name: 'provider',
+						type: 'options',
+						options: PROVIDERS_OR_POLICIES.map((value) => ({ value, name: value })),
+						default: 'auto',
+					},
 				],
 			},
 		],
@@ -92,6 +101,10 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 		const credentials = await this.getCredentials('huggingFaceApi');
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
+		if ('provider' in options && !isValidHFProviderOrPolicy(options.provider)) {
+			throw new NodeOperationError(this.getNode(), 'Unsupported provider');
+		}
+
 		const embeddings = new HuggingFaceInferenceEmbeddings({
 			apiKey: credentials.apiKey as string,
 			model,
@@ -102,4 +115,10 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 			response: logWrapper(embeddings, this),
 		};
 	}
+}
+
+function isValidHFProviderOrPolicy(provider: unknown): provider is InferenceProviderOrPolicy {
+	return (
+		typeof provider === 'string' && (PROVIDERS_OR_POLICIES as readonly string[]).includes(provider)
+	);
 }

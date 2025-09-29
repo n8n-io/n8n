@@ -1,13 +1,13 @@
-import { inDevelopment } from '@n8n/backend-common';
+import { inDevelopment, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { separate } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import axios from 'axios';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
@@ -84,12 +84,12 @@ export class InstanceRiskReporter implements RiskReporter {
 	}
 
 	private getSecuritySettings() {
-		if (config.getEnv('deployment.type') === 'cloud') return null;
+		if (this.globalConfig.deployment.type === 'cloud') return null;
 
 		const settings: Record<string, unknown> = {};
 
 		settings.features = {
-			communityPackagesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			communityPackagesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),

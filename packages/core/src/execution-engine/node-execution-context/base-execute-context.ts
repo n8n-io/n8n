@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	Workflow,
 	INode,
@@ -21,6 +21,8 @@ import type {
 	ISourceData,
 	AiEvent,
 	NodeConnectionType,
+	Result,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -28,6 +30,7 @@ import {
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
+	createEnvProviderState,
 } from 'n8n-workflow';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -142,6 +145,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return { ...result, data };
 	}
 
+	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
+		return await this.additionalData.getRunExecutionData(executionId);
+	}
+
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
 		const inputData = this.inputData[connectionType];
 		if (inputData.length < inputIndex) {
@@ -224,5 +231,30 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
 			msg,
 		});
+	}
+
+	async startJob<T = unknown, E = unknown>(
+		jobType: string,
+		settings: unknown,
+		itemIndex: number,
+	): Promise<Result<T, E>> {
+		return await this.additionalData.startRunnerTask<T, E>(
+			this.additionalData,
+			jobType,
+			settings,
+			this as IExecuteFunctions,
+			this.inputData,
+			this.node,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			itemIndex,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			createEnvProviderState(),
+			this.executeData,
+		);
 	}
 }

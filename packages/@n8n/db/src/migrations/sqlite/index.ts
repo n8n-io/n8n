@@ -79,10 +79,22 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
+import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvaluations';
 import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
 import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
+import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
+import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
+import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
+import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
+import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
+import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
+import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import type { Migration } from '../migration-types';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -169,6 +181,18 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowStatisticsRootCount1745587087521,
 	AddWorkflowArchivedColumn1745934666076,
 	DropRoleTable1745934666077,
+	ClearEvaluation1745322634000,
+	AddProjectDescriptionColumn1747824239000,
+	AddLastActiveAtColumnToUser1750252139166,
+	AddScopeTables1750252139166,
+	AddRolesTables1750252139167,
+	LinkRoleToUserTable1750252139168,
+	AddInputsOutputsToTestCaseExecution1752669793000,
+	CreateDataStoreTables1754475614601,
+	RemoveOldRoleColumn1750252139170,
+	ReplaceDataStoreTablesWithDataTables1754475614602,
+	LinkRoleToProjectRelationTable1753953244168,
+	AddTimestampsToRoleAndRoleIndexes1756906557570,
 ];
 
 export { sqliteMigrations };

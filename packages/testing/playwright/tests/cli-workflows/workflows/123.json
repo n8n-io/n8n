@@ -1,0 +1,213 @@
+{
+	"createdAt": "2021-03-11T09:31:40.228Z",
+	"updatedAt": "2021-03-11T09:32:06.868Z",
+	"id": "123",
+	"name": "MongoDB:insert find update delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "a355b2f8-5354-4e3f-9409-c29de450e49c"
+		},
+		{
+			"parameters": {
+				"operation": "insert",
+				"collection": "TestCollection",
+				"fields": "id,name,valid"
+			},
+			"name": "MongoDB",
+			"type": "n8n-nodes-base.mongoDb",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"mongoDb": {
+					"id": "90",
+					"name": "MongoDB creds"
+				}
+			},
+			"id": "2b30fbfb-08dd-48ac-bec7-722457fec924"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=Test{{Date.now()}}"
+						}
+					],
+					"number": [
+						{
+							"name": "id",
+							"value": "={{Math.round(Math.random()*10000)}}"
+						}
+					],
+					"boolean": [
+						{
+							"name": "valid",
+							"value": "={{(Math.random()*100) > 50}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"notesInFlow": true,
+			"notes": "set document",
+			"id": "3a57b5c9-3f2e-43ef-a0ae-3598e1eb54b7"
+		},
+		{
+			"parameters": {
+				"collection": "TestCollection"
+			},
+			"name": "MongoDB1",
+			"type": "n8n-nodes-base.mongoDb",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"mongoDb": {
+					"id": "90",
+					"name": "MongoDB creds"
+				}
+			},
+			"id": "6ede4036-3685-402e-abc3-3f2a95b23cfc"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"collection": "TestCollection",
+				"fields": "name"
+			},
+			"name": "MongoDB2",
+			"type": "n8n-nodes-base.mongoDb",
+			"typeVersion": 1,
+			"position": [1050, 300],
+			"credentials": {
+				"mongoDb": {
+					"id": "90",
+					"name": "MongoDB creds"
+				}
+			},
+			"id": "8299beed-7163-4a92-9f41-b8c970bc320b"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"collection": "TestCollection"
+			},
+			"name": "MongoDB3",
+			"type": "n8n-nodes-base.mongoDb",
+			"typeVersion": 1,
+			"position": [1200, 300],
+			"credentials": {
+				"mongoDb": {
+					"id": "90",
+					"name": "MongoDB creds"
+				}
+			},
+			"id": "f77603b7-8d36-46bc-bcc5-604b63294778"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=UpdatedName{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [900, 300],
+			"notesInFlow": true,
+			"notes": "update name attribut",
+			"id": "d32afa6f-35a1-492f-8185-21bef87b18f0"
+		}
+	],
+	"connections": {
+		"MongoDB": {
+			"main": [
+				[
+					{
+						"node": "MongoDB1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "MongoDB",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MongoDB1": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MongoDB2": {
+			"main": [
+				[
+					{
+						"node": "MongoDB3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "MongoDB2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

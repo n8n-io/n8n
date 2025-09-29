@@ -1,16 +1,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import { ResourceType } from '@/utils/projects.utils';
-import { splitName } from '@/utils/projects.utils';
-import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
+import { useI18n } from '@n8n/i18n';
+import { ResourceType, splitName } from '@/utils/projects.utils';
+import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type {
-	CredentialsResource,
-	FolderResource,
-	WorkflowResource,
-} from '../layouts/ResourcesListLayout.vue';
+import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type Props = {
 	resource: WorkflowResource | CredentialsResource | FolderResource;
@@ -36,6 +32,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 
+const isShared = computed(() => {
+	return 'sharedWithProjects' in props.resource && props.resource.sharedWithProjects?.length;
+});
+
 const projectState = computed(() => {
 	if (
 		(props.resource.homeProject &&
@@ -43,17 +43,17 @@ const projectState = computed(() => {
 			props.resource.homeProject.id === props.personalProject.id) ||
 		!props.resource.homeProject
 	) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedOwned;
 		}
 		return ProjectState.Owned;
 	} else if (props.resource.homeProject?.type !== ProjectTypes.Team) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedPersonal;
 		}
 		return ProjectState.Personal;
 	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
-		if (props.resource.sharedWithProjects?.length) {
+		if (isShared.value) {
 			return ProjectState.SharedTeam;
 		}
 		return ProjectState.Team;
@@ -61,8 +61,8 @@ const projectState = computed(() => {
 	return ProjectState.Unknown;
 });
 
-const numberOfMembersInHomeTeamProject = computed(
-	() => props.resource.sharedWithProjects?.length ?? 0,
+const numberOfMembersInHomeTeamProject = computed(() =>
+	'sharedWithProjects' in props.resource ? (props.resource.sharedWithProjects?.length ?? 0) : 0,
 );
 
 const badgeText = computed(() => {
@@ -77,7 +77,7 @@ const badgeText = computed(() => {
 	}
 });
 
-const badgeIcon = computed<BadgeIcon>(() => {
+const badgeIcon = computed<IconOrEmoji>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
@@ -86,9 +86,11 @@ const badgeIcon = computed<BadgeIcon>(() => {
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return props.resource.homeProject?.icon ?? { type: 'icon', value: 'layer-group' };
+			return isIconOrEmoji(props.resource.homeProject?.icon)
+				? props.resource.homeProject?.icon
+				: { type: 'icon', value: 'layers' };
 		default:
-			return { type: 'icon', value: 'layer-group' };
+			return { type: 'icon', value: 'layers' };
 	}
 });
 const badgeTooltip = computed(() => {
@@ -151,32 +153,34 @@ const projectLocation = computed(() => {
 </script>
 <template>
 	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
+		<N8nTooltip
+			v-if="badgeText"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0"
+			placement="top"
+		>
 			<N8nBadge
-				v-if="badgeText"
 				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
 				data-test-id="card-badge"
 				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
-				<router-link v-if="projectLocation" :to="projectLocation">
-					<span v-n8n-truncate:20="badgeText" />
-				</router-link>
-				<span v-else v-n8n-truncate:20="badgeText" />
+				<RouterLink v-if="projectLocation" :to="projectLocation">
+					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+				</RouterLink>
+				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}
 			</template>
 		</N8nTooltip>
 		<slot />
-		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0" placement="top">
-			<div
-				v-if="numberOfMembersInHomeTeamProject"
-				:class="$style['count-badge']"
-				theme="tertiary"
-				bold
-			>
+		<N8nTooltip
+			v-if="numberOfMembersInHomeTeamProject"
+			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0"
+			placement="top"
+		>
+			<div :class="$style['count-badge']" theme="tertiary" bold>
 				+{{ numberOfMembersInHomeTeamProject }}
 			</div>
 			<template #content>
@@ -225,5 +229,9 @@ const projectLocation = computed(() => {
 	color: var(--color-text-base);
 	border-left: var(--border-base);
 	line-height: var(--font-line-height-regular);
+}
+
+.nowrap {
+	white-space: nowrap !important;
 }
 </style>

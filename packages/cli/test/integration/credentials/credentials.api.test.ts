@@ -1,10 +1,15 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	randomCredentialPayload as payload,
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+	randomName,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { ListQueryDb } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -24,15 +29,7 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
 import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
-import {
-	randomCredentialPayload as payload,
-	randomCredentialPayload,
-	randomCredentialPayloadWithOauthTokenData,
-	randomName,
-} from '../shared/random';
-import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -106,7 +103,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const [savedCredential1] = await Promise.all([
@@ -128,7 +125,7 @@ describe('GET /credentials', () => {
 
 	test('should return scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -242,7 +239,7 @@ describe('GET /credentials', () => {
 	test('should return data when ?includeData=true', async () => {
 		// ARRANGE
 		const [actor, otherMember] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProjectViewer = await createTeamProject(undefined);
@@ -825,6 +822,25 @@ describe('POST /credentials', () => {
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
+	test('should create cred with uiContext parameter', async () => {
+		const payload = { ...randomCredentialPayload(), uiContext: 'credentials_list' };
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body.data;
+
+		expect(name).toBe(payload.name);
+		expect(type).toBe(payload.type);
+
+		const credential = await getCredentialById(id);
+		a.ok(credential);
+
+		expect(credential.name).toBe(payload.name);
+		expect(credential.type).toBe(payload.type);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		for (const invalidPayload of INVALID_PAYLOADS) {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
@@ -1260,12 +1276,12 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail with a 403 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
+	test('should fail with a 404 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
 		const response = await authMemberAgent
 			.patch('/credentials/123')
 			.send(randomCredentialPayload());
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('should fail with a 400 is credential is managed', async () => {

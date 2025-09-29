@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 
@@ -47,6 +48,12 @@ export class DeprecationService {
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
 		{
+			envVar: 'DB_SQLITE_POOL_SIZE',
+			message:
+				'Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite',
+			checkValue: (_: string) => this.globalConfig.database.isLegacySqlite,
+		},
+		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},
@@ -65,16 +72,7 @@ export class DeprecationService {
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
 			matchConfig: config.getEnv('executions.mode') === 'queue',
-		},
-		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			checkValue: (value: string) => value === '1',
-			message:
-				'Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
-		},
-		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			message: 'This environment variable is internal and should not be set.',
+			disableIf: () => this.instanceSettings.instanceType !== 'main',
 		},
 		{
 			envVar: 'N8N_EXPRESSION_EVALUATOR',
@@ -95,6 +93,21 @@ export class DeprecationService {
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
 			checkValue: (value: string) => value === 'own',
 		},
+		{
+			envVar: 'N8N_BLOCK_ENV_ACCESS_IN_NODE',
+			message:
+				'The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
+			checkValue: (value: string | undefined) => value === undefined || value === '',
+		},
+		{
+			envVar: 'N8N_GIT_NODE_DISABLE_BARE_REPOS',
+			message:
+				'Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
+			checkValue: (value: string | undefined) => value === undefined || value === '',
+			disableIf: () =>
+				this.globalConfig.nodes.exclude.includes('n8n-nodes-base.git') ||
+				this.globalConfig.deployment.type === 'cloud',
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */
@@ -103,6 +116,7 @@ export class DeprecationService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	warn() {

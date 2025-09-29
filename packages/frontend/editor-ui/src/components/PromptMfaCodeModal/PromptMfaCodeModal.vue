@@ -2,9 +2,9 @@
 import { ref } from 'vue';
 import Modal from '../Modal.vue';
 import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { promptMfaCodeBus } from '@/event-bus';
-import type { IFormInputs } from '@/Interface';
+import { type IFormInput } from '@/Interface';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { validate as validateUuid } from 'uuid';
 
@@ -13,7 +13,7 @@ const i18n = useI18n();
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 
-const formFields: IFormInputs = [
+const formFields: IFormInput[] = [
 	{
 		name: 'mfaCodeOrMfaRecoveryCode',
 		initialValue: '',
@@ -25,9 +25,14 @@ const formFields: IFormInputs = [
 			required: true,
 		},
 	},
-];
+] as const;
 
-function onSubmit(values: { mfaCodeOrMfaRecoveryCode: string }) {
+function onSubmit(values: object) {
+	if (
+		!('mfaCodeOrMfaRecoveryCode' in values && typeof values.mfaCodeOrMfaRecoveryCode === 'string')
+	) {
+		return;
+	}
 	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
 		promptMfaCodeBus.emit('close', {
 			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,
@@ -60,7 +65,7 @@ function onFormReady(isReady: boolean) {
 	>
 		<template #content>
 			<div :class="[$style.formContainer]">
-				<n8n-form-inputs
+				<N8nFormInputs
 					data-test-id="mfa-code-or-recovery-code-input"
 					:inputs="formFields"
 					:event-bus="formBus"
@@ -71,7 +76,7 @@ function onFormReady(isReady: boolean) {
 		</template>
 		<template #footer>
 			<div>
-				<n8n-button
+				<N8nButton
 					float="right"
 					:disabled="!readyToSubmit"
 					:label="i18n.baseText('settings.personal.save')"

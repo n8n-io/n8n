@@ -1,4 +1,5 @@
-import { UNLIMITED_LICENSE_QUOTA, type BooleanLicenseFeature } from '@n8n/constants';
+import type { BooleanLicenseFeature } from '@n8n/constants';
+import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -42,6 +43,10 @@ export class LicenseState {
 	//      booleans
 	// --------------------
 
+	isCustomRolesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -56,6 +61,14 @@ export class LicenseState {
 
 	isSamlLicensed() {
 		return this.isLicensed('feat:saml');
+	}
+
+	isOidcLicensed() {
+		return this.isLicensed('feat:oidc');
+	}
+
+	isMFAEnforcementLicensed() {
+		return this.isLicensed('feat:mfaEnforcement');
 	}
 
 	isApiKeyScopesLicensed() {
@@ -150,6 +163,10 @@ export class LicenseState {
 		return this.isLicensed('feat:insights:viewHourlyData');
 	}
 
+	isWorkflowDiffsLicensed() {
+		return this.isLicensed('feat:workflowDiffs');
+	}
+
 	// --------------------
 	//      integers
 	// --------------------
@@ -188,5 +205,9 @@ export class LicenseState {
 
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
+	}
+
+	getMaxWorkflowsWithEvaluations() {
+		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
 	}
 }

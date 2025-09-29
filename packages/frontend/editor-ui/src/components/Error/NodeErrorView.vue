@@ -1,11 +1,13 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -16,8 +18,8 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/constants';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
@@ -34,6 +36,8 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const router = useRouter();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
@@ -41,9 +45,13 @@ const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
+
+const workflowId = computed(() => workflowsStore.workflowId);
+const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -206,7 +214,7 @@ function getErrorMessage(): string {
 
 	if (isSubNodeError.value) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
-			interpolate: { node: props.error.node.name },
+			interpolate: { node: props.error.node?.name ?? '' },
 		});
 	} else if (
 		isNonEmptyString(props.error.message) &&
@@ -384,7 +392,32 @@ function nodeIsHidden() {
 }
 
 const onOpenErrorNodeDetailClick = () => {
-	ndvStore.activeNodeName = props.error.node.name;
+	if (!props.error.node) {
+		return;
+	}
+
+	if (
+		'workflowId' in props.error &&
+		workflowId.value &&
+		typeof props.error.workflowId === 'string' &&
+		workflowId.value !== props.error.workflowId &&
+		'executionId' in props.error &&
+		executionId.value &&
+		typeof props.error.executionId === 'string' &&
+		executionId.value !== props.error.executionId
+	) {
+		const link = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: props.error.workflowId,
+				executionId: props.error.executionId,
+				nodeId: props.error.node.id,
+			},
+		});
+		window.open(link.href, '_blank');
+	} else {
+		ndvStore.setActiveNodeName(props.error.node.name, 'other');
+	}
 };
 
 async function onAskAssistantClick() {
@@ -432,7 +465,7 @@ async function onAskAssistantClick() {
 			></div>
 
 			<div v-if="isSubNodeError">
-				<n8n-button
+				<N8nButton
 					icon="arrow-right"
 					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
@@ -455,22 +488,22 @@ async function onAskAssistantClick() {
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}
 				</p>
-				<n8n-tooltip
+				<N8nTooltip
 					class="item"
 					:content="i18n.baseText('nodeErrorView.copyToClipboard.tooltip')"
 					placement="left"
 				>
 					<div class="copy-button">
 						<N8nIconButton
-							icon="copy"
+							icon="files"
 							type="secondary"
-							size="mini"
+							size="small"
 							:text="true"
 							transparent-background="transparent"
 							@click="copyErrorDetails"
 						/>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 
 			<div class="node-error-view__info-content">
@@ -484,7 +517,7 @@ async function onAskAssistantClick() {
 					class="node-error-view__details"
 				>
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
+						<N8nIcon class="node-error-view__details-icon" icon="chevron-right" />
 						{{
 							i18n.baseText('nodeErrorView.details.from', {
 								interpolate: { node: `${nodeDefaultName}` },
@@ -539,7 +572,7 @@ async function onAskAssistantClick() {
 
 				<details class="node-error-view__details">
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
+						<N8nIcon class="node-error-view__details-icon" icon="chevron-right" />
 						{{ i18n.baseText('nodeErrorView.details.info') }}
 					</summary>
 					<div class="node-error-view__details-content">
@@ -715,6 +748,7 @@ async function onAskAssistantClick() {
 	&__button {
 		margin-left: var(--spacing-s);
 		margin-bottom: var(--spacing-xs);
+		margin-top: var(--spacing-xs);
 		flex-direction: row-reverse;
 		span {
 			margin-right: var(--spacing-5xs);
@@ -853,9 +887,5 @@ async function onAskAssistantClick() {
 			word-wrap: break-word;
 		}
 	}
-}
-
-.node-error-view__button {
-	margin-top: var(--spacing-xs);
 }
 </style>

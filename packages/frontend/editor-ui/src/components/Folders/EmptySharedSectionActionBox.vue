@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import type { Project } from '@/types/projects.types';
 import { computed } from 'vue';
@@ -37,7 +37,7 @@ const onPersonalLinkClick = (event: MouseEvent) => {
 </script>
 
 <template>
-	<n8n-action-box
+	<N8nActionBox
 		data-test-id="empty-shared-action-box"
 		:heading="heading"
 		:description="i18n.baseText('workflows.empty.shared-with-me.link')"

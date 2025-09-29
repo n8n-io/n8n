@@ -2,7 +2,7 @@ import * as schemaPreviewApi from '@/api/schemaPreview';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -48,7 +48,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 		}
 	}
 
-	async function trackSchemaPreviewExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
+	async function trackSchemaPreviewExecution(pushEvent: PushPayload<'nodeExecuteAfterData'>) {
 		if (schemaPreviews.size === 0 || pushEvent.data.executionStatus !== 'success') {
 			return;
 		}
@@ -67,7 +67,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 			getSchemaPreviewKey({ nodeType: type, version: typeVersion, resource, operation }),
 		);
 
-		if (!result || !result.ok) return;
+		if (!result?.ok) return;
 
 		telemetry.track('User executed node with schema preview', {
 			node_id: id,

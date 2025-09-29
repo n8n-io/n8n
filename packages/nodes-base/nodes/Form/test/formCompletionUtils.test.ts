@@ -2,7 +2,8 @@ import { type Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
 import { type INode, type IWebhookFunctions } from 'n8n-workflow';
 
-import { binaryResponse, renderFormCompletion } from '../formCompletionUtils';
+import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
+import * as utils from '../utils/utils';
 
 describe('formCompletionUtils', () => {
 	let mockWebhookFunctions: MockProxy<IWebhookFunctions>;
@@ -112,6 +113,39 @@ describe('formCompletionUtils', () => {
 				responseText: '',
 				title: 'Form Completion',
 			});
+		});
+
+		it('should call sanitizeHtml on completionMessage', async () => {
+			const sanitizeHtmlSpy = jest.spyOn(utils, 'sanitizeHtml');
+			const maliciousMessage = '<script>alert("xss")</script>Safe message<b>bold</b>';
+			const responseText = 'Response text';
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: maliciousMessage,
+					responseText,
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(sanitizeHtmlSpy).toHaveBeenCalledWith(maliciousMessage);
+			expect(sanitizeHtmlSpy).toHaveBeenCalledTimes(1);
+			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: undefined,
+				formTitle: 'Form Title',
+				message: 'Safe message<b>bold</b>',
+				redirectUrl: undefined,
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseText: 'Response text',
+				title: 'Form Completion',
+				dangerousCustomCss: undefined,
+			});
+
+			sanitizeHtmlSpy.mockRestore();
 		});
 
 		it('throw an error if no binary data with the field name is found', async () => {
@@ -249,6 +283,25 @@ describe('formCompletionUtils', () => {
 					title: 'Form Completion',
 				});
 			}
+		});
+
+		it('should set Content-Security-Policy header with sandbox CSP', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
+			expect(mockResponse.render).toHaveBeenCalled();
 		});
 	});
 

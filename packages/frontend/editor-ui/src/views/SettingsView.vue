@@ -37,7 +37,7 @@ onMounted(() => {
 					Because we're using nested routes the props are going to be bind to the top level route
 					so we need to pass them down to the child component
 				-->
-				<router-view name="settingsView" v-bind="$attrs" />
+				<RouterView name="settingsView" v-bind="$attrs" />
 			</div>
 		</div>
 	</div>
@@ -63,7 +63,7 @@ onMounted(() => {
 .content {
 	height: 100%;
 	width: 100%;
-	max-width: 800px;
+	max-width: 1440px;
 	padding: 0 var(--spacing-2xl);
 }
 </style>

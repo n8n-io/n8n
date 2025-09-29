@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { ComponentInstance } from 'vue';
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { debounce } from 'lodash-es';
+import debounce from 'lodash/debounce';
 
 interface TagsContainerProps {
 	tagIds: string[];
@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
 			>
-				<el-tag
+				<ElTag
 					v-if="tag.isCount"
 					:title="tag.title"
 					type="info"
@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
 					:disable-transitions="true"
 				>
 					{{ tag.name }}
-				</el-tag>
+				</ElTag>
 				<IntersectionObserved
 					v-else
 					:class="{ hideTag: tag.hidden }"
@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
 				>
-					<el-tag
+					<ElTag
 						:title="tag.name"
 						type="info"
 						size="mini"
@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
 						:disable-transitions="true"
 					>
 						{{ tag.name }}
-					</el-tag>
+					</ElTag>
 				</IntersectionObserved>
 			</span>
 		</span>

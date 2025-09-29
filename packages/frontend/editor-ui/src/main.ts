@@ -11,12 +11,15 @@ import '@n8n/design-system/css/index.scss';
 // import '@n8n/design-system/css/tailwind/index.css';
 
 import './n8n-theme.scss';
+// Ensure i18n HMR owner is evaluated as early as possible in dev
+import '@/dev/i18nHmr';
 
 import App from '@/App.vue';
 import router from './router';
 
+import { i18nInstance } from '@n8n/i18n';
+
 import { TelemetryPlugin } from './plugins/telemetry';
-import { i18nInstance } from './plugins/i18n';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
@@ -24,12 +27,20 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
+
+import type { VueScanOptions } from 'z-vue-scan';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
 app.use(SentryPlugin);
+
+// Register module routes
+// We do this here so landing straight on a module page works
+registerModuleRoutes(router);
+
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(FontAwesomePlugin);
@@ -39,6 +50,13 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+if (import.meta.env.VUE_SCAN) {
+	const { default: VueScan } = await import('z-vue-scan');
+	app.use<VueScanOptions>(VueScan, {
+		enable: true,
+	});
+}
 
 app.mount('#app');
 

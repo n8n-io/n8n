@@ -9,25 +9,29 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const loadingService = useLoadingService();
 
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
-	const panelHeight = ref(0);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
-		nodes.value.filter((node) => node.type.includes('langchain')),
+		nodes.value.filter(
+			(node) =>
+				node.type.includes('langchain') ||
+				(node.type === 'n8n-nodes-base.evaluation' && node.parameters?.operation === 'setMetrics'),
+		),
 	);
+	const hasRangeSelection = ref(false);
 
-	function setPanelHeight(height: number) {
-		panelHeight.value = height;
+	function setHasRangeSelection(value: boolean) {
+		hasRangeSelection.value = value;
 	}
 
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		aiNodes,
-		panelHeight: computed(() => panelHeight.value),
-		setPanelHeight,
+		hasRangeSelection: computed(() => hasRangeSelection.value),
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
+		setHasRangeSelection,
 	};
 });

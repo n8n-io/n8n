@@ -18,7 +18,7 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		baseUrl: 'https://test.com',
 	})),
@@ -119,7 +119,7 @@ describe('schemaPreview.store', () => {
 				}),
 			);
 			await store.trackSchemaPreviewExecution(
-				mock<PushPayload<'nodeExecuteAfter'>>({
+				mock<PushPayload<'nodeExecuteAfterData'>>({
 					nodeName: 'Test',
 					data: {
 						executionStatus: 'success',
@@ -145,7 +145,7 @@ describe('schemaPreview.store', () => {
 			const store = useSchemaPreviewStore();
 			vi.mocked(useWorkflowsStore().getNodeByName).mockReturnValueOnce(mock<INode>());
 			await store.trackSchemaPreviewExecution(
-				mock<PushPayload<'nodeExecuteAfter'>>({
+				mock<PushPayload<'nodeExecuteAfterData'>>({
 					nodeName: 'Test',
 					data: {
 						executionStatus: 'success',
@@ -160,7 +160,7 @@ describe('schemaPreview.store', () => {
 		it('should not track failed executions', async () => {
 			const store = useSchemaPreviewStore();
 			await store.trackSchemaPreviewExecution(
-				mock<PushPayload<'nodeExecuteAfter'>>({
+				mock<PushPayload<'nodeExecuteAfterData'>>({
 					data: {
 						executionStatus: 'error',
 					},

@@ -59,16 +59,16 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
-	ROLE,
 } from '@/constants';
+import { ROLE } from '@n8n/api-types';
 import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
 	IPersonalizationSurveyVersions,
 	IUser,
-	ILogInStatus,
-} from '@/Interface';
+} from '@n8n/rest-api-client/api/users';
+import type { ILogInStatus } from '@/Interface';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 /*

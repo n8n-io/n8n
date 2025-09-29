@@ -9,22 +9,26 @@ import type {
 } from '@/Interface';
 import * as credentialsApi from '@/api/credentials';
 import * as credentialsEeApi from '@/api/credentials.ee';
-import { EnterpriseEditionFeature, STORES } from '@/constants';
-import { i18n } from '@/plugins/i18n';
+import { EnterpriseEditionFeature } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import { splitName } from '@/utils/projects.utils';
 import { isEmpty, isPresent } from '@/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialDescription,
 	INodeCredentialTestResult,
+	INodeTypeDescription,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useNodeTypesStore } from './nodeTypes.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import * as aiApi from '@/api/ai';
 
@@ -297,9 +301,23 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return await credentialsApi.getCredentialData(rootStore.restApiContext, id);
 	};
 
+	const getCredentialTypesNodeDescriptions: (
+		overrideCredType: NodeParameterValueType,
+		nodeType: INodeTypeDescription | null,
+	) => INodeCredentialDescription[] = (overrideCredType, nodeType) => {
+		if (typeof overrideCredType !== 'string') return [];
+
+		const credType = getCredentialTypeByName.value(overrideCredType);
+
+		if (credType) return [credType];
+
+		return nodeType?.credentials ? nodeType.credentials : [];
+	};
+
 	const createNewCredential = async (
 		data: ICredentialsDecrypted,
 		projectId?: string,
+		uiContext?: string,
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -307,6 +325,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
+			uiContext,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -443,6 +462,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		createNewCredential,
 		updateCredential,
 		getCredentialData,
+		getCredentialTypesNodeDescriptions,
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -12,7 +11,7 @@ import type {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { additionalOptions } from '../gemini-common/additional-options';
+import { getAdditionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
@@ -26,7 +25,7 @@ function errorDescriptionMapper(error: NodeError) {
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatGoogleGemini',
 		icon: 'file:google.svg',
 		group: ['transform'],
@@ -49,9 +48,9 @@ export class LmChatGoogleGemini implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -118,9 +117,11 @@ export class LmChatGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'models/gemini-1.0-pro',
+				default: 'models/gemini-2.5-flash',
 			},
-			additionalOptions,
+			// thinking budget not supported in @langchain/google-genai
+			// as it utilises the old google generative ai SDK
+			getAdditionalOptions({ supportsThinkingBudget: false }),
 		],
 	};
 
@@ -149,7 +150,7 @@ export class LmChatGoogleGemini implements INodeType {
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
-			modelName,
+			model: modelName,
 			topK: options.topK,
 			topP: options.topP,
 			temperature: options.temperature,

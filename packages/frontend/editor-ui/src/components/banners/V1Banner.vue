@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import BaseBanner from '@/components/banners/BaseBanner.vue';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -15,7 +15,7 @@ const hasOwnerPermission = computed(() => hasPermission(['instanceOwner']));
 </script>
 
 <template>
-	<BaseBanner custom-icon="info-circle" theme="warning" name="V1" :class="$style.v1container">
+	<BaseBanner custom-icon="info" theme="warning" name="V1" :class="$style.v1container">
 		<template #mainContent>
 			<span v-n8n-html="locale.baseText('banners.v1.message')"></span>
 			<a

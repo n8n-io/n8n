@@ -8,10 +8,10 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useCodeEditor } from '@/composables/useCodeEditor';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
@@ -19,16 +19,22 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
+import type { TargetNodeParameterContext } from '@/Interface';
+import { valueToInsert } from './utils';
+
+export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 type Props = {
 	mode: CodeExecutionMode;
 	modelValue: string;
 	aiButtonEnabled?: boolean;
 	fillParent?: boolean;
-	language?: CodeNodeEditorLanguage;
+	language?: CodeNodeLanguageOption;
 	isReadOnly?: boolean;
 	rows?: number;
 	id?: string;
+	targetNodeParameterContext?: TargetNodeParameterContext;
+	disableAskAi?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,6 +44,8 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	rows: 4,
 	id: () => crypto.randomUUID(),
+	targetNodeParameterContext: undefined,
+	disableAskAi: false,
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -58,7 +66,7 @@ const settingsStore = useSettingsStore();
 
 const linter = useLinter(
 	() => props.mode,
-	() => props.language,
+	() => (props.language === 'pythonNative' ? 'python' : props.language),
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
@@ -66,7 +74,7 @@ const dragAndDropEnabled = computed(() => {
 	return !props.isReadOnly;
 });
 
-const { highlightLine, readEditorValue, editor } = useCodeEditor({
+const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	id: props.id,
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
@@ -81,6 +89,7 @@ const { highlightLine, readEditorValue, editor } = useCodeEditor({
 		rows: props.rows,
 	},
 	onChange: onEditorUpdate,
+	targetNodeParameterContext: () => props.targetNodeParameterContext,
 });
 
 onMounted(() => {
@@ -98,7 +107,7 @@ onBeforeUnmount(() => {
 });
 
 const askAiEnabled = computed(() => {
-	return settingsStore.isAskAiEnabled && props.language === 'javaScript';
+	return !props.disableAskAi && settingsStore.isAskAiEnabled && props.language === 'javaScript';
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
@@ -193,13 +202,16 @@ function onAiLoadEnd() {
 async function onDrop(value: string, event: MouseEvent) {
 	if (!editor.value) return;
 
-	const valueToInsert =
-		props.mode === 'runOnceForAllItems'
-			? value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()')
-			: value;
-
-	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
+	await dropInCodeEditor(
+		toRaw(editor.value),
+		event,
+		valueToInsert(value, props.language, props.mode),
+	);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>
@@ -207,7 +219,7 @@ async function onDrop(value: string, event: MouseEvent) {
 		ref="codeNodeEditorContainerRef"
 		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
-		<el-tabs
+		<ElTabs
 			v-if="askAiEnabled"
 			ref="tabs"
 			v-model="activeTab"
@@ -215,7 +227,7 @@ async function onDrop(value: string, event: MouseEvent) {
 			:before-leave="onBeforeTabLeave"
 			:class="$style.tabs"
 		>
-			<el-tab-pane
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
@@ -241,8 +253,8 @@ async function onDrop(value: string, event: MouseEvent) {
 					</template>
 				</DraggableTarget>
 				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
+			</ElTabPane>
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
@@ -251,12 +263,13 @@ async function onDrop(value: string, event: MouseEvent) {
 				<AskAI
 					:key="activeTab"
 					:has-changes="hasManualChanges"
+					:is-read-only="props.isReadOnly"
 					@replace-code="onAiReplaceCode"
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"
 				/>
-			</el-tab-pane>
-		</el-tabs>
+			</ElTabPane>
+		</ElTabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
 			<DraggableTarget

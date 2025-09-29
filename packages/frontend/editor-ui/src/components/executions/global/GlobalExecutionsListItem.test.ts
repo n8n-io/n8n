@@ -20,12 +20,11 @@ const globalExecutionsListItemQueuedTooltipRenderSpy = vi.fn();
 
 const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 	global: {
-		//stubs: ['font-awesome-icon', 'n8n-tooltip', 'n8n-button', 'i18n-t'],
 		stubs: {
-			'font-awesome-icon': true,
-			'n8n-tooltip': true,
-			'n8n-button': true,
-			'i18n-t': true,
+			FontAwesomeIcon: true,
+			N8nTooltip: true,
+			N8nButton: true,
+			I18nT: true,
 			GlobalExecutionsListItemQueuedTooltip: {
 				render: globalExecutionsListItemQueuedTooltipRenderSpy,
 			},
@@ -199,6 +198,6 @@ describe('GlobalExecutionsListItem', () => {
 
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
-		expect(executionTimeElement.textContent).toBe('30:00m');
+		expect(executionTimeElement.textContent).toBe('30m 0s');
 	});
 });

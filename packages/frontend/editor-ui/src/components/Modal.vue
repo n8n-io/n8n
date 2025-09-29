@@ -98,6 +98,13 @@ function handleEnter() {
 	emit('enter');
 }
 
+function onOpened() {
+	// Triggers when the Dialog opening animation ends.
+	// This can be helpful at positioning dropdowns etc correctly,
+	// as the dialog doesn't now move anymore at this point.
+	props.eventBus?.emit('opened');
+}
+
 function onWindowKeydown(event: KeyboardEvent) {
 	if (event?.keyCode === 13) handleEnter();
 }
@@ -150,17 +157,18 @@ function getCustomClass() {
 		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"
 		:z-index="APP_Z_INDEXES.MODALS"
+		@opened="onOpened"
 	>
 		<template v-if="$slots.header" #header>
-			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
 		<template v-else-if="title" #title>
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
+					<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
+					<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
 				</div>
 			</div>
 		</template>
@@ -172,7 +180,7 @@ function getCustomClass() {
 		>
 			<slot v-if="!loading" name="content" />
 			<div v-else :class="$style.loader">
-				<n8n-spinner />
+				<N8nSpinner />
 			</div>
 		</div>
 		<div v-if="!loading && $slots.footer" :class="$style.footer">

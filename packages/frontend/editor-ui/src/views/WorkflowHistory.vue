@@ -3,7 +3,7 @@ import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import type {
 	WorkflowHistoryActionTypes,
@@ -11,16 +11,17 @@ import type {
 	WorkflowHistoryRequestParams,
 	WorkflowHistory,
 	WorkflowVersion,
-} from '@/types/workflowHistory';
+} from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
-import { useRootStore } from '@/stores/root.store';
-import { getResourcePermissions } from '@/permissions';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import type { IUser } from 'n8n-workflow';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -72,7 +73,7 @@ const editorRoute = computed(() => ({
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
-const actions = computed<UserAction[]>(() =>
+const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
@@ -330,9 +331,9 @@ watchEffect(async () => {
 <template>
 	<div :class="$style.view">
 		<div :class="$style.header">
-			<n8n-heading tag="h2" size="medium">
+			<N8nHeading tag="h2" size="medium">
 				{{ activeWorkflow?.name }}
-			</n8n-heading>
+			</N8nHeading>
 			<span v-if="activeWorkflow?.isArchived">
 				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
@@ -340,12 +341,12 @@ watchEffect(async () => {
 			</span>
 		</div>
 		<div :class="$style.corner">
-			<n8n-heading tag="h2" size="medium" bold>
+			<N8nHeading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
-			</n8n-heading>
-			<router-link :to="editorRoute" data-test-id="workflow-history-close-button">
-				<n8n-button type="tertiary" icon="times" size="small" text square />
-			</router-link>
+			</N8nHeading>
+			<RouterLink :to="editorRoute" data-test-id="workflow-history-close-button">
+				<N8nButton type="tertiary" icon="x" size="small" text square />
+			</RouterLink>
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<WorkflowHistoryList

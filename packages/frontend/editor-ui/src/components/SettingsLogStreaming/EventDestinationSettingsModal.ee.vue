@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { get, set, unset } from 'lodash-es';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+
 import type {
-	IDataObject,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
 	INodeParameters,
@@ -30,23 +32,24 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
-import type { BaseTextKey } from '@/plugins/i18n';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
+import { useElementSize } from '@vueuse/core';
+import { N8nInlineTextEdit, N8nText } from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -180,7 +183,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowsStore.removeNode(node.value);
-	ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
+	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowsStore.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -248,7 +251,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	nodeParameters.value = deepCopy(nodeParametersCopy);
 	workflowsStore.updateNodeProperties({
 		name: node.value.name,
-		properties: { parameters: nodeParameters.value as unknown as IDataObject, position: [0, 0] },
+		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
 	if (hasOnceBeenSaved.value) {
 		logStreamingStore.updateDestination(nodeParameters.value);
@@ -291,7 +294,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.stateIsDirty = false;
 }
@@ -351,6 +354,9 @@ function callEventBus(event: string, data: unknown) {
 		eventBus.emit(event, data);
 	}
 }
+
+const defNameRef = useTemplateRef('defNameRef');
+const { width } = useElementSize(defNameRef);
 </script>
 
 <template>
@@ -375,20 +381,22 @@ function callEventBus(event: string, data: unknown) {
 			</template>
 			<template v-else>
 				<div :class="$style.header">
-					<div :class="$style.destinationInfo">
-						<InlineNameEdit
-							:model-value="headerLabel"
-							:subtitle="!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'"
-							:readonly="isTypeAbstract"
-							type="Credential"
+					<div ref="defNameRef" :class="$style.destinationInfo">
+						<N8nInlineTextEdit
+							:max-width="width - 10"
 							data-test-id="subtitle-showing-type"
+							:model-value="headerLabel"
+							:readonly="isTypeAbstract"
 							@update:model-value="onLabelChange"
 						/>
+						<N8nText size="small" tag="p" color="text-light">{{
+							!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
+						}}</N8nText>
 					</div>
 					<div :class="$style.destinationActions">
-						<n8n-button
+						<N8nButton
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
 								testMessageSent && testMessageResult
 									? 'Event sent and returned OK'
@@ -401,10 +409,10 @@ function callEventBus(event: string, data: unknown) {
 							@click="sendTestEvent"
 						/>
 						<template v-if="canManageLogStreaming">
-							<n8n-icon-button
+							<N8nIconButton
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
-								icon="trash"
+								icon="trash-2"
 								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
@@ -427,7 +435,7 @@ function callEventBus(event: string, data: unknown) {
 		<template #content>
 			<div :class="$style.container">
 				<template v-if="isTypeAbstract">
-					<n8n-input-label
+					<N8nInputLabel
 						:class="$style.typeSelector"
 						:label="i18n.baseText('settings.log-streaming.selecttype')"
 						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
@@ -435,7 +443,7 @@ function callEventBus(event: string, data: unknown) {
 						size="medium"
 						:underline="false"
 					>
-						<n8n-select
+						<N8nSelect
 							ref="typeSelectRef"
 							:model-value="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
@@ -443,28 +451,28 @@ function callEventBus(event: string, data: unknown) {
 							name="name"
 							@update:model-value="onTypeSelectInput"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="option in typeSelectOptions || []"
 								:key="option.value"
 								:value="option.value"
 								:label="i18n.baseText(option.label)"
 							/>
-						</n8n-select>
+						</N8nSelect>
 						<div class="mt-m text-right">
-							<n8n-button
+							<N8nButton
 								size="large"
 								data-test-id="select-destination-button"
 								:disabled="!typeSelectValue"
 								@click="onContinueAddClicked"
 							>
 								{{ i18n.baseText(`settings.log-streaming.continue`) }}
-							</n8n-button>
+							</N8nButton>
 						</div>
-					</n8n-input-label>
+					</N8nInputLabel>
 				</template>
 				<template v-else>
 					<div :class="$style.sidebar">
-						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+						<N8nMenu mode="tabs" :items="sidebarItems" @select="onTabSelect"></N8nMenu>
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 						<template v-if="isTypeWebhook">
@@ -500,7 +508,7 @@ function callEventBus(event: string, data: unknown) {
 					</div>
 					<div v-if="activeTab === 'events'" :class="$style.mainContent">
 						<div class="">
-							<n8n-input-label
+							<N8nInputLabel
 								class="mb-m mt-m"
 								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
 								:bold="true"
@@ -585,10 +593,11 @@ function callEventBus(event: string, data: unknown) {
 }
 
 .destinationInfo {
-	display: flex;
-	align-items: center;
-	flex-direction: row;
 	flex-grow: 1;
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 	margin-bottom: var(--spacing-l);
 }
 

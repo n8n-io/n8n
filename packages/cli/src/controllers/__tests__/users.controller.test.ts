@@ -1,9 +1,7 @@
-import type { User } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { UsersController } from '../users.controller';
@@ -37,7 +35,7 @@ describe('UsersController', () => {
 			const request = mock<AuthenticatedRequest>({
 				user: { id: '123' },
 			});
-			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: '456' }));
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: '456' }));
 			projectService.getUserOwnedOrAdminProjects.mockResolvedValue([]);
 
 			await controller.changeGlobalRole(

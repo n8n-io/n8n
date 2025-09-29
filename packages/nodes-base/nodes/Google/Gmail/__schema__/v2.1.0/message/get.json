@@ -80,6 +80,12 @@
                 "to": {
                     "type": "string"
                 },
+                "x-gm-features": {
+                    "type": "string"
+                },
+                "x-gm-gg": {
+                    "type": "string"
+                },
                 "x-gm-message-state": {
                     "type": "string"
                 },
@@ -147,5 +153,5 @@
             }
         }
     },
-    "version": 3
+    "version": 5
 }

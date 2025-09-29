@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, useAttrs, useCssModule, watchEffect } from 'vue';
 
+import type { IconSize } from '@n8n/design-system/types';
 import type { ButtonProps } from '@n8n/design-system/types/button';
 
 import N8nIcon from '../N8nIcon';
@@ -34,7 +35,10 @@ const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
 
-const iconSize = computed(() => props.iconSize ?? (props.size === 'mini' ? 'xsmall' : props.size));
+const iconSize = computed(
+	(): IconSize | undefined =>
+		props.iconSize ?? (props.size === 'xmini' || props.size === 'mini' ? 'xsmall' : props.size),
+);
 
 const classes = computed(() => {
 	return (
@@ -77,10 +81,10 @@ const classes = computed(() => {
 </template>
 
 <style lang="scss">
-@import './Button';
+@use './Button';
 
 .el-button {
-	@include n8n-button(true);
+	@include Button.n8n-button(true);
 
 	--button-padding-vertical: var(--spacing-2xs);
 	--button-padding-horizontal: var(--spacing-xs);
@@ -92,18 +96,18 @@ const classes = computed(() => {
 
 	&.btn--cancel,
 	&.el-color-dropdown__link-btn {
-		@include n8n-button-secondary;
+		@include Button.n8n-button-secondary;
 	}
 }
 </style>
 
 <style lang="scss" module>
-@import './Button';
-@import '../../css/mixins/utils';
-@import '../../css/common/var';
+@use './Button';
+@use '../../css/mixins/utils';
+@use '../../css/common/var';
 
 .button {
-	@include n8n-button;
+	@include Button.n8n-button;
 }
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
@@ -113,23 +117,27 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  */
 
 .secondary {
-	@include n8n-button-secondary;
+	@include Button.n8n-button-secondary;
+}
+
+.highlight {
+	@include Button.n8n-button-highlight;
 }
 
 .tertiary {
-	@include n8n-button-secondary;
+	@include Button.n8n-button-secondary;
 }
 
 .success {
-	@include n8n-button-success;
+	@include Button.n8n-button-success;
 }
 
 .warning {
-	@include n8n-button-warning;
+	@include Button.n8n-button-warning;
 }
 
 .danger {
-	@include n8n-button-danger;
+	@include Button.n8n-button-danger;
 }
 
 /**

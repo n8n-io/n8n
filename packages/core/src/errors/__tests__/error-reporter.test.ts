@@ -1,10 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { ErrorEvent } from '@sentry/types';
+import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 import { ApplicationError, BaseError } from 'n8n-workflow';
-
-import type { Logger } from '@/logging/logger';
 
 import { ErrorReporter } from '../error-reporter';
 
@@ -194,6 +193,21 @@ describe('ErrorReporter', () => {
 			error.level = 'warning';
 			errorReporter.error(error);
 			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
+		});
+
+		it.each([true, undefined])(
+			'should log the error when shouldBeLogged is %s',
+			(shouldBeLogged) => {
+				error.level = 'error';
+				errorReporter.error(error, { shouldBeLogged });
+				expect(logger.error).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('should not log the error when shouldBeLogged is false', () => {
+			error.level = 'error';
+			errorReporter.error(error, { shouldBeLogged: false });
+			expect(logger.error).toHaveBeenCalledTimes(0);
 		});
 	});
 });

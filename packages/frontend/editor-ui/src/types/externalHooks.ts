@@ -15,11 +15,11 @@ import type {
 	INodeCreateElement,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	IPersonalizationLatestVersion,
 	IWorkflowDb,
-	IWorkflowTemplateNode,
 	NodeFilterType,
 } from '@/Interface';
+import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
+import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { ComponentPublicInstance } from 'vue';
 import type { useWebhooksStore } from '@/stores/webhooks.store';
 

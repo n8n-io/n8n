@@ -27,31 +27,15 @@
         "conversationId": {
             "type": "string"
         },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "address": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "hasAttachments": {
             "type": "boolean"
         },
         "id": {
             "type": "string"
         },
-        "subject": {
+        "receivedDateTime": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 6
 }

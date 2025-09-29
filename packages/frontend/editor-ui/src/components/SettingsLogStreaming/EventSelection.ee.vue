@@ -1,10 +1,10 @@
 <script lang="ts">
 import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { defineComponent } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export default defineComponent({
 	name: 'EventSelection',
@@ -73,23 +73,23 @@ export default defineComponent({
 			<!-- <template #header> -->
 			<Checkbox
 				:model-value="group.selected"
-				:indeterminate="!group.selected && group.indeterminate"
+				:indeterminate="group.indeterminate"
 				:disabled="readonly"
 				@update:model-value="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
 			>
 				<strong>{{ groupLabelName(group.name) }}</strong>
-				<n8n-tooltip
+				<N8nTooltip
 					v-if="groupLabelInfo(group.name)"
 					placement="top"
 					:popper-class="$style.tooltipPopper"
 					class="ml-xs"
 				>
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+					<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ groupLabelInfo(group.name) }}
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</Checkbox>
 			<Checkbox
 				v-if="group.name === 'n8n.audit'"
@@ -99,33 +99,29 @@ export default defineComponent({
 				@change="anonymizeAuditMessagesChanged"
 			>
 				{{ i18n.baseText('settings.log-streaming.tab.events.anonymize') }}
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="circle-help" size="small" class="ml-4xs" />
 					<template #content>
 						{{ i18n.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</Checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
-				<li
-					v-for="event in group.children"
-					:key="event.name"
-					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
-				>
+				<li v-for="event in group.children" :key="event.name" :class="`${$style.eventListItem}`">
 					<Checkbox
 						:model-value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
-						:disabled="group.selected || readonly"
+						:disabled="readonly"
 						@update:model-value="onInput"
 						@change="onCheckboxChecked(event.name, $event)"
 					>
 						{{ event.label }}
-						<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
 							<template #content>
 								{{ event.name }}
 							</template>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</Checkbox>
 				</li>
 			</ul>

@@ -7,12 +7,12 @@ export * from './data-deduplication-service';
 export * from './encryption';
 export * from './errors';
 export * from './execution-engine';
+export * from './html-sandbox';
 export * from './instance-settings';
-export * from './logging';
 export * from './nodes-loader';
 export * from './utils';
 export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
 
-export * from './interfaces';
+export type * from './interfaces';
 export * from './node-execute-functions';
 export { NodeExecuteFunctions };

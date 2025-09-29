@@ -3,7 +3,7 @@ import type { IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type {
 	FilterConditionValue,
@@ -158,22 +158,22 @@ const onBlur = (): void => {
 			v-if="canDrag && !readOnly"
 			type="tertiary"
 			text
-			size="mini"
+			size="small"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
-		></N8nIconButton>
-		<n8n-icon-button
+		/>
+		<N8nIconButton
 			v-if="canRemove && !readOnly"
 			type="tertiary"
 			text
-			size="mini"
-			icon="trash"
+			size="small"
+			icon="trash-2"
 			data-test-id="filter-remove-condition"
 			:title="i18n.baseText('filter.removeCondition')"
 			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
-		></n8n-icon-button>
+		/>
 		<InputTriple>
 			<template #left>
 				<ParameterInputFull
@@ -224,25 +224,25 @@ const onBlur = (): void => {
 		<div :class="$style.status">
 			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
 
-			<n8n-tooltip
+			<N8nTooltip
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === true"
 				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedTrue') }}
 				</template>
-				<n8n-icon :class="$style.statusIcon" icon="check-circle" size="medium" color="text-light" />
-			</n8n-tooltip>
+				<N8nIcon icon="circle-check" size="medium" color="text-light" />
+			</N8nTooltip>
 
-			<n8n-tooltip
+			<N8nTooltip
 				v-else-if="conditionResult.status === 'success' && conditionResult.result === false"
 				:show-after="500"
 			>
 				<template #content>
 					{{ i18n.baseText('filter.condition.resolvedFalse') }}
 				</template>
-				<n8n-icon :class="$style.statusIcon" icon="times-circle" size="medium" color="text-light" />
-			</n8n-tooltip>
+				<N8nIcon icon="circle-x" size="medium" color="text-light" />
+			</N8nTooltip>
 		</div>
 	</div>
 </template>
@@ -268,11 +268,6 @@ const onBlur = (): void => {
 .status {
 	align-self: flex-start;
 	padding-top: 28px;
-}
-
-.statusIcon {
-	padding-left: var(--spacing-4xs);
-	padding-right: var(--spacing-4xs);
 }
 
 .iconButton {

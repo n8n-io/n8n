@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	isResourceLocatorValue,
 	type INodeProperties,
@@ -9,6 +9,9 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 interface Props {
 	parameter: INodeProperties;
@@ -20,6 +23,7 @@ interface Props {
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingMessage?: string;
+	isContentOverridden?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+	isContentOverridden: false,
 });
 
 const emit = defineEmits<{
@@ -37,13 +42,35 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const ndvStore = useNDVStore();
 
+const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
-const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
+const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+const isInEmbeddedNdv = useIsInExperimentalNdv();
+const experimentalNdvStore = useExperimentalNdvStore();
+
+const canBeOpenedInFocusPanel = computed(() => {
+	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
+		return false;
+	}
+
+	if (!activeNode.value && !isInEmbeddedNdv.value) {
+		// The current parameter is focused parameter in focus panel
+		return false;
+	}
+
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+		return (props.parameter.typeOptions?.rows ?? 1) > 1 || editor.value !== undefined;
+	}
+
+	return props.parameter.type === 'string' || props.parameter.type === 'json';
+});
+
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
 		return false;
@@ -64,7 +91,6 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
-const activeNode = computed(() => useNDVStore().activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
@@ -82,7 +108,7 @@ const actions = computed(() => {
 		return props.customActions;
 	}
 
-	if (isHtmlEditor.value && !isValueAnExpression.value) {
+	if (editor.value === 'htmlEditor' && !isValueAnExpression.value) {
 		return [
 			{
 				label: i18n.baseText('parameterInput.formatHtml'),
@@ -91,13 +117,18 @@ const actions = computed(() => {
 		];
 	}
 
-	const parameterActions = [
-		{
-			label: resetValueLabel.value,
-			value: 'resetValue',
-			disabled: isDefault.value,
-		},
-	];
+	const resetAction = {
+		label: resetValueLabel.value,
+		value: 'resetValue',
+		disabled: isDefault.value,
+	};
+
+	// The reset value action is not working correctly for these
+	const hasResetAction = !['codeNodeEditor', 'sqlEditor'].includes(
+		props.parameter.typeOptions?.editor ?? '',
+	);
+
+	const parameterActions = [hasResetAction ? resetAction : []].flat();
 
 	if (
 		hasRemoteMethod.value ||
@@ -127,34 +158,32 @@ const onViewSelected = (selected: string) => {
 		emit('update:modelValue', 'removeExpression');
 	}
 };
-const getArgument = (argumentName: string) => {
-	if (props.parameter.typeOptions === undefined) {
-		return undefined;
-	}
-
-	if (props.parameter.typeOptions[argumentName] === undefined) {
-		return undefined;
-	}
-
-	return props.parameter.typeOptions[argumentName];
-};
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
-			<n8n-text v-if="loading" size="small">
-				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+			<N8nText v-if="loading" size="small">
+				<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 				{{ loadingMessage }}
-			</n8n-text>
+			</N8nText>
 		</div>
 		<div v-else :class="$style.controlsContainer">
+			<N8nTooltip v-if="canBeOpenedInFocusPanel">
+				<template #content>{{ i18n.baseText('parameterInput.focusParameter') }}</template>
+				<N8nIcon
+					size="medium"
+					:icon="'panel-right'"
+					:class="$style.focusButton"
+					@click="$emit('update:modelValue', 'focus')"
+				/>
+			</N8nTooltip>
 			<div
 				:class="{
 					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
 				}"
 			>
-				<n8n-action-toggle
+				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="small"
@@ -166,7 +195,7 @@ const getArgument = (argumentName: string) => {
 					@visible-change="onMenuToggle"
 				/>
 			</div>
-			<n8n-radio-buttons
+			<N8nRadioButtons
 				v-if="shouldShowExpressionSelector"
 				size="small"
 				:model-value="selectedView"
@@ -182,9 +211,12 @@ const getArgument = (argumentName: string) => {
 </template>
 
 <style lang="scss" module>
+$container-height: 22px;
+
 .container {
 	display: flex;
-	min-height: 22px;
+	min-height: $container-height;
+	max-height: $container-height;
 }
 
 .loader {
@@ -201,10 +233,18 @@ const getArgument = (argumentName: string) => {
 }
 
 .noExpressionSelector {
-	margin-bottom: var(--spacing-4xs);
-
 	span {
 		padding-right: 0 !important;
+	}
+}
+
+.focusButton {
+	outline: none;
+	color: var(--color-text-light);
+
+	&:hover {
+		cursor: pointer;
+		color: var(--color-primary);
 	}
 }
 </style>

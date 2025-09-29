@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 interface TagsManagerProps {
 	modalKey: string;
@@ -155,7 +155,7 @@ function onEnter() {
 		@enter="onEnter"
 	>
 		<template #content>
-			<el-row>
+			<ElRow>
 				<TagsView
 					v-if="hasTags || isCreating"
 					:is-loading="isLoading"
@@ -173,10 +173,10 @@ function onEnter() {
 					:description-locale-key="noTagsDescriptionLocaleKey"
 					@enable-create="onEnableCreate"
 				/>
-			</el-row>
+			</ElRow>
 		</template>
 		<template #footer="{ close }">
-			<n8n-button :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
+			<N8nButton :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
 		</template>
 	</Modal>
 </template>

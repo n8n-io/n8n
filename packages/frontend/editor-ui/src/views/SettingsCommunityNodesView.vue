@@ -15,7 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -73,7 +73,7 @@ const getEmptyStateButtonText = computed(() => {
 const actionBoxConfig = computed(() => {
 	return {
 		calloutText: '',
-		calloutTheme: '',
+		calloutTheme: undefined,
 		hideButton: false,
 	};
 });
@@ -152,8 +152,8 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.headingContainer">
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</n8n-heading>
-			<n8n-button
+			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
+			<N8nButton
 				v-if="
 					settingsStore.isUnverifiedPackagesEnabled &&
 					communityNodesStore.getInstalledPackages.length > 0 &&
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 			:class="$style.actionBoxContainer"
 		>
-			<n8n-action-box
+			<N8nActionBox
 				:heading="getEmptyStateTitle"
 				:description="getEmptyStateDescription"
 				:button-text="getEmptyStateButtonText"
