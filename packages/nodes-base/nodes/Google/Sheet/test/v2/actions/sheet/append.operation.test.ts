@@ -454,12 +454,7 @@ describe('Google Sheets Append Operation', () => {
 			mockSheet.getData.mockResolvedValue(undefined);
 			mockSheet.appendSheetData.mockResolvedValue([]);
 
-			const result = await execute.call(
-				mockExecuteFunctions,
-				mockSheet,
-				'Sheet1!A1:B2',
-				'sheet123',
-			);
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
 
 			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalled();
 		});
