@@ -17,7 +17,7 @@ function onImportCurlClicked() {
 
 <template>
 	<div :class="$style.importSection">
-		<n8n-button
+		<N8nButton
 			type="secondary"
 			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"

@@ -239,3 +239,5 @@ export type ViewportBoundaries = {
 	yMin: number;
 	yMax: number;
 };
+
+export type SearchShortcut = '/' | 'ctrl+f';

@@ -338,12 +338,12 @@ watch(workflows, (newWorkflows) => {
 		<template #header>
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
-					<n8n-heading tag="h1" size="2xlarge">
+					<N8nHeading tag="h1" size="2xlarge">
 						{{ i18n.baseText('templates.heading') }}
-					</n8n-heading>
+					</N8nHeading>
 				</div>
 				<div :class="$style.button">
-					<n8n-button
+					<N8nButton
 						size="large"
 						type="secondary"
 						element="a"
@@ -368,7 +368,7 @@ watch(workflows, (newWorkflows) => {
 					/>
 				</div>
 				<div :class="$style.search">
-					<n8n-input
+					<N8nInput
 						:model-value="search"
 						:placeholder="i18n.baseText('templates.searchPlaceholder')"
 						clearable
@@ -377,19 +377,19 @@ watch(workflows, (newWorkflows) => {
 						@blur="trackSearch"
 					>
 						<template #prefix>
-							<n8n-icon icon="search" />
+							<N8nIcon icon="search" />
 						</template>
-					</n8n-input>
+					</N8nInput>
 					<div v-show="collections.length || loadingCollections" :class="$style.carouselContainer">
 						<div :class="$style.header">
-							<n8n-heading :bold="true" size="medium" color="text-light">
+							<N8nHeading :bold="true" size="medium" color="text-light">
 								{{ i18n.baseText('templates.collections') }}
 								<span
 									v-if="!loadingCollections"
 									data-test-id="collection-count-label"
 									v-text="`(${collections.length})`"
 								/>
-							</n8n-heading>
+							</N8nHeading>
 						</div>
 						<TemplatesInfoCarousel
 							:collections="collections"
@@ -406,9 +406,9 @@ watch(workflows, (newWorkflows) => {
 						@open-template="onOpenTemplate"
 					/>
 					<div v-if="endOfSearchMessage" :class="$style.endText">
-						<n8n-text size="medium" color="text-base">
+						<N8nText size="medium" color="text-base">
 							<span v-n8n-html="endOfSearchMessage" />
-						</n8n-text>
+						</N8nText>
 					</div>
 				</div>
 			</div>

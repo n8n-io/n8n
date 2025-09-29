@@ -243,7 +243,7 @@ onMounted(async () => {
 	>
 		<template #content>
 			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
-			<n8n-notice
+			<N8nNotice
 				v-if="!isLatestPackageVerified"
 				data-test-id="communityPackageManageConfirmModal-warning"
 				:content="getModalContent.warning"
@@ -260,7 +260,7 @@ onMounted(async () => {
 			/>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 				size="large"
 				float="left"
@@ -268,7 +268,7 @@ onMounted(async () => {
 				data-test-id="close-button"
 				@click="onClick"
 			/>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="loading"
 				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"

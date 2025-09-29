@@ -93,13 +93,13 @@ watch(
 	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
 		<div :class="$style.title" v-text="i18n.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
-			<n8n-loading :loading="loading" :rows="expandLimit" />
+			<N8nLoading :loading="loading" :rows="expandLimit" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
 			<li :class="$style.item" data-test-id="template-filter-all-categories">
-				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
+				<ElCheckbox :model-value="allSelected" @update:model-value="() => resetCategories()">
 					{{ i18n.baseText('templates.allCategories') }}
-				</el-checkbox>
+				</ElCheckbox>
 			</li>
 			<li
 				v-for="(category, index) in collapsed
@@ -109,12 +109,12 @@ watch(
 				:class="$style.item"
 				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
 			>
-				<el-checkbox
+				<ElCheckbox
 					:model-value="isSelected(category)"
 					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
 				>
 					{{ category.name }}
-				</el-checkbox>
+				</ElCheckbox>
 			</li>
 		</ul>
 		<div
@@ -123,9 +123,9 @@ watch(
 			data-test-id="expand-categories-button"
 			@click="collapseAction"
 		>
-			<n8n-text size="small" color="primary">
+			<N8nText size="small" color="primary">
 				+ {{ `${sortedCategories.length - expandLimit} more` }}
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>

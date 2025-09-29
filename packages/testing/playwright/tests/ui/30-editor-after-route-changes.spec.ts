@@ -5,9 +5,9 @@ const NOTIFICATIONS = {
 };
 
 test.describe('Editor zoom should work after route changes', () => {
-	test.beforeEach(async ({ n8n, api }) => {
-		await api.enableFeature('debugInEditor');
-		await api.enableFeature('workflowHistory');
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('debugInEditor');
+		await n8n.api.enableFeature('workflowHistory');
 
 		await n8n.workflowComposer.createWorkflowFromJsonFile(
 			'Lots_of_nodes.json',
