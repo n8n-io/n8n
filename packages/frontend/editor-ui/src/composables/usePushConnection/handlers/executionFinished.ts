@@ -32,6 +32,7 @@ import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
+import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -425,13 +426,14 @@ export function setRunExecutionData(
 	runExecutionData: IRunExecutionData,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowHandle = injectWorkflowHandle();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 
 	workflowsStore.executingNode.length = 0;
 
-	workflowsStore.setWorkflowExecutionData({
+	workflowHandle.setWorkflowExecutionData({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,

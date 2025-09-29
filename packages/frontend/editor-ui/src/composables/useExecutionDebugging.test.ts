@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi, IExecutionResponse } from '@/Interface';
 import type { Workflow } from 'n8n-workflow';
@@ -15,6 +16,15 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
+vi.mock('@/composables/useWorkflowHandle', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+	return {
+		...actual,
+		injectWorkflowHandle: vi.fn(),
+	};
+});
+
+let workflowHandle: ReturnType<typeof useWorkflowHandle>;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
 
@@ -22,8 +32,12 @@ describe('useExecutionDebugging()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
-		executionDebugging = useExecutionDebugging();
 		toast = useToast();
+
+		workflowHandle = useWorkflowHandle();
+		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+
+		executionDebugging = useExecutionDebugging();
 	});
 
 	it('should not throw when runData node is an empty array', async () => {
@@ -165,10 +179,11 @@ describe('useExecutionDebugging()', () => {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
 		} as unknown as Workflow;
+		const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
+		expect(setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
 		expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
 		expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 	});
@@ -195,10 +210,11 @@ describe('useExecutionDebugging()', () => {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
 		} as unknown as Workflow;
+		const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
+		expect(setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
 		expect(toast.showToast).toHaveBeenCalledTimes(1);
 	});
 });

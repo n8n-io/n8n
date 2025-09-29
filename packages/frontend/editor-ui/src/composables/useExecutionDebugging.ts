@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
 import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -27,6 +28,7 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const workflowHandle = injectWorkflowHandle();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
@@ -99,7 +101,7 @@ export const useExecutionDebugging = () => {
 
 		// Set execution data
 		workflowsStore.resetAllNodesIssues();
-		workflowsStore.setWorkflowExecutionData(execution);
+		workflowHandle.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(

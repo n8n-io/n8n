@@ -31,7 +31,6 @@ import {
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
-	WorkflowHandleKey,
 } from '@/constants';
 import {
 	AddConnectionCommand,
@@ -102,7 +101,7 @@ import type {
 	INodeParameters,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
-import { computed, inject, nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
@@ -116,7 +115,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
-import { useWorkflowHandle } from './useWorkflowHandle';
+import { injectWorkflowHandle } from './useWorkflowHandle';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -149,7 +148,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = inject(WorkflowHandleKey, () => useWorkflowHandle(), true);
+	const workflowHandle = injectWorkflowHandle();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -2212,7 +2211,7 @@ export function useCanvasOperations() {
 
 		initializeWorkspace(data.workflowData);
 
-		workflowsStore.setWorkflowExecutionData(data);
+		workflowHandle.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});

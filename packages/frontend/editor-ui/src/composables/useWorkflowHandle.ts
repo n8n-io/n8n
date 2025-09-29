@@ -1,6 +1,8 @@
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WorkflowHandleKey } from '@/constants';
+import type { IExecutionResponse } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { inject } from 'vue';
 
 export function useWorkflowHandle() {
@@ -30,11 +32,23 @@ export function useWorkflowHandle() {
 		ws.nodeMetadata = {};
 	}
 
+	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+		if (workflowResultData?.data?.waitTill) {
+			delete workflowResultData.data.resultData.runData[
+				workflowResultData.data.resultData.lastNodeExecuted as string
+			];
+		}
+		ws.workflowExecutionData = workflowResultData;
+		ws.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
+		ws.workflowExecutionResultDataLastUpdate = Date.now();
+		ws.workflowExecutionStartedData = undefined;
+	}
+
 	function resetState() {
 		removeAllConnections({ setStateDirty: false });
 		removeAllNodes({ setStateDirty: false, removePinData: true });
 
-		ws.setWorkflowExecutionData(null);
+		setWorkflowExecutionData(null);
 		ws.resetAllNodesIssues();
 
 		ws.setActive(ws.defaults.active);
@@ -52,6 +66,7 @@ export function useWorkflowHandle() {
 		resetState,
 		removeAllConnections,
 		removeAllNodes,
+		setWorkflowExecutionData,
 	};
 }
 

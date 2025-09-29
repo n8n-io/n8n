@@ -77,7 +77,6 @@ import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
-import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
@@ -869,18 +868,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
-	}
-
-	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
-		}
-		workflowExecutionData.value = workflowResultData;
-		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
-		workflowExecutionResultDataLastUpdate.value = Date.now();
-		workflowExecutionStartedData.value = undefined;
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -2029,7 +2016,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setActive,
 		setIsArchived,
 		getDuplicateCurrentWorkflowName,
-		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,
 		setWorkflowSettings,
 		setWorkflowPinData,

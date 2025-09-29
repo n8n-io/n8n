@@ -35,6 +35,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
+import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -757,7 +758,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node success run data', () => {
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowHandle().setWorkflowExecutionData(executionResponse);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -780,7 +781,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node error event and track errored executions', async () => {
 			workflowsStore.workflow.pinData = {};
-			workflowsStore.setWorkflowExecutionData(executionResponse);
+			useWorkflowHandle().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -869,7 +870,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowHandle().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -923,7 +924,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowHandle().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',

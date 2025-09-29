@@ -14,6 +14,7 @@ import type {
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
 import type { IExecutionResponse, IStartRunData } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -37,7 +38,6 @@ vi.mock('@/stores/workflows.store', () => {
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
-		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: undefined,
 		previousExecutionId: undefined,
 		nodesIssuesExist: false,
@@ -132,6 +132,16 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+vi.mock('@/composables/useWorkflowHandle', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+	return {
+		...actual,
+		injectWorkflowHandle: vi.fn(),
+	};
+});
+
+let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+
 describe('useRunWorkflow({ router })', () => {
 	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -149,6 +159,9 @@ describe('useRunWorkflow({ router })', () => {
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
 		agentRequestStore = useAgentRequestStore();
+
+		workflowHandle = useWorkflowHandle();
+		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers();
@@ -746,6 +759,9 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
+
+			const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
@@ -771,8 +787,8 @@ describe('useRunWorkflow({ router })', () => {
 				workflowData,
 			});
 			expect(result).toEqual(mockExecutionResponse);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
+			expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
@@ -794,13 +810,15 @@ describe('useRunWorkflow({ router })', () => {
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
+			const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'some node name' });
 
 			// ASSERT
 			expect(result).toEqual(mockExecutionResponse);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
+			expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
@@ -842,13 +860,15 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [],
 			} as unknown as WorkflowData);
 
+			const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+
 			// Simulate failed execution start
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
 
 			await runWorkflow({});
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.setWorkflowExecutionData).lastCalledWith(null);
+			expect(setWorkflowExecutionData).lastCalledWith(null);
 		});
 	});
 
