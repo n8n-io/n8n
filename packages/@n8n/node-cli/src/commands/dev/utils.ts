@@ -115,7 +115,7 @@ export function commands() {
 			cwd: opts.cwd,
 			env: { ...process.env, ...opts.env },
 			stdio: ['inherit', 'pipe', 'pipe'],
-			shell: true,
+			shell: process.platform === 'win32',
 		});
 
 		registerChild(child);
