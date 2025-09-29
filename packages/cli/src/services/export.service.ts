@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
+import { compressFolder } from '@/utils/compression.util';
 
 @Service()
 export class ExportService {
@@ -193,10 +194,30 @@ export class ExportService {
 			totalEntitiesExported += totalEntityCount;
 		}
 
+		// Compress the output directory to entities.zip
+		const zipPath = path.join(outputDir, 'entities.zip');
+		this.logger.info(`\n🗜️  Compressing export to ${zipPath}...`);
+
+		await compressFolder(outputDir, zipPath, {
+			level: 6,
+			exclude: ['*.log'],
+			includeHidden: false,
+		});
+
+		// Clean up individual JSONL files, keeping only the ZIP
+		this.logger.info(`🗑️  Cleaning up individual entity files...`);
+		const files = await readdir(outputDir);
+		for (const file of files) {
+			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
+				await rm(path.join(outputDir, file));
+			}
+		}
+
 		this.logger.info('\n📊 Export Summary:');
 		this.logger.info(`   Tables processed: ${totalTablesProcessed}`);
 		this.logger.info(`   Total entities exported: ${totalEntitiesExported}`);
 		this.logger.info(`   Output directory: ${outputDir}`);
+		this.logger.info(`   Compressed archive: ${zipPath}`);
 		this.logger.info('✅ Task completed successfully! \n');
 	}
 }

@@ -19,6 +19,7 @@ import path from 'path';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
+import { decompressFolder } from '@/utils/compression.util';
 
 @Service()
 export class ImportService {
@@ -271,9 +272,23 @@ export class ImportService {
 		return entities;
 	}
 
+	private async decompressEntitiesZip(inputDir: string): Promise<void> {
+		const entitiesZipPath = path.join(inputDir, 'entities.zip');
+		const { existsSync } = await import('fs');
+
+		if (!existsSync(entitiesZipPath)) {
+			throw new Error(`entities.zip file not found in ${inputDir}.`);
+		}
+
+		this.logger.info(`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`);
+		await decompressFolder(entitiesZipPath, inputDir);
+		this.logger.info(`✅ Successfully decompressed entities.zip`);
+	}
+
 	async importEntities(inputDir: string, truncateTables: boolean) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		await this.decompressEntitiesZip(inputDir);
 		await this.validateMigrations(inputDir);
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
@@ -310,6 +325,17 @@ export class ImportService {
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
+
+		// Cleanup decompressed files after import
+		const { readdir, rm } = await import('fs/promises');
+		const files = await readdir(inputDir);
+		for (const file of files) {
+			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
+				await rm(path.join(inputDir, file));
+				this.logger.info(`   Removed: ${file}`);
+			}
+		}
+		this.logger.info(`\n🗑️  Cleaned up decompressed files in ${inputDir}`);
 	}
 
 	/**
