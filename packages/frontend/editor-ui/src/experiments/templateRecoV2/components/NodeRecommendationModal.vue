@@ -8,6 +8,7 @@ import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store'
 import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nRadioButtons } from '@n8n/design-system';
 
 const props = defineProps<{
 	modalName: string;

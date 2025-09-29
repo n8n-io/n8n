@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/constants';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	template: ITemplatesWorkflow;

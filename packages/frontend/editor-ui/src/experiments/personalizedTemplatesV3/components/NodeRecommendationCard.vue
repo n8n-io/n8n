@@ -4,6 +4,7 @@ import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { computed, onMounted } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
+import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	nodeName: string;

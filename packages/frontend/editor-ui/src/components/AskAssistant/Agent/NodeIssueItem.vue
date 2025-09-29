@@ -7,6 +7,7 @@ interface WorkflowNodeIssue {
 	value: string | string[];
 }
 import { useNDVStore } from '@/stores/ndv.store';
+import { N8nIcon } from '@n8n/design-system';
 
 interface Props {
 	/** The node issue to display */
