@@ -82,11 +82,6 @@ export class AgentV3 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 2.1 } }],
-						},
-					},
 				},
 				{
 					displayName:
