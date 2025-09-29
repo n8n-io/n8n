@@ -2037,7 +2037,6 @@ describe('GET /workflows?includeFolders=true', () => {
 
 			const folder = await createFolder(pp, { name: 'Test Folder' });
 
-			// Filter by node type should only return workflows, not folders
 			const response = await authOwnerAgent
 				.get('/workflows')
 				.query('filter={ "nodeTypes": ["n8n-nodes-base.httpRequest"] }&includeFolders=true')
