@@ -39,8 +39,8 @@ vi.mock('@/composables/useMessage', () => ({
 const renderComponent = createComponentRenderer(ProjectRolesView, {
 	global: {
 		stubs: {
-			'router-link': {
-				template: '<a><slot /></a>',
+			RouterLink: {
+				template: '<router-link-stub v-bind="$attrs"><slot /></router-link-stub>',
 			},
 		},
 	},
