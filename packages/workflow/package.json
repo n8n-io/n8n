@@ -16,6 +16,11 @@
       "import": "./dist/esm/common/index.js",
       "require": "./dist/cjs/common/index.js"
     },
+    "./workflow-factory": {
+      "types": "./dist/esm/workflow-factory/index.d.ts",
+      "import": "./dist/esm/workflow-factory/index.js",
+      "require": "./dist/cjs/workflow-factory/index.js"
+    },
     "./*": "./*"
   },
   "scripts": {
