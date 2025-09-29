@@ -11,6 +11,8 @@ import type { CredentialsRepository, TagRepository } from '@n8n/db';
 // Mock fs/promises
 jest.mock('fs/promises');
 
+jest.mock('@/utils/compression.util');
+
 // Mock @n8n/db
 jest.mock('@n8n/db', () => ({
 	CredentialsRepository: mock<CredentialsRepository>(),
@@ -726,6 +728,39 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
+		});
+	});
+
+	describe('decompressEntitiesZip', () => {
+		it('should decompress entities.zip successfully when file exists', async () => {
+			const inputDir = '/test/input';
+			const entitiesZipPath = '/test/input/entities.zip';
+
+			// Mock fs module
+			const mockExistsSync = jest.fn().mockReturnValue(true);
+			jest.mock('fs', () => ({
+				existsSync: mockExistsSync,
+			}));
+
+			// Mock decompressFolder
+			const mockDecompressFolder = jest.fn().mockResolvedValue(undefined);
+			jest.mock('@/utils/compression.util', () => ({
+				decompressFolder: mockDecompressFolder,
+			}));
+
+			// Mock path.join
+			const mockPathJoin = jest.fn().mockReturnValue(entitiesZipPath);
+			jest.doMock('path', () => ({
+				join: mockPathJoin,
+			}));
+
+			// @ts-expect-error For testing purposes
+			await importService.decompressEntitiesZip(inputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`,
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Successfully decompressed entities.zip');
 		});
 	});
 });
