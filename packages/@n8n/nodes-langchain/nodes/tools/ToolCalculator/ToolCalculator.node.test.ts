@@ -54,8 +54,8 @@ describe('ToolCalculator', () => {
 						json: {
 							response: '4',
 						},
-						pairedItems: {
-							itemIndex: 0,
+						pairedItem: {
+							item: 0,
 						},
 					},
 				],
@@ -86,8 +86,8 @@ describe('ToolCalculator', () => {
 						json: {
 							response: '4',
 						},
-						pairedItems: {
-							itemIndex: 0,
+						pairedItem: {
+							item: 0,
 						},
 					},
 				],
@@ -96,8 +96,8 @@ describe('ToolCalculator', () => {
 						json: {
 							response: '15',
 						},
-						pairedItems: {
-							itemIndex: 1,
+						pairedItem: {
+							item: 1,
 						},
 					},
 				],

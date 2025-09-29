@@ -70,8 +70,8 @@ export class ToolCalculator implements INodeType {
 					json: {
 						response: result,
 					},
-					pairedItems: {
-						itemIndex: i,
+					pairedItem: {
+						item: i,
 					},
 				},
 			]);

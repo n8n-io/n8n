@@ -99,7 +99,7 @@ describe('ToolThink', () => {
 						json: {
 							response: 'thinking about this problem',
 						},
-						pairedItems: {
+						pairedItem: {
 							item: 0,
 						},
 					},
@@ -139,7 +139,7 @@ describe('ToolThink', () => {
 						json: {
 							response: 'first thought',
 						},
-						pairedItems: {
+						pairedItem: {
 							item: 0,
 						},
 					},
@@ -147,7 +147,7 @@ describe('ToolThink', () => {
 						json: {
 							response: 'second thought',
 						},
-						pairedItems: {
+						pairedItem: {
 							item: 1,
 						},
 					},
@@ -184,7 +184,7 @@ describe('ToolThink', () => {
 						json: {
 							response: 'test',
 						},
-						pairedItems: {
+						pairedItem: {
 							item: 0,
 						},
 					},

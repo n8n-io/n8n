@@ -102,7 +102,7 @@ export class ToolThink implements INodeType {
 				json: {
 					response: result,
 				},
-				pairedItems: {
+				pairedItem: {
 					item: i,
 				},
 			});
