@@ -30,6 +30,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	data: {
 		id: string;

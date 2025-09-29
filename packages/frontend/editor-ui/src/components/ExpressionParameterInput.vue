@@ -20,6 +20,7 @@ import { CanvasKey } from '@/constants';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
 import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nButton } from '@n8n/design-system';
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();

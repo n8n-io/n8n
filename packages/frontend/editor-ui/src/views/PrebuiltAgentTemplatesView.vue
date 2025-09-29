@@ -6,6 +6,7 @@ import { computed, onMounted } from 'vue';
 import type { OpenTemplateElement } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
+import { N8nCard, N8nHeading, N8nLink, N8nNodeCreatorNode } from '@n8n/design-system';
 const nodeTypesStore = useNodeTypesStore();
 
 const i18n = useI18n();

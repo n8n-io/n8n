@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
@@ -39,6 +38,19 @@ import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/st
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import {
+	N8nActionDropdown,
+	N8nAvatar,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nMenu,
+	N8nNavigationDropdown,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();

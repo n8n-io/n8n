@@ -30,6 +30,19 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import SettingsUsersTable from '@/components/SettingsUsers/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nBadge,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const clipboard = useClipboard();
 const { showToast, showError } = useToast();
 

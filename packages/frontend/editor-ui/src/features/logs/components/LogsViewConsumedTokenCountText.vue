@@ -3,7 +3,6 @@ import { useI18n } from '@n8n/i18n';
 import { type LlmTokenUsageData } from '@/Interface';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
 import { N8nTooltip } from '@n8n/design-system';
-
 const { consumedTokens } = defineProps<{ consumedTokens: LlmTokenUsageData }>();
 const locale = useI18n();
 </script>

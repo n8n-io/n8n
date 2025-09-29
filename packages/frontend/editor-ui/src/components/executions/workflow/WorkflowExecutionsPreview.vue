@@ -12,12 +12,13 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useExecutionsStore } from '@/stores/executions.store';
 
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import { N8nButton, N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{

@@ -5,6 +5,8 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
 import type { ResourceCounts } from '@/stores/projects.store';
 
+import { ElDialog, ElRadio } from 'element-plus';
+import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
 type Props = {
 	currentProject: Project | null;
 	projects: ProjectListItem[];

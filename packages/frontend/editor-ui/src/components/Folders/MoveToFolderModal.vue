@@ -24,6 +24,7 @@ import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */

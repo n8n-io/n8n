@@ -15,6 +15,8 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
+import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;

@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nFormInput } from '@n8n/design-system';
 import { computed, reactive, ref, toRaw } from 'vue';
 import VariablesUsageBadge from './VariablesUsageBadge.vue';
 
+import { N8nButton, N8nFormInput } from '@n8n/design-system';
 const props = defineProps<{
 	variable: EnvironmentVariable;
 }>();

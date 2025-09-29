@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { nodeViewEventBus } from '@/event-bus';
 import { VALID_WORKFLOW_IMPORT_URL_REGEX, IMPORT_WORKFLOW_URL_MODAL_KEY } from '@/constants';
 
+import { N8nButton, N8nInput } from '@n8n/design-system';
 const i18n = useI18n();
 const uiStore = useUIStore();
 

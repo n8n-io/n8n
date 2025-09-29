@@ -60,17 +60,6 @@ import {
 	TemplateClickSource,
 	trackTemplatesClick,
 } from '@/utils/experiments';
-import {
-	N8nButton,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nInlineTextEdit,
-	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -80,6 +69,24 @@ import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInlineTextEdit,
+	N8nInputLabel,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 

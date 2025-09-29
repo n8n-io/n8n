@@ -17,6 +17,18 @@ import type { Placement } from '@floating-ui/core';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import { ElDatePicker } from 'element-plus';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nPopover,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	popoverPlacement?: Placement;

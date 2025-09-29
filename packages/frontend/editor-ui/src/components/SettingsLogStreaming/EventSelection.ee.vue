@@ -1,11 +1,12 @@
 <script lang="ts">
-import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { defineComponent } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
+import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 export default defineComponent({
 	name: 'EventSelection',
 	components: {

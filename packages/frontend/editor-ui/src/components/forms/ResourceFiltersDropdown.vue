@@ -7,6 +7,7 @@ import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nBadge, N8nButton, N8nInputLabel, N8nLink, N8nPopover } from '@n8n/design-system';
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 const props = withDefaults(

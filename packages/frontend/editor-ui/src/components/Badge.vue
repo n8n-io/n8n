@@ -1,4 +1,6 @@
 <script lang="ts">
+import { ElTag } from 'element-plus';
+
 export default {
 	props: ['text', 'type'],
 };

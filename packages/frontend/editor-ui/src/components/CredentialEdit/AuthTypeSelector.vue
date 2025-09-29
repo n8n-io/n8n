@@ -18,6 +18,8 @@ import type {
 } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 
+import { ElRadio } from 'element-plus';
+import { N8nInputLabel } from '@n8n/design-system';
 export interface Props {
 	credentialType: ICredentialType;
 }

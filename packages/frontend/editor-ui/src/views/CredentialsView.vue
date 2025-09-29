@@ -26,7 +26,6 @@ import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
-import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
@@ -34,6 +33,7 @@ import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
+import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
 	credentialId?: string;
 }>();

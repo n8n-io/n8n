@@ -46,6 +46,7 @@ import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];

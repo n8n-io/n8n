@@ -20,6 +20,8 @@ import { useUIStore } from '@/stores/ui.store';
 
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
+import { ElSwitch } from 'element-plus';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const props = defineProps<{
 	isArchived: boolean;
 	workflowActive: boolean;

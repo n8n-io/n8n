@@ -6,6 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 
+import { ElSwitch } from 'element-plus';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
 	change: [value: boolean];
 }>();

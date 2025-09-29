@@ -2,10 +2,9 @@
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
-import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
-import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
 
+import { N8nTooltip } from '@n8n/design-system';
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();

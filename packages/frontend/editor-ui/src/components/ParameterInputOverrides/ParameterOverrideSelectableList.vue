@@ -5,7 +5,6 @@ import { type INodeProperties } from 'n8n-workflow';
 import { buildValueFromOverride, type FromAIOverride } from '../../utils/fromAIOverrideUtils';
 import { computed } from 'vue';
 import { N8nSelectableList } from '@n8n/design-system';
-
 type Props = {
 	parameter: INodeProperties;
 	path: string;

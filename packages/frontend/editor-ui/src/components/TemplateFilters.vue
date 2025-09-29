@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue';
 import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 
+import { ElCheckbox } from 'element-plus';
+import { N8nLoading, N8nText } from '@n8n/design-system';
 interface Props {
 	categories?: ITemplatesCategory[];
 	sortOnPopulate?: boolean;

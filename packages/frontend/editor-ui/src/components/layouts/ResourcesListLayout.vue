@@ -15,6 +15,20 @@ import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
 
+import { ElPagination } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nDatatable,
+	N8nIcon,
+	N8nInfoTip,
+	N8nInput,
+	N8nLink,
+	N8nLoading,
+	N8nOption,
+	N8nRecycleScroller,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 type UIConfig = {
 	searchEnabled: boolean;
 	showFiltersDropdown: boolean;

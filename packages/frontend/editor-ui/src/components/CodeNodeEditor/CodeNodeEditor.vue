@@ -22,6 +22,7 @@ import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
 
+import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 type Props = {

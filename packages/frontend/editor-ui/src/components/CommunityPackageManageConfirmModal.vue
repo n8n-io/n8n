@@ -11,11 +11,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useSettingsStore } from '@/stores/settings.store';
 import semver from 'semver';
-import { N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowResource } from '@/Interface';
 
+import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
 interface Props {

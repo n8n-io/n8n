@@ -5,10 +5,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
-import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const { activeViewStack } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;

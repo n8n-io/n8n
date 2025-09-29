@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
 import upperFirst from 'lodash/upperFirst';
@@ -12,6 +11,7 @@ import { getSubtreeTotalConsumedTokens, hasSubExecution } from '@/features/logs/
 import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;

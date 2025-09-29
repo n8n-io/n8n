@@ -21,6 +21,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
 import { useProjectsStore } from '@/stores/projects.store';
 
+import { ElCol, ElRow } from 'element-plus';
+import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
 type Value = string | number | boolean | null | undefined;
 
 const props = defineProps<{

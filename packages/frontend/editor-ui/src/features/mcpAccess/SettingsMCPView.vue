@@ -14,6 +14,18 @@ import { useMCPStore } from '@/features/mcpAccess/mcp.store';
 import { useUsersStore } from '@/stores/users.store';
 import MCPConnectionInstructions from '@/features/mcpAccess/components/MCPConnectionInstructions.vue';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nActionToggle,
+	N8nDataTableServer,
+	N8nHeading,
+	N8nIcon,
+	N8nLink,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();

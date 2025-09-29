@@ -9,6 +9,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
