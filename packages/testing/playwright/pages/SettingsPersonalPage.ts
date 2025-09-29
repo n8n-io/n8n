@@ -5,7 +5,7 @@ import { BasePage } from './BasePage';
 /**
  * Page object for Settings including Personal Settings where users can update their profile and manage MFA.
  */
-export class SettingsPage extends BasePage {
+export class SettingsPersonalPage extends BasePage {
 	getMenuItems() {
 		return this.page.getByTestId('menu-item');
 	}
@@ -20,6 +20,10 @@ export class SettingsPage extends BasePage {
 
 	async goToSettings() {
 		await this.page.goto('/settings');
+	}
+
+	getUserRole(): Locator {
+		return this.page.getByTestId('current-user-role');
 	}
 
 	async goToPersonalSettings(): Promise<void> {
