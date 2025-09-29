@@ -510,7 +510,7 @@ describe('ImportService', () => {
 			mockCredentialsRepository.findOneBy = jest.fn().mockResolvedValue(mockCredential);
 
 			// @ts-expect-error For testing purposes
-			await importService.toNewCredentialFormat(node);
+			importService.toNewCredentialFormat(node);
 
 			expect(node.credentials).toEqual({
 				httpBasicAuth: {
@@ -524,7 +524,7 @@ describe('ImportService', () => {
 			const node = {};
 
 			// @ts-expect-error For testing purposes
-			await importService.toNewCredentialFormat(node);
+			importService.toNewCredentialFormat(node);
 
 			expect(node).toEqual({});
 		});
@@ -539,7 +539,7 @@ describe('ImportService', () => {
 			mockCredentialsRepository.findOneBy = jest.fn().mockResolvedValue(null);
 
 			// @ts-expect-error For testing purposes
-			await importService.toNewCredentialFormat(node);
+			importService.toNewCredentialFormat(node);
 
 			// Should be converted to new format with null id and string as name
 			expect(node.credentials).toEqual({
@@ -558,7 +558,7 @@ describe('ImportService', () => {
 			};
 
 			// @ts-expect-error For testing purposes
-			await importService.toNewCredentialFormat(node);
+			importService.toNewCredentialFormat(node);
 
 			// Should remain unchanged when already in new format
 			expect(node.credentials).toEqual({

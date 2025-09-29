@@ -205,7 +205,7 @@ export class ExportService {
 		});
 
 		// Clean up individual JSONL files, keeping only the ZIP
-		this.logger.info(`🗑️  Cleaning up individual entity files...`);
+		this.logger.info('🗑️  Cleaning up individual entity files...');
 		const files = await readdir(outputDir);
 		for (const file of files) {
 			if (file.endsWith('.jsonl') && file !== 'entities.zip') {

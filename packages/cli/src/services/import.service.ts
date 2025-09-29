@@ -282,7 +282,7 @@ export class ImportService {
 
 		this.logger.info(`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`);
 		await decompressFolder(entitiesZipPath, inputDir);
-		this.logger.info(`✅ Successfully decompressed entities.zip`);
+		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
 	async importEntities(inputDir: string, truncateTables: boolean) {
