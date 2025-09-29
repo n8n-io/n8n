@@ -54,12 +54,11 @@ const iconColor = computed(() => {
 </script>
 
 <template>
-	<div class="sidebarItemWrapper">
+	<div :class="$style.menuItemWrapper">
 		<N8nRoute
 			:to="to"
 			role="menuitem"
-			class="sidebarItem"
-			:class="{ active }"
+			:class="[$style.menuItem, { [$style.active]: active }]"
 			:aria-label="props.ariaLabel"
 			data-test-id="menu-item"
 			@click="emit('onClick')"
@@ -67,24 +66,23 @@ const iconColor = computed(() => {
 			<div
 				v-if="item.icon"
 				:data-test-id="item.id"
-				class="sidebarItemIcon"
-				:class="{ notification: item.notification }"
+				:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
 			>
 				<N8nText
 					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
-					class="sidebarItemEmoji"
+					:class="$style.menuItemEmoji"
 					:color="iconColor"
 					>{{ item.icon.value }}</N8nText
 				>
 				<N8nIcon v-else-if="icon" :icon="icon" />
 			</div>
-			<N8nText v-if="!compact" class="sidebarItemText">{{ item.label }}</N8nText>
+			<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
 		</N8nRoute>
 	</div>
 </template>
 
-<style lang="scss" scoped>
-.sidebarItemWrapper {
+<style lang="scss" module>
+.menuItemWrapper {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
@@ -96,7 +94,7 @@ const iconColor = computed(() => {
 	background-color: var(--color-foreground-base);
 }
 
-.sidebarItem {
+.menuItem {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -110,22 +108,22 @@ const iconColor = computed(() => {
 	width: 100%;
 	position: relative;
 
-	&:hover .sidebarItemIcon {
+	&:hover .menuItemIcon {
 		color: var(--color-text-dark);
 	}
 }
 
-.sidebarItem:hover {
+.menuItem:hover {
 	background-color: var(--color-foreground-base);
 	color: var(--color-text-dark);
 }
 
-.sidebarItem:focus-visible {
+.menuItem:focus-visible {
 	outline: 1px solid var(--color-secondary);
 	outline-offset: -1px;
 }
 
-.sidebarItemText {
+.menuItemText {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -134,11 +132,11 @@ const iconColor = computed(() => {
 	min-width: 0;
 }
 
-.sidebarItemText * {
+.menuItemText * {
 	color: var(--color-text-base);
 }
 
-.sidebarItemIcon {
+.menuItemIcon {
 	position: relative;
 	width: var(--spacing-s);
 	height: var(--spacing-s);
@@ -156,15 +154,15 @@ const iconColor = computed(() => {
 	}
 }
 
-.sidebarItemEmoji {
+.menuItemEmoji {
 	font-size: var(--spacing-s);
 	line-height: 1;
 }
 
-.sidebarItem.active {
+.menuItem.active {
 	background-color: var(--color-foreground-light);
 
-	.sidebarItemIcon {
+	.menuItemIcon {
 		color: var(--color-foreground-xdark);
 	}
 }
