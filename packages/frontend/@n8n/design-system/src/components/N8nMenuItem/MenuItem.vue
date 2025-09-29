@@ -135,7 +135,7 @@ const iconColor = computed(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
-	line-height: 18px;
+	line-height: var(--font-size-l);
 	min-width: 0;
 }
 
