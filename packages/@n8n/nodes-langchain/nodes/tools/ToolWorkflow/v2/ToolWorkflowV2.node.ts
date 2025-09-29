@@ -18,6 +18,7 @@ import { versionDescription } from './versionDescription';
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	enableLogging: boolean,
+	itemIndex: number,
 ): Promise<DynamicTool | DynamicStructuredTool> {
 	const node = ctx.getNode();
 	const { typeVersion } = node;
@@ -32,7 +33,7 @@ async function getTool(
 		ctx,
 		name,
 		description,
-		itemIndex: 0,
+		itemIndex,
 		manualLogging: enableLogging,
 	});
 }
@@ -52,34 +53,17 @@ export class ToolWorkflowV2 implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const node = this.getNode();
-		const { typeVersion } = node;
-		const returnAllItems = typeVersion > 2;
-
-		const workflowToolService = new WorkflowToolService(this, { returnAllItems });
-		const name =
-			typeVersion <= 2.1
-				? (this.getNodeParameter('name', itemIndex) as string)
-				: nodeNameToToolName(node);
-		const description = this.getNodeParameter('description', itemIndex) as string;
-
-		const tool = await workflowToolService.createTool({
-			ctx: this,
-			name,
-			description,
-			itemIndex,
-		});
-
-		return { response: tool };
+		return { response: await getTool(this, true, itemIndex) };
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const tool = await getTool(this, false);
 
 		const response: INodeExecutionData[][] = [];
 		for (let itemIndex = 0; itemIndex < this.getInputData().length; itemIndex++) {
 			const item = items[itemIndex];
+			const tool = await getTool(this, false, itemIndex);
+
 			if (item === undefined) {
 				continue;
 			}
