@@ -7,6 +7,7 @@ import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -57,30 +58,34 @@ const iconColor = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.menuItemWrapper">
-		<N8nRoute
-			:to="to"
-			role="menuitem"
-			:class="[$style.menuItem, { [$style.active]: active }]"
-			:aria-label="props.ariaLabel"
-			data-test-id="menu-item"
-			@click="emit('click')"
-		>
-			<div
-				v-if="item.icon"
-				:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
+	<N8nTooltip :placement="'right'" :disabled="!compact" :showAfter="500">
+		<template #content>{{ item.label }}</template>
+		<div :class="$style.menuItemWrapper">
+			<N8nRoute
+				:to="to"
+				role="menuitem"
+				:class="[$style.menuItem, { [$style.active]: active }]"
+				:aria-label="props.ariaLabel"
+				data-test-id="menu-item"
+				@click="emit('click')"
 			>
-				<N8nText
-					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
-					:class="$style.menuItemEmoji"
-					:color="iconColor"
-					>{{ item.icon.value }}</N8nText
+				<div
+					v-if="item.icon"
+					:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
 				>
-				<N8nIcon v-else-if="icon" :icon="icon" />
-			</div>
-			<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
-		</N8nRoute>
-	</div>
+					<N8nText
+						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
+						:class="$style.menuItemEmoji"
+						:color="iconColor"
+						>{{ item.icon.value }}</N8nText
+					>
+					<N8nIcon v-else-if="icon" :icon="icon" />
+				</div>
+
+				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
+			</N8nRoute>
+		</div>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
@@ -88,7 +93,7 @@ const iconColor = computed(() => {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
-	margin-bottom: 2px;
+	margin-bottom: var(--spacing-5xs);
 }
 
 .router-link-active,
