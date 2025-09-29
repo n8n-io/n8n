@@ -191,8 +191,6 @@ describe('ToolCode', () => {
 							item: 0,
 						},
 					},
-				],
-				[
 					{
 						json: {
 							response: 'result for second query',
