@@ -43,7 +43,7 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 
-const { items, onCommandBarChange } = useCommandBar();
+const { items, onCommandBarChange, onCommandBarNavigateTo } = useCommandBar();
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -152,7 +152,11 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
-			<N8nCommandBar :items="items" @input-change="onCommandBarChange" />
+			<N8nCommandBar
+				:items="items"
+				@input-change="onCommandBarChange"
+				@navigate-to="onCommandBarNavigateTo"
+			/>
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</div>

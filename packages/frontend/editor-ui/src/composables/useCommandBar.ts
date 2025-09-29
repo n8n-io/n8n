@@ -25,7 +25,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from './useWorkflowActivate';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useFoldersStore } from '@/stores/folders.store';
 
 const Section = {
 	WORKFLOW: 'Workflow',
@@ -34,6 +33,10 @@ const Section = {
 	CREDENTIALS: 'Credentials',
 	WORKFLOWS: 'Workflows',
 } as const;
+
+const ITEM_ID = {
+	OPEN_WORKFLOW: 'open-workflow',
+};
 
 export function useCommandBar() {
 	const { addNodes, setNodeActive, editableWorkflow, openWorkflowTemplate } = useCanvasOperations();
@@ -45,7 +48,6 @@ export function useCommandBar() {
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
-	const foldersStore = useFoldersStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -57,9 +59,10 @@ export function useCommandBar() {
 	const { runEntireWorkflow } = useRunWorkflow({ router });
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
+	const activeNodeId = ref<string | null>(null);
+
 	const lastQuery = ref('');
 
-	const initialWorkflows = ref<IWorkflowDb[]>([]);
 	const workflowResults = ref<IWorkflowDb[]>([]);
 
 	const personalProjectId = computed(() => {
@@ -82,27 +85,9 @@ export function useCommandBar() {
 		});
 	}
 
-	async function fetchInitialWorkflows() {
-		try {
-			const workflows = await workflowsStore.searchWorkflows({});
-			initialWorkflows.value = workflows;
-			// If there is no active query, show initial results
-			if ((lastQuery.value || '').trim().length === 0) {
-				initialWorkflows.value = orderResultByCurrentProjectFirst(initialWorkflows.value);
-			}
-		} catch {
-			workflowResults.value = [];
-		}
-	}
-
 	const fetchWorkflows = debounce(async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
-			if (trimmed.length === 0) {
-				workflowResults.value = initialWorkflows.value;
-				return;
-			}
-			// Search by workflow name
 			const nameSearchPromise = workflowsStore.searchWorkflows({
 				name: trimmed,
 			});
@@ -443,14 +428,22 @@ export function useCommandBar() {
 		});
 	});
 
+	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
+		if (lastQuery.value.length <= 2) {
+			return [];
+		}
+		return [...openWorkflowCommands.value];
+	});
+
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
-				id: 'open-workflow',
+				id: ITEM_ID.OPEN_WORKFLOW,
 				title: 'Open workflow',
 				section: Section.WORKFLOWS,
 				children: openWorkflowCommands.value,
 			},
+			...rootWorkflowItems.value,
 		];
 	});
 
@@ -536,16 +529,29 @@ export function useCommandBar() {
 	function onCommandBarChange(query: string) {
 		lastQuery.value = query;
 
-		void fetchWorkflows(query);
+		const trimmed = query.trim();
+		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_WORKFLOW) {
+			void fetchWorkflows(trimmed);
+		}
+	}
+
+	function onCommandBarNavigateTo(to: string | null) {
+		activeNodeId.value = to;
+
+		if (to === ITEM_ID.OPEN_WORKFLOW) {
+			void fetchWorkflows('');
+		} else if (to === null) {
+			workflowResults.value = [];
+		}
 	}
 
 	onMounted(async () => {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		await fetchInitialWorkflows();
 	});
 
 	return {
 		items,
 		onCommandBarChange,
+		onCommandBarNavigateTo,
 	};
 }
