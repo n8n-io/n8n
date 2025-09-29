@@ -28,7 +28,7 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2.2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
