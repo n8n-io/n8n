@@ -1,6 +1,8 @@
 import {
 	RoleChangeRequestDto,
 	SettingsUpdateRequestDto,
+	userAdminSchema,
+	userMemberSchema,
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
@@ -74,6 +76,7 @@ export class UsersController {
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: UsersListFilterDto,
+		full: boolean,
 	) {
 		const { select } = listQueryOptions;
 
@@ -93,7 +96,11 @@ export class UsersController {
 			}
 		}
 
-		return publicUsers;
+		if (full) {
+			return publicUsers.map((user) => userAdminSchema.parse(user));
+		}
+
+		return publicUsers.map((user) => userMemberSchema.parse(user));
 	}
 
 	@Get('/')
