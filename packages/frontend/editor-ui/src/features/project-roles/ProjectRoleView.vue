@@ -91,7 +91,7 @@ const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 const workflow = (['read', 'update', 'create', 'move', 'delete'] as const).map(
 	(action) => `workflow:${action}` as const,
 );
-const credential = (['read', 'update', 'create', 'move', 'delete'] as const).map(
+const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
 	(action) => `credential:${action}` as const,
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
