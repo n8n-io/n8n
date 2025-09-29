@@ -1,7 +1,7 @@
 <script lang="ts" setup generic="UserType extends IUser">
 import { computed, ref, watch } from 'vue';
 
-import type { IUser, UserAction } from '@n8n/design-system/types';
+import type { IUser, UserAction } from '../../types';
 
 import N8nActionToggle from '../N8nActionToggle';
 import N8nLink from '../N8nLink';

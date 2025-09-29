@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
-import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
+import type { IconSize, IconColor } from '../../types/icon';
 
 import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';

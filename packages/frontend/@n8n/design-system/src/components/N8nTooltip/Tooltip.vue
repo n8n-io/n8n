@@ -2,7 +2,7 @@
 import { ElTooltip } from 'element-plus';
 import type { PropType } from 'vue';
 
-import type { IN8nButton } from '@n8n/design-system/types';
+import type { IN8nButton } from '../../types';
 
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import N8nButton from '../N8nButton';
