@@ -58,9 +58,10 @@ const iconColor = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
-		<template #content>{{ item.label }}</template>
-		<div :class="$style.menuItemWrapper">
+	<div :data-test-id="item.id" :class="$style.menuItemWrapper">
+		<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
+			<template v-if="compact" #content>{{ item.label }}</template>
+
 			<N8nRoute
 				:to="to"
 				role="menuitem"
@@ -82,15 +83,9 @@ const iconColor = computed(() => {
 					<N8nIcon v-else-if="icon" :icon="icon" />
 				</div>
 				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
-				<N8nIcon
-					v-if="item.children && !compact"
-					:icon="open ? 'chevron-down' : 'chevron-right'"
-					:size="16"
-					:color="'text-light'"
-				/>
 			</N8nRoute>
-		</div>
-	</N8nTooltip>
+		</N8nTooltip>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -172,8 +167,6 @@ const iconColor = computed(() => {
 }
 
 .menuItem.active {
-	background-color: var(--color-foreground-light);
-
 	.menuItemIcon {
 		color: var(--color-foreground-xdark);
 	}
