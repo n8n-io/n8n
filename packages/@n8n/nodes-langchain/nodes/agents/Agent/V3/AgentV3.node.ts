@@ -10,7 +10,7 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
-import { getToolsAgentProperties } from '../agents/ToolsAgent/V3/description';
+import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
 import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
 import { getInputs } from '../utils';
@@ -95,7 +95,7 @@ export class AgentV3 implements INodeType {
 						},
 					},
 				},
-				...getToolsAgentProperties({ withStreaming: true }),
+				toolsAgentProperties,
 			],
 			hints: [
 				{
