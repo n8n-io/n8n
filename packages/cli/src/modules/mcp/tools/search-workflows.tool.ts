@@ -52,9 +52,6 @@ const outputSchema = {
 /**
  * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
  * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and nodes.
- * @param user
- * @param workflowService
- * @returns
  */
 export const createSearchWorkflowsTool = (
 	user: User,
@@ -78,7 +75,7 @@ export const createSearchWorkflowsTool = (
 
 			return {
 				structuredContent: payload,
-				// Keeping text content for backward compatibility
+				// Keeping text content for compatibility with mcp clients that don's support structuredContent
 				content: [
 					{
 						type: 'text',

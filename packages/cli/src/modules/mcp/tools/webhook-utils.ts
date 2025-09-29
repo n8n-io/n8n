@@ -1,18 +1,19 @@
 import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+
 type WebhookCredentialRequirement =
 	| { type: 'none' }
 	| { type: 'basic' }
 	| { type: 'header'; headerName: string }
-	| { type: 'jwt'; variant: 'secret' | 'keys' };
+	| { type: 'jwt'; variant: 'secret' | 'pem-key' };
 
 type WebhookNodeDetails = {
 	nodeName: string;
@@ -26,11 +27,6 @@ type WebhookNodeDetails = {
 /**
  * Creates a detailed textual description of the webhook triggers in a workflow, including URLs, methods, authentication, and response modes.
  * This helps MCP clients understand how craft a request to trigger the workflow.
- * @param user
- * @param webhookNodes
- * @param baseUrl
- * @param isWorkflowActive
- * @param credentialsService
  * @returns A detailed string description of the webhook triggers in the workflow.
  */
 export const getWebhookDetails = async (
@@ -158,7 +154,7 @@ const getJWTAuthVariant = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
-): Promise<'secret' | 'keys' | null> => {
+): Promise<'secret' | 'pem-key' | null> => {
 	const id = node.credentials?.jwtAuth?.id;
 	if (!id) return null;
 	try {
@@ -166,7 +162,7 @@ const getJWTAuthVariant = async (
 		if (hasJwtSecretDecryptedData(creds)) {
 			return 'secret';
 		} else if (hasJwtPemKeyDecryptedData(creds)) {
-			return 'keys';
+			return 'pem-key';
 		}
 	} catch {
 		return null;

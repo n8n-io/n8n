@@ -18,7 +18,7 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findByAPIKey(apiKey: string) {
+	async findByApiKey(apiKey: string) {
 		const keyOwner = await this.createQueryBuilder('user')
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
 			.leftJoinAndSelect('user.role', 'role')

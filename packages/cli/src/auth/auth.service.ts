@@ -162,7 +162,7 @@ export class AuthService {
 		try {
 			const apiKey = this.extractAPIKeyFromHeader(headerValue);
 
-			const keyOwner = await this.userRepository.findByAPIKey(apiKey);
+			const keyOwner = await this.userRepository.findByApiKey(apiKey);
 
 			if (!keyOwner) {
 				response.status(401).json({ status: 'error', message: 'Invalid API key' });

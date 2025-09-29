@@ -19,6 +19,8 @@ const nodeSchema = z
 	})
 	.passthrough();
 
+const tagSchema = z.object({ id: z.string(), name: z.string() }).passthrough();
+
 const outputSchema = {
 	workflow: z
 		.object({
@@ -33,7 +35,7 @@ const outputSchema = {
 			settings: z.record(z.unknown()).nullable(),
 			connections: z.record(z.unknown()),
 			nodes: z.array(nodeSchema),
-			tags: z.array(z.object({ id: z.string(), name: z.string() })),
+			tags: z.array(tagSchema),
 			meta: z.record(z.unknown()).nullable(),
 			parentFolderId: z.string().nullable(),
 		})
@@ -46,11 +48,6 @@ const outputSchema = {
 
 /**
  * Creates mcp tool definition for retrieving detailed information about a specific workflow, including its trigger details.
- * @param user
- * @param baseWebhookUrl
- * @param workflowFinderService
- * @param credentialsService
- * @returns ToolDefinition<typeof inputSchema>
  */
 export const createWorkflowDetailsTool = (
 	user: User,
@@ -116,16 +113,16 @@ export async function getWorkflowDetails(
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
-		name: workflow.name ?? null,
+		name: workflow.name,
 		active: workflow.active,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
-		triggerCount: workflow.triggerCount ?? 0,
-		createdAt: workflow.createdAt ? workflow.createdAt.toISOString() : null,
-		updatedAt: workflow.updatedAt ? workflow.updatedAt.toISOString() : null,
-		settings: workflow.settings ?? null,
-		connections: workflow.connections ?? ({} as WorkflowDetailsResult['workflow']['connections']),
-		nodes: (workflow.nodes ?? []).map(({ credentials: _credentials, ...node }) => node),
+		triggerCount: workflow.triggerCount,
+		createdAt: workflow.createdAt.toISOString(),
+		updatedAt: workflow.updatedAt.toISOString(),
+		settings: workflow.settings,
+		connections: workflow.connections,
+		nodes: workflow.nodes.map(({ credentials: _credentials, ...node }) => node),
 		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
