@@ -120,6 +120,9 @@ onBeforeMount(async () => {
 		<N8nHeading
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
+			bold
+			size="small"
+			color="text-light"
 			tag="h3"
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
@@ -209,7 +212,6 @@ onBeforeMount(async () => {
 	box-sizing: border-box;
 	padding: 0 var(--spacing-s);
 	margin-top: var(--spacing-m);
-	color: var(--color-text-base);
 
 	&.collapsed {
 		padding: 0;
