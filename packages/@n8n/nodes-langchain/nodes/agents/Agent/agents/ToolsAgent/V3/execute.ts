@@ -44,16 +44,25 @@ import {
 import { SYSTEM_MESSAGE } from '../prompt';
 import type { ToolCall } from '@langchain/core/messages/tool';
 
+type ToolCallRequest = {
+	tool: string;
+	toolInput: Record<string, unknown>;
+	toolCallId: string;
+	type?: string;
+	log?: string;
+	messageLog?: unknown[];
+};
+
 function createEngineRequests(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
-	toolCalls: ToolCall[],
+	toolCalls: ToolCallRequest[],
 	itemIndex: number,
 ) {
 	const connectedSubnodes = ctx.getParentNodes(ctx.getNode().name, {
 		connectionType: NodeConnectionTypes.AiTool,
 		depth: 1,
 	});
-	return toolCalls.map((toolCall: any) => ({
+	return toolCalls.map((toolCall) => ({
 		nodeName:
 			connectedSubnodes.find(
 				(node: { name: string }) =>
@@ -108,6 +117,24 @@ function createAgentSequence(
 	return runnableAgent;
 }
 
+type IntermediateStep = {
+	action: {
+		tool: string;
+		toolInput: Record<string, unknown>;
+		log: string;
+		messageLog: unknown[];
+		toolCallId: string;
+		type: string;
+	};
+	observation?: string;
+};
+
+type AgentResult = {
+	output: string;
+	intermediateSteps?: IntermediateStep[];
+	toolCalls?: ToolCallRequest[];
+};
+
 async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
@@ -115,8 +142,8 @@ async function processEventStream(
 	returnIntermediateSteps: boolean = false,
 	memory?: BaseChatMemory,
 	input?: string,
-): Promise<{ output: string; intermediateSteps?: any[]; toolCalls?: any[] }> {
-	const agentResult: { output: string; intermediateSteps?: any[]; toolCalls?: any[] } = {
+): Promise<AgentResult> {
+	const agentResult: AgentResult = {
 		output: '',
 	};
 
@@ -124,7 +151,7 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	const toolCalls: any[] = [];
+	const toolCalls: ToolCallRequest[] = [];
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
@@ -152,7 +179,9 @@ async function processEventStream(
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (event.data) {
-					const chatModelData = event.data as any;
+					const chatModelData = event.data as {
+						output?: { tool_calls?: ToolCall[]; content?: string };
+					};
 					const output = chatModelData.output;
 
 					// Check if this LLM response contains tool calls
@@ -162,8 +191,8 @@ async function processEventStream(
 							toolCalls.push({
 								tool: toolCall.name,
 								toolInput: toolCall.args,
-								toolCallId: toolCall.id,
-								type: toolCall.type,
+								toolCallId: toolCall.id || 'unknown',
+								type: toolCall.type || 'tool_call',
 								log:
 									output.content ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
@@ -182,8 +211,8 @@ async function processEventStream(
 											output.content ||
 											`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 										messageLog: [output], // Include the full LLM response
-										toolCallId: toolCall.id,
-										type: toolCall.type,
+										toolCallId: toolCall.id || 'unknown',
+										type: toolCall.type || 'tool_call',
 									},
 								});
 							}
@@ -194,13 +223,13 @@ async function processEventStream(
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const toolData = event.data as any;
+					const toolData = event.data as { output?: string };
 					// Find the matching intermediate step for this tool call
 					const matchingStep = agentResult.intermediateSteps!.find(
 						(step) => !step.observation && step.action.tool === event.name,
 					);
 					if (matchingStep) {
-						matchingStep.observation = toolData.output;
+						matchingStep.observation = toolData.output || '';
 					}
 				}
 				break;
@@ -472,7 +501,12 @@ export async function toolsAgentExecute(
 
 						await memory.saveContext({ input }, { output: fullOutput });
 					}
-					return response.returnValues;
+					// Include intermediate steps if requested
+					const result = { ...response.returnValues };
+					if (options.returnIntermediateSteps && steps.length > 0) {
+						result.intermediateSteps = steps;
+					}
+					return result;
 				}
 
 				// If response contains tool calls, we need to return this in the right format
