@@ -85,13 +85,7 @@ const statusColor = computed(() => {
 							<N8nIcon v-else icon="circle-check" :color="statusColor" size="large" />
 						</N8nTooltip>
 					</div>
-					<N8nText
-						size="small"
-						bold
-						:color="message.status === 'running' ? 'text-light' : 'text-dark'"
-						:class="{ [$style.running]: message.status === 'running' }"
-						>{{ toolDisplayName }}</N8nText
-					>
+					<N8nText size="small" bold>{{ toolDisplayName }}</N8nText>
 				</div>
 			</div>
 		</div>
@@ -117,10 +111,6 @@ const statusColor = computed(() => {
 	justify-content: center;
 	width: var(--spacing-m);
 	flex-shrink: 0;
-}
-
-.running {
-	@include animations.shimmer;
 }
 
 .statusText {

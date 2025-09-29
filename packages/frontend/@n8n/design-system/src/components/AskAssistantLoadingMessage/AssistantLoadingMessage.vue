@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 
 withDefaults(
 	defineProps<{
@@ -19,9 +19,7 @@ withDefaults(
 			<N8nIcon icon="spinner" spin color="secondary" size="large" />
 		</div>
 		<Transition :name="animationType" mode="out-in">
-			<N8nText v-if="message" :key="message" size="small" bold color="text-dark">{{
-				message
-			}}</N8nText>
+			<N8nText v-if="message" :key="message" size="small" bold>{{ message }}</N8nText>
 		</Transition>
 	</div>
 </template>
