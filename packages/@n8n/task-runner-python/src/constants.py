@@ -77,7 +77,7 @@ IGNORED_ERROR_TYPES = (
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
+LOG_TASK_COMPLETE = 'Completed task {task_id} in {duration} ({result_size}) for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL = 'Cancelled task {task_id} for node "{node_name}" ({node_id}) in workflow "{workflow_name}" ({workflow_id})'
 LOG_TASK_CANCEL_UNKNOWN = (
     "Received cancel for unknown task: {task_id}. Discarding message."
