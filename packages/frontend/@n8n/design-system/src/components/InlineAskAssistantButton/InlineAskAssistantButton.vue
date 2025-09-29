@@ -67,6 +67,7 @@ const onClick = () => {
 	position: relative;
 	border: 1px solid transparent;
 	padding: 0;
+	overflow: hidden;
 
 	background:
 		var(--color-askAssistant-button-background-gradient) padding-box,
