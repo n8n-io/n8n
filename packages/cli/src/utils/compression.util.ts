@@ -1,7 +1,7 @@
 import * as fflate from 'fflate';
 import { promisify } from 'util';
 import { readFile, readdir, writeFile, mkdir, stat } from 'fs/promises';
-import path from 'path';
+import * as path from 'path';
 
 const unzip = promisify(fflate.unzip);
 const zip = promisify(fflate.zip);
@@ -35,7 +35,7 @@ const ALREADY_COMPRESSED = [
 ];
 
 export interface CompressionOptions {
-	level?: number;
+	level?: fflate.ZipOptions['level'];
 	exclude?: string[];
 	includeHidden?: boolean;
 }
@@ -43,6 +43,31 @@ export interface CompressionOptions {
 export interface DecompressionOptions {
 	overwrite?: boolean;
 	exclude?: string[];
+}
+
+/**
+ * Sanitize file path to prevent zip slip attacks
+ * Ensures the resolved path stays within the output directory
+ */
+function sanitizePath(fileName: string, outputDir: string): string {
+	// Normalize the path and resolve any relative path components
+	const normalizedPath = path.normalize(fileName);
+
+	// Join with output directory and resolve to get absolute path
+	const resolvedPath = path.resolve(outputDir, normalizedPath);
+	const resolvedOutputDir = path.resolve(outputDir);
+
+	// Check if the resolved path is within the output directory
+	if (
+		!resolvedPath.startsWith(resolvedOutputDir + path.sep) &&
+		resolvedPath !== resolvedOutputDir
+	) {
+		throw new Error(
+			`Path traversal detected: ${fileName} would be extracted outside the output directory`,
+		);
+	}
+
+	return resolvedPath;
 }
 
 /**
@@ -99,7 +124,8 @@ export async function decompressFolder(
 			continue;
 		}
 
-		const filePath = path.join(outputDir, fileName);
+		// Sanitize path to prevent zip slip attacks
+		const filePath = sanitizePath(fileName, outputDir);
 		const dirPath = path.dirname(filePath);
 
 		// Create directory if it doesn't exist
@@ -127,7 +153,7 @@ async function addDirectoryToZip(
 	dirPath: string,
 	zipPath: string,
 	zipData: fflate.Zippable,
-	options: { exclude: string[]; includeHidden: boolean; level: number },
+	options: { exclude: string[]; includeHidden: boolean; level: fflate.ZipOptions['level'] },
 ): Promise<void> {
 	const { exclude, includeHidden, level } = options;
 
@@ -160,12 +186,13 @@ async function addDirectoryToZip(
 			const fileExtension = path.extname(entry.name).toLowerCase().slice(1);
 
 			// Use same compression logic as Compression node
-			const compressionLevel = ALREADY_COMPRESSED.includes(fileExtension) ? 0 : level;
+			const compressionLevel: fflate.ZipOptions['level'] = ALREADY_COMPRESSED.includes(
+				fileExtension,
+			)
+				? 0
+				: level;
 
-			zipData[zipEntryPath] = [
-				new Uint8Array(fileContent),
-				{ level: compressionLevel as fflate.ZipOptions['level'] },
-			];
+			zipData[zipEntryPath] = [new Uint8Array(fileContent), { level: compressionLevel }];
 		}
 	}
 }

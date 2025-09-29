@@ -388,7 +388,7 @@ describe('ImportService', () => {
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
-				importMetadata.tableNames,
+				Object.keys(importMetadata.entityFiles),
 				importMetadata.entityFiles,
 			);
 
@@ -405,7 +405,7 @@ describe('ImportService', () => {
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
-				importMetadata.tableNames,
+				Object.keys(importMetadata.entityFiles),
 				importMetadata.entityFiles,
 			);
 
@@ -422,7 +422,7 @@ describe('ImportService', () => {
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
-				importMetadata.tableNames,
+				Object.keys(importMetadata.entityFiles),
 				importMetadata.entityFiles,
 			);
 
@@ -444,7 +444,7 @@ describe('ImportService', () => {
 			await importService.importEntitiesFromFiles(
 				'/test/input',
 				mockEntityManager,
-				importMetadata.tableNames,
+				Object.keys(importMetadata.entityFiles),
 				importMetadata.entityFiles,
 			);
 
@@ -691,8 +691,8 @@ describe('ImportService', () => {
 		});
 
 		it('should handle migrations with only ID field (no timestamp)', async () => {
-			const migrationsContent = '{"id":"1","timestamp":"1","name":"TestMigration"}';
-			const dbMigrations = [{ id: '1', timestamp: '1', name: 'TestMigration' }];
+			const migrationsContent = '{"id":"1","name":"TestMigration"}';
+			const dbMigrations = [{ id: '1', name: 'TestMigration' }];
 
 			jest.mocked(readFile).mockResolvedValue(migrationsContent);
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);

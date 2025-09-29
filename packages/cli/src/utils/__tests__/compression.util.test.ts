@@ -1,6 +1,6 @@
 import { compressFolder, decompressFolder } from '../compression.util';
 import { mkdir, writeFile, readFile, rm } from 'fs/promises';
-import path from 'path';
+import * as path from 'path';
 import { existsSync } from 'fs';
 
 describe('CompressionUtil', () => {
@@ -53,6 +53,18 @@ describe('CompressionUtil', () => {
 			});
 
 			expect(existsSync(zipPath)).toBe(true);
+
+			// Extract and verify excluded files are not present
+			const extractDir = path.join(outputDir, 'extracted-exclude');
+			await decompressFolder(zipPath, extractDir);
+
+			// Verify that .txt files are excluded
+			expect(existsSync(path.join(extractDir, 'file1.txt'))).toBe(false);
+			expect(existsSync(path.join(extractDir, 'subdir', 'file3.txt'))).toBe(false);
+
+			// Verify that .json files are included
+			expect(existsSync(path.join(extractDir, 'file2.json'))).toBe(true);
+			expect(existsSync(path.join(extractDir, 'subdir', 'file3.txt'))).toBe(false);
 		});
 
 		it('should compress with custom compression level', async () => {
@@ -100,6 +112,7 @@ describe('CompressionUtil', () => {
 			});
 
 			expect(existsSync(path.join(extractDir, 'file1.txt'))).toBe(false);
+			expect(existsSync(path.join(extractDir, 'subdir', 'file3.txt'))).toBe(false);
 			expect(existsSync(path.join(extractDir, 'file2.json'))).toBe(true);
 		});
 	});
