@@ -4,9 +4,9 @@ import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
 import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
+import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
-import { UpdateMcpSettingsDto } from '../update-mcp-settings.dto';
 
 const createReq = (body: unknown, roleSlug: string): AuthenticatedRequest =>
 	({ body, user: { role: { slug: roleSlug } } }) as unknown as AuthenticatedRequest;
