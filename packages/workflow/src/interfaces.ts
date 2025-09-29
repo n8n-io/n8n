@@ -1927,11 +1927,6 @@ export interface IWorkflowValidationWarning {
 	};
 }
 
-export interface IWorkflowValidationResult {
-	warnings: IWorkflowValidationWarning[];
-	isValid: boolean;
-}
-
 export type ThemeIconColor =
 	| 'gray'
 	| 'black'
