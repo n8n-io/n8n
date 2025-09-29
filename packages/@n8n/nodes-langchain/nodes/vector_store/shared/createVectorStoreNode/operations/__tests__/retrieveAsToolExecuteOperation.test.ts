@@ -171,7 +171,8 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 		);
 
 		expect(result[0].json.document).toHaveProperty('metadata');
-		expect(result[0].json.document.metadata).toEqual({ test: 'metadata 1' });
+		const document = result[0].json.document as { pageContent: string; metadata: any };
+		expect(document.metadata).toEqual({ test: 'metadata 1' });
 	});
 
 	it('should exclude metadata when includeDocumentMetadata is false', async () => {
@@ -259,16 +260,19 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 			expect(result).toHaveLength(3);
 
 			// First result should be the reranked first document (was second in original order)
-			expect(result[0].json.document.pageContent).toEqual('test content 2');
-			expect(result[0].json.document.metadata).toEqual({ test: 'metadata 2' });
+			const doc0 = result[0].json.document as { pageContent: string; metadata: any };
+			expect(doc0.pageContent).toEqual('test content 2');
+			expect(doc0.metadata).toEqual({ test: 'metadata 2' });
 
 			// Second result should be the reranked second document (was first in original order)
-			expect(result[1].json.document.pageContent).toEqual('test content 1');
-			expect(result[1].json.document.metadata).toEqual({ test: 'metadata 1' });
+			const doc1 = result[1].json.document as { pageContent: string; metadata: any };
+			expect(doc1.pageContent).toEqual('test content 1');
+			expect(doc1.metadata).toEqual({ test: 'metadata 1' });
 
 			// Third result should be the reranked third document
-			expect(result[2].json.document.pageContent).toEqual('test content 3');
-			expect(result[2].json.document.metadata).toEqual({ test: 'metadata 3' });
+			const doc2 = result[2].json.document as { pageContent: string; metadata: any };
+			expect(doc2.pageContent).toEqual('test content 3');
+			expect(doc2.metadata).toEqual({ test: 'metadata 3' });
 		});
 
 		it('should handle reranking with includeDocumentMetadata false', async () => {
@@ -328,12 +332,14 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 
 			// Check that relevanceScore is used as score but not included in the final metadata
 			expect(result[0].json.score).toBe(0.98);
-			expect(result[0].json.document.metadata).toEqual({ test: 'metadata 2', otherField: 'value' });
-			expect(result[0].json.document.metadata).not.toHaveProperty('relevanceScore');
+			const rerankDoc0 = result[0].json.document as { pageContent: string; metadata: any };
+			expect(rerankDoc0.metadata).toEqual({ test: 'metadata 2', otherField: 'value' });
+			expect(rerankDoc0.metadata).not.toHaveProperty('relevanceScore');
 
 			expect(result[1].json.score).toBe(0.92);
-			expect(result[1].json.document.metadata).toEqual({ test: 'metadata 1' });
-			expect(result[1].json.document.metadata).not.toHaveProperty('relevanceScore');
+			const rerankDoc1 = result[1].json.document as { pageContent: string; metadata: any };
+			expect(rerankDoc1.metadata).toEqual({ test: 'metadata 1' });
+			expect(rerankDoc1.metadata).not.toHaveProperty('relevanceScore');
 		});
 
 		it('should not use reranker when no documents are found', async () => {
