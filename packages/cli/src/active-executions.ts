@@ -10,7 +10,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	ExecutionCancelledError,
+	ExecutionCancellationReason,
+	sleep,
+} from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
@@ -156,14 +161,14 @@ export class ActiveExecutions {
 	}
 
 	/** Cancel the execution promise and reject its post-execution promise. */
-	stopExecution(executionId: string): void {
+	stopExecution(executionId: string, reason: ExecutionCancellationReason): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
 		}
 		this.eventService.emit('execution-cancelled', { executionId });
-		const error = new ExecutionCancelledError(executionId);
+		const error = new ExecutionCancelledError(executionId, reason);
 		execution.responsePromise?.reject(error);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
@@ -266,8 +271,8 @@ export class ActiveExecutions {
 		for (const executionId of executionIds) {
 			const { responsePromise, status } = this.activeExecutions[executionId];
 			if (!!responsePromise || (isRegularMode && cancelAll)) {
-				// Cancel all exectutions that have a response promise, because these promises can't be retained between restarts
-				this.stopExecution(executionId);
+				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
+				this.stopExecution(executionId, 'system');
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
 				// Remove waiting and new executions to not block shutdown

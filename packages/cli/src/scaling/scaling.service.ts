@@ -230,7 +230,7 @@ export class ScalingService {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId, 'manual'), true); // remove from queue
 				return true;
 			}
 

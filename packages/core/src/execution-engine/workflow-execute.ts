@@ -80,6 +80,7 @@ import { TriggersAndPollers } from './triggers-and-pollers';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
+	private timedOut: boolean = false;
 
 	private readonly abortController = new AbortController();
 
@@ -1531,6 +1532,7 @@ export class WorkflowExecute {
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
 					) {
 						this.status = 'canceled';
+						this.timedOut = true;
 					}
 
 					if (this.status === 'canceled') {
@@ -2249,7 +2251,10 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
+							new ExecutionCancelledError(
+								this.additionalData.executionId ?? 'unknown',
+								this.timedOut ? 'timeout' : 'manual',
+							),
 							closeFunction,
 						);
 					}

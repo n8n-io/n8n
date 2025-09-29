@@ -424,7 +424,7 @@ describe('workflow timeout with startedAt', () => {
 
 		// ASSERT
 		// The execution should be stopped immediately because the timeout has already elapsed
-		expect(mockStopExecution).toHaveBeenCalledWith('1');
+		expect(mockStopExecution).toHaveBeenCalledWith('1', 'timeout');
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {

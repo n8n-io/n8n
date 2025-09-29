@@ -211,7 +211,7 @@ export const sleep = async (ms: number): Promise<void> =>
 export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
 	await new Promise((resolve, reject) => {
 		if (abortSignal?.aborted) {
-			reject(new ExecutionCancelledError(''));
+			reject(new ExecutionCancelledError('', 'manual'));
 			return;
 		}
 
@@ -219,7 +219,7 @@ export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Pro
 
 		const abortHandler = () => {
 			clearTimeout(timeout);
-			reject(new ExecutionCancelledError(''));
+			reject(new ExecutionCancelledError('', 'manual'));
 		};
 
 		abortSignal?.addEventListener('abort', abortHandler, { once: true });

@@ -316,10 +316,10 @@ export class WorkflowRunner {
 					timeout = Math.max(timeout - (now - data.startedAt.getTime()), 0);
 				}
 				if (timeout === 0) {
-					this.activeExecutions.stopExecution(executionId);
+					this.activeExecutions.stopExecution(executionId, 'timeout');
 				} else {
 					executionTimeout = setTimeout(() => {
-						void this.activeExecutions.stopExecution(executionId);
+						void this.activeExecutions.stopExecution(executionId, 'timeout');
 					}, timeout);
 				}
 			}
@@ -407,7 +407,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ExecutionCancelledError(executionId, 'manual');
 					await this.processError(
 						error,
 						new Date(),

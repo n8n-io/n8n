@@ -256,7 +256,7 @@ describe('SupplyDataContext', () => {
 
 	describe('addExecutionDataFunctions', () => {
 		it('should preserve canceled status when execution is aborted and output has error', async () => {
-			const errorData = new ExecutionCancelledError('Execution was aborted');
+			const errorData = new ExecutionCancelledError('Execution was aborted', 'manual');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });
 			const mockHooks = {
 				runHook: jest.fn().mockResolvedValue(undefined),
