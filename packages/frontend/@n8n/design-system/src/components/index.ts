@@ -1,4 +1,6 @@
 export { default as N8nActionBox } from './N8nActionBox';
+export { default as AskAssistantChat } from './AskAssistantChat/AskAssistantChat.vue';
+export { default as AssistantIcon } from './AskAssistantIcon/AssistantIcon.vue';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nAlert } from './N8nAlert';
@@ -19,6 +21,7 @@ export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nIcon } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
+export { default as InlineAskAssistantButton } from './InlineAskAssistantButton/InlineAskAssistantButton.vue';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
 export { default as N8nInfoTip } from './N8nInfoTip';
 export { default as N8nInput } from './N8nInput';

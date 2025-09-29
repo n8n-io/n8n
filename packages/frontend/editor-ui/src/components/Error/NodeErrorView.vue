@@ -25,7 +25,13 @@ import type { ChatRequest } from '@/types/assistant.types';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
-import { N8nButton, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	InlineAskAssistantButton,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 type Props = {
 	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;

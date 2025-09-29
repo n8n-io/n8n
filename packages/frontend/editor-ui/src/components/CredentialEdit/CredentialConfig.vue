@@ -33,7 +33,14 @@ import OauthButton from './OauthButton.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
-import { N8nCallout, N8nInfoTip, N8nLink, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	InlineAskAssistantButton,
+	N8nCallout,
+	N8nInfoTip,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 type Props = {
 	mode: string;
 	credentialType: ICredentialType;

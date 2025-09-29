@@ -12,7 +12,7 @@ import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-import { N8nText } from '@n8n/design-system';
+import { AskAssistantChat, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
 	close: [];
 }>();
