@@ -49,7 +49,7 @@ function copy() {
 
 <template>
 	<div>
-		<n8n-input-label :label="label">
+		<N8nInputLabel :label="label">
 			<div
 				:class="{
 					[$style.copyText]: true,
@@ -66,7 +66,7 @@ function copy() {
 					<span>{{ copyButtonText }}</span>
 				</div>
 			</div>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
 	</div>
 </template>

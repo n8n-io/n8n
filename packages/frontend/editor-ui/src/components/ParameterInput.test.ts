@@ -22,6 +22,7 @@ import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-wor
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { nextTick } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -686,6 +687,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -701,6 +703,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -716,6 +719,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -731,6 +735,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
@@ -746,6 +751,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();

@@ -199,14 +199,14 @@ defineExpose({
 				:teleported="teleported"
 				@update:model-value="onSelectionChange"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="field in availableMatchingFields"
 					:key="field.id"
 					:value="field.id"
 					:data-test-id="`matching-column-option-${field.id}`"
 				>
 					{{ field.displayName }}
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 			<N8nText size="small">
 				{{ fieldDescription }}

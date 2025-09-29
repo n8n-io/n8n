@@ -1105,7 +1105,7 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</div>
 				<div :class="$style.credActions">
-					<n8n-icon-button
+					<N8nIconButton
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash-2"
@@ -1133,12 +1133,12 @@ const { width } = useElementSize(credNameRef);
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
-					<n8n-menu
+					<N8nMenu
 						mode="tabs"
 						:items="sidebarItems"
 						:transparent-background="true"
 						@select="onTabSelect"
-					></n8n-menu>
+					></N8nMenu>
 				</div>
 				<div
 					v-if="activeTab === 'connection' && credentialType"

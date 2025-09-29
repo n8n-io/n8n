@@ -50,7 +50,7 @@ const i18n = useI18n();
 					{{ i18n.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<n8n-button
+				<N8nButton
 					v-if="versionsStore.infoUrl"
 					:text="true"
 					type="primary"
@@ -59,11 +59,11 @@ const i18n = useI18n();
 					:bold="true"
 					@click="pageRedirectionHelper.goToVersions()"
 				>
-					<n8n-icon icon="info" class="mr-2xs" />
+					<N8nIcon icon="info" class="mr-2xs" />
 					<span>
 						{{ i18n.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
-				</n8n-button>
+				</N8nButton>
 			</section>
 			<section :class="$style.versions">
 				<div

@@ -46,5 +46,5 @@ const scopesFullContent = computed((): string => {
 </script>
 
 <template>
-	<n8n-notice :content="scopesShortContent" :full-content="scopesFullContent" />
+	<N8nNotice :content="scopesShortContent" :full-content="scopesFullContent" />
 </template>

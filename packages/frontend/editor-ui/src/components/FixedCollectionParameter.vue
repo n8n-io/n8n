@@ -266,8 +266,8 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
-					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					v-model="mutableValues[property.name]"
+					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"

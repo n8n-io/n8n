@@ -431,6 +431,10 @@ async function initializeRoute(force = false) {
 
 			if (!isDemoRoute.value) {
 				await loadCredentials();
+
+				// Fetch builder credits when initializing the route
+				// Only needed if workflow is editable where builder can be used
+				void builderStore.fetchBuilderCredits();
 			}
 
 			// If there is no workflow id, treat it as a new workflow
@@ -525,7 +529,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 			);
 		}
 
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
+			workflowData.homeProject,
+			workflowData.sharedWithProjects,
+		);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
@@ -1602,6 +1609,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
@@ -1620,6 +1631,10 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			}
 		} else if (json && json.command === 'openExecution') {
 			try {
+				// Set the project if provided from the parent window
+				if (json.projectId) {
+					await fetchAndSetProject(json.projectId);
+				}
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
 				isProductionExecutionPreview.value =
@@ -2061,8 +2076,8 @@ onBeforeUnmount(() => {
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
 			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
-			ref="canvas"
 			:id="editableWorkflow.id"
+			ref="canvas"
 			:workflow="editableWorkflow"
 			:workflow-object="editableWorkflowObject"
 			:fallback-nodes="fallbackNodes"
@@ -2071,7 +2086,7 @@ onBeforeUnmount(() => {
 			:read-only="isCanvasReadOnly"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
-			:suppress-interaction="canvasStore.suppressInteraction"
+			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

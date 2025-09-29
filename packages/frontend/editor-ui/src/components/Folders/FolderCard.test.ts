@@ -59,7 +59,7 @@ const renderComponent = createComponentRenderer(FolderCard, {
 	},
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<div data-test-id="folder-card-link"><slot /></div>',
 			},
 		},
