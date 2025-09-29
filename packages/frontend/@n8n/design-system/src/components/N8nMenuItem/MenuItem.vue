@@ -58,7 +58,7 @@ const iconColor = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :placement="'right'" :disabled="!compact" :showAfter="500">
+	<N8nTooltip :placement="'right'" :disabled="!compact" :show-after="500">
 		<template #content>{{ item.label }}</template>
 		<div :class="$style.menuItemWrapper">
 			<N8nRoute
@@ -81,8 +81,13 @@ const iconColor = computed(() => {
 					>
 					<N8nIcon v-else-if="icon" :icon="icon" />
 				</div>
-
 				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
+				<N8nIcon
+					v-if="item.children && !compact"
+					:icon="open ? 'chevron-down' : 'chevron-right'"
+					:size="16"
+					:color="'text-light'"
+				/>
 			</N8nRoute>
 		</div>
 	</N8nTooltip>
