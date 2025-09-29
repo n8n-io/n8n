@@ -714,7 +714,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .popover {
-	padding: var(--spacing-s);
+	padding: var(--spacing-xs);
 	min-width: 200px;
 }
 

@@ -77,7 +77,7 @@ const onUpdateClick = async () => {
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
 	background: var(--color-background-light-base);
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing-xs);
 }
 
 .button {
