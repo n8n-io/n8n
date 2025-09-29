@@ -61,22 +61,20 @@ export class ToolCalculator implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const calculator = getTool(this);
 		const input = this.getInputData();
-		const response: INodeExecutionData[][] = [];
+		const response: INodeExecutionData[] = [];
 		for (let i = 0; i < input.length; i++) {
 			const inputItem = input[i];
 			const result = await calculator.invoke(inputItem.json);
-			response.push([
-				{
-					json: {
-						response: result,
-					},
-					pairedItem: {
-						item: i,
-					},
+			response.push({
+				json: {
+					response: result,
 				},
-			]);
+				pairedItem: {
+					item: i,
+				},
+			});
 		}
 
-		return response;
+		return [response];
 	}
 }

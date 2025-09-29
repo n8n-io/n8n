@@ -90,8 +90,6 @@ describe('ToolCalculator', () => {
 							item: 0,
 						},
 					},
-				],
-				[
 					{
 						json: {
 							response: '15',
