@@ -77,7 +77,6 @@ import {
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from './ViewSubExecution.vue';
@@ -233,7 +232,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
