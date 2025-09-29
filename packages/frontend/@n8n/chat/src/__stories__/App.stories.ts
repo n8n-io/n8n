@@ -33,6 +33,7 @@ export const Fullscreen: Story = {
 		webhookUrl,
 		mode: 'fullscreen',
 		enableStreaming: false,
+		loadPreviousSession: false,
 	} satisfies Partial<ChatOptions>,
 };
 
@@ -41,6 +42,7 @@ export const Windowed: Story = {
 		webhookUrl,
 		mode: 'window',
 		enableStreaming: false,
+		loadPreviousSession: false,
 	} satisfies Partial<ChatOptions>,
 };
 
@@ -54,5 +56,6 @@ export const WorkflowChat: Story = {
 		showWelcomeScreen: false,
 		initialMessages: [],
 		enableStreaming: false,
+		loadPreviousSession: false,
 	} satisfies Partial<ChatOptions>,
 };

@@ -4,7 +4,7 @@ test.describe('External Webhook Triggering', () => {
 	test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
 		api,
 	}) => {
-		const { webhookPath, workflowId } = await api.workflowApi.importWorkflow(
+		const { webhookPath, workflowId } = await api.workflows.importWorkflow(
 			'simple-webhook-test.json',
 		);
 
@@ -16,15 +16,15 @@ test.describe('External Webhook Triggering', () => {
 
 		expect(webhookResponse.ok()).toBe(true);
 
-		const execution = await api.workflowApi.waitForExecution(workflowId, 5000);
+		const execution = await api.workflows.waitForExecution(workflowId, 5000);
 		expect(execution.status).toBe('success');
 
-		const executionDetails = await api.workflowApi.getExecution(execution.id);
+		const executionDetails = await api.workflows.getExecution(execution.id);
 		expect(executionDetails.data).toContain('Hello from Playwright test');
 	});
 
 	test('should surface workflow configuration errors to the caller', async ({ api }) => {
-		const { webhookPath } = await api.workflowApi.importWorkflow(
+		const { webhookPath } = await api.workflows.importWorkflow(
 			'webhook-misconfiguration-test.json',
 		);
 
