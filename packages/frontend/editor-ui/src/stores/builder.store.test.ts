@@ -1097,43 +1097,42 @@ describe('AI Builder store', () => {
 		});
 
 		describe('applyWorkflowUpdate credential defaults', () => {
-			const createTestNodeType = (): INodeTypeDescription =>
-				({
-					displayName: 'Test Node',
-					name: 'n8n-nodes-base.test',
-					description: 'Test node',
-					group: ['trigger'],
-					version: 1,
-					defaults: { name: 'Test Node' },
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Authentication',
-							name: 'authentication',
-							type: 'options',
-							options: [
-								{
-									name: 'API Key',
-									value: 'apiKey',
-								},
-							],
-							default: 'apiKey',
-							required: true,
-						},
-					],
-					credentials: [
-						{
-							name: 'testApi',
-							required: true,
-							displayOptions: {
-								show: {
-									authentication: ['apiKey'],
-								},
+			const createTestNodeType = (): INodeTypeDescription => ({
+				displayName: 'Test Node',
+				name: 'n8n-nodes-base.test',
+				description: 'Test node',
+				group: ['trigger'],
+				version: 1,
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{
+								name: 'API Key',
+								value: 'apiKey',
+							},
+						],
+						default: 'apiKey',
+						required: true,
+					},
+				],
+				credentials: [
+					{
+						name: 'testApi',
+						required: true,
+						displayOptions: {
+							show: {
+								authentication: ['apiKey'],
 							},
 						},
-					],
-				}) as unknown as INodeTypeDescription;
+					},
+				],
+			});
 
 			it('assigns default credentials when available', () => {
 				const builderStore = useBuilderStore();
