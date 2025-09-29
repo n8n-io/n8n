@@ -43,6 +43,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 	async down({
 		schemaBuilder: { dropColumns, dropIndex, dropForeignKey },
 		queryRunner,
+		tablePrefix,
 		escape,
 	}: MigrationContext) {
 		const variablesTableName = escape.tableName(VARIABLES_TABLE_NAME);
@@ -65,7 +66,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		// Recreate the original unique index on key
 		await queryRunner.query(`
 			ALTER TABLE ${variablesTableName}
-			ADD CONSTRAINT variables_key_key UNIQUE ("key");
+			ADD CONSTRAINT ${tablePrefix}variables_key_key UNIQUE ("key");
 		`);
 	}
 }
