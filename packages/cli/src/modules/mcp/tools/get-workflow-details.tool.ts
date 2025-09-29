@@ -3,6 +3,7 @@ import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ToolDefinition, WorkflowDetailsResult } from '../mcp.types';
+import { nodeSchema, tagSchema } from './schemas';
 import { getWebhookDetails } from './webhook-utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -11,15 +12,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
 } satisfies z.ZodRawShape;
-
-const nodeSchema = z
-	.object({
-		name: z.string(),
-		type: z.string(),
-	})
-	.passthrough();
-
-const tagSchema = z.object({ id: z.string(), name: z.string() }).passthrough();
 
 const outputSchema = {
 	workflow: z

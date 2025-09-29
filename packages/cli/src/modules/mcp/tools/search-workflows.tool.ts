@@ -8,6 +8,7 @@ import type {
 	SearchWorkflowsResult,
 	SearchWorkflowsItem,
 } from '../mcp.types';
+import { nodeSchema } from './schemas';
 
 import type { ListQuery } from '@/requests';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -37,12 +38,7 @@ const outputSchema = {
 				createdAt: z.string().nullable(),
 				updatedAt: z.string().nullable(),
 				triggerCount: z.number().nullable(),
-				nodes: z.array(
-					z.object({
-						name: z.string(),
-						type: z.string(),
-					}),
-				),
+				nodes: z.array(nodeSchema),
 			}),
 		)
 		.describe('List of workflows matching the query'),
