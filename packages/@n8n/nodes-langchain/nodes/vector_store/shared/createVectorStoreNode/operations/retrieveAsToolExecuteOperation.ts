@@ -31,7 +31,7 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 		// Get the search parameters - query from input data, others from node parameters
 		const inputData = context.getInputData();
 		const item = inputData[itemIndex];
-		const query = item.json.query as string;
+		const query = typeof item.json.query === 'string' ? item.json.query : undefined;
 
 		if (!query || typeof query !== 'string') {
 			throw new Error('Input data must contain a "query" field with the search query');
