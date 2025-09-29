@@ -23,7 +23,6 @@ const props = defineProps<{
 	executing?: boolean;
 	disabled?: boolean;
 	hideTooltip?: boolean;
-	type?: 'primary' | 'secondary';
 	label?: string;
 	size?: 'small' | 'medium' | 'large';
 	includeChatTrigger?: boolean;
@@ -92,7 +91,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
-				:type="type ?? 'primary'"
+				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
@@ -124,7 +123,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						:type="type ?? 'primary'"
+						type="primary"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"

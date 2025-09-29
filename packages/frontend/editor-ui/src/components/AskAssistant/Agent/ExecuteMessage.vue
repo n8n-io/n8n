@@ -5,15 +5,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useI18n } from '@n8n/i18n';
-import {
-	ComponentInstance,
-	computed,
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	watch,
-	type WatchStopHandle,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue';
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
@@ -207,7 +199,6 @@ watch(workflowIssues, async () => {
 				:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
 				:executing="isWorkflowRunning"
 				:include-chat-trigger="true"
-				type="secondary"
 				size="medium"
 				:trigger-nodes="availableTriggerNodes"
 				:get-node-type="nodeTypesStore.getNodeType"

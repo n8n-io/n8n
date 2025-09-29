@@ -29,7 +29,6 @@ const workflowSaver = useWorkflowSaving({ router });
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
@@ -192,10 +191,14 @@ watch(
 					const result = builderStore.applyWorkflowUpdate(msg.codeSnippet);
 
 					if (result.success) {
+						const isFirstUserMessage =
+							builderStore.chatMessages.filter((m) => m.role === 'user')?.length === 1;
+
 						// Import the updated workflow
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
 							tidyUp: true,
+							zoomToFit: isFirstUserMessage,
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
@@ -252,7 +255,6 @@ watch(currentRoute, () => {
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<AskAssistantChat
-			ref="assistantChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
