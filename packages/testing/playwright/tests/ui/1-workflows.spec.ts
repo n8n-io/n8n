@@ -10,13 +10,13 @@ const NOTIFICATIONS = {
 };
 
 test.describe('Workflows', () => {
-	test.beforeEach(async ({ n8n, api }) => {
-		await api.enableFeature('sharing');
-		await api.enableFeature('folders');
-		await api.enableFeature('advancedPermissions');
-		await api.enableFeature('projectRole:admin');
-		await api.enableFeature('projectRole:editor');
-		await api.setMaxTeamProjectsQuota(-1);
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('sharing');
+		await n8n.api.enableFeature('folders');
+		await n8n.api.enableFeature('advancedPermissions');
+		await n8n.api.enableFeature('projectRole:admin');
+		await n8n.api.enableFeature('projectRole:editor');
+		await n8n.api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 	});
 
@@ -51,17 +51,17 @@ test.describe('Workflows', () => {
 		await n8n.goHome();
 
 		// Search for specific workflow
-		await n8n.workflows.searchWorkflows(specificName);
+		await n8n.workflows.search(specificName);
 		await expect(n8n.workflows.cards.getWorkflow(specificName)).toBeVisible();
 
 		// Search with partial term
 		await n8n.workflows.clearSearch();
-		await n8n.workflows.searchWorkflows(uniqueId);
+		await n8n.workflows.search(uniqueId);
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(2);
 
 		// Search for non-existent
 		await n8n.workflows.clearSearch();
-		await n8n.workflows.searchWorkflows('NonExistentWorkflow123');
+		await n8n.workflows.search('NonExistentWorkflow123');
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 		await expect(n8n.page.getByText('No workflows found')).toBeVisible();
 	});
@@ -135,7 +135,7 @@ test.describe('Workflows', () => {
 		const tags = await n8n.canvas.addTags(2);
 
 		await n8n.goHome();
-		await n8n.workflows.searchWorkflows('Tagged');
+		await n8n.workflows.search('Tagged');
 		await n8n.workflows.filterByTag(tags[0]);
 
 		await expect(n8n.page).toHaveURL(/search=Tagged/);

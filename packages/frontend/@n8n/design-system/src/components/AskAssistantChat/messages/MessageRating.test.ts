@@ -4,7 +4,7 @@ import { nextTick } from 'vue';
 
 import MessageRating from './MessageRating.vue';
 
-const stubs = ['n8n-button', 'n8n-icon-button', 'n8n-input'];
+const stubs = ['N8nButton', 'N8nIconButton', 'N8nInput'];
 
 // Mock i18n to return keys instead of translated text
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
@@ -126,7 +126,7 @@ describe('MessageRating', () => {
 		it('should submit feedback and show success', async () => {
 			const wrapper = render(MessageRating, {
 				props: { showFeedback: true },
-				global: { stubs: ['n8n-button', 'n8n-icon-button'] }, // Don't stub n8n-input
+				global: { stubs: ['N8nButton', 'N8nIconButton'] }, // Don't stub n8n-input
 			});
 
 			const downButton = wrapper.container.querySelector(

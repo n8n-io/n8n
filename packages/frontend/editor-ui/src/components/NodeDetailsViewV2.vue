@@ -272,7 +272,7 @@ const maxInputRun = computed(() => {
 		node = activeNode.value;
 	}
 
-	if (!node || !runData || !runData.hasOwnProperty(node.name)) {
+	if (!node || !runData?.hasOwnProperty(node.name)) {
 		return 0;
 	}
 
@@ -750,7 +750,7 @@ onBeforeUnmount(() => {
 							:push-ref="pushRef"
 							:read-only="readOnly || hasForeignCredential"
 							:is-production-execution-preview="isProductionExecutionPreview"
-							:is-pane-active="isInputPaneActive"
+							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
 							:is-mapping-onboarded="ndvStore.isMappingOnboarded"

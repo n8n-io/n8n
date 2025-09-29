@@ -620,7 +620,7 @@ const onSubmit = async (values: object) => {
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-model="formValues"
 					:inputs="survey"
 					:column-view="true"
@@ -633,7 +633,7 @@ const onSubmit = async (values: object) => {
 		</template>
 		<template #footer>
 			<div>
-				<n8n-button
+				<N8nButton
 					:loading="isSaving"
 					:label="i18n.baseText('personalizationModal.getStarted')"
 					float="right"

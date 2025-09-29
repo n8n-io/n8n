@@ -123,8 +123,8 @@ export const test = base.extend<CloudOnlyFixtures>({
 	},
 
 	// n8n page object
-	n8n: async ({ page, api }, use) => {
-		const n8nInstance = new n8nPage(page, api);
+	n8n: async ({ page }, use) => {
+		const n8nInstance = new n8nPage(page);
 		await use(n8nInstance);
 	},
 
@@ -152,7 +152,7 @@ Usage:
 // Import the cloud-only fixture instead of base
 import { test, expect } from '../../fixtures/cloud-only';
 
-test('Performance test @cloud:trial', async ({ n8n, api }) => {
+test('Performance test @cloud:trial', async ({ n8n }) => {
   // This test runs ONLY on a trial plan container (768MB, 200 millicore)
   // No worker containers are created
 });

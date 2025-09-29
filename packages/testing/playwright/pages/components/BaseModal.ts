@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test';
 export class BaseModal {
 	constructor(private page: Page) {}
 
-	private get container() {
+	get container() {
 		return this.page.getByRole('dialog');
 	}
 

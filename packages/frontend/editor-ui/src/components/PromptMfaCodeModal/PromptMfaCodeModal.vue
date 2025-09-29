@@ -65,7 +65,7 @@ function onFormReady(isReady: boolean) {
 	>
 		<template #content>
 			<div :class="[$style.formContainer]">
-				<n8n-form-inputs
+				<N8nFormInputs
 					data-test-id="mfa-code-or-recovery-code-input"
 					:inputs="formFields"
 					:event-bus="formBus"
@@ -76,7 +76,7 @@ function onFormReady(isReady: boolean) {
 		</template>
 		<template #footer>
 			<div>
-				<n8n-button
+				<N8nButton
 					float="right"
 					:disabled="!readyToSubmit"
 					:label="i18n.baseText('settings.personal.save')"

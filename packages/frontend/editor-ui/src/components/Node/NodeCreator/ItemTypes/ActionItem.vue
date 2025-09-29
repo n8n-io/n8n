@@ -98,7 +98,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 </script>
 
 <template>
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
@@ -116,7 +116,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 		<template #icon>
 			<NodeIcon :node-type="action" />
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>

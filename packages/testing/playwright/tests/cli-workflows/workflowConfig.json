@@ -222,12 +222,6 @@
 		"status": "SKIPPED"
 	},
 	{
-		"workflowId": "110",
-		"status": "SKIPPED",
-		"skipReason": "Error thrown in VM2, bug created for nodes team",
-		"ticketReference": "NODE-3692"
-	},
-	{
 		"workflowId": "112",
 		"status": "SKIPPED"
 	},

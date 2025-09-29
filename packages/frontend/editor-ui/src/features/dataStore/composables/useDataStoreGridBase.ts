@@ -229,12 +229,15 @@ export const useDataStoreGridBase = ({
 					sortable: true,
 					filter: false,
 					suppressMovable: true,
-					headerComponent: null,
 					lockPosition: true,
 					minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					resizable: false,
 					headerClass: 'system-column',
+					headerComponentParams: {
+						allowMenuActions: false,
+						showTypeIcon: false,
+					},
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {

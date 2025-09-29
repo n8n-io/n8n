@@ -5,7 +5,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 const renderComponent = createComponentRenderer(ProjectCardBadge, {
 	global: {
 		stubs: {
-			'router-link': {
+			RouterLink: {
 				template: '<div><slot /></div>',
 			},
 		},
