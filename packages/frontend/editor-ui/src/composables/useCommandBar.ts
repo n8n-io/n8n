@@ -201,13 +201,11 @@ export function useCommandBar() {
 				title: 'Add node',
 				section: Section.NODES,
 				children: [...addNodeCommands.value],
-				hotkey: 'tab',
 			},
 			{
 				id: 'add-sticky-note',
 				title: 'Add sticky note',
 				section: Section.NODES,
-				hotkey: 'shift+s',
 				handler: () => {
 					canvasEventBus.emit('create:sticky');
 				},
@@ -217,7 +215,6 @@ export function useCommandBar() {
 				title: 'Open node',
 				section: Section.NODES,
 				children: [...openNodeCommnds.value],
-				hotkey: 'enter',
 			},
 		];
 	});
@@ -474,33 +471,33 @@ export function useCommandBar() {
 		];
 	});
 
-	const nodeViewItems = computed<CommandBarItem[]>(() => {
-		const credentialCommands = computed<CommandBarItem[]>(() => {
-			const credentials = uniqBy(
-				editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
-				(cred) => cred.id,
-			);
-			if (credentials.length === 0) {
-				return [];
-			}
-			return [
-				{
-					id: 'Open credential',
-					title: 'Open credential',
-					section: Section.CREDENTIALS,
-					children: [
-						...credentials.map((credential) => ({
-							id: credential.id as string,
-							title: credential.name,
-							handler: () => {
-								uiStore.openExistingCredential(credential.id as string);
-							},
-						})),
-					],
-				},
-			];
-		});
+	const credentialCommands = computed<CommandBarItem[]>(() => {
+		const credentials = uniqBy(
+			editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+			(cred) => cred.id,
+		);
+		if (credentials.length === 0) {
+			return [];
+		}
+		return [
+			{
+				id: 'Open credential',
+				title: 'Open credential',
+				section: Section.CREDENTIALS,
+				children: [
+					...credentials.map((credential) => ({
+						id: credential.id as string,
+						title: credential.name,
+						handler: () => {
+							uiStore.openExistingCredential(credential.id as string);
+						},
+					})),
+				],
+			},
+		];
+	});
 
+	const nodeViewItems = computed<CommandBarItem[]>(() => {
 		return [
 			...nodeCommands.value,
 			...workflowCommands.value,
