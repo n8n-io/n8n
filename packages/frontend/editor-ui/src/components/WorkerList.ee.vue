@@ -69,10 +69,10 @@ onBeforeUnmount(() => {
 	<div>
 		<PushConnectionTracker class="actions"></PushConnectionTracker>
 		<div :class="$style.workerListHeader">
-			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+			<N8nHeading tag="h1" size="2xlarge">{{ pageTitle }}</N8nHeading>
 		</div>
 		<div v-if="!initialStatusReceived">
-			<n8n-spinner />
+			<N8nSpinner />
 		</div>
 		<div v-else>
 			<div v-if="workerIds.length === 0">{{ i18n.baseText('workerList.empty') }}</div>

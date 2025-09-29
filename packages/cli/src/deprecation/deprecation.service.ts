@@ -75,16 +75,6 @@ export class DeprecationService {
 			disableIf: () => this.instanceSettings.instanceType !== 'main',
 		},
 		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			checkValue: (value: string) => value === '1',
-			message:
-				'Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
-		},
-		{
-			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
-			message: 'This environment variable is internal and should not be set.',
-		},
-		{
 			envVar: 'N8N_EXPRESSION_EVALUATOR',
 			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
 		},
@@ -114,6 +104,9 @@ export class DeprecationService {
 			message:
 				'Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
 			checkValue: (value: string | undefined) => value === undefined || value === '',
+			disableIf: () =>
+				this.globalConfig.nodes.exclude.includes('n8n-nodes-base.git') ||
+				this.globalConfig.deployment.type === 'cloud',
 		},
 	];
 

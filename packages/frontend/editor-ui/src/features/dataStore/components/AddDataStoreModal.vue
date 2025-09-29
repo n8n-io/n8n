@@ -75,12 +75,12 @@ const redirectToDataStores = () => {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<n8n-input-label
+				<N8nInputLabel
 					:label="i18n.baseText('dataStore.add.input.name.label')"
 					:required="true"
 					input-name="dataStoreName"
 				>
-					<n8n-input
+					<N8nInput
 						ref="inputRef"
 						v-model="dataStoreName"
 						type="text"
@@ -89,18 +89,18 @@ const redirectToDataStores = () => {
 						name="dataStoreName"
 						@keyup.enter="onSubmit"
 					/>
-				</n8n-input-label>
+				</N8nInputLabel>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					:disabled="!dataStoreName"
 					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-store-button"
 					@click="onSubmit"
 				/>
-				<n8n-button
+				<N8nButton
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-add-data-store-button"

@@ -143,15 +143,13 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiAssistant: {
 		enabled: false,
+		setup: false,
 	},
 	aiCredits: {
 		enabled: false,
 		credits: 0,
 	},
 	easyAIWorkflowOnboarded: false,
-	partialExecution: {
-		version: 1,
-	},
 	folders: {
 		enabled: false,
 	},

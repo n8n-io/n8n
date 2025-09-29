@@ -250,7 +250,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 	>
 		<template #content>
 			<div @keyup.enter="handleEnterKey">
-				<n8n-card v-if="newApiKey" class="mb-4xs">
+				<N8nCard v-if="newApiKey" class="mb-4xs">
 					<CopyInput
 						:label="newApiKey.label"
 						:value="newApiKey.rawApiKey"
@@ -259,7 +259,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
 						:hint="i18n.baseText('settings.api.view.copy')"
 					/>
-				</n8n-card>
+				</N8nCard>
 
 				<div v-else :class="$style.form">
 					<N8nInputLabel
@@ -309,7 +309,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 								interpolate: { expirationDate },
 							})
 						}}</N8nText>
-						<el-date-picker
+						<ElDatePicker
 							v-if="showExpirationDateSelector"
 							v-model="customExpirationDate"
 							type="date"

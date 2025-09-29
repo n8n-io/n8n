@@ -175,6 +175,7 @@
 .el-notification {
 	border-radius: 4px;
 	border: none;
+	margin-bottom: var(--toast-bottom-offset, 0);
 
 	&.whats-new-notification {
 		bottom: var(--spacing-xs) !important;

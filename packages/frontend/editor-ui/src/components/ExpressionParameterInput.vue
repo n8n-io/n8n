@@ -18,6 +18,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -89,7 +90,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (event?.target instanceof Element && outputPopover.value?.contentRef?.contains(event.target)) {
+	if (isEventTargetContainedBy(event?.target, outputPopover.value?.contentRef)) {
 		return;
 	}
 
@@ -214,7 +215,7 @@ defineExpose({ focus, select });
 					/>
 				</template>
 			</DraggableTarget>
-			<n8n-button
+			<N8nButton
 				v-if="!isDragging"
 				square
 				outline

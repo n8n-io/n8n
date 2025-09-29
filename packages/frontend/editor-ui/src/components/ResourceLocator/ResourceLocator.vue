@@ -367,10 +367,13 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value
+					? searchFilter.value
+					: (addNewResourceOptions.defaultName ?? ''),
 			},
 		}),
 		method: addNewResourceOptions.method,
+		url: addNewResourceOptions.url,
 	};
 });
 
@@ -379,7 +382,23 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const { method: addNewResourceMethodName, url: redirectUrl } = allowNewResources.value;
+
+	if (redirectUrl) {
+		let resolvedUrl = redirectUrl;
+
+		if (resolvedUrl.includes('{{$projectId}}')) {
+			resolvedUrl = resolvedUrl.replace(
+				/\{\{\$projectId\}\}/g,
+				projectsStore.currentProjectId ?? '',
+			);
+		}
+
+		hideResourceDropdown();
+		openResource(resolvedUrl);
+		return;
+	}
+
 	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
@@ -417,7 +436,9 @@ const handleAddResourceClick = async () => {
 };
 
 const onAddResourceClicked = computed(() =>
-	allowNewResources.value ? handleAddResourceClick : undefined,
+	allowNewResources.value && (allowNewResources.value.method || allowNewResources.value.url)
+		? handleAddResourceClick
+		: undefined,
 );
 
 watch(currentQueryError, (curr, prev) => {
@@ -597,6 +618,12 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 		params.value = completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
+}
+
+function onInputMouseDown(event: MouseEvent): void {
+	if (isListMode.value) {
+		event.preventDefault();
+	}
 }
 
 function onModeSelected(value: string): void {
@@ -931,23 +958,23 @@ function removeOverride() {
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
-					<n8n-text
+					<N8nText
 						v-if="credentialsRequiredAndNotSet || currentResponse.errorDetails"
 						color="text-dark"
 						align="center"
 						tag="div"
 					>
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
-					</n8n-text>
+					</N8nText>
 					<div v-if="currentResponse.errorDetails" :class="$style.errorDetails">
-						<n8n-text size="small">
+						<N8nText size="small">
 							<span v-if="currentResponse.errorDetails.httpCode" data-test-id="rlc-error-code">
 								{{ currentResponse.errorDetails.httpCode }} -
 							</span>
 							<span data-test-id="rlc-error-message">{{
 								currentResponse.errorDetails.message
 							}}</span>
-						</n8n-text>
+						</N8nText>
 						<N8nNotice
 							v-if="currentResponse.errorDetails.description"
 							theme="warning"
@@ -990,7 +1017,7 @@ function removeOverride() {
 					]"
 				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
-					<n8n-select
+					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
@@ -998,7 +1025,7 @@ function removeOverride() {
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSelected"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="mode in parameter.modes"
 							:key="mode.name"
 							:data-test-id="`mode-${mode.name}`"
@@ -1012,8 +1039,8 @@ function removeOverride() {
 							"
 						>
 							{{ getModeLabel(mode) }}
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
@@ -1052,7 +1079,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@modal-opener-click="emit('modalOpenerClick')"
 								/>
-								<n8n-input
+								<N8nInput
 									v-else
 									ref="inputRef"
 									:class="[
@@ -1073,7 +1100,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
-									@mousedown.prevent
+									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
 										<i
@@ -1085,7 +1112,7 @@ function removeOverride() {
 											}"
 										/>
 									</template>
-								</n8n-input>
+								</N8nInput>
 								<div v-if="showOverrideButton" :class="$style.overrideButtonInline">
 									<FromAiOverrideButton @click="applyOverride" />
 								</div>
@@ -1098,9 +1125,9 @@ function removeOverride() {
 						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<n8n-icon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
-						</n8n-link>
+						<N8nLink theme="text" @click.stop="openResource(urlValue)">
+							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
+						</N8nLink>
 					</div>
 				</div>
 			</div>

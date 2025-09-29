@@ -13,7 +13,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -39,6 +38,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
+	ENABLE_MCP_ACCESS: 'enableMCPAccess',
+	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 };
 
 const props = withDefaults(
@@ -47,11 +48,17 @@ const props = withDefaults(
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 		showOwnershipBadge?: boolean;
+		areTagsEnabled?: boolean;
+		isMcpEnabled?: boolean;
+		areFoldersEnabled?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		workflowListEventBus: undefined,
 		showOwnershipBadge: false,
+		areTagsEnabled: true,
+		isMcpEnabled: false,
+		areFoldersEnabled: false,
 	},
 );
 
@@ -79,7 +86,6 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 
-const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
@@ -89,12 +95,17 @@ const foldersStore = useFoldersStore();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
+// We use this to optimistically update the MCP status in the UI
+// without needing to modify the workflow prop directly.
+// null means we haven't changed it yet
+const mcpToggleStatus = ref<boolean | null>(null);
+
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
 const showCardBreadcrumbs = computed(() => {
@@ -177,6 +188,25 @@ const actions = computed(() => {
 		}
 	}
 
+	if (
+		props.isMcpEnabled &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		if (props.data.settings?.availableInMCP) {
+			items.push({
+				label: locale.baseText('workflows.item.disableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.enableMCPAccess'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+			});
+		}
+	}
+
 	return items;
 });
 const formattedCreatedAtDate = computed(() => {
@@ -186,6 +216,13 @@ const formattedCreatedAtDate = computed(() => {
 		props.data.createdAt,
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
+});
+
+const isAvailableInMCP = computed(() => {
+	if (mcpToggleStatus.value === null) {
+		return props.data.settings?.availableInMCP ?? false;
+	}
+	return mcpToggleStatus.value;
 });
 
 const isSomeoneElsesWorkflow = computed(
@@ -271,6 +308,22 @@ async function onAction(action: string) {
 				sharedWithProjects: props.data.sharedWithProjects,
 			});
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
+			await toggleMCPAccess(true);
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
+			await toggleMCPAccess(false);
+			break;
+	}
+}
+
+async function toggleMCPAccess(enabled: boolean) {
+	try {
+		await workflowsStore.updateWorkflowSetting(props.data.id, 'availableInMCP', enabled);
+		mcpToggleStatus.value = enabled;
+	} catch (error) {
+		toast.showError(error, locale.baseText('workflowSettings.toggleMCP.error.title'));
+		return;
 	}
 }
 
@@ -414,7 +467,7 @@ const tags = computed(
 </script>
 
 <template>
-	<n8n-card
+	<N8nCard
 		:class="{
 			[$style.cardLink]: true,
 			[$style.cardArchived]: data.isArchived,
@@ -423,7 +476,7 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<n8n-text
+			<N8nText
 				tag="h2"
 				bold
 				:class="{
@@ -436,32 +489,44 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-			</n8n-text>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small">
-				<span v-show="data"
-					>{{ locale.baseText('workflows.item.updated') }}
-					<TimeAgo :date="String(data.updatedAt)" /> |
-				</span>
-				<span v-show="data" class="mr-2xs"
-					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-				</span>
-				<span
-					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
-					v-show="data"
-					:class="$style.cardTags"
+			<span v-show="data"
+				>{{ locale.baseText('workflows.item.updated') }}
+				<TimeAgo :date="String(data.updatedAt)" /> |
+			</span>
+			<span v-show="data">
+				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
+			</span>
+			<span
+				v-show="props.isMcpEnabled && isAvailableInMCP"
+				:class="[$style['description-cell'], $style['description-cell--mcp']]"
+				data-test-id="workflow-card-mcp"
+			>
+				<N8nTooltip
+					placement="right"
+					:content="locale.baseText('workflows.item.availableInMCP')"
+					data-test-id="workflow-card-mcp-tooltip"
 				>
-					<n8n-tags
-						:tags="tags"
-						:truncate-at="3"
-						truncate
-						data-test-id="workflow-card-tags"
-						@click:tag="onClickTag"
-						@expand="onExpandTags"
-					/>
-				</span>
-			</n8n-text>
+					<N8nIcon icon="mcp" size="medium"></N8nIcon>
+				</N8nTooltip>
+			</span>
+			<span
+				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
+				v-show="data"
+				:class="$style.cardTags"
+			>
+				<N8nTags
+					:tags="tags"
+					:truncate-at="3"
+					truncate
+					data-test-id="workflow-card-tags"
+					@click:tag="onClickTag"
+					@expand="onExpandTags"
+				/>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -475,7 +540,7 @@ const tags = computed(
 					:show-badge-border="false"
 				>
 					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
-						<n8n-breadcrumbs
+						<N8nBreadcrumbs
 							:items="cardBreadcrumbs"
 							:hidden-items="
 								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
@@ -489,11 +554,11 @@ const tags = computed(
 							@item-selected="onBreadcrumbItemClick"
 						>
 							<template #prepend></template>
-						</n8n-breadcrumbs>
+						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
 
-				<n8n-text
+				<N8nText
 					v-if="data.isArchived"
 					color="text-light"
 					size="small"
@@ -502,7 +567,7 @@ const tags = computed(
 					data-test-id="workflow-card-archived"
 				>
 					{{ locale.baseText('workflows.item.archived') }}
-				</n8n-text>
+				</N8nText>
 				<WorkflowActivator
 					v-else
 					class="mr-s"
@@ -514,7 +579,7 @@ const tags = computed(
 					@update:workflow-active="emitWorkflowActiveToggle"
 				/>
 
-				<n8n-action-toggle
+				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
 					data-test-id="workflow-card-actions"
@@ -522,7 +587,7 @@ const tags = computed(
 				/>
 			</div>
 		</template>
-	</n8n-card>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
@@ -552,10 +617,13 @@ const tags = computed(
 }
 
 .cardDescription {
-	min-height: 19px;
+	min-height: var(--spacing-xl);
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing-s) var(--spacing-s);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+	gap: var(--spacing-2xs);
 }
 
 .cardTags {
@@ -591,6 +659,15 @@ const tags = computed(
 	background-color: var(--color-background-light);
 	border-color: var(--color-foreground-light);
 	color: var(--color-text-base);
+}
+
+.description-cell--mcp {
+	display: inline-flex;
+	align-items: center;
+
+	&:hover {
+		color: var(--color-text-base);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

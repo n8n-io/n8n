@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
-import { type ExtendedPublicInstalledPackage, fetchInstalledPackageInfo } from './utils';
+import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 const { activeViewStack } = useViewStacks();
 
@@ -21,7 +21,9 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
-const installedPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
+const packageName = computed(() => communityNodeDetails?.packageName);
+const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
+	useInstalledCommunityPackage(packageName);
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -42,9 +44,9 @@ async function fetchPackageInfo(packageName: string) {
 	const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(
 		activeViewStack.communityNodeDetails?.key || '',
 	);
-
-	if (communityNodeDetails?.installed) {
-		installedPackage.value = await fetchInstalledPackageInfo(communityNodeDetails.packageName);
+	let packageInfo = installedPackage.value;
+	if (communityNodeDetails?.installed && !packageInfo) {
+		packageInfo = await initInstalledPackage();
 	}
 
 	if (communityNodeAttributes) {
@@ -52,11 +54,11 @@ async function fetchPackageInfo(packageName: string) {
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		official.value = communityNodeAttributes.isOfficialNode;
 
-		if (!installedPackage.value) {
+		if (!packageInfo) {
 			verified.value = true;
 		} else {
 			const verifiedVersions = communityNodeAttributes.nodeVersions?.map((v) => v.npmVersion) ?? [];
-			verified.value = verifiedVersions.includes(installedPackage.value.installedVersion);
+			verified.value = verifiedVersions.includes(packageInfo.installedVersion);
 		}
 
 		return;
@@ -112,8 +114,9 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isOwner && installedPackage?.updateAvailable && !installedPackage.unverifiedUpdate"
+			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
 			data-test-id="update-available"
+			:package-name="communityNodeDetails?.packageName"
 		/>
 		<div v-else :class="$style.separator"></div>
 		<div :class="$style.info">

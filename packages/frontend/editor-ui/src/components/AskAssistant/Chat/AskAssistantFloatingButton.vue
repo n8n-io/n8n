@@ -2,7 +2,6 @@
 import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
-import { useLogsStore } from '@/stores/logs.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
@@ -10,7 +9,6 @@ import { computed } from 'vue';
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
-const logsStore = useLogsStore();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -37,17 +35,8 @@ const onClick = () => {
 </script>
 
 <template>
-	<div
-		v-if="
-			assistantStore.canShowAssistantButtonsOnCanvas &&
-			!assistantStore.isAssistantOpen &&
-			!assistantStore.hideAssistantFloatingButton
-		"
-		:class="$style.container"
-		data-test-id="ask-assistant-floating-button"
-		:style="{ '--canvas-panel-height-offset': `${logsStore.height}px` }"
-	>
-		<n8n-tooltip
+	<div :class="$style.container" data-test-id="ask-assistant-floating-button">
+		<N8nTooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
 			placement="top"
 			:visible="!!lastUnread"
@@ -61,15 +50,15 @@ const onClick = () => {
 				</div>
 			</template>
 			<AskAssistantButton :unread-count="assistantStore.unreadCount" @click="onClick" />
-		</n8n-tooltip>
+		</N8nTooltip>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	position: absolute;
-	bottom: var(--spacing-2xl);
 	right: var(--spacing-s);
+	bottom: var(--ask-assistant-floating-button-bottom-offset, --spacing-2xl);
 	z-index: var(--z-index-ask-assistant-floating-button);
 }
 
