@@ -23,10 +23,20 @@ type WebhookCredentialRequirement =
 type WebhookNodeDetails = {
 	nodeName: string;
 	baseUrl: string;
-	path: string;
+	productionPath: string;
+	testPath: string;
 	httpMethod: string;
 	responseModeDescription: string;
 	credentials: WebhookCredentialRequirement;
+};
+
+// Normalizes endpoint segment (strips leading/trailing slashes) and joins with the node path.
+export const buildWebhookPath = (segment: string, pathParam: string) => {
+	let normalizedSegment = segment;
+	while (normalizedSegment.startsWith('/')) normalizedSegment = normalizedSegment.slice(1);
+	while (normalizedSegment.endsWith('/')) normalizedSegment = normalizedSegment.slice(0, -1);
+	const basePath = normalizedSegment ? `/${normalizedSegment}/` : '/';
+	return `${basePath}${pathParam}`;
 };
 
 /**
@@ -38,7 +48,6 @@ export const getWebhookDetails = async (
 	user: User,
 	webhookNodes: INode[],
 	baseUrl: string,
-	isWorkflowActive: boolean,
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
 ): Promise<string> => {
@@ -49,14 +58,7 @@ export const getWebhookDetails = async (
 	const nodeDetails = await Promise.all(
 		webhookNodes.map(
 			async (node) =>
-				await collectWebhookNodeDetails(
-					user,
-					node,
-					baseUrl,
-					isWorkflowActive,
-					credentialsService,
-					endpoints,
-				),
+				await collectWebhookNodeDetails(user, node, baseUrl, credentialsService, endpoints),
 		),
 	);
 
@@ -67,23 +69,18 @@ const collectWebhookNodeDetails = async (
 	user: User,
 	node: INode,
 	baseUrl: string,
-	isWorkflowActive: boolean,
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
 ): Promise<WebhookNodeDetails> => {
 	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
 	const httpMethod =
 		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
-	const webhookSegment = isWorkflowActive ? endpoints.webhook : endpoints.webhookTest;
-	let normalizedSegment = webhookSegment;
-	while (normalizedSegment.startsWith('/')) normalizedSegment = normalizedSegment.slice(1);
-	while (normalizedSegment.endsWith('/')) normalizedSegment = normalizedSegment.slice(0, -1);
-	const basePath = normalizedSegment ? `/${normalizedSegment}/` : '/';
 
 	return {
 		nodeName: node.name,
 		baseUrl,
-		path: `${basePath}${pathParam}`,
+		productionPath: buildWebhookPath(endpoints.webhook, pathParam),
+		testPath: buildWebhookPath(endpoints.webhookTest, pathParam),
 		httpMethod,
 		responseModeDescription: getResponseModeDescription(node),
 		credentials: await resolveCredentialRequirement(user, node, credentialsService),
@@ -102,7 +99,8 @@ const formatTriggerDescription = (detail: WebhookNodeDetails, index: number): st
 				<trigger ${index + 1}>
 				\t - Node name: ${detail.nodeName}
 				\t - Base URL: ${detail.baseUrl}
-				\t - PATH: ${detail.path}
+				\t - Production path: ${detail.productionPath}
+				\t - Test path: ${detail.testPath}
 				\t - HTTP Method: ${detail.httpMethod}
 				\t - Response Mode: ${detail.responseModeDescription}
 				${formatCredentialRequirement(detail.credentials)}

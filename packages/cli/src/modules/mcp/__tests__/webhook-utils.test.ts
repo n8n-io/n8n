@@ -8,7 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
-import { getWebhookDetails } from '../tools/webhook-utils';
+import { buildWebhookPath, getWebhookDetails } from '../tools/webhook-utils';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -55,6 +55,24 @@ const createUser = (overrides: Partial<User> = {}): User => {
 	return u;
 };
 
+describe('buildWebhookPath', () => {
+	it('joins clean segment and path', () => {
+		expect(buildWebhookPath('webhook', 'hook')).toBe('/webhook/hook');
+	});
+
+	it('strips leading and trailing slashes from segment', () => {
+		expect(buildWebhookPath('/custom/hooks/', 'test')).toBe('/custom/hooks/test');
+	});
+
+	it('handles empty segment', () => {
+		expect(buildWebhookPath('', 'path')).toBe('/path');
+	});
+
+	it('retains trailing slash when node path is empty', () => {
+		expect(buildWebhookPath('webhook', '')).toBe('/webhook/');
+	});
+});
+
 describe('getWebhookDetails', () => {
 	const NO_WEBHOOKS_MESSAGE =
 		'This workflow does not have a trigger node that can be executed via MCP.';
@@ -67,7 +85,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -83,13 +100,13 @@ describe('getWebhookDetails', () => {
 			user,
 			[node],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
 		expect(res).toContain('Node name: My Webhook');
 		expect(res).toContain('Base URL: https://example.com');
-		expect(res).toContain('PATH: /webhook/hook');
+		expect(res).toContain('Production path: /webhook/hook');
+		expect(res).toContain('Test path: /webhook-test/hook');
 		expect(res).toContain('HTTP Method: POST');
 		expect(res).toContain('respond immediately');
 		expect(res).toContain('No credentials required');
@@ -101,11 +118,11 @@ describe('getWebhookDetails', () => {
 			user,
 			[node],
 			baseUrl,
-			false,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
-		expect(res).toContain('PATH: /webhook-test/test');
+		expect(res).toContain('Production path: /webhook/test');
+		expect(res).toContain('Test path: /webhook-test/test');
 	});
 
 	it('describes basicAuth requirement', async () => {
@@ -114,7 +131,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[node],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -130,7 +146,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-1');
 			return { name: 'X-API-Key', value: 'secret' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
+		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
 		expect(res).toContain('requires a header with name "X-API-Key"');
 	});
 
@@ -143,7 +159,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-2');
 			return { secret: 'super-secret', keyType: 'passphrase' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
+		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
 		expect(res).toContain('requires a JWT secret');
 	});
 
@@ -156,7 +172,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-3');
 			return { keyType: 'pemKey', privateKey: 'priv', publicKey: 'pub' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
+		const res = await getWebhookDetails(user, [node], baseUrl, credsService, endpoints);
 		expect(res).toContain('requires JWT private and public keys');
 	});
 
@@ -166,7 +182,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[node],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -181,7 +196,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[nodeAll],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -194,7 +208,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[nodeBin],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -207,7 +220,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[nodeNo],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
@@ -218,7 +230,6 @@ describe('getWebhookDetails', () => {
 			user,
 			[nodeDefault],
 			baseUrl,
-			true,
 			mockCredentialsService(() => ({})),
 			endpoints,
 		);
