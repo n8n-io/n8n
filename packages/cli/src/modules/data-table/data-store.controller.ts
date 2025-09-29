@@ -302,18 +302,42 @@ export class DataStoreController {
 
 	@Patch('/:dataStoreId/rows')
 	@ProjectScope('dataStore:writeRow')
-	async updateDataStoreRow(
+	async updateDataStoreRows(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
 		try {
-			return await this.dataStoreService.updateRow(
+			// because of strict overloads, we need separate paths
+			const dryRun = dto.dryRun;
+			if (dryRun) {
+				return await this.dataStoreService.updateRows(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					true, // we want to always return data for dry runs
+					dryRun,
+				);
+			}
+
+			const returnData = dto.returnData;
+			if (returnData) {
+				return await this.dataStoreService.updateRows(
+					dataStoreId,
+					req.params.projectId,
+					dto,
+					returnData,
+					dryRun,
+				);
+			}
+
+			return await this.dataStoreService.updateRows(
 				dataStoreId,
 				req.params.projectId,
 				dto,
-				dto.returnData,
+				returnData,
+				dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {

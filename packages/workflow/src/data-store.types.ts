@@ -60,6 +60,7 @@ export type ListDataStoreRowsOptions = {
 export type UpdateDataStoreRowOptions = {
 	filter: DataTableFilter;
 	data: DataStoreRow;
+	dryRun?: boolean;
 };
 
 export type UpsertDataStoreRowOptions = {
@@ -98,6 +99,15 @@ export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
+
+export type DataStoreRowReturnWithState = DataStoreRowReturn & {
+	n8nState: 'before' | 'after';
+};
+
+export type DataStoreRowUpdatePair = {
+	before: DataStoreRowReturn;
+	after: DataStoreRowReturn;
+};
 
 export type DataTableInsertRowsReturnType = 'all' | 'id' | 'count';
 export type DataTableInsertRowsBulkResult = { success: true; insertedRows: number };
@@ -163,7 +173,9 @@ export interface IDataStoreProjectService {
 		returnType: T,
 	): Promise<DataTableInsertRowsResult<T>>;
 
-	updateRow(options: UpdateDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
+	updateRows(
+		options: UpdateDataStoreRowOptions,
+	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
 
 	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
