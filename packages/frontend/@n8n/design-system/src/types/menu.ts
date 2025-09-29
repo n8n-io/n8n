@@ -31,8 +31,6 @@ export type IMenuItem = {
 	 */
 	activateOnRouteNames?: string[];
 	activateOnRoutePaths?: string[];
-	type?: 'folder' | 'workflow' | 'project' | 'other' | 'popover';
-
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;

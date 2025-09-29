@@ -552,7 +552,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
-								v-if="item.type === 'popover'"
+								v-if="item.children"
 								:key="item.id"
 								side="right"
 								align="end"

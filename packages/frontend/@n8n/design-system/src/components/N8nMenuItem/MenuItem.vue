@@ -20,8 +20,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	onClick: [];
-	toggleDropdown: [];
-	mouseEnter: [];
 }>();
 
 const to = computed(() => {
@@ -34,17 +32,7 @@ const to = computed(() => {
 	return undefined;
 });
 
-function toggleDropdown(event: Event) {
-	event.preventDefault();
-	event.stopPropagation();
-	emit('toggleDropdown');
-}
-
 const icon = computed<IconName | undefined>(() => {
-	if (props.item.type === 'folder') {
-		return props.open ? 'folder-open' : 'folder';
-	}
-
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
 		return props.item.icon.value;
 	}
@@ -54,13 +42,6 @@ const icon = computed<IconName | undefined>(() => {
 	}
 
 	return undefined;
-});
-
-const indentArray = computed(() => {
-	if (props.level && props.level > 1) {
-		return new Array(props.level - 1);
-	}
-	return [];
 });
 
 const iconColor = computed(() => {
@@ -73,8 +54,7 @@ const iconColor = computed(() => {
 </script>
 
 <template>
-	<div class="sidebarItemWrapper" @mouseenter="emit('mouseEnter')">
-		<span class="sidebarItemIndent" v-for="level in indentArray" :key="level" />
+	<div class="sidebarItemWrapper">
 		<N8nRoute
 			:to="to"
 			role="menuitem"
@@ -88,7 +68,7 @@ const iconColor = computed(() => {
 				v-if="item.icon"
 				:data-test-id="item.id"
 				class="sidebarItemIcon"
-				:class="{ other: item.type === 'other', notification: item.notification }"
+				:class="{ notification: item.notification }"
 			>
 				<N8nText
 					v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
@@ -98,14 +78,6 @@ const iconColor = computed(() => {
 				>
 				<N8nIcon v-else-if="icon" :icon="icon" />
 			</div>
-			<button
-				v-if="item.children && item.type !== 'popover'"
-				class="sidebarItemDropdown"
-				@click="toggleDropdown"
-				:aria-label="ariaLabel"
-			>
-				<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
-			</button>
 			<N8nText v-if="!compact" class="sidebarItemText">{{ item.label }}</N8nText>
 		</N8nRoute>
 	</div>
@@ -175,47 +147,13 @@ const iconColor = computed(() => {
 	&.notification::after {
 		content: '';
 		position: absolute;
-		top: -2px;
-		right: -2px;
-		width: 4px;
-		height: 4px;
+		top: calc(var(--spacing-5xs) * -1);
+		right: calc(var(--spacing-5xs) * -1);
+		width: var(--spacing-4xs);
+		height: var(--spacing-4xs);
 		background-color: var(--color-danger);
 		border-radius: 50%;
 	}
-}
-
-.sidebarItemDropdown {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-color: var(--color-foreground-light);
-	cursor: pointer;
-	outline: none;
-	border: none;
-	height: var(--spacing-s);
-	width: var(--spacing-s);
-	border-radius: var(--border-radius-small);
-	position: absolute;
-	left: 6px;
-	top: 7px;
-	padding: 0;
-	opacity: 0;
-	z-index: 100;
-}
-
-.sidebarItem:hover > .sidebarItemDropdown {
-	opacity: 1;
-}
-
-.sidebarItemDropdown:hover {
-	background-color: var(--color-foreground-base);
-	opacity: 1;
-}
-
-.sidebarItemDropdown:focus-visible {
-	outline: 1px solid var(--color-secondary);
-	outline-offset: -1px;
-	opacity: 1;
 }
 
 .sidebarItemEmoji {
@@ -229,25 +167,5 @@ const iconColor = computed(() => {
 	.sidebarItemIcon {
 		color: var(--color-foreground-xdark);
 	}
-}
-
-.sidebarItemIndent {
-	display: block;
-	position: relative;
-	width: 0.5rem;
-	min-width: 0.5rem;
-	align-self: stretch;
-	margin-left: 13.75px;
-	border-left: 1px solid var(--color-foreground-light);
-}
-
-.sidebarItemIndent::before {
-	content: '';
-	position: absolute;
-	top: -2px;
-	left: -1px;
-	width: 1px;
-	height: 2px;
-	background-color: var(--color-foreground-light);
 }
 </style>
