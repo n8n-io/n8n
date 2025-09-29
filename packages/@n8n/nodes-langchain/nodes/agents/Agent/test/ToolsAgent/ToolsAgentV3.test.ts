@@ -303,12 +303,15 @@ describe('toolsAgentExecute V3', () => {
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'needsFallback') return false;
 			if (param === 'options.enableStreaming') return true;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
 					maxIterations: 10,
 					returnIntermediateSteps: false,
 					passthroughBinaryImages: true,
+					enableStreaming: true,
 				};
 			return defaultValue;
 		});
@@ -379,12 +382,15 @@ describe('toolsAgentExecute V3', () => {
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'needsFallback') return false;
 			if (param === 'options.enableStreaming') return true;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
 					maxIterations: 10,
 					returnIntermediateSteps: false,
 					passthroughBinaryImages: true,
+					enableStreaming: true,
 				};
 			return defaultValue;
 		});
@@ -444,12 +450,15 @@ describe('toolsAgentExecute V3', () => {
 		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
 			if (param === 'needsFallback') return false;
 			if (param === 'options.enableStreaming') return true;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
 			if (param === 'options')
 				return {
 					systemMessage: 'You are a helpful assistant',
 					maxIterations: 10,
 					returnIntermediateSteps: true, // Enable intermediate steps
 					passthroughBinaryImages: true,
+					enableStreaming: true,
 				};
 			return defaultValue;
 		});
