@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -17,6 +18,7 @@ export class McpService {
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	getServer(user: User) {
@@ -37,6 +39,10 @@ export class McpService {
 			this.urlService.getWebhookBaseUrl(),
 			this.workflowFinderService,
 			this.credentialsService,
+			{
+				webhook: this.globalConfig.endpoints.webhook,
+				webhookTest: this.globalConfig.endpoints.webhookTest,
+			},
 		);
 		server.registerTool(
 			workflowDetailsTool.name,

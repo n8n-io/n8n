@@ -21,12 +21,14 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const tool = createWorkflowDetailsTool(
 				user,
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				endpoints,
 			);
 
 			expect(tool.name).toBe('get_workflow_details');
@@ -44,12 +46,14 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const payload = await getWorkflowDetails(
 				user,
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				endpoints,
 				{ workflowId: 'wf-1' },
 			);
 
@@ -65,12 +69,14 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const payload = await getWorkflowDetails(
 				user,
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				endpoints,
 				{ workflowId: 'wf-2' },
 			);
 
@@ -82,12 +88,13 @@ describe('get-workflow-details MCP tool', () => {
 			const unavailable = createWorkflow({ settings: { availableInMCP: false } });
 
 			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const wfFinder1 = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(null),
 			});
 			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder1, credentialsService, {
+				getWorkflowDetails(user, baseWebhookUrl, wfFinder1, credentialsService, endpoints, {
 					workflowId: 'missing',
 				}),
 			).rejects.toThrow('Workflow not found');
@@ -96,7 +103,7 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn().mockResolvedValue(archived),
 			});
 			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder2, credentialsService, {
+				getWorkflowDetails(user, baseWebhookUrl, wfFinder2, credentialsService, endpoints, {
 					workflowId: 'archived',
 				}),
 			).rejects.toThrow('Workflow not found');
@@ -105,7 +112,7 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn().mockResolvedValue(unavailable),
 			});
 			await expect(
-				getWorkflowDetails(user, baseWebhookUrl, wfFinder3, credentialsService, {
+				getWorkflowDetails(user, baseWebhookUrl, wfFinder3, credentialsService, endpoints, {
 					workflowId: 'unavailable',
 				}),
 			).rejects.toThrow('Workflow not found');

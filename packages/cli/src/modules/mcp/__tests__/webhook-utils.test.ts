@@ -60,6 +60,7 @@ describe('getWebhookDetails', () => {
 		'This workflow does not have a trigger node that can be executed via MCP.';
 	const user = createUser();
 	const baseUrl = 'https://example.com';
+	const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 	it('handles no webhook nodes', async () => {
 		const res = await getWebhookDetails(
@@ -68,6 +69,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(res).toEqual(NO_WEBHOOKS_MESSAGE);
 	});
@@ -83,6 +85,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(res).toContain('Node name: My Webhook');
 		expect(res).toContain('Base URL: https://example.com');
@@ -100,6 +103,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			false,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(res).toContain('PATH: /webhook-test/test');
 	});
@@ -112,6 +116,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(res).toContain('basic authentication');
 	});
@@ -125,7 +130,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-1');
 			return { name: 'X-API-Key', value: 'secret' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
 		expect(res).toContain('requires a header with name "X-API-Key"');
 	});
 
@@ -138,7 +143,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-2');
 			return { secret: 'super-secret', keyType: 'passphrase' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
 		expect(res).toContain('requires a JWT secret');
 	});
 
@@ -151,7 +156,7 @@ describe('getWebhookDetails', () => {
 			expect(id).toBe('cred-3');
 			return { keyType: 'pemKey', privateKey: 'priv', publicKey: 'pub' };
 		});
-		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService);
+		const res = await getWebhookDetails(user, [node], baseUrl, true, credsService, endpoints);
 		expect(res).toContain('requires JWT private and public keys');
 	});
 
@@ -163,6 +168,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(res).toContain('respond using "Respond to Webhook" node');
 	});
@@ -177,6 +183,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(resAll).toContain('Returns all the entries of the last node');
 
@@ -189,6 +196,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(resBin).toContain('Returns the binary data of the first entry of the last node');
 
@@ -201,6 +209,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(resNo).toContain('Returns without a body');
 
@@ -211,6 +220,7 @@ describe('getWebhookDetails', () => {
 			baseUrl,
 			true,
 			mockCredentialsService(() => ({})),
+			endpoints,
 		);
 		expect(resDefault).toContain('Returns the JSON data of the first entry of the last node');
 	});

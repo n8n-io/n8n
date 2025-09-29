@@ -4,7 +4,7 @@ import z from 'zod';
 
 import type { ToolDefinition, WorkflowDetailsResult } from '../mcp.types';
 import { nodeSchema, tagSchema } from './schemas';
-import { getWebhookDetails } from './webhook-utils';
+import { getWebhookDetails, type WebhookEndpoints } from './webhook-utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -46,6 +46,7 @@ export const createWorkflowDetailsTool = (
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	endpoints: WebhookEndpoints,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -60,6 +61,7 @@ export const createWorkflowDetailsTool = (
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				endpoints,
 				{ workflowId },
 			);
 
@@ -76,6 +78,7 @@ export async function getWorkflowDetails(
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	endpoints: WebhookEndpoints,
 	{ workflowId }: { workflowId: string },
 ): Promise<WorkflowDetailsResult> {
 	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -95,6 +98,7 @@ export async function getWorkflowDetails(
 		baseWebhookUrl,
 		workflow.active ?? false,
 		credentialsService,
+		endpoints,
 	);
 
 	triggerNotice += `${

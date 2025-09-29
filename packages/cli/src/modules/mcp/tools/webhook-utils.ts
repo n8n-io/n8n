@@ -9,6 +9,11 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+export type WebhookEndpoints = {
+	webhook: string;
+	webhookTest: string;
+};
+
 type WebhookCredentialRequirement =
 	| { type: 'none' }
 	| { type: 'basic' }
@@ -35,6 +40,7 @@ export const getWebhookDetails = async (
 	baseUrl: string,
 	isWorkflowActive: boolean,
 	credentialsService: CredentialsService,
+	endpoints: WebhookEndpoints,
 ): Promise<string> => {
 	if (webhookNodes.length === 0) {
 		return 'This workflow does not have a trigger node that can be executed via MCP.';
@@ -43,7 +49,14 @@ export const getWebhookDetails = async (
 	const nodeDetails = await Promise.all(
 		webhookNodes.map(
 			async (node) =>
-				await collectWebhookNodeDetails(user, node, baseUrl, isWorkflowActive, credentialsService),
+				await collectWebhookNodeDetails(
+					user,
+					node,
+					baseUrl,
+					isWorkflowActive,
+					credentialsService,
+					endpoints,
+				),
 		),
 	);
 
@@ -56,15 +69,21 @@ const collectWebhookNodeDetails = async (
 	baseUrl: string,
 	isWorkflowActive: boolean,
 	credentialsService: CredentialsService,
+	endpoints: WebhookEndpoints,
 ): Promise<WebhookNodeDetails> => {
 	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
 	const httpMethod =
 		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
+	const webhookSegment = isWorkflowActive ? endpoints.webhook : endpoints.webhookTest;
+	let normalizedSegment = webhookSegment;
+	while (normalizedSegment.startsWith('/')) normalizedSegment = normalizedSegment.slice(1);
+	while (normalizedSegment.endsWith('/')) normalizedSegment = normalizedSegment.slice(0, -1);
+	const basePath = normalizedSegment ? `/${normalizedSegment}/` : '/';
 
 	return {
 		nodeName: node.name,
 		baseUrl,
-		path: `${isWorkflowActive ? '/webhook/' : '/webhook-test/'}${pathParam}`,
+		path: `${basePath}${pathParam}`,
 		httpMethod,
 		responseModeDescription: getResponseModeDescription(node),
 		credentials: await resolveCredentialRequirement(user, node, credentialsService),
