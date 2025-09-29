@@ -721,7 +721,7 @@ describe('processRunExecutionData', () => {
 					[
 						{
 							json: { data: 'test1' },
-							pairedItem: 'not-an-object', // This should result in undefined sourceOverwrite
+							pairedItem: [], // This should result in undefined sourceOverwrite
 						},
 						{
 							json: { data: 'test2' },

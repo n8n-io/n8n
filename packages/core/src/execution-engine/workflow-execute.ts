@@ -1568,17 +1568,22 @@ export class WorkflowExecute {
 									// from, which is critical for maintaining correct data
 									// lineage when nodes need to manipulate the item tracking
 									// chain.
-									const sourceOverwrite =
-										typeof item.pairedItem === 'object' && 'sourceOverwrite' in item.pairedItem
-											? item.pairedItem.sourceOverwrite
-											: undefined;
+									if (typeof item.pairedItem === 'object' && 'sourceOverwrite' in item.pairedItem) {
+										return {
+											...item,
+											pairedItem: {
+												item: itemIndex,
+												input: inputIndex || undefined,
+												sourceOverwrite: item.pairedItem.sourceOverwrite,
+											},
+										};
+									}
 
 									return {
 										...item,
 										pairedItem: {
 											item: itemIndex,
 											input: inputIndex || undefined,
-											sourceOverwrite,
 										},
 									};
 								});
