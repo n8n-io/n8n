@@ -8,6 +8,7 @@ import type { IMenuItem } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
@@ -35,6 +36,8 @@ import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
@@ -62,6 +65,7 @@ const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
+const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
@@ -124,7 +128,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
-		// Link to templateRecoV2 modal, available when experiment is enabled
+		// Link to personalized template modal, available when V2 or V3 experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
@@ -132,7 +136,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			personalizedTemplatesV2Store.isFeatureEnabled(),
+			(personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()),
 	},
 	{
 		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
@@ -144,7 +149,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
-			!personalizedTemplatesV2Store.isFeatureEnabled(),
+			!(
+				personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()
+			),
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -157,7 +165,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isTemplatesEnabled &&
 			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!personalizedTemplatesV2Store.isFeatureEnabled(),
+			!(
+				personalizedTemplatesV2Store.isFeatureEnabled() ||
+				personalizedTemplatesV3Store.isFeatureEnabled()
+			),
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -351,7 +362,14 @@ const toggleCollapse = () => {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (personalizedTemplatesV2Store.isFeatureEnabled()) {
+			if (personalizedTemplatesV3Store.isFeatureEnabled()) {
+				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
+				uiStore.openModalWithData({
+					name: EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+					data: {},
+				});
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			} else if (personalizedTemplatesV2Store.isFeatureEnabled()) {
 				uiStore.openModalWithData({
 					name: EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 					data: {},
@@ -591,6 +609,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				</div>
 			</template>
 		</N8nMenu>
+		<TemplateTooltip />
 	</div>
 </template>
 

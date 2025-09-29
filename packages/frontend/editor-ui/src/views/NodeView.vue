@@ -32,10 +32,8 @@ import type {
 	NodeCreatorOpenSource,
 	NodeFilterType,
 	ToggleNodeCreatorOptions,
-	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
@@ -89,7 +87,7 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
@@ -114,8 +112,6 @@ import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/uti
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
-import { tryToParseNumber } from '@/utils/typesUtils';
-import { useTemplatesStore } from '@/stores/templates.store';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -130,7 +126,6 @@ import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
-import { useFoldersStore } from '@/stores/folders.store';
 import { usePostHog } from '@/stores/posthog.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
@@ -145,6 +140,7 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useParentFolder } from '@/composables/useParentFolder';
 
 import { N8nCallout } from '@n8n/design-system';
 defineOptions({
@@ -200,9 +196,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
-const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
-const foldersStore = useFoldersStore();
 const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
@@ -237,7 +231,6 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
-	importTemplate,
 	revertAddNode,
 	createConnection,
 	revertCreateConnection,
@@ -258,9 +251,14 @@ const {
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
+	fitView,
+	openWorkflowTemplate,
+	openWorkflowTemplateFromJSON,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
+const { fetchAndSetParentFolder } = useParentFolder();
+
 useClipboard({ onPaste: onClipboardPaste });
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
@@ -268,7 +266,6 @@ useKeybindings({
 
 const canvasRef = useTemplateRef('canvas');
 const isLoading = ref(true);
-const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 
 const isProductionExecutionPreview = ref(false);
@@ -400,8 +397,8 @@ async function initializeRoute(force = false) {
 	// - if the redirect is blank, then do nothing
 	// - if the route is the template import view, then open the template
 	// - if the user is leaving the current view without saving the changes, then show a confirmation modal
-	if (isBlankRedirect.value) {
-		isBlankRedirect.value = false;
+	if (uiStore.isBlankRedirect) {
+		uiStore.isBlankRedirect = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 		const templateId = route.params.id;
@@ -420,7 +417,7 @@ async function initializeRoute(force = false) {
 				return;
 			}
 
-			await openTemplateFromWorkflowJSON(workflow);
+			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -468,38 +465,11 @@ async function initializeWorkspaceForNewWorkflow() {
 		parentFolderId,
 	);
 
-	if (projectsStore.currentProjectId) {
-		await fetchAndSetProject(projectsStore.currentProjectId);
-	}
+	await projectsStore.refreshCurrentProject();
 	await fetchAndSetParentFolder(parentFolderId);
 
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
-}
-
-// These two methods load home project and parent folder data if they are not already loaded
-// This happens when user lands straight on the new workflow page and we have nothing in the store
-async function fetchAndSetParentFolder(folderId?: string) {
-	if (folderId) {
-		let parentFolder = foldersStore.getCachedFolder(folderId);
-		if (!parentFolder && projectsStore.currentProjectId) {
-			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
-			parentFolder = foldersStore.getCachedFolder(folderId);
-		}
-		if (parentFolder) {
-			workflowsStore.setParentFolder({
-				...parentFolder,
-				parentFolderId: parentFolder.parentFolder ?? null,
-			});
-		}
-	}
-}
-
-async function fetchAndSetProject(projectId: string) {
-	if (projectsStore.currentProject?.id !== projectId) {
-		const project = await projectsStore.fetchProject(projectId);
-		projectsStore.setCurrentProject(project);
-	}
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -596,109 +566,6 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 			workflow_id: workflowId.value,
 		},
 	);
-}
-
-/**
- * Templates
- */
-
-async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId) {
-	if (!workflow.nodes || !workflow.connections) {
-		toast.showError(
-			new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
-			i18n.baseText('nodeView.couldntImportWorkflow'),
-		);
-		await router.replace({ name: VIEWS.NEW_WORKFLOW });
-		return;
-	}
-	resetWorkspace();
-
-	canvasStore.startLoading();
-	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
-
-	workflowsStore.currentWorkflowExecutions = [];
-	executionsStore.activeExecution = null;
-
-	isBlankRedirect.value = true;
-	const templateId = workflow.meta.templateId;
-	const parentFolderId = route.query.parentFolderId as string | undefined;
-
-	if (projectsStore.currentProjectId) {
-		await fetchAndSetProject(projectsStore.currentProjectId);
-	}
-	await fetchAndSetParentFolder(parentFolderId);
-
-	await router.replace({
-		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId, parentFolderId, projectId: projectsStore.currentProjectId },
-	});
-
-	await importTemplate({
-		id: templateId,
-		name: workflow.name,
-		workflow,
-	});
-
-	uiStore.stateIsDirty = true;
-
-	canvasStore.stopLoading();
-
-	fitView();
-}
-
-async function openWorkflowTemplate(templateId: string) {
-	resetWorkspace();
-
-	canvasStore.startLoading();
-	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
-
-	workflowsStore.currentWorkflowExecutions = [];
-	executionsStore.activeExecution = null;
-
-	let data: IWorkflowTemplate | undefined;
-	try {
-		void externalHooks.run('template.requested', { templateId });
-
-		data = await templatesStore.getFixedWorkflowTemplate(templateId);
-		if (!data) {
-			throw new Error(
-				i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
-					interpolate: { templateId },
-				}),
-			);
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.couldntImportWorkflow'));
-		await router.replace({ name: VIEWS.NEW_WORKFLOW });
-		return;
-	}
-
-	trackOpenWorkflowTemplate(templateId);
-
-	isBlankRedirect.value = true;
-	await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
-
-	await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
-
-	uiStore.stateIsDirty = true;
-
-	canvasStore.stopLoading();
-
-	void externalHooks.run('template.open', {
-		templateId,
-		templateName: data.name,
-		workflow: data.workflow,
-	});
-
-	fitView();
-}
-
-function trackOpenWorkflowTemplate(templateId: string) {
-	telemetry.track('User inserted workflow template', {
-		source: 'workflow',
-		template_id: tryToParseNumber(templateId),
-		wf_template_repo_session_id: templatesStore.previousSessionId,
-	});
 }
 
 /**
@@ -1123,22 +990,28 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as WorkflowDataUpdate;
 	const trackEvents = typeof data.trackEvents === 'boolean' ? data.trackEvents : undefined;
+
 	await importWorkflowData(workflowData, 'file', {
 		viewport: viewportBoundaries.value,
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 	});
 
+	await nextTick();
 	fitView();
+
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
 		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
-		setTimeout(() => {
+		setTimeout(async () => {
 			canvasEventBus.emit('tidyUp', {
 				source: 'import-workflow-data',
 				nodeIdsFilter: nodesIdsToTidyUp,
 				trackEvents,
 			});
+
+			await nextTick();
+			fitView();
 		}, 0);
 	}
 }
@@ -1610,7 +1483,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// Set the project if provided from the parent window
 				if (json.projectId) {
-					await fetchAndSetProject(json.projectId);
+					await projectsStore.fetchAndSetProject(json.projectId);
 				}
 				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
@@ -1632,7 +1505,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// Set the project if provided from the parent window
 				if (json.projectId) {
-					await fetchAndSetProject(json.projectId);
+					await projectsStore.fetchAndSetProject(json.projectId);
 				}
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
@@ -1755,10 +1628,6 @@ function onViewportChange(viewport: ViewportTransform, dimensions: Dimensions) {
 	viewportTransform.value = viewport;
 	viewportDimensions.value = dimensions;
 	uiStore.nodeViewOffsetPosition = [viewport.x, viewport.y];
-}
-
-function fitView() {
-	setTimeout(() => canvasEventBus.emit('fitView'));
 }
 
 function selectNodes(ids: string[]) {

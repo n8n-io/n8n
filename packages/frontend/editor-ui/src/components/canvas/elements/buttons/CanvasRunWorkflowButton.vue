@@ -22,17 +22,23 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
+	hideTooltip?: boolean;
+	label?: string;
+	size?: 'small' | 'medium' | 'large';
+	includeChatTrigger?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 }>();
 
 const i18n = useI18n();
 
 const selectableTriggerNodes = computed(() =>
-	props.triggerNodes.filter((node) => !node.disabled && !isChatNode(node)),
+	props.triggerNodes.filter(
+		(node) => !node.disabled && (props.includeChatTrigger ? true : !isChatNode(node)),
+	),
 );
 const label = computed(() => {
 	if (!props.executing) {
-		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
+		return props.label ?? i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
 
 	if (props.waitingForWebhook) {
@@ -43,7 +49,7 @@ const label = computed(() => {
 });
 const actions = computed(() =>
 	props.triggerNodes
-		.filter((node) => !isChatNode(node))
+		.filter((node) => (props.includeChatTrigger ? true : !isChatNode(node)))
 		.toSorted((a, b) => {
 			const [aX, aY] = a.position;
 			const [bX, bY] = b.position;
@@ -77,13 +83,13 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		<KeyboardShortcutTooltip
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
-			:disabled="executing"
+			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
 				:class="$style.button"
 				:loading="executing"
 				:disabled="disabled"
-				size="large"
+				:size="size ?? 'large'"
 				icon="flask-conical"
 				type="primary"
 				data-test-id="execute-workflow-button"
