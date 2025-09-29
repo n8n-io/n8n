@@ -151,6 +151,9 @@ export class ToolVectorStore implements INodeType {
 					json: {
 						response: outputData,
 					},
+					pairedItem: {
+						item: itemIndex,
+					},
 				},
 			]);
 		}

@@ -147,6 +147,9 @@ describe('ToolVectorStore', () => {
 						json: {
 							response: mockResult,
 						},
+						pairedItem: {
+							item: 0,
+						},
 					},
 				],
 			]);
@@ -205,12 +208,18 @@ describe('ToolVectorStore', () => {
 						json: {
 							response: 'Answer to first question',
 						},
+						pairedItem: {
+							item: 0,
+						},
 					},
 				],
 				[
 					{
 						json: {
 							response: 'Answer to second question',
+						},
+						pairedItem: {
+							item: 1,
 						},
 					},
 				],
