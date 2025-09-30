@@ -13,7 +13,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-import { AskAssistantChat, N8nText } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -245,7 +245,7 @@ watch(currentRoute, () => {
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
-		<AskAssistantChat
+		<N8nAskAssistantChat
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
@@ -275,7 +275,7 @@ watch(currentRoute, () => {
 					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
 				}}</N8nText>
 			</template>
-		</AskAssistantChat>
+		</N8nAskAssistantChat>
 	</div>
 </template>
 

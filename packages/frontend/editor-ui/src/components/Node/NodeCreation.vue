@@ -21,7 +21,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
 
-import { AssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
@@ -161,7 +161,7 @@ function onAskAssistantButtonClick() {
 			>
 				<template #default>
 					<div>
-						<AssistantIcon size="large" />
+						<N8nAssistantIcon size="large" />
 					</div>
 				</template>
 			</N8nButton>
