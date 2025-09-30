@@ -1,0 +1,19 @@
+{
+	"greeting": "Hallo Welt!",
+	"description": "Dies ist ein Beispiel-Plugin zur Demonstration des Plugin-Systems.",
+	"settings": {
+		"title": "Plugin-Einstellungen",
+		"description": "Konfigurieren Sie Ihr Hallo-Welt-Plugin",
+		"exampleSetting": "Beispieleinstellung",
+		"placeholder": "Geben Sie einen Wert ein...",
+		"save": "Einstellungen speichern",
+		"cancel": "Abbrechen"
+	},
+	"button": {
+		"openSettings": "Einstellungen öffnen"
+	},
+	"toast": {
+		"settingsSaved": "Einstellungen gespeichert",
+		"settingsSavedMessage": "Ihre Einstellungen wurden aktualisiert"
+	}
+}

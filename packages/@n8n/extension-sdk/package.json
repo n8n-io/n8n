@@ -27,6 +27,11 @@
       "import": "./dist/frontend/index.js",
       "require": "./dist/frontend/index.cjs"
     },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.js",
+      "require": "./dist/validation/index.cjs"
+    },
     "./*": "./*"
   },
   "scripts": {

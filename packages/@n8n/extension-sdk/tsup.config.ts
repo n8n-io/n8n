@@ -38,4 +38,18 @@ export default defineConfig([
 		sourcemap: true,
 		tsconfig: 'tsconfig.frontend.json',
 	},
+	{
+		clean: false,
+		entry: [
+			'src/validation/**/*.ts',
+			'!src/validation/**/*.test.ts',
+			'!src/validation/**/*.d.ts',
+			'!src/validation/__tests__/**/*',
+		],
+		outDir: 'dist/validation',
+		format: ['cjs', 'esm'],
+		dts: true,
+		sourcemap: true,
+		tsconfig: 'tsconfig.backend.json',
+	},
 ]);

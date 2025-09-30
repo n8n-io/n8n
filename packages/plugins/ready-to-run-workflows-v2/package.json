@@ -1,0 +1,17 @@
+{
+	"name": "@n8n/plugin-ready-to-run-workflows-v2",
+	"version": "0.1.0",
+	"type": "module",
+	"dependencies": {
+		"@n8n/extension-sdk": "workspace:*",
+		"@n8n/i18n": "workspace:*",
+		"n8n-workflow": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*"
+	},
+	"devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+		"@vitejs/plugin-vue": "catalog:frontend",
+		"vite": "catalog:",
+		"vue": "catalog:frontend"
+	}
+}

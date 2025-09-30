@@ -46,13 +46,9 @@ export function useEmptyStateDetection() {
 	 * Checks if we're in a state where the simplified layout should be shown
 	 * This matches the logic from ResourcesListLayout's showEmptyState computed property
 	 */
-	const shouldShowSimplifiedLayout = (
-		currentRoute: RouteLocationNormalized,
-		isFeatureEnabled: boolean,
-		loading: boolean,
-	) => {
+	const shouldShowSimplifiedLayout = (currentRoute: RouteLocationNormalized, loading: boolean) => {
 		// Don't show simplified layout if loading or feature is disabled
-		if (loading || !isFeatureEnabled) {
+		if (loading) {
 			return false;
 		}
 

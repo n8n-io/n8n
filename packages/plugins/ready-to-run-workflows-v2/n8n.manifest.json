@@ -1,0 +1,25 @@
+{
+	"name": "@n8n/plugin-ready-to-run-workflows-v2",
+	"displayName": "Ready to Run Workflows V2",
+	"description": "Provides quick-start AI workflows for trial users with simplified onboarding",
+	"version": "0.1.0",
+	"category": "experiment",
+	"permissions": {
+		"frontend": ["frontend:read-workflows", "frontend:modify-ui", "frontend:telemetry"],
+		"backend": []
+	},
+	"extends": {
+		"views.workflows.layout": {
+			"component": "SimplifiedEmptyLayout",
+			"priority": 50
+		},
+		"views.projects.header.button": {
+			"component": "ReadyToRunV2Button",
+			"priority": 50
+		},
+		"views.workflows.headerBefore": {
+			"component": "HelloWorld",
+			"priority": 150
+		}
+	}
+}

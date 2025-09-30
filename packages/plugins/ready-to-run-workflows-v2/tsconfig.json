@@ -1,0 +1,17 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"maxNodeModuleJsDepth": 0,
+		"paths": {
+			"@/*": ["../../frontend/editor-ui/src/*"]
+		}
+	},
+	"include": ["src/**/*"],
+	"exclude": [
+		"node_modules",
+		"../../frontend/editor-ui/node_modules",
+		"../../frontend/@n8n/design-system"
+	],
+	"files": []
+}

@@ -1,0 +1,17 @@
+{
+	"name": "@n8n/plugin-hello-world",
+	"displayName": "Hello World Plugin",
+	"description": "A simple hello world plugin to demonstrate the plugin system",
+	"version": "0.0.1",
+	"category": "internal",
+	"permissions": {
+		"frontend": ["frontend:modify-ui"],
+		"backend": []
+	},
+	"extends": {
+		"views.workflows.headerBefore": {
+			"component": "HelloWorld",
+			"priority": 100
+		}
+	}
+}

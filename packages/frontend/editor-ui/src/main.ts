@@ -28,6 +28,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
 import { registerModuleRoutes } from '@/moduleInitializer/moduleInitializer';
+import { registerPluginRoutes, activatePlugins } from '@/plugins/loader';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
@@ -41,6 +42,10 @@ app.use(SentryPlugin);
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
 
+// Phase 1: Register plugin routes (before router installation)
+// Must be done before app.use(router) so routes are available on initial navigation
+registerPluginRoutes(router);
+
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(FontAwesomePlugin);
@@ -50,6 +55,10 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+
+// Phase 2: Activate plugins (after pinia is available)
+// This calls shouldLoad (which needs stores), registers extension points, and calls onActivate
+await activatePlugins(app);
 
 if (import.meta.env.VUE_SCAN) {
 	const { default: VueScan } = await import('z-vue-scan');

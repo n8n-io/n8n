@@ -1,0 +1,15 @@
+{
+  "name": "@n8n/plugin-hello-world",
+  "version": "0.0.1",
+  "type": "module",
+  "dependencies": {
+    "@n8n/extension-sdk": "workspace:*",
+    "@n8n/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "vite": "catalog:",
+    "vue": "catalog:frontend"
+  }
+}

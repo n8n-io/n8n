@@ -1,0 +1,19 @@
+{
+	"greeting": "Hello World!",
+	"description": "This is an example plugin to demonstrate the plugin system.",
+	"settings": {
+		"title": "Plugin Settings",
+		"description": "Configure your hello world plugin",
+		"exampleSetting": "Example Setting",
+		"placeholder": "Enter a value...",
+		"save": "Save Settings",
+		"cancel": "Cancel"
+	},
+	"button": {
+		"openSettings": "Open Settings"
+	},
+	"toast": {
+		"settingsSaved": "Settings saved successfully",
+		"settingsSavedMessage": "Your settings have been updated"
+	}
+}

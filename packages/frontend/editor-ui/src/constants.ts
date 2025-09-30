@@ -829,13 +829,6 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
-export const READY_TO_RUN_V2_EXPERIMENT = {
-	name: '042_ready-to-run-worfklow_v2',
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-};
-
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
@@ -845,7 +838,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
-	READY_TO_RUN_V2_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

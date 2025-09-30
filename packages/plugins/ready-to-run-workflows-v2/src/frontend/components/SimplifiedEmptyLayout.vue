@@ -10,7 +10,19 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useToast } from '@/composables/useToast';
 import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
+import { useFoldersStore } from '@/stores/folders.store';
 import type { IUser } from 'n8n-workflow';
+import { onMounted } from 'vue';
+
+// Receive context from ExtensionPoint
+const props = defineProps<{
+	onAdd?: () => void;
+}>();
+
+// Define slots to receive the default layout
+defineSlots<{
+	default(): any;
+}>();
 
 const route = useRoute();
 const i18n = useI18n();
@@ -20,6 +32,15 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const foldersStore = useFoldersStore();
+
+// Fetch workflow count on mount to ensure we have the data
+onMounted(async () => {
+	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
+		route.params.projectId as string | undefined,
+		route.params.folderId as string | undefined,
+	);
+});
 
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const personalProject = computed(() => projectsStore.personalProject);
@@ -42,11 +63,13 @@ const emptyListDescription = computed(() => {
 });
 
 const showReadyToRunV2Card = computed(() => {
-	return readyToRunWorkflowsV2Store.getCardVisibility(
+	const val = readyToRunWorkflowsV2Store.getCardVisibility(
 		projectPermissions.value.workflow.create,
 		readOnlyEnv.value,
 		false, // loading is false in simplified layout
 	);
+
+	return val;
 });
 
 const handleReadyToRunV2Click = async () => {
@@ -66,16 +89,22 @@ const handleReadyToRunV2Click = async () => {
 };
 
 const addWorkflow = () => {
-	emit('click:add');
+	// Call the onAdd callback from context if provided
+	if (props.onAdd) {
+		props.onAdd();
+	}
 };
 
-const emit = defineEmits<{
-	'click:add': [];
-}>();
+// Check if we should show the simplified layout or fall back to default
+const shouldShowSimplified = computed(() => {
+	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, false);
+});
 </script>
 
 <template>
-	<div :class="$style.simplifiedLayout">
+	<!-- If we should show simplified layout, render it; otherwise render the default slot -->
+	<slot v-if="!shouldShowSimplified" />
+	<div v-else :class="$style.simplifiedLayout">
 		<div :class="$style.content">
 			<div :class="$style.welcome">
 				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">

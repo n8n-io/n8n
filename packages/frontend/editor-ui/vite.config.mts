@@ -22,12 +22,22 @@ const { NODE_ENV } = process.env;
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
+const pluginsDir = resolve(packagesDir, 'plugins');
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Plugin resolution - match @n8n/plugin-* packages to plugins directory (use src for build-time bundling)
+	{
+		find: /^@n8n\/plugin-([^/]+)\/frontend(.*)$/,
+		replacement: resolve(pluginsDir, '$1', 'src', 'frontend$2'),
+	},
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/design-system', replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src') },
+	{ find: '@n8n/stores', replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src') },
+	{ find: '@n8n/permissions', replacement: resolve(packagesDir, '@n8n', 'permissions', 'src') },
+	{ find: '@n8n/rest-api-client', replacement: resolve(packagesDir, 'frontend', '@n8n', 'rest-api-client', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),

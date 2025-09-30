@@ -3,6 +3,7 @@ packages:
   - packages/@n8n/*
   - packages/frontend/**
   - packages/extensions/**
+  - packages/plugins/*
   - cypress
   - packages/testing/**
 
