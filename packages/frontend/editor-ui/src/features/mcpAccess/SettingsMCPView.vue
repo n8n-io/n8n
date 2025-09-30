@@ -21,7 +21,6 @@ const documentTitle = useDocumentTitle();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
-const isOwner = computed(() => usersStore.isInstanceOwner);
 const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
@@ -82,6 +81,11 @@ const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
 		value: 'removeFromMCP',
 	},
 ]);
+
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+
+const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
 const getProjectIcon = (workflow: WorkflowListItem): IconOrEmoji => {
 	if (workflow.homeProject?.type === 'personal') {
@@ -158,14 +162,14 @@ onMounted(async () => {
 			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
 				<N8nTooltip
 					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-					:disabled="isOwner"
+					:disabled="canToggleMCP"
 					placement="top"
 				>
 					<ElSwitch
 						:model-value="mcpStore.mcpAccessEnabled"
 						size="large"
 						data-test-id="mcp-access-toggle"
-						:disabled="!isOwner"
+						:disabled="!canToggleMCP"
 						@update:model-value="onUpdateMCPEnabled"
 					/>
 				</N8nTooltip>
