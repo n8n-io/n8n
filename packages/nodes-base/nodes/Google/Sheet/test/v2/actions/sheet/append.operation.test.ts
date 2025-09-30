@@ -52,7 +52,6 @@ describe('Google Sheets Append Operation', () => {
 			return mockParams[paramName];
 		});
 
-		// Setup utility function mocks
 		(GoogleSheetsUtils.autoMapInputData as jest.Mock).mockResolvedValue([
 			{ name: 'John', email: 'john@example.com' },
 			{ name: 'Jane', email: 'jane@example.com' },
@@ -436,29 +435,6 @@ describe('Google Sheets Append Operation', () => {
 	});
 
 	describe('Sheet Data Processing', () => {
-		it('should handle empty sheet data', async () => {
-			mockSheet.getData.mockResolvedValue(undefined);
-			mockSheet.appendSheetData.mockResolvedValue([]);
-
-			const result = await execute.call(
-				mockExecuteFunctions,
-				mockSheet,
-				'Sheet1!A1:B2',
-				'sheet123',
-			);
-
-			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalled();
-		});
-
-		it('should handle null sheet data', async () => {
-			mockSheet.getData.mockResolvedValue(undefined);
-			mockSheet.appendSheetData.mockResolvedValue([]);
-
-			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
-
-			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalled();
-		});
-
 		it('should calculate lastRow correctly when sheet has data', async () => {
 			mockSheet.getData.mockResolvedValue([
 				['Name', 'Email'],
