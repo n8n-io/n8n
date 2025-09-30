@@ -116,8 +116,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 
 			// Verify save/cancel buttons are not visible initially (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 
 			// Delete button should always be visible
 			await expect(n8n.page.getByTestId('project-settings-delete-button')).toBeVisible();
@@ -249,8 +249,8 @@ test.describe('Projects', () => {
 			await expect(n8n.projectSettings.getTitle()).toHaveText('Unsaved Changes Test');
 
 			// Initially, save and cancel buttons should not be visible (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 
 			// Make a change to the project name
 			await n8n.projectSettings.fillProjectName('Modified Name');
@@ -266,8 +266,8 @@ test.describe('Projects', () => {
 			await n8n.projectSettings.clickCancelButton();
 
 			// Buttons should not be visible again (no changes)
-			await expect(n8n.page.getByTestId('project-settings-save-button')).not.toBeVisible();
-			await expect(n8n.page.getByTestId('project-settings-cancel-button')).not.toBeVisible();
+			await expect(n8n.page.getByTestId('project-settings-save-button')).toBeHidden();
+			await expect(n8n.page.getByTestId('project-settings-cancel-button')).toBeHidden();
 		});
 
 		test('should display delete project section with warning @auth:owner', async ({ n8n }) => {
