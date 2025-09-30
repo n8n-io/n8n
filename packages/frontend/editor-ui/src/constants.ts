@@ -500,7 +500,7 @@ export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
 );
 
 export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
-export const FOLDER_NAME_MAX_LENGTH = 100;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
