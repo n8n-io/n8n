@@ -17,20 +17,20 @@ const i18n = useI18n();
 
 <template>
 	<div :class="$style.container">
-		<el-col class="notags" :span="16">
+		<ElCol class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
 				<div class="mb-s">
-					<n8n-heading size="large">
+					<N8nHeading size="large">
 						{{ i18n.baseText(titleLocaleKey) }}
-					</n8n-heading>
+					</N8nHeading>
 				</div>
 				<div class="description">
 					{{ i18n.baseText(descriptionLocaleKey) }}
 				</div>
 			</div>
-			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />
-		</el-col>
+			<N8nButton label="Create a tag" size="large" @click="$emit('enableCreate')" />
+		</ElCol>
 	</div>
 </template>
 

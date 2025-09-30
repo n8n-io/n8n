@@ -9,6 +9,7 @@ describe('@RestController Decorator', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		Container.reset();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);
@@ -20,6 +21,7 @@ describe('@RestController Decorator', () => {
 
 		const metadata = controllerRegistryMetadata.getControllerMetadata(TestController as Controller);
 		expect(metadata.basePath).toBe('/');
+		expect(metadata.registerOnRootPath).toBe(false);
 		expect(Container.has(TestController)).toBe(true);
 	});
 
@@ -29,6 +31,7 @@ describe('@RestController Decorator', () => {
 
 		const metadata = controllerRegistryMetadata.getControllerMetadata(TestController as Controller);
 		expect(metadata.basePath).toBe('/test');
+		expect(metadata.registerOnRootPath).toBe(false);
 		expect(Container.has(TestController)).toBe(true);
 	});
 

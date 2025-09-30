@@ -139,7 +139,7 @@ onMounted(() => {
 		@enter="onSubmitClick"
 	>
 		<template #content>
-			<n8n-form-inputs
+			<N8nFormInputs
 				v-if="config"
 				:inputs="config"
 				:event-bus="formBus"
@@ -149,7 +149,7 @@ onMounted(() => {
 			/>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('auth.changePassword')"
 				float="right"

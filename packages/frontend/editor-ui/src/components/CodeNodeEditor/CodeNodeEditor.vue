@@ -107,9 +107,7 @@ onBeforeUnmount(() => {
 });
 
 const askAiEnabled = computed(() => {
-	return (
-		props.disableAskAi !== true && settingsStore.isAskAiEnabled && props.language === 'javaScript'
-	);
+	return !props.disableAskAi && settingsStore.isAskAiEnabled && props.language === 'javaScript';
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
@@ -221,7 +219,7 @@ defineExpose({
 		ref="codeNodeEditorContainerRef"
 		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
-		<el-tabs
+		<ElTabs
 			v-if="askAiEnabled"
 			ref="tabs"
 			v-model="activeTab"
@@ -229,7 +227,7 @@ defineExpose({
 			:before-leave="onBeforeTabLeave"
 			:class="$style.tabs"
 		>
-			<el-tab-pane
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
@@ -255,8 +253,8 @@ defineExpose({
 					</template>
 				</DraggableTarget>
 				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
+			</ElTabPane>
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
@@ -270,8 +268,8 @@ defineExpose({
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"
 				/>
-			</el-tab-pane>
-		</el-tabs>
+			</ElTabPane>
+		</ElTabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
 			<DraggableTarget

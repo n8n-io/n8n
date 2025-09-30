@@ -161,7 +161,7 @@ watch(
 </script>
 
 <template>
-	<n8n-input
+	<N8nInput
 		ref="inputRef"
 		data-test-id="ndv-search"
 		:class="{
@@ -177,9 +177,9 @@ watch(
 		@blur="onBlur"
 	>
 		<template #prefix>
-			<n8n-icon :class="$style.ioSearchIcon" icon="search" size="large" />
+			<N8nIcon :class="$style.ioSearchIcon" icon="search" size="large" />
 		</template>
-	</n8n-input>
+	</N8nInput>
 </template>
 
 <style lang="scss" module>
