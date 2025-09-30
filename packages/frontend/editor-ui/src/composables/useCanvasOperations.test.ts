@@ -3002,7 +3002,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
-			setActiveExecutionId = vi.spyOn(workflowHandle, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(workflowHandle, 'setActiveExecutionId');
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 

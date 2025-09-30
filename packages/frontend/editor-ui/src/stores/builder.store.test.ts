@@ -980,7 +980,6 @@ describe('AI Builder store', () => {
 		});
 
 		it('should handle workflow updates without name property', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -1014,7 +1013,6 @@ describe('AI Builder store', () => {
 		});
 
 		it('should handle workflow names that start with but are not exactly the default name', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -1069,7 +1067,6 @@ describe('AI Builder store', () => {
 		});
 
 		it('should maintain initial generation flag state across multiple updates', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
