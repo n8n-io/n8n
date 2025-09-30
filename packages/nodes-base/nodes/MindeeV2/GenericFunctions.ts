@@ -55,12 +55,8 @@ export async function mindeeApiRequest(
 		qs,
 	};
 	try {
-		if (!qs) {
-			delete options.qs;
-		}
-		if (Object.keys(body as IDataObject).length === 0) {
-			delete options.body;
-		}
+		options.qs = qs;
+		options.body = body;
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
@@ -105,6 +101,9 @@ export async function pollMindee(
 	let serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
 	if ('inference' in serverResponse) {
 		return [serverResponse as IDataObject];
+	}
+	if (!('job' in serverResponse)) {
+		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
 	}
 	let jobStatus: string = (serverResponse.job as IDataObject).status as string;
 
