@@ -48,6 +48,7 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
+export { CreateVariableRequestDto } from './variables/create-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';

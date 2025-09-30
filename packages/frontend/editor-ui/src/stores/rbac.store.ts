@@ -18,6 +18,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		user: {},
 		credential: {},
 		variable: {},
+		projectVariable: {},
 		sourceControl: {},
 		externalSecretsProvider: {},
 		externalSecret: {},

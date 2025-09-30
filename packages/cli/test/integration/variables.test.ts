@@ -213,9 +213,8 @@ describe('POST /variables', () => {
 	test('should fail if value too long', async () => {
 		const toCreate = {
 			key: 'key',
-			// 256 'a's
-			value:
-				'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+			// 1001 'a's
+			value: Array(1001).fill('a').join(''),
 		};
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(400);
