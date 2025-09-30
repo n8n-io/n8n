@@ -792,3 +792,78 @@ ToolCallsWithThinking.args = {
 	loadingMessage: 'Thinking...',
 	streaming: true,
 };
+
+export const CompletedToolCallsWithSummary = Template.bind({});
+CompletedToolCallsWithSummary.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: 'msg-1',
+			type: 'text',
+			role: 'user',
+			content: 'Can you help me build a workflow?',
+			read: true,
+		},
+		{
+			id: 'msg-2',
+			type: 'text',
+			role: 'assistant',
+			content: "Of course I'd be happy to help you!",
+			read: true,
+		},
+		{
+			id: 'tool-1',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_code_1',
+			status: 'completed',
+			displayTitle: 'Code Tool',
+			read: true,
+		},
+		{
+			id: 'tool-2',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'web_search',
+			toolCallId: 'call_web_1',
+			status: 'completed',
+			displayTitle: 'Web Search',
+			read: true,
+		},
+		{
+			id: 'tool-3',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'calculator',
+			toolCallId: 'call_calc_1',
+			status: 'completed',
+			displayTitle: 'Calculator',
+			read: true,
+		},
+		{
+			id: 'tool-4',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'builder',
+			toolCallId: 'call_builder_1',
+			status: 'completed',
+			displayTitle: 'Builder',
+			read: true,
+		},
+		{
+			id: 'msg-3',
+			type: 'text',
+			role: 'assistant',
+			content: `#### 📝 What's been completed
+• Code Tool ran
+• Web Search executed
+• Calculator calculated
+• Builder built`,
+			read: false,
+		},
+	]),
+};
