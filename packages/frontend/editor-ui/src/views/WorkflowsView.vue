@@ -28,7 +28,9 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
@@ -128,6 +130,7 @@ const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
+const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -320,6 +323,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
+				settings: resource.settings,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -529,12 +533,18 @@ const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
 		insightsStore.isSummaryEnabled &&
-		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+		(workflowListResources.value.length > 0 ||
+			(!personalizedTemplatesV2Store.isFeatureEnabled() &&
+				!personalizedTemplatesV3Store.isFeatureEnabled()))
 	);
 });
 
 const showTemplateRecommendationV2 = computed(() => {
 	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
+
+const showTemplateRecommendationV3 = computed(() => {
+	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
 /**
@@ -1931,7 +1941,7 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
 				v-else-if="showFolders && currentFolder"
@@ -2026,6 +2036,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 				<WorkflowCard
 					data-test-id="resources-list-item-workflow"
+					data-target="workflow"
 					:class="{
 						['mb-2xs']: true,
 						[$style['drag-active']]: isDragging,
@@ -2039,7 +2050,9 @@ const onNameSubmit = async (name: string) => {
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
-					data-target="workflow"
+					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
+					:are-tags-enabled="settingsStore.areTagsEnabled"
+					:is-mcp-enabled="settingsStore.isModuleActive('mcp')"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
@@ -2191,7 +2204,8 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 				</div>
-				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
+				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
+				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">

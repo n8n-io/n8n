@@ -170,29 +170,29 @@ async function onEdit(destinationId?: string) {
 	<div>
 		<div :class="$style.header">
 			<div class="mb-2xl">
-				<n8n-heading size="2xlarge">
+				<N8nHeading size="2xlarge">
 					{{ i18n.baseText(`settings.log-streaming.heading`) }}
-				</n8n-heading>
+				</N8nHeading>
 				<template v-if="environment !== 'production'">
 					<span class="ml-m">Disable License ({{ environment }})&nbsp;</span>
-					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
+					<ElSwitch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
 				</template>
 			</div>
 		</div>
 		<template v-if="isLicensed">
 			<div class="mb-l">
-				<n8n-info-tip theme="info" type="note">
+				<N8nInfoTip theme="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
-				</n8n-info-tip>
+				</N8nInfoTip>
 			</div>
 			<template v-if="storeHasItems()">
-				<el-row
+				<ElRow
 					v-for="item in sortedItemKeysByLabel"
 					:key="item.key"
 					:gutter="10"
 					:class="$style.destinationItem"
 				>
-					<el-col v-if="logStreamingStore.items[item.key]?.destination">
+					<ElCol v-if="logStreamingStore.items[item.key]?.destination">
 						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:event-bus="eventBus"
@@ -200,33 +200,33 @@ async function onEdit(destinationId?: string) {
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
-					</el-col>
-				</el-row>
+					</ElCol>
+				</ElRow>
 				<div class="mt-m text-right">
-					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
+					<N8nButton v-if="canManageLogStreaming" size="large" @click="addDestination">
 						{{ i18n.baseText(`settings.log-streaming.add`) }}
-					</n8n-button>
+					</N8nButton>
 				</div>
 			</template>
 			<div v-else data-test-id="action-box-licensed">
-				<n8n-action-box
+				<N8nActionBox
 					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
 						<span v-n8n-html="i18n.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
-				</n8n-action-box>
+				</N8nActionBox>
 			</div>
 		</template>
 		<template v-else>
 			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
-				<n8n-info-tip theme="info" type="note">
+				<N8nInfoTip theme="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
-				</n8n-info-tip>
+				</N8nInfoTip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
-				<n8n-action-box
+				<N8nActionBox
 					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
 					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
@@ -234,7 +234,7 @@ async function onEdit(destinationId?: string) {
 					<template #heading>
 						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
-				</n8n-action-box>
+				</N8nActionBox>
 			</div>
 		</template>
 	</div>

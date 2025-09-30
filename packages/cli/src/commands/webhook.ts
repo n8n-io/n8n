@@ -7,6 +7,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 import { BaseCommand } from './base-command';
 
@@ -62,6 +63,7 @@ export class Webhook extends BaseCommand {
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
+		Container.get(DeprecationService).warn();
 
 		await this.initLicense();
 		this.logger.debug('License init complete');

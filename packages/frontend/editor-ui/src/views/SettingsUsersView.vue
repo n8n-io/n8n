@@ -81,6 +81,13 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
 		},
 		{
+			label: i18n.baseText('settings.users.actions.delete'),
+			value: 'delete',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+				user.id !== usersStore.currentUserId,
+		},
+		{
 			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
 			value: 'copyPasswordResetLink',
 			guard: (user) =>
@@ -406,7 +413,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 			</div>
 			<div :class="$style.settingsContainerAction">
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-					<el-switch
+					<ElSwitch
 						:model-value="settingsStore.isMFAEnforced"
 						size="large"
 						data-test-id="enable-force-mfa"
@@ -414,7 +421,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 					/>
 					<template #fallback>
 						<N8nTooltip>
-							<el-switch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
+							<ElSwitch :model-value="settingsStore.isMFAEnforced" size="large" :disabled="true" />
 							<template #content>
 								<I18nT :keypath="tooltipKey" tag="span" scope="global">
 									<template #action>

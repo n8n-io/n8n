@@ -5,9 +5,10 @@ import textwrap
 import json
 import os
 import sys
-import tempfile
+import logging
 
 from src.errors import (
+    TaskCancelledError,
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
@@ -20,12 +21,16 @@ from src.constants import (
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
+    SIGTERM_EXIT_CODE,
 )
 from typing import Any, Set
 
-from multiprocessing.context import SpawnProcess
+from multiprocessing.context import ForkServerProcess
+from multiprocessing import shared_memory
 
-MULTIPROCESSING_CONTEXT = multiprocessing.get_context("fork")
+logger = logging.getLogger(__name__)
+
+MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
@@ -70,22 +75,30 @@ class TaskExecutor:
 
     @staticmethod
     def execute_process(
-        process: SpawnProcess,
+        process: ForkServerProcess,
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs]:
+    ) -> tuple[list, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
 
         try:
-            process.start()
+            try:
+                process.start()
+            except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
+                logger.error(f"Failed to start child process: {e}")
+                raise TaskProcessExitError(-1)
+
             process.join(timeout=task_timeout)
 
             if process.is_alive():
                 TaskExecutor.stop_process(process)
                 raise TaskTimeoutError(task_timeout)
+
+            if process.exitcode == SIGTERM_EXIT_CODE:
+                raise TaskCancelledError()
 
             if process.exitcode != 0:
                 assert process.exitcode is not None
@@ -95,6 +108,10 @@ class TaskExecutor:
                 returned = queue.get_nowait()
             except Empty:
                 raise TaskResultMissingError()
+            except EOFError as e:
+                logger.error(f"Failed to retrieve results from child process: {e}")
+                raise TaskResultMissingError()
+
             finally:
                 queue.close()
                 queue.join_thread()
@@ -102,37 +119,47 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            if "result_file" not in returned:
+            if "shm_name" not in returned:
                 raise TaskResultMissingError()
 
-            result_file = returned["result_file"]
+            shm_name = returned["shm_name"]
+            shm_size = returned["shm_size"]
             try:
-                with open(result_file, "r", encoding="utf-8") as f:
-                    result = json.load(f)
-            finally:
-                os.unlink(result_file)
+                shm = shared_memory.SharedMemory(name=shm_name)
+                try:
+                    json_str = bytes(shm.buf[:shm_size]).decode("utf-8")
+                    result = json.loads(json_str)
+                finally:
+                    shm.close()
+                    shm.unlink()
+            except FileNotFoundError:
+                raise TaskResultMissingError()
 
             print_args = returned.get("print_args", [])
 
-            return result, print_args
+            return result, print_args, shm_size
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}], print_args
+                return [{"json": {"error": str(e)}}], print_args, 0
             raise
 
     @staticmethod
-    def stop_process(process: SpawnProcess | None):
+    def stop_process(process: ForkServerProcess | None):
         """Stop a running subprocess, gracefully else force-killing."""
 
         if process is None or not process.is_alive():
             return
 
-        process.terminate()
-        process.join(timeout=1)  # 1s grace period
+        try:
+            process.terminate()
+            process.join(timeout=1)  # 1s grace period
 
-        if process.is_alive():
-            process.kill()
+            if process.is_alive():
+                process.kill()
+        except (ProcessLookupError, ConnectionError, BrokenPipeError):
+            # subprocess is dead or unreachable
+            pass
 
     @staticmethod
     def _all_items(
@@ -228,18 +255,22 @@ class TaskExecutor:
     def _put_result(
         queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
     ):
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            prefix="n8n_result_",
-            suffix=".json",
-            encoding="utf-8",
-        ) as f:
-            json.dump(result, f, default=str, ensure_ascii=False)
-            result_file = f.name
+        json_bytes = json.dumps(result, default=str, ensure_ascii=False).encode("utf-8")
+        json_bytes_size = len(json_bytes)
+
+        shm = shared_memory.SharedMemory(create=True, size=json_bytes_size)
+        shm.buf[:json_bytes_size] = json_bytes
 
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put({"result_file": result_file, "print_args": print_args_to_send})
+        queue.put(
+            {
+                "shm_name": shm.name,
+                "shm_size": json_bytes_size,  # stay exact, shm.size can round up for alignment
+                "print_args": print_args_to_send,
+            }
+        )
+
+        shm.close()
 
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):

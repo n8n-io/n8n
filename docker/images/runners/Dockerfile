@@ -107,6 +107,9 @@ ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
     SHELL=/bin/sh
 
+# Bring `uv` over from python-runner-builder
+COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
+
 # Bring node over from node-alpine
 COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 

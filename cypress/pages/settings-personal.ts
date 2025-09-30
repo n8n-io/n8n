@@ -25,6 +25,7 @@ export class PersonalSettingsPage extends BasePage {
 		firstNameInput: () => cy.getByTestId('firstName').find('input').first(),
 		lastNameInput: () => cy.getByTestId('lastName').find('input').first(),
 		emailInputContainer: () => cy.getByTestId('email'),
+		currentPasswordConfirmationInput: () => cy.getByTestId('currentPassword').find('input'),
 		emailInput: () => cy.getByTestId('email').find('input').first(),
 		changePasswordLink: () => cy.getByTestId('change-password-link').first(),
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
@@ -66,8 +67,14 @@ export class PersonalSettingsPage extends BasePage {
 				.find('div[class^="_errorInput"]')
 				.should('exist');
 		},
-		updateEmail: (newEmail: string) => {
+		/**
+		 * @param currentPassword only required if MFA is disabled
+		 */
+		updateEmail: (newEmail: string, currentPassword?: string) => {
 			this.getters.emailInput().type('{selectall}').type(newEmail).type('{enter}');
+			if (currentPassword) {
+				this.getters.currentPasswordConfirmationInput().type(currentPassword).type('{enter}');
+			}
 		},
 		tryToSetInvalidEmail: (newEmail: string) => {
 			this.actions.updateEmail(newEmail);

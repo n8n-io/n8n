@@ -44,7 +44,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack
+		<N8nUserStack
 			v-if="showUserStack"
 			:users="collaboratorsSorted"
 			:current-user-email="currentUserEmail"

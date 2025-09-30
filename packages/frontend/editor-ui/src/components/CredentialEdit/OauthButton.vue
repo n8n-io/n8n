@@ -11,7 +11,7 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.container">
 		<GoogleAuthButton v-if="isGoogleOAuthType" />
-		<n8n-button
+		<N8nButton
 			v-else
 			:label="i18n.baseText('credentialEdit.oAuthButton.connectMyAccount')"
 			size="large"

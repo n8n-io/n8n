@@ -16,12 +16,17 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1, 2, 3, 4]'
+        default: '[1, 2, 3, 4, 5, 6]'
         type: string
       docker-image:
         description: 'Docker image to use (for docker-pull mode)'
         required: false
         default: 'n8nio/n8n:nightly'
+        type: string
+      workers:
+        description: 'Number of parallel workers'
+        required: false
+        default: ''
         type: string
 
     secrets:
@@ -39,7 +44,7 @@ env:
   NODE_OPTIONS: --max-old-space-size=3072
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
-  PLAYWRIGHT_WORKERS: 3 # We have 2 CPUs on this runner but we can use more workers since it's low CPU intensive
+  PLAYWRIGHT_WORKERS: ${{ inputs.workers || (inputs.test-mode == 'docker-pull' && '2' || '3') }} # Configurable workers, defaults: 1 for docker-pull, 3 for others
 
 jobs:
   test:
@@ -47,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4]') }}
+        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6]') }}
     name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
 
     steps:
@@ -67,6 +72,10 @@ jobs:
       - name: Install Browsers
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
+
+      - name: Prepare Test Image
+        if: inputs.test-mode == 'docker-pull'
+        run: pnpm --filter=n8n-playwright prepare-test-image ${{ inputs.docker-image }}
 
       - name: Run Tests
         run: |

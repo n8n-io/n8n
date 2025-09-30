@@ -10,7 +10,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
 interface Props {
 	path: string;
@@ -32,6 +34,7 @@ const emit = defineEmits<{
 	remove: [];
 }>();
 
+const i18n = useI18n();
 const ndvStore = useNDVStore();
 const environmentsStore = useEnvironmentsStore();
 
@@ -50,6 +53,8 @@ const assignmentTypeToNodeProperty = (
 			};
 		case 'array':
 		case 'object':
+		case 'binary':
+			return { type: 'string' };
 		case 'any':
 			return { type: 'string' };
 		default:
@@ -67,11 +72,15 @@ const nameParameter = computed<INodeProperties>(() => ({
 }));
 
 const valueParameter = computed<INodeProperties>(() => {
+	const placeholder =
+		assignment.value.type === 'binary'
+			? i18n.baseText('assignment.binaryData.placeholder')
+			: 'value';
 	return {
 		name: 'value',
 		displayName: 'Value',
 		default: '',
-		placeholder: 'value',
+		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
 	};
 });
@@ -166,13 +175,18 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 					/>
 				</template>
 				<template v-if="!hideType" #middle>
-					<TypeSelect
-						:class="$style.select"
-						:model-value="assignment.type ?? 'string'"
-						:is-read-only="disableType || isReadOnly"
-						@update:model-value="onAssignmentTypeChange"
-					>
-					</TypeSelect>
+					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
+						<template #content>
+							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+						</template>
+						<TypeSelect
+							:class="$style.select"
+							:model-value="assignment.type ?? 'string'"
+							:is-read-only="disableType || isReadOnly"
+							@update:model-value="onAssignmentTypeChange"
+						>
+						</TypeSelect>
+					</N8nTooltip>
 				</template>
 				<template #right="{ breakpoint }">
 					<div :class="$style.value">
@@ -257,6 +271,7 @@ const onValueInputHoverChange = (hovered: boolean): void => {
 		bottom: calc(var(--spacing-s) * -1);
 		left: 0;
 		right: 0;
+		font-family: monospace;
 	}
 
 	.optionsPadding {

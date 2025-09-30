@@ -60,7 +60,7 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData();
+	useLogsExecutionData(isOpen);
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
@@ -104,6 +104,14 @@ const keyMap = computed<KeyMap>(() => ({
 	ArrowUp: selectPrev,
 	Space: () => selected.value && toggleExpanded(selected.value),
 	Enter: () => selected.value && handleOpenNdv(selected.value),
+	...(isPoppedOut.value
+		? {
+				// We need shortcuts for toggling input/output panel in the pop-out window only
+				// because these are also implemented in the canvas
+				i: () => logsStore.toggleInputOpen(),
+				o: () => logsStore.toggleOutputOpen(),
+			}
+		: {}),
 }));
 
 function handleResizeOverviewPanelEnd() {
@@ -178,11 +186,12 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
+							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@send-message="sendMessage"
-							@click-header="onToggleOpen(true)"
+							@click-header="onToggleOpen"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">
@@ -206,7 +215,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 								:entries="entries"
 								:latest-node-info="latestNodeNameById"
 								:flat-log-entries="flatLogEntries"
-								@click-header="onToggleOpen(true)"
+								:is-header-clickable="!isPoppedOut"
+								@click-header="onToggleOpen"
 								@select="select"
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
@@ -230,7 +240,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:panels="logsStore.detailsState"
 							:collapsing-input-table-column-name="inputCollapsingColumnName"
 							:collapsing-output-table-column-name="outputCollapsingColumnName"
-							@click-header="onToggleOpen(true)"
+							:is-header-clickable="!isPoppedOut"
+							@click-header="onToggleOpen"
 							@toggle-input-open="logsStore.toggleInputOpen"
 							@toggle-output-open="logsStore.toggleOutputOpen"
 							@collapsing-input-table-column-changed="handleChangeInputTableColumnCollapsing"

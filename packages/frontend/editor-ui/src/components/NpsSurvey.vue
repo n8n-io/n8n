@@ -142,7 +142,7 @@ watch(
 	>
 		<template #header>
 			<div :class="$style.title">
-				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ modalTitle }}</n8n-heading>
+				<N8nHeading tag="h2" size="medium" color="text-xlight">{{ modalTitle }}</N8nHeading>
 			</div>
 		</template>
 		<template #content>
@@ -150,7 +150,7 @@ watch(
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons" data-test-id="nps-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-button
+							<N8nButton
 								type="tertiary"
 								:label="(value - 1).toString()"
 								square
@@ -159,13 +159,13 @@ watch(
 						</div>
 					</div>
 					<div :class="$style.text">
-						<n8n-text size="small" color="text-xlight">{{ NOT_LIKELY_OPTION }}</n8n-text>
-						<n8n-text size="small" color="text-xlight">{{ VERY_LIKELY_OPTION }}</n8n-text>
+						<N8nText size="small" color="text-xlight">{{ NOT_LIKELY_OPTION }}</N8nText>
+						<N8nText size="small" color="text-xlight">{{ VERY_LIKELY_OPTION }}</N8nText>
 					</div>
 				</div>
 				<div v-else-if="showFeedback" :class="$style.feedback">
 					<div :class="$style.input" data-test-id="nps-survey-feedback">
-						<n8n-input
+						<N8nInput
 							v-model="form.feedback"
 							type="textarea"
 							:rows="2"
@@ -174,7 +174,7 @@ watch(
 						/>
 					</div>
 					<div :class="$style.button" data-test-id="nps-survey-feedback-button">
-						<n8n-button
+						<N8nButton
 							:label="SEND"
 							float="right"
 							:disabled="!form.feedback.trim()"

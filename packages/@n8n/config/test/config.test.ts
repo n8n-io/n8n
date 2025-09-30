@@ -53,9 +53,9 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 100 * 1024 * 1024,
-			warningThreshold: 95 * 1024 * 1024,
-			sizeCheckCacheDuration: 5000,
+			maxSize: 50 * 1024 * 1024,
+			warningThreshold: 45 * 1024 * 1024,
+			sizeCheckCacheDuration: 60000,
 		},
 		database: {
 			logging: {
@@ -105,6 +105,8 @@ describe('GlobalConfig', () => {
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
@@ -307,6 +309,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
+			disableBareRepos: false,
 		},
 		executions: {
 			timeout: -1,
@@ -346,9 +349,6 @@ describe('GlobalConfig', () => {
 		},
 		tags: {
 			disabled: false,
-		},
-		partialExecutions: {
-			version: 2,
 		},
 		workflowHistory: {
 			enabled: true,

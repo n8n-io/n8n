@@ -21,7 +21,7 @@ describe('nodeExecuteAfterData', () => {
 			data: {
 				executionId: 'exec-1',
 				nodeName: 'Test Node',
-				itemCount: 1,
+				itemCountByConnectionType: { main: [1] },
 				data: {
 					executionTime: 0,
 					startTime: 0,
@@ -36,7 +36,7 @@ describe('nodeExecuteAfterData', () => {
 
 		await nodeExecuteAfterData(event);
 
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledWith(event.data);
+		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
 	});
 });

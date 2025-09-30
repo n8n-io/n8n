@@ -63,6 +63,15 @@ export class GmailTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Multiple items will be returned if multiple messages are received within the polling interval. Make sure your workflow can handle multiple items.',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Authentication',

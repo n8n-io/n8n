@@ -121,29 +121,32 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
 	});
 
-	return menuItems;
+	// Append module-registered settings sidebar items.
+	const moduleItems = uiStore.settingsSidebarItems;
+
+	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
 });
 </script>
 
 <template>
 	<div :class="$style.container">
-		<n8n-menu :items="sidebarMenuItems">
+		<N8nMenu :items="sidebarMenuItems">
 			<template #header>
 				<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
 					<i class="mr-xs">
-						<n8n-icon icon="arrow-left" />
+						<N8nIcon icon="arrow-left" />
 					</i>
-					<n8n-heading size="large" :bold="true">{{ i18n.baseText('settings') }}</n8n-heading>
+					<N8nHeading size="large" :bold="true">{{ i18n.baseText('settings') }}</N8nHeading>
 				</div>
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
-					<n8n-link size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+					<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
 						{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-					</n8n-link>
+					</N8nLink>
 				</div>
 			</template>
-		</n8n-menu>
+		</N8nMenu>
 	</div>
 </template>
 

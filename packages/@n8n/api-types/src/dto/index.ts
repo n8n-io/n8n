@@ -27,7 +27,7 @@ export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
 export { CreateProjectDto } from './project/create-project.dto';
-export { UpdateProjectDto } from './project/update-project.dto';
+export { UpdateProjectDto, UpdateProjectWithRelationsDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
@@ -53,7 +53,6 @@ export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-ma
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
-export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
@@ -80,6 +79,8 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export { RoleListQueryDto } from './roles/role-list-query.dto';
+export { RoleGetQueryDto } from './roles/role-get-query.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
 

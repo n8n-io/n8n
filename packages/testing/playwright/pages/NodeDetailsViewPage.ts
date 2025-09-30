@@ -166,6 +166,14 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-collection-drop-area');
 	}
 
+	getAssignmentCollectionDropArea() {
+		return this.page.getByTestId('assignment-collection-drop-area');
+	}
+
+	async clickAssignmentCollectionDropArea() {
+		await this.getAssignmentCollectionDropArea().click();
+	}
+
 	getAssignmentValue(paramName: string) {
 		return this.page
 			.getByTestId(`assignment-collection-${paramName}`)
@@ -723,6 +731,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-run-info');
 	}
 
+	getStaleNodeIndicator() {
+		return this.page.getByTestId('node-run-info-stale');
+	}
+
+	getExecuteStepButton() {
+		return this.page.getByRole('button').filter({ hasText: 'Execute step' });
+	}
+
+	async clickExecuteStep() {
+		await this.getExecuteStepButton().click();
+	}
+
 	async openSettings() {
 		await this.page.getByTestId('tab-settings').click();
 	}
@@ -852,12 +872,41 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getResourceLocator(paramName).getByTestId('rlc-mode-selector');
 	}
 
-	async setRLCValue(paramName: string, value: string): Promise<void> {
+	getResourceLocatorModeSelectorInput(paramName: string) {
+		return this.getResourceLocatorModeSelector(paramName).locator('input');
+	}
+
+	getResourceLocatorErrorMessage(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-error-container');
+	}
+
+	getResourceLocatorAddCredentials(paramName: string) {
+		return this.getResourceLocatorErrorMessage(paramName).locator('a');
+	}
+
+	getResourceLocatorSearch(paramName: string) {
+		return this.getResourceLocator(paramName).getByTestId('rlc-search');
+	}
+
+	getParameterInputIssues() {
+		return this.page.getByTestId('parameter-issues');
+	}
+
+	getResourceLocatorItems() {
+		return this.page.getByTestId('rlc-item');
+	}
+
+	getAddResourceItem() {
+		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getExpressionModeToggle(index: number = 1) {
+		return this.page.getByTestId('radio-button-expression').nth(index);
+	}
+
+	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
 		await this.getResourceLocatorModeSelector(paramName).click();
-
-		const visibleOptions = this.page.locator('.el-popper:visible .el-select-dropdown__item');
-		await visibleOptions.last().click();
-
+		await this.page.getByTestId('mode-id').nth(index).click();
 		const input = this.getResourceLocatorInput(paramName).locator('input');
 		await input.fill(value);
 	}
@@ -885,6 +934,47 @@ export class NodeDetailsViewPage extends BasePage {
 	getCredentialLabel(credentialType: string) {
 		return this.page.getByText(credentialType);
 	}
+
+	getFilterComponent(paramName: string) {
+		return this.page.getByTestId(`filter-${paramName}`);
+	}
+
+	getFilterConditions(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition');
+	}
+
+	getFilterCondition(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
+	}
+
+	getFilterConditionLeft(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionRight(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
+	}
+
+	getFilterConditionOperator(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-operator-select').nth(index);
+	}
+
+	getFilterConditionRemove(paramName: string, index: number = 0) {
+		return this.getFilterComponent(paramName).getByTestId('filter-remove-condition').nth(index);
+	}
+
+	getFilterConditionAdd(paramName: string) {
+		return this.getFilterComponent(paramName).getByTestId('filter-add-condition');
+	}
+
+	async addFilterCondition(paramName: string) {
+		await this.getFilterConditionAdd(paramName).click();
+	}
+
+	async removeFilterCondition(paramName: string, index: number) {
+		await this.getFilterConditionRemove(paramName, index).click();
+	}
+
 	getWebhookTestEvent() {
 		return this.page.getByText('Listening for test event');
 	}
@@ -911,5 +1001,27 @@ export class NodeDetailsViewPage extends BasePage {
 
 		// Step 3: Set the parameter value
 		await this.setupHelper.setParameter(parameterName, parameterValue);
+	}
+
+	async setInvalidExpression({
+		fieldName,
+		invalidExpression,
+	}: {
+		fieldName: string;
+		invalidExpression?: string;
+	}): Promise<void> {
+		await this.activateParameterExpressionEditor(fieldName);
+		const editor = this.getInlineExpressionEditorInput(fieldName);
+		await editor.click();
+		await this.page.keyboard.type(invalidExpression ?? '{{ invalid_expression');
+	}
+
+	/**
+	 * Opens a resource locator dropdown for a given parameter
+	 * @param paramName - The parameter name for the resource locator
+	 */
+	async openResourceLocator(paramName: string): Promise<void> {
+		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
+		await this.getResourceLocatorInput(paramName).click();
 	}
 }

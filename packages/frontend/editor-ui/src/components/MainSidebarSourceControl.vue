@@ -81,11 +81,11 @@ function pullWorkfolder() {
 			data-test-id="main-sidebar-source-control-connected"
 		>
 			<span :class="$style.branchName">
-				<n8n-icon icon="git-branch" />
+				<N8nIcon icon="git-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip
+				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
@@ -99,7 +99,7 @@ function pullWorkfolder() {
 							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:class="{
 							'mr-2xs': !isCollapsed,
 							'mb-2xs': isCollapsed,
@@ -113,8 +113,8 @@ function pullWorkfolder() {
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
 					/>
-				</n8n-tooltip>
-				<n8n-tooltip
+				</N8nTooltip>
+				<N8nTooltip
 					:disabled="
 						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
 					"
@@ -130,7 +130,7 @@ function pullWorkfolder() {
 							}}
 						</div>
 					</template>
-					<n8n-button
+					<N8nButton
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
@@ -140,7 +140,7 @@ function pullWorkfolder() {
 						size="mini"
 						@click="pushWorkfolder"
 					/>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
