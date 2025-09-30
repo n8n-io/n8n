@@ -8,10 +8,10 @@ import LogoText from './logo-text.svg';
 const props = defineProps<
 	(
 		| {
-				location: 'authView';
+				size: 'large';
 		  }
 		| {
-				location: 'sidebar';
+				size: 'small';
 				collapsed: boolean;
 		  }
 	) & {
@@ -19,17 +19,17 @@ const props = defineProps<
 	}
 >();
 
-const { location, releaseChannel } = props;
+const { size, releaseChannel } = props;
 
 const showLogoText = computed(() => {
-	if (location === 'authView') return true;
+	if (size === 'large') return true;
 	return !props.collapsed;
 });
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
-	if (location === 'authView') {
-		return [$style.logoContainer, $style.authView];
+	if (size === 'large') {
+		return [$style.logoContainer, $style.large];
 	}
 	return [
 		$style.logoContainer,
@@ -76,7 +76,7 @@ onMounted(() => {
 	}
 }
 
-.authView {
+.large {
 	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
 

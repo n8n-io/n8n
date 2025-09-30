@@ -9,12 +9,12 @@ export default {
 		location: {
 			control: {
 				type: 'select',
-				options: ['authView', 'sidebar'],
+				options: ['large', 'small'],
 			},
 		},
 		collapsed: {
 			control: 'boolean',
-			if: { arg: 'location', eq: 'sidebar' },
+			if: { arg: 'size', eq: 'small' },
 		},
 		releaseChannel: {
 			control: {
@@ -34,40 +34,40 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<N8nLogo v-bind="args" />',
 });
 
-export const AuthView = Template.bind({});
-AuthView.args = {
-	location: 'authView',
+export const Large = Template.bind({});
+Large.args = {
+	size: 'large',
 	releaseChannel: 'stable',
 };
 
-export const SidebarExpanded = Template.bind({});
-SidebarExpanded.args = {
-	location: 'sidebar',
+export const SmallExpanded = Template.bind({});
+SmallExpanded.args = {
+	size: 'small',
 	collapsed: false,
 	releaseChannel: 'stable',
 };
 
-export const SidebarCollapsed = Template.bind({});
-SidebarCollapsed.args = {
-	location: 'sidebar',
+export const SmallCollapsed = Template.bind({});
+SmallCollapsed.args = {
+	size: 'small',
 	collapsed: true,
 	releaseChannel: 'stable',
 };
 
 export const DevChannel = Template.bind({});
 DevChannel.args = {
-	location: 'authView',
+	size: 'large',
 	releaseChannel: 'dev',
 };
 
 export const BetaChannel = Template.bind({});
 BetaChannel.args = {
-	location: 'authView',
+	size: 'large',
 	releaseChannel: 'beta',
 };
 
 export const NightlyChannel = Template.bind({});
 NightlyChannel.args = {
-	location: 'authView',
+	size: 'large',
 	releaseChannel: 'nightly',
 };
