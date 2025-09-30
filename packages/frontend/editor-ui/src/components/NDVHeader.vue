@@ -37,6 +37,12 @@ function onRename(newNodeName: string) {
 					@update:model-value="onRename"
 				/>
 			</div>
+			<N8nText v-if="hasCustomName && !docsUrl" size="small" bold>
+				{{ nodeTypeName }}
+			</N8nText>
+		</div>
+
+		<div :class="$style.actions">
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>
@@ -45,13 +51,6 @@ function onRename(newNodeName: string) {
 					<N8nIcon icon="external-link" />
 				</span>
 			</N8nLink>
-
-			<N8nText v-else-if="hasCustomName" size="small" bold>
-				{{ nodeTypeName }}
-			</N8nText>
-		</div>
-
-		<div :class="$style.actions">
 			<N8nTooltip>
 				<template #content>
 					{{ i18n.baseText('ndv.close.tooltip') }}
@@ -92,7 +91,7 @@ function onRename(newNodeName: string) {
 
 .actions > *:not(:last-child) {
 	border-right: var(--border-base);
-	padding-right: var(--spacing-xs);
+	padding-right: var(--spacing-2xs);
 }
 
 .title {
