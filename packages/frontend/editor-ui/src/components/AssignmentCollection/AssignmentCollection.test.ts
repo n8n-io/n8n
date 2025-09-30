@@ -8,7 +8,7 @@ import AssignmentCollection from './AssignmentCollection.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
-import type { AssignmentCollectionValue } from 'n8n-workflow';
+import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
@@ -109,9 +109,9 @@ describe('AssignmentCollection.vue', () => {
 			props: {
 				value: {
 					assignments: [
-						{ id: '1', name: 'key1', value: 'value1', type: 'string' },
-						{ id: '2', name: 'key2', value: 'value2', type: 'string' },
-						{ id: '3', name: 'key3', value: 'value3', type: 'string' },
+						{ name: 'key1', value: 'value1', type: 'string' } as AssignmentValue,
+						{ name: 'key2', value: 'value2', type: 'string' } as AssignmentValue,
+						{ name: 'key3', value: 'value3', type: 'string' } as AssignmentValue,
 					],
 				},
 			},
