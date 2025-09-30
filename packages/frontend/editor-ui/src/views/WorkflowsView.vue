@@ -1441,7 +1441,7 @@ const moveFolder = async (payload: {
 			toast.showMessage({
 				title: i18n.baseText('folders.move.success.title'),
 				message: i18n.baseText('folders.move.success.messageNoAccess', {
-					interpolate: { folderName: payload.folder.name },
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
 				}),
 				type: 'success',
 			});
