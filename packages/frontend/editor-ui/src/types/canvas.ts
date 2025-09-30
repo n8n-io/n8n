@@ -111,7 +111,8 @@ export interface CanvasNodeData {
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		items: string[];
+		execution: string[];
+		validation: string[];
 		visible: boolean;
 	};
 	pinnedData: {
@@ -238,3 +239,5 @@ export type ViewportBoundaries = {
 	yMin: number;
 	yMax: number;
 };
+
+export type SearchShortcut = '/' | 'ctrl+f';

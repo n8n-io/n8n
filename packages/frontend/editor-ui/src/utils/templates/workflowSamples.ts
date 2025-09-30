@@ -1,7 +1,6 @@
 import { ApplicationError, type INodeTypeNameVersion } from 'n8n-workflow';
 import type { WorkflowDataWithTemplateId } from '@/Interface';
 import { isWorkflowDataWithTemplateId } from '@/utils/templates/typeGuards';
-
 /* eslint-disable import-x/extensions */
 import easyAiStarterJson from '@/utils/templates/samples/easy_ai_starter.json';
 import ragStarterJson from '@/utils/templates/samples/rag_starter.json';

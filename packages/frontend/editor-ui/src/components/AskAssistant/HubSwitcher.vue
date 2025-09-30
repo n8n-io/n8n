@@ -13,8 +13,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const options = computed(() => [
-	{ label: i18n.baseText('aiAssistant.assistant'), value: false },
-	{ label: i18n.baseText('aiAssistant.builder.name'), value: true },
+	{ label: i18n.baseText('aiAssistant.tabs.ask'), value: false },
+	{ label: i18n.baseText('aiAssistant.tabs.build'), value: true },
 ]);
 
 function toggle(value: boolean) {
@@ -23,7 +23,7 @@ function toggle(value: boolean) {
 </script>
 
 <template>
-	<n8n-radio-buttons
+	<N8nRadioButtons
 		size="small"
 		:model-value="isBuildMode"
 		:options="options"

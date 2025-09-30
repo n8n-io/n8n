@@ -53,6 +53,7 @@ const runMetadata = computed(() => {
 	</N8nInfoTip>
 	<div v-else-if="runMetadata" :class="$style.tooltipRow">
 		<N8nInfoTip
+			v-if="taskData?.executionStatus !== 'canceled'"
 			type="note"
 			:theme="theme"
 			:data-test-id="`node-run-status-${theme}`"
@@ -65,20 +66,20 @@ const runMetadata = computed(() => {
 			tooltip-placement="right"
 		>
 			<div>
-				<n8n-text :bold="true" size="small"
+				<N8nText :bold="true" size="small"
 					>{{
 						runTaskData?.error
 							? i18n.baseText('runData.executionStatus.failed')
-							: i18n.baseText('runData.executionStatus.success')
-					}} </n8n-text
+							: runTaskData?.executionStatus === 'canceled'
+								? i18n.baseText('runData.executionStatus.canceled')
+								: i18n.baseText('runData.executionStatus.success')
+					}} </N8nText
 				><br />
-				<n8n-text :bold="true" size="small">{{
-					i18n.baseText('runData.startTime') + ':'
-				}}</n8n-text>
+				<N8nText :bold="true" size="small">{{ i18n.baseText('runData.startTime') + ':' }}</N8nText>
 				{{ runMetadata.startTime }}<br />
-				<n8n-text :bold="true" size="small">{{
+				<N8nText :bold="true" size="small">{{
 					i18n.baseText('runData.executionTime') + ':'
-				}}</n8n-text>
+				}}</N8nText>
 				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 			</div>
 		</N8nInfoTip>

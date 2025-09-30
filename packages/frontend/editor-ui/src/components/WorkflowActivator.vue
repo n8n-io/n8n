@@ -207,19 +207,19 @@ watch(
 <template>
 	<div class="workflow-activator">
 		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
-			<n8n-text
+			<N8nText
 				v-if="workflowActive"
 				:color="couldNotBeStarted ? 'danger' : 'success'"
 				size="small"
 				bold
 			>
 				{{ i18n.baseText('workflowActivator.active') }}
-			</n8n-text>
-			<n8n-text v-else color="text-base" size="small" bold>
+			</N8nText>
+			<N8nText v-else color="text-base" size="small" bold>
 				{{ i18n.baseText('workflowActivator.inactive') }}
-			</n8n-text>
+			</N8nText>
 		</div>
-		<n8n-tooltip :disabled="!disabled" placement="bottom">
+		<N8nTooltip :disabled="!disabled" placement="bottom">
 			<template #content>
 				<div>
 					{{
@@ -233,7 +233,7 @@ watch(
 					}}
 				</div>
 			</template>
-			<el-switch
+			<ElSwitch
 				v-loading="workflowActivate.updatingWorkflowActivation.value"
 				:model-value="workflowActive"
 				:title="
@@ -251,19 +251,19 @@ watch(
 				data-test-id="workflow-activate-switch"
 				@update:model-value="activeChanged"
 			>
-			</el-switch>
-		</n8n-tooltip>
+			</ElSwitch>
+		</N8nTooltip>
 
 		<div v-if="couldNotBeStarted" class="could-not-be-started">
-			<n8n-tooltip placement="top">
+			<N8nTooltip placement="top">
 				<template #content>
 					<div
 						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 						@click="displayActivationError"
 					></div>
 				</template>
-				<n8n-icon icon="triangle-alert" @click="displayActivationError" />
-			</n8n-tooltip>
+				<N8nIcon icon="triangle-alert" @click="displayActivationError" />
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

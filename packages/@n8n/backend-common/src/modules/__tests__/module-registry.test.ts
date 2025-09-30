@@ -15,9 +15,7 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'data-table' isn't (yet) eligible module by default
-		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-table');
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -25,6 +23,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'external-secrets',
 			'community-packages',
+			'data-table',
 		]);
 	});
 

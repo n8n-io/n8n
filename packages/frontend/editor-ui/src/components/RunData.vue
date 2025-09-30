@@ -16,12 +16,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	parseErrorMetadata,
-	NodeConnectionTypes,
-	NodeHelpers,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
@@ -82,7 +77,6 @@ import {
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from './ViewSubExecution.vue';
@@ -93,6 +87,9 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
+import { hasTrimmedRunData } from '@/utils/executionUtils';
+import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import { type SearchShortcut } from '@/types';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -138,7 +135,7 @@ type Props = {
 	distanceFromActive?: number;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	hidePagination?: boolean;
 	calloutMessage?: string;
 	disableRunIndexSelection?: boolean;
@@ -146,11 +143,13 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
 	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -159,7 +158,7 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideOutputs: undefined,
 	distanceFromActive: 0,
 	blockUI: false,
-	isPaneActive: false,
+	searchShortcut: undefined,
 	isProductionExecutionPreview: false,
 	mappingEnabled: false,
 	isExecuting: false,
@@ -172,6 +171,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	disableSettingsHint: false,
 	compact: false,
+	showActionsOnHover: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
@@ -181,6 +181,7 @@ defineSlots<{
 	content: {};
 	'callout-message': {};
 	header: {};
+	'header-end': (props: InstanceType<typeof RunDataItemCount>['$props']) => unknown;
 	'input-select': {};
 	'before-data': {};
 	'run-info': {};
@@ -232,7 +233,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const posthogStore = usePostHog();
 
@@ -299,10 +299,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
-);
-
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -357,6 +353,10 @@ const workflowRunData = computed(() => {
 });
 const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
+
+const isTrimmedManualExecutionDataItem = computed(() =>
+	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -673,9 +673,10 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
-watch(hasNodeRun, () => {
-	if (props.paneType === 'output') setDisplayMode();
-	else {
+watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
+	if (props.paneType === 'output') {
+		setDisplayMode();
+	} else {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
@@ -1376,7 +1377,11 @@ defineExpose({ enterEditMode });
 		:class="[
 			'run-data',
 			$style.container,
-			{ [$style['ndv-v2']]: isNDVV2, [$style.compact]: compact },
+			{
+				[$style['ndv-v2']]: isNDVV2,
+				[$style.compact]: compact,
+				[$style.showActionsOnHover]: showActionsOnHover && !search,
+			},
 		]"
 		@mouseover="activatePane"
 	>
@@ -1437,7 +1442,7 @@ defineExpose({ enterEditMode });
 						:class="$style.search"
 						:pane-type="paneType"
 						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
+						:shortcut="searchShortcut"
 						@focus="activatePane"
 					/>
 				</Suspense>
@@ -1509,7 +1514,7 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
+			<slot name="header-end" v-bind="itemsCountProps" />
 		</div>
 
 		<div v-show="!binaryDataDisplayVisible">
@@ -1657,6 +1662,18 @@ defineExpose({ enterEditMode });
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem"
+				:class="[$style.center, $style.executingMessage]"
+			>
+				<div v-if="!props.compact" :class="$style.spinner">
+					<N8nSpinner type="ring" />
+				</div>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.loading') }}
+				</N8nText>
+			</div>
+
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
@@ -1712,37 +1729,20 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div
-				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
-				:class="$style.center"
-			>
-				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
-				<N8nText color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.loading') }}
-				</N8nText>
-			</div>
-
-			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
-				<N8nText bold color="text-dark" size="large">
-					{{ i18n.baseText('runData.trimmedData.title') }}
-				</N8nText>
-				<N8nText>
-					{{ i18n.baseText('runData.trimmedData.message') }}
-				</N8nText>
-			</div>
-
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
-					{{
+				<NDVEmptyState
+					v-if="isPaneTypeInput"
+					:class="$style.center"
+					:title="
 						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
 							interpolate: { nodeName: node?.name ?? '' },
 						})
-					}}
-				</N8nText>
+					"
+				/>
 				<div v-else-if="$slots['content']">
 					<NodeErrorView
 						v-if="workflowRunErrorAsNodeError"
@@ -1770,18 +1770,15 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.center"
 			>
-				<div v-if="search">
-					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-					<N8nText>
-						<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</I18nT>
-					</N8nText>
-				</div>
+				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+						<template #link>
+							<a href="#" @click.prevent="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</I18nT>
+				</NDVEmptyState>
 				<N8nText v-else>
 					{{ noDataInBranchMessage }}
 				</N8nText>
@@ -1799,16 +1796,15 @@ defineExpose({ enterEditMode });
 				data-test-id="ndv-data-size-warning"
 				:class="$style.center"
 			>
-				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
-				<N8nText align="center" tag="div"
-					><span
+				<NDVEmptyState :title="tooMuchDataTitle">
+					<span
 						v-n8n-html="
 							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
-					></span
-				></N8nText>
+					/>
+				</NDVEmptyState>
 
 				<N8nButton
 					outline
@@ -1844,18 +1840,19 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-				<N8nText>
-					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
-						<template #link>
-							<a href="#" @click="onSearchClear">
-								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-							</a>
-						</template>
-					</I18nT>
-				</N8nText>
-			</div>
+			<NDVEmptyState
+				v-else-if="showIoSearchNoMatchContent"
+				:class="$style.center"
+				:title="i18n.baseText('ndv.search.noMatch.title')"
+			>
+				<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
+					<template #link>
+						<a href="#" @click="onSearchClear">
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+						</a>
+					</template>
+				</I18nT>
+			</NDVEmptyState>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<LazyRunDataTable
@@ -1921,6 +1918,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:class="$style.schema"
 					:compact="props.compact"
+					:truncate-limit="props.truncateLimit"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -2131,15 +2129,20 @@ defineExpose({ enterEditMode });
 	.compact & {
 		/* let title text alone decide the height */
 		height: 0;
-		visibility: hidden;
+	}
+
+	.showActionsOnHover & {
+		/* Using opacity instead of visibility so that search input can get focused through keyboard shortcut */
+		opacity: 0;
 
 		:global(.el-input__prefix) {
 			transition-duration: 0ms;
 		}
 	}
 
-	.compact:hover & {
-		visibility: visible;
+	.showActionsOnHover:focus-within &,
+	.showActionsOnHover:hover & {
+		opacity: 1;
 	}
 }
 

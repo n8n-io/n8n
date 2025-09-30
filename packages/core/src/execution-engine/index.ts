@@ -8,7 +8,10 @@ declare module 'n8n-workflow' {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
 		'data-table'?: { dataStoreProxyProvider: DataStoreProxyProvider };
-		dataStoreProjectId?: string;
+		// Project ID is currently only added on the additionalData if the user
+		// has data table listing permission for that project. We should consider
+		// that only data tables belonging to their respective projects are shown.
+		dataTableProjectId?: string;
 	}
 }
 
@@ -21,3 +24,4 @@ export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
+export { isEngineRequest } from './requests-response';

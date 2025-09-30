@@ -1,6 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { PLAN_APPROVAL_MESSAGE } from '../../src/constants';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
@@ -27,6 +26,24 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 			connections: { score: 0, violations: [] },
 			expressions: { score: 0, violations: [] },
 			nodeConfiguration: { score: 0, violations: [] },
+			efficiency: {
+				score: 0,
+				violations: [],
+				redundancyScore: 0,
+				pathOptimization: 0,
+				nodeCountEfficiency: 0,
+			},
+			dataFlow: {
+				score: 0,
+				violations: [],
+			},
+			maintainability: {
+				score: 0,
+				violations: [],
+				nodeNamingQuality: 0,
+				workflowOrganization: 0,
+				modularity: 0,
+			},
 			structuralSimilarity: { score: 0, violations: [], applicable: false },
 			summary: `Evaluation failed: ${errorMessage}`,
 		},
@@ -52,10 +69,7 @@ export async function runSingleTest(
 	try {
 		// Generate workflow
 		const startTime = Date.now();
-		// First generate plan
 		await consumeGenerator(agent.chat(getChatPayload(testCase.prompt, testCase.id), userId));
-		// Confirm plan
-		await consumeGenerator(agent.chat(getChatPayload(PLAN_APPROVAL_MESSAGE, testCase.id), userId));
 		const generationTime = Date.now() - startTime;
 
 		// Get generated workflow with validation

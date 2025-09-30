@@ -131,9 +131,18 @@
 	--color-sticky-border-7: var(--p-gray-120);
 
 	// AI Assistant
-	--color-askAssistant-button-background: var(--color-background-xlight);
-	--color-askAssistant-button-background-hover: var(--color-background-xlight);
-	--color-askAssistant-button-background-active: var(--color-background-xlight);
+	--color-askAssistant-button-background-gradient: linear-gradient(
+		var(--color-background-xlight),
+		var(--color-background-xlight)
+	);
+	--color-askAssistant-button-background-gradient-hover: linear-gradient(
+		var(--color-background-xlight),
+		var(--color-background-xlight)
+	);
+	--color-askAssistant-button-background-gradient-active: linear-gradient(
+		var(--color-background-xlight),
+		var(--color-background-xlight)
+	);
 
 	--color-assistant-highlight-1: #5b60e8;
 	--color-assistant-highlight-2: #aa7bec;
@@ -219,7 +228,7 @@
 	--color-json-brackets: var(--p-gray-670);
 	--color-json-brackets-hover: var(--p-color-alt-e-430);
 	--color-json-line: var(--p-gray-200);
-	--color-json-highlight: var(--p-gray-070);
+	--color-json-highlight: var(--color-background-base);
 	--color-code-background: var(--p-white);
 	--color-code-background-readonly: var(--p-gray-040);
 	--color-code-lineHighlight: var(--p-gray-320-a-010);

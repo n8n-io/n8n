@@ -43,6 +43,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	CONFIRM_PASSWORD_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -50,6 +52,7 @@ import ActivationModal from '@/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistantSessionModal.vue';
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+import ConfirmPasswordModal from '@/components/ConfirmPasswordModal/ConfirmPasswordModal.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
 import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
@@ -85,7 +88,8 @@ import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
-import NodeRecommendationModal from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
+import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 </script>
 
 <template>
@@ -166,6 +170,10 @@ import NodeRecommendationModal from '@/experiments/templateRecoV2/components/Nod
 
 		<ModalRoot :name="CHANGE_PASSWORD_MODAL_KEY">
 			<ChangePasswordModal />
+		</ModalRoot>
+
+		<ModalRoot :name="CONFIRM_PASSWORD_MODAL_KEY">
+			<ConfirmPasswordModal />
 		</ModalRoot>
 
 		<ModalRoot :name="INVITE_USER_MODAL_KEY">
@@ -347,7 +355,13 @@ import NodeRecommendationModal from '@/experiments/templateRecoV2/components/Nod
 
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V2_KEY">
 			<template #default="{ modalName, data }">
-				<NodeRecommendationModal :modal-name="modalName" :data="data" />
+				<NodeRecommendationModalV2 :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

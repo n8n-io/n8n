@@ -99,7 +99,7 @@ watch(
 
 <template>
 	<div :class="$style['data-store-breadcrumbs']">
-		<n8n-breadcrumbs
+		<N8nBreadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
 			:highlight-last-item="false"
@@ -122,7 +122,7 @@ watch(
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
-		</n8n-breadcrumbs>
+		</N8nBreadcrumbs>
 		<div :class="$style['data-store-actions']">
 			<DataStoreActions
 				:data-store="props.dataStore"
@@ -137,11 +137,12 @@ watch(
 <style lang="scss" module>
 .data-store-breadcrumbs {
 	display: flex;
-	align-items: end;
+	align-items: center;
 }
 
 .data-store-actions {
 	position: relative;
+	top: var(--spacing-5xs);
 }
 
 .separator {

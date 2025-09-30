@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const executionsStore = useExecutionsStore();
+const projectsStore = useProjectsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
 const nodeViewDetailsOpened = ref(false);
@@ -75,6 +77,7 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
@@ -99,6 +102,7 @@ const loadExecution = () => {
 				executionMode: props.executionMode ?? '',
 				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
+				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
@@ -224,10 +228,10 @@ watch(
 <template>
 	<div :class="$style.container">
 		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
-			<n8n-loading :loading="!showPreview" :rows="1" variant="image" />
+			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<n8n-spinner type="dots" />
+			<N8nSpinner type="dots" />
 		</div>
 		<iframe
 			ref="iframeRef"

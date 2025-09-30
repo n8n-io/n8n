@@ -8,4 +8,9 @@ export default defineConfig(nodeConfig, {
 		'@typescript-eslint/require-await': 'warn',
 		'@typescript-eslint/naming-convention': 'warn',
 	},
+}, {
+	files: ['./src/test/**/*.ts', './**/*.test.ts'],
+	rules: {
+		'@typescript-eslint/no-unsafe-assignment': 'warn',
+	},
 });

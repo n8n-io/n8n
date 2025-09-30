@@ -126,9 +126,9 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								:class="$style.treeToggle"
 								@click="toggleTreeItem(currentNode)"
 							>
-								<n8n-icon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
+								<N8nIcon :icon="currentNode.expanded ? 'chevron-down' : 'chevron-right'" />
 							</button>
-							<n8n-tooltip :disabled="!slim" placement="right">
+							<N8nTooltip :disabled="!slim" placement="right">
 								<template #content>
 									{{ currentNode.label }}
 								</template>
@@ -140,14 +140,14 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 									/>
 									<span v-if="!slim" v-text="currentNode.label" />
 								</span>
-							</n8n-tooltip>
+							</N8nTooltip>
 						</div>
 					</template>
 				</ElTree>
 			</div>
 			<div :class="$style.runData">
 				<div v-if="selectedRun.length === 0" :class="$style.empty">
-					<n8n-text size="large">
+					<N8nText size="large">
 						{{
 							i18n.baseText('ndv.output.ai.empty', {
 								interpolate: {
@@ -155,7 +155,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 								},
 							})
 						}}
-					</n8n-text>
+					</N8nText>
 				</div>
 				<div
 					v-for="(data, index) in selectedRun"

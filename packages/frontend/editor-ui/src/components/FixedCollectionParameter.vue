@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import type { IUpdateInformation } from '@/Interface';
 
-import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import get from 'lodash/get';
@@ -229,6 +234,10 @@ const trackWorkflowInputFieldAdded = () => {
 		node_id: ndvStore.activeNode?.id,
 	});
 };
+
+function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
+	return mutableValues.value[property.name]?.indexOf(item) ?? -1;
+}
 </script>
 
 <template>
@@ -257,8 +266,8 @@ const trackWorkflowInputFieldAdded = () => {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
-					:item-key="property.name"
 					v-model="mutableValues[property.name]"
+					:item-key="(item: INodeParameters) => getItemKey(item, property)"
 					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"

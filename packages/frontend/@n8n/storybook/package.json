@@ -1,0 +1,19 @@
+{
+  "name": "@n8n/storybook",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.5",
+    "@storybook/addon-a11y": "9.1.7",
+    "@storybook/addon-actions": "9.0.8",
+    "@storybook/addon-docs": "9.1.7",
+    "@storybook/addon-links": "9.1.7",
+    "@storybook/addon-themes": "9.1.7",
+    "@storybook/vue3": "9.1.7",
+    "@storybook/vue3-vite": "9.1.7",
+    "chromatic": "^11.27.0",
+    "eslint-plugin-storybook": "9.1.7",
+    "storybook": "9.1.7",
+    "storybook-dark-mode": "^4.0.2"
+  }
+}

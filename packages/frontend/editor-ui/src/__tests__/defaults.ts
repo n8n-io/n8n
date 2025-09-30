@@ -101,6 +101,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	versionCli: '',
 	nodeJsVersion: '',
+	nodeEnv: '',
 	concurrency: -1,
 	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
@@ -109,6 +110,9 @@ export const defaultSettings: FrontendSettings = {
 		infoUrl: '',
 		whatsNewEnabled: true,
 		whatsNewEndpoint: '',
+	},
+	dataTables: {
+		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
@@ -139,15 +143,13 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiAssistant: {
 		enabled: false,
+		setup: false,
 	},
 	aiCredits: {
 		enabled: false,
 		credits: 0,
 	},
 	easyAIWorkflowOnboarded: false,
-	partialExecution: {
-		version: 1,
-	},
 	folders: {
 		enabled: false,
 	},

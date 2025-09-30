@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.109.0",
+  "version": "1.111.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -923,7 +923,7 @@
     "mongodb": "6.11.0",
     "mqtt": "5.7.2",
     "mssql": "10.0.2",
-    "mysql2": "3.11.0",
+    "mysql2": "catalog:",
     "n8n-workflow": "workspace:*",
     "node-html-markdown": "1.2.0",
     "node-ssh": "13.2.0",
@@ -942,7 +942,7 @@
     "sanitize-html": "2.12.1",
     "semver": "7.5.4",
     "showdown": "2.1.0",
-    "simple-git": "3.17.0",
+    "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",
     "ssh2-sftp-client": "12.0.1",
     "tmp-promise": "3.0.3",

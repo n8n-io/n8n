@@ -7,6 +7,9 @@ import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
+import { useLocalStorage } from '@vueuse/core';
+import { LOCAL_STORAGE_RUN_DATA_WORKER } from '@/constants';
+import { runDataWorker } from '@/workers/run-data/instance';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -16,6 +19,8 @@ export type OnPushMessageHandler = (event: PushMessage) => void;
 export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+
+	const isRunDataWorkerEnabled = useLocalStorage<boolean>(LOCAL_STORAGE_RUN_DATA_WORKER, false);
 
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
@@ -60,14 +65,25 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 * Process a newly received message
 	 */
 	async function onMessage(data: unknown) {
-		let receivedData: PushMessage;
+		// The `nodeExecuteAfterData` message is sent as binary data
+		// to be handled by a web worker in the future.
+		if (data instanceof ArrayBuffer) {
+			if (isRunDataWorkerEnabled.value) {
+				await runDataWorker.onNodeExecuteAfterData(data);
+				return;
+			} else {
+				data = new TextDecoder('utf-8').decode(new Uint8Array(data));
+			}
+		}
+
+		let parsedData: PushMessage;
 		try {
-			receivedData = JSON.parse(data as string);
+			parsedData = JSON.parse(data as string);
 		} catch (error) {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
+		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
 	}
 
 	const url = getConnectionUrl();

@@ -6,9 +6,13 @@ packages:
   - cypress
   - packages/testing/**
 
+minimumReleaseAge: 2880 # 2 days
+minimumReleaseAgeExclude:
+  - eslint-plugin-storybook
+
 catalog:
   '@n8n/typeorm': 0.3.20-12
-  '@n8n_io/ai-assistant-sdk': 1.15.0
+  '@n8n_io/ai-assistant-sdk': 1.17.0
   '@langchain/core': 0.3.68
   '@langchain/openai': 0.6.7
   '@langchain/anthropic': 0.3.26
@@ -21,7 +25,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
-  axios: 1.8.3
+  axios: 1.12.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
@@ -41,6 +45,7 @@ catalog:
   rimraf: 6.0.1
   tsup: ^8.5.0
   tsx: ^4.19.3
+  simple-git: 3.28.0
   uuid: 10.0.0
   vite: ^6.3.5
   vite-plugin-dts: ^4.5.4
@@ -52,6 +57,7 @@ catalog:
   zod-to-json-schema: 3.23.3
   typescript: 5.9.2
   eslint: 9.29.0
+  mysql2: 3.15.0
 
 catalogs:
   frontend:
@@ -59,6 +65,7 @@ catalogs:
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
+    '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
     '@vitejs/plugin-vue': ^5.2.4
