@@ -485,7 +485,7 @@ export class DataStoreRowsRepository {
 			const selectColumns = idsOnly ? 'id' : '*';
 			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
 			this.applyFilters(selectQuery, filter, 'dataTable', columns);
-			const rawRows = await selectQuery.getRawMany();
+			const rawRows: DataStoreRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
 				return rawRows as T extends true
