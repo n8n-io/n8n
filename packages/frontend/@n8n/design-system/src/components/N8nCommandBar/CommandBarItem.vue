@@ -35,9 +35,6 @@ const handleSelect = () => {
 		<div :class="$style.content">
 			<div :class="$style.title">{{ item.title }}</div>
 		</div>
-		<div :class="$style.meta">
-			<span v-if="item.children" :class="$style.hasChildren">→</span>
-		</div>
 	</div>
 </template>
 
@@ -107,11 +104,5 @@ const handleSelect = () => {
 	align-items: center;
 	gap: var(--spacing-2xs);
 	flex-shrink: 0;
-}
-
-.hasChildren {
-	color: var(--color-text-light);
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
 }
 </style>

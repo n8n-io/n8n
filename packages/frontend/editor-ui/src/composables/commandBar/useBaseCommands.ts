@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
+import { N8nIcon } from '@n8n/design-system';
 import type { CommandGroup } from './types';
 
 const Section = {
@@ -38,6 +39,12 @@ export function useBaseCommands(): CommandGroup {
 				id: 'create-workflow',
 				title: `Create new workflow in ${currentProjectName.value}`,
 				section: Section.WORKFLOWS,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'plus',
+					},
+				},
 				handler: () => {
 					void router.push({
 						name: VIEWS.NEW_WORKFLOW,

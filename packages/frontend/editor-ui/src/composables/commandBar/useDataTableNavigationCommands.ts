@@ -6,6 +6,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import type { CommandGroup, CommandBarItem } from './types';
 import type { DataStore } from '@/features/dataStore/datastore.types';
+import { N8nIcon } from '@n8n/design-system';
 
 const Section = {
 	DATA_TABLES: 'Data Tables',
@@ -114,6 +115,12 @@ export function useDataTableNavigationCommands(options: {
 				id: ITEM_ID.CREATE_DATA_TABLE,
 				title: 'Create data table',
 				section: Section.DATA_TABLES,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'plus',
+					},
+				},
 				handler: () => {
 					if (!currentProjectId) return;
 					void router.push({
@@ -126,6 +133,12 @@ export function useDataTableNavigationCommands(options: {
 				id: ITEM_ID.OPEN_DATA_TABLE,
 				title: 'Open data table',
 				section: Section.DATA_TABLES,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'arrow-right',
+					},
+				},
 				children: openDataTableCommands.value,
 			},
 			...rootDataTableItems.value,

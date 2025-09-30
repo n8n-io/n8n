@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
@@ -130,7 +131,14 @@ export function useWorkflowNavigationCommands(options: {
 				id: ITEM_ID.OPEN_WORKFLOW,
 				title: 'Open workflow',
 				section: Section.WORKFLOWS,
+				placeholder: 'Search by workflow name or node type...',
 				children: openWorkflowCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'arrow-right',
+					},
+				},
 			},
 			...rootWorkflowItems.value,
 		];
