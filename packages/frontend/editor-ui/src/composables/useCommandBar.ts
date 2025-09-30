@@ -9,6 +9,7 @@ import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigatio
 import { useTemplateCommands } from './commandBar/useTemplateCommands';
 import { useCredentialCommands } from './commandBar/useCredentialCommands';
 import { useBaseCommands } from './commandBar/useBaseCommands';
+import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
 
 export function useCommandBar() {
@@ -27,6 +28,10 @@ export function useCommandBar() {
 	});
 	const templateCommandGroup = useTemplateCommands();
 	const credentialCommandGroup = useCredentialCommands();
+	const dataTableNavigationGroup = useDataTableNavigationCommands({
+		lastQuery,
+		activeNodeId,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		baseCommandGroup,
@@ -36,12 +41,19 @@ export function useCommandBar() {
 		templateCommandGroup,
 	];
 
-	const workflowsListViewGroups: CommandGroup[] = [baseCommandGroup, workflowNavigationGroup];
+	const workflowsListViewGroups: CommandGroup[] = [
+		baseCommandGroup,
+		workflowNavigationGroup,
+		dataTableNavigationGroup,
+	];
 
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
 		if (router.currentRoute.value.name === VIEWS.WORKFLOW) {
 			return canvasViewGroups;
-		} else if (router.currentRoute.value.name === VIEWS.WORKFLOWS) {
+		} else if (
+			router.currentRoute.value.name === VIEWS.WORKFLOWS ||
+			router.currentRoute.value.name === VIEWS.PROJECTS_WORKFLOWS
+		) {
 			return workflowsListViewGroups;
 		}
 		return [baseCommandGroup];
