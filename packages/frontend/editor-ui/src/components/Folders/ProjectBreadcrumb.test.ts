@@ -16,7 +16,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 const mockComponents = {
-	'n8n-link': {
+	N8nLink: {
 		template: '<a :href="to"><slot /></a>',
 		props: ['to'],
 	},

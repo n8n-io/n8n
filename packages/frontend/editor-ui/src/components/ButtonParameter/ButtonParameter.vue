@@ -195,7 +195,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 
 <template>
 	<div>
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="hasInputField"
 			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
@@ -203,7 +203,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			size="small"
 			color="text-dark"
 		>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div
 			:class="[$style.inputContainer, { [$style.disabled]: isReadOnly }]"
 			:hidden="!hasInputField"

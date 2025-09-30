@@ -152,33 +152,31 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 		<template #content>
 			<div>
 				<div v-if="isPending">
-					<n8n-text color="text-base">{{
-						i18n.baseText('folders.delete.confirm.message')
-					}}</n8n-text>
+					<N8nText color="text-base">{{ i18n.baseText('folders.delete.confirm.message') }}</N8nText>
 				</div>
 				<div v-else :class="$style.content">
 					<div>
-						<n8n-text color="text-base">{{ folderContentWarningMessage }}</n8n-text>
+						<N8nText color="text-base">{{ folderContentWarningMessage }}</N8nText>
 					</div>
-					<el-radio
+					<ElRadio
 						v-model="operation"
 						data-test-id="transfer-content-radio"
 						label="transfer"
 						@update:model-value="operation = 'transfer'"
 					>
-						<n8n-text v-if="currentProjectName">{{
+						<N8nText v-if="currentProjectName">{{
 							i18n.baseText('folders.transfer.action', {
 								interpolate: { projectName: currentProjectName },
 							})
-						}}</n8n-text>
-						<n8n-text v-else color="text-dark">{{
+						}}</N8nText>
+						<N8nText v-else color="text-dark">{{
 							i18n.baseText('folders.transfer.action.noProject')
-						}}</n8n-text>
-					</el-radio>
+						}}</N8nText>
+					</ElRadio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<n8n-text color="text-dark">{{
+						<N8nText color="text-dark">{{
 							i18n.baseText('folders.transfer.selectFolder')
-						}}</n8n-text>
+						}}</N8nText>
 						<MoveToFolderDropdown
 							v-if="projectsStore.currentProject"
 							:selected-location="selectedFolder"
@@ -189,27 +187,27 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 							@location:selected="onFolderSelected"
 						/>
 					</div>
-					<el-radio
+					<ElRadio
 						v-model="operation"
 						data-test-id="delete-content-radio"
 						label="delete"
 						@update:model-value="operation = 'delete'"
 					>
-						<n8n-text color="text-dark">{{ i18n.baseText('folders.delete.action') }}</n8n-text>
-					</el-radio>
+						<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
+					</ElRadio>
 					<div
 						v-if="operation === 'delete'"
 						:class="$style.optionInput"
 						data-test-id="delete-data-input"
 					>
-						<n8n-input-label
+						<N8nInputLabel
 							:label="
 								i18n.baseText('folders.delete.confirmation.message', {
 									interpolate: { folderName: folderToDelete?.name ?? '' },
 								})
 							"
 						>
-							<n8n-input
+							<N8nInput
 								v-model="deleteConfirmText"
 								data-test-id="delete-data-input"
 								:placeholder="
@@ -218,13 +216,13 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 									})
 								"
 							/>
-						</n8n-input-label>
+						</N8nInputLabel>
 					</div>
 				</div>
 			</div>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('generic.delete')"

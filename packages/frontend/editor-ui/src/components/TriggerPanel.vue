@@ -374,24 +374,24 @@ const onNodeExecute = () => {
 
 <template>
 	<div :class="$style.container">
-		<transition name="fade" mode="out-in">
+		<Transition name="fade" mode="out-in">
 			<div v-if="hasIssues || hideContent" key="empty"></div>
 			<div v-else-if="isListeningForEvents" key="listening" data-test-id="trigger-listening">
-				<n8n-pulse>
+				<N8nPulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
-				</n8n-pulse>
+				</N8nPulse>
 				<div v-if="isWebhookNode">
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						i18n.baseText('ndv.trigger.webhookNode.listening')
-					}}</n8n-text>
+					}}</N8nText>
 					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text>
+						<N8nText>
 							{{
 								i18n.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: webhookHttpMethod ?? '' },
 								})
 							}}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<CopyInput
 						:value="webhookTestUrl"
@@ -411,18 +411,18 @@ const onNodeExecute = () => {
 					/>
 				</div>
 				<div v-else>
-					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						listeningTitle
-					}}</n8n-text>
+					}}</N8nText>
 					<div :class="[$style.shake, 'mb-xs']">
-						<n8n-text tag="div">
+						<N8nText tag="div">
 							{{ listeningHint }}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<div v-if="displayChatButton">
-						<n8n-button class="mb-xl" @click="openWebhookUrl()">
+						<N8nButton class="mb-xl" @click="openWebhookUrl()">
 							{{ i18n.baseText('ndv.trigger.chatTrigger.openChat') }}
-						</n8n-button>
+						</N8nButton>
 					</div>
 
 					<NodeExecuteButton
@@ -436,17 +436,17 @@ const onNodeExecute = () => {
 			</div>
 			<div v-else key="default">
 				<div v-if="isActivelyPolling" class="mb-xl">
-					<n8n-spinner type="ring" />
+					<N8nSpinner type="ring" />
 				</div>
 
 				<div :class="$style.action">
 					<div data-test-id="trigger-header" :class="$style.header">
-						<n8n-heading v-if="header" tag="h1" bold>
+						<N8nHeading v-if="header" tag="h1" bold>
 							{{ header }}
-						</n8n-heading>
-						<n8n-text v-if="subheader">
+						</N8nHeading>
+						<N8nText v-if="subheader">
 							<span v-text="subheader" />
-						</n8n-text>
+						</N8nText>
 					</div>
 
 					<NodeExecuteButton
@@ -458,16 +458,16 @@ const onNodeExecute = () => {
 					/>
 				</div>
 
-				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
+				<N8nText v-if="activationHint" size="small" @click="onLinkClick">
 					<span v-n8n-html="activationHint"></span>&nbsp;
-				</n8n-text>
-				<n8n-link
+				</N8nText>
+				<N8nLink
 					v-if="activationHint && executionsHelp"
 					size="small"
 					@click="expandExecutionHelp"
-					>{{ i18n.baseText('ndv.trigger.moreInfo') }}</n8n-link
+					>{{ i18n.baseText('ndv.trigger.moreInfo') }}</N8nLink
 				>
-				<n8n-info-accordion
+				<N8nInfoAccordion
 					v-if="executionsHelp"
 					ref="help"
 					:class="$style.accordion"
@@ -475,9 +475,9 @@ const onNodeExecute = () => {
 					:description="executionsHelp"
 					:event-bus="executionsHelpEventBus"
 					@click:body="onLinkClick"
-				></n8n-info-accordion>
+				></N8nInfoAccordion>
 			</div>
-		</transition>
+		</Transition>
 	</div>
 </template>
 

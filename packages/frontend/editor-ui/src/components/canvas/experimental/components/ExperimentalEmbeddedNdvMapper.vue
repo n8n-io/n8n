@@ -1,35 +1,87 @@
 <script setup lang="ts">
 import InputPanel from '@/components/InputPanel.vue';
-import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { onBeforeUnmount, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
-import { computed, inject, useTemplateRef } from 'vue';
+import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { N8nPopoverReka } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
+import {
+	onClickOutside,
+	useElementHover,
+	type UseElementHoverOptions,
+	useEventListener,
+} from '@vueuse/core';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
-const { node, inputNodeName, visible, virtualRef } = defineProps<{
+type MapperState = { isOpen: true; closeOnMouseLeave: boolean } | { isOpen: false };
+
+const hoverOptions: UseElementHoverOptions = {
+	delayLeave: 200, // should be a positive value, otherwise user cannot click on the mapper
+};
+
+const {
+	node,
+	inputNodeName,
+	reference,
+	visibleOnHover = false,
+} = defineProps<{
 	workflow: Workflow;
 	node: INodeUi;
 	inputNodeName: string;
-	visible: boolean;
-	virtualRef: HTMLElement | undefined;
+	visibleOnHover?: boolean;
+	reference: HTMLElement;
 }>();
 
+const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const canvas = inject(CanvasKey, undefined);
-const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
-const contentElRef = computed(() => contentRef.value?.$el ?? null);
+const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
+const isReferenceHovered = useElementHover(visibleOnHover ? reference : null, hoverOptions);
+const isMapperHovered = useElementHover(visibleOnHover ? contentElRef : null, hoverOptions);
+const isHovered = computed(() => isReferenceHovered.value || isMapperHovered.value);
+
+function handleFocusIn() {
+	if (experimentalNdvStore.isMapperOpen) {
+		// Skip if there's already a mapper opened
+		return;
+	}
+
+	state.value = { isOpen: true, closeOnMouseLeave: false };
+}
+
+function handleReferenceFocusOut(event: FocusEvent | MouseEvent) {
+	if (
+		isEventTargetContainedBy(event.target, reference) ||
+		isEventTargetContainedBy(event.target, contentElRef) ||
+		isEventTargetContainedBy(event.relatedTarget, contentElRef)
+	) {
+		// Skip when focus moves between the mapper and its reference element
+		return;
+	}
+
+	state.value = { isOpen: false };
+}
+
+watch(isHovered, (hovered) => {
+	if (
+		!visibleOnHover ||
+		(state.value.isOpen && !state.value.closeOnMouseLeave) ||
+		experimentalNdvStore.isMapperOpen
+	) {
+		return;
+	}
+
+	state.value = hovered ? { isOpen: true, closeOnMouseLeave: true } : { isOpen: false };
+});
 
 watch(
-	isVisible,
+	state,
 	(value) => {
-		experimentalNdvStore.setMapperOpen(value);
+		experimentalNdvStore.setMapperOpen(value.isOpen && !value.closeOnMouseLeave);
 	},
 	{ immediate: true },
 );
@@ -38,28 +90,31 @@ onBeforeUnmount(() => {
 	experimentalNdvStore.setMapperOpen(false);
 });
 
-defineExpose({
-	contentRef: contentElRef,
-});
+useEventListener(reference, 'focusin', handleFocusIn);
+useEventListener(reference, 'focusout', handleReferenceFocusOut);
+useEventListener(contentElRef, 'focusin', handleFocusIn);
+
+onClickOutside(contentElRef, handleReferenceFocusOut);
 </script>
 
 <template>
 	<N8nPopoverReka
-		:open="isVisible"
+		:open="state.isOpen"
 		side="left"
 		:side-flip="false"
 		align="start"
 		width="360px"
 		:max-height="`calc(100vh - var(--spacing-s) * 2)`"
-		:reference="virtualRef"
+		:reference="reference"
 		:suppress-auto-focus="true"
 		:z-index="APP_Z_INDEXES.NDV + 1"
+		content-class="ignore-key-press-canvas ignore-key-press-node-creator"
 	>
 		<template #content>
 			<InputPanel
 				ref="content"
 				:tabindex="-1"
-				:class="[$style.inputPanel, 'ignore-key-press-canvas']"
+				:class="$style.inputPanel"
 				:workflow-object="workflow"
 				:run-index="0"
 				compact
@@ -71,6 +126,7 @@ defineExpose({
 				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
 				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
+				:truncate-limit="60"
 				search-shortcut="ctrl+f"
 			/>
 		</template>

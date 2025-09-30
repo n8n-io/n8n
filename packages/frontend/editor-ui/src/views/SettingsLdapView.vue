@@ -593,15 +593,15 @@ onMounted(async () => {
 <template>
 	<div v-if="!isLDAPFeatureEnabled">
 		<div :class="[$style.header, 'mb-2xl']">
-			<n8n-heading size="2xlarge">
+			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.ldap') }}
-			</n8n-heading>
+			</N8nHeading>
 		</div>
 
-		<n8n-info-tip type="note" theme="info" tooltip-placement="right" class="mb-l">
+		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ i18n.baseText('settings.ldap.note') }}
-		</n8n-info-tip>
-		<n8n-action-box
+		</N8nInfoTip>
+		<N8nActionBox
 			:description="i18n.baseText('settings.ldap.disabled.description')"
 			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
@@ -609,22 +609,22 @@ onMounted(async () => {
 			<template #heading>
 				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
 			</template>
-		</n8n-action-box>
+		</N8nActionBox>
 	</div>
 	<div v-else>
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<n8n-heading size="2xlarge">
+				<N8nHeading size="2xlarge">
 					{{ i18n.baseText('settings.ldap') }}
-				</n8n-heading>
+				</N8nHeading>
 			</div>
 			<div :class="$style.docsInfoTip">
-				<n8n-info-tip theme="info" type="note">
+				<N8nInfoTip theme="info" type="note">
 					<span v-n8n-html="i18n.baseText('settings.ldap.infoTip')"></span>
-				</n8n-info-tip>
+				</N8nInfoTip>
 			</div>
 			<div :class="$style.settingsForm">
-				<n8n-form-inputs
+				<N8nFormInputs
 					v-if="formInputs"
 					ref="ldapConfigFormRef"
 					:inputs="formInputs"
@@ -637,7 +637,7 @@ onMounted(async () => {
 				/>
 			</div>
 			<div>
-				<n8n-button
+				<N8nButton
 					v-if="loginEnabled"
 					:label="
 						loadingTestConnection
@@ -650,7 +650,7 @@ onMounted(async () => {
 					:loading="loadingTestConnection"
 					@click="onTestConnectionClick"
 				/>
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('settings.ldap.save')"
 					size="large"
 					:disabled="!hasAnyChanges || !readyToSubmit"
@@ -659,9 +659,9 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div v-if="loginEnabled">
-			<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{
+			<N8nHeading tag="h1" class="mb-xl mt-3xl" size="medium">{{
 				i18n.baseText('settings.ldap.section.synchronization.title')
-			}}</n8n-heading>
+			}}</N8nHeading>
 			<div :class="$style.syncTable">
 				<ElTable
 					:key="tableKey"
@@ -703,7 +703,7 @@ onMounted(async () => {
 				</ElTable>
 			</div>
 			<div class="pb-3xl">
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('settings.ldap.dryRun')"
 					type="secondary"
 					size="large"
@@ -712,7 +712,7 @@ onMounted(async () => {
 					:loading="loadingDryRun"
 					@click="onDryRunClick"
 				/>
-				<n8n-button
+				<N8nButton
 					:label="i18n.baseText('settings.ldap.synchronizeNow')"
 					size="large"
 					:disabled="hasAnyChanges || !readyToSubmit"

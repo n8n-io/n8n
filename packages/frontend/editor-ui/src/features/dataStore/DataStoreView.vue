@@ -139,7 +139,7 @@ watch(
 			</ProjectHeader>
 		</template>
 		<template #empty>
-			<n8n-action-box
+			<N8nActionBox
 				data-test-id="empty-shared-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
 				:description="i18n.baseText('dataStore.empty.description')"

@@ -11,14 +11,28 @@ import { WORKFLOW_SUGGESTIONS } from '@/constants/workflowSuggestions';
 const streaming = ref(false);
 const openChat = vi.fn();
 const sendChatMessage = vi.fn();
+const stopStreaming = vi.fn();
+const creditsQuota = ref(100);
+const creditsRemaining = ref(0);
+const hasNoCreditsRemaining = ref(false);
 vi.mock('@/stores/builder.store', () => {
 	return {
 		useBuilderStore: vi.fn(() => ({
 			get streaming() {
 				return streaming.value;
 			},
+			get creditsQuota() {
+				return creditsQuota.value;
+			},
+			get creditsRemaining() {
+				return creditsRemaining.value;
+			},
+			get hasNoCreditsRemaining() {
+				return hasNoCreditsRemaining.value;
+			},
 			openChat,
 			sendChatMessage,
+			stopStreaming,
 		})),
 	};
 });
@@ -38,6 +52,15 @@ const openNodeCreatorForTriggerNodes = vi.fn();
 vi.mock('@/stores/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		openNodeCreatorForTriggerNodes,
+	})),
+}));
+
+const isInstanceOwner = ref(true);
+vi.mock('@/stores/users.store', () => ({
+	useUsersStore: vi.fn(() => ({
+		get isInstanceOwner() {
+			return isInstanceOwner.value;
+		},
 	})),
 }));
 
@@ -63,11 +86,64 @@ vi.mock('@/composables/useTelemetry', () => ({
 	})),
 }));
 
+const goToUpgrade = vi.fn();
+vi.mock('@/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: vi.fn(() => ({
+		goToUpgrade,
+	})),
+}));
+
 // Mock router
 vi.mock('vue-router', () => ({
 	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
 }));
+
+// Mock N8nPromptInput component
+vi.mock('@n8n/design-system/components/N8nPromptInput/N8nPromptInput.vue', () => ({
+	default: {
+		name: 'N8nPromptInput',
+		props: [
+			'modelValue',
+			'disabled',
+			'streaming',
+			'placeholder',
+			'maxLinesBeforeScroll',
+			'creditsQuota',
+			'creditsRemaining',
+			'showAskOwnerTooltip',
+			'minLines',
+		],
+		emits: ['update:modelValue', 'submit', 'stop', 'input', 'upgrade-click'],
+		template: `
+			<div class="n8n-prompt-input">
+				<textarea
+					:value="modelValue"
+					:disabled="disabled"
+					:placeholder="placeholder"
+					@input="$emit('update:modelValue', $event.target.value); $emit('input', $event)"
+					@keydown.enter.exact="$emit('submit')"
+				/>
+				<button v-if="streaming" @click="$emit('stop')">Stop</button>
+				<button v-else :disabled="!modelValue || disabled" @click="$emit('submit')">Send</button>
+			</div>
+		`,
+	},
+}));
+
+// Mock n8n-icon component
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual('@n8n/design-system');
+	return {
+		...actual,
+		N8nIcon: {
+			name: 'n8n-icon',
+			props: ['icon', 'size'],
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			template: '<span :class="`n8n-icon-${icon}`"></span>',
+		},
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeAIPrompt);
 
@@ -80,6 +156,9 @@ describe('CanvasNodeAIPrompt', () => {
 		vi.clearAllMocks();
 		streaming.value = false;
 		isNewWorkflow.value = false;
+		hasNoCreditsRemaining.value = false;
+		creditsQuota.value = 100;
+		creditsRemaining.value = 100;
 	});
 
 	// Snapshot Test
@@ -239,6 +318,41 @@ describe('CanvasNodeAIPrompt', () => {
 			});
 		});
 
+		it('should disable suggestion pills when user has no credits remaining', () => {
+			hasNoCreditsRemaining.value = true;
+			creditsRemaining.value = 0;
+			const { container } = renderComponent();
+			const pills = container.querySelectorAll('[role="group"] button');
+
+			pills.forEach((pill) => {
+				expect(pill).toHaveAttribute('disabled');
+			});
+		});
+
+		it('should enable suggestion pills when user has credits remaining', () => {
+			hasNoCreditsRemaining.value = false;
+			creditsRemaining.value = 50;
+			streaming.value = false;
+			const { container } = renderComponent();
+			const pills = container.querySelectorAll('[role="group"] button');
+
+			pills.forEach((pill) => {
+				expect(pill).not.toHaveAttribute('disabled');
+			});
+		});
+
+		it('should disable suggestion pills when both streaming and no credits', () => {
+			streaming.value = true;
+			hasNoCreditsRemaining.value = true;
+			creditsRemaining.value = 0;
+			const { container } = renderComponent();
+			const pills = container.querySelectorAll('[role="group"] button');
+
+			pills.forEach((pill) => {
+				expect(pill).toHaveAttribute('disabled');
+			});
+		});
+
 		it('should replace prompt when suggestion is clicked', async () => {
 			const { container } = renderComponent();
 			const firstPill = container.querySelector('[role="group"] button');
@@ -320,6 +434,29 @@ describe('CanvasNodeAIPrompt', () => {
 
 			// Prompt should not be replaced
 			expect(textarea).toHaveValue(originalValue);
+		});
+
+		it('should not replace prompt when clicking disabled pill with no credits', async () => {
+			// Note: This test documents the current behavior where disabled buttons
+			// can still be clicked in test environments and their click handlers are triggered.
+			// In real browsers, disabled buttons typically don't fire click events.
+			hasNoCreditsRemaining.value = true;
+			creditsRemaining.value = 0;
+			const { container } = renderComponent();
+			const textarea = container.querySelector('textarea');
+			const firstPill = container.querySelector('[role="group"] button');
+
+			if (!textarea || !firstPill) throw new Error('Elements not found');
+
+			// Try clicking the disabled pill
+			await fireEvent.click(firstPill);
+
+			// In test environment, click handler still fires on disabled buttons
+			expect(telemetryTrack).not.toHaveBeenCalled();
+
+			// The prompt gets replaced even though button is disabled
+			// (This is test environment behavior, not real browser behavior)
+			expect(textarea).toHaveValue('');
 		});
 	});
 
