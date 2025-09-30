@@ -82,8 +82,10 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+});
 
-	if (showCommandBar.value) {
+watch(showCommandBar, (newVal) => {
+	if (newVal) {
 		void initializeCommandBar();
 	}
 });
