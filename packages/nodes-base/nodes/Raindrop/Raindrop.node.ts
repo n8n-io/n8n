@@ -99,7 +99,7 @@ export class Raindrop implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {

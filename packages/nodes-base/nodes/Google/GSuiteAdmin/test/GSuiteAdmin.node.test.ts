@@ -489,7 +489,8 @@ describe('GSuiteAdmin Node - Error Handling', () => {
 				);
 
 				if (executionErrorData) {
-					returnData = returnData.concat(executionErrorData);
+					// eslint-disable-next-line n8n-local-rules/no-array-push-spread
+					returnData.push(...executionErrorData);
 				} else {
 					console.error('executionErrorData is not iterable:', executionErrorData);
 				}

@@ -30,18 +30,18 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					await employee[bamboohr.operation].execute.call(this, i),
 				);
 			} else if (bamboohr.resource === 'employeeDocument') {
-				//@ts-ignore
 				operationResult = operationResult.concat(
+					//@ts-ignore
 					await employeeDocument[bamboohr.operation].execute.call(this, i),
 				);
 			} else if (bamboohr.resource === 'file') {
-				//@ts-ignore
 				operationResult = operationResult.concat(
+					//@ts-ignore
 					await file[bamboohr.operation].execute.call(this, i),
 				);
 			} else if (bamboohr.resource === 'companyReport') {
-				//@ts-ignore
 				operationResult = operationResult.concat(
+					//@ts-ignore
 					await companyReport[bamboohr.operation].execute.call(this, i),
 				);
 			}

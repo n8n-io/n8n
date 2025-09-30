@@ -170,7 +170,7 @@ export class Wise implements INodeType {
 		const timezone = this.getTimezone();
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let binaryOutput = false;
 
 		for (let i = 0; i < items.length; i++) {

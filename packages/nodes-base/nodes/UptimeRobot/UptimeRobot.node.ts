@@ -116,7 +116,7 @@ export class UptimeRobot implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData = [];
+		let returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
 		const timezone = this.getTimezone();
@@ -415,8 +415,8 @@ export class UptimeRobot implements INodeType {
 					}
 				}
 				Array.isArray(responseData)
-					? (returnData = returnData.concat(responseData as IDataObject[]))
-					: returnData.push(responseData as IDataObject);
+					? (returnData = returnData.concat(responseData))
+					: returnData.push(responseData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

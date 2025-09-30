@@ -432,12 +432,15 @@ export class Git implements INodeType {
 					const log = await git.log(logOptions);
 
 					returnItems = returnItems.concat(
-						this.helpers.returnJsonArray(log.all).map((item) => {
-							return {
-								...item,
-								pairedItem: { item: itemIndex },
-							};
-						}),
+						this.helpers
+							// @ts-expect-error log.all is not of type IDataObject
+							.returnJsonArray(log.all)
+							.map((item) => {
+								return {
+									...item,
+									pairedItem: { item: itemIndex },
+								};
+							}),
 					);
 				} else if (operation === 'pull') {
 					// ----------------------------------
@@ -545,12 +548,15 @@ export class Git implements INodeType {
 					const status = await git.status();
 
 					returnItems = returnItems.concat(
-						this.helpers.returnJsonArray([status]).map((item) => {
-							return {
-								...item,
-								pairedItem: { item: itemIndex },
-							};
-						}),
+						this.helpers
+							// @ts-expect-error status is not of type IDataObject
+							.returnJsonArray([status])
+							.map((item) => {
+								return {
+									...item,
+									pairedItem: { item: itemIndex },
+								};
+							}),
 					);
 				} else if (operation === 'switchBranch') {
 					// ----------------------------------

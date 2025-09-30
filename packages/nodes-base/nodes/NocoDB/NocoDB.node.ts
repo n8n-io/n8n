@@ -476,7 +476,7 @@ export class NocoDB implements INodeType {
 			}
 
 			if (operation === 'getAll') {
-				let data = [];
+				let data: INodeExecutionData[] = [];
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 				try {
 					for (let i = 0; i < items.length; i++) {

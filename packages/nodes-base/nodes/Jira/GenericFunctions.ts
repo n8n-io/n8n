@@ -287,7 +287,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 		query.username = "'";
 	}
 
-	let users = [];
+	let users: IDataObject[] = [];
 	let hasNextPage: boolean;
 
 	do {

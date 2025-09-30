@@ -67,7 +67,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as
 			| 'secureScore'

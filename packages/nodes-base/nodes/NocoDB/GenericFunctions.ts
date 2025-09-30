@@ -87,15 +87,15 @@ export async function apiRequestAllItems(
 	}
 	query.limit = 100;
 	query.offset = query?.offset ? (query.offset as number) : 0;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		version === 1
-			? (returnData = returnData.concat(responseData as IDataObject[]))
-			: (returnData = returnData.concat(responseData.list as IDataObject[]));
+			? (returnData = returnData.concat(responseData))
+			: (returnData = returnData.concat(responseData.list));
 
 		query.offset += query.limit;
 	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);

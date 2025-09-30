@@ -48,11 +48,11 @@ export function merge(responseData: [any]) {
 		columnHeader: responseData[0].columnHeader,
 		data: responseData[0].data,
 	};
-	let allRows = [];
+	let allRows: IDataObject[] = [];
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows = allRows.concat(rows as IDataObject[]);
+		allRows = allRows.concat(rows);
 	}
 	response.data.rows = allRows as [];
 	return [response];

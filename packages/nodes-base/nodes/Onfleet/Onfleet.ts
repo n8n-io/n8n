@@ -792,7 +792,7 @@ export class Onfleet {
 			return tasksCreated;
 		}
 
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1043,7 +1043,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1105,7 +1105,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1161,7 +1161,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1279,7 +1279,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1387,7 +1387,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		let responseData = [];
+		let responseData: IDataObject[] = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
