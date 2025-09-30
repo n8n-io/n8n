@@ -182,5 +182,11 @@ typeAwareRuleTester.run('no-array-push-spread', NoArrayPushSpreadRule, {
 			output: null,
 			errors: [{ messageId: 'noArrayPushSpread' }],
 		},
+		{
+			name: 'type cast expression - can autofix with proper assignment',
+			code: '(obj.prop as SomeType[]).push(...items);',
+			output: 'obj.prop = (obj.prop as SomeType[]).concat(items);',
+			errors: [{ messageId: 'noArrayPushSpread' }],
+		},
 	],
 });

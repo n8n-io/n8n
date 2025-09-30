@@ -114,7 +114,13 @@ export const NoArrayPushSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 			node: TSESTree.CallExpression & { callee: TSESTree.MemberExpression },
 			source: TSESLint.SourceCode,
 		): string => {
-			const arrayText = source.getText(node.callee.object);
+			let arrayText = source.getText(node.callee.object);
+
+			// Ensure type cast expressions are wrapped in parentheses
+			if (node.callee.object.type === 'TSAsExpression' && !arrayText.startsWith('(')) {
+				arrayText = `(${arrayText})`;
+			}
+
 			const firstSpreadIndex = node.arguments.findIndex(isSpreadElement);
 			const regularArgs = node.arguments.slice(0, firstSpreadIndex);
 			const spreadArgs = node.arguments.slice(firstSpreadIndex).filter(isSpreadElement);
@@ -131,6 +137,23 @@ export const NoArrayPushSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 			}
 
 			return expression;
+		};
+
+		const getAssignmentTarget = (
+			node: TSESTree.CallExpression & { callee: TSESTree.MemberExpression },
+			source: TSESLint.SourceCode,
+		): string | null => {
+			const objectNode = node.callee.object;
+
+			if (objectNode.type === 'TSAsExpression') {
+				return source.getText(objectNode.expression);
+			}
+
+			if (objectNode.type === 'Identifier' || objectNode.type === 'MemberExpression') {
+				return source.getText(objectNode);
+			}
+
+			return null;
 		};
 
 		const isStandaloneStatement = (node: TSESTree.CallExpression): boolean => {
@@ -158,8 +181,14 @@ export const NoArrayPushSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 				let replacement = buildConcatExpression(node, source);
 
 				if (isStandaloneStatement(node)) {
-					const arrayText = source.getText(node.callee.object);
-					replacement = `${arrayText} = ${replacement}`;
+					const assignmentTarget = getAssignmentTarget(node, source);
+					if (assignmentTarget) {
+						replacement = `${assignmentTarget} = ${replacement}`;
+					} else {
+						// Fallback to original logic for complex cases
+						const arrayText = source.getText(node.callee.object);
+						replacement = `${arrayText} = ${replacement}`;
+					}
 
 					if (constDeclaration) {
 						fixes.push(
