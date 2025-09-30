@@ -196,24 +196,27 @@ export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 		if (mergeMode === 'deepMerge') {
 			return (target: IDataObject, ...source: IDataObject[]) => {
 				const targetCopy = Object.assign({}, target);
-				return mergeWith(targetCopy, ...source, customizer);
+				return mergeWith.apply(null, [targetCopy, ...source, customizer]);
 			};
 		}
 		if (mergeMode === 'shallowMerge') {
 			return (target: IDataObject, ...source: IDataObject[]) => {
 				const targetCopy = Object.assign({}, target);
-				return assignWith(targetCopy, ...source, customizer);
+				return assignWith.apply(null, [targetCopy, ...source, customizer]);
 			};
 		}
 	} else {
 		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+			return (target: IDataObject, ...source: IDataObject[]) =>
+				merge.apply(null, [{}, target, ...source]);
 		}
 		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
+			return (target: IDataObject, ...source: IDataObject[]) =>
+				assign.apply(null, [{}, target, ...source]);
 		}
 	}
-	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+	return (target: IDataObject, ...source: IDataObject[]) =>
+		merge.apply(null, [{}, target, ...source]);
 }
 
 export function mergeMatched(
@@ -240,11 +243,14 @@ export function mergeMatched(
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
 
-			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
-			binary = mergeIntoSingleObject(
+			json = mergeIntoSingleObject.apply(null, [
+				{ ...entry.json },
+				...matches.map((item) => item.json),
+			]);
+			binary = mergeIntoSingleObject.apply(null, [
 				{ ...entry.binary },
 				...matches.map((item) => item.binary as IDataObject),
-			);
+			]);
 			pairedItem = [
 				...preparePairedItemDataArray(entry.pairedItem),
 				...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
@@ -263,16 +269,16 @@ export function mergeMatched(
 
 			if (resolveClash === preferInput1) {
 				const [firstMatch, ...restMatches] = matches;
-				json = mergeIntoSingleObject(
+				json = mergeIntoSingleObject.apply(null, [
 					{ ...firstMatch.json },
 					...restMatches.map((item) => item.json),
 					entry.json,
-				);
-				binary = mergeIntoSingleObject(
+				]);
+				binary = mergeIntoSingleObject.apply(null, [
 					{ ...firstMatch.binary },
 					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
-				);
+				]);
 
 				pairedItem = [
 					...preparePairedItemDataArray(firstMatch.pairedItem),
@@ -282,11 +288,14 @@ export function mergeMatched(
 			}
 
 			if (resolveClash === preferInput2) {
-				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
-				binary = mergeIntoSingleObject(
+				json = mergeIntoSingleObject.apply(null, [
+					{ ...entry.json },
+					...matches.map((item) => item.json),
+				]);
+				binary = mergeIntoSingleObject.apply(null, [
 					{ ...entry.binary },
 					...matches.map((item) => item.binary as IDataObject),
-				);
+				]);
 				pairedItem = [
 					...preparePairedItemDataArray(entry.pairedItem),
 					...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
@@ -333,7 +342,7 @@ export function checkInput(
 	for (const field of fields) {
 		const isPresent = (input || []).some((entry) => {
 			if (disableDotNotation) {
-				return entry.json.hasOwnProperty(field);
+				return Object.prototype.hasOwnProperty.call(entry.json, field);
 			}
 			return get(entry.json, field, undefined) !== undefined;
 		});

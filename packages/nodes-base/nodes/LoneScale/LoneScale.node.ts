@@ -363,7 +363,7 @@ export class LoneScale implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		let responseData;
-		const returnData = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 

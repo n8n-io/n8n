@@ -380,6 +380,7 @@ export class GoToWebinar implements INodeType {
 							//@ts-ignore
 							body.responses.push.apply(
 								body.responses,
+								//@ts-ignore
 								additionalFields.multiChoiceResponses.details,
 							);
 							additionalFields = omit(additionalFields, ['multiChoiceResponses']);

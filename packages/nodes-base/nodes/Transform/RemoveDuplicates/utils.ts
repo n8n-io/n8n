@@ -162,7 +162,7 @@ export function removeDuplicateInputItems(context: IExecuteFunctions, items: INo
 
 	if (removeOtherFields) {
 		updatedItems = updatedItems.map((item, index) => ({
-			json: pick(item.json, ...keys),
+			json: pick(item.json, keys),
 			pairedItem: { item: index },
 		}));
 	}

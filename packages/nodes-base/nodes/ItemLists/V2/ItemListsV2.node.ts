@@ -1244,7 +1244,7 @@ return 0;`,
 
 				if (removeOtherFields) {
 					data = data.map((item, index) => ({
-						json: pick(item.json, ...keys),
+						json: pick(item.json, keys),
 						pairedItem: { item: index },
 					}));
 				}

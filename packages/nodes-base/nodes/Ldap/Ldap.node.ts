@@ -1,4 +1,4 @@
-import { Attribute, Change } from 'ldapts';
+import { Attribute, Change, type Entry } from 'ldapts';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -145,7 +145,9 @@ export class Ldap implements INodeType {
 					await client.unbind();
 				}
 
-				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
+				const unique = Object.keys(
+					Object.assign.apply(Object, [{}].concat(results.searchEntries) as [object, ...Entry[]]),
+				);
 				return unique.map((x) => ({
 					name: x,
 					value: x,
@@ -180,7 +182,7 @@ export class Ldap implements INodeType {
 					if (typeof entry.objectClass === 'string') {
 						objects.push(entry.objectClass);
 					} else {
-						objects.push.apply(objects, entry.objectClass);
+						objects.push.apply(objects, entry.objectClass as string[]);
 					}
 				}
 
@@ -218,7 +220,9 @@ export class Ldap implements INodeType {
 					await client.unbind();
 				}
 
-				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
+				const unique = Object.keys(
+					Object.assign.apply(Object, [{}].concat(results.searchEntries) as [object, ...Entry[]]),
+				);
 				return unique.map((x) => ({
 					name: x,
 					value: x,

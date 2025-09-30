@@ -201,7 +201,9 @@ export function compareRevisions(
 			return { differences: returnData };
 		});
 
-		return zip(previousData, currentData, differences).map((row) => Object.assign({}, ...row));
+		return zip(previousData, currentData, differences).map((row) =>
+			Object.assign.apply(Object, [{}].concat(row) as [object, ...Array<typeof row>]),
+		);
 	}
 
 	return arrayOfArraysToJson(extractVersionData(diffData, 'current', event), columns);

@@ -433,12 +433,15 @@ export class Git implements INodeType {
 
 					returnItems.push.apply(
 						returnItems,
-						this.helpers.returnJsonArray(log.all).map((item) => {
-							return {
-								...item,
-								pairedItem: { item: itemIndex },
-							};
-						}),
+						this.helpers
+							// @ts-ignore
+							.returnJsonArray(log.all)
+							.map((item) => {
+								return {
+									...item,
+									pairedItem: { item: itemIndex },
+								};
+							}),
 					);
 				} else if (operation === 'pull') {
 					// ----------------------------------
@@ -548,12 +551,15 @@ export class Git implements INodeType {
 
 					returnItems.push.apply(
 						returnItems,
-						this.helpers.returnJsonArray([status]).map((item) => {
-							return {
-								...item,
-								pairedItem: { item: itemIndex },
-							};
-						}),
+						this.helpers
+							// @ts-ignore
+							.returnJsonArray([status])
+							.map((item) => {
+								return {
+									...item,
+									pairedItem: { item: itemIndex },
+								};
+							}),
 					);
 				} else if (operation === 'switchBranch') {
 					// ----------------------------------

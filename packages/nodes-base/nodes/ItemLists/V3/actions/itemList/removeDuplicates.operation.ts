@@ -240,7 +240,7 @@ export async function execute(
 
 	if (removeOtherFields) {
 		returnData = returnData.map((item, index) => ({
-			json: pick(item.json, ...keys),
+			json: pick(item.json, keys),
 			pairedItem: { item: index },
 		}));
 	}
