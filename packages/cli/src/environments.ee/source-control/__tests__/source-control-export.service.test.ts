@@ -1,19 +1,23 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { GLOBAL_ADMIN_ROLE, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import type {
-	SharedCredentials,
-	SharedWorkflow,
 	FolderRepository,
-	TagRepository,
-	WorkflowTagMappingRepository,
+	Project,
+	ProjectRepository,
+	Role,
+	SharedCredentials,
 	SharedCredentialsRepository,
+	SharedWorkflow,
 	SharedWorkflowRepository,
-	WorkflowRepository,
 	TagEntity,
+	TagRepository,
+	WorkflowRepository,
 	WorkflowTagMapping,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock, captor } from 'jest-mock-extended';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
@@ -34,6 +38,7 @@ describe('SourceControlExportService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const tagRepository = mock<TagRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
 	const folderRepository = mock<FolderRepository>();
@@ -43,6 +48,7 @@ describe('SourceControlExportService', () => {
 		mock(),
 		variablesService,
 		tagRepository,
+		projectRepository,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
 		workflowRepository,
@@ -337,6 +343,90 @@ describe('SourceControlExportService', () => {
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
 				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
+			);
+		});
+	});
+
+	describe('exportProjectsToWorkFolder', () => {
+		it('should export projects to work folder', async () => {
+			// Arrange
+			const candidates = [
+				mock<SourceControlledFile>({ id: 'project-id-1' }),
+				mock<SourceControlledFile>({ id: 'project-id-2' }),
+			];
+
+			projectRepository.find.mockResolvedValue([
+				mock<Project>({
+					id: 'project-id-1',
+					name: 'Project 1',
+					icon: { type: 'icon', value: 'icon.png' },
+					description: 'A test project',
+					type: 'personal',
+					projectRelations: [
+						{
+							role: mock<Role>({
+								slug: PROJECT_OWNER_ROLE_SLUG,
+							}),
+							user: mock<User>({ email: 'owner@example.com' }),
+						},
+					],
+				}),
+				mock<Project>({
+					id: 'project-id-2',
+					name: 'Team Project',
+					icon: { type: 'icon', value: 'team-icon.png' },
+					description: 'A team project',
+					type: 'team',
+					projectRelations: [
+						{
+							role: mock<Role>({
+								slug: PROJECT_ADMIN_ROLE_SLUG,
+							}),
+							user: mock<User>({ email: 'admin@example.com' }),
+						},
+					],
+				}),
+			]);
+
+			// Act
+			const result = await service.exportProjectsToWorkFolder(candidates);
+
+			console.log(result.files);
+
+			// Assert
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 'project-id-1',
+						name: expect.stringContaining('project-id-1.json'),
+					}),
+					expect.objectContaining({
+						id: 'project-id-2',
+						name: expect.stringContaining('project-id-2.json'),
+					}),
+				]),
+			);
+		});
+
+		it('should throw an error if personal project has no owner', async () => {
+			// Arrange
+			const mockProject = mock<Project>({
+				id: 'project-id-2',
+				name: 'Project 2',
+				icon: { type: 'icon', value: 'icon2.png' },
+				description: 'A test project without owner',
+				type: 'personal',
+				projectRelations: [],
+			});
+			const candidates = [mock<SourceControlledFile>({ id: 'project-id-2' })];
+
+			projectRepository.find.mockResolvedValue([mockProject]);
+
+			// Act & Assert
+			await expect(service.exportProjectsToWorkFolder(candidates)).rejects.toThrow(
+				'Project Project 2 has no owner',
 			);
 		});
 	});

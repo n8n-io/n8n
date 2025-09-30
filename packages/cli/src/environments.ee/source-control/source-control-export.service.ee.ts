@@ -532,7 +532,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			this.logger.error('Failed to export projects to work folder', { error });
+			if (error instanceof UnexpectedError) throw error;
 			throw new UnexpectedError('Failed to export projects to work folder', { cause: error });
 		}
 	}
