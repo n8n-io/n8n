@@ -169,9 +169,6 @@ catalogs:
     unplugin-icons:
       specifier: ^0.19.0
       version: 0.19.0
-    unplugin-vue-components:
-      specifier: ^0.27.2
-      version: 0.27.3
     vue:
       specifier: ^3.5.13
       version: 3.5.13
@@ -2296,9 +2293,6 @@ importers:
       unplugin-icons:
         specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
-      unplugin-vue-components:
-        specifier: catalog:frontend
-        version: 0.27.3(@babel/parser@7.27.5)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
         version: 6.3.5(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2855,9 +2849,6 @@ importers:
       unplugin-icons:
         specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
-      unplugin-vue-components:
-        specifier: catalog:frontend
-        version: 0.27.3(@babel/parser@7.27.5)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
         version: 6.3.5(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -16062,19 +16053,6 @@ packages:
       vue-template-compiler:
         optional: true
       vue-template-es2015-compiler:
-        optional: true
-
-  unplugin-vue-components@0.27.3:
-    resolution: {integrity: sha512-5wg7lbdg5ZcrAQNzyYK+6gcg/DG8K6rO+f5YeuvqGHs/PhpapBvpA4O/0ex/pFthE5WgRk43iWuRZEMLVsdz4Q==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@babel/parser': ^7.15.8
-      '@nuxt/kit': ^3.2.2
-      vue: 2 || 3
-    peerDependenciesMeta:
-      '@babel/parser':
-        optional: true
-      '@nuxt/kit':
         optional: true
 
   unplugin@1.11.0:
@@ -32958,25 +32936,6 @@ snapshots:
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.13
     transitivePeerDependencies:
-      - supports-color
-
-  unplugin-vue-components@0.27.3(@babel/parser@7.27.5)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2)):
-    dependencies:
-      '@antfu/utils': 0.7.10
-      '@rollup/pluginutils': 5.1.4(rollup@4.49.0)
-      chokidar: 4.0.3
-      debug: 4.4.1(supports-color@8.1.1)
-      fast-glob: 3.3.3
-      local-pkg: 0.5.0
-      magic-string: 0.30.17
-      minimatch: 9.0.5
-      mlly: 1.7.4
-      unplugin: 1.11.0
-      vue: 3.5.13(typescript@5.9.2)
-    optionalDependencies:
-      '@babel/parser': 7.27.5
-    transitivePeerDependencies:
-      - rollup
       - supports-color
 
   unplugin@1.11.0:
