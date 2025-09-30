@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
-import type { IMenuItem } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -40,7 +39,7 @@ import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTempl
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-
+import ProjectNavigation from '@/components/Projects/ProjectNavigation.vue';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
 	N8nActionDropdown,
@@ -53,6 +52,7 @@ import {
 	N8nNavigationDropdown,
 	N8nText,
 	N8nTooltip,
+	type IMenuItem,
 } from '@n8n/design-system';
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
