@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { VIEWS } from '@/constants';
+import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './commandBar/useNodeCommands';
 import { useWorkflowCommands } from './commandBar/useWorkflowCommands';
@@ -12,12 +12,18 @@ import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
+import { usePostHog } from '@/stores/posthog.store';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
 	const router = useRouter();
 	const route = useRoute();
+	const postHog = usePostHog();
+
+	const isEnabled = computed(() =>
+		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
+	);
 
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
@@ -118,6 +124,7 @@ export function useCommandBar() {
 	}
 
 	return {
+		isEnabled,
 		items,
 		initialize,
 		onCommandBarChange,

@@ -44,14 +44,17 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 
-const showCommandBar = computed(() => hasPermission(['authenticated']));
-
 const {
 	initialize: initializeCommandBar,
+	isEnabled: isCommandBarEnabled,
 	items,
 	onCommandBarChange,
 	onCommandBarNavigateTo,
 } = useCommandBar();
+
+const showCommandBar = computed(
+	() => isCommandBarEnabled.value && hasPermission(['authenticated']),
+);
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -164,6 +167,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
+
 			<N8nCommandBar
 				v-if="showCommandBar"
 				:items="items"
