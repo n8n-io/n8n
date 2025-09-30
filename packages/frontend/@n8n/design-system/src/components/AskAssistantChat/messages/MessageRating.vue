@@ -87,17 +87,19 @@ function onCancelFeedback() {
 			<template v-else>
 				<N8nIconButton
 					type="tertiary"
-					size="small"
+					size="mini"
 					text
 					icon="thumbs-up"
+					icon-size="large"
 					data-test-id="message-thumbs-up-button"
 					@click="onRateButton('up')"
 				/>
 				<N8nIconButton
 					type="tertiary"
-					size="small"
+					size="mini"
 					text
 					icon="thumbs-down"
+					icon-size="large"
 					data-test-id="message-thumbs-down-button"
 					@click="onRateButton('down')"
 				/>
@@ -180,9 +182,12 @@ function onCancelFeedback() {
 
 /* Minimal style specific */
 .minimal {
-	margin-top: 0;
+	margin-top: var(--spacing-5xs);
 	.buttons {
-		gap: var(--spacing-3xs);
+		gap: 2px;
+
+		--button-padding-vertical: 0;
+		--button-padding-horizontal: 0;
 	}
 
 	.feedbackContainer {
