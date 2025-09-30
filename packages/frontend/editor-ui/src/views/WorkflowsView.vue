@@ -262,7 +262,7 @@ const isDragNDropEnabled = computed(() => {
 });
 
 const listScrollContainer = computed<HTMLElement | null>(() => {
-	const component = resourcesListLayoutRef.value as unknown as ResourcesListLayoutExpose | null;
+	const component = resourcesListLayoutRef.value as ResourcesListLayoutExpose | null;
 	return component?.getScrollContainer?.() ?? null;
 });
 
