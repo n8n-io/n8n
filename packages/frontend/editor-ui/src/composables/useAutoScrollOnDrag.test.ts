@@ -2,28 +2,33 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useAutoScrollOnDrag } from './useAutoScrollOnDrag';
 import { effectScope, nextTick, ref, type Ref } from 'vue';
 
-const createContainer = () => {
+const createContainer = (
+	overrides: { top?: number; height?: number; scrollHeight?: number } = {},
+) => {
 	const container = document.createElement('div');
+	const top = overrides.top ?? 100;
+	const height = overrides.height ?? 400;
+	const bottom = top + height;
 
 	Object.defineProperty(container, 'scrollHeight', {
-		value: 1000,
+		value: overrides.scrollHeight ?? 1000,
 		writable: true,
 	});
 
 	Object.defineProperty(container, 'clientHeight', {
-		value: 400,
+		value: height,
 		writable: true,
 	});
 
 	vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
-		top: 100,
-		bottom: 500,
+		top,
+		bottom,
 		left: 0,
 		right: 0,
 		width: 0,
-		height: 400,
+		height,
 		x: 0,
-		y: 100,
+		y: top,
 		toJSON: () => ({}),
 	});
 
@@ -113,13 +118,42 @@ describe('useAutoScrollOnDrag', () => {
 		});
 
 		if (!containerRef || !isActive) {
-			throw new Error('refs not initialized');
+			throw new Error('refs not initialised');
 		}
 		containerRef.value = container;
 		isActive.value = true;
 		await nextTick();
 
 		window.dispatchEvent(new MouseEvent('mousemove', { clientY: 490 }));
+		runPendingFrames();
+
+		expect(scrollBy).toHaveBeenCalledTimes(1);
+		const [scrollOptions] = scrollBy.mock.calls[0] as [ScrollToOptions];
+		expect(scrollOptions.top).toBeGreaterThan(0);
+	});
+
+	it('prefers the closest edge when the container is shorter than the edge size', async () => {
+		const { container, scrollBy } = createContainer({ height: 40, scrollHeight: 400 });
+		let isActive: Ref<boolean> | undefined;
+		let containerRef: Ref<HTMLElement | null> | undefined;
+
+		scope.run(() => {
+			isActive = ref(false);
+			containerRef = ref(null);
+			useAutoScrollOnDrag({
+				isActive,
+				container: containerRef,
+			});
+		});
+
+		if (!containerRef || !isActive) {
+			throw new Error('refs not initialised');
+		}
+		containerRef.value = container;
+		isActive.value = true;
+		await nextTick();
+
+		window.dispatchEvent(new MouseEvent('mousemove', { clientY: 135 }));
 		runPendingFrames();
 
 		expect(scrollBy).toHaveBeenCalledTimes(1);
@@ -142,7 +176,7 @@ describe('useAutoScrollOnDrag', () => {
 		});
 
 		if (!containerRef || !isActive) {
-			throw new Error('refs not initialized');
+			throw new Error('refs not initialised');
 		}
 		containerRef.value = container;
 		isActive.value = true;
@@ -177,7 +211,7 @@ describe('useAutoScrollOnDrag', () => {
 		});
 
 		if (!containerRef || !isActive) {
-			throw new Error('refs not initialized');
+			throw new Error('refs not initialised');
 		}
 		containerRef.value = container;
 		isActive.value = true;

@@ -70,12 +70,18 @@ export function useAutoScrollOnDrag(options: UseAutoScrollOnDragOptions) {
 			const distanceToTop = pointerY - rect.top;
 			const distanceToBottom = rect.bottom - pointerY;
 
-			if (distanceToTop < edgeSize) {
-				direction = -1;
-				distanceIntoEdge = edgeSize - distanceToTop;
-			} else if (distanceToBottom < edgeSize) {
-				direction = 1;
-				distanceIntoEdge = edgeSize - distanceToBottom;
+			const isNearTop = distanceToTop < edgeSize;
+			const isNearBottom = distanceToBottom < edgeSize;
+
+			if (isNearTop || isNearBottom) {
+				const shouldScrollUp = !isNearBottom || distanceToTop <= distanceToBottom;
+				if (shouldScrollUp) {
+					direction = -1;
+					distanceIntoEdge = edgeSize - Math.min(distanceToTop, edgeSize);
+				} else {
+					direction = 1;
+					distanceIntoEdge = edgeSize - Math.min(distanceToBottom, edgeSize);
+				}
 			}
 		}
 
