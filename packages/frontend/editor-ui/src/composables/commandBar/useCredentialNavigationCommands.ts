@@ -8,6 +8,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from './types';
+import { VIEWS } from '@/constants';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -121,8 +122,24 @@ export function useCredentialNavigationCommands(options: {
 					},
 				},
 				handler: () => {
+					const currentProjectId =
+						typeof route.params.projectId === 'string'
+							? route.params.projectId
+							: personalProjectId.value;
+
+					const routeName =
+						route.name === VIEWS.SHARED_CREDENTIALS
+							? VIEWS.SHARED_CREDENTIALS
+							: route.name === VIEWS.CREDENTIALS
+								? VIEWS.CREDENTIALS
+								: VIEWS.PROJECTS_CREDENTIALS;
+
 					void router.push({
-						params: { credentialId: 'create' },
+						name: routeName,
+						params: {
+							projectId: currentProjectId,
+							credentialId: 'create',
+						},
 					});
 				},
 			},
