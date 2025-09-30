@@ -23,6 +23,7 @@ const {
 	entries,
 	flatLogEntries,
 	latestNodeInfo,
+	isHeaderClickable,
 } = defineProps<{
 	isOpen: boolean;
 	selected?: LogEntry;
@@ -32,6 +33,7 @@ const {
 	entries: LogEntry[];
 	flatLogEntries: LogEntry[];
 	latestNodeInfo: Record<string, LatestNodeInfo>;
+	isHeaderClickable: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -136,6 +138,7 @@ watch(
 		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
 			data-test-id="logs-overview-header"
+			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>

@@ -7,7 +7,7 @@ import { STORES } from '@n8n/stores';
 
 const renderComponent = createComponentRenderer(RunDataPinButton, {
 	global: {
-		stubs: ['font-awesome-icon'],
+		stubs: ['FontAwesomeIcon'],
 		plugins: [
 			createTestingPinia({
 				initialState: {

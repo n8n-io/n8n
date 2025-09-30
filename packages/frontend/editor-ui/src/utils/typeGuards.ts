@@ -14,6 +14,7 @@ import type {
 	Resource,
 	VariableResource,
 	WorkflowResource,
+	WorkflowListItem,
 } from '@/Interface';
 import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
@@ -21,6 +22,7 @@ import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
 import type { ComponentPublicInstance } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListResource } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
@@ -157,3 +159,6 @@ export function isProjectRole(role: string): role is ProjectRole {
 export function isTeamProjectRole(role: string): role is TeamProjectRole {
 	return isProjectRole(role) && role !== 'project:personalOwner';
 }
+
+export const isWorkflowListItem = (resource: WorkflowListResource): resource is WorkflowListItem =>
+	'resource' in resource ? resource.resource !== 'folder' : true;

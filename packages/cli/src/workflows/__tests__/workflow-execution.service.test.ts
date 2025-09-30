@@ -126,7 +126,6 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				partialExecutionVersion: 1,
 				startNodes: runPayload.startNodes,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
 				triggerToStartFrom: runPayload.triggerToStartFrom,
@@ -162,7 +161,6 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				partialExecutionVersion: 1,
 				startNodes: runPayload.startNodes,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
 				triggerToStartFrom: runPayload.triggerToStartFrom,
@@ -213,7 +211,6 @@ describe('WorkflowExecutionService', () => {
 					pushRef: undefined,
 					workflowData: runPayload.workflowData,
 					userId,
-					partialExecutionVersion: 1,
 					startNodes: [
 						{
 							name: triggerNode.name,
@@ -280,7 +277,6 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				partialExecutionVersion: 1,
 				startNodes: [
 					{
 						// Start from pinned trigger
@@ -351,7 +347,6 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				partialExecutionVersion: 1,
 				// ignore pinned trigger
 				startNodes: [],
 				dirtyNodeNames: runPayload.dirtyNodeNames,

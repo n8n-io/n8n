@@ -179,7 +179,7 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 	});
 
-	it('opens collapsed panel when clicked', async () => {
+	it('toggles panel when header is clicked', async () => {
 		workflowsStore.setWorkflow(aiChatWorkflow);
 
 		const rendered = render();
@@ -187,6 +187,12 @@ describe('LogsPanel', () => {
 		await fireEvent.click(await rendered.findByTestId('logs-overview-header'));
 
 		expect(await rendered.findByTestId('logs-overview-empty')).toBeInTheDocument();
+
+		await fireEvent.click(await rendered.findByTestId('logs-overview-header'));
+
+		await waitFor(() =>
+			expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument(),
+		);
 	});
 
 	it('should toggle panel when chevron icon button in the overview panel is clicked', async () => {
@@ -327,7 +333,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		workflowsStore.updateNodeExecutionData({
+		workflowsStore.updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -757,7 +763,7 @@ describe('LogsPanel', () => {
 		});
 
 		describe('message history handling', () => {
-			it('should properly navigate through message history with wrap-around', async () => {
+			it('should properly navigate through message history without wrap-around', async () => {
 				workflowsStore.resetChatMessages();
 				workflowsStore.appendChatMessage('Message 1');
 				workflowsStore.appendChatMessage('Message 2');
@@ -780,16 +786,24 @@ describe('LogsPanel', () => {
 				await userEvent.keyboard('{ArrowUp}');
 				expect(input).toHaveValue('Message 1');
 
-				// Fourth up should wrap around to most recent
+				// Fourth up should stay at oldest message (no wrap-around)
 				await userEvent.keyboard('{ArrowUp}');
+				expect(input).toHaveValue('Message 1');
+
+				// Down arrow should move forward through history
+				await userEvent.keyboard('{ArrowDown}');
+				expect(input).toHaveValue('Message 2');
+
+				// Continue forward
+				await userEvent.keyboard('{ArrowDown}');
 				expect(input).toHaveValue('Message 3');
 
-				// Down arrow should go in reverse
+				// Down at the end should clear input
 				await userEvent.keyboard('{ArrowDown}');
-				expect(input).toHaveValue('Message 1');
+				expect(input).toHaveValue('');
 			});
 
-			it('should reset message history navigation on new input', async () => {
+			it('should reset message history navigation when message is sent', async () => {
 				workflowsStore.resetChatMessages();
 				workflowsStore.appendChatMessage('Message 1');
 				workflowsStore.appendChatMessage('Message 2');
@@ -800,15 +814,40 @@ describe('LogsPanel', () => {
 				chatEventBus.emit('focusInput');
 
 				// Navigate to oldest message
-				await userEvent.keyboard('{ArrowUp}'); // Most recent
-				await userEvent.keyboard('{ArrowUp}'); // Oldest
+				await userEvent.keyboard('{ArrowUp}'); // Most recent (Message 2)
+				await userEvent.keyboard('{ArrowUp}'); // Oldest (Message 1)
 				expect(input).toHaveValue('Message 1');
 
+				// Clear and type new message
+				await userEvent.clear(input);
 				await userEvent.type(input, 'New message');
 				await userEvent.keyboard('{Enter}');
 
+				// After sending, pressing up should show most recent message
 				await userEvent.keyboard('{ArrowUp}');
 				expect(input).toHaveValue('Message 2');
+			});
+
+			it('should exit history mode and restore input on escape key', async () => {
+				workflowsStore.resetChatMessages();
+				workflowsStore.appendChatMessage('Message 1');
+				workflowsStore.appendChatMessage('Message 2');
+
+				const { findByTestId } = render();
+				const input = await findByTestId('chat-input');
+
+				chatEventBus.emit('focusInput');
+
+				// Type some text first
+				await userEvent.type(input, 'Current input');
+
+				// Navigate to a history message
+				await userEvent.keyboard('{ArrowUp}');
+				expect(input).toHaveValue('Message 2');
+
+				// Press escape to restore original input
+				await userEvent.keyboard('{Escape}');
+				expect(input).toHaveValue('Current input');
 			});
 		});
 

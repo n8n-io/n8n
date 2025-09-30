@@ -206,16 +206,16 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<N8nIcon icon="arrow-left" />
-				<n8n-heading size="large" :bold="true">{{
+				<N8nHeading size="large" :bold="true">{{
 					locale.baseText('evaluation.listRuns.runListHeader', {
 						interpolate: {
 							name: workflowName,
 						},
 					})
-				}}</n8n-heading>
+				}}</N8nHeading>
 			</button>
 			<span :class="$style.headerSeparator">/</span>
-			<n8n-heading size="large" :bold="true">
+			<N8nHeading size="large" :bold="true">
 				{{
 					locale.baseText('evaluation.listRuns.testCasesListHeader', {
 						interpolate: {
@@ -223,9 +223,9 @@ onMounted(async () => {
 						},
 					})
 				}}
-			</n8n-heading>
+			</N8nHeading>
 		</div>
-		<n8n-callout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
+		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
 			<N8nText size="small" :class="$style.capitalized">
 				{{
 					locale.baseText(
@@ -234,9 +234,9 @@ onMounted(async () => {
 					) ?? locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 				}}
 			</N8nText>
-		</n8n-callout>
+		</N8nCallout>
 
-		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
+		<ElScrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
 					<N8nText size="small" :class="$style.summaryCardTitle">
@@ -294,11 +294,11 @@ onMounted(async () => {
 					}}</N8nText>
 				</div>
 			</div>
-		</el-scrollbar>
+		</ElScrollbar>
 
 		<div :class="['mb-s', $style.runsHeader]">
 			<div>
-				<n8n-heading size="large" :bold="true"
+				<N8nHeading size="large" :bold="true"
 					>{{
 						locale.baseText('evaluation.listRuns.allTestCases', {
 							interpolate: {
@@ -306,10 +306,10 @@ onMounted(async () => {
 							},
 						})
 					}}
-				</n8n-heading>
+				</N8nHeading>
 			</div>
 			<div :class="$style.runsHeaderButtons">
-				<n8n-icon-button
+				<N8nIconButton
 					:icon="isAllExpanded ? 'chevrons-down-up' : 'chevrons-up-down'"
 					type="secondary"
 					size="medium"
@@ -325,7 +325,7 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<n8n-callout
+		<N8nCallout
 			v-if="
 				!isLoading &&
 				!inputColumns.length &&
@@ -339,10 +339,10 @@ onMounted(async () => {
 			<N8nText size="small" :class="$style.capitalized">
 				{{ locale.baseText('evaluation.runDetail.notice.useSetInputs') }}
 			</N8nText>
-		</n8n-callout>
+		</N8nCallout>
 
 		<div v-if="isLoading" :class="$style.loading">
-			<n8n-loading :loading="true" :rows="5" />
+			<N8nLoading :loading="true" :rows="5" />
 		</div>
 
 		<TestTableBase

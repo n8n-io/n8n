@@ -1,0 +1,130 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nPromptInput > rendering > should render correctly with default props 1`] = `
+<div>
+  <div
+    class="wrapper"
+  >
+    <div
+      class="container"
+      style="min-height: 40px;"
+    >
+      <!-- Warning banner when character limit is reached -->
+      <!--v-if-->
+      <!-- Single line mode: input and button side by side -->
+      <div
+        class="singleLineWrapper"
+      >
+        <textarea
+          class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          maxlength="1000"
+          placeholder=""
+          rows="1"
+        />
+        <div
+          class="inlineActions"
+        >
+          <button
+            aria-disabled="true"
+            aria-live="polite"
+            class="button button primary small disabled withIcon square sendButton sendButton"
+            data-test-id="send-message-button"
+            disabled=""
+          >
+            <span
+              class="icon"
+            >
+              <svg
+                aria-hidden="true"
+                class="n8n-icon"
+                data-icon="arrow-up"
+                focusable="false"
+                height="16px"
+                role="img"
+                viewBox="0 0 24 24"
+                width="16px"
+              >
+                <path
+                  d="m5 12l7-7l7 7m-7 7V5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+            </span>
+            <!--v-if-->
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Credits bar below input -->
+    <!--v-if-->
+  </div>
+</div>
+`;
+
+exports[`N8nPromptInput > rendering > should render streaming state without disabling textarea 1`] = `
+<div>
+  <div
+    class="wrapper"
+  >
+    <div
+      class="container"
+      style="min-height: 40px;"
+    >
+      <!-- Warning banner when character limit is reached -->
+      <!--v-if-->
+      <!-- Single line mode: input and button side by side -->
+      <div
+        class="singleLineWrapper"
+      >
+        <textarea
+          class="singleLineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          maxlength="1000"
+          placeholder=""
+          rows="1"
+        />
+        <div
+          class="inlineActions"
+        >
+          <button
+            aria-live="polite"
+            class="button button primary small withIcon square stopButton stopButton"
+            data-test-id="send-message-button"
+          >
+            <span
+              class="icon"
+            >
+              <svg
+                aria-hidden="true"
+                class="n8n-icon"
+                data-icon="filled-square"
+                fill="currentColor"
+                focusable="false"
+                height="12px"
+                overflow="hidden"
+                role="img"
+                viewBox="0 0 10 10"
+                width="12px"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  height="10"
+                  rx="2"
+                  ry="2"
+                  width="10"
+                />
+              </svg>
+            </span>
+            <!--v-if-->
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Credits bar below input -->
+    <!--v-if-->
+  </div>
+</div>
+`;

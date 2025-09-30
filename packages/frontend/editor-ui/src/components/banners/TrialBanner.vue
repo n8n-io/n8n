@@ -85,9 +85,9 @@ function onUpdatePlanClick() {
 			</div>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
+			<N8nButton type="success" icon="gem" size="small" @click="onUpdatePlanClick">{{
 				locale.baseText('generic.upgradeNow')
-			}}</n8n-button>
+			}}</N8nButton>
 		</template>
 	</BaseBanner>
 </template>

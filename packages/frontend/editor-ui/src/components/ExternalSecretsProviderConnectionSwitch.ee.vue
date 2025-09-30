@@ -65,20 +65,20 @@ async function onUpdateConnected(value: boolean) {
 
 <template>
 	<div v-loading="saving" class="connection-switch">
-		<n8n-icon
+		<N8nIcon
 			v-if="provider.state === 'error'"
 			color="danger"
 			icon="triangle-alert"
 			class="mr-2xs"
 		/>
-		<n8n-text :color="connectedTextColor" bold class="mr-2xs">
+		<N8nText :color="connectedTextColor" bold class="mr-2xs">
 			{{
 				i18n.baseText(
 					`settings.externalSecrets.card.${provider.connected ? 'connected' : 'disconnected'}`,
 				)
 			}}
-		</n8n-text>
-		<el-switch
+		</N8nText>
+		<ElSwitch
 			:model-value="provider.connected"
 			:title="
 				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
@@ -89,7 +89,7 @@ async function onUpdateConnected(value: boolean) {
 			data-test-id="settings-external-secrets-connected-switch"
 			@update:model-value="onUpdateConnected"
 		>
-		</el-switch>
+		</ElSwitch>
 	</div>
 </template>
 

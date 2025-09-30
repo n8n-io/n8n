@@ -446,6 +446,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('toggle-focus-panel-button');
 	}
 
+	stopExecutionButton(): Locator {
+		return this.page.getByTestId('stop-execution-button');
+	}
+
 	// Actions
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
@@ -747,5 +751,9 @@ export class CanvasPage extends BasePage {
 
 	getCanvasPlusButton(): Locator {
 		return this.page.getByTestId('canvas-plus-button');
+	}
+
+	getWorkflowName(): Locator {
+		return this.page.getByTestId('workflow-name-input');
 	}
 }

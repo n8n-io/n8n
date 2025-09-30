@@ -65,7 +65,7 @@ export const frontendConfig = tseslint.config(
 				'error',
 				'PascalCase',
 				{
-					registeredComponentsOnly: true,
+					registeredComponentsOnly: false,
 				},
 			],
 			'vue/no-reserved-component-names': [

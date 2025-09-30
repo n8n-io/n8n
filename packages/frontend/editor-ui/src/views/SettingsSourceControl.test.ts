@@ -74,7 +74,7 @@ describe('SettingsSourceControl', () => {
 		const { container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
 			pinia,
 			global: {
-				stubs: ['teleport'],
+				stubs: ['Teleport'],
 			},
 		});
 
@@ -150,52 +150,141 @@ describe('SettingsSourceControl', () => {
 		expect(generateKeyPairSpy).toHaveBeenCalledWith('rsa');
 	}, 10000);
 
-	describe('should test repo URLs', () => {
+	describe('Protocol Selection', () => {
 		beforeEach(() => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
 		});
 
-		test.each([
-			['git@github.com:user/repository.git', true],
-			['git@github.enterprise.com:org-name/repo-name.git', true],
-			['git@192.168.1.101:2222:user/repo.git', true],
-			['git@github.com:user/repo.git/path/to/subdir', true],
-			// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
-			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
-			['git@github.com:org/suborg/repo.git', true],
-			['git@github.com:user-name/repo-name.git', true],
-			['git@github.com:user_name/repo_name.git', true],
-			['git@github.com:user/repository', true],
-			['git@github.enterprise.com:org-name/repo-name', true],
-			['git@192.168.1.101:2222:user/repo', true],
-			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
-			['ssh://git@mydomain.example:2224/gitolite-admin', true],
-			['gituser@192.168.1.1:ABC/Repo4.git', true],
-			['root@192.168.1.1/repo.git', true],
-			['http://github.com/user/repository', false],
-			['https://github.com/user/repository', false],
-			['git@gitlab.com:something.net/n8n.git', true],
-		])('%s', async (url: string, isValid: boolean) => {
+		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			await nextTick();
-			const { container, queryByText } = renderComponent({
+			const { container, getByTestId } = renderComponent({
 				pinia,
 			});
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+			// SSH should be selected by default
+			const connectionTypeSelect = getByTestId('source-control-connection-type-select');
+			expect(within(connectionTypeSelect).getByDisplayValue('SSH')).toBeInTheDocument();
 
-			await userEvent.click(repoUrlInput);
-			await userEvent.type(repoUrlInput, url);
-			await userEvent.tab();
+			// SSH-specific fields should be visible
+			expect(getByTestId('source-control-ssh-key-type-select')).toBeInTheDocument();
+			expect(getByTestId('source-control-refresh-ssh-key-button')).toBeInTheDocument();
+			expect(container.querySelector('input[name="repoUrl"]')).toBeInTheDocument();
 
-			const inputError = expect(queryByText('The Git repository URL is not valid'));
+			// HTTPS-specific fields should not be visible
+			expect(container.querySelector('input[name="httpsUsername"]')).not.toBeInTheDocument();
+			expect(container.querySelector('input[name="httpsPassword"]')).not.toBeInTheDocument();
+		});
 
-			if (isValid) {
-				inputError.not.toBeInTheDocument();
-			} else {
-				inputError.toBeInTheDocument();
-			}
+		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
+			await nextTick();
+			const { container, queryByTestId } = renderComponent({
+				pinia,
+			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			// Change to HTTPS protocol
+			const connectionTypeSelect = queryByTestId('source-control-connection-type-select')!;
+			await userEvent.click(within(connectionTypeSelect).getByRole('combobox'));
+			await waitFor(() => expect(screen.getByText('HTTPS')).toBeVisible());
+			await userEvent.click(screen.getByText('HTTPS'));
+
+			// HTTPS-specific fields should be visible
+			expect(container.querySelector('input[name="httpsUsername"]')).toBeInTheDocument();
+			expect(container.querySelector('input[name="httpsPassword"]')).toBeInTheDocument();
+			expect(container.querySelector('input[name="repoUrl"]')).toBeInTheDocument();
+
+			// SSH-specific fields should not be visible
+			expect(queryByTestId('source-control-ssh-key-type-select')).not.toBeInTheDocument();
+			expect(queryByTestId('source-control-refresh-ssh-key-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('should test repo URLs', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
+		describe('for ssh connection', () => {
+			test.each([
+				['git@github.com:user/repository.git', true],
+				['git@github.enterprise.com:org-name/repo-name.git', true],
+				['git@192.168.1.101:2222:user/repo.git', true],
+				['git@github.com:user/repo.git/path/to/subdir', true],
+				// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
+				['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
+				['git@github.com:org/suborg/repo.git', true],
+				['git@github.com:user-name/repo-name.git', true],
+				['git@github.com:user_name/repo_name.git', true],
+				['git@github.com:user/repository', true],
+				['git@github.enterprise.com:org-name/repo-name', true],
+				['git@192.168.1.101:2222:user/repo', true],
+				['git@ssh.dev.azure.com:v3/User/repo/directory', true],
+				['ssh://git@mydomain.example:2224/gitolite-admin', true],
+				['gituser@192.168.1.1:ABC/Repo4.git', true],
+				['root@192.168.1.1/repo.git', true],
+				['http://github.com/user/repository', false],
+				['https://github.com/user/repository', false],
+				['git@gitlab.com:something.net/n8n.git', true],
+			])('%s', async (url: string, isValid: boolean) => {
+				await nextTick();
+				const { container, queryByText } = renderComponent({
+					pinia,
+				});
+
+				await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+				const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+				await userEvent.click(repoUrlInput);
+				await userEvent.type(repoUrlInput, url);
+				await userEvent.tab();
+
+				const inputError = expect(queryByText('The Git repository URL is not valid'));
+
+				if (isValid) {
+					inputError.not.toBeInTheDocument();
+				} else {
+					inputError.toBeInTheDocument();
+				}
+			});
+		});
+
+		describe('for https connection', () => {
+			test.each([
+				['git@github.com:user/repository.git', false],
+				['git@github.enterprise.com:org-name/repo-name.git', false],
+				['http://github.com/user/repository', false],
+				['https://github.com/user/repository.git', true],
+			])('%s', async (url: string, isValid: boolean) => {
+				await nextTick();
+				const { container, queryByText, queryByTestId } = renderComponent({
+					pinia,
+				});
+
+				await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+				// Change to HTTPS protocol
+				const connectionTypeSelect = queryByTestId('source-control-connection-type-select')!;
+				await userEvent.click(within(connectionTypeSelect).getByRole('combobox'));
+				await waitFor(() => expect(screen.getByText('HTTPS')).toBeVisible());
+				await userEvent.click(screen.getByText('HTTPS'));
+
+				const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+				await userEvent.click(repoUrlInput);
+				await userEvent.type(repoUrlInput, url);
+				await userEvent.tab();
+
+				const inputError = expect(queryByText('Please enter a valid HTTPS URL'));
+
+				if (isValid) {
+					inputError.not.toBeInTheDocument();
+				} else {
+					inputError.toBeInTheDocument();
+				}
+			});
 		});
 	});
 });

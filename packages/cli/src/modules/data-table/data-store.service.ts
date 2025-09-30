@@ -191,8 +191,8 @@ export class DataStoreService {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		const result = await this.dataStoreColumnRepository.manager.transaction(async (em) => {
-			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, em);
+		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, trx);
 			this.validateRowsWithColumns(rows, columns);
 
 			return await this.dataStoreRowsRepository.insertRows(
@@ -200,7 +200,7 @@ export class DataStoreService {
 				rows,
 				columns,
 				returnType,
-				em,
+				trx,
 			);
 		});
 
@@ -224,8 +224,8 @@ export class DataStoreService {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
-		const result = await this.dataStoreColumnRepository.manager.transaction(async (em) => {
-			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, trx);
 			this.validateUpdateParams(dto, columns);
 			const updated = await this.dataStoreRowsRepository.updateRow(
 				dataTableId,
@@ -233,7 +233,7 @@ export class DataStoreService {
 				dto.filter,
 				columns,
 				true,
-				em,
+				trx,
 			);
 
 			if (updated.length > 0) {
@@ -246,7 +246,7 @@ export class DataStoreService {
 				[dto.data],
 				columns,
 				returnData ? 'all' : 'id',
-				em,
+				trx,
 			);
 			return returnData ? inserted : true;
 		});
@@ -292,8 +292,8 @@ export class DataStoreService {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
 
-		const result = await this.dataStoreColumnRepository.manager.transaction(async (em) => {
-			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, em);
+		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, trx);
 			this.validateUpdateParams(dto, columns);
 			return await this.dataStoreRowsRepository.updateRow(
 				dataTableId,
@@ -301,7 +301,7 @@ export class DataStoreService {
 				dto.filter,
 				columns,
 				returnData,
-				em,
+				trx,
 			);
 		});
 
@@ -324,22 +324,25 @@ export class DataStoreService {
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
+			const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId, trx);
 
-		if (!dto.filter?.filters || dto.filter.filters.length === 0) {
-			throw new DataStoreValidationError(
-				'Filter is required for delete operations to prevent accidental deletion of all data',
+			if (!dto.filter?.filters || dto.filter.filters.length === 0) {
+				throw new DataStoreValidationError(
+					'Filter is required for delete operations to prevent accidental deletion of all data',
+				);
+			}
+
+			this.validateAndTransformFilters(dto.filter, columns);
+
+			return await this.dataStoreRowsRepository.deleteRows(
+				dataStoreId,
+				columns,
+				dto.filter,
+				returnData,
+				trx,
 			);
-		}
-
-		this.validateAndTransformFilters(dto.filter, columns);
-
-		const result = await this.dataStoreRowsRepository.deleteRows(
-			dataStoreId,
-			columns,
-			dto.filter,
-			returnData,
-		);
+		});
 
 		this.dataStoreSizeValidator.reset();
 

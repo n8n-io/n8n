@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAttrs } from 'vue';
-import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 defineProps<{ label: string; icon: IconName; placement: 'left' | 'right' | 'top' | 'bottom' }>();
 
@@ -14,12 +14,12 @@ const onClick = () => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-tooltip :placement="placement">
+		<N8nTooltip :placement="placement">
 			<template #content>
 				{{ label }}
 			</template>
-			<n8n-icon :class="$style.icon" :icon="icon" size="xsmall" @click="onClick" />
-		</n8n-tooltip>
+			<N8nIcon :class="$style.icon" :icon="icon" size="xsmall" @click="onClick" />
+		</N8nTooltip>
 	</div>
 </template>
 

@@ -9,6 +9,7 @@ import {
 	registerModuleModals,
 	registerModuleProjectTabs,
 	registerModuleResources,
+	registerModuleSettingsPages,
 } from '@/moduleInitializer/moduleInitializer';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -225,6 +226,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerModuleSettingsPages();
 
 	authenticatedFeaturesInitialized = true;
 }

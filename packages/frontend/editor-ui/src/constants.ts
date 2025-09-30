@@ -92,6 +92,7 @@ export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
+export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -354,6 +355,7 @@ export const DATA_TYPE_ICON_MAP = {
 	date: 'calendar',
 	array: 'list',
 	object: 'box',
+	file: 'file',
 } satisfies Record<string, IconName>;
 
 /** PERSONALIZATION SURVEY */
@@ -783,7 +785,13 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const WORKFLOW_BUILDER_EXPERIMENT = {
+export const WORKFLOW_BUILDER_RELEASE_EXPERIMENT = {
+	name: '043_workflow_builder_release',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
 	control: 'control',
 	variant: 'variant',
@@ -829,8 +837,15 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 	variant2: 'variant-2-twoboxes',
 };
 
+export const PERSONALIZED_TEMPLATES_V3 = {
+	name: '044_template_reco_v3',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
-	WORKFLOW_BUILDER_EXPERIMENT.name,
+	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
+	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
@@ -838,6 +853,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_EXPERIMENT.name,
+	PERSONALIZED_TEMPLATES_V3.name,
 ];
 
 export const MFA_FORM = {
@@ -1023,3 +1039,6 @@ export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
 
 export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
 export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
+
+export const BINARY_DATA_ACCESS_TOOLTIP =
+	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";

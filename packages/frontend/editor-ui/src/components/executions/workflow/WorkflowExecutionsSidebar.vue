@@ -186,9 +186,9 @@ const goToUpgrade = () => {
 		data-test-id="executions-sidebar"
 	>
 		<div :class="$style.heading">
-			<n8n-heading tag="h2" size="medium" color="text-dark">
+			<N8nHeading tag="h2" size="medium" color="text-dark">
 				{{ i18n.baseText('generic.executions') }}
-			</n8n-heading>
+			</N8nHeading>
 
 			<ConcurrentExecutionsHeader
 				v-if="showConcurrencyHeader"
@@ -199,13 +199,13 @@ const goToUpgrade = () => {
 			/>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox
+			<ElCheckbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
 				@update:model-value="onAutoRefreshChange"
 			>
 				{{ i18n.baseText('executionsList.autoRefresh') }}
-			</el-checkbox>
+			</ElCheckbox>
 			<ExecutionsFilter popover-placement="right-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
@@ -215,16 +215,16 @@ const goToUpgrade = () => {
 			@scroll="loadMore(20)"
 		>
 			<div v-if="loading" class="mr-l">
-				<n8n-loading variant="rect" />
+				<N8nLoading variant="rect" />
 			</div>
 			<div
 				v-if="!loading && executions.length === 0"
 				:class="$style.noResultsContainer"
 				data-test-id="execution-list-empty"
 			>
-				<n8n-text color="text-base" size="medium" align="center">
+				<N8nText color="text-base" size="medium" align="center">
 					{{ i18n.baseText('executionsLandingPage.noResults') }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<WorkflowExecutionsCard
 				v-else-if="temporaryExecution"
@@ -248,7 +248,7 @@ const goToUpgrade = () => {
 				/>
 			</TransitionGroup>
 			<div v-if="loadingMore" class="mr-m">
-				<n8n-loading variant="p" :rows="1" />
+				<N8nLoading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">

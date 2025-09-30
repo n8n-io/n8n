@@ -3,7 +3,10 @@ import { mkdir, rm, readdir, appendFile } from 'fs/promises';
 import path from 'path';
 
 import { Service } from '@n8n/di';
-import { type DataSource } from '@n8n/db';
+
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { DataSource } from '@n8n/typeorm';
+import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
 @Service()
 export class ExportService {
@@ -29,8 +32,60 @@ export class ExportService {
 		}
 	}
 
+	private async exportMigrationsTable(outputDir: string): Promise<number> {
+		this.logger.info('\n🔧 Exporting migrations table:');
+		this.logger.info('==============================');
+
+		// Get the table prefix from DataSource options
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const migrationsTableName = `${tablePrefix}migrations`;
+
+		let systemTablesExported = 0;
+
+		// Check if migrations table exists and export it
+		try {
+			// Test if the migrations table exists by querying it
+			await this.dataSource.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(migrationsTableName)} LIMIT 1`,
+			);
+
+			this.logger.info(`\n📊 Processing system table: ${migrationsTableName}`);
+
+			// Clear existing files for migrations
+			await this.clearExistingEntityFiles(outputDir, 'migrations');
+
+			// Export all migrations data to a single file (no pagination needed for small table)
+			const formattedTableName = this.dataSource.driver.escape(migrationsTableName);
+			const allMigrations = await this.dataSource.query(`SELECT * FROM ${formattedTableName}`);
+
+			const fileName = 'migrations.jsonl';
+			const filePath = path.join(outputDir, fileName);
+
+			const migrationsJsonl: string = allMigrations
+				.map((migration: unknown) => JSON.stringify(migration))
+				.join('\n');
+			await appendFile(filePath, migrationsJsonl ?? '' + '\n', 'utf8');
+
+			this.logger.info(
+				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
+			);
+
+			systemTablesExported = 1; // Successfully exported migrations table
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  Migrations table ${migrationsTableName} not found or not accessible, skipping...`,
+				{ error },
+			);
+		}
+
+		return systemTablesExported;
+	}
+
 	async exportEntities(outputDir: string) {
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
+
+		validateDbTypeForExportEntities(this.dataSource.options.type);
+
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
 
@@ -46,7 +101,9 @@ export class ExportService {
 		let totalTablesProcessed = 0;
 		let totalEntitiesExported = 0;
 		const pageSize = 500;
-		const entitiesPerFile = 10000;
+		const entitiesPerFile = 500;
+
+		await this.exportMigrationsTable(outputDir);
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name
@@ -59,8 +116,9 @@ export class ExportService {
 			await this.clearExistingEntityFiles(outputDir, entityName);
 
 			// Get column information for this table
-			const columns = metadata.columns.map((col) => col.databaseName).join(', ');
-			this.logger.info(`   💭 Columns: ${columns}`);
+			const columnNames = metadata.columns.map((col) => col.databaseName);
+			const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
+			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
 			let offset = 0;
 			let totalEntityCount = 0;
@@ -73,8 +131,9 @@ export class ExportService {
 				 * use raw SQL query to avoid typeorm limitations,
 				 * typeorm repositories do not return joining table entries
 				 */
+				const formattedTableName = this.dataSource.driver.escape(tableName);
 				const pageEntities = await this.dataSource.query(
-					`SELECT ${columns} FROM ${tableName} LIMIT ${pageSize} OFFSET ${offset}`,
+					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
 				);
 
 				// If no entities returned, we've reached the end
