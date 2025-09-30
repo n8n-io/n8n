@@ -355,57 +355,95 @@ describe('SourceControlExportService', () => {
 				mock<SourceControlledFile>({ id: 'project-id-2' }),
 			];
 
-			projectRepository.find.mockResolvedValue([
-				mock<Project>({
-					id: 'project-id-1',
-					name: 'Project 1',
-					icon: { type: 'icon', value: 'icon.png' },
-					description: 'A test project',
-					type: 'personal',
-					projectRelations: [
-						{
-							role: mock<Role>({
-								slug: PROJECT_OWNER_ROLE_SLUG,
-							}),
-							user: mock<User>({ email: 'owner@example.com' }),
-						},
-					],
-				}),
-				mock<Project>({
-					id: 'project-id-2',
-					name: 'Team Project',
-					icon: { type: 'icon', value: 'team-icon.png' },
-					description: 'A team project',
-					type: 'team',
-					projectRelations: [
-						{
-							role: mock<Role>({
-								slug: PROJECT_ADMIN_ROLE_SLUG,
-							}),
-							user: mock<User>({ email: 'admin@example.com' }),
-						},
-					],
-				}),
-			]);
+			const project1 = mock<Project>({
+				id: 'project-id-1',
+				name: 'Project 1',
+				icon: { type: 'icon', value: 'icon.png' },
+				description: 'A test project',
+				type: 'personal',
+				projectRelations: [
+					{
+						role: mock<Role>({
+							slug: PROJECT_OWNER_ROLE_SLUG,
+						}),
+						user: mock<User>({ email: 'owner@example.com' }),
+					},
+				],
+			});
+			const project2 = mock<Project>({
+				id: 'project-id-2',
+				name: 'Team Project',
+				icon: { type: 'icon', value: 'team-icon.png' },
+				description: 'A team project',
+				type: 'team',
+				projectRelations: [
+					{
+						role: mock<Role>({
+							slug: PROJECT_ADMIN_ROLE_SLUG,
+						}),
+						user: mock<User>({ email: 'admin@example.com' }),
+					},
+				],
+			});
+
+			const expectedProject1Json = JSON.stringify(
+				{
+					id: project1.id,
+					name: project1.name,
+					icon: project1.icon,
+					description: project1.description,
+					owner: {
+						type: 'personal',
+						projectId: project1.id,
+						projectName: project1.name,
+						personalEmail: 'owner@example.com',
+					},
+				},
+				null,
+				2,
+			);
+			const expectedProject2Json = JSON.stringify(
+				{
+					id: project2.id,
+					name: project2.name,
+					icon: project2.icon,
+					description: project2.description,
+					owner: {
+						type: 'team',
+						teamId: project2.id,
+						teamName: project2.name,
+					},
+				},
+				null,
+				2,
+			);
+
+			projectRepository.find.mockResolvedValue([project1, project2]);
 
 			// Act
 			const result = await service.exportProjectsToWorkFolder(candidates);
 
-			console.log(result.files);
-
 			// Assert
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-1.json',
+				expectedProject1Json,
+			);
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/projects/project-id-2.json',
+				expectedProject2Json,
+			);
 			expect(result.count).toBe(2);
 			expect(result.files).toHaveLength(2);
 			expect(result.files).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({
+					{
 						id: 'project-id-1',
-						name: expect.stringContaining('project-id-1.json'),
-					}),
-					expect.objectContaining({
+						name: '/mock/n8n/git/projects/project-id-1.json',
+					},
+					{
 						id: 'project-id-2',
-						name: expect.stringContaining('project-id-2.json'),
-					}),
+						name: '/mock/n8n/git/projects/project-id-2.json',
+					},
 				]),
 			);
 		});
