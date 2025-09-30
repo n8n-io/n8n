@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -7,10 +8,6 @@ import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/co
 import type { CommandGroup, CommandBarItem } from './types';
 import type { DataStore } from '@/features/dataStore/datastore.types';
 import { N8nIcon } from '@n8n/design-system';
-
-const Section = {
-	DATA_TABLES: 'Data Tables',
-} as const;
 
 const ITEM_ID = {
 	OPEN_DATA_TABLE: 'open-data-table',
@@ -22,6 +19,7 @@ export function useDataTableNavigationCommands(options: {
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
 }): CommandGroup {
+	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataStoreStore = useDataStoreStore();
 	const projectsStore = useProjectsStore();
@@ -74,13 +72,19 @@ export function useDataTableNavigationCommands(options: {
 	const getDataTableTitle = (dataTable: DataStore, includeOpenDataTablePrefix: boolean) => {
 		let prefix = '';
 		if (dataTable.project && dataTable.project.type === 'personal') {
-			prefix = includeOpenDataTablePrefix ? 'Open data table > [Personal] > ' : '[Personal] > ';
+			prefix = includeOpenDataTablePrefix
+				? i18n.baseText('commandBar.dataTables.openPrefixPersonal')
+				: i18n.baseText('commandBar.dataTables.prefixPersonal');
 		} else {
 			prefix = includeOpenDataTablePrefix
-				? `Open data table > [${dataTable.project?.name}] > `
-				: `[${dataTable.project?.name}] > `;
+				? i18n.baseText('commandBar.dataTables.openPrefixProject', {
+						interpolate: { projectName: dataTable.project?.name ?? '' },
+					})
+				: i18n.baseText('commandBar.dataTables.prefixProject', {
+						interpolate: { projectName: dataTable.project?.name ?? '' },
+					});
 		}
-		return prefix + dataTable.name || '(unnamed data table)';
+		return prefix + (dataTable.name || i18n.baseText('commandBar.dataTables.unnamed'));
 	};
 
 	const createDataTableCommand = (
@@ -90,7 +94,7 @@ export function useDataTableNavigationCommands(options: {
 		return {
 			id: dataTable.id,
 			title: getDataTableTitle(dataTable, includeOpenDataTablePrefix),
-			section: Section.DATA_TABLES,
+			section: i18n.baseText('commandBar.sections.dataTables'),
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: DATA_STORE_DETAILS,
@@ -121,8 +125,10 @@ export function useDataTableNavigationCommands(options: {
 		return [
 			{
 				id: ITEM_ID.CREATE_DATA_TABLE,
-				title: `Create data table in ${currentProjectName.value}`,
-				section: Section.DATA_TABLES,
+				title: i18n.baseText('commandBar.dataTables.create', {
+					interpolate: { projectName: currentProjectName.value },
+				}),
+				section: i18n.baseText('commandBar.sections.dataTables'),
 				icon: {
 					component: N8nIcon,
 					props: {
@@ -139,9 +145,9 @@ export function useDataTableNavigationCommands(options: {
 			},
 			{
 				id: ITEM_ID.OPEN_DATA_TABLE,
-				title: 'Open data table',
-				section: Section.DATA_TABLES,
-				placeholder: 'Search by data table name...',
+				title: i18n.baseText('commandBar.dataTables.open'),
+				section: i18n.baseText('commandBar.sections.dataTables'),
+				placeholder: i18n.baseText('commandBar.dataTables.searchPlaceholder'),
 				icon: {
 					component: N8nIcon,
 					props: {

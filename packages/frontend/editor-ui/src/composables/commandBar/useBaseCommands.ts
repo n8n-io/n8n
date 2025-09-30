@@ -1,13 +1,15 @@
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import type { CommandGroup } from './types';
 
 export function useBaseCommands(): CommandGroup {
+	const i18n = useI18n();
 	const baseCommands = computed(() => {
 		return [
 			{
 				id: 'demo-action',
-				title: 'This is available everywhere',
-				section: 'Demo',
+				title: i18n.baseText('commandBar.demo.availableEverywhere'),
+				section: i18n.baseText('commandBar.sections.demo'),
 				handler: () => {
 					console.log('hello');
 				},

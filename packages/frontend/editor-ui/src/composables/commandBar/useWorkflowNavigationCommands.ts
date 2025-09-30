@@ -1,6 +1,7 @@
 import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
@@ -10,10 +11,6 @@ import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CommandGroup, CommandBarItem } from './types';
-
-const Section = {
-	WORKFLOWS: 'Workflows',
-} as const;
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -25,6 +22,7 @@ export function useWorkflowNavigationCommands(options: {
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
 }): CommandGroup {
+	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
@@ -96,13 +94,19 @@ export function useWorkflowNavigationCommands(options: {
 	const getWorkflowTitle = (workflow: IWorkflowDb, includeOpenWorkflowPrefix: boolean) => {
 		let prefix = '';
 		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
-			prefix = includeOpenWorkflowPrefix ? 'Open workflow > [Personal] > ' : '[Personal] > ';
+			prefix = includeOpenWorkflowPrefix
+				? i18n.baseText('commandBar.workflows.openPrefixPersonal')
+				: i18n.baseText('commandBar.workflows.prefixPersonal');
 		} else {
 			prefix = includeOpenWorkflowPrefix
-				? `Open workflow > [${workflow.homeProject?.name}] > `
-				: `[${workflow.homeProject?.name}] > `;
+				? i18n.baseText('commandBar.workflows.openPrefixProject', {
+						interpolate: { projectName: workflow.homeProject?.name ?? '' },
+					})
+				: i18n.baseText('commandBar.workflows.prefixProject', {
+						interpolate: { projectName: workflow.homeProject?.name ?? '' },
+					});
 		}
-		return prefix + workflow.name || '(unnamed workflow)';
+		return prefix + (workflow.name || i18n.baseText('commandBar.workflows.unnamed'));
 	};
 
 	const createWorkflowCommand = (
@@ -112,7 +116,7 @@ export function useWorkflowNavigationCommands(options: {
 		return {
 			id: workflow.id,
 			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
-			section: Section.WORKFLOWS,
+			section: i18n.baseText('commandBar.sections.workflows'),
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
@@ -138,8 +142,10 @@ export function useWorkflowNavigationCommands(options: {
 		return [
 			{
 				id: ITEM_ID.CREATE_WORKFLOW,
-				title: `Create workflow in ${currentProjectName.value}`,
-				section: Section.WORKFLOWS,
+				title: i18n.baseText('commandBar.workflows.create', {
+					interpolate: { projectName: currentProjectName.value },
+				}),
+				section: i18n.baseText('commandBar.sections.workflows'),
 				icon: {
 					component: N8nIcon,
 					props: {
@@ -158,9 +164,9 @@ export function useWorkflowNavigationCommands(options: {
 			},
 			{
 				id: ITEM_ID.OPEN_WORKFLOW,
-				title: 'Open workflow',
-				section: Section.WORKFLOWS,
-				placeholder: 'Search by workflow name or node type...',
+				title: i18n.baseText('commandBar.workflows.open'),
+				section: i18n.baseText('commandBar.sections.workflows'),
+				placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
 				children: openWorkflowCommands.value,
 				icon: {
 					component: N8nIcon,

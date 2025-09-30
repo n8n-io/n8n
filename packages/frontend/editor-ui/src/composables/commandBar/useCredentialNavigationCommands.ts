@@ -1,16 +1,13 @@
 import { computed, ref, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import debounce from 'lodash/debounce';
 import type { ICredentialsResponse } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from './types';
-
-const Section = {
-	CREDENTIALS: 'Credentials',
-} as const;
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -22,6 +19,7 @@ export function useCredentialNavigationCommands(options: {
 	activeNodeId: Ref<string | null>;
 	currentProjectName: Ref<string>;
 }): CommandGroup {
+	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
@@ -67,13 +65,19 @@ export function useCredentialNavigationCommands(options: {
 	) => {
 		let prefix = '';
 		if (credential.homeProject && credential.homeProject.type === 'personal') {
-			prefix = includeOpenCredentialPrefix ? 'Open credential > [Personal] > ' : '[Personal] > ';
+			prefix = includeOpenCredentialPrefix
+				? i18n.baseText('commandBar.credentials.openPrefixPersonal')
+				: i18n.baseText('commandBar.credentials.prefixPersonal');
 		} else {
 			prefix = includeOpenCredentialPrefix
-				? `Open credential > [${credential.homeProject?.name}] > `
-				: `[${credential.homeProject?.name}] > `;
+				? i18n.baseText('commandBar.credentials.openPrefixProject', {
+						interpolate: { projectName: credential.homeProject?.name ?? '' },
+					})
+				: i18n.baseText('commandBar.credentials.prefixProject', {
+						interpolate: { projectName: credential.homeProject?.name ?? '' },
+					});
 		}
-		return prefix + credential.name || '(unnamed credential)';
+		return prefix + (credential.name || i18n.baseText('commandBar.credentials.unnamed'));
 	};
 
 	const createCredentialCommand = (
@@ -83,7 +87,7 @@ export function useCredentialNavigationCommands(options: {
 		return {
 			id: credential.id,
 			title: getCredentialTitle(credential, includeOpenCredentialPrefix),
-			section: Section.CREDENTIALS,
+			section: i18n.baseText('commandBar.sections.credentials'),
 			handler: () => {
 				uiStore.openExistingCredential(credential.id);
 			},
@@ -105,8 +109,10 @@ export function useCredentialNavigationCommands(options: {
 		return [
 			{
 				id: ITEM_ID.CREATE_CREDENTIAL,
-				title: `Create credential in ${currentProjectName.value}`,
-				section: Section.CREDENTIALS,
+				title: i18n.baseText('commandBar.credentials.create', {
+					interpolate: { projectName: currentProjectName.value },
+				}),
+				section: i18n.baseText('commandBar.sections.credentials'),
 				icon: {
 					component: N8nIcon,
 					props: {
@@ -121,9 +127,9 @@ export function useCredentialNavigationCommands(options: {
 			},
 			{
 				id: ITEM_ID.OPEN_CREDENTIAL,
-				title: 'Open credential',
-				section: Section.CREDENTIALS,
-				placeholder: 'Search by credential name...',
+				title: i18n.baseText('commandBar.credentials.open'),
+				section: i18n.baseText('commandBar.sections.credentials'),
+				placeholder: i18n.baseText('commandBar.credentials.searchPlaceholder'),
 				children: openCredentialCommands.value,
 				icon: {
 					component: N8nIcon,

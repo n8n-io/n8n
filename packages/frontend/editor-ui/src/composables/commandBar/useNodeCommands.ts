@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -9,10 +10,6 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { CommandGroup } from './types';
-
-const Section = {
-	NODES: 'Nodes',
-} as const;
 
 function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
 	if (!nodeType) return {};
@@ -35,6 +32,7 @@ function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
 }
 
 export function useNodeCommands(): CommandGroup {
+	const i18n = useI18n();
 	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
@@ -50,8 +48,15 @@ export function useNodeCommands(): CommandGroup {
 			const src = getIconSource(node, rootStore.baseUrl);
 			return {
 				id: name,
-				title: `Add node > ${displayName}`,
-				keywords: ['insert', 'add', 'create', 'node'],
+				title: i18n.baseText('commandBar.nodes.addNodeWithPrefix', {
+					interpolate: { nodeName: displayName },
+				}),
+				keywords: [
+					i18n.baseText('commandBar.nodes.keywords.insert'),
+					i18n.baseText('commandBar.nodes.keywords.add'),
+					i18n.baseText('commandBar.nodes.keywords.create'),
+					i18n.baseText('commandBar.nodes.keywords.node'),
+				],
 				icon: src.path
 					? {
 							html: `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`,
@@ -71,8 +76,10 @@ export function useNodeCommands(): CommandGroup {
 			const src = getIconSource(nodeType, rootStore.baseUrl);
 			return {
 				id,
-				title: `Open node > ${name}`,
-				section: Section.NODES,
+				title: i18n.baseText('commandBar.nodes.openNodeWithPrefix', {
+					interpolate: { nodeName: name },
+				}),
+				section: i18n.baseText('commandBar.sections.nodes'),
 				keywords: [type],
 				icon: src?.path
 					? {
@@ -82,7 +89,7 @@ export function useNodeCommands(): CommandGroup {
 				handler: () => {
 					setNodeActive(id, 'command_bar');
 				},
-				placeholder: 'Search by node name, type, etc.',
+				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 			};
 		});
 	});
@@ -91,22 +98,22 @@ export function useNodeCommands(): CommandGroup {
 		return [
 			{
 				id: 'add-node',
-				title: 'Add node',
-				section: Section.NODES,
+				title: i18n.baseText('commandBar.nodes.addNode'),
+				section: i18n.baseText('commandBar.sections.nodes'),
 				children: [...addNodeCommands.value],
 			},
 			{
 				id: 'add-sticky-note',
-				title: 'Add sticky note',
-				section: Section.NODES,
+				title: i18n.baseText('commandBar.nodes.addStickyNote'),
+				section: i18n.baseText('commandBar.sections.nodes'),
 				handler: () => {
 					canvasEventBus.emit('create:sticky');
 				},
 			},
 			{
 				id: 'open-node',
-				title: 'Open node',
-				section: Section.NODES,
+				title: i18n.baseText('commandBar.nodes.openNode'),
+				section: i18n.baseText('commandBar.sections.nodes'),
 				children: [...openNodeCommands.value],
 			},
 		];

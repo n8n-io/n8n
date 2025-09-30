@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { isResourceLocatorValue } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -18,12 +19,8 @@ import { useWorkflowActivate } from '../useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from './types';
 import uniqBy from 'lodash/uniqBy';
 
-const Section = {
-	WORKFLOW: 'Workflow',
-	CREDENTIALS: 'Credentials',
-} as const;
-
 export function useWorkflowCommands(): CommandGroup {
+	const i18n = useI18n();
 	const { editableWorkflow } = useCanvasOperations();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
@@ -49,8 +46,8 @@ export function useWorkflowCommands(): CommandGroup {
 		return [
 			{
 				id: 'open-credential',
-				title: 'Open credential',
-				section: Section.CREDENTIALS,
+				title: i18n.baseText('commandBar.workflow.openCredential'),
+				section: i18n.baseText('commandBar.sections.credentials'),
 				children: [
 					...credentials.map((credential) => ({
 						id: credential.id as string,
@@ -81,12 +78,11 @@ export function useWorkflowCommands(): CommandGroup {
 		return [
 			{
 				id: 'open-sub-workflow',
-				title: 'Open subworkflow',
+				title: i18n.baseText('commandBar.workflow.openSubworkflow'),
 				children: [
 					...subworkflows.map((workflow) => ({
 						id: workflow.id,
 						title: workflow.name,
-						parent: 'Open subworkflow',
 						handler: () => {
 							const { href } = router.resolve({
 								name: VIEWS.WORKFLOW,
@@ -104,17 +100,22 @@ export function useWorkflowCommands(): CommandGroup {
 		return [
 			{
 				id: 'test-workflow',
-				title: 'Test workflow',
-				section: Section.WORKFLOW,
-				keywords: ['test', 'execute', 'run', 'workflow'],
+				title: i18n.baseText('commandBar.workflow.test'),
+				section: i18n.baseText('commandBar.sections.workflow'),
+				keywords: [
+					i18n.baseText('commandBar.workflow.keywords.test'),
+					i18n.baseText('commandBar.workflow.keywords.execute'),
+					i18n.baseText('commandBar.workflow.keywords.run'),
+					i18n.baseText('commandBar.workflow.keywords.workflow'),
+				],
 				handler: () => {
 					void runEntireWorkflow('main');
 				},
 			},
 			{
 				id: 'save-workflow',
-				title: 'Save workflow',
-				section: Section.WORKFLOW,
+				title: i18n.baseText('commandBar.workflow.save'),
+				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
 					const saved = await workflowSaving.saveCurrentWorkflow();
 					if (saved) {
@@ -126,8 +127,8 @@ export function useWorkflowCommands(): CommandGroup {
 				? [
 						{
 							id: 'deactivate-workflow',
-							title: 'Deactivate workflow',
-							section: Section.WORKFLOW,
+							title: i18n.baseText('commandBar.workflow.deactivate'),
+							section: i18n.baseText('commandBar.sections.workflow'),
 							handler: () => {
 								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
 							},
@@ -136,8 +137,8 @@ export function useWorkflowCommands(): CommandGroup {
 				: [
 						{
 							id: 'activate-workflow',
-							title: 'Activate workflow',
-							section: Section.WORKFLOW,
+							title: i18n.baseText('commandBar.workflow.activate'),
+							section: i18n.baseText('commandBar.sections.workflow'),
 							handler: () => {
 								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
 							},
@@ -145,16 +146,16 @@ export function useWorkflowCommands(): CommandGroup {
 					]),
 			{
 				id: 'select-all',
-				title: 'Select all',
-				section: Section.WORKFLOW,
+				title: i18n.baseText('commandBar.workflow.selectAll'),
+				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: () => {
 					canvasEventBus.emit('nodes:selectAll');
 				},
 			},
 			{
 				id: 'tidy-up-workflow',
-				title: 'Tidy up workflow',
-				section: Section.WORKFLOW,
+				title: i18n.baseText('commandBar.workflow.tidyUp'),
+				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: () => {
 					canvasEventBus.emit('tidyUp', {
 						source: 'command-bar',
@@ -163,8 +164,8 @@ export function useWorkflowCommands(): CommandGroup {
 			},
 			{
 				id: 'duplicate-workflow',
-				title: 'Duplicate workflow',
-				section: Section.WORKFLOW,
+				title: i18n.baseText('commandBar.workflow.duplicate'),
+				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: () => {
 					uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
@@ -178,8 +179,8 @@ export function useWorkflowCommands(): CommandGroup {
 			},
 			{
 				id: 'download-workflow',
-				title: 'Download workflow',
-				section: Section.WORKFLOW,
+				title: i18n.baseText('commandBar.workflow.download'),
+				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
 					const workflowData = await workflowHelpers.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
