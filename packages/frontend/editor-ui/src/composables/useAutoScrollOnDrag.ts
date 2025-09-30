@@ -38,9 +38,7 @@ export function useAutoScrollOnDrag(options: UseAutoScrollOnDragOptions) {
 
 	const startScrolling = (delta: number) => {
 		scrollStep = delta;
-		if (frameId === undefined) {
-			frameId = requestAnimationFrame(step);
-		}
+		frameId ??= requestAnimationFrame(step);
 	};
 
 	const handlePointerMove = (event: MouseEvent) => {
