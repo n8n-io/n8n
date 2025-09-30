@@ -769,6 +769,42 @@ describe('GET /users', () => {
 				await userRepository.delete({ id: user2.id });
 			});
 		});
+
+		describe('field restrictions based on user:create scope', () => {
+			test('should return limited fields for members without user:create scope', async () => {
+				const response = await memberAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				// Verify that sensitive/admin fields are NOT present for members
+				users.forEach((user) => {
+					// Basic fields should be present
+					expect(user).toHaveProperty('id');
+
+					// Admin-only fields should NOT be present
+					expect(user).not.toHaveProperty('mfaEnabled');
+					expect(user).not.toHaveProperty('settings');
+					expect(user).not.toHaveProperty('personalizationAnswers');
+					expect(user).not.toHaveProperty('inviteAcceptUrl');
+					expect(user).not.toHaveProperty('lastActiveAt');
+					expect(user).not.toHaveProperty('isOwner');
+					expect(user).not.toHaveProperty('signInType');
+					expect(user).not.toHaveProperty('projectRelations');
+				});
+			});
+
+			test('should return full fields for owners/admins with user:create scope', async () => {
+				const response = await ownerAgent.get('/users').expect(200);
+
+				const users = response.body.data.items;
+
+				// Verify that admin fields ARE present for owners
+				const userWithMfa = users.find((u) => u.email === 'member1@n8n.io');
+				expect(userWithMfa).toHaveProperty('mfaEnabled', true);
+				expect(userWithMfa).toHaveProperty('isOwner');
+				expect(userWithMfa).toHaveProperty('signInType');
+			});
+		});
 	});
 });
 

@@ -143,7 +143,7 @@ export class UsersController {
 			items: this.removeSupplementaryFields(
 				publicUsers,
 				listQueryOptions,
-				hasGlobalScope(req.user, 'user:create'),
+				hasGlobalScope(req.user, 'user:create'), // user:create allows to manage users
 			),
 		});
 	}
