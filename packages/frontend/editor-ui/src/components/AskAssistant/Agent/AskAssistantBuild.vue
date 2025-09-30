@@ -11,6 +11,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { RatingFeedback } from '@n8n/design-system/types/assistant';
 import { isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/event-bus';
+import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const emit = defineEmits<{
@@ -30,7 +31,6 @@ const { goToUpgrade } = usePageRedirectionHelper();
 // Track processed workflow updates
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
-const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
 const workflowUpdated = ref<{ start: string; end: string } | undefined>();
 
 const user = computed(() => ({
@@ -40,9 +40,19 @@ const user = computed(() => ({
 
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 const currentRoute = computed(() => route.name);
+const showExecuteMessage = computed(() => {
+	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+		(msg) => msg.type === 'workflow-updated',
+	);
+	return (
+		!builderStore.streaming &&
+		workflowsStore.workflow.nodes.length > 0 &&
+		builderUpdatedWorkflowMessageIndex > -1
+	);
+});
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner !== false);
+const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
@@ -107,6 +117,56 @@ function trackWorkflowModifications() {
 
 		workflowUpdated.value = undefined;
 	}
+}
+
+function onWorkflowExecuted() {
+	const executionData = workflowsStore.workflowExecutionData;
+	const executionStatus = executionData?.status ?? 'unknown';
+	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
+	const errorNodeType = errorNodeName
+		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		: undefined;
+
+	if (!executionData) {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.noExecutionData'),
+			type: 'execution',
+			executionStatus: 'error',
+			errorMessage: 'Workflow execution data missing after run attempt.',
+		});
+		return;
+	}
+
+	if (executionStatus === 'success') {
+		builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
+			type: 'execution',
+			executionStatus,
+		});
+		return;
+	}
+
+	const executionError = executionData.data?.resultData.error?.message ?? 'Unknown error';
+	const scopedErrorMessage = errorNodeName
+		? i18n.baseText('aiAssistant.builder.executeMessage.executionFailedOnNode', {
+				interpolate: {
+					nodeName: errorNodeName,
+					errorMessage: executionError,
+				},
+			})
+		: i18n.baseText('aiAssistant.builder.executeMessage.executionFailed', {
+				interpolate: { errorMessage: executionError },
+			});
+
+	const failureStatus = executionStatus === 'unknown' ? 'error' : executionStatus;
+
+	builderStore.sendChatMessage({
+		text: scopedErrorMessage,
+		type: 'execution',
+		errorMessage: executionError,
+		errorNodeType,
+		executionStatus: failureStatus,
+	});
 }
 
 // Watch for workflow updates and apply them
@@ -186,7 +246,6 @@ watch(currentRoute, () => {
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<AskAssistantChat
-			ref="assistantChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
@@ -198,7 +257,7 @@ watch(currentRoute, () => {
 			:credits-quota="creditsQuota"
 			:credits-remaining="creditsRemaining"
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
-			:inputPlaceholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
@@ -207,6 +266,9 @@ watch(currentRoute, () => {
 		>
 			<template #header>
 				<slot name="header" />
+			</template>
+			<template #messagesFooter>
+				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
 				<N8nText :class="$style.topText">{{

@@ -46,7 +46,7 @@ const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 	}
 });
 
-const returnDataValidator = z
+const booleanValidator = z
 	.union([z.string(), z.boolean()])
 	.optional()
 	.transform((val) => {
@@ -58,7 +58,8 @@ const returnDataValidator = z
 
 const deleteDataTableRowsShape = {
 	filter: dataTableFilterQueryValidator,
-	returnData: returnDataValidator,
+	returnData: booleanValidator,
+	dryRun: booleanValidator,
 };
 
 export class DeleteDataTableRowsDto extends Z.class(deleteDataTableRowsShape) {}

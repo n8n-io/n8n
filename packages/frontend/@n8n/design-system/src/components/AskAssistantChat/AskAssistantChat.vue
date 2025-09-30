@@ -377,6 +377,7 @@ defineExpose({
 							</div>
 						</div>
 					</data>
+					<slot name="messagesFooter" />
 				</div>
 				<div
 					v-if="loadingMessage"
