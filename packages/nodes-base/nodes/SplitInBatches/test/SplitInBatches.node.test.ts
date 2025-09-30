@@ -470,7 +470,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 			}
 		});
 
-		it('should reset counter before infinite loop check when options.reset is true', async () => {
+		it('should check for infinite loops before reset when options.reset is true', async () => {
 			const splitInBatchesNode = new SplitInBatchesV4();
 			// Set high counter to simulate previous executions
 			SplitInBatchesV4.setCounterForTest('test-execution-id', 'SplitInBatches', 50);
@@ -486,13 +486,16 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				getInputData: jest.fn().mockReturnValue([{ json: { value: 'test' } }]),
 				getContext: jest.fn().mockReturnValue({}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
-			// Should not throw because counter is reset before check
-			const result = await splitInBatchesNode.execute.call(
-				mockFunctions as unknown as IExecuteFunctions,
-			);
-			expect(result).toBeTruthy();
+			// Should throw because infinite loop check happens before reset (security fix)
+			await expect(
+				splitInBatchesNode.execute.call(mockFunctions as unknown as IExecuteFunctions),
+			).rejects.toThrow('Infinite loop detected');
+
+			// Counter should be cleaned up after error
+			expect(SplitInBatchesV4.hasCounterForTest('test-execution-id', 'SplitInBatches')).toBe(false);
 		});
 
 		it('should clean up counter on checkExecutionLimit error', async () => {
@@ -511,6 +514,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				getInputData: jest.fn().mockReturnValue([{ json: { value: 'test' } }]),
 				getContext: jest.fn().mockReturnValue({}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
 			await expect(

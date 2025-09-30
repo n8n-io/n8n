@@ -140,11 +140,6 @@ export class SplitInBatchesV4 implements INodeType {
 			);
 		}
 
-		// If an explicit reset is requested, clear counters before any checks
-		if (options.reset === true) {
-			SplitInBatchesV4.resetExecutionCount(this);
-		}
-
 		// Check for infinite loops on every execution (unless disabled)
 		try {
 			SplitInBatchesV4.checkExecutionLimit(this);
@@ -152,6 +147,11 @@ export class SplitInBatchesV4 implements INodeType {
 			// Clean up counter on error to prevent memory leaks
 			SplitInBatchesV4.resetExecutionCount(this);
 			throw error;
+		}
+
+		// If an explicit reset is requested, clear counters after the check
+		if (options.reset === true) {
+			SplitInBatchesV4.resetExecutionCount(this);
 		}
 
 		// Process items normally
@@ -333,7 +333,16 @@ export class SplitInBatchesV4 implements INodeType {
 	}
 
 	/**
-	 * Cleanup all counters for a specific execution ID to prevent memory leaks
+	 * Cleanup all counters for a specific execution ID to prevent memory leaks.
+	 *
+	 * This method is provided for external cleanup integration (e.g., from workflow engine hooks)
+	 * but is not strictly required since the node handles cleanup in three ways:
+	 * 1. On normal completion (line 238)
+	 * 2. On infinite loop detection error (line 148)
+	 * 3. On explicit reset option (line 154)
+	 *
+	 * Use this method from workflow lifecycle hooks as an additional safety measure
+	 * to clean up any orphaned counters from abnormal terminations.
 	 */
 	static cleanupExecutionCounters(executionId: string): void {
 		const keysToDelete: string[] = [];
