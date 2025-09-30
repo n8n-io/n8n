@@ -41,7 +41,7 @@ export default {
 	'assistantChat.builder.thumbsUp': 'Helpful',
 	'assistantChat.builder.thumbsDown': 'Not helpful',
 	'assistantChat.builder.feedbackPlaceholder': 'What went wrong?',
-	'assistantChat.builder.success': 'Thank you for your feedback!',
+	'assistantChat.builder.success': 'Thanks for your feedback!',
 	'assistantChat.builder.submit': 'Submit feedback',
 	'assistantChat.builder.workflowGenerated1': 'Your workflow was created successfully!',
 	'assistantChat.builder.workflowGenerated2': 'Fix any missing credentials before testing it.',
