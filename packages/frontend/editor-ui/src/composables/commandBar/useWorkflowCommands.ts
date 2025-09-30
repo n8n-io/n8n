@@ -1,0 +1,185 @@
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { isResourceLocatorValue } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { canvasEventBus } from '@/event-bus/canvas';
+import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
+import type { IWorkflowToShare } from '@/Interface';
+import { saveAs } from 'file-saver';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowActivate } from '../useWorkflowActivate';
+import type { CommandGroup, CommandBarItem } from './types';
+
+const Section = {
+	WORKFLOW: 'Workflow',
+} as const;
+
+export function useWorkflowCommands(): CommandGroup {
+	const { editableWorkflow } = useCanvasOperations();
+	const rootStore = useRootStore();
+	const uiStore = useUIStore();
+	const tagsStore = useTagsStore();
+	const workflowsStore = useWorkflowsStore();
+
+	const router = useRouter();
+
+	const workflowHelpers = useWorkflowHelpers();
+	const telemetry = useTelemetry();
+	const workflowSaving = useWorkflowSaving({ router });
+	const workflowActivate = useWorkflowActivate();
+	const { runEntireWorkflow } = useRunWorkflow({ router });
+
+	const subworkflowCommands = computed<CommandBarItem[]>(() => {
+		const subworkflows = editableWorkflow.value.nodes
+			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
+			.map((node) => node?.parameters?.workflowId)
+			.filter(
+				(rlValue): rlValue is { value: string; cachedResultName: string } =>
+					isResourceLocatorValue(rlValue) &&
+					typeof rlValue.value === 'string' &&
+					typeof rlValue.cachedResultName === 'string',
+			)
+			.map(({ value, cachedResultName }) => ({ id: value, name: cachedResultName }));
+		if (subworkflows.length === 0) {
+			return [];
+		}
+		return [
+			{
+				id: 'open-sub-workflow',
+				title: 'Open subworkflow',
+				children: [
+					...subworkflows.map((workflow) => ({
+						id: workflow.id,
+						title: workflow.name,
+						parent: 'Open subworkflow',
+						handler: () => {
+							const { href } = router.resolve({
+								name: VIEWS.WORKFLOW,
+								params: { name: workflow.id },
+							});
+							window.open(href, '_blank', 'noreferrer');
+						},
+					})),
+				],
+			},
+		];
+	});
+
+	const workflowCommands = computed<CommandBarItem[]>(() => {
+		return [
+			{
+				id: 'test-workflow',
+				title: 'Test workflow',
+				section: Section.WORKFLOW,
+				keywords: ['test', 'execute', 'run', 'workflow'],
+				handler: () => {
+					void runEntireWorkflow('main');
+				},
+			},
+			{
+				id: 'save-workflow',
+				title: 'Save workflow',
+				section: Section.WORKFLOW,
+				handler: async () => {
+					const saved = await workflowSaving.saveCurrentWorkflow();
+					if (saved) {
+						canvasEventBus.emit('saved:workflow');
+					}
+				},
+			},
+			...(workflowsStore.isWorkflowActive
+				? [
+						{
+							id: 'deactivate-workflow',
+							title: 'Deactivate workflow',
+							section: Section.WORKFLOW,
+							handler: () => {
+								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
+							},
+						},
+					]
+				: [
+						{
+							id: 'activate-workflow',
+							title: 'Activate workflow',
+							section: Section.WORKFLOW,
+							handler: () => {
+								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
+							},
+						},
+					]),
+			{
+				id: 'select-all',
+				title: 'Select all',
+				section: Section.WORKFLOW,
+				handler: () => {
+					canvasEventBus.emit('nodes:selectAll');
+				},
+			},
+			{
+				id: 'tidy-up-workflow',
+				title: 'Tidy up workflow',
+				section: Section.WORKFLOW,
+				handler: () => {
+					canvasEventBus.emit('tidyUp', {
+						source: 'command-bar',
+					});
+				},
+			},
+			{
+				id: 'duplicate-workflow',
+				title: 'Duplicate workflow',
+				section: Section.WORKFLOW,
+				handler: () => {
+					uiStore.openModalWithData({
+						name: DUPLICATE_MODAL_KEY,
+						data: {
+							id: workflowsStore.workflowId,
+							name: editableWorkflow.value.name,
+							tags: editableWorkflow.value.tags,
+						},
+					});
+				},
+			},
+			{
+				id: 'download-workflow',
+				title: 'Download workflow',
+				section: Section.WORKFLOW,
+				handler: async () => {
+					const workflowData = await workflowHelpers.getWorkflowDataToSave();
+					const { tags, ...data } = workflowData;
+					const exportData: IWorkflowToShare = {
+						...data,
+						meta: {
+							...workflowData.meta,
+							instanceId: rootStore.instanceId,
+						},
+						tags: (tags ?? []).map((tagId) => {
+							return tagsStore.tagsById[tagId];
+						}),
+					};
+					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+						type: 'application/json;charset=utf-8',
+					});
+					let name = editableWorkflow.value.name || 'unsaved_workflow';
+					name = name.replace(/[^a-z0-9]/gi, '_');
+					telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+					saveAs(blob, name + '.json');
+				},
+			},
+		];
+	});
+
+	const allCommands = computed(() => [...workflowCommands.value, ...subworkflowCommands.value]);
+
+	return {
+		commands: allCommands,
+	};
+}
