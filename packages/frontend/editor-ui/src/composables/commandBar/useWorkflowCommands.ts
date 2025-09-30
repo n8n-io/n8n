@@ -16,9 +16,11 @@ import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from '../useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from './types';
+import uniqBy from 'lodash/uniqBy';
 
 const Section = {
 	WORKFLOW: 'Workflow',
+	CREDENTIALS: 'Credentials',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -35,6 +37,32 @@ export function useWorkflowCommands(): CommandGroup {
 	const workflowSaving = useWorkflowSaving({ router });
 	const workflowActivate = useWorkflowActivate();
 	const { runEntireWorkflow } = useRunWorkflow({ router });
+
+	const credentialCommands = computed<CommandBarItem[]>(() => {
+		const credentials = uniqBy(
+			editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+			(cred) => cred.id,
+		);
+		if (credentials.length === 0) {
+			return [];
+		}
+		return [
+			{
+				id: 'open-credential',
+				title: 'Open credential',
+				section: Section.CREDENTIALS,
+				children: [
+					...credentials.map((credential) => ({
+						id: credential.id as string,
+						title: credential.name,
+						handler: () => {
+							uiStore.openExistingCredential(credential.id as string);
+						},
+					})),
+				],
+			},
+		];
+	});
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
 		const subworkflows = editableWorkflow.value.nodes
@@ -177,7 +205,11 @@ export function useWorkflowCommands(): CommandGroup {
 		];
 	});
 
-	const allCommands = computed(() => [...workflowCommands.value, ...subworkflowCommands.value]);
+	const allCommands = computed(() => [
+		...workflowCommands.value,
+		...credentialCommands.value,
+		...subworkflowCommands.value,
+	]);
 
 	return {
 		commands: allCommands,

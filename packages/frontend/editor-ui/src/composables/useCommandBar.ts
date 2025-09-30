@@ -7,7 +7,6 @@ import { useNodeCommands } from './commandBar/useNodeCommands';
 import { useWorkflowCommands } from './commandBar/useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigationCommands';
 import { useTemplateCommands } from './commandBar/useTemplateCommands';
-import { useCredentialCommands } from './commandBar/useCredentialCommands';
 import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
@@ -27,7 +26,6 @@ export function useCommandBar() {
 		activeNodeId,
 	});
 	const templateCommandGroup = useTemplateCommands();
-	const credentialCommandGroup = useCredentialCommands();
 	const dataTableNavigationGroup = useDataTableNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -37,7 +35,6 @@ export function useCommandBar() {
 		baseCommandGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
-		credentialCommandGroup,
 		templateCommandGroup,
 	];
 
