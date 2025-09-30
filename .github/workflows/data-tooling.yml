@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
   
 jobs:
-  sqlite-export:
-    name: sqlite database export
+  sqlite-export-sqlite-import:
+    name: sqlite database export -> sqlite database import
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
@@ -37,4 +37,5 @@ jobs:
         with:
           build-command: |
             pnpm build
-            ./packages/cli/bin/n8n export:entities
+            ./packages/cli/bin/n8n export:entities --outputDir packages/cli/commands/export/outputs 
+            ./packages/cli/bin/n8n import:entities --inputDir packages/cli/commands/export/outputs --truncateTables
