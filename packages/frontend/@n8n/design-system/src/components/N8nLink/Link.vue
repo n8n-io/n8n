@@ -2,7 +2,6 @@
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { TextSize } from '../../types/text';
-
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 

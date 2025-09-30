@@ -4,7 +4,6 @@ import { ref } from 'vue';
 
 import type { IUser, UserAction } from '../../types';
 import type { IconOrientation, IconSize } from '../../types/icon';
-
 import N8nIcon from '../N8nIcon';
 import N8nLoading from '../N8nLoading';
 

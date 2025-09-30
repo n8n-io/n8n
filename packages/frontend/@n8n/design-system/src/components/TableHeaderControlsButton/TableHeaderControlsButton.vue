@@ -3,7 +3,6 @@ import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ButtonSize, IconSize } from '../../types';
-
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';

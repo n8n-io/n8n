@@ -4,7 +4,6 @@ import { computed, ref } from 'vue';
 
 import type { ElementPlusSizePropType, InputAutocompletePropType } from '../../types';
 import type { InputSize, InputType } from '../../types/input';
-
 import { uid } from '../../utils';
 
 interface InputProps {

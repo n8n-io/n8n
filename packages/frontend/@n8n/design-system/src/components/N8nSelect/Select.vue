@@ -4,7 +4,6 @@ import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
 import type { SelectSize } from '../../types';
-
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;

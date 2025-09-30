@@ -3,7 +3,6 @@ import { computed, useAttrs, useCssModule, watchEffect } from 'vue';
 
 import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
-
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 

@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { IconButtonProps } from '../../types/button';
-
 import N8nButton from '../N8nButton';
 
 defineOptions({ name: 'N8nIconButton' });

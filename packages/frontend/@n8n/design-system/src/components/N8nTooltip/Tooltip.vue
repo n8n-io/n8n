@@ -2,9 +2,8 @@
 import { ElTooltip } from 'element-plus';
 import type { PropType } from 'vue';
 
-import type { IN8nButton } from '../../types';
-
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
+import type { IN8nButton } from '../../types';
 import N8nButton from '../N8nButton';
 
 export type Justify =

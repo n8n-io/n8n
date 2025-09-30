@@ -4,7 +4,6 @@ import { computed } from 'vue';
 
 import type { IconSize } from '../../types';
 import type { IconColor } from '../../types/icon';
-
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';

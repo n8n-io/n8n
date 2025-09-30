@@ -2,7 +2,6 @@
 import { computed, ref, useAttrs } from 'vue';
 
 import { type ResizeData } from '../../types';
-
 import N8nResizeWrapper from '../N8nResizeWrapper/ResizeWrapper.vue';
 import { defaultStickyProps } from '../N8nSticky/constants';
 import N8nSticky from '../N8nSticky/Sticky.vue';

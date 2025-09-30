@@ -3,7 +3,6 @@ import parseDiff from 'parse-diff';
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 
