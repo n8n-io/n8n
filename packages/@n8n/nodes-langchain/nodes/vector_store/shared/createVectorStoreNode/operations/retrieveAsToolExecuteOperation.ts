@@ -1,7 +1,13 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionTypes, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import {
+	assertParamIsBoolean,
+	assertParamIsNumber,
+	NodeConnectionTypes,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 
 import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
 
@@ -37,8 +43,10 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 			throw new Error('Input data must contain a "input" field with the search query');
 		}
 
-		const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
-		const useReranker = context.getNodeParameter('useReranker', itemIndex, false) as boolean;
+		const topK = context.getNodeParameter('topK', itemIndex, 4);
+		assertParamIsNumber('topK', topK, context.getNode());
+		const useReranker = context.getNodeParameter('useReranker', itemIndex, false);
+		assertParamIsBoolean('useReranker', useReranker, context.getNode());
 
 		const includeDocumentMetadata = context.getNodeParameter(
 			'includeDocumentMetadata',

@@ -21,6 +21,7 @@ jest.mock('@utils/logWrapper', () => ({
 
 const DEFAULT_PARAMETERS = {
 	options: {},
+	useReranker: false,
 	topK: 1,
 };
 
