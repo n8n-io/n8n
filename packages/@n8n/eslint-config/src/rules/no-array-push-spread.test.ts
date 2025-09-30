@@ -97,6 +97,34 @@ typeAwareRuleTester.run('no-array-push-spread', NoArrayPushSpreadRule, {
 			errors: [{ messageId: 'noArrayPushSpread' }],
 		},
 		{
+			name: 'const array converted to let with reassignment (multiple scopes)',
+			code: `
+				const array = [];
+
+				function bar() {
+					const array = [];
+				}
+
+			    function foo() {
+					const array = [];
+					array.push(...items);
+				}
+			`,
+			output: `
+				const array = [];
+
+				function bar() {
+					const array = [];
+				}
+
+			    function foo() {
+					let array = [];
+					array = array.concat(items);
+				}
+			`,
+			errors: [{ messageId: 'noArrayPushSpread' }],
+		},
+		{
 			name: 'const with new Array constructor converted to let',
 			code: 'const myArray = new Array<number>(); myArray.push(...items);',
 			output: 'let myArray = new Array<number>(); myArray = myArray.concat(items);',
