@@ -226,8 +226,6 @@ onBeforeMount(async () => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css';
-
 .insightsView {
 	flex: 1;
 	display: flex;
