@@ -20,8 +20,9 @@ const ITEM_ID = {
 export function useDataTableNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
+	currentProjectName: Ref<string>;
 }): CommandGroup {
-	const { lastQuery, activeNodeId } = options;
+	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataStoreStore = useDataStoreStore();
 	const projectsStore = useProjectsStore();
 
@@ -120,7 +121,7 @@ export function useDataTableNavigationCommands(options: {
 		return [
 			{
 				id: ITEM_ID.CREATE_DATA_TABLE,
-				title: 'Create data table',
+				title: `Create data table in ${currentProjectName.value}`,
 				section: Section.DATA_TABLES,
 				icon: {
 					component: N8nIcon,

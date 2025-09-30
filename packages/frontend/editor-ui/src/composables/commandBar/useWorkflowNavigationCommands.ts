@@ -16,14 +16,16 @@ const Section = {
 } as const;
 
 const ITEM_ID = {
+	CREATE_WORKFLOW: 'create-workflow',
 	OPEN_WORKFLOW: 'open-workflow',
 };
 
 export function useWorkflowNavigationCommands(options: {
 	lastQuery: Ref<string>;
 	activeNodeId: Ref<string | null>;
+	currentProjectName: Ref<string>;
 }): CommandGroup {
-	const { lastQuery, activeNodeId } = options;
+	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -134,6 +136,26 @@ export function useWorkflowNavigationCommands(options: {
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
 		return [
+			{
+				id: ITEM_ID.CREATE_WORKFLOW,
+				title: `Create workflow in ${currentProjectName.value}`,
+				section: Section.WORKFLOWS,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'plus',
+					},
+				},
+				handler: () => {
+					void router.push({
+						name: VIEWS.NEW_WORKFLOW,
+						query: {
+							projectId: route.params.projectId as string,
+							parentFolderId: route.params.folderId as string,
+						},
+					});
+				},
+			},
 			{
 				id: ITEM_ID.OPEN_WORKFLOW,
 				title: 'Open workflow',

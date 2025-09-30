@@ -1,6 +1,7 @@
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { VIEWS } from '@/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './commandBar/useNodeCommands';
@@ -9,14 +10,31 @@ import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigatio
 import { useTemplateCommands } from './commandBar/useTemplateCommands';
 import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
+import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
+	const projectsStore = useProjectsStore();
 	const router = useRouter();
+	const route = useRoute();
 
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
+
+	const personalProjectId = computed(() => {
+		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
+	});
+
+	const currentProjectName = computed(() => {
+		if (!route.params.projectId || route.params.projectId === personalProjectId.value) {
+			return 'Personal';
+		}
+		return (
+			projectsStore.myProjects.find((p) => p.id === (route.params.projectId as string))?.name ??
+			'Personal'
+		);
+	});
 
 	const baseCommandGroup = useBaseCommands();
 	const nodeCommandGroup = useNodeCommands();
@@ -24,11 +42,18 @@ export function useCommandBar() {
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
 		activeNodeId,
+		currentProjectName,
 	});
 	const templateCommandGroup = useTemplateCommands();
 	const dataTableNavigationGroup = useDataTableNavigationCommands({
 		lastQuery,
 		activeNodeId,
+		currentProjectName,
+	});
+	const credentialNavigationGroup = useCredentialNavigationCommands({
+		lastQuery,
+		activeNodeId,
+		currentProjectName,
 	});
 
 	const canvasViewGroups: CommandGroup[] = [
@@ -44,6 +69,13 @@ export function useCommandBar() {
 		dataTableNavigationGroup,
 	];
 
+	const credentialsListViewGroups: CommandGroup[] = [
+		credentialNavigationGroup,
+		workflowNavigationGroup,
+		dataTableNavigationGroup,
+		baseCommandGroup,
+	];
+
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
 		if (router.currentRoute.value.name === VIEWS.WORKFLOW) {
 			return canvasViewGroups;
@@ -52,6 +84,11 @@ export function useCommandBar() {
 			router.currentRoute.value.name === VIEWS.PROJECTS_WORKFLOWS
 		) {
 			return workflowsListViewGroups;
+		} else if (
+			router.currentRoute.value.name === VIEWS.CREDENTIALS ||
+			router.currentRoute.value.name === VIEWS.PROJECTS_CREDENTIALS
+		) {
+			return credentialsListViewGroups;
 		}
 		return [baseCommandGroup];
 	});
