@@ -220,7 +220,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
-			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			const userMsg = createAssistantMessage(
+				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
+				'aborted-streaming',
+			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;
 		}

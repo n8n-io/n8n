@@ -661,10 +661,10 @@ describe('useBuilderMessages', () => {
 			const middleText = result.messages[2];
 			expect(middleText.showRating).toBeUndefined();
 
-			// Only the LAST text message should have showRating with regular style
+			// Only the LAST text message should have showRating with minimal style
 			const lastText = result.messages[3];
 			expect(lastText.showRating).toBe(true);
-			expect(lastText.ratingStyle).toBe('regular');
+			expect(lastText.ratingStyle).toBe('minimal');
 		});
 
 		it('should not apply rating to text messages without workflow-updated', () => {
@@ -780,7 +780,7 @@ describe('useBuilderMessages', () => {
 
 			const lastMessage = result.messages[3];
 			expect(lastMessage.showRating).toBe(true);
-			expect(lastMessage.ratingStyle).toBe('regular');
+			expect(lastMessage.ratingStyle).toBe('minimal');
 		});
 	});
 
@@ -1162,7 +1162,7 @@ describe('useBuilderMessages', () => {
 			// Check final text message has rating
 			const textMessage = result.messages.find((m) => m.type === 'text');
 			expect(textMessage?.showRating).toBe(true);
-			expect(textMessage?.ratingStyle).toBe('regular');
+			expect(textMessage?.ratingStyle).toBe('minimal');
 
 			// Should clear thinking since tools are complete and text is present
 			expect(result.shouldClearThinking).toBe(true);
@@ -1325,7 +1325,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'Hello there!',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1421,7 +1421,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'With rating',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1727,7 +1727,7 @@ describe('useBuilderMessages', () => {
 				id: 'msg-2',
 				content: 'Process completed!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1829,7 +1829,7 @@ describe('useBuilderMessages', () => {
 					type: 'text',
 					content: 'Previous message',
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 					read: false,
 				},
 				{
@@ -1885,7 +1885,7 @@ describe('useBuilderMessages', () => {
 			expect(result[0]).not.toHaveProperty('ratingStyle');
 			expect(result[2]).toMatchObject({
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1928,7 +1928,7 @@ describe('useBuilderMessages', () => {
 			expect(result[3]).toMatchObject({
 				content: 'Final update complete',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -1964,7 +1964,7 @@ describe('useBuilderMessages', () => {
 			expect(result[2]).toMatchObject({
 				content: 'Workflow created!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 
@@ -2005,7 +2005,7 @@ describe('useBuilderMessages', () => {
 			expect(result[2]).toMatchObject({
 				content: 'You are welcome!',
 				showRating: true,
-				ratingStyle: 'regular',
+				ratingStyle: 'minimal',
 			});
 		});
 	});

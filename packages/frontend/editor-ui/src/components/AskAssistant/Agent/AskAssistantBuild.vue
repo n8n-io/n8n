@@ -225,7 +225,10 @@ watch(
 			const successful =
 				lastMessage &&
 				lastMessage.type !== 'error' &&
-				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+				!(
+					lastMessage.type === 'text' &&
+					lastMessage.content === i18n.baseText('aiAssistant.builder.streamAbortedMessage')
+				);
 
 			builderStore.initialGeneration = false;
 

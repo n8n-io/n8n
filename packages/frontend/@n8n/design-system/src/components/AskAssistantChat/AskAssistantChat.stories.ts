@@ -528,6 +528,7 @@ ToolMessageStates.args = {
 			toolCallId: 'call_456',
 			status: 'completed',
 			displayTitle: 'Search Files',
+			updates: [],
 			read: false,
 		},
 		{
@@ -538,6 +539,7 @@ ToolMessageStates.args = {
 			toolCallId: 'call_789',
 			status: 'error',
 			displayTitle: 'Database Query',
+			updates: [],
 			read: false,
 		},
 		{
@@ -548,6 +550,7 @@ ToolMessageStates.args = {
 			toolCallId: 'call_123',
 			status: 'running',
 			displayTitle: 'Code Tool',
+			updates: [],
 			read: false,
 		},
 	]),
@@ -766,6 +769,7 @@ ToolCallsWithThinking.args = {
 			toolCallId: 'call_code_1',
 			status: 'completed',
 			displayTitle: 'Code Tool',
+			updates: [],
 			read: true,
 		},
 		{
@@ -776,6 +780,7 @@ ToolCallsWithThinking.args = {
 			toolCallId: 'call_web_1',
 			status: 'completed',
 			displayTitle: 'Web Search',
+			updates: [],
 			read: true,
 		},
 		{
@@ -786,6 +791,7 @@ ToolCallsWithThinking.args = {
 			toolCallId: 'call_calc_1',
 			status: 'completed',
 			displayTitle: 'Calculator',
+			updates: [],
 			read: true,
 		},
 	]),
@@ -822,6 +828,7 @@ CompletedToolCallsWithSummary.args = {
 			toolCallId: 'call_code_1',
 			status: 'completed',
 			displayTitle: 'Code Tool',
+			updates: [],
 			read: true,
 		},
 		{
@@ -832,6 +839,7 @@ CompletedToolCallsWithSummary.args = {
 			toolCallId: 'call_web_1',
 			status: 'completed',
 			displayTitle: 'Web Search',
+			updates: [],
 			read: true,
 		},
 		{
@@ -842,6 +850,7 @@ CompletedToolCallsWithSummary.args = {
 			toolCallId: 'call_calc_1',
 			status: 'completed',
 			displayTitle: 'Calculator',
+			updates: [],
 			read: true,
 		},
 		{
@@ -852,6 +861,7 @@ CompletedToolCallsWithSummary.args = {
 			toolCallId: 'call_builder_1',
 			status: 'completed',
 			displayTitle: 'Builder',
+			updates: [],
 			read: true,
 		},
 		{

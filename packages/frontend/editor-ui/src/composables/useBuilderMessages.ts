@@ -77,7 +77,7 @@ export function useBuilderMessages() {
 				return {
 					...message,
 					showRating: true,
-					ratingStyle: 'regular',
+					ratingStyle: 'minimal',
 				};
 			}
 			// Remove any existing rating from other messages
