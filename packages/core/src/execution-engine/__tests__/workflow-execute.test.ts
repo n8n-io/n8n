@@ -2632,7 +2632,6 @@ describe('WorkflowExecute', () => {
 			// Assert - verify status was set to canceled and timedOut flag was set
 			// @ts-expect-error private data
 			expect(workflowExecute.status).toBe('canceled');
-			// @ts-expect-error private data
 			expect(workflowExecute.timedOut).toBe(true);
 			expect(result.status).toBe('canceled');
 			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
