@@ -85,4 +85,73 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
 		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
+
+	it('should handle errors when accessing secret versions', async () => {
+		/**
+		 * Arrange
+		 */
+		const PROJECT_ID = 'my-project-id';
+
+		const SECRETS: Record<string, string> = {
+			secret1: 'value1',
+			secret2: 'value2',
+			secret3: '', // no value
+			'#@&': 'value', // unsupported name
+		};
+
+		await gcpSecretsManager.init(
+			mock<GcpSecretsManagerContext>({
+				settings: { serviceAccountKey: `{ "project_id": "${PROJECT_ID}" }` },
+			}),
+		);
+
+		const listSpy = jest
+			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
+			// @ts-expect-error Partial mock
+			.mockResolvedValue([
+				[
+					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
+					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
+					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
+					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
+				],
+			]);
+
+		const getSpy = jest
+			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
+			.mockImplementationOnce(() => {
+				throw new Error('test error');
+			})
+			.mockImplementation(async ({ name }: { name: string }) => {
+				const secretName = name.split('/')[3];
+				return [
+					{ payload: { data: Buffer.from(SECRETS[secretName]) } },
+				] as GcpSecretVersionResponse[];
+			});
+
+		/**
+		 * Act
+		 */
+		await gcpSecretsManager.connect();
+		await gcpSecretsManager.update();
+
+		/**
+		 * Assert
+		 */
+		expect(listSpy).toHaveBeenCalled();
+		expect(getSpy).toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/secret1/versions/latest`,
+		});
+		expect(getSpy).toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/secret2/versions/latest`,
+		});
+		expect(getSpy).toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
+		});
+
+		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
+		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
+		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
+		expect(gcpSecretsManager.getSecret('#@&')).toBeUndefined(); // unsupported name
+	});
 });

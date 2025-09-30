@@ -1,4 +1,4 @@
-import type { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
+import type { protos, SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
@@ -100,9 +100,26 @@ export class GcpSecretsManager implements SecretsProvider {
 		}, []);
 
 		const promises = secretNames.map(async (name) => {
-			const versions = await this.client.accessSecretVersion({
-				name: `projects/${projectId}/secrets/${name}/versions/latest`,
-			});
+			let versions:
+				| [
+						protos.google.cloud.secretmanager.v1.IAccessSecretVersionResponse,
+						protos.google.cloud.secretmanager.v1.IAccessSecretVersionRequest | undefined,
+						{} | undefined,
+				  ]
+				| undefined;
+
+			try {
+				versions = await this.client.accessSecretVersion({
+					name: `projects/${projectId}/secrets/${name}/versions/latest`,
+				});
+			} catch (err) {
+				this.logger.error(
+					`GCP Secrets Manager provider failed to access secret: ${name}, version: latest`,
+					{
+						error: ensureError(err),
+					},
+				);
+			}
 
 			if (!Array.isArray(versions) || !versions.length) return null;
 
