@@ -776,8 +776,10 @@ describe('GET /users', () => {
 
 				const users = response.body.data.items;
 
+				expect(users).toBeInstanceOf(Array);
+
 				// Verify that sensitive/admin fields are NOT present for members
-				users.forEach((user) => {
+				users.forEach((user: any) => {
 					// Basic fields should be present
 					expect(user).toHaveProperty('id');
 
@@ -798,8 +800,10 @@ describe('GET /users', () => {
 
 				const users = response.body.data.items;
 
+				expect(users).toBeInstanceOf(Array);
+
 				// Verify that admin fields ARE present for owners
-				const userWithMfa = users.find((u) => u.email === 'member1@n8n.io');
+				const userWithMfa = users.find((u: any) => u.email === 'member1@n8n.io');
 				expect(userWithMfa).toHaveProperty('mfaEnabled', true);
 				expect(userWithMfa).toHaveProperty('isOwner');
 				expect(userWithMfa).toHaveProperty('signInType');
