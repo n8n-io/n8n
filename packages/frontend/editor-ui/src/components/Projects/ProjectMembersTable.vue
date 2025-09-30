@@ -29,6 +29,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: ProjectRole; userId: string }];
 	action: [value: { action: string; userId: string }];
+	'show-upgrade-dialog': [];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -89,6 +90,8 @@ const roleActions = computed<Array<ActionDropdownItem<ProjectRole>>>(() => [
 		id: role.slug as ProjectRole,
 		label: role.displayName,
 		disabled: !role.licensed,
+		badge: !role.licensed ? i18n.baseText('projects.settings.role.upgrade.badge') : undefined,
+		badgeProps: !role.licensed ? { theme: 'warning', bold: true } : undefined,
 	})),
 ]);
 
@@ -129,6 +132,7 @@ const filterActions = (member: ProjectMemberData) => {
 					:roles="roles"
 					:actions="roleActions"
 					@update:role="onRoleChange"
+					@show-upgrade-dialog="emit('show-upgrade-dialog')"
 				/>
 				<N8nText v-else color="text-dark">{{ roles[item.role]?.label ?? item.role }}</N8nText>
 			</template>

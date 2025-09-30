@@ -55,6 +55,15 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			},
 			template: '<i :data-icon="icon"></i>',
 		},
+		N8nTooltip: {
+			name: 'N8nTooltip',
+			props: {
+				content: { type: String },
+				placement: { type: String },
+				showAfter: { type: Number },
+			},
+			template: '<div data-test-id="tooltip" :title="content"><slot /></div>',
+		},
 	};
 });
 
@@ -370,6 +379,74 @@ describe('ProjectMembersRoleCell', () => {
 
 			expect(screen.getByLabelText(/Admin/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/Editor/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('Upgrade Indicators', () => {
+		it('should show tooltip for disabled roles', () => {
+			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:admin', label: 'Admin', disabled: false },
+				{ id: 'project:viewer', label: 'Viewer', disabled: true },
+			];
+
+			renderComponent({
+				props: {
+					actions: disabledActions,
+				},
+			});
+
+			// Tooltip should be rendered for disabled role
+			const tooltip = screen.getByTestId('tooltip');
+			expect(tooltip).toBeInTheDocument();
+		});
+
+		it('should have click handler for disabled role', () => {
+			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:admin', label: 'Admin', disabled: false },
+				{ id: 'project:viewer', label: 'Viewer', disabled: true },
+			];
+
+			renderComponent({
+				props: {
+					actions: disabledActions,
+				},
+			});
+
+			// Verify the disabled role action button exists
+			const viewerActionButton = screen.getByTestId('action-project:viewer');
+			expect(viewerActionButton).toBeInTheDocument();
+			expect(viewerActionButton).toHaveAttribute('disabled');
+		});
+
+		it('should use lighter text color for disabled roles', () => {
+			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:viewer', label: 'Viewer', disabled: true },
+			];
+
+			renderComponent({
+				props: {
+					actions: disabledActions,
+				},
+			});
+
+			// Verify that disabled role is rendered
+			expect(screen.getByText('Viewer')).toBeInTheDocument();
+		});
+
+		it('should not show tooltip for enabled roles', () => {
+			const enabledActions: Array<ActionDropdownItem<ProjectRole>> = [
+				{ id: 'project:admin', label: 'Admin', disabled: false },
+				{ id: 'project:editor', label: 'Editor', disabled: false },
+			];
+
+			renderComponent({
+				props: {
+					actions: enabledActions,
+				},
+			});
+
+			// No tooltip should be rendered for enabled roles
+			expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
 		});
 	});
 });

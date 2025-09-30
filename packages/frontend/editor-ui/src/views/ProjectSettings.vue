@@ -585,6 +585,7 @@ onMounted(() => {
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"
+						@show-upgrade-dialog="upgradeDialogVisible = true"
 					/>
 				</div>
 			</fieldset>
