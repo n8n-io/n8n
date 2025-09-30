@@ -24,6 +24,7 @@ const usersStore = useUsersStore();
 const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
+const mcpStatusLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
@@ -119,10 +120,18 @@ const fetchAvailableWorkflows = async () => {
 };
 
 const onUpdateMCPEnabled = async (value: boolean) => {
-	const updated = await mcpStore.setMcpAccessEnabled(value);
-	if (updated) {
-		await fetchAvailableWorkflows();
-	} else {
+	try {
+		mcpStatusLoading.value = true;
+		const updated = await mcpStore.setMcpAccessEnabled(value);
+		if (updated) {
+			await fetchAvailableWorkflows();
+		} else {
+			workflowsLoading.value = false;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
+	} finally {
+		mcpStatusLoading.value = false;
 		workflowsLoading.value = false;
 	}
 };
@@ -166,10 +175,11 @@ onMounted(async () => {
 					placement="top"
 				>
 					<ElSwitch
-						:model-value="mcpStore.mcpAccessEnabled"
 						size="large"
 						data-test-id="mcp-access-toggle"
+						:model-value="mcpStore.mcpAccessEnabled"
 						:disabled="!canToggleMCP"
+						:loading="mcpStatusLoading"
 						@update:model-value="onUpdateMCPEnabled"
 					/>
 				</N8nTooltip>
