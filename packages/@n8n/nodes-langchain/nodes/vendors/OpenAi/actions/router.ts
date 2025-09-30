@@ -53,7 +53,7 @@ export async function router(this: IExecuteFunctions) {
 		try {
 			const responseData = await execute.call(this, i);
 
-			returnData.push(...responseData);
+			returnData.push.apply(returnData, responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });

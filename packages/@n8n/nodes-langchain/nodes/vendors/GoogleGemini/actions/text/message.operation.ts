@@ -335,7 +335,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push(...response.candidates.map((c) => c.content));
+		contents.push.apply(
+			contents,
+			response.candidates.map((c) => c.content),
+		);
 
 		for (const { functionCall } of toolCalls) {
 			let toolResponse;

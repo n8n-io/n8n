@@ -5,8 +5,8 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 jest.mock('@langchain/openai');
 jest.mock('../N8nLlmTracing');

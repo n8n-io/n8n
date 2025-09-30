@@ -187,7 +187,10 @@ export class SentimentAnalysis implements INodeType {
 
 					// Initialize returnData with empty arrays for each category
 					if (returnData.length === 0) {
-						returnData.push(...Array.from({ length: categories.length }, () => []));
+						returnData.push.apply(
+							returnData,
+							Array.from({ length: categories.length }, () => []),
+						);
 					}
 
 					const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -287,7 +290,7 @@ export class SentimentAnalysis implements INodeType {
 								{ itemData: { item: itemIndex } },
 							);
 
-							returnData[0].push(...executionErrorData);
+							returnData[0].push.apply(returnData[0], executionErrorData);
 							return;
 						} else {
 							throw error;
@@ -327,7 +330,10 @@ export class SentimentAnalysis implements INodeType {
 
 					// Initialize returnData with empty arrays for each category
 					if (returnData.length === 0) {
-						returnData.push(...Array.from({ length: categories.length }, () => []));
+						returnData.push.apply(
+							returnData,
+							Array.from({ length: categories.length }, () => []),
+						);
 					}
 
 					const options = this.getNodeParameter('options', i, {}) as {
@@ -406,7 +412,7 @@ export class SentimentAnalysis implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData[0].push(...executionErrorData);
+						returnData[0].push.apply(returnData[0], executionErrorData);
 						continue;
 					}
 					throw error;

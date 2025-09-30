@@ -9,9 +9,8 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { logWrapper } from '@utils/logWrapper';
-
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {

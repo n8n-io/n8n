@@ -3,13 +3,9 @@ import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import { AIMessage } from '@langchain/core/messages';
+import type { ToolCall } from '@langchain/core/messages/tool';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { getPromptInputByType } from '@utils/helpers';
-import {
-	getOptionalOutputParser,
-	type N8nOutputParser,
-} from '@utils/output_parsers/N8nOutputParser';
 import { type AgentRunnableSequence, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
@@ -32,6 +28,12 @@ import type {
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPromptInputByType } from '@utils/helpers';
+import {
+	getOptionalOutputParser,
+	type N8nOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
+
 import {
 	fixEmptyContentMessage,
 	getAgentStepsParser,
@@ -42,7 +44,6 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
-import type { ToolCall } from '@langchain/core/messages/tool';
 
 type ToolCallRequest = {
 	tool: string;
@@ -545,7 +546,7 @@ export async function toolsAgentExecute(
 						metadata: response.metadata,
 					};
 				} else {
-					request.actions.push(...response.actions);
+					request.actions.push.apply(request.actions, response.actions);
 				}
 				return;
 			}

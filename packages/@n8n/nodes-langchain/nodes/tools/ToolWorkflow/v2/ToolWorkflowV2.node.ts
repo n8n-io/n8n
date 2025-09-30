@@ -1,5 +1,4 @@
 import type { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-
 import type {
 	INodeTypeBaseDescription,
 	ISupplyDataFunctions,

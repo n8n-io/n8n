@@ -19,7 +19,7 @@ export default defineConfig(
 			'import-x/order': 'warn',
 			'import-x/extensions': 'warn',
 
-			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'n8n-local-rules/no-argument-spread': 'error',
 
 			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],

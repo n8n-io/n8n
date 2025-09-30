@@ -1,8 +1,6 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -12,6 +10,9 @@ import {
 	type IDataObject,
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
