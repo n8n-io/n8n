@@ -138,7 +138,8 @@ export function groupResultsByStatus(results: TestResult[]): {
  * @returns Object with average scores per programmatic evaluator
  */
 export function calculateProgrammaticAverages(results: TestResult[]): Record<string, number> {
-	const successfulTests = results.filter((r) => !r.error).length;
+	const successfulTests = results.filter((r) => !r.error);
+
 	const programmaticAverages: Record<string, number> = {
 		connections: 0,
 		trigger: 0,
@@ -148,19 +149,17 @@ export function calculateProgrammaticAverages(results: TestResult[]): Record<str
 		overall: 0,
 	};
 
-	results
-		.filter((r) => !r.error)
-		.forEach((r) => {
-			programmaticAverages.connections += r.programmaticEvaluationResult.connections.score;
-			programmaticAverages.trigger += r.programmaticEvaluationResult.trigger.score;
-			programmaticAverages.agentPrompt += r.programmaticEvaluationResult.agentPrompt.score;
-			programmaticAverages.tools += r.programmaticEvaluationResult.tools.score;
-			programmaticAverages.fromAi += r.programmaticEvaluationResult.fromAi.score;
-			programmaticAverages.overall += r.programmaticEvaluationResult.overallScore;
-		});
+	successfulTests.forEach((r) => {
+		programmaticAverages.connections += r.programmaticEvaluationResult.connections.score;
+		programmaticAverages.trigger += r.programmaticEvaluationResult.trigger.score;
+		programmaticAverages.agentPrompt += r.programmaticEvaluationResult.agentPrompt.score;
+		programmaticAverages.tools += r.programmaticEvaluationResult.tools.score;
+		programmaticAverages.fromAi += r.programmaticEvaluationResult.fromAi.score;
+		programmaticAverages.overall += r.programmaticEvaluationResult.overallScore;
+	});
 
 	Object.keys(programmaticAverages).forEach((key) => {
-		programmaticAverages[key] /= successfulTests || 1;
+		programmaticAverages[key] /= successfulTests.length || 1;
 	});
 
 	return programmaticAverages;
