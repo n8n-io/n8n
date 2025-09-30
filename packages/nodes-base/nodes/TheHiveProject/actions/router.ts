@@ -13,7 +13,7 @@ import * as task from './task';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const length = items.length;
 
 	const resource = this.getNodeParameter<TheHiveType>('resource', 0);
@@ -63,14 +63,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						`The operation "${operation}" is not supported!`,
 					);
 			}
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 				continue;
 			}
 			throw error;

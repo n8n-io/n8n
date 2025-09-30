@@ -174,7 +174,7 @@ export class MicrosoftExcelV1 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const itemData = generatePairedItemData(items.length);
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
@@ -250,14 +250,14 @@ export class MicrosoftExcelV1 implements INodeType {
 						{ itemData },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData },
 						);
-						returnData.push(...executionErrorData);
+						returnData = returnData.concat(executionErrorData);
 					} else {
 						throw error;
 					}
@@ -311,14 +311,14 @@ export class MicrosoftExcelV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionErrorData);
+							returnData = returnData.concat(executionErrorData);
 							continue;
 						}
 						throw error;
@@ -386,7 +386,7 @@ export class MicrosoftExcelV1 implements INodeType {
 									{ itemData: { item: index } },
 								);
 
-								returnData.push(...executionData);
+								returnData = returnData.concat(executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
@@ -395,7 +395,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -403,7 +403,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionErrorData);
+							returnData = returnData.concat(executionErrorData);
 							continue;
 						}
 						throw error;
@@ -466,7 +466,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						} else {
 							responseData = result.find((data: IDataObject) => {
 								return data[lookupColumn]?.toString() === lookupValue;
@@ -476,7 +476,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -484,7 +484,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionErrorData);
+							returnData = returnData.concat(executionErrorData);
 							continue;
 						}
 						throw error;
@@ -563,14 +563,14 @@ export class MicrosoftExcelV1 implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					} else if (responseData !== undefined) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData = returnData.concat(executionData);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -578,7 +578,7 @@ export class MicrosoftExcelV1 implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionErrorData);
+						returnData = returnData.concat(executionErrorData);
 						continue;
 					}
 					throw error;
@@ -658,7 +658,7 @@ export class MicrosoftExcelV1 implements INodeType {
 									{ itemData: { item: index } },
 								);
 
-								returnData.push(...executionData);
+								returnData = returnData.concat(executionData);
 							}
 						} else {
 							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
@@ -667,7 +667,7 @@ export class MicrosoftExcelV1 implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							returnData.push(...executionData);
+							returnData = returnData.concat(executionData);
 						}
 					}
 				} catch (error) {
@@ -676,7 +676,7 @@ export class MicrosoftExcelV1 implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionErrorData);
+						returnData = returnData.concat(executionErrorData);
 						continue;
 					}
 					throw error;

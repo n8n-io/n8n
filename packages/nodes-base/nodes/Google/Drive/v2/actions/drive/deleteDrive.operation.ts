@@ -22,7 +22,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	const driveId = this.getNodeParameter('driveId', i, undefined, {
 		extractValue: true,
@@ -35,7 +35,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		{ itemData: { item: i } },
 	);
 
-	returnData.push(...executionData);
+	returnData = returnData.concat(executionData);
 
 	return returnData;
 }

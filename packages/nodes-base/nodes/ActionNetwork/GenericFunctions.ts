@@ -68,7 +68,7 @@ export async function handleListing(
 	qs: IDataObject = {},
 	options?: { returnAll: true },
 ) {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	qs.perPage = 25; // max
@@ -82,7 +82,7 @@ export async function handleListing(
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
-		returnData.push(...(items as IDataObject[]));
+		returnData = returnData.concat(items as IDataObject[]);
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);

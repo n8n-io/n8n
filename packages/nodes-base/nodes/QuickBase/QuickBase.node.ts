@@ -115,7 +115,7 @@ export class QuickBase implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const itemData = generatePairedItemData(items.length);
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -151,7 +151,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 		}
@@ -178,7 +178,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 
@@ -297,7 +297,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 
 			if (operation === 'delete') {
@@ -318,7 +318,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 
@@ -383,7 +383,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 
@@ -467,7 +467,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 
 			if (operation === 'upsert') {
@@ -550,7 +550,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		}
 
@@ -607,7 +607,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 
@@ -632,7 +632,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 				}
 			}
 		}

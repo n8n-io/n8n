@@ -108,7 +108,7 @@ export class DeepL implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const responseData: INodeExecutionData[] = [];
+		let responseData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -134,7 +134,7 @@ export class DeepL implements INodeType {
 						const executionData = this.helpers.constructExecutionMetaData(translationJsonArray, {
 							itemData: { item: i },
 						});
-						responseData.push(...executionData);
+						responseData = responseData.concat(executionData);
 					}
 				}
 			} catch (error) {

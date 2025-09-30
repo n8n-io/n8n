@@ -214,7 +214,7 @@ export class AwsElb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -440,8 +440,8 @@ export class AwsElb implements INodeType {
 					}
 				}
 
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
+				returnData = returnData.concat(
+					this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject),
 						{
 							itemData: { item: i },

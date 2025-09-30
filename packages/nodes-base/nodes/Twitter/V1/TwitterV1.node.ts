@@ -91,7 +91,7 @@ export class TwitterV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -314,7 +314,7 @@ export class TwitterV1 implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = {

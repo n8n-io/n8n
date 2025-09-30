@@ -53,7 +53,7 @@ export class CircleCi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -141,7 +141,7 @@ export class CircleCi implements INodeType {
 					}
 				}
 
-				returnData.push(...(responseData as INodeExecutionData[]));
+				returnData = returnData.concat(responseData as INodeExecutionData[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {}, itemIndex: i });

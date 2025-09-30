@@ -450,7 +450,7 @@ export class Chargebee implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
@@ -608,7 +608,7 @@ export class Chargebee implements INodeType {
 							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...responseData);
+						returnData = returnData.concat(responseData);
 					});
 				} else if (resource === 'invoice' && operation === 'pdfUrl') {
 					const data: IDataObject = {};
@@ -619,13 +619,13 @@ export class Chargebee implements INodeType {
 						this.helpers.returnJsonArray({ ...data }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...responseData);
+					returnData = returnData.concat(responseData);
 				} else {
 					responseData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...responseData);
+					returnData = returnData.concat(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

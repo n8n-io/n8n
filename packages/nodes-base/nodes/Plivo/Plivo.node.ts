@@ -140,7 +140,7 @@ export class Plivo implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...(responseData as IDataObject[]))
+				? (returnData = returnData.concat(responseData as IDataObject[]))
 				: returnData.push(responseData as IDataObject);
 		}
 

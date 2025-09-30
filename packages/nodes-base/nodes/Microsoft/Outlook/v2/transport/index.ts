@@ -197,7 +197,7 @@ export async function getSubfolders(
 	folders: IDataObject[],
 	addPathToDisplayName = false,
 ) {
-	const returnData: IDataObject[] = [...folders];
+	let returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
 		if ((folder.childFolderCount as number) > 0) {
 			let subfolders = await microsoftApiRequest.call(
@@ -217,8 +217,8 @@ export async function getSubfolders(
 				subfolders = subfolders.value;
 			}
 
-			returnData.push(
-				...(await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName)),
+			returnData = returnData.concat(
+				await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName),
 			);
 		}
 	}

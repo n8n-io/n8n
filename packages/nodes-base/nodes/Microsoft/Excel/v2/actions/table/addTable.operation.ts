@@ -68,7 +68,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	//https://learn.microsoft.com/en-us/graph/api/worksheet-post-tables?view=graph-rest-1.0
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -115,14 +115,14 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw error;

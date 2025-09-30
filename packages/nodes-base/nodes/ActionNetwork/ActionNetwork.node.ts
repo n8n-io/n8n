@@ -483,7 +483,7 @@ export class ActionNetwork implements INodeType {
 				}
 
 				Array.isArray(response)
-					? returnData.push(...(response as IDataObject[]))
+					? (returnData = returnData.concat(response as IDataObject[]))
 					: returnData.push(response as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {

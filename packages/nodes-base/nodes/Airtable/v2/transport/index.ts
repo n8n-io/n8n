@@ -1,3 +1,4 @@
+import { ApplicationError } from '@n8n/errors';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -9,7 +10,6 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError } from '@n8n/errors';
 
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 import { flattenOutput } from '../helpers/utils';
@@ -153,7 +153,7 @@ export async function batchUpdate(
 
 	const batchSize = 10;
 	const batches = Math.ceil(updateRecords.length / batchSize);
-	const updatedRecords: IDataObject[] = [];
+	let updatedRecords: IDataObject[] = [];
 
 	for (let j = 0; j < batches; j++) {
 		const batch = updateRecords.slice(j * batchSize, (j + 1) * batchSize);
@@ -164,7 +164,7 @@ export async function batchUpdate(
 		};
 
 		const updateResponse = await apiRequest.call(this, 'PATCH', endpoint, updateBody);
-		updatedRecords.push(...((updateResponse.records as IDataObject[]) || []));
+		updatedRecords = updatedRecords.concat((updateResponse.records as IDataObject[]) || []);
 	}
 
 	responseData = { records: updatedRecords };

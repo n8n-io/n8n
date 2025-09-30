@@ -31,7 +31,7 @@ export async function handleListing(
 	endpoint: string,
 	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	qs.size = 100;
@@ -41,7 +41,7 @@ export async function handleListing(
 
 	do {
 		responseData = await urlScanIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData = returnData.concat(responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

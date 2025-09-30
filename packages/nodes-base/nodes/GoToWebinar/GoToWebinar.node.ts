@@ -152,7 +152,7 @@ export class GoToWebinar implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const { oauthTokenData } = await this.getCredentials<{
 			oauthTokenData: { account_key: string; organizer_key: string };
@@ -635,7 +635,7 @@ export class GoToWebinar implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 
@@ -647,7 +647,7 @@ export class GoToWebinar implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

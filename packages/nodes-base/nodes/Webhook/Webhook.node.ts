@@ -335,10 +335,10 @@ export class Webhook extends Node {
 		let count = 0;
 
 		for (const key of Object.keys(files)) {
-			const processFiles: MultiPartFormData.File[] = [];
+			let processFiles: MultiPartFormData.File[] = [];
 			let multiFile = false;
 			if (Array.isArray(files[key])) {
-				processFiles.push(...files[key]);
+				processFiles = processFiles.concat(files[key]);
 				multiFile = true;
 			} else {
 				processFiles.push(files[key]);

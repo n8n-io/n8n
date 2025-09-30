@@ -72,7 +72,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	let responseData;
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -104,7 +104,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });

@@ -792,7 +792,7 @@ export class Onfleet {
 			return tasksCreated;
 		}
 
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -850,7 +850,7 @@ export class Onfleet {
 						tasks = tasks.tasks;
 						tasks = tasks.splice(0, limit);
 					}
-					responseData.push(...(tasks as IDataObject[]));
+					responseData = responseData.concat(tasks as IDataObject[]);
 				} else if (operation === 'complete') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Force complete a task                           */
@@ -1043,7 +1043,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1058,7 +1058,7 @@ export class Onfleet {
 						const limit = this.getNodeParameter('limit', 0);
 						adminUsers = adminUsers.slice(0, limit);
 					}
-					responseData.push(...(adminUsers as IDataObject[]));
+					responseData = responseData.concat(adminUsers as IDataObject[]);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Create a new admin                             */
@@ -1105,7 +1105,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1120,7 +1120,7 @@ export class Onfleet {
 						const limit = this.getNodeParameter('limit', 0);
 						hubs = hubs.slice(0, limit);
 					}
-					responseData.push(...(hubs as IDataObject[]));
+					responseData = responseData.concat(hubs as IDataObject[]);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Create a new hub                              */
@@ -1161,7 +1161,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1200,7 +1200,7 @@ export class Onfleet {
 						workers = workers.slice(0, limit);
 					}
 
-					responseData.push(...(workers as IDataObject[]));
+					responseData = responseData.concat(workers as IDataObject[]);
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get a worker                                */
@@ -1279,7 +1279,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1287,8 +1287,8 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get all webhooks                              */
 					/* -------------------------------------------------------------------------- */
-					responseData.push(
-						...((await onfleetApiRequest.call(this, 'GET', resource)) as IDataObject[]),
+					responseData = responseData.concat(
+						(await onfleetApiRequest.call(this, 'GET', resource)) as IDataObject[],
 					);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
@@ -1387,7 +1387,7 @@ export class Onfleet {
 		operation: string,
 		items: INodeExecutionData[],
 	): Promise<IDataObject | IDataObject[]> {
-		const responseData = [];
+		let responseData = [];
 		for (const key of Object.keys(items)) {
 			const index = Number(key);
 			try {
@@ -1402,7 +1402,7 @@ export class Onfleet {
 						teams = teams.slice(0, limit);
 					}
 
-					responseData.push(...(teams as IDataObject[]));
+					responseData = responseData.concat(teams as IDataObject[]);
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single team                             */

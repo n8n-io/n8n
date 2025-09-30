@@ -287,7 +287,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 		query.username = "'";
 	}
 
-	const users = [];
+	let users = [];
 	let hasNextPage: boolean;
 
 	do {
@@ -298,7 +298,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 			{},
 			{ ...query, startAt: users.length },
 		)) as IDataObject[];
-		users.push(...usersPage);
+		users = users.concat(usersPage);
 		hasNextPage = usersPage.length === maxResults;
 	} while (hasNextPage);
 

@@ -8,7 +8,7 @@ import type { BambooHr } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const resource = this.getNodeParameter<BambooHr>('resource', i);
@@ -26,16 +26,24 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (bamboohr.resource === 'employee') {
-				operationResult.push(...(await employee[bamboohr.operation].execute.call(this, i)));
+				operationResult = operationResult.concat(
+					await employee[bamboohr.operation].execute.call(this, i),
+				);
 			} else if (bamboohr.resource === 'employeeDocument') {
 				//@ts-ignore
-				operationResult.push(...(await employeeDocument[bamboohr.operation].execute.call(this, i)));
+				operationResult = operationResult.concat(
+					await employeeDocument[bamboohr.operation].execute.call(this, i),
+				);
 			} else if (bamboohr.resource === 'file') {
 				//@ts-ignore
-				operationResult.push(...(await file[bamboohr.operation].execute.call(this, i)));
+				operationResult = operationResult.concat(
+					await file[bamboohr.operation].execute.call(this, i),
+				);
 			} else if (bamboohr.resource === 'companyReport') {
 				//@ts-ignore
-				operationResult.push(...(await companyReport[bamboohr.operation].execute.call(this, i)));
+				operationResult = operationResult.concat(
+					await companyReport[bamboohr.operation].execute.call(this, i),
+				);
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

@@ -20,7 +20,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -52,14 +52,14 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} else if (responseData !== undefined) {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -67,7 +67,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw error;

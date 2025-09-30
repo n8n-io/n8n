@@ -1,6 +1,7 @@
-import { GithubTrigger } from '../../GithubTrigger.node';
-import * as GenericFunctions from '../../GenericFunctions';
 import { NodeOperationError } from 'n8n-workflow';
+
+import * as GenericFunctions from '../../GenericFunctions';
+import { GithubTrigger } from '../../GithubTrigger.node';
 
 describe('GithubTrigger Node', () => {
 	describe('checkExists webhook method', () => {

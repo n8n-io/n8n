@@ -169,7 +169,6 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === false && attribute.frontend_label !== '') {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -190,7 +189,6 @@ export class Magento2 implements INodeType {
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 					if (attribute.system === true && attribute.frontend_label !== null) {
 						returnData.push({
 							name: attribute.frontend_label as string,
@@ -306,7 +304,7 @@ export class Magento2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -796,14 +794,14 @@ export class Magento2 implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 				throw error;

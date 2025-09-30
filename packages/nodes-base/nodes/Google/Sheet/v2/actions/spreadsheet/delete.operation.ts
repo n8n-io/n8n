@@ -67,7 +67,7 @@ export const description: SpreadSheetProperties = [
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const documentId = this.getNodeParameter('documentId', i, undefined, {
@@ -87,7 +87,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			itemData: { item: i },
 		});
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	}
 
 	return returnData;

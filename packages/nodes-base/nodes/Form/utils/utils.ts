@@ -363,7 +363,7 @@ export async function prepareFormReturnItem(
 	}
 
 	for (const key of Object.keys(files)) {
-		const processFiles: MultiPartFormData.File[] = [];
+		let processFiles: MultiPartFormData.File[] = [];
 		let multiFile = false;
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
@@ -373,7 +373,7 @@ export async function prepareFormReturnItem(
 				mimetype: file.mimetype,
 				size: file.size,
 			}));
-			processFiles.push(...filesInput);
+			processFiles = processFiles.concat(filesInput);
 			multiFile = true;
 		} else {
 			bodyData[key] = {

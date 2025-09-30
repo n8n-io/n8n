@@ -96,7 +96,7 @@ export async function execute(
 	guildId: string,
 	userGuilds: IDataObject[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
@@ -120,8 +120,8 @@ export async function execute(
 		}
 
 		try {
-			returnData.push(
-				...(await sendDiscordMessage.call(this, {
+			returnData = returnData.concat(
+				await sendDiscordMessage.call(this, {
 					guildId,
 					userGuilds,
 					isOAuth2,
@@ -129,13 +129,13 @@ export async function execute(
 					items,
 					files,
 					itemIndex: i,
-				})),
+				}),
 			);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push(...prepareErrorData.call(this, err, i));
+				returnData = returnData.concat(prepareErrorData.call(this, err, i));
 				continue;
 			}
 

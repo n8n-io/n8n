@@ -46,7 +46,7 @@ export async function awsApiRequestAllItems(
 	body: IDataObject,
 	propertyName: string,
 ): Promise<IDataObject[]> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let nextToken: string | undefined;
 
 	do {
@@ -63,7 +63,7 @@ export async function awsApiRequestAllItems(
 		)) as IDataObject;
 
 		const items = (response[propertyName] ?? []) as IDataObject[];
-		returnData.push(...items);
+		returnData = returnData.concat(items);
 
 		nextToken = response.NextToken as string | undefined;
 	} while (nextToken);

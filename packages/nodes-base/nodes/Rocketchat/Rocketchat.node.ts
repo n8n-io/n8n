@@ -373,7 +373,7 @@ export class Rocketchat implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		let responseData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
@@ -483,14 +483,14 @@ export class Rocketchat implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 					continue;
 				}
 				throw error;

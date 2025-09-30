@@ -1027,7 +1027,7 @@ export class Beeminder implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 
@@ -1053,7 +1053,7 @@ export class Beeminder implements INodeType {
 				}
 
 				const executionData = buildExecutionData(this, results, i);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const errorData = {

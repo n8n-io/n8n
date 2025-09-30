@@ -11,7 +11,7 @@ import * as window from './window/Window.resource';
 import type { IAirtopNodeExecutionData } from '../transport/types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 	let responseData: IAirtopNodeExecutionData[] = [];
 	const nodeType = this.getNode().type;
 	const isCalledAsTool = nodeType.includes('airtopTool');
@@ -59,7 +59,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				itemData: { item: i },
 			});
 
-			operationResult.push(...executionData);
+			operationResult = operationResult.concat(executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				operationResult.push({

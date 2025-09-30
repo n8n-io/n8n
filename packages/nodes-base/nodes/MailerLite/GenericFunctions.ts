@@ -48,7 +48,7 @@ export async function mailerliteApiRequestAllItems(
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 	let responseData;
 
 	query.limit = 1000;
@@ -57,13 +57,13 @@ export async function mailerliteApiRequestAllItems(
 	if (this.getNode().typeVersion === 1) {
 		do {
 			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-			returnData.push(...(responseData as IDataObject[]));
+			returnData = returnData.concat(responseData as IDataObject[]);
 			query.offset += query.limit;
 		} while (responseData.length !== 0);
 	} else {
 		do {
 			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-			returnData.push(...(responseData.data as IDataObject[]));
+			returnData = returnData.concat(responseData.data as IDataObject[]);
 			query.cursor = responseData.meta.next_cursor;
 		} while (responseData.links.next !== null);
 	}

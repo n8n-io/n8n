@@ -80,7 +80,7 @@ export class Netlify implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		let responseData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		const body: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
@@ -192,14 +192,14 @@ export class Netlify implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 				throw error;

@@ -153,7 +153,7 @@ export class Zoom implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		let qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -777,7 +777,7 @@ export class Zoom implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = {

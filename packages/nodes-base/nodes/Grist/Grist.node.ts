@@ -114,7 +114,7 @@ export class Grist implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		let responseData;
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -249,7 +249,7 @@ export class Grist implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 
 					continue;
 				}
@@ -259,7 +259,7 @@ export class Grist implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
 import { parseAddress } from '../helpers/utils';
+import { microsoftApiRequest } from '../transport';
 
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,

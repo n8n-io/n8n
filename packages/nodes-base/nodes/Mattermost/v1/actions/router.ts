@@ -8,7 +8,7 @@ import * as user from './user';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 	let responseData: IDataObject | IDataObject[] = [];
 
 	for (let i = 0; i < items.length; i++) {
@@ -40,7 +40,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
-			operationResult.push(...executionData);
+			operationResult = operationResult.concat(executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error: err });

@@ -338,8 +338,8 @@ export async function execute(
 		sheetData,
 	});
 
-	const updateData: ISheetUpdateData[] = [];
-	const appendData: IDataObject[] = [];
+	let updateData: ISheetUpdateData[] = [];
+	let appendData: IDataObject[] = [];
 
 	const errorOnUnexpectedColumn = (key: string, i: number) => {
 		if (!columnNames.includes(key)) {
@@ -460,8 +460,8 @@ export async function execute(
 			columnValuesList,
 		});
 
-		updateData.push(...preparedData.updateData);
-		appendData.push(...preparedData.appendData);
+		updateData = updateData.concat(preparedData.updateData);
+		appendData = appendData.concat(preparedData.appendData);
 	}
 
 	const columnNamesList = [columnNames.concat([...newColumns])];

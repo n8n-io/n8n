@@ -127,7 +127,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
@@ -174,8 +174,8 @@ export async function execute(
 				const keyRow = this.getNodeParameter('keyRow', i, 0) as number;
 				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
-				returnData.push(
-					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+				returnData = returnData.concat(
+					prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						keyRow,
 						firstDataRow,
@@ -183,8 +183,8 @@ export async function execute(
 				);
 			} else {
 				const dataProperty = (options.dataProperty as string) || 'data';
-				returnData.push(
-					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+				returnData = returnData.concat(
+					prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						dataProperty,
 					}),
@@ -196,7 +196,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw error;

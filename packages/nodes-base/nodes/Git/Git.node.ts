@@ -1,3 +1,5 @@
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { access, mkdir } from 'fs/promises';
 import type {
 	IExecuteFunctions,
@@ -20,8 +22,6 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { Container } from '@n8n/di';
-import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -278,7 +278,7 @@ export class Git implements INodeType {
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
@@ -431,9 +431,8 @@ export class Git implements INodeType {
 
 					const log = await git.log(logOptions);
 
-					returnItems.push(
-						// @ts-ignore
-						...this.helpers.returnJsonArray(log.all).map((item) => {
+					returnItems = returnItems.concat(
+						this.helpers.returnJsonArray(log.all).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },
@@ -530,8 +529,8 @@ export class Git implements INodeType {
 						});
 					}
 
-					returnItems.push(
-						...this.helpers.returnJsonArray(data).map((item) => {
+					returnItems = returnItems.concat(
+						this.helpers.returnJsonArray(data).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },
@@ -545,9 +544,8 @@ export class Git implements INodeType {
 
 					const status = await git.status();
 
-					returnItems.push(
-						// @ts-ignore
-						...this.helpers.returnJsonArray([status]).map((item) => {
+					returnItems = returnItems.concat(
+						this.helpers.returnJsonArray([status]).map((item) => {
 							return {
 								...item,
 								pairedItem: { item: itemIndex },

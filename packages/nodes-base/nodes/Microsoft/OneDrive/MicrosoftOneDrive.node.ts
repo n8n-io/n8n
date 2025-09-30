@@ -61,7 +61,7 @@ export class MicrosoftOneDrive implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -351,7 +351,7 @@ export class MicrosoftOneDrive implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionErrorData);
+						returnData = returnData.concat(executionErrorData);
 					}
 					continue;
 				}
@@ -362,7 +362,7 @@ export class MicrosoftOneDrive implements INodeType {
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items

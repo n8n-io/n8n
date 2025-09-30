@@ -80,7 +80,7 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	let responseData;
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	const existingSheetNames = await getExistingSheetNames(sheet);
@@ -127,7 +127,7 @@ export async function execute(
 			{ itemData: { item: i } },
 		);
 
-		returnData.push(...executionData);
+		returnData = returnData.concat(executionData);
 	}
 	return returnData;
 }

@@ -235,14 +235,14 @@ export function columnNamesGlob(
 	columnNames: string[],
 	dtableColumns: TDtableMetadataColumns,
 ): string[] {
-	const buffer: string[] = [];
+	let buffer: string[] = [];
 	const names: string[] = dtableColumns.map((c) => c.name).filter(nonInternalPredicate);
 	columnNames.forEach((columnName) => {
 		if (columnName !== '*') {
 			buffer.push(columnName);
 			return;
 		}
-		buffer.push(...names);
+		buffer = buffer.concat(names);
 	});
 	return buffer.filter(uniquePredicate);
 }

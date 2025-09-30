@@ -188,7 +188,7 @@ export class GmailV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
@@ -582,7 +582,7 @@ export class GmailV2 implements INodeType {
 						if (threadId) {
 							// If a threadId is set, we need to add the Message-ID of the last message in the thread
 							// to the email so that Gmail can correctly associate the draft with the thread
-							await addThreadHeadersToEmail.call(this, email, threadId as string);
+							await addThreadHeadersToEmail.call(this, email, threadId);
 						}
 
 						const body = {
@@ -824,7 +824,7 @@ export class GmailV2 implements INodeType {
 						itemData: { item: i },
 					},
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;
 				if (this.continueOnFail()) {

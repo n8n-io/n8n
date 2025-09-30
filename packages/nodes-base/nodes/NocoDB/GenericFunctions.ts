@@ -94,8 +94,8 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		version === 1
-			? returnData.push(...(responseData as IDataObject[]))
-			: returnData.push(...(responseData.list as IDataObject[]));
+			? (returnData = returnData.concat(responseData as IDataObject[]))
+			: (returnData = returnData.concat(responseData.list as IDataObject[]));
 
 		query.offset += query.limit;
 	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);

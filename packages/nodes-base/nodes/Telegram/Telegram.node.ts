@@ -1826,7 +1826,7 @@ export class Telegram implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -2236,21 +2236,21 @@ export class Telegram implements INodeType {
 						this.helpers.returnJsonArray(responseData.result as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData = returnData.concat(executionData);
 					continue;
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.description ?? error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData = returnData.concat(executionErrorData);
 					continue;
 				}
 				throw error;

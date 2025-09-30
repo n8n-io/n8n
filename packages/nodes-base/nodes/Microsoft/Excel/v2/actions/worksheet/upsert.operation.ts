@@ -200,7 +200,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const nodeVersion = this.getNode().typeVersion;
 
 	try {
@@ -373,8 +373,8 @@ export async function execute(
 		const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;
 		const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
-		returnData.push(
-			...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+		returnData = returnData.concat(
+			prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 				updatedRows,
 				rawData,
 				dataProperty,
@@ -387,7 +387,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push(...executionErrorData);
+			returnData = returnData.concat(executionErrorData);
 		} else {
 			throw error;
 		}

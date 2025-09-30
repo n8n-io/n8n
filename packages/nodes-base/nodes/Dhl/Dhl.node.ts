@@ -122,7 +122,7 @@ export class Dhl implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		let returnData: IDataObject[] = [];
 		let qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -143,7 +143,7 @@ export class Dhl implements INodeType {
 
 						responseData = await dhlApiRequest.call(this, 'GET', '/track/shipments', {}, qs);
 
-						returnData.push(...(responseData.shipments as IDataObject[]));
+						returnData = returnData.concat(responseData.shipments as IDataObject[]);
 					}
 				}
 			} catch (error) {

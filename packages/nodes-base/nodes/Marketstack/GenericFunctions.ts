@@ -49,13 +49,13 @@ export async function marketstackApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	let responseData;
-	const returnData: IDataObject[] = [];
+	let returnData: IDataObject[] = [];
 
 	qs.offset = 0;
 
 	do {
 		responseData = await marketstackApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData = returnData.concat(responseData.data as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

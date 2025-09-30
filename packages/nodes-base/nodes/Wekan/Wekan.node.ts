@@ -231,7 +231,7 @@ export class Wekan implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		let returnAll;
 		let limit;
 
@@ -661,7 +661,7 @@ export class Wekan implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });

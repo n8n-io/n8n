@@ -146,7 +146,7 @@ export class GmailV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -795,7 +795,7 @@ export class GmailV1 implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });

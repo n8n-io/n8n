@@ -58,7 +58,7 @@ export class Bubble implements INodeType {
 
 		let responseData;
 		const qs: IDataObject = {};
-		const returnData: INodeExecutionData[] = [];
+		let returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'object') {
@@ -176,7 +176,7 @@ export class Bubble implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData = returnData.concat(executionData);
 		}
 
 		return [returnData];

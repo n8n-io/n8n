@@ -111,7 +111,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	//https://docs.microsoft.com/en-us/graph/api/table-list-rows?view=graph-rest-1.0&tabs=http
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
@@ -186,7 +186,7 @@ export async function execute(
 						{ itemData: { item: index } },
 					);
 
-					rows.push(...executionData);
+					rows = rows.concat(executionData);
 				}
 
 				if ((filters?.column as string[])?.length) {
@@ -201,7 +201,7 @@ export async function execute(
 					});
 				}
 
-				returnData.push(...rows);
+				returnData = returnData.concat(rows);
 			} else {
 				const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -209,7 +209,7 @@ export async function execute(
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData = returnData.concat(executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -217,7 +217,7 @@ export async function execute(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData = returnData.concat(executionErrorData);
 				continue;
 			}
 			throw error;
