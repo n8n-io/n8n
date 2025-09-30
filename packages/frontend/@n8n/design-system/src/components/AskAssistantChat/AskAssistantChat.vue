@@ -345,6 +345,15 @@ defineExpose({
 							:user="user"
 							:streaming="streaming"
 							:is-last-message="i === normalizedMessages.length - 1"
+							:class="{
+								[$style.firstToolMessage]:
+									message.type === 'tool' && (i === 0 || normalizedMessages[i - 1].type !== 'tool'),
+								[$style.lastToolMessage]:
+									message.type === 'tool' &&
+									i === normalizedMessages.length - 1 &&
+									!loadingMessage &&
+									(normalizedMessages[i + 1]?.type !== 'tool' || !normalizedMessages[i + 1]),
+							}"
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 							@feedback="onRateMessage"
@@ -381,7 +390,14 @@ defineExpose({
 				</div>
 				<div
 					v-if="loadingMessage"
-					:class="{ [$style.message]: true, [$style.loading]: normalizedMessages?.length }"
+					:class="{
+						[$style.message]: true,
+						[$style.loading]: normalizedMessages?.length,
+						[$style.firstToolMessage]:
+							normalizedMessages?.length === 0 ||
+							normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
+						[$style.lastToolMessage]: true,
+					}"
 				>
 					<AssistantLoadingMessage :message="loadingMessage" />
 				</div>
@@ -518,6 +534,14 @@ defineExpose({
 	margin-bottom: var(--spacing-s);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+}
+
+.firstToolMessage {
+	margin-top: var(--spacing-m);
+}
+
+.lastToolMessage {
+	margin-bottom: var(--spacing-m);
 }
 
 .chatTitle {

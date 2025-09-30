@@ -513,8 +513,8 @@ CodeDiffWithMinimalRating.args = {
 	]),
 };
 
-export const ToolMessageRunning = Template.bind({});
-ToolMessageRunning.args = {
+export const ToolMessageStates = Template.bind({});
+ToolMessageStates.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
@@ -524,112 +524,30 @@ ToolMessageRunning.args = {
 			id: '127',
 			type: 'tool',
 			role: 'assistant',
-			toolName: 'code_tool',
-			toolCallId: 'call_123',
-			status: 'running',
-			updates: [
-				{
-					type: 'progress',
-					data: { message: 'Analyzing the codebase structure...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'input',
-					data: {
-						query: 'Find all Vue components in the project',
-						path: '/src/components',
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
-			read: false,
-		},
-	]),
-};
-
-export const ToolMessageCompleted = Template.bind({});
-ToolMessageCompleted.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
-		{
-			id: '128',
-			type: 'tool',
-			role: 'assistant',
 			toolName: 'search_files',
 			toolCallId: 'call_456',
 			status: 'completed',
-			updates: [
-				{
-					type: 'input',
-					data: {
-						pattern: '*.vue',
-						directory: '/src',
-					},
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'progress',
-					data: { message: 'Searching for Vue files...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'output',
-					data: {
-						files: [
-							'/src/components/Button.vue',
-							'/src/components/Modal.vue',
-							'/src/views/Home.vue',
-						],
-						count: 3,
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
+			displayTitle: 'Search Files',
 			read: false,
 		},
-	]),
-};
-
-export const ToolMessageError = Template.bind({});
-ToolMessageError.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
 		{
-			id: '129',
+			id: '128',
 			type: 'tool',
 			role: 'assistant',
 			toolName: 'database_query',
 			toolCallId: 'call_789',
 			status: 'error',
-			updates: [
-				{
-					type: 'input',
-					data: {
-						query: 'SELECT * FROM users WHERE id = 123',
-						database: 'production',
-					},
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'progress',
-					data: { message: 'Connecting to database...' },
-					timestamp: new Date().toISOString(),
-				},
-				{
-					type: 'error',
-					data: {
-						error: 'Connection timeout',
-						details: 'Failed to connect to database after 30 seconds',
-					},
-					timestamp: new Date().toISOString(),
-				},
-			],
+			displayTitle: 'Database Query',
+			read: false,
+		},
+		{
+			id: '129',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'code_tool',
+			toolCallId: 'call_123',
+			status: 'running',
+			displayTitle: 'Code Tool',
 			read: false,
 		},
 	]),
