@@ -3,6 +3,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { AgentV1 } from './V1/AgentV1.node';
 import { AgentV2 } from './V2/AgentV2.node';
+import { AgentV3 } from './V3/AgentV3.node';
 
 export class Agent extends VersionedNodeType {
 	constructor() {
@@ -27,7 +28,7 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2.2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -44,6 +45,7 @@ export class Agent extends VersionedNodeType {
 			2: new AgentV2(baseDescription),
 			2.1: new AgentV2(baseDescription),
 			2.2: new AgentV2(baseDescription),
+			3: new AgentV3(baseDescription),
 			// IMPORTANT Reminder to update AgentTool
 		};
 

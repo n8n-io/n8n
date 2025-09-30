@@ -1626,6 +1626,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const node = getNodeByName(nodeName);
 		if (!node) return;
 
+		workflowExecutionData.value.data.resultData.lastNodeExecuted = nodeName;
+
 		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
 			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
 		}

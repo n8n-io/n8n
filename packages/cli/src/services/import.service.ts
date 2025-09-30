@@ -18,6 +18,8 @@ import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { Cipher } from 'n8n-core';
+import { decompressFolder } from '@/utils/compression.util';
 
 @Service()
 export class ImportService {
@@ -47,6 +49,7 @@ export class ImportService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
+		private readonly cipher: Cipher,
 	) {}
 
 	async initRecords() {
@@ -242,36 +245,50 @@ export class ImportService {
 	 */
 	async readEntityFile(filePath: string): Promise<unknown[]> {
 		const content = await readFile(filePath, 'utf8');
-
-		// For JSONL, we need to split by actual line endings (\n or \r\n)
-		// Each line should contain exactly one complete JSON object
-		const lines = content.split(/\r?\n/);
 		const entities: unknown[] = [];
 
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i].trim();
+		for (const block of content.split('\n')) {
+			const lines = this.cipher.decrypt(block).split(/\r?\n/);
 
-			if (!line) continue;
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
 
-			try {
-				entities.push(JSON.parse(line));
-			} catch (error: unknown) {
-				// If parsing fails, it might be because the JSON spans multiple lines
-				// This shouldn't happen in proper JSONL, but let's handle it gracefully
-				this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, { error });
-				this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
-				throw new Error(
-					`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
-				);
+				if (!line) continue;
+
+				try {
+					entities.push(JSON.parse(line));
+				} catch (error: unknown) {
+					// If parsing fails, it might be because the JSON spans multiple lines
+					// This shouldn't happen in proper JSONL, but let's handle it gracefully
+					this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, { error });
+					this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
+					throw new Error(
+						`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
+					);
+				}
 			}
 		}
 
 		return entities;
 	}
 
+	private async decompressEntitiesZip(inputDir: string): Promise<void> {
+		const entitiesZipPath = path.join(inputDir, 'entities.zip');
+		const { existsSync } = await import('fs');
+
+		if (!existsSync(entitiesZipPath)) {
+			throw new Error(`entities.zip file not found in ${inputDir}.`);
+		}
+
+		this.logger.info(`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`);
+		await decompressFolder(entitiesZipPath, inputDir);
+		this.logger.info('✅ Successfully decompressed entities.zip');
+	}
+
 	async importEntities(inputDir: string, truncateTables: boolean) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		await this.decompressEntitiesZip(inputDir);
 		await this.validateMigrations(inputDir);
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
@@ -308,6 +325,17 @@ export class ImportService {
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
+
+		// Cleanup decompressed files after import
+		const { readdir, rm } = await import('fs/promises');
+		const files = await readdir(inputDir);
+		for (const file of files) {
+			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
+				await rm(path.join(inputDir, file));
+				this.logger.info(`   Removed: ${file}`);
+			}
+		}
+		this.logger.info(`\n🗑️  Cleaned up decompressed files in ${inputDir}`);
 	}
 
 	/**
@@ -446,7 +474,8 @@ export class ImportService {
 
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = migrationsFileContent
+		const importMigrations = this.cipher
+			.decrypt(migrationsFileContent)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())

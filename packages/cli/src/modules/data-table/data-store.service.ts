@@ -310,17 +310,33 @@ export class DataStoreService {
 		return result;
 	}
 
-	async deleteRows<T extends boolean | undefined>(
-		dataStoreId: string,
-		projectId: string,
-		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async deleteRows(
 		dataStoreId: string,
 		projectId: string,
-		dto: Omit<DeleteDataTableRowsDto, 'returnData'>,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: true,
+		dryRun?: boolean,
+	): Promise<DataStoreRowReturn[]>;
+	async deleteRows(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData?: boolean,
+		dryRun?: true,
+	): Promise<DataStoreRowReturn[]>;
+	async deleteRows(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData?: false,
+		dryRun?: false,
+	): Promise<true>;
+	async deleteRows(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
+		dryRun: boolean = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
@@ -340,13 +356,16 @@ export class DataStoreService {
 				columns,
 				dto.filter,
 				returnData,
+				dryRun,
 				trx,
 			);
 		});
 
-		this.dataStoreSizeValidator.reset();
+		if (!dryRun) {
+			this.dataStoreSizeValidator.reset();
+		}
 
-		return returnData ? result : true;
+		return result;
 	}
 
 	private validateRowsWithColumns(
