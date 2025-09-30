@@ -33,12 +33,14 @@ import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
 import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
+import WorkflowSelectorParameterInput from '@/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue';
 
 import {
 	formatAsExpression,

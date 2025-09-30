@@ -11,6 +11,7 @@ import type {
 	ResourceLocatorModes,
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
