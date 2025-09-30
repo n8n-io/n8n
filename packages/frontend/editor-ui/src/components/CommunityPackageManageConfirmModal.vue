@@ -16,6 +16,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { WorkflowResource } from '@/Interface';
 
 import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
+import NodesInWorkflowTable from '@/components/NodesInWorkflowTable.vue';
+
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
 interface Props {
