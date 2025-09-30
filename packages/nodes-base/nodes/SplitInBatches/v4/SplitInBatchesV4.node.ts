@@ -10,6 +10,8 @@ import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow'
 export class SplitInBatchesV4 implements INodeType {
 	// Track executions per executionId + node name
 	private static executionCounters = new Map<string, number>();
+	private static breachCounters = new Map<string, number>();
+	private static reinitCounters = new Map<string, number>();
 
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
@@ -79,14 +81,6 @@ export class SplitInBatchesV4 implements INodeType {
 							'Multiplier applied to the expected number of batches to determine the execution cap',
 					},
 					{
-						displayName: 'Warn Before Error',
-						name: 'warnBeforeError',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to emit a warning on the first limit breach and only error on the next one',
-					},
-					{
 						displayName: 'Max Reinitializations',
 						name: 'maxReinitializations',
 						type: 'number',
@@ -96,28 +90,6 @@ export class SplitInBatchesV4 implements INodeType {
 						default: 10,
 						description:
 							'Maximum number of times the node may re-initialize within a single execution before being considered stuck',
-					},
-					{
-						displayName: 'Signature Repeat Limit',
-						name: 'signatureRepeatLimit',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-						},
-						default: 3,
-						description:
-							'Number of consecutive times the same input signature can repeat before raising suspicion of a loop',
-					},
-					{
-						displayName: 'No Progress Window',
-						name: 'noProgressWindow',
-						type: 'number',
-						typeOptions: {
-							minValue: 1,
-						},
-						default: 3,
-						description:
-							'Number of consecutive executions without processing additional items before raising suspicion of a loop',
 					},
 				],
 			},
@@ -174,8 +146,6 @@ export class SplitInBatchesV4 implements INodeType {
 			returnItems.push.apply(returnItems, items.splice(0, batchSize));
 			nodeContext.items = [...items];
 			nodeContext.processedItems = [];
-			// Update progress tracking for the first batch setup
-			SplitInBatchesV4.updateProgress(this, 0);
 		} else {
 			// Subsequent batches
 			nodeContext.currentRunIndex += 1;
@@ -227,8 +197,6 @@ export class SplitInBatchesV4 implements INodeType {
 			returnItems.map((item) => {
 				item.pairedItem = getPairedItemInformation(item);
 			});
-			// Update progress tracking after adding processed items
-			SplitInBatchesV4.updateProgress(this, nodeContext.processedItems.length ?? 0);
 		}
 
 		nodeContext.noItemsLeft = nodeContext.items.length === 0;
@@ -244,7 +212,7 @@ export class SplitInBatchesV4 implements INodeType {
 	}
 
 	/**
-	 * Prevents infinite loops by limiting executions
+	 * Prevents infinite loops by limiting executions using simple, reliable heuristics
 	 */
 	static checkExecutionLimit(executeFunctions: IExecuteFunctions): void {
 		const nodeName = executeFunctions.getNode().name;
@@ -254,10 +222,7 @@ export class SplitInBatchesV4 implements INodeType {
 		const options = (executeFunctions.getNodeParameter('options', 0, {}) || {}) as {
 			disableInfiniteLoopProtection?: boolean;
 			limitFactor?: number;
-			warnBeforeError?: boolean;
 			maxReinitializations?: number;
-			signatureRepeatLimit?: number;
-			noProgressWindow?: number;
 		};
 		if (options.disableInfiniteLoopProtection === true) return;
 
@@ -271,40 +236,14 @@ export class SplitInBatchesV4 implements INodeType {
 		const factor = Math.max(Number(options.limitFactor ?? 2), 1);
 		const maxExecutions = Math.min(Math.max(expectedBatches * factor, 10), 1000);
 
-		// Additional precision signals
+		// Check re-initialization count as additional signal
 		const reinitCount = SplitInBatchesV4.reinitCounters.get(globalKey) || 0;
 		const maxReinit = Math.max(Number(options.maxReinitializations ?? 10), 1);
-
-		const signature = SplitInBatchesV4.computeInputSignature(inputItems);
-		const lastSig = SplitInBatchesV4.lastSignature.get(globalKey);
-		if (signature === lastSig) {
-			const streak = (SplitInBatchesV4.signatureSameStreak.get(globalKey) || 0) + 1;
-			SplitInBatchesV4.signatureSameStreak.set(globalKey, streak);
-		} else {
-			SplitInBatchesV4.signatureSameStreak.set(globalKey, 0);
-			SplitInBatchesV4.lastSignature.set(globalKey, signature);
-		}
-		const signatureRepeatLimit = Math.max(Number(options.signatureRepeatLimit ?? 3), 1);
-
-		// Progress tracking relies on values updated during previous execution
-		const noProgressWindow = Math.max(Number(options.noProgressWindow ?? 3), 1);
-
-		const likelyStuck =
-			reinitCount >= maxReinit ||
-			(SplitInBatchesV4.signatureSameStreak.get(globalKey) || 0) >= signatureRepeatLimit ||
-			(SplitInBatchesV4.noProgressStreak.get(globalKey) || 0) >= noProgressWindow;
+		const likelyStuck = reinitCount >= maxReinit;
 
 		if (newCount > maxExecutions) {
-			const warnBeforeError = Boolean(options.warnBeforeError);
-			if (warnBeforeError) {
-				const breaches = (SplitInBatchesV4.breachCounters.get(globalKey) || 0) + 1;
-				SplitInBatchesV4.breachCounters.set(globalKey, breaches);
-				if (breaches <= 1) return; // warn once, then error on next breach
-				if (!likelyStuck && breaches <= 2) return; // allow one more if not yet likely stuck
-			} else {
-				// Without warn, allow exceeding up to 2x if not likely stuck
-				if (!likelyStuck && newCount <= maxExecutions * 2) return;
-			}
+			// Allow exceeding up to 2x if not likely stuck (re-init count is normal)
+			if (!likelyStuck && newCount <= maxExecutions * 2) return;
 
 			// Clean up all counters before throwing error to avoid stale state
 			SplitInBatchesV4.resetExecutionCount(executeFunctions);
@@ -326,10 +265,6 @@ export class SplitInBatchesV4 implements INodeType {
 		SplitInBatchesV4.executionCounters.delete(globalKey);
 		SplitInBatchesV4.breachCounters.delete(globalKey);
 		SplitInBatchesV4.reinitCounters.delete(globalKey);
-		SplitInBatchesV4.lastSignature.delete(globalKey);
-		SplitInBatchesV4.signatureSameStreak.delete(globalKey);
-		SplitInBatchesV4.lastProcessedCount.delete(globalKey);
-		SplitInBatchesV4.noProgressStreak.delete(globalKey);
 	}
 
 	/**
@@ -349,23 +284,12 @@ export class SplitInBatchesV4 implements INodeType {
 		for (const key of SplitInBatchesV4.executionCounters.keys()) {
 			if (key.startsWith(`${executionId}_`)) keysToDelete.push(key);
 		}
-		keysToDelete.forEach((key) => SplitInBatchesV4.executionCounters.delete(key));
 		keysToDelete.forEach((key) => {
+			SplitInBatchesV4.executionCounters.delete(key);
 			SplitInBatchesV4.breachCounters.delete(key);
 			SplitInBatchesV4.reinitCounters.delete(key);
-			SplitInBatchesV4.lastSignature.delete(key);
-			SplitInBatchesV4.signatureSameStreak.delete(key);
-			SplitInBatchesV4.lastProcessedCount.delete(key);
-			SplitInBatchesV4.noProgressStreak.delete(key);
 		});
 	}
-
-	private static breachCounters = new Map<string, number>();
-	private static reinitCounters = new Map<string, number>();
-	private static lastSignature = new Map<string, string>();
-	private static signatureSameStreak = new Map<string, number>();
-	private static lastProcessedCount = new Map<string, number>();
-	private static noProgressStreak = new Map<string, number>();
 
 	private static incrementReinitCount(executeFunctions: IExecuteFunctions): void {
 		const nodeName = executeFunctions.getNode().name;
@@ -375,38 +299,11 @@ export class SplitInBatchesV4 implements INodeType {
 		SplitInBatchesV4.reinitCounters.set(globalKey, current + 1);
 	}
 
-	private static updateProgress(executeFunctions: IExecuteFunctions, processedCount: number): void {
-		const nodeName = executeFunctions.getNode().name;
-		const executionId = executeFunctions.getExecutionId();
-		const globalKey = `${executionId}_${nodeName}`;
-		const last = SplitInBatchesV4.lastProcessedCount.get(globalKey) ?? -1;
-		if (processedCount > last) {
-			SplitInBatchesV4.noProgressStreak.set(globalKey, 0);
-		} else {
-			SplitInBatchesV4.noProgressStreak.set(
-				globalKey,
-				(SplitInBatchesV4.noProgressStreak.get(globalKey) || 0) + 1,
-			);
-		}
-		SplitInBatchesV4.lastProcessedCount.set(globalKey, processedCount);
-	}
-
-	private static computeInputSignature(inputItems: INodeExecutionData[]): string {
-		const len = inputItems.length;
-		const first = inputItems[0]?.json ?? {};
-		const keys = Object.keys(first).sort().join(',');
-		return `${len}|${keys}`;
-	}
-
 	// ===== Test helpers (no runtime effect) =====
 	static clearAllCountersForTest(): void {
 		SplitInBatchesV4.executionCounters.clear();
 		SplitInBatchesV4.breachCounters.clear();
 		SplitInBatchesV4.reinitCounters.clear();
-		SplitInBatchesV4.lastSignature.clear();
-		SplitInBatchesV4.signatureSameStreak.clear();
-		SplitInBatchesV4.lastProcessedCount.clear();
-		SplitInBatchesV4.noProgressStreak.clear();
 	}
 	static hasCounterForTest(executionId: string, nodeName: string): boolean {
 		return SplitInBatchesV4.executionCounters.has(`${executionId}_${nodeName}`);

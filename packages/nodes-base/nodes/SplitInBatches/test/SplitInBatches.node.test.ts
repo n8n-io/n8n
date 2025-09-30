@@ -63,20 +63,20 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 
 		it('should throw NodeOperationError when execution limit is exceeded', () => {
 			// With 3 input items and batch size 1, expected batches = 3, limit = max(3*2, 10) = 10
-			// Execute up to the limit
-			for (let i = 0; i < 10; i++) {
+			// Simplified heuristic allows up to 2x (20) when not stuck, so we need to execute 20 times
+			for (let i = 0; i < 20; i++) {
 				SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
-			// The 11th execution should throw
+			// The 21st execution should throw
 			expect(() => {
 				SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
 		it('should include proper error message with node name and execution count', () => {
-			// Execute up to the limit (10 for this dataset)
-			for (let i = 0; i < 10; i++) {
+			// Execute up to 2x the limit (20 for this dataset)
+			for (let i = 0; i < 20; i++) {
 				SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
@@ -87,7 +87,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect(error.message).toContain('Infinite loop detected');
 				expect(error.message).toContain('SplitInBatches');
-				expect(error.message).toContain('has executed 11 times');
+				expect(error.message).toContain('has executed 21 times');
 				expect(error.message).toContain('exceeding the calculated limit of 10');
 				expect(error.message).toContain('expected ~3 batches');
 				expect(error.message).toContain(
@@ -97,8 +97,8 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 		});
 
 		it('should clean up execution counter after throwing error', () => {
-			// Execute up to the limit and trigger error
-			for (let i = 0; i < 10; i++) {
+			// Execute up to 2x the limit and trigger error
+			for (let i = 0; i < 20; i++) {
 				SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
@@ -118,13 +118,13 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				getNode: jest.fn().mockReturnValue({ name: 'AnotherSplitInBatches' }),
 			};
 
-			// Execute node 1 up to limit (10 for this dataset)
-			for (let i = 0; i < 10; i++) {
+			// Execute node 1 up to 2x limit (20 for this dataset)
+			for (let i = 0; i < 20; i++) {
 				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Node 2 should still be able to execute (it has its own counter)
-			for (let i = 0; i < 10; i++) {
+			for (let i = 0; i < 20; i++) {
 				expect(() => {
 					SplitInBatchesV4.checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 				}).not.toThrow();
@@ -146,13 +146,13 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				getExecutionId: jest.fn().mockReturnValue('different-execution-id'),
 			};
 
-			// Execute first execution up to limit (10 for this dataset)
-			for (let i = 0; i < 10; i++) {
+			// Execute first execution up to 2x limit (20 for this dataset)
+			for (let i = 0; i < 20; i++) {
 				(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Different execution ID should still be able to execute (it has its own counter)
-			for (let i = 0; i < 10; i++) {
+			for (let i = 0; i < 20; i++) {
 				expect(() => {
 					(SplitInBatchesV4 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 				}).not.toThrow();
@@ -403,7 +403,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 
 		it('should handle large datasets with appropriate dynamic limits', () => {
 			// Large dataset: 1000 items, batch size 50 = 20 expected batches
-			// Dynamic limit = max(20*2, 10) = 40
+			// Dynamic limit = max(20*2, 10) = 40, with 2x tolerance = 80
 			const largeDatasetMock = {
 				...mockExecuteFunctions,
 				getInputData: jest.fn().mockReturnValue(new Array(1000).fill({ json: { item: 'data' } })),
@@ -414,14 +414,14 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				}),
 			};
 
-			// Should allow 40 executions without throwing
-			for (let i = 0; i < 40; i++) {
+			// Should allow 80 executions without throwing (2x the limit)
+			for (let i = 0; i < 80; i++) {
 				expect(() => {
 					(SplitInBatchesV4 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
 				}).not.toThrow();
 			}
 
-			// 41st execution should throw
+			// 81st execution should throw
 			expect(() => {
 				(SplitInBatchesV4 as any).checkExecutionLimit(largeDatasetMock as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
