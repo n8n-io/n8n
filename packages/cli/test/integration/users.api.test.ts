@@ -783,15 +783,25 @@ describe('GET /users', () => {
 					// Basic fields should be present
 					expect(user).toHaveProperty('id');
 
-					// Admin-only fields should NOT be present
-					expect(user).not.toHaveProperty('mfaEnabled');
-					expect(user).not.toHaveProperty('settings');
-					expect(user).not.toHaveProperty('personalizationAnswers');
-					expect(user).not.toHaveProperty('inviteAcceptUrl');
-					expect(user).not.toHaveProperty('lastActiveAt');
-					expect(user).not.toHaveProperty('isOwner');
-					expect(user).not.toHaveProperty('signInType');
-					expect(user).not.toHaveProperty('projectRelations');
+					if (user.id !== member1.id) {
+						// Admin-only fields should NOT be present
+						expect(user).not.toHaveProperty('mfaEnabled');
+						expect(user).not.toHaveProperty('settings');
+						expect(user).not.toHaveProperty('personalizationAnswers');
+						expect(user).not.toHaveProperty('inviteAcceptUrl');
+						expect(user).not.toHaveProperty('lastActiveAt');
+						expect(user).not.toHaveProperty('isOwner');
+						expect(user).not.toHaveProperty('signInType');
+						expect(user).not.toHaveProperty('projectRelations');
+					} else {
+						// Admin-only fields should be present for own user
+						expect(user).toHaveProperty('mfaEnabled');
+						expect(user).toHaveProperty('settings');
+						expect(user).toHaveProperty('personalizationAnswers');
+						expect(user).toHaveProperty('lastActiveAt');
+						expect(user).toHaveProperty('isOwner');
+						expect(user).toHaveProperty('signInType');
+					}
 				});
 			});
 

@@ -45,7 +45,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { hasGlobalScope } from '@n8n/permissions';
+import { AuthPrincipal, hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/users')
 export class UsersController {
@@ -76,7 +76,7 @@ export class UsersController {
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: UsersListFilterDto,
-		full: boolean,
+		currentUser: User,
 	) {
 		const { select } = listQueryOptions;
 
@@ -96,11 +96,14 @@ export class UsersController {
 			}
 		}
 
-		if (full) {
-			return publicUsers.map((user) => userAdminSchema.parse(user));
-		}
-
-		return publicUsers.map((user) => userMemberSchema.parse(user));
+		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
+		return publicUsers.map((user) => {
+			if (usersSeesAllDetails || user.id === currentUser.id) {
+				return userAdminSchema.parse(user);
+			} else {
+				return userMemberSchema.parse(user);
+			}
+		});
 	}
 
 	@Get('/')
@@ -140,11 +143,7 @@ export class UsersController {
 
 		return usersListSchema.parse({
 			count,
-			items: this.removeSupplementaryFields(
-				publicUsers,
-				listQueryOptions,
-				hasGlobalScope(req.user, 'user:create'), // user:create allows to manage users
-			),
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
 		});
 	}
 
