@@ -4,7 +4,7 @@ import type { SimpleWorkflow } from '@/types';
 
 import type { Violation } from '../../types/evaluation';
 import type { SingleEvaluatorResult } from '../../types/test-result';
-import { isTool } from '../../utils/isTool';
+import { isTool } from '../../utils/is-tool';
 import { calcSingleEvaluatorScore } from '../../utils/score';
 
 /**
