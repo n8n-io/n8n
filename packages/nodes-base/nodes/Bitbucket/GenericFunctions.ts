@@ -23,7 +23,7 @@ export async function bitbucketApiRequest(
 	let options: IRequestOptions = {
 		method,
 		auth: {
-			username: credentials.email as string,
+			user: credentials.email as string,
 			password: credentials.apiToken as string,
 		},
 		qs,
