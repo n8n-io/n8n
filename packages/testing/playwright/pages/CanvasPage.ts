@@ -752,4 +752,8 @@ export class CanvasPage extends BasePage {
 	getCanvasPlusButton(): Locator {
 		return this.page.getByTestId('canvas-plus-button');
 	}
+
+	getWorkflowName(): Locator {
+		return this.page.getByTestId('workflow-name-input');
+	}
 }
