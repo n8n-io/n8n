@@ -389,8 +389,8 @@ export class DataStoreRowsRepository {
 
 		const pairs: DataStoreRowReturnWithState[] = [];
 		for (let i = 0; i < beforeRows.length; i++) {
-			pairs.push({ ...beforeRows[i], n8nState: 'before' });
-			pairs.push({ ...afterRows[i], n8nState: 'after' });
+			pairs.push({ ...beforeRows[i], dryRunState: 'before' });
+			pairs.push({ ...afterRows[i], dryRunState: 'after' });
 		}
 		return pairs;
 	}

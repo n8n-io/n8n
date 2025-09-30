@@ -101,7 +101,7 @@ export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
 
 export type DataStoreRowReturnWithState = DataStoreRowReturn & {
-	n8nState: 'before' | 'after';
+	dryRunState: 'before' | 'after';
 };
 
 export type DataStoreRowUpdatePair = {

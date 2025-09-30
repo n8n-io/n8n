@@ -2977,7 +2977,7 @@ describe('dataStore', () => {
 					id: expect.any(Number),
 					name: 'Alice',
 					age: 30,
-					n8nState: 'before',
+					dryRunState: 'before',
 					createdAt: expect.any(Date),
 					updatedAt: expect.any(Date),
 				}),
@@ -2989,7 +2989,7 @@ describe('dataStore', () => {
 					id: expect.any(Number),
 					name: 'Alice',
 					age: 31, // Changed value
-					n8nState: 'after',
+					dryRunState: 'after',
 					createdAt: expect.any(Date),
 					updatedAt: expect.any(Date),
 				}),
@@ -3072,18 +3072,18 @@ describe('dataStore', () => {
 
 			// Check first row pair
 			expect(result[0]).toEqual(
-				expect.objectContaining({ name: 'Alice', active: false, n8nState: 'before' }),
+				expect.objectContaining({ name: 'Alice', active: false, dryRunState: 'before' }),
 			);
 			expect(result[1]).toEqual(
-				expect.objectContaining({ name: 'Alice', active: true, n8nState: 'after' }),
+				expect.objectContaining({ name: 'Alice', active: true, dryRunState: 'after' }),
 			);
 
 			// Check second row pair
 			expect(result[2]).toEqual(
-				expect.objectContaining({ name: 'Bob', active: false, n8nState: 'before' }),
+				expect.objectContaining({ name: 'Bob', active: false, dryRunState: 'before' }),
 			);
 			expect(result[3]).toEqual(
-				expect.objectContaining({ name: 'Bob', active: true, n8nState: 'after' }),
+				expect.objectContaining({ name: 'Bob', active: true, dryRunState: 'after' }),
 			);
 
 			// Should not actually update the rows
