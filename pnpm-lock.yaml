@@ -206,6 +206,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   tmp: 0.2.4
+  '@redis/client': 1.5.16
 
 patchedDependencies:
   '@lezer/highlight':
@@ -6428,11 +6429,7 @@ packages:
   '@redis/bloom@1.2.0':
     resolution: {integrity: sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg==}
     peerDependencies:
-      '@redis/client': ^1.0.0
-
-  '@redis/client@1.5.13':
-    resolution: {integrity: sha512-epkUM9D0Sdmt93/8Ozk43PNjLi36RZzG+d/T1Gdu5AI8jvghonTeLYV69WVWdilvFo+PYxbP0TZ0saMvr6nscQ==}
-    engines: {node: '>=14'}
+      '@redis/client': 1.5.16
 
   '@redis/client@1.5.16':
     resolution: {integrity: sha512-X1a3xQ5kEMvTib5fBrHKh6Y+pXbeKXqziYuxOUo1ojQNECg4M5Etd1qqyhMap+lFUOAh8S7UYevgJHOm4A+NOg==}
@@ -6441,22 +6438,22 @@ packages:
   '@redis/graph@1.1.1':
     resolution: {integrity: sha512-FEMTcTHZozZciLRl6GiiIB4zGm5z5F3F6a6FZCyrfxdKOhFlGkiAqlexWMBzCi4DcRoyiOsuLfW+cjlGWyExOw==}
     peerDependencies:
-      '@redis/client': ^1.0.0
+      '@redis/client': 1.5.16
 
   '@redis/json@1.0.6':
     resolution: {integrity: sha512-rcZO3bfQbm2zPRpqo82XbW8zg4G/w4W3tI7X8Mqleq9goQjAGLL7q/1n1ZX4dXEAmORVZ4s1+uKLaUOg7LrUhw==}
     peerDependencies:
-      '@redis/client': ^1.0.0
+      '@redis/client': 1.5.16
 
   '@redis/search@1.1.6':
     resolution: {integrity: sha512-mZXCxbTYKBQ3M2lZnEddwEAks0Kc7nauire8q20oA0oA/LoA+E/b5Y5KZn232ztPb1FkIGqo12vh3Lf+Vw5iTw==}
     peerDependencies:
-      '@redis/client': ^1.0.0
+      '@redis/client': 1.5.16
 
   '@redis/time-series@1.0.5':
     resolution: {integrity: sha512-IFjIgTusQym2B5IZJG3XKr5llka7ey84fw/NOYqESP5WUfQs9zz1ww/9+qoz4ka/S6KcGBodzlCeZ5UImKbscg==}
     peerDependencies:
-      '@redis/client': ^1.0.0
+      '@redis/client': 1.5.16
 
   '@redocly/ajv@8.11.2':
     resolution: {integrity: sha512-io1JpnwtIcvojV7QKDUSIuMN/ikdOUd1ReEnUnMKGfDVridQZ31J0MmIuqwuRjWDZfmvr+Q0MqCcfHM2gTivOg==}
@@ -21084,19 +21081,9 @@ snapshots:
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
-  '@redis/bloom@1.2.0(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/bloom@1.2.0(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/client@1.5.13':
-    dependencies:
-      cluster-key-slot: 1.1.2
-      generic-pool: 3.9.0
-      yallist: 4.0.0
 
   '@redis/client@1.5.16':
     dependencies:
@@ -21104,33 +21091,17 @@ snapshots:
       generic-pool: 3.9.0
       yallist: 4.0.0
 
-  '@redis/graph@1.1.1(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/graph@1.1.1(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/json@1.0.6(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
 
   '@redis/json@1.0.6(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
 
-  '@redis/search@1.1.6(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
-
   '@redis/search@1.1.6(@redis/client@1.5.16)':
     dependencies:
       '@redis/client': 1.5.16
-
-  '@redis/time-series@1.0.5(@redis/client@1.5.13)':
-    dependencies:
-      '@redis/client': 1.5.13
 
   '@redis/time-series@1.0.5(@redis/client@1.5.16)':
     dependencies:
@@ -31297,12 +31268,12 @@ snapshots:
 
   redis@4.6.12:
     dependencies:
-      '@redis/bloom': 1.2.0(@redis/client@1.5.13)
-      '@redis/client': 1.5.13
-      '@redis/graph': 1.1.1(@redis/client@1.5.13)
-      '@redis/json': 1.0.6(@redis/client@1.5.13)
-      '@redis/search': 1.1.6(@redis/client@1.5.13)
-      '@redis/time-series': 1.0.5(@redis/client@1.5.13)
+      '@redis/bloom': 1.2.0(@redis/client@1.5.16)
+      '@redis/client': 1.5.16
+      '@redis/graph': 1.1.1(@redis/client@1.5.16)
+      '@redis/json': 1.0.6(@redis/client@1.5.16)
+      '@redis/search': 1.1.6(@redis/client@1.5.16)
+      '@redis/time-series': 1.0.5(@redis/client@1.5.16)
 
   redis@4.6.14:
     dependencies:

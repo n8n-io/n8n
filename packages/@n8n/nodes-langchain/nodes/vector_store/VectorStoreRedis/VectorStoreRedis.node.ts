@@ -1,7 +1,6 @@
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { RedisVectorStore } from '@langchain/redis';
 import type { RedisVectorStoreConfig } from '@langchain/redis/dist/vectorstores';
-import type { RedisClient } from 'n8n-nodes-base/nodes/Redis/types';
 import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -151,7 +150,7 @@ const retrieveFields: INodeProperties[] = [
 ];
 
 export const redisConfig = {
-	client: null as RedisClient | null,
+	client: null as ReturnType<typeof createClient> | null,
 	connectionString: '',
 };
 
@@ -189,11 +188,13 @@ export async function getRedisClient(context: IFunctionsContext) {
 		redisConfig.connectionString = JSON.stringify(config);
 		redisConfig.client = createClient(config);
 
-		redisConfig.client.on('error', (error: Error) => {
-			context.logger.error(`[Redis client] ${error.message}`, { error });
-		});
+		if (redisConfig.client) {
+			redisConfig.client.on('error', (error: Error) => {
+				context.logger.error(`[Redis client] ${error.message}`, { error });
+			});
 
-		await redisConfig.client.connect();
+			await redisConfig.client.connect();
+		}
 	}
 
 	return redisConfig.client;
@@ -201,15 +202,18 @@ export async function getRedisClient(context: IFunctionsContext) {
 
 /**
  * Get the complete list of indices from Redis.
- * @param this - The context.
  * @returns The list of indices.
  */
 export async function listIndices(this: ILoadOptionsFunctions) {
 	const client = await getRedisClient(this);
 
+	if (client === null) {
+		return { results: [] };
+	}
+
 	try {
 		// Get all indices using FT._LIST command
-		const indices = await client.sendCommand(['FT._LIST']);
+		const indices = await client.ft._list();
 
 		const results = (indices as string[]).map((index) => ({
 			name: index,
@@ -237,15 +241,32 @@ export function getParameter(key: string, context: IFunctionsContext, itemIndex:
 }
 
 /**
+ * Get a parameter from the context as a number.
+ * @param key - The key of the parameter.
+ * @param context - The context.
+ * @param itemIndex - The index.
+ * @returns The value.
+ */
+export function getParameterAsNumber(
+	key: string,
+	context: IFunctionsContext,
+	itemIndex: number,
+): number {
+	return context.getNodeParameter(key, itemIndex, '', {
+		extractValue: true,
+	}) as number;
+}
+
+/**
  * Extended RedisVectorStore class to handle custom filtering.
  *
  * This wrapper is necessary because when used as a retriever, the similaritySearchVectorWithScore should
  * use a processed filter
  */
 class ExtendedRedisVectorSearch extends RedisVectorStore {
-	defaultFilter: string[];
+	defaultFilter?: string[];
 
-	constructor(embeddings: EmbeddingsInterface, options: RedisVectorStoreConfig, filter: string[]) {
+	constructor(embeddings: EmbeddingsInterface, options: RedisVectorStoreConfig, filter?: string[]) {
 		super(embeddings, options);
 		this.defaultFilter = filter;
 	}
@@ -262,7 +283,7 @@ const getContentKey = getParameter.bind(null, `options.${REDIS_CONTENT_KEY}`);
 const getMetadataFilter = getParameter.bind(null, `options.${REDIS_METADATA_FILTER}`);
 const getMetadataKey = getParameter.bind(null, `options.${REDIS_METADATA_KEY}`);
 const getEmbeddingKey = getParameter.bind(null, `options.${REDIS_EMBEDDING_KEY}`);
-const getTtl = getParameter.bind(null, `options.${REDIS_TTL}`);
+const getTtl = getParameterAsNumber.bind(null, `options.${REDIS_TTL}`);
 
 export class VectorStoreRedis extends createVectorStoreNode({
 	meta: {
@@ -286,55 +307,60 @@ export class VectorStoreRedis extends createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
-		try {
-			const client = await getRedisClient(context);
-			const indexField = getIndexName(context, itemIndex).trim();
-			const keyPrefixField = getKeyPrefix(context, itemIndex).trim();
-			const metadataField = getMetadataKey(context, itemIndex).trim();
-			const contentField = getContentKey(context, itemIndex).trim();
-			const embeddingField = getEmbeddingKey(context, itemIndex).trim();
-			const filter = getMetadataFilter(context, itemIndex).trim();
+		const client = await getRedisClient(context);
+		const indexField = getIndexName(context, itemIndex).trim();
+		const keyPrefixField = getKeyPrefix(context, itemIndex).trim();
+		const metadataField = getMetadataKey(context, itemIndex).trim();
+		const contentField = getContentKey(context, itemIndex).trim();
+		const embeddingField = getEmbeddingKey(context, itemIndex).trim();
+		const filter = getMetadataFilter(context, itemIndex).trim();
 
-			// Check if index exists by trying to get info about it
-			try {
-				await client.sendCommand(['FT.INFO', indexField]);
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), `Index ${indexField} not found`, {
-					itemIndex,
-					description: 'Please check that the index exists in your Redis instance',
-				});
-			}
-
-			return new ExtendedRedisVectorSearch(
-				embeddings,
-				{
-					redisClient: client,
-					indexName: indexField,
-					...(keyPrefixField ? { keyPrefix: keyPrefixField } : {}),
-					...(metadataField ? { metadataKey: metadataField } : {}),
-					...(contentField ? { contentKey: contentField } : {}),
-					...(embeddingField ? { vectorKey: embeddingField } : {}),
-				},
-				filter
-					? filter
-							.split(',')
-							.map((s) => s.trim())
-							.filter((s) => s)
-					: undefined,
-			);
-		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				throw error;
-			}
-			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+		if (client === null) {
+			throw new NodeOperationError(context.getNode(), 'Redis client not initialized', {
 				itemIndex,
 				description: 'Please check your Redis connection details',
 			});
 		}
+
+		// Check if index exists by trying to get info about it
+		try {
+			await client.ft.info(indexField);
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), `Index ${indexField} not found`, {
+				itemIndex,
+				description: 'Please check that the index exists in your Redis instance',
+			});
+		}
+
+		return new ExtendedRedisVectorSearch(
+			embeddings,
+			{
+				redisClient: client,
+				indexName: indexField,
+				...(keyPrefixField ? { keyPrefix: keyPrefixField } : {}),
+				...(metadataField ? { metadataKey: metadataField } : {}),
+				...(contentField ? { contentKey: contentField } : {}),
+				...(embeddingField ? { vectorKey: embeddingField } : {}),
+			},
+			filter
+				? filter
+						.split(',')
+						.map((s) => s.trim())
+						.filter((s) => s)
+				: [],
+		);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const client = await getRedisClient(context);
+
+		if (client === null) {
+			throw new NodeOperationError(context.getNode(), 'Redis client not initialized', {
+				itemIndex,
+				description: 'Please check your Redis connection details',
+			});
+		}
+
 		try {
-			const client = await getRedisClient(context);
 			const indexField = getIndexName(context, itemIndex).trim();
 			const overwrite = getOverwrite(context, itemIndex);
 			const keyPrefixField = getKeyPrefix(context, itemIndex).trim();
@@ -344,10 +370,7 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			const ttl = getTtl(context, itemIndex);
 
 			if (overwrite) {
-				await client.sendCommand(['FT.DROPINDEX', indexField]);
-				const keyPrefixActual = keyPrefixField || 'doc';
-				const keys = await client.sendCommand(['KEYS', `${keyPrefixActual}*`]);
-				await client.sendCommand(['DEL', ...keys]);
+				await client.ft.dropIndex(indexField, { DD: true });
 			}
 
 			await ExtendedRedisVectorSearch.fromDocuments(documents, embeddings, {

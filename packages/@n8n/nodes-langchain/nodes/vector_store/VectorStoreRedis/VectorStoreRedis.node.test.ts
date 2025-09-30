@@ -26,10 +26,10 @@ jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 	createVectorStoreNode: (config: any) =>
 		class BaseNode {
 			async getVectorStoreClient(...args: any[]) {
-				return config.getVectorStoreClient(...args);
+				return config.getVectorStoreClient.apply(config, args);
 			}
 			async populateVectorStore(...args: any[]) {
-				return config.populateVectorStore(...args);
+				return config.populateVectorStore.apply(config, args);
 			}
 		},
 }));
@@ -136,7 +136,7 @@ describe('VectorStoreRedis.node', () => {
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest.fn().mockResolvedValue(['Idx1', 'Idx2']),
+				ft: { _list: jest.fn().mockResolvedValue(['Idx1', 'Idx2']) },
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
@@ -145,7 +145,7 @@ describe('VectorStoreRedis.node', () => {
 
 			const results = await (RedisNode.listIndices as any).call(loadOptionsFunctions as any);
 
-			expect(mockClient.sendCommand).toHaveBeenCalledWith(['FT._LIST']);
+			expect(mockClient.ft._list).toHaveBeenCalled();
 			expect(results).toEqual({
 				results: [
 					{ name: 'Idx1', value: 'Idx1' },
@@ -160,7 +160,7 @@ describe('VectorStoreRedis.node', () => {
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest.fn().mockRejectedValue(new Error('no module')),
+				ft: { _list: jest.fn().mockRejectedValue(new Error('no module')) },
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
@@ -185,10 +185,13 @@ describe('VectorStoreRedis.node', () => {
 				quit: jest.fn(),
 				sendCommand: jest
 					.fn()
-					.mockImplementation(([cmd]) =>
-						cmd === 'FT.INFO' ? Promise.resolve(undefined) : Promise.resolve([]),
+					.mockImplementation(async ([cmd]) =>
+						cmd === 'FT.INFO' ? await Promise.resolve(undefined) : await Promise.resolve([]),
 					),
 			} as any;
+
+			// Adapt to new client.ft.info usage
+			mockClient.ft = { ...(mockClient.ft || {}), info: jest.fn().mockResolvedValue(undefined) };
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
@@ -225,10 +228,10 @@ describe('VectorStoreRedis.node', () => {
 			);
 
 			// Ensure FT.INFO is called to validate index
-			expect(mockClient.sendCommand).toHaveBeenCalledWith(['FT.INFO', 'myIndex']);
+			expect(mockClient.ft.info).toHaveBeenCalledWith('myIndex');
 
 			// The base class constructor should have been called with embeddings and options
-			const state = (RedisVectorStoreMod as any).__state;
+			const state = RedisVectorStoreMod.__state;
 			expect(state.ctorArgs[0]).toBe(embeddings);
 			expect(state.ctorArgs[1]).toMatchObject({
 				redisClient: mockClient,
@@ -243,7 +246,7 @@ describe('VectorStoreRedis.node', () => {
 			const res = await client.similaritySearchVectorWithScore([1, 2], 3);
 			expect(res).toBe('ok');
 			// Validate filter tokens got captured on the instance
-			expect((client as any).defaultFilter).toEqual(['a', 'b']);
+			expect(client.defaultFilter).toEqual(['a', 'b']);
 		});
 
 		it('trims and removes empty metadata filter tokens', async () => {
@@ -252,11 +255,7 @@ describe('VectorStoreRedis.node', () => {
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest
-					.fn()
-					.mockImplementation(([cmd]) =>
-						cmd === 'FT.INFO' ? Promise.resolve(undefined) : Promise.resolve([]),
-					),
+				ft: { info: jest.fn().mockResolvedValue(undefined) },
 			} as any;
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
@@ -287,7 +286,7 @@ describe('VectorStoreRedis.node', () => {
 			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
 			// Ensure trimming/removal works
-			expect((client as any).defaultFilter).toEqual(['tag1', 'tag2', 'tag3']);
+			expect(client.defaultFilter).toEqual(['tag1', 'tag2', 'tag3']);
 		});
 
 		it('omits optional keys when empty/whitespace and handles empty filter as null', async () => {
@@ -296,7 +295,7 @@ describe('VectorStoreRedis.node', () => {
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest.fn().mockResolvedValue(undefined),
+				ft: { info: jest.fn().mockResolvedValue(undefined) },
 			} as any;
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
@@ -327,7 +326,10 @@ describe('VectorStoreRedis.node', () => {
 			const node = new RedisNode.VectorStoreRedis();
 			const instance = await (node as any).getVectorStoreClient(context, undefined, embeddings, 0);
 
-			const opts = (RedisVectorStoreMod as any).__state.ctorArgs[1];
+			// Ensure FT.INFO is called to validate index
+			expect(mockClient.ft.info).toHaveBeenCalledWith('myIndex');
+
+			const opts = RedisVectorStoreMod.__state.ctorArgs[1];
 			expect(opts).toMatchObject({ redisClient: mockClient, indexName: 'myIndex' });
 			expect(opts).not.toHaveProperty('keyPrefix');
 			expect(opts).not.toHaveProperty('metadataKey');
@@ -336,7 +338,7 @@ describe('VectorStoreRedis.node', () => {
 
 			const res = await instance.similaritySearchVectorWithScore([0], 1);
 			expect(res).toBeDefined();
-			expect((instance as any).defaultFilter).toEqual(undefined);
+			expect(instance.defaultFilter).toEqual([]);
 		});
 
 		it('throws NodeOperationError when index is missing', async () => {
@@ -345,7 +347,7 @@ describe('VectorStoreRedis.node', () => {
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest.fn().mockRejectedValue(new Error('no such index')),
+				ft: { info: jest.fn().mockRejectedValue(new Error('no such index')) },
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
@@ -363,39 +365,16 @@ describe('VectorStoreRedis.node', () => {
 				}),
 			);
 		});
-
-		it('wraps unexpected errors into NodeOperationError with connection hint', async () => {
-			(MockCreateClient as any).mockImplementation(() => {
-				throw new Error('bad config');
-			});
-
-			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
-				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
-				getNode: () => ({ name: 'VectorStoreRedis' }),
-			};
-
-			const node = new RedisNode.VectorStoreRedis();
-			await expect((node as any).getVectorStoreClient(context, undefined, {}, 0)).rejects.toEqual(
-				new NodeOperationError(context.getNode(), 'Error: bad config', {
-					itemIndex: 0,
-					description: 'Please check your Redis connection details',
-				}),
-			);
-		});
 	});
 
 	describe('populateVectorStore', () => {
-		it('drops index and deletes keys when overwrite is true; passes TTL and batch size', async () => {
+		it('drops index and deletes the documents when overwrite is true; passes TTL and batch size', async () => {
 			const mockClient = {
 				on: jest.fn(),
 				connect: jest.fn().mockResolvedValue(undefined),
 				disconnect: jest.fn(),
 				quit: jest.fn(),
-				sendCommand: jest.fn().mockImplementation(async (args: any[]) => {
-					if (args[0] === 'KEYS') return ['doc:1', 'doc:2'];
-					return undefined;
-				}),
+				ft: { dropIndex: jest.fn().mockResolvedValue(undefined) },
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
@@ -429,9 +408,7 @@ describe('VectorStoreRedis.node', () => {
 				0,
 			);
 
-			expect(mockClient.sendCommand).toHaveBeenCalledWith(['FT.DROPINDEX', 'myIndex']);
-			expect(mockClient.sendCommand).toHaveBeenCalledWith(['KEYS', 'doc*']);
-			expect(mockClient.sendCommand).toHaveBeenCalledWith(['DEL', 'doc:1', 'doc:2']);
+			expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('myIndex', { DD: true });
 
 			expect(RedisVectorStoreMod.RedisVectorStore.fromDocuments).toHaveBeenCalledWith(
 				[{ pageContent: 'hello', metadata: {} }],
