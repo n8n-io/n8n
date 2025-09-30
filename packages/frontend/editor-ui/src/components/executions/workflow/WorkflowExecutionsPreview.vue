@@ -19,6 +19,8 @@ import { useExecutionsStore } from '@/stores/executions.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
+
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{

@@ -24,6 +24,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 import { N8nActionBox } from '@n8n/design-system';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();

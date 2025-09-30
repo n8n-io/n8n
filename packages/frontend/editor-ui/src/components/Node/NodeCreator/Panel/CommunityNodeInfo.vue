@@ -9,6 +9,8 @@ import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import { useInstalledCommunityPackage } from '@/composables/useInstalledCommunityPackage';
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import CommunityNodeUpdateInfo from '@/components/Node/NodeCreator/Panel/CommunityNodeUpdateInfo.vue';
+
 const { activeViewStack } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;

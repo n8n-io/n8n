@@ -10,6 +10,8 @@ import { computed } from 'vue';
 import { createSearchHighlightPlugin } from '@/components/RunDataAi/utils';
 
 import { N8nIconButton } from '@n8n/design-system';
+import TextWithHighlights from '@/components/TextWithHighlights.vue';
+
 const {
 	content,
 	compact = false,
