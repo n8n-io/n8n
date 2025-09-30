@@ -343,6 +343,8 @@ describe('Request Helper Functions', () => {
 					...agentOptions,
 					noDelay: true,
 					path: null,
+					defaultPort: 443,
+					protocol: 'https:',
 				});
 			});
 
@@ -362,6 +364,8 @@ describe('Request Helper Functions', () => {
 					...agentOptions,
 					noDelay: true,
 					path: null,
+					defaultPort: 443,
+					protocol: 'https:',
 				});
 			});
 		});
