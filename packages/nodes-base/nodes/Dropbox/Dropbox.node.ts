@@ -920,7 +920,7 @@ export class Dropbox implements INodeType {
 						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				} else if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
@@ -978,7 +978,7 @@ export class Dropbox implements INodeType {
 							this.helpers.returnJsonArray(newItem),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
@@ -995,13 +995,13 @@ export class Dropbox implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

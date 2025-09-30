@@ -319,7 +319,7 @@ export class Aggregate implements INodeType {
 							}
 
 							if (Array.isArray(value) && mergeLists) {
-								values[_outputFieldName].push(...value);
+								values[_outputFieldName].push.apply(values[_outputFieldName], value);
 							} else {
 								values[_outputFieldName].push(value);
 							}
@@ -336,7 +336,7 @@ export class Aggregate implements INodeType {
 							}
 
 							if (Array.isArray(value) && mergeLists) {
-								values[_outputFieldName].push(...value);
+								values[_outputFieldName].push.apply(values[_outputFieldName], value);
 							} else {
 								values[_outputFieldName].push(value);
 							}
@@ -432,7 +432,7 @@ export class Aggregate implements INodeType {
 			}
 
 			if (hints.length) {
-				this.addExecutionHints(...hints);
+				this.addExecutionHints.apply(this, hints);
 			}
 		}
 

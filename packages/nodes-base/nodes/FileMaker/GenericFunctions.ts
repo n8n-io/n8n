@@ -88,7 +88,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
 	const returnData: INodePropertyOptions[] = [];
 	for (const layout of layouts) {
 		if (layout.isFolder!) {
-			returnData.push(...parseLayouts(layout.folderLayoutNames!));
+			returnData.push.apply(returnData, parseLayouts(layout.folderLayoutNames!));
 		} else {
 			returnData.push({
 				name: layout.name,
@@ -188,7 +188,7 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 	const returnData: INodePropertyOptions[] = [];
 	for (const script of scripts) {
 		if (script.isFolder!) {
-			returnData.push(...parseScriptsList(script.folderScriptNames!));
+			returnData.push.apply(returnData, parseScriptsList(script.folderScriptNames!));
 		} else if (script.name !== '-') {
 			returnData.push({
 				name: script.name,

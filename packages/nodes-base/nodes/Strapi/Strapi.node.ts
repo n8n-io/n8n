@@ -187,7 +187,7 @@ export class Strapi implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 
 					if (operation === 'delete') {
@@ -210,7 +210,7 @@ export class Strapi implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 
 					if (operation === 'getAll') {
@@ -315,7 +315,7 @@ export class Strapi implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 
 					if (operation === 'get') {
@@ -342,7 +342,7 @@ export class Strapi implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 
 					if (operation === 'update') {
@@ -385,7 +385,7 @@ export class Strapi implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				}
 			} catch (error) {
@@ -394,7 +394,7 @@ export class Strapi implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;

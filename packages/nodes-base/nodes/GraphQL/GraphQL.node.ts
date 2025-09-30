@@ -538,7 +538,7 @@ export class GraphQL implements INodeType {
 						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: itemIndex } },
 					);
-					returnItems.push(...executionData);
+					returnItems.push.apply(returnItems, executionData);
 				}
 
 				// parse error string messages
@@ -568,7 +568,7 @@ export class GraphQL implements INodeType {
 				const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
 					itemData: { item: itemIndex },
 				});
-				returnItems.push(...exectionErrorWithMetaData);
+				returnItems.push.apply(returnItems, exectionErrorWithMetaData);
 			}
 		}
 		return [returnItems];

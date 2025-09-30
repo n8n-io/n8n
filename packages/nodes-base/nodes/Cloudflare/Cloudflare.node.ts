@@ -159,8 +159,9 @@ export class Cloudflare implements INodeType {
 					}
 				}
 
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
+				returnData.push.apply(
+					returnData,
+					this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{
 							itemData: { item: i },

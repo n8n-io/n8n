@@ -213,7 +213,7 @@ export class Brandfetch implements INodeType {
 							this.helpers.returnJsonArray(response.logos as IDataObject),
 							{ itemData: { item: i } },
 						);
-						responseData.push(...executionData);
+						responseData.push.apply(responseData, executionData);
 					}
 				}
 				if (operation === 'color') {
@@ -222,7 +222,7 @@ export class Brandfetch implements INodeType {
 						this.helpers.returnJsonArray(response.colors as IDataObject),
 						{ itemData: { item: i } },
 					);
-					responseData.push(...executionData);
+					responseData.push.apply(responseData, executionData);
 				}
 				if (operation === 'font') {
 					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
@@ -230,7 +230,7 @@ export class Brandfetch implements INodeType {
 						this.helpers.returnJsonArray(response.fonts as IDataObject),
 						{ itemData: { item: i } },
 					);
-					responseData.push(...executionData);
+					responseData.push.apply(responseData, executionData);
 				}
 				if (operation === 'company') {
 					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
@@ -238,7 +238,7 @@ export class Brandfetch implements INodeType {
 						this.helpers.returnJsonArray(response.company as IDataObject),
 						{ itemData: { item: i } },
 					);
-					responseData.push(...executionData);
+					responseData.push.apply(responseData, executionData);
 				}
 				if (operation === 'industry') {
 					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
@@ -247,7 +247,7 @@ export class Brandfetch implements INodeType {
 						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
-					responseData.push(...executionData);
+					responseData.push.apply(responseData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

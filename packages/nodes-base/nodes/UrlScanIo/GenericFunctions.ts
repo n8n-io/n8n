@@ -41,7 +41,7 @@ export async function handleListing(
 
 	do {
 		responseData = await urlScanIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-		returnData.push(...(responseData.results as IDataObject[]));
+		returnData.push.apply(returnData, responseData.results as IDataObject[]);
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

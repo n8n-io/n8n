@@ -425,16 +425,18 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 				return acc + (getValue(item, field) as number);
 			}, 0);
 		case 'min':
-			return Math.min(
-				...(data.map((item) => {
+			return Math.min.apply(
+				Math,
+				data.map((item) => {
 					return getValue(item, field);
-				}) as number[]),
+				}) as number[],
 			);
 		case 'max':
-			return Math.max(
-				...(data.map((item) => {
+			return Math.max.apply(
+				Math,
+				data.map((item) => {
 					return getValue(item, field);
-				}) as number[]),
+				}) as number[],
 			);
 
 		//count operations
@@ -530,8 +532,9 @@ function aggregationToArray(
 		return returnData;
 	} else {
 		for (const key of Object.keys(aggregationResult)) {
-			returnData.push(
-				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+			returnData.push.apply(
+				returnData,
+				aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
 					[splitFieldName]: key,
 				}),

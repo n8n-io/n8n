@@ -62,7 +62,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		{ itemData: { item: i } },
 	);
 
-	returnData.push(...executionData);
+	returnData.push.apply(returnData, executionData);
 
 	return returnData;
 }

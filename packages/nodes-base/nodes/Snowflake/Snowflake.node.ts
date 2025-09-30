@@ -198,7 +198,7 @@ export class Snowflake implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			}
 		}
 
@@ -221,7 +221,7 @@ export class Snowflake implements INodeType {
 					this.helpers.returnJsonArray(d),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			});
 		}
 
@@ -252,7 +252,7 @@ export class Snowflake implements INodeType {
 					this.helpers.returnJsonArray(d),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			});
 		}
 

@@ -34,14 +34,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 			}
 
-			returnData.push(...responseData);
+			returnData.push.apply(returnData, responseData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionErrorData);
+				returnData.push.apply(returnData, executionErrorData);
 				continue;
 			}
 			throw error;

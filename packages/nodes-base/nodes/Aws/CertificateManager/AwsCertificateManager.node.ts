@@ -219,7 +219,7 @@ export class AwsCertificateManager implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

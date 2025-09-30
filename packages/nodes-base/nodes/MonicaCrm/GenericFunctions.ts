@@ -79,7 +79,7 @@ export async function monicaCrmApiRequestAllItems(
 
 	do {
 		responseData = await monicaCrmApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...(responseData.data as IDataObject[]));
+		returnData.push.apply(returnData, responseData.data as IDataObject[]);
 
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

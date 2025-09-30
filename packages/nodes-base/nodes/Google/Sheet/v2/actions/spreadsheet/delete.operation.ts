@@ -87,7 +87,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			itemData: { item: i },
 		});
 
-		returnData.push(...executionData);
+		returnData.push.apply(returnData, executionData);
 	}
 
 	return returnData;

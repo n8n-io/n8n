@@ -132,7 +132,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-			returnData.push(...newItems);
+			returnData.push.apply(returnData, newItems);
 		} catch (error) {
 			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,

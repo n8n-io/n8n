@@ -144,14 +144,14 @@ export async function execute(this: IExecuteFunctions, index: number) {
 				undefined,
 				qs,
 			);
-			responseData.push(...response);
+			responseData.push.apply(responseData, response);
 		} else {
 			qs.$top = limit - responseData.length;
 
 			if (qs.$top <= 0) break;
 
 			const response = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
-			responseData.push(...response.value);
+			responseData.push.apply(responseData, response.value);
 		}
 	}
 

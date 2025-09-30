@@ -202,7 +202,7 @@ export class AwsLambda implements INodeType {
 						}),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -210,7 +210,7 @@ export class AwsLambda implements INodeType {
 						this.helpers.returnJsonArray({ error: (error as JsonObject).message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 					continue;
 				}
 				throw error;

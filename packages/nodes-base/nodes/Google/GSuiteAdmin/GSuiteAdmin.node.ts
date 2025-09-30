@@ -809,7 +809,7 @@ export class GSuiteAdmin implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (error instanceof NodeOperationError) {
 					throw error;
@@ -822,7 +822,7 @@ export class GSuiteAdmin implements INodeType {
 						}),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw new NodeOperationError(

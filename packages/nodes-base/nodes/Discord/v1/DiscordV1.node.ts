@@ -287,7 +287,7 @@ export class DiscordV1 implements INodeType {
 				this.helpers.returnJsonArray({ success: true }),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 
 		return [returnData];

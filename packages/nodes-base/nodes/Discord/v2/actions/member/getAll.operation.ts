@@ -90,7 +90,7 @@ export async function execute(
 				);
 				if (!responseData?.length) break;
 				qs.after = responseData[responseData.length - 1].user.id;
-				response.push(...responseData);
+				response.push.apply(response, responseData);
 			} while (responseData.length);
 		}
 
@@ -107,12 +107,12 @@ export async function execute(
 			{ itemData: { item: 0 } },
 		);
 
-		returnData.push(...executionData);
+		returnData.push.apply(returnData, executionData);
 	} catch (error) {
 		const err = parseDiscordError.call(this, error);
 
 		if (this.continueOnFail()) {
-			returnData.push(...prepareErrorData.call(this, err, 0));
+			returnData.push.apply(returnData, prepareErrorData.call(this, err, 0));
 		}
 
 		throw err;

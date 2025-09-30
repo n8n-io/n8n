@@ -303,7 +303,7 @@ export async function execute(
 						}
 
 						if (Array.isArray(value) && mergeLists) {
-							values[_outputFieldName].push(...value);
+							values[_outputFieldName].push.apply(values[_outputFieldName], value);
 						} else {
 							values[_outputFieldName].push(value);
 						}
@@ -319,7 +319,7 @@ export async function execute(
 						}
 
 						if (Array.isArray(value) && mergeLists) {
-							values[_outputFieldName].push(...value);
+							values[_outputFieldName].push.apply(values[_outputFieldName], value);
 						} else {
 							values[_outputFieldName].push(value);
 						}

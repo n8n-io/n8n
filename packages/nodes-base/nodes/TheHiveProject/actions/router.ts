@@ -63,14 +63,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						`The operation "${operation}" is not supported!`,
 					);
 			}
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 				continue;
 			}
 			throw error;

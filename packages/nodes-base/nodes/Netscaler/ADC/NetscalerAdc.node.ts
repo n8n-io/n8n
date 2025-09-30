@@ -232,8 +232,9 @@ export class NetscalerAdc implements INodeType {
 					}
 				}
 
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+				returnData.push.apply(
+					returnData,
+					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
 						itemData: { item: i },
 					}),
 				);

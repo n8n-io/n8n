@@ -40,7 +40,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
-			operationResult.push(...executionData);
+			operationResult.push.apply(operationResult, executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error: err });

@@ -95,7 +95,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		let offset: string | undefined = undefined;
 		do {
 			const responseData = await apiRequest.call(this, 'GET', endpoint);
-			bases.push(...(responseData.bases as IDataObject[]));
+			bases.push.apply(bases, responseData.bases as IDataObject[]);
 			offset = responseData.offset;
 		} while (offset);
 	} else {

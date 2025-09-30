@@ -606,7 +606,7 @@ export class Disqus implements INodeType {
 							this.helpers.returnJsonArray(responseData.response as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getPosts') {
 						// ----------------------------------
 						//         getPosts
@@ -642,7 +642,7 @@ export class Disqus implements INodeType {
 							this.helpers.returnJsonArray(responseData.response as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getCategories') {
 						// ----------------------------------
 						//         getCategories
@@ -683,7 +683,7 @@ export class Disqus implements INodeType {
 							this.helpers.returnJsonArray(responseData.response as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else if (operation === 'getThreads') {
 						// ----------------------------------
 						//         getThreads
@@ -720,7 +720,7 @@ export class Disqus implements INodeType {
 							this.helpers.returnJsonArray(responseData.response as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -739,7 +739,7 @@ export class Disqus implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;

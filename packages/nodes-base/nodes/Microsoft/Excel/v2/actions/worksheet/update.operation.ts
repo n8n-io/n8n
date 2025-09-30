@@ -307,8 +307,9 @@ export async function execute(
 				qs,
 			);
 
-			returnData.push(
-				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+			returnData.push.apply(
+				returnData,
+				prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					rawData,
 					dataProperty,
 				}),
@@ -365,8 +366,9 @@ export async function execute(
 
 			const { updatedRows } = updateSummary;
 
-			returnData.push(
-				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+			returnData.push.apply(
+				returnData,
+				prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					updatedRows,
 					rawData,
 					dataProperty,
@@ -380,7 +382,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push(...executionErrorData);
+			returnData.push.apply(returnData, executionErrorData);
 		} else {
 			throw error;
 		}

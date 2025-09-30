@@ -76,11 +76,12 @@ export async function getHomeAssistantServices(
 	if (domain === '') {
 		// If no domain specified return domains
 		const domains = services.map(({ domain: service }: IDataObject) => service as string).sort();
-		returnData.push(
-			...(domains.map((service: string) => ({
+		returnData.push.apply(
+			returnData,
+			domains.map((service: string) => ({
 				name: service,
 				value: service,
-			})) as INodePropertyOptions[]),
+			})) as INodePropertyOptions[],
 		);
 		return returnData;
 	} else {

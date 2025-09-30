@@ -209,7 +209,7 @@ export class GoogleTranslate implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					responseData.push(...executionData);
+					responseData.push.apply(responseData, executionData);
 				}
 			}
 		}

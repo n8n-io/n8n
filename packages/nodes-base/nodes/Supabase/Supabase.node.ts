@@ -188,7 +188,7 @@ export class Supabase implements INodeType {
 							this.helpers.returnJsonArray(row),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					});
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -196,7 +196,7 @@ export class Supabase implements INodeType {
 							this.helpers.returnJsonArray({ error: error.description }),
 							{ itemData: mapPairedItemsFrom(records) },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						throw error;
 					}
@@ -244,7 +244,7 @@ export class Supabase implements INodeType {
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData.push.apply(returnData, executionData);
 
 							continue;
 						}
@@ -254,7 +254,7 @@ export class Supabase implements INodeType {
 						this.helpers.returnJsonArray(rows as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -283,7 +283,7 @@ export class Supabase implements INodeType {
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData.push.apply(returnData, executionData);
 
 							continue;
 						}
@@ -293,7 +293,7 @@ export class Supabase implements INodeType {
 						this.helpers.returnJsonArray(rows as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 
@@ -344,14 +344,14 @@ export class Supabase implements INodeType {
 							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData.push.apply(returnData, executionData);
 
 							continue;
 						}
@@ -419,14 +419,14 @@ export class Supabase implements INodeType {
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
 							);
-							returnData.push(...executionData);
+							returnData.push.apply(returnData, executionData);
 							continue;
 						}
 						throw error;

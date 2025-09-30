@@ -88,7 +88,7 @@ export async function freshserviceApiRequestAllItems(
 		const key = Object.keys(responseData as IDataObject)[0];
 		items = responseData[key];
 		if (!items.length) return returnData;
-		returnData.push(...(items as IDataObject[]));
+		returnData.push.apply(returnData, items as IDataObject[]);
 		qs.page++;
 	} while (items.length >= 30);
 

@@ -39,14 +39,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				itemData: { item: i },
 			});
 
-			operationResult.push(...executionData);
+			operationResult.push.apply(operationResult, executionData);
 		} catch (err) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: err.message }),
 					{ itemData: { item: i } },
 				);
-				operationResult.push(...executionErrorData);
+				operationResult.push.apply(operationResult, executionErrorData);
 			} else {
 				throw new NodeApiError(this.getNode(), err as JsonObject, { itemIndex: i });
 			}

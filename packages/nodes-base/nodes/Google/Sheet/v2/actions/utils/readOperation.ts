@@ -56,7 +56,7 @@ export async function readSheet(
 		data,
 		headerRow: keyRowIndex,
 		firstDataRow: dataStartRowIndex,
-	} = prepareSheetData(sheetData, dataLocationOnSheetOptions as RangeDetectionOptions);
+	} = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 	let responseData = [];
 
@@ -81,7 +81,7 @@ export async function readSheet(
 					[],
 				) as ILookupValues[];
 				if (itemLookupValues.length) {
-					lookupValues.push(...itemLookupValues);
+					lookupValues.push.apply(lookupValues, itemLookupValues);
 				}
 			}
 		}
@@ -106,8 +106,9 @@ export async function readSheet(
 		);
 	}
 
-	returnData.push(
-		...responseData.map((item) => {
+	returnData.push.apply(
+		returnData,
+		responseData.map((item) => {
 			return {
 				json: item,
 				pairedItem: { item: itemIndex },

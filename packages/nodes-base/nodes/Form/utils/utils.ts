@@ -373,7 +373,7 @@ export async function prepareFormReturnItem(
 				mimetype: file.mimetype,
 				size: file.size,
 			}));
-			processFiles.push(...filesInput);
+			processFiles.push.apply(processFiles, filesInput);
 			multiFile = true;
 		} else {
 			bodyData[key] = {

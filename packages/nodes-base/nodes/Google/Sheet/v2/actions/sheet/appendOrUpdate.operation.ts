@@ -460,8 +460,8 @@ export async function execute(
 			columnValuesList,
 		});
 
-		updateData.push(...preparedData.updateData);
-		appendData.push(...preparedData.appendData);
+		updateData.push.apply(updateData, preparedData.updateData);
+		appendData.push.apply(appendData, preparedData.appendData);
 	}
 
 	const columnNamesList = [columnNames.concat([...newColumns])];

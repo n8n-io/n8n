@@ -278,7 +278,7 @@ export class SplitOut implements INodeType {
 			}
 
 			if (hints.length) {
-				this.addExecutionHints(...hints);
+				this.addExecutionHints.apply(this, hints);
 			}
 		}
 

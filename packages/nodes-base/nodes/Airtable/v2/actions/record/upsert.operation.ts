@@ -130,7 +130,10 @@ export async function execute(
 					const updateRecords: UpdateRecord[] = [];
 
 					if (options.updateAllMatches) {
-						updateRecords.push(...matches.map(({ id }) => ({ id, fields: records[0].fields })));
+						updateRecords.push.apply(
+							updateRecords,
+							matches.map(({ id }) => ({ id, fields: records[0].fields })),
+						);
 					} else {
 						updateRecords.push({ id: matches[0].id, fields: records[0].fields });
 					}
@@ -146,7 +149,7 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, undefined, i);
 			if (this.continueOnFail()) {

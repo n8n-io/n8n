@@ -594,7 +594,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
@@ -733,7 +733,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
@@ -787,14 +787,14 @@ export class Jira implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
-						returnData.push(...executionData);
+						returnData.push.apply(returnData, executionData);
 					}
 				}
 			}
@@ -867,7 +867,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
@@ -899,7 +899,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
@@ -1004,7 +1004,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
@@ -1035,7 +1035,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-delete
@@ -1057,7 +1057,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -1103,7 +1103,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-delete
@@ -1123,7 +1123,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
@@ -1144,7 +1144,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
@@ -1195,7 +1195,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
@@ -1290,7 +1290,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
@@ -1313,7 +1313,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-get
@@ -1350,7 +1350,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-delete
@@ -1371,7 +1371,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
@@ -1439,7 +1439,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
@@ -1474,7 +1474,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} else if (operation === 'delete') {
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-delete
@@ -1493,7 +1493,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			} else if (operation === 'get') {
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-get
@@ -1519,7 +1519,7 @@ export class Jira implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 				}
 			}
 		}
