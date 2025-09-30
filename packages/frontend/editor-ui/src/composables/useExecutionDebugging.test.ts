@@ -1,7 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	type WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi, IExecutionResponse } from '@/Interface';
 import type { Workflow } from 'n8n-workflow';
@@ -24,7 +28,7 @@ vi.mock('@/composables/useWorkflowHandle', async () => {
 	};
 });
 
-let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+let workflowHandle: WorkflowHandle;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
 

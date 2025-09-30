@@ -15,7 +15,7 @@ import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
 import type { TelemetryContext } from './types/telemetry';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
-import type { useWorkflowHandle } from './composables/useWorkflowHandle';
+import type { WorkflowHandle } from './composables/useWorkflowHandle';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -1016,8 +1016,7 @@ export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
-export const WorkflowHandleKey: InjectionKey<ReturnType<typeof useWorkflowHandle>> =
-	Symbol('WorkflowHandle');
+export const WorkflowHandleKey: InjectionKey<WorkflowHandle> = Symbol('WorkflowHandle');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

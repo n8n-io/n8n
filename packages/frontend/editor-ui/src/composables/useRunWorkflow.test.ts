@@ -14,7 +14,11 @@ import type {
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	type WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
 import type { IExecutionResponse, IStartRunData } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -140,7 +144,7 @@ vi.mock('@/composables/useWorkflowHandle', async () => {
 	};
 });
 
-let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+let workflowHandle: WorkflowHandle;
 
 describe('useRunWorkflow({ router })', () => {
 	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;

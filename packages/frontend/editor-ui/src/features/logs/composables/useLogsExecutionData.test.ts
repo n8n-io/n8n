@@ -15,7 +15,11 @@ import {
 import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
-import { injectWorkflowHandle, useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	type WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
 import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
@@ -28,7 +32,7 @@ vi.mock('@/composables/useWorkflowHandle', async () => {
 	};
 });
 
-let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+let workflowHandle: WorkflowHandle;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;

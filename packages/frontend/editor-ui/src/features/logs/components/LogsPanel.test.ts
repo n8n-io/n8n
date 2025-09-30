@@ -31,7 +31,7 @@ import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/logs/composables/useChatMessaging';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useToast } from '@/composables/useToast';
-import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowHandle, type WorkflowHandle } from '@/composables/useWorkflowHandle';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -62,7 +62,7 @@ describe('LogsPanel', () => {
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
-	let workflowHandle: ReturnType<typeof useWorkflowHandle>;
+	let workflowHandle: WorkflowHandle;
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
