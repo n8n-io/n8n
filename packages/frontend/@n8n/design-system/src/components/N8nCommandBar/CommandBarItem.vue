@@ -97,6 +97,9 @@ const handleSelect = () => {
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-dark);
 	line-height: var(--font-line-height-compact);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .meta {
