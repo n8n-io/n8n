@@ -32,6 +32,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 				get: jest.fn().mockReturnValue(undefined),
 				set: jest.fn(),
 			}),
+			getOutgoingConnections: jest.fn().mockReturnValue([]),
 			addOutputData: jest.fn(),
 			continueOnFail: jest.fn().mockReturnValue(false),
 			getInputSourceData: jest.fn().mockReturnValue([]),
@@ -227,6 +228,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 					return { set: jest.fn(), get: jest.fn() };
 				}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
 			await splitInBatchesNode.execute.call(
@@ -260,6 +262,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 					return { set: jest.fn(), get: jest.fn() };
 				}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
 			await splitInBatchesNode.execute.call(
@@ -296,6 +299,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 					return { set: jest.fn(), get: jest.fn() };
 				}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
 			await splitInBatchesNode.execute.call(
@@ -325,6 +329,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 						return { set: jest.fn(), get: jest.fn() };
 					}),
 					getInputSourceData: jest.fn().mockReturnValue([]),
+					getOutgoingConnections: jest.fn().mockReturnValue([]),
 				};
 
 				await splitInBatchesNode.execute.call(
@@ -345,6 +350,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 					return { set: jest.fn(), get: jest.fn() };
 				}),
 				getInputSourceData: jest.fn().mockReturnValue([]),
+				getOutgoingConnections: jest.fn().mockReturnValue([]),
 			};
 
 			await expect(
@@ -450,6 +456,7 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 						return { set: jest.fn(), get: jest.fn() };
 					}),
 					getInputSourceData: jest.fn().mockReturnValue([]),
+					getOutgoingConnections: jest.fn().mockReturnValue([]),
 				};
 
 				// Verify counter exists
@@ -532,5 +539,45 @@ describe('SplitInBatchesV4 Infinite Loop Protection', () => {
 			// Should keep counters for other executions
 			expect(SplitInBatchesV4.hasCounterForTest('other-execution', 'node1')).toBe(true);
 		});
+	});
+
+	describe('node-level structural guard', () => {
+		it('throws when done output loops back to self (v4)', async () => {
+			const mockFunctions = {
+				...mockExecuteFunctions,
+				getOutgoingConnections: jest.fn().mockReturnValue([
+					// done output (index 0) connects to self
+					[{ node: 'SplitInBatches', type: 'main', index: 0 }],
+					// loop output (index 1)
+					[],
+				]),
+			};
+
+			await expect(
+				splitInBatchesNode.execute.call(mockFunctions as unknown as IExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+		});
+	});
+});
+
+describe('SplitInBatchesV3 node-level structural guard', () => {
+	it('throws when done output loops back to self (v3)', async () => {
+		const { SplitInBatchesV3 } = await import('../v3/SplitInBatchesV3.node');
+		const node = new SplitInBatchesV3();
+		const mockExec = {
+			getNode: jest.fn().mockReturnValue({ name: 'SplitInBatches' }),
+			getExecutionId: jest.fn().mockReturnValue('exec'),
+			getNodeParameter: jest.fn((name: string) => (name === 'batchSize' ? 1 : {})),
+			getInputData: jest.fn().mockReturnValue([{ json: { a: 1 } }]),
+			getContext: jest.fn().mockReturnValue({ set: jest.fn(), get: jest.fn() }),
+			getInputSourceData: jest.fn().mockReturnValue([]),
+			getOutgoingConnections: jest
+				.fn()
+				.mockReturnValue([[{ node: 'SplitInBatches', type: 'main', index: 0 }], []]),
+		};
+
+		await expect(node.execute.call(mockExec as unknown as IExecuteFunctions)).rejects.toThrow(
+			NodeOperationError,
+		);
 	});
 });

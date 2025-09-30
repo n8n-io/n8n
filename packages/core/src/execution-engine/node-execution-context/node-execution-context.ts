@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
 	NodeInputConnections,
+	NodeConnectionTypes,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
@@ -130,6 +131,20 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			output.push(entry);
 		}
 		return output;
+	}
+
+	getOutgoingConnections(
+		nodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): NodeInputConnections {
+		return this.workflow.connectionsBySourceNode[nodeName]?.[type] ?? [];
+	}
+
+	getIncomingConnections(
+		nodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): NodeInputConnections {
+		return this.workflow.connectionsByDestinationNode[nodeName]?.[type] ?? [];
 	}
 
 	/**

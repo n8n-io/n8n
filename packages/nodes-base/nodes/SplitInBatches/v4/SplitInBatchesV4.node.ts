@@ -127,6 +127,19 @@ export class SplitInBatchesV4 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
 		const options = this.getNodeParameter('options', 0, {});
 
+		// Version-locked structural guard (v4: 'done' is output index 0)
+		const outgoing = this.getOutgoingConnections(this.getNode().name, NodeConnectionTypes.Main);
+		const doneIndex = 0;
+		if (
+			Array.isArray(outgoing?.[doneIndex]) &&
+			outgoing![doneIndex]!.some((c) => c?.node === this.getNode().name)
+		) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input, which causes an infinite loop. Disconnect the "done" output from this node\'s input.',
+			);
+		}
+
 		// If an explicit reset is requested, clear counters before any checks
 		if (options.reset === true) {
 			SplitInBatchesV4.resetExecutionCount(this);

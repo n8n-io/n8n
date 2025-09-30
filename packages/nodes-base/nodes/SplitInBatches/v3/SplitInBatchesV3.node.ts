@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,6 +74,19 @@ export class SplitInBatchesV3 implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		const options = this.getNodeParameter('options', 0, {});
+
+		// Version-locked structural guard (v3: 'done' is output index 0)
+		const outgoing = this.getOutgoingConnections(this.getNode().name, NodeConnectionTypes.Main);
+		const doneIndex = 0;
+		if (
+			Array.isArray(outgoing?.[doneIndex]) &&
+			outgoing![doneIndex]!.some((c) => c?.node === this.getNode().name)
+		) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input, which causes an infinite loop. Disconnect the "done" output from this node\'s input.',
+			);
+		}
 
 		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs

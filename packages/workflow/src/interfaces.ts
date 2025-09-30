@@ -906,6 +906,16 @@ export interface FunctionsBase {
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
 	): NodeTypeAndVersion[];
+	/**
+	 * Read-only graph introspection: outgoing connections from a source node.
+	 * First index is output index, second index enumerates connections.
+	 */
+	getOutgoingConnections(nodeName: string, type?: NodeConnectionType): NodeInputConnections;
+	/**
+	 * Read-only graph introspection: incoming connections to a destination node.
+	 * First index is input index, second index enumerates connections.
+	 */
+	getIncomingConnections(nodeName: string, type?: NodeConnectionType): NodeInputConnections;
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;

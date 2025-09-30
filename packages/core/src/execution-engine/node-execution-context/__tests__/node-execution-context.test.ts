@@ -24,6 +24,50 @@ describe('NodeExecutionContext', () => {
 		encryptionKey: 'testEncryptionKey',
 		hmacSignatureSecret: 'testHmacSignatureSecret',
 	});
+
+	describe('graph introspection API', () => {
+		it('getOutgoingConnections returns outgoing main connections', () => {
+			workflow.connectionsBySourceNode = {
+				A: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }],
+						null,
+					],
+				},
+			} as any;
+
+			const ctx = new TestContext(workflow, mock<INode>({ name: 'A' }), additionalData, mode);
+			expect(ctx.getOutgoingConnections('A', NodeConnectionTypes.Main)).toEqual([
+				[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }],
+				null,
+			]);
+		});
+
+		it('getIncomingConnections returns incoming main connections', () => {
+			workflow.connectionsByDestinationNode = {
+				B: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }],
+						[],
+					],
+				},
+			} as any;
+
+			const ctx = new TestContext(workflow, mock<INode>({ name: 'B' }), additionalData, mode);
+			expect(ctx.getIncomingConnections('B', NodeConnectionTypes.Main)).toEqual([
+				[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }],
+				[],
+			]);
+		});
+
+		it('returns empty array when no connections exist', () => {
+			workflow.connectionsBySourceNode = {} as any;
+			workflow.connectionsByDestinationNode = {} as any;
+			const ctx = new TestContext(workflow, mock<INode>({ name: 'X' }), additionalData, mode);
+			expect(ctx.getOutgoingConnections('X', NodeConnectionTypes.Main)).toEqual([]);
+			expect(ctx.getIncomingConnections('X', NodeConnectionTypes.Main)).toEqual([]);
+		});
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();

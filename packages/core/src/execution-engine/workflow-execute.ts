@@ -1392,10 +1392,22 @@ export class WorkflowExecute {
 			if (!bySource) continue;
 			const main = bySource[NodeConnectionTypes.Main];
 			if (!main) continue;
-			const doneOutput = main[0]; // output index 0 corresponds to 'done'
+
+			// Determine the index of the 'done' output from the node description so
+			// this check works across versions (v2 had ['loop','done'], v3+ ['done','loop']).
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const outputNames = nodeType?.description?.outputNames;
+			const doneIndex = Array.isArray(outputNames)
+				? outputNames.findIndex((n) => n?.toLowerCase() === 'done')
+				: -1;
+
+			// If 'done' output does not exist (e.g. v1 single-output), skip this check.
+			if (doneIndex < 0) continue;
+
+			const doneOutput = main[doneIndex];
 			if (!doneOutput) continue;
 
-			for (const c of doneOutput ?? []) {
+			for (const c of doneOutput) {
 				if (c.node === node.name) {
 					throw new OperationalError(
 						'Stopped execution: Loop Over Items (Split in Batches) node has its "done" output connected back to its own input, which causes an infinite loop. Disconnect the "done" output from this node\'s input.',
