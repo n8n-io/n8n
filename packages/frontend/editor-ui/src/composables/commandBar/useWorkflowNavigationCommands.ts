@@ -91,38 +91,45 @@ export function useWorkflowNavigationCommands(options: {
 		}
 	}, 300);
 
-	const getWorkflowTitle = (workflow: IWorkflowDb) => {
+	const getWorkflowTitle = (workflow: IWorkflowDb, includeOpenWorkflowPrefix: boolean) => {
 		let prefix = '';
 		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
-			prefix = 'Open workflow > [Personal] > ';
+			prefix = includeOpenWorkflowPrefix ? 'Open workflow > [Personal] > ' : '[Personal] > ';
 		} else {
-			prefix = `Open workflow > [${workflow.homeProject?.name}] > `;
+			prefix = includeOpenWorkflowPrefix
+				? `Open workflow > [${workflow.homeProject?.name}] > `
+				: `[${workflow.homeProject?.name}] > `;
 		}
 		return prefix + workflow.name || '(unnamed workflow)';
 	};
 
+	const createWorkflowCommand = (
+		workflow: IWorkflowDb,
+		includeOpenWorkflowPrefix: boolean,
+	): CommandBarItem => {
+		return {
+			id: workflow.id,
+			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
+			section: Section.WORKFLOWS,
+			handler: () => {
+				const targetRoute = router.resolve({
+					name: VIEWS.WORKFLOW,
+					params: { name: workflow.id },
+				});
+				window.location.href = targetRoute.fullPath;
+			},
+		};
+	};
+
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => {
-			return {
-				id: workflow.id,
-				title: getWorkflowTitle(workflow),
-				section: Section.WORKFLOWS,
-				handler: () => {
-					const targetRoute = router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: workflow.id },
-					});
-					window.location.href = targetRoute.fullPath;
-				},
-			};
-		});
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return [...openWorkflowCommands.value];
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {

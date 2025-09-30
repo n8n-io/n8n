@@ -70,41 +70,48 @@ export function useDataTableNavigationCommands(options: {
 		}
 	}, 300);
 
-	const getDataTableTitle = (dataTable: DataStore) => {
+	const getDataTableTitle = (dataTable: DataStore, includeOpenDataTablePrefix: boolean) => {
 		let prefix = '';
 		if (dataTable.project && dataTable.project.type === 'personal') {
-			prefix = 'Open data table > [Personal] > ';
+			prefix = includeOpenDataTablePrefix ? 'Open data table > [Personal] > ' : '[Personal] > ';
 		} else {
-			prefix = `Open data table > [${dataTable.project?.name}] > `;
+			prefix = includeOpenDataTablePrefix
+				? `Open data table > [${dataTable.project?.name}] > `
+				: `[${dataTable.project?.name}] > `;
 		}
 		return prefix + dataTable.name || '(unnamed data table)';
 	};
 
+	const createDataTableCommand = (
+		dataTable: DataStore,
+		includeOpenDataTablePrefix: boolean,
+	): CommandBarItem => {
+		return {
+			id: dataTable.id,
+			title: getDataTableTitle(dataTable, includeOpenDataTablePrefix),
+			section: Section.DATA_TABLES,
+			handler: () => {
+				const targetRoute = router.resolve({
+					name: DATA_STORE_DETAILS,
+					params: {
+						projectId: dataTable.projectId,
+						id: dataTable.id,
+					},
+				});
+				window.location.href = targetRoute.fullPath;
+			},
+		};
+	};
+
 	const openDataTableCommands = computed<CommandBarItem[]>(() => {
-		return dataTableResults.value.map((dataTable) => {
-			return {
-				id: dataTable.id,
-				title: getDataTableTitle(dataTable),
-				section: Section.DATA_TABLES,
-				handler: () => {
-					const targetRoute = router.resolve({
-						name: DATA_STORE_DETAILS,
-						params: {
-							projectId: dataTable.projectId,
-							id: dataTable.id,
-						},
-					});
-					window.location.href = targetRoute.fullPath;
-				},
-			};
-		});
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, false));
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return [...openDataTableCommands.value];
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -133,6 +140,7 @@ export function useDataTableNavigationCommands(options: {
 				id: ITEM_ID.OPEN_DATA_TABLE,
 				title: 'Open data table',
 				section: Section.DATA_TABLES,
+				placeholder: 'Search by data table name...',
 				icon: {
 					component: N8nIcon,
 					props: {
