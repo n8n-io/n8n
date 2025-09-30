@@ -68,7 +68,7 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 		}
 
 		// Format the documents for the output similar to the original tool format
-		const serializedDocs = docs.map(([doc, score]) => {
+		const serializedDocs = docs.map(([doc]) => {
 			let document;
 			if (includeDocumentMetadata) {
 				document = {
