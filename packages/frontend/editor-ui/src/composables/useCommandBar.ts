@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -113,12 +113,13 @@ export function useCommandBar() {
 		}
 	}
 
-	onMounted(async () => {
+	async function initialize() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	});
+	}
 
 	return {
 		items,
+		initialize,
 		onCommandBarChange,
 		onCommandBarNavigateTo,
 	};

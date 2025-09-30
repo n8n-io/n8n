@@ -33,6 +33,7 @@ import { useStyles } from './composables/useStyles';
 import { useExposeCssVar } from '@/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/composables/useFloatingUiOffsets';
 import { useCommandBar } from './composables/useCommandBar';
+import { hasPermission } from './utils/rbac/permissions';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -43,7 +44,14 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 
-const { items, onCommandBarChange, onCommandBarNavigateTo } = useCommandBar();
+const showCommandBar = computed(() => hasPermission(['authenticated']));
+
+const {
+	initialize: initializeCommandBar,
+	items,
+	onCommandBarChange,
+	onCommandBarNavigateTo,
+} = useCommandBar();
 
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
@@ -71,6 +79,10 @@ onMounted(async () => {
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
+
+	if (showCommandBar.value) {
+		void initializeCommandBar();
+	}
 });
 
 onBeforeUnmount(() => {
@@ -153,6 +165,7 @@ useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingBu
 				<Modals />
 			</div>
 			<N8nCommandBar
+				v-if="showCommandBar"
 				:items="items"
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
