@@ -299,12 +299,12 @@ export class MindeeV2 implements INodeType {
 							'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
 						} as IDataObject;
 						if (operation === 'enqueueAndGetInference') {
-							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, headers);
+							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
 							const pollingUrl = extractPollingUrl(this, enqueue);
 							result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 						}
 						if (operation === 'enqueue') {
-							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, headers);
+							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
 							result = [enqueue as JsonObject];
 						}
 						if (operation === 'getInference') {

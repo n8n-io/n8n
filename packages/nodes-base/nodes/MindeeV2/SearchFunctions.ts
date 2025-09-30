@@ -2,7 +2,7 @@ import type { INodeListSearchResult, ILoadOptionsFunctions } from 'n8n-workflow'
 
 import { mindeeApiRequest } from './GenericFunctions';
 
-const MODELS_URL = 'https://api-v2.mindee.net/v2/models';
+const MODELS_URL = 'https://api-v2.mindee.net/v2/search/models';
 const PER_PAGE = 50;
 
 /**
@@ -22,9 +22,9 @@ export async function getModels(
 		MODELS_URL,
 		{},
 		{
-			q: filter,
+			name: filter,
 			page,
-			PER_PAGE,
+			per_page: PER_PAGE,
 		},
 	);
 	const models = (res?.models ?? []) as Array<{ id: string; name: string }>;
