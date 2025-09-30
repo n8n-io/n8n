@@ -9,7 +9,7 @@ import { McpSettingsService } from './mcp.settings.service';
 
 export type FlushableResponse = Response & { flush: () => void };
 
-@RootLevelController('/mcp-access')
+@RootLevelController('/mcp-server')
 export class McpController {
 	constructor(
 		private readonly errorReporter: ErrorReporter,

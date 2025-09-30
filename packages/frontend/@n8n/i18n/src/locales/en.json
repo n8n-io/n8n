@@ -62,6 +62,7 @@
 	"generic.communityNode.tooltip": "This is a node from our community. It's part of the {packageName} package. <a href=\"{docURL}\" target=\"_blank\" title=\"Read the n8n docs\">Learn more</a>",
 	"generic.officialNode.tooltip": "This is an official node maintained by {author}",
 	"generic.copy": "Copy",
+	"generic.copied": "Copied",
 	"generic.delete": "Delete",
 	"generic.dontShowAgain": "Don't show again",
 	"generic.enterprise": "Enterprise",

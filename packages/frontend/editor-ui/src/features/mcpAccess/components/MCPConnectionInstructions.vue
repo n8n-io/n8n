@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 
-const MCP_ENDPOINT = 'mcp-access/http';
+const MCP_ENDPOINT = 'mcp-server/http';
 // TODO: Update once docs page is ready
 const DOCS_URL = 'https://docs.n8n.io/';
 
@@ -64,14 +64,20 @@ const fullServerUrl = computed(() => {
 					</span>
 					<span :class="$style.url">
 						<code>{{ fullServerUrl }}</code>
-						<N8nButton
-							v-if="isSupported"
-							type="tertiary"
-							:icon="copied ? 'check' : 'copy'"
-							:square="true"
-							:class="$style['copy-url-button']"
-							@click="copy(fullServerUrl)"
-						/>
+						<N8nTooltip
+							:disables="!isSupported"
+							:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+							placement="right"
+						>
+							<N8nButton
+								v-if="isSupported"
+								type="tertiary"
+								:icon="copied ? 'clipboard-check' : 'clipboard'"
+								:square="true"
+								:class="$style['copy-url-button']"
+								@click="copy(fullServerUrl)"
+							/>
+						</N8nTooltip>
 					</span>
 				</div>
 			</li>
@@ -90,14 +96,19 @@ const fullServerUrl = computed(() => {
 			<N8nInfoAccordion :title="i18n.baseText('settings.mcp.instructions.json')">
 				<template #customContent>
 					<N8nMarkdown :content="connectionCode"></N8nMarkdown>
-					<N8nButton
-						v-if="isSupported"
-						type="tertiary"
-						:icon="copied ? 'check' : 'copy'"
-						:square="true"
-						:class="$style['copy-json-button']"
-						@click="copy(connectionString)"
-					/>
+					<N8nTooltip
+						:disables="!isSupported"
+						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+					>
+						<N8nButton
+							v-if="isSupported"
+							type="tertiary"
+							:icon="copied ? 'clipboard-check' : 'clipboard'"
+							:square="true"
+							:class="$style['copy-json-button']"
+							@click="copy(connectionString)"
+						/>
+					</N8nTooltip>
 				</template>
 			</N8nInfoAccordion>
 		</div>
@@ -183,7 +194,7 @@ const fullServerUrl = computed(() => {
 .copy-json-button {
 	position: absolute;
 	top: var(--spacing-xl);
-	right: var(--spacing-xl);
+	right: var(--spacing-2xl);
 	display: none;
 }
 </style>
