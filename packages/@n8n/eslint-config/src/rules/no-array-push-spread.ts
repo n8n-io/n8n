@@ -84,18 +84,27 @@ export const NoArrayPushSpreadRule = ESLintUtils.RuleCreator.withoutDocs({
 			return node.arguments.slice(firstSpreadIndex).every(isSpreadElement);
 		};
 
+		const getIdentifierFromObject = (objectNode: TSESTree.Node): TSESTree.Identifier | null => {
+			if (objectNode.type === 'Identifier') {
+				return objectNode;
+			}
+			if (objectNode.type === 'TSAsExpression' && objectNode.expression.type === 'Identifier') {
+				return objectNode.expression;
+			}
+			return null;
+		};
+
 		const findConstDeclaration = (
 			node: TSESTree.CallExpression & { callee: TSESTree.MemberExpression },
 		): TSESTree.VariableDeclaration | undefined => {
-			if (
-				!canAutoFix(node) ||
-				node.parent?.type !== 'ExpressionStatement' ||
-				node.callee.object.type !== 'Identifier'
-			) {
+			if (!canAutoFix(node) || node.parent?.type !== 'ExpressionStatement') {
 				return undefined;
 			}
 
-			const variable = findVariableInScope(node.callee.object, node.callee.object.name);
+			const identifier = getIdentifierFromObject(node.callee.object);
+			if (!identifier) return undefined;
+
+			const variable = findVariableInScope(identifier, identifier.name);
 			const def = variable?.defs[0];
 
 			if (

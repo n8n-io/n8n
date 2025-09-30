@@ -188,5 +188,11 @@ typeAwareRuleTester.run('no-array-push-spread', NoArrayPushSpreadRule, {
 			output: 'obj.prop = (obj.prop as SomeType[]).concat(items);',
 			errors: [{ messageId: 'noArrayPushSpread' }],
 		},
+		{
+			name: 'const with type cast expression converted to let',
+			code: 'const arr: SomeType[] = []; (arr as SomeType[]).push(...items);',
+			output: 'let arr: SomeType[] = []; arr = (arr as SomeType[]).concat(items);',
+			errors: [{ messageId: 'noArrayPushSpread' }],
+		},
 	],
 });
