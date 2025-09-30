@@ -26,7 +26,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import {
-	InlineAskAssistantButton,
+	N8nInlineAskAssistantButton,
 	N8nButton,
 	N8nIcon,
 	N8nIconButton,
@@ -483,7 +483,7 @@ async function onAskAssistantClick() {
 				class="node-error-view__button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
-				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+				<N8nInlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 			</div>
 		</div>
 
