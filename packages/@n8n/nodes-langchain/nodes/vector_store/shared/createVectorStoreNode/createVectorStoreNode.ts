@@ -271,7 +271,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			// Handle each operation mode with dedicated modules
 			if (mode === 'load') {
 				const items = this.getInputData(0);
-				const resultData = [];
+				const resultData: INodeExecutionData[] = [];
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
