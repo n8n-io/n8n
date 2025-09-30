@@ -1,4 +1,3 @@
-import type { Project } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
@@ -11,22 +10,6 @@ export async function createVariable(key = randomString(5), value = randomString
 		key,
 		value,
 	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-export async function createProjectVariable(
-	key = randomString(5),
-	value = randomString(5),
-	project: Project,
-) {
-	const result = await Container.get(VariablesRepository).save({
-		id: generateNanoId(),
-		key,
-		value,
-		project,
-	});
-
 	await Container.get(VariablesService).updateCache();
 	return result;
 }

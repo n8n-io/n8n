@@ -18,6 +18,9 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 	}: MigrationContext) {
 		const variablesTableName = escape.tableName(VARIABLES_TABLE_NAME);
 
+		// Drop the remaining redundant index created on 1690000000000-MigrateIntegerKeysToString
+		await queryRunner.query(`DROP INDEX IF EXISTS "pk_${tablePrefix}variables_id";`);
+
 		// Drop the unique index on key to allow multiple projects to have variables with the same key
 		await queryRunner.query(
 			`ALTER TABLE ${variablesTableName} DROP CONSTRAINT ${tablePrefix}variables_key_key;`,
@@ -29,7 +32,8 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		// Create index for unique project key (projectId not null)
 		await queryRunner.query(`
       CREATE UNIQUE INDEX "${UNIQUE_PROJECT_KEY_INDEX_NAME}"
-      ON ${variablesTableName} ("projectId", "key");
+      ON ${variablesTableName} ("projectId", "key")
+			WHERE "projectId" IS NOT NULL;
     `);
 
 		// Create index for global variables (projectId is null)
