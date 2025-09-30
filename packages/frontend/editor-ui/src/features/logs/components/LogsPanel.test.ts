@@ -662,7 +662,7 @@ describe('LogsPanel', () => {
 
 				await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
 
-				workflowsStore.setActiveExecutionId(undefined);
+				workflowHandle.setActiveExecutionId(undefined);
 				workflowHandle.setWorkflowExecutionData({ ...aiChatExecutionResponse, status: 'success' });
 
 				await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());

@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
-	workflowHandle: WorkflowHandle,
+	options: { workflowHandle: WorkflowHandle },
 ) {
 	const workflowsStore = useWorkflowsStore();
 
@@ -15,7 +15,7 @@ export async function workflowFailedToActivate(
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
-	workflowHandle.setActive(false);
+	options.workflowHandle.setActive(false);
 
 	const toast = useToast();
 	const i18n = useI18n();

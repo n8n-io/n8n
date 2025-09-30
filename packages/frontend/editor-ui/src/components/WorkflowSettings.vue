@@ -24,6 +24,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
+import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -36,6 +37,7 @@ const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
+const workflowHandle = injectWorkflowHandle();
 const workflowsEEStore = useWorkflowsEEStore();
 
 const isLoading = ref(true);
@@ -363,7 +365,7 @@ const saveSettings = async () => {
 
 	const oldSettings = deepCopy(workflowsStore.workflowSettings);
 
-	workflowsStore.setWorkflowSettings(localWorkflowSettings);
+	workflowHandle.setWorkflowSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 

@@ -464,7 +464,10 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowName()', () => {
 		it('should set the workflow name correctly', () => {
-			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
+			workflowsStore.private.setWorkflowName({
+				newName: 'New Workflow Name',
+				setStateDirty: false,
+			});
 			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
 		});
 	});

@@ -896,10 +896,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		dataPinningEventBus.emit('pin-data', validPinData);
 	}
 
-	function setWorkflowTagIds(tags: string[]) {
-		workflow.value.tags = tags;
-	}
-
 	function addWorkflowTagIds(tags: string[]) {
 		workflow.value.tags = [
 			...new Set([...(workflow.value.tags ?? []), ...tags]),
@@ -1912,7 +1908,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionStartedData,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
-		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
@@ -1985,7 +1980,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addExecutingNode,
 		removeExecutingNode,
 		setUsedCredentials,
-		setWorkflowName,
 		setWorkflowVersionId,
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
@@ -1999,9 +1993,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setIsArchived,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setWorkflowSettings,
 		setWorkflowPinData,
-		setWorkflowTagIds,
 		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
@@ -2056,5 +2048,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
 		defaults,
+		private: {
+			setWorkflowSettings,
+			setWorkflowName,
+			setActiveExecutionId,
+		},
 	};
 });

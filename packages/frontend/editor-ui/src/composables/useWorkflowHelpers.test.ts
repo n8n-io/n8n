@@ -232,15 +232,15 @@ describe('useWorkflowHelpers', () => {
 			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
 			const setActiveSpy = vi.spyOn(workflowHandle, 'setActive');
 			const setWorkflowIdSpy = vi.spyOn(workflowHandle, 'setWorkflowId');
-			const setWorkflowNameSpy = vi.spyOn(workflowsStore, 'setWorkflowName');
-			const setWorkflowSettingsSpy = vi.spyOn(workflowsStore, 'setWorkflowSettings');
+			const setWorkflowNameSpy = vi.spyOn(workflowHandle, 'setWorkflowName');
+			const setWorkflowSettingsSpy = vi.spyOn(workflowHandle, 'setWorkflowSettings');
 			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
 			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
 			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
 			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowHandle, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			initState(workflowData);
@@ -301,7 +301,7 @@ describe('useWorkflowHelpers', () => {
 				meta: {},
 				scopes: [],
 			});
-			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowHandle, 'setWorkflowTagIds');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
 			initState(workflowData);

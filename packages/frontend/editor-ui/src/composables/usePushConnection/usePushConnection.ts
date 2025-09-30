@@ -20,13 +20,22 @@ import {
 	workflowActivated,
 	workflowDeactivated,
 } from '@/composables/usePushConnection/handlers';
-import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowHandle, type WorkflowHandle } from '@/composables/useWorkflowHandle';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
-export function usePushConnection(options: { router: ReturnType<typeof useRouter> }) {
+export function usePushConnection({
+	router,
+	workflowHandle,
+}: {
+	router: ReturnType<typeof useRouter>;
+	workflowHandle?: WorkflowHandle;
+}) {
 	const pushStore = usePushConnectionStore();
-	const workflowHandle = useWorkflowHandle();
+	const options = {
+		router,
+		workflowHandle: workflowHandle ?? useWorkflowHandle(),
+	};
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
@@ -66,13 +75,13 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 			case 'nodeExecuteAfterData':
 				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
-				return await executionStarted(event);
+				return await executionStarted(event, options);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
-				return await workflowFailedToActivate(event, workflowHandle);
+				return await workflowFailedToActivate(event, options);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':

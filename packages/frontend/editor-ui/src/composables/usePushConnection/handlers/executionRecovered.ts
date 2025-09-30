@@ -10,10 +10,11 @@ import {
 } from './executionFinished';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { useRouter } from 'vue-router';
+import type { WorkflowHandle } from '@/composables/useWorkflowHandle';
 
 export async function executionRecovered(
 	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter> },
+	options: { router: ReturnType<typeof useRouter>; workflowHandle: WorkflowHandle },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -42,5 +43,5 @@ export async function executionRecovered(
 		handleExecutionFinishedWithOther(false);
 	}
 
-	setRunExecutionData(execution, runExecutionData);
+	setRunExecutionData(execution, runExecutionData, options.workflowHandle);
 }

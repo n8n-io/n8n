@@ -32,7 +32,7 @@ import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
-import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { type WorkflowHandle } from '@/composables/useWorkflowHandle';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -44,7 +44,7 @@ export type SimplifiedExecution = Pick<
  */
 export async function executionFinished(
 	{ data }: ExecutionFinished,
-	options: { router: ReturnType<typeof useRouter> },
+	options: { router: ReturnType<typeof useRouter>; workflowHandle: WorkflowHandle },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
@@ -119,7 +119,7 @@ export async function executionFinished(
 		};
 	} else {
 		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId);
+			handleExecutionFinishedSuccessfully(data.workflowId, options.workflowHandle);
 			successToastAlreadyShown = true;
 		}
 
@@ -141,7 +141,7 @@ export async function executionFinished(
 		handleExecutionFinishedWithOther(successToastAlreadyShown);
 	}
 
-	setRunExecutionData(execution, runExecutionData);
+	setRunExecutionData(execution, runExecutionData, options.workflowHandle);
 
 	continueEvaluationLoop(execution, options.router);
 }
@@ -359,14 +359,17 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(workflowId: string) {
+export function handleExecutionFinishedSuccessfully(
+	workflowId: string,
+	workflowHandle: WorkflowHandle,
+) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
 	const i18n = useI18n();
 
 	workflowHelpers.setDocumentTitle(workflowsStore.getWorkflowById(workflowId)?.name, 'IDLE');
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowHandle.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 		type: 'success',
@@ -424,9 +427,9 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	workflowHandle: WorkflowHandle,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = injectWorkflowHandle();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
@@ -440,7 +443,7 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	} as IExecutionResponse);
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowHandle.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -457,7 +460,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	workflowsStore.setActiveExecutionId(undefined);
+	workflowHandle.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,

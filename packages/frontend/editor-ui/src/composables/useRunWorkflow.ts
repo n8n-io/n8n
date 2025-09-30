@@ -95,24 +95,24 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		workflowsStore.subWorkflowExecutionError = null;
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowsStore.setActiveExecutionId(null);
+		workflowHandle.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowHandle.setActiveExecutionId(undefined);
 			throw error;
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowsStore.setActiveExecutionId(response.executionId);
+			workflowHandle.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowsStore.setActiveExecutionId(undefined);
+			workflowHandle.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 

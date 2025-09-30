@@ -2980,7 +2980,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
-			workflowsStore.setActiveExecutionId = vi.fn();
+			setActiveExecutionId = vi.spyOn(workflowHandle, 'setActiveExecutionId');
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
@@ -3017,7 +3017,7 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+			expect(setActiveExecutionId).toHaveBeenCalledWith(undefined);
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.stateIsDirty).toBe(false);
 			expect(executionsStore.activeExecution).toBeNull();

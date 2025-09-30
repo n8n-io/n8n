@@ -1652,7 +1652,7 @@ export function useCanvasOperations() {
 		workflowsStore.resetWorkflow();
 		workflowHandle.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
-		workflowsStore.setActiveExecutionId(undefined);
+		workflowHandle.setActiveExecutionId(undefined);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();

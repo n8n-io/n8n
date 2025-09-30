@@ -3,6 +3,7 @@ import type { IExecutionResponse } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 
 export function useWorkflowHandle() {
@@ -61,7 +62,19 @@ export function useWorkflowHandle() {
 	}
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
-		ws.setWorkflowName(data);
+		ws.private.setWorkflowName(data);
+	}
+
+	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
+		ws.private.setWorkflowSettings(workflowSettings);
+	}
+
+	function setWorkflowTagIds(tags: string[]) {
+		ws.workflow.tags = tags;
+	}
+
+	function setActiveExecutionId(id: string | null | undefined) {
+		ws.private.setActiveExecutionId(id);
 	}
 
 	function resetState() {
@@ -74,10 +87,10 @@ export function useWorkflowHandle() {
 		setActive(ws.defaults.active);
 		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		setWorkflowName({ newName: '', setStateDirty: false });
-		ws.setWorkflowSettings({ ...ws.defaults.settings });
-		ws.setWorkflowTagIds([]);
+		setWorkflowSettings({ ...ws.defaults.settings });
+		setWorkflowTagIds([]);
 
-		ws.setActiveExecutionId(undefined);
+		setActiveExecutionId(undefined);
 		ws.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
 	}
@@ -91,6 +104,9 @@ export function useWorkflowHandle() {
 		setActive,
 		setWorkflowId,
 		setWorkflowName,
+		setWorkflowSettings,
+		setWorkflowTagIds,
+		setActiveExecutionId,
 	};
 }
 

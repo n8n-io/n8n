@@ -236,7 +236,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			if (tags) {
 				const createdTags = (workflowData.tags || []) as ITag[];
 				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowsStore.setWorkflowTagIds(tagIds);
+				workflowHandle.setWorkflowTagIds(tagIds);
 			}
 
 			uiStore.stateIsDirty = false;
@@ -391,7 +391,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowHandle.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 			workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-			workflowsStore.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+			workflowHandle.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			uiStore.stateIsDirty = false;
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
@@ -404,7 +404,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			const createdTags = (workflowData.tags || []) as ITag[];
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowsStore.setWorkflowTagIds(tagIds);
+			workflowHandle.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
 			if (templateId) {

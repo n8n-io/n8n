@@ -975,7 +975,7 @@ export function useWorkflowHelpers() {
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowsStore.setWorkflowSettings(workflowData.settings ?? {});
+		workflowHandle.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
@@ -994,7 +994,7 @@ export function useWorkflowHelpers() {
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
-		workflowsStore.setWorkflowTagIds(tagIds || []);
+		workflowHandle.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);
 	}
 
