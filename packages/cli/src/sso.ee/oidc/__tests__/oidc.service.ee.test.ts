@@ -212,6 +212,64 @@ describe('OidcService', () => {
 			expect(cipher.decrypt).toHaveBeenCalledWith(encryptedSecret);
 			expect(result?.clientSecret).toBe(decryptedSecret);
 		});
+
+		it('should not issue warnings for default config with empty discoveryEndpoint', async () => {
+			const defaultConfig = {
+				...mockOidcConfig,
+				discoveryEndpoint: '',
+			};
+
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(defaultConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toBeUndefined();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should issue warnings when Zod validation fails', async () => {
+			const invalidConfig = {
+				...mockOidcConfig,
+				discoveryEndpoint: 'not-a-valid-url',
+			};
+
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(invalidConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to load OIDC configuration from database, falling back to default configuration.',
+				expect.any(Object),
+			);
+		});
+
+		it('should not issue warnings for valid complete configuration', async () => {
+			settingsRepository.findByKey = jest.fn().mockResolvedValue({
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify(mockOidcConfig),
+				loadOnStartup: true,
+			});
+
+			const result = await oidcService.loadConfigurationFromDatabase();
+
+			expect(result).toEqual({
+				clientId: mockOidcConfig.clientId,
+				clientSecret: mockOidcConfig.clientSecret,
+				loginEnabled: mockOidcConfig.loginEnabled,
+				prompt: 'select_account',
+				discoveryEndpoint: expect.any(URL),
+			});
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('broadcastReloadOIDCConfigurationCommand', () => {
