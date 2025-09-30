@@ -122,7 +122,8 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			const credentialScript = `!f() { echo "username=${credentials.username}"; echo "password=${credentials.password}"; }; f`;
+			const escapeShellArg = (arg: string) => `'${arg.replace(/'/g, "'\"'\"'")}'`;
+			const credentialScript = `!f() { echo username=${escapeShellArg(credentials.username)}; echo password=${escapeShellArg(credentials.password)}; }; f`;
 
 			const httpsGitOptions = {
 				...this.gitOptions,
