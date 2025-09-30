@@ -29,13 +29,6 @@ describe('McpSettingsController', () => {
 		controller = Container.get(McpSettingsController);
 	});
 
-	test('gets settings correctly', async () => {
-		mcpSettingsService.getEnabled.mockResolvedValue(true);
-		await expect(controller.getSettings()).resolves.toEqual({ mcpAccessEnabled: true });
-		mcpSettingsService.getEnabled.mockResolvedValue(false);
-		await expect(controller.getSettings()).resolves.toEqual({ mcpAccessEnabled: false });
-	});
-
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
 			const req = createReq({ mcpAccessEnabled: false });

@@ -17,13 +17,6 @@ export class McpSettingsController {
 	) {}
 
 	@GlobalScope('mcp:manage')
-	@Get('/settings')
-	async getSettings() {
-		const mcpAccessEnabled = await this.mcpSettingsService.getEnabled();
-		return { mcpAccessEnabled };
-	}
-
-	@GlobalScope('mcp:manage')
 	@Patch('/settings')
 	async updateSettings(
 		_req: AuthenticatedRequest,
