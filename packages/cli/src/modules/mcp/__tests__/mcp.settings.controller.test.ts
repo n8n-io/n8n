@@ -8,6 +8,7 @@ import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 
 const createReq = (body: unknown): AuthenticatedRequest =>
 	({ body }) as unknown as AuthenticatedRequest;
