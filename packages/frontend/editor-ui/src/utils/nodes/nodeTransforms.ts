@@ -117,7 +117,7 @@ export function getParameterDisplayableOptions(
 
 	const nodeType = node?.type ? useNodeTypesStore().getNodeType(node.type, node.typeVersion) : null;
 
-	if (!nodeType) return options;
+	if (!nodeType || !Array.isArray(nodeType.properties)) return options;
 
 	const nodeParameters =
 		NodeHelpers.getNodeParameters(

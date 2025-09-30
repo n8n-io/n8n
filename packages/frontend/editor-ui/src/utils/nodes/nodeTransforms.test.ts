@@ -8,17 +8,13 @@ import { getParameterDisplayableOptions } from './nodeTransforms';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-vi.mock('n8n-workflow', async (importOriginal) => {
-	const actual = (await importOriginal()) as Record<string, unknown>;
-	return {
-		...actual,
-		NodeHelpers: {
-			...(actual.NodeHelpers as Record<string, unknown>),
-			displayParameter: vi.fn(),
-			getNodeParameters: vi.fn(),
-		},
-	};
-});
+vi.mock('n8n-workflow', () => ({
+	NodeHelpers: {
+		displayParameter: vi.fn(),
+		getNodeParameters: vi.fn(),
+	},
+	traverseNodeParameters: vi.fn(),
+}));
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(),
