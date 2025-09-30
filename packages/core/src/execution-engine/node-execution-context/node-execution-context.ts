@@ -18,12 +18,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
 	NodeInputConnections,
-	NodeConnectionTypes,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	ApplicationError,
 	CHAT_TRIGGER_NODE_TYPE,
