@@ -72,7 +72,7 @@ const onDelete = () => {
 			<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
 			<div class="pt-l">
 				<ElRadio
-					:model-value="operation"
+					:model-value="operation ?? ''"
 					label="transfer"
 					class="mb-s"
 					@update:model-value="operation = 'transfer'"
@@ -94,7 +94,7 @@ const onDelete = () => {
 				</div>
 
 				<ElRadio
-					:model-value="operation"
+					:model-value="operation ?? ''"
 					label="wipe"
 					class="mb-s"
 					@update:model-value="operation = 'wipe'"

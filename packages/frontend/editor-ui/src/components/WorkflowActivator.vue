@@ -134,7 +134,8 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
 });
 
-async function activeChanged(newActiveState: boolean) {
+async function activeChanged(newActiveState: string | number | boolean) {
+	const boolValue = typeof newActiveState === 'boolean' ? newActiveState : Boolean(newActiveState);
 	if (!isWorkflowActive.value) {
 		const conflictData = await workflowHelpers.checkConflictingWebhooks(props.workflowId);
 
@@ -155,10 +156,7 @@ async function activeChanged(newActiveState: boolean) {
 		}
 	}
 
-	const newState = await workflowActivate.updateWorkflowActivation(
-		props.workflowId,
-		newActiveState,
-	);
+	const newState = await workflowActivate.updateWorkflowActivation(props.workflowId, boolValue);
 
 	emit('update:workflowActive', { id: props.workflowId, active: newState });
 }

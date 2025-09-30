@@ -113,7 +113,10 @@ watch(
 			>
 				<ElCheckbox
 					:model-value="isSelected(category)"
-					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
+					@update:model-value="
+						(value: string | number | boolean) =>
+							handleCheckboxChanged(typeof value === 'boolean' ? value : Boolean(value), category)
+					"
 				>
 					{{ category.name }}
 				</ElCheckbox>

@@ -2,6 +2,7 @@
 import { ElTag } from 'element-plus';
 
 export default {
+	components: { ElTag },
 	props: ['text', 'type'],
 };
 </script>

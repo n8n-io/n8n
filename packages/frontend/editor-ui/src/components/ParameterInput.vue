@@ -1641,7 +1641,13 @@ onUpdated(async () => {
 				v-model="tempValue"
 				type="datetime"
 				value-format="YYYY-MM-DDTHH:mm:ss"
-				:size="inputSize"
+				:size="
+					inputSize === 'mini'
+						? 'small'
+						: inputSize === 'xlarge' || inputSize === 'medium'
+							? 'large'
+							: inputSize
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="

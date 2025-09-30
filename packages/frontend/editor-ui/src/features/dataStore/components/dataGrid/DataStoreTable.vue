@@ -218,7 +218,7 @@ defineExpose({
 					:page-sizes="pageSizeOptions"
 					layout="total, prev, pager, next, sizes"
 					@update:current-page="setCurrentPage"
-					@size-change="setPageSize"
+					@size-change="(val: number) => setPageSize(val as 10 | 20 | 50)"
 				/>
 			</div>
 		</div>

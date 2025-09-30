@@ -354,15 +354,16 @@ const onSearch = (value: string) => {
 	void debouncedUpdateUsersTableData();
 };
 
-async function onUpdateMfaEnforced(value: boolean) {
+async function onUpdateMfaEnforced(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
 	try {
-		await usersStore.updateEnforceMfa(value);
+		await usersStore.updateEnforceMfa(boolValue);
 		showToast({
 			type: 'success',
-			title: value
+			title: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
-			message: value
+			message: boolValue
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
 		});

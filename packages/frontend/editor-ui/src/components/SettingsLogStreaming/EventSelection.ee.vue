@@ -11,6 +11,8 @@ export default defineComponent({
 	name: 'EventSelection',
 	components: {
 		Checkbox,
+		N8nIcon,
+		N8nTooltip,
 	},
 	props: {
 		destinationId: {

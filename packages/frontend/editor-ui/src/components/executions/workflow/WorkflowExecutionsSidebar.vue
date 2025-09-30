@@ -136,8 +136,9 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: boolean) {
-	emit('update:autoRefresh', enabled);
+function onAutoRefreshChange(enabled: string | number | boolean) {
+	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
+	emit('update:autoRefresh', boolValue);
 }
 
 function checkListSize(): void {

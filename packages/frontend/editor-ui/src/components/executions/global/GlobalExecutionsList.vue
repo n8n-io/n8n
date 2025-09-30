@@ -310,8 +310,9 @@ async function deleteExecution(execution: ExecutionSummary) {
 	}
 }
 
-async function onAutoRefreshToggle(value: boolean) {
-	if (value) {
+async function onAutoRefreshToggle(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	if (boolValue) {
 		await executionsStore.startAutoRefreshInterval();
 	} else {
 		executionsStore.stopAutoRefreshInterval();

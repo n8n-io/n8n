@@ -42,21 +42,22 @@ onMounted(() => {
 	}
 });
 
-async function onUpdateConnected(value: boolean) {
+async function onUpdateConnected(value: string | number | boolean) {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
 	try {
 		saving.value = true;
 
 		if (props.beforeUpdate) {
-			const result = await props.beforeUpdate(value);
+			const result = await props.beforeUpdate(boolValue);
 			if (!result) {
 				saving.value = false;
 				return;
 			}
 		}
 
-		await externalSecretsStore.updateProviderConnected(props.provider.name, value);
+		await externalSecretsStore.updateProviderConnected(props.provider.name, boolValue);
 
-		emit('change', value);
+		emit('change', boolValue);
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {

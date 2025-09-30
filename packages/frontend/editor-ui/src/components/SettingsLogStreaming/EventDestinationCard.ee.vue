@@ -96,8 +96,9 @@ async function onClick(event: Event) {
 	emit('edit', props.destination.id);
 }
 
-function onEnabledSwitched(state: boolean) {
-	nodeParameters.value.enabled = state;
+function onEnabledSwitched(state: string | number | boolean) {
+	const boolValue = typeof state === 'boolean' ? state : Boolean(state);
+	nodeParameters.value.enabled = boolValue;
 	void saveDestination();
 }
 

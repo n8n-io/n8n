@@ -109,8 +109,9 @@ function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 	return shouldDisplay;
 }
 
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
+function onAuthTypeChange(newType: string | number | boolean): void {
+	const stringValue = typeof newType === 'string' ? newType : String(newType);
+	emit('authTypeChanged', stringValue);
 }
 
 function valueChanged(data: IUpdateInformation): void {

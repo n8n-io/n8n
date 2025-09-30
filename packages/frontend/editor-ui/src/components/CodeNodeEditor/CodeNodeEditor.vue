@@ -117,7 +117,7 @@ watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) =>
 	}
 });
 
-async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+async function onBeforeTabLeave(_activeName: string | number, oldActiveName: string | number) {
 	// Confirm dialog if leaving ask-ai tab during loading
 	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
 		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {

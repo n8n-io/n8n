@@ -126,8 +126,9 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
-const onUpdateMCPEnabled = async (value: boolean) => {
-	const updated = await mcpStore.setMcpAccessEnabled(value);
+const onUpdateMCPEnabled = async (value: string | number | boolean) => {
+	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
+	const updated = await mcpStore.setMcpAccessEnabled(boolValue);
 	if (updated) {
 		await fetchAvailableWorkflows();
 	} else {
