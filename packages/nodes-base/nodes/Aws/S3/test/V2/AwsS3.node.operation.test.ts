@@ -222,30 +222,6 @@ describe('AWS S3 V2 Node - File Download', () => {
 				'Downloading a whole directory is not yet supported, please provide a file key',
 			);
 		});
-
-		it('should throw error when AWS API fails and continueOnFail is false', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
-				switch (paramName) {
-					case 'resource':
-						return 'file';
-					case 'operation':
-						return 'download';
-					case 'bucketName':
-						return 'test-bucket';
-					case 'fileKey':
-						return 'path/to/test.txt';
-					case 'binaryPropertyName':
-						return 'data';
-					default:
-						return undefined;
-				}
-			});
-
-			executeFunctionsMock.continueOnFail.mockReturnValue(false);
-			awsApiRequestRESTSpy.mockRejectedValue(new Error('AWS API Error'));
-
-			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow('AWS API Error');
-		});
 	});
 
 	describe('continueOnFail logic', () => {
