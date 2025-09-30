@@ -21,7 +21,7 @@ import { isWorkflowIdValid } from '@/utils';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 import { EventService } from './events/event.service';
-import { ExecutionCancellationReason } from 'n8n-workflow/src/errors/execution-cancelled.error';
+import { ExecutionCancellationReason } from 'n8n-workflow';
 
 @Service()
 export class ActiveExecutions {

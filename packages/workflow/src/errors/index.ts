@@ -5,6 +5,7 @@ export { UserError, type UserErrorOptions } from './base/user.error';
 export { ApplicationError } from '@n8n/errors';
 export { ExpressionError } from './expression.error';
 export { ExecutionCancelledError } from './execution-cancelled.error';
+export type { ExecutionCancellationReason } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
 export { WorkflowConfigurationError } from './workflow-configuration.error';
