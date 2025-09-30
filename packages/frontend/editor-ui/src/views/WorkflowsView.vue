@@ -5,6 +5,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
@@ -28,7 +29,9 @@ import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplat
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
@@ -128,6 +131,7 @@ const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
+const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -146,6 +150,12 @@ const filters = ref<Filters>({
 });
 
 const workflowListEventBus = createEventBus();
+
+type ResourcesListLayoutExpose = {
+	getScrollContainer?: () => HTMLElement | null;
+};
+
+const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
@@ -249,6 +259,18 @@ const isDragging = computed(() => {
 
 const isDragNDropEnabled = computed(() => {
 	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
+});
+
+const listScrollContainer = computed<HTMLElement | null>(() => {
+	const component = resourcesListLayoutRef.value as ResourcesListLayoutExpose | null;
+	return component?.getScrollContainer?.() ?? null;
+});
+
+const isAutoScrollActive = computed(() => isDragging.value && isDragNDropEnabled.value);
+
+useAutoScrollOnDrag({
+	isActive: isAutoScrollActive,
+	container: listScrollContainer,
 });
 
 const hasPermissionToCreateFolders = computed(() => {
@@ -530,12 +552,18 @@ const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
 		insightsStore.isSummaryEnabled &&
-		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+		(workflowListResources.value.length > 0 ||
+			(!personalizedTemplatesV2Store.isFeatureEnabled() &&
+				!personalizedTemplatesV3Store.isFeatureEnabled()))
 	);
 });
 
 const showTemplateRecommendationV2 = computed(() => {
 	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
+
+const showTemplateRecommendationV3 = computed(() => {
+	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
 /**
@@ -1429,6 +1457,13 @@ const moveFolder = async (payload: {
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
+			toast.showMessage({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.messageNoAccess', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				type: 'success',
+			});
 		} else {
 			// Else show success message and update the list
 			toast.showToast({
@@ -1751,6 +1786,7 @@ const onNameSubmit = async (name: string) => {
 	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
+		ref="resourcesListLayout"
 		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
@@ -1932,7 +1968,7 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
 				v-else-if="showFolders && currentFolder"
@@ -2195,7 +2231,8 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 				</div>
-				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
+				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
+				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">

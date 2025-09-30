@@ -62,10 +62,10 @@ onMounted(() => {
 		@enter="onSubmitClick"
 	>
 		<template #content>
-			<n8n-text :class="$style.description" tag="p">{{
+			<N8nText :class="$style.description" tag="p">{{
 				i18n.baseText('auth.confirmPassword.confirmPasswordToChangeEmail')
-			}}</n8n-text>
-			<n8n-form-inputs
+			}}</N8nText>
+			<N8nFormInputs
 				v-if="config"
 				:inputs="config"
 				:event-bus="formBus"
@@ -74,7 +74,7 @@ onMounted(() => {
 			/>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('generic.confirm')"
 				float="right"

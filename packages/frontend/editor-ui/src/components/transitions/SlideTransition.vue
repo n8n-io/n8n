@@ -1,7 +1,7 @@
 <template>
-	<transition name="slide">
+	<Transition name="slide">
 		<slot />
-	</transition>
+	</Transition>
 </template>
 
 <style lang="scss" scoped>

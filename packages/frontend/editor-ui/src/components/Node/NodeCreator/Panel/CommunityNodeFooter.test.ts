@@ -1,17 +1,24 @@
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { VIEWS } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { vi } from 'vitest';
-import { type ExtendedPublicInstalledPackage, fetchInstalledPackageInfo } from './utils';
+import { ref } from 'vue';
+import type { ExtendedPublicInstalledPackage } from '@/utils/communityNodeUtils';
 
-vi.mock('./utils', () => ({
-	fetchInstalledPackageInfo: vi.fn(),
+// Mock the useInstalledCommunityPackage composable
+const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
+
+vi.mock('@/composables/useInstalledCommunityPackage', () => ({
+	useInstalledCommunityPackage: vi.fn(() => ({
+		installedPackage: mockInstalledPackage,
+		isUpdateCheckAvailable: ref(false),
+		isCommunityNode: ref(true),
+		initInstalledPackage: vi.fn(),
+	})),
 }));
-
-const mockedFetchInstalledPackageInfo = vi.mocked(fetchInstalledPackageInfo);
 
 const push = vi.fn();
 
@@ -38,6 +45,9 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		});
 
 		vi.stubGlobal('fetch', fetchMock);
+
+		// Reset the mock installed package before each test
+		mockInstalledPackage.value = undefined;
 	});
 
 	afterEach(() => {
@@ -55,7 +65,7 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		expect(push).toHaveBeenCalledWith({ name: VIEWS.COMMUNITY_NODES });
 	});
 
-	it('Manage should not be in the footer', async () => {
+	it('Manage should not be in the footer', () => {
 		const { queryByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: { packageName: 'n8n-nodes-test', showManage: false },
 		});
@@ -63,45 +73,57 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		expect(queryByText('Manage')).not.toBeInTheDocument();
 	});
 
-	it('displays "Legacy" when updateAvailable', async () => {
-		mockedFetchInstalledPackageInfo.mockResolvedValue({
+	it('displays "Legacy" when updateAvailable', () => {
+		mockInstalledPackage.value = {
+			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
 			updateAvailable: '1.0.1',
 			unverifiedUpdate: false,
-		} as ExtendedPublicInstalledPackage);
+			installedNodes: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
 				showManage: false,
 			},
 		});
-		await waitFor(() => expect(mockedFetchInstalledPackageInfo).toHaveBeenCalled());
 
 		expect(getByText('Package version 1.0.0 (Legacy)')).toBeInTheDocument();
 	});
 
-	it('displays "Latest" when not updateAvailable', async () => {
-		mockedFetchInstalledPackageInfo.mockResolvedValue({
+	it('displays "Latest" when not updateAvailable', () => {
+		mockInstalledPackage.value = {
+			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
 			unverifiedUpdate: false,
-		} as ExtendedPublicInstalledPackage);
+			installedNodes: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
 				showManage: false,
 			},
 		});
-
-		await waitFor(() => expect(mockedFetchInstalledPackageInfo).toHaveBeenCalled());
 
 		expect(getByText('Package version 1.0.0 (Latest)')).toBeInTheDocument();
 	});
 
-	it('displays "Latest" when only unverified update is available', async () => {
-		mockedFetchInstalledPackageInfo.mockResolvedValue({
+	it('displays "Latest" when only unverified update is available', () => {
+		mockInstalledPackage.value = {
+			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
 			unverifiedUpdate: true,
-		} as ExtendedPublicInstalledPackage);
+			installedNodes: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
 		const { getByText } = createComponentRenderer(CommunityNodeFooter)({
 			props: {
 				packageName: 'n8n-nodes-test',
@@ -109,8 +131,18 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 			},
 		});
 
-		await waitFor(() => expect(mockedFetchInstalledPackageInfo).toHaveBeenCalled());
-
 		expect(getByText('Package version 1.0.0 (Latest)')).toBeInTheDocument();
+	});
+
+	it('does not display package version when installedPackage is undefined', () => {
+		// mockInstalledPackage.value is already undefined from beforeEach
+		const { queryByText } = createComponentRenderer(CommunityNodeFooter)({
+			props: {
+				packageName: 'n8n-nodes-test',
+				showManage: false,
+			},
+		});
+
+		expect(queryByText(/Package version/)).not.toBeInTheDocument();
 	});
 });

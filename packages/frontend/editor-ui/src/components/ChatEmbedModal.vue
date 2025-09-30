@@ -149,25 +149,25 @@ function closeDialog() {
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-tabs v-model="currentTab" :options="tabs" />
+				<N8nTabs v-model="currentTab" :options="tabs" />
 
 				<div v-if="currentTab !== 'cdn'">
 					<div class="mb-s">
-						<n8n-text>
+						<N8nText>
 							{{ i18n.baseText('chatEmbed.install') }}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<HtmlEditor :model-value="commonCode.install" is-read-only />
 				</div>
 
 				<div class="mb-s">
-					<n8n-text>
+					<N8nText>
 						<I18nT :keypath="`chatEmbed.paste.${currentTab}`" scope="global">
 							<template #code>
 								<code>{{ i18n.baseText(`chatEmbed.paste.${currentTab}.file`) }}</code>
 							</template>
 						</I18nT>
-					</n8n-text>
+					</N8nText>
 				</div>
 
 				<HtmlEditor v-if="currentTab === 'cdn'" :model-value="cdnCode" is-read-only />
@@ -175,22 +175,22 @@ function closeDialog() {
 				<JsEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
 				<JsEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
 
-				<n8n-text>
+				<N8nText>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
-					<n8n-link :href="i18n.baseText('chatEmbed.url')" new-window bold>
+					<N8nLink :href="i18n.baseText('chatEmbed.url')" new-window bold>
 						{{ i18n.baseText('chatEmbed.packageInfo.link') }}
-					</n8n-link>
-				</n8n-text>
+					</N8nLink>
+				</N8nText>
 
-				<n8n-info-tip class="mt-s">
+				<N8nInfoTip class="mt-s">
 					{{ i18n.baseText('chatEmbed.chatTriggerNode') }}
-				</n8n-info-tip>
+				</N8nInfoTip>
 			</div>
 		</template>
 
 		<template #footer>
 			<div class="action-buttons">
-				<n8n-button float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
+				<N8nButton float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
 			</div>
 		</template>
 	</Modal>

@@ -105,10 +105,10 @@ const onAction = ({
 					</section>
 				</template>
 				<template #action-toggle-button>
-					<n8n-button type="tertiary" size="large" data-test-id="action-toggle-button">
+					<N8nButton type="tertiary" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
-						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
-					</n8n-button>
+						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
+					</N8nButton>
 				</template>
 			</WorkflowHistoryListItem>
 		</ul>

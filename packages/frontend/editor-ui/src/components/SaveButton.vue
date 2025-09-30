@@ -45,7 +45,7 @@ const shortcutTooltipLabel = computed(() => {
 				:shortcut="{ keys: ['s'], metaKey: true }"
 				placement="bottom"
 			>
-				<n8n-button
+				<N8nButton
 					:label="saveButtonLabel"
 					:loading="isSaving"
 					:disabled="disabled"
@@ -53,7 +53,7 @@ const shortcutTooltipLabel = computed(() => {
 					:type="type"
 				/>
 			</KeyboardShortcutTooltip>
-			<n8n-button
+			<N8nButton
 				v-else
 				:label="saveButtonLabel"
 				:loading="isSaving"

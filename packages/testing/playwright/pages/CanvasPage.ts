@@ -808,5 +808,9 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
 		);
+  }
+  
+	getWorkflowName(): Locator {
+		return this.page.getByTestId('workflow-name-input');
 	}
 }
