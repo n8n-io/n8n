@@ -5,10 +5,7 @@ import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
-import {
-	ExecutionCancelledError,
-	ManualExecutionCancelledError,
-} from './errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 

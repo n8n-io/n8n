@@ -83,7 +83,7 @@ export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
 	private readonly abortController = new AbortController();
-	timedOut: any;
+	timedOut: boolean = false;
 
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
