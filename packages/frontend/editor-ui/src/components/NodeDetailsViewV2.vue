@@ -870,6 +870,7 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+	outline: none;
 }
 
 .container {
