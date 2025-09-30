@@ -125,13 +125,15 @@ test.describe('Folders - Basic Operations', () => {
 	});
 
 	test('should create workflow in a folder', async ({ n8n }) => {
-		const projectId = await n8n.start.fromNewProject();
+		const { name: projectName, id: projectId } = await n8n.api.projects.createProject();
 		const folder = await n8n.api.projects.createFolder(projectId);
-		const folderName = folder.name;
-		await n8n.workflows.cards.openFolder(folderName);
+		await n8n.navigate.toFolder(folder.id, projectId);
 		await n8n.workflows.addResource.workflow();
-
-		await expect(n8n.breadcrumbs.getBreadcrumb(folderName)).toBeVisible();
+		await n8n.canvas.saveWorkflow();
+		const successMessage = `Workflow successfully created in "${projectName}", within "${folder.name}"`;
+		await expect(n8n.notifications.getNotificationByTitleOrContent(successMessage)).toBeVisible();
+		await n8n.navigate.toFolder(folder.id, projectId);
+		await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 	});
 
 	test('should not create folders with invalid names in the UI', async ({ n8n }) => {
