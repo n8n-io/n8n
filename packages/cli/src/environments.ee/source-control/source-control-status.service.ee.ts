@@ -1,12 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	type Variables,
-	type TagEntity,
-	FolderRepository,
-	TagRepository,
-	type User,
-} from '@n8n/db';
+import { type TagEntity, FolderRepository, TagRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
@@ -27,6 +21,7 @@ import type { ExportableFolder } from './types/exportable-folders';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { VariableData } from '../variables/variables.service.ee';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -370,7 +365,7 @@ export class SourceControlStatusService {
 			(local) => varRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const varModifiedInEither: Variables[] = [];
+		const varModifiedInEither: VariableData[] = [];
 		varLocalIds.forEach((local) => {
 			const mismatchingIds = varRemoteIds.find(
 				(remote) =>
