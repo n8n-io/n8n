@@ -34,7 +34,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 import {
-	InlineAskAssistantButton,
+	N8nInlineAskAssistantButton,
 	N8nCallout,
 	N8nInfoTip,
 	N8nLink,
@@ -323,7 +323,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:class="$style.askAssistantButton"
 					data-test-id="credential-edit-ask-assistant-button"
 				>
-					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<N8nInlineAskAssistantButton
+						:asked="assistantAlreadyAsked"
+						@click="onAskAssistantClick"
+					/>
 					<span>for setup instructions</span>
 				</div>
 

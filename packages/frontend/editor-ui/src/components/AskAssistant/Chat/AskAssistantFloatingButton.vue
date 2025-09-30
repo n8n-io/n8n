@@ -4,7 +4,7 @@ import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { computed } from 'vue';
 
-import { N8nAskAssistantButton, N8nTooltip } from '@n8n/design-system';
+import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
@@ -44,7 +44,7 @@ const onClick = () => {
 			<template #content>
 				<div :class="$style.text">{{ lastUnread }}</div>
 				<div :class="$style.assistant">
-					<AssistantAvatar size="mini" />
+					<N8nAssistantAvatar size="mini" />
 					<span>{{ i18n.baseText('aiAssistant.name') }}</span>
 				</div>
 			</template>
