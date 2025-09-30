@@ -3565,7 +3565,7 @@
 	"preBuiltAgentTemplates.title": "Pre-built agents",
 	"preBuiltAgentTemplates.tutorials": "Tutorial templates",
 	"preBuiltAgentTemplates.viewAllLink": "View all templates",
-	"commandBar.placeholder": "Type a command...",
+	"commandBar.placeholder": "Type a command or search...",
 	"commandBar.noResults": "No results found",
 	"commandBar.sections.nodes": "Nodes",
 	"commandBar.sections.workflow": "Workflow",

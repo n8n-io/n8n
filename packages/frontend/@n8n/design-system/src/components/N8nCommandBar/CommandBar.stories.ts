@@ -113,6 +113,9 @@ export default {
 		items: {
 			control: 'object',
 		},
+		isLoading: {
+			control: 'boolean',
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -206,6 +209,32 @@ export const SectionGrouping: StoryFn = () => ({
 			<n8n-command-bar
 				placeholder="Search commands... (sections will be grouped)"
 				:items="items"
+				@input-change="onInputChange"
+				@navigate-to="onNavigateTo"
+				@load-more="onLoadMore"
+			/>
+		</div>
+	`,
+	methods: {
+		onInputChange: action('input-change'),
+		onNavigateTo: action('navigate-to'),
+		onLoadMore: action('load-more'),
+	},
+});
+
+export const Loading: StoryFn = () => ({
+	components: {
+		N8nCommandBar,
+	},
+	template: `
+		<div>
+			<p style="margin-bottom: 20px; color: var(--color-text-base);">
+				This example shows the loading state with skeleton loaders.
+			</p>
+			<n8n-command-bar
+				placeholder="Loading commands..."
+				:items="[]"
+				:is-loading="true"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
 				@load-more="onLoadMore"

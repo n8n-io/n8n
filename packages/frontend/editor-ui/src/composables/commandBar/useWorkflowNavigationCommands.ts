@@ -35,6 +35,7 @@ export function useWorkflowNavigationCommands(options: {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowResults = ref<IWorkflowDb[]>([]);
+	const isLoading = ref(false);
 
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
@@ -89,6 +90,8 @@ export function useWorkflowNavigationCommands(options: {
 			workflowResults.value = orderResultByCurrentProjectFirst(uniqueById);
 		} catch {
 			workflowResults.value = [];
+		} finally {
+			isLoading.value = false;
 		}
 	}, 300);
 
@@ -193,6 +196,7 @@ export function useWorkflowNavigationCommands(options: {
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_WORKFLOW) {
+			isLoading.value = true;
 			void fetchWorkflows('');
 		} else if (to === null) {
 			workflowResults.value = [];
@@ -205,5 +209,6 @@ export function useWorkflowNavigationCommands(options: {
 			onCommandBarChange,
 			onCommandBarNavigateTo,
 		},
+		isLoading,
 	};
 }

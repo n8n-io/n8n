@@ -4,17 +4,20 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import N8nCommandBarItem from './CommandBarItem.vue';
 import type { CommandBarItem } from './types';
 import N8nBadge from '../N8nBadge';
+import N8nLoading from '../N8nLoading/Loading.vue';
 
 interface CommandBarProps {
 	placeholder?: string;
 	context?: string;
 	items: CommandBarItem[];
+	isLoading?: boolean;
 }
 
 defineOptions({ name: 'N8nCommandBar' });
 const props = withDefaults(defineProps<CommandBarProps>(), {
 	placeholder: 'Type a command...',
 	context: '',
+	isLoading: false,
 });
 
 const emit = defineEmits<{
@@ -282,8 +285,13 @@ onUnmounted(() => {
 					:class="$style.input"
 					type="text"
 				/>
+				<div v-if="isLoading" :class="$style.loadingContainer">
+					<div v-for="i in 8" :key="i" :class="$style.loadingItem">
+						<N8nLoading variant="custom" :class="$style.loading" />
+					</div>
+				</div>
 				<div
-					v-if="flattenedItems.length > 0"
+					v-else-if="flattenedItems.length > 0"
 					ref="itemsListRef"
 					:class="$style.itemsList"
 					@scroll="handleScroll"
@@ -368,6 +376,16 @@ onUnmounted(() => {
 
 .contextContainer {
 	padding: var(--spacing-xs) var(--spacing-l) 0;
+}
+
+.loadingContainer {
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.loadingItem {
+	height: var(--spacing-2xl);
+	padding: var(--spacing-xs) var(--spacing-s);
 }
 </style>
 

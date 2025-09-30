@@ -28,6 +28,7 @@ export function useDataTableNavigationCommands(options: {
 	const route = useRoute();
 
 	const dataTableResults = ref<DataStore[]>([]);
+	const isLoading = ref(false);
 
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
@@ -65,6 +66,8 @@ export function useDataTableNavigationCommands(options: {
 			dataTableResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
 			dataTableResults.value = [];
+		} finally {
+			isLoading.value = false;
 		}
 	}, 300);
 
@@ -170,6 +173,7 @@ export function useDataTableNavigationCommands(options: {
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_DATA_TABLE) {
+			isLoading.value = true;
 			void fetchDataTables('');
 		} else if (to === null) {
 			dataTableResults.value = [];
@@ -182,5 +186,6 @@ export function useDataTableNavigationCommands(options: {
 			onCommandBarChange,
 			onCommandBarNavigateTo,
 		},
+		isLoading,
 	};
 }

@@ -14,6 +14,7 @@ import { useCredentialNavigationCommands } from './commandBar/useCredentialNavig
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
+import { useI18n } from '@n8n/i18n';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -21,6 +22,9 @@ export function useCommandBar() {
 	const router = useRouter();
 	const route = useRoute();
 	const postHog = usePostHog();
+	const i18n = useI18n();
+
+	const placeholder = i18n.baseText('commandBar.placeholder');
 
 	const isEnabled = computed(() =>
 		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
@@ -111,8 +115,31 @@ export function useCommandBar() {
 		}
 	});
 
+	const context = computed(() => {
+		switch (router.currentRoute.value.name) {
+			case VIEWS.WORKFLOW:
+				return 'workflow todo';
+			case VIEWS.WORKFLOWS:
+			case VIEWS.PROJECTS_WORKFLOWS:
+				return i18n.baseText('commandBar.sections.workflows');
+			case VIEWS.CREDENTIALS:
+			case VIEWS.PROJECTS_CREDENTIALS:
+				return i18n.baseText('commandBar.sections.credentials');
+			case VIEWS.EXECUTIONS:
+			case VIEWS.PROJECTS_EXECUTIONS:
+				return i18n.baseText('commandBar.sections.executions');
+			default:
+				return '';
+		}
+	});
+
 	const items = computed<CommandBarItem[]>(() => {
 		return activeCommandGroups.value.flatMap((group) => group.commands.value);
+	});
+
+	const isLoading = computed(() => {
+		console.log('activeCommandGroups.value', activeCommandGroups.value);
+		return activeCommandGroups.value.some((group) => group.isLoading?.value === true);
 	});
 
 	function onCommandBarChange(query: string) {
@@ -141,5 +168,8 @@ export function useCommandBar() {
 		initialize,
 		onCommandBarChange,
 		onCommandBarNavigateTo,
+		placeholder,
+		context,
+		isLoading,
 	};
 }

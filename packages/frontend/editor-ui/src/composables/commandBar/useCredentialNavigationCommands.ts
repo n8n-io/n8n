@@ -30,6 +30,7 @@ export function useCredentialNavigationCommands(options: {
 	const router = useRouter();
 
 	const credentialResults = ref<ICredentialsResponse[]>([]);
+	const isLoading = ref(false);
 
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
@@ -58,6 +59,8 @@ export function useCredentialNavigationCommands(options: {
 			credentialResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
 			credentialResults.value = [];
+		} finally {
+			isLoading.value = false;
 		}
 	}, 300);
 
@@ -173,6 +176,7 @@ export function useCredentialNavigationCommands(options: {
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_CREDENTIAL) {
+			isLoading.value = true;
 			void fetchCredentials('');
 		} else if (to === null) {
 			credentialResults.value = [];
@@ -185,5 +189,6 @@ export function useCredentialNavigationCommands(options: {
 			onCommandBarChange,
 			onCommandBarNavigateTo,
 		},
+		isLoading,
 	};
 }
