@@ -5,6 +5,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { useAutoScrollOnDrag } from '@/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
@@ -150,6 +151,12 @@ const filters = ref<Filters>({
 
 const workflowListEventBus = createEventBus();
 
+type ResourcesListLayoutExpose = {
+	getScrollContainer?: () => HTMLElement | null;
+};
+
+const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
+
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const easyAICalloutVisible = ref(true);
@@ -252,6 +259,18 @@ const isDragging = computed(() => {
 
 const isDragNDropEnabled = computed(() => {
 	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
+});
+
+const listScrollContainer = computed<HTMLElement | null>(() => {
+	const component = resourcesListLayoutRef.value as ResourcesListLayoutExpose | null;
+	return component?.getScrollContainer?.() ?? null;
+});
+
+const isAutoScrollActive = computed(() => isDragging.value && isDragNDropEnabled.value);
+
+useAutoScrollOnDrag({
+	isActive: isAutoScrollActive,
+	container: listScrollContainer,
 });
 
 const hasPermissionToCreateFolders = computed(() => {
@@ -1760,6 +1779,7 @@ const onNameSubmit = async (name: string) => {
 	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
+		ref="resourcesListLayout"
 		v-else
 		v-model:filters="filters"
 		resource-key="workflows"
