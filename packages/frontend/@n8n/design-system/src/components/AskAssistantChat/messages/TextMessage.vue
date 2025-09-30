@@ -19,7 +19,7 @@ interface Props {
 	isLastMessage?: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
@@ -29,6 +29,12 @@ const { t } = useI18n();
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
+});
+
+// Check if this is the task aborted message
+const isTaskAbortedMessage = computed(() => {
+	// The backend sends "Task aborted" directly, and the locale string is also "Task aborted"
+	return props.message.content === t('aiAssistant.builder.streamAbortedMessage');
 });
 
 async function onCopyButtonClick(content: string, e: MouseEvent) {
@@ -57,7 +63,11 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
-				:class="[$style.assistantText, $style['rendered-content']]"
+				:class="[
+					$style.assistantText,
+					$style['rendered-content'],
+					{ [$style.taskAborted]: isTaskAbortedMessage },
+				]"
 			></div>
 			<div
 				v-if="message?.codeSnippet"
@@ -136,6 +146,10 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
+}
+
+.taskAborted {
+	color: var(--color-text-base);
 }
 
 .rendered-content {

@@ -69,6 +69,7 @@ export default {
 	'assistantChat.copied': 'Copied',
 	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
+	'aiAssistant.builder.streamAbortedMessage': 'Task aborted',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',

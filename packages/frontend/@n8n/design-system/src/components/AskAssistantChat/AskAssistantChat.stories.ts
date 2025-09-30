@@ -877,3 +877,34 @@ CompletedToolCallsWithSummary.args = {
 		},
 	]),
 };
+
+export const TaskAborted = Template.bind({});
+TaskAborted.args = {
+	messages: [
+		{
+			id: 'user-msg',
+			type: 'text',
+			role: 'user',
+			content: 'Create a workflow to process emails',
+			read: true,
+		},
+		{
+			id: 'tool-1',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'workflow_builder',
+			toolCallId: 'call_builder_1',
+			status: 'running',
+			displayTitle: 'Building Workflow',
+			updates: [],
+			read: true,
+		},
+		{
+			id: 'abort-msg',
+			type: 'text',
+			role: 'assistant',
+			content: 'Task aborted',
+			read: true,
+		},
+	],
+};
