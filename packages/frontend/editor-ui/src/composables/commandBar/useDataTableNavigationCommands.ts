@@ -51,13 +51,8 @@ export function useDataTableNavigationCommands(options: {
 		try {
 			const trimmed = (query || '').trim();
 
-			if (!currentProjectId.value) {
-				dataTableResults.value = [];
-				return;
-			}
-
 			await dataStoreStore.fetchDataStores(
-				currentProjectId.value,
+				'',
 				1,
 				100, // TODO: pagination/lazy loading
 			);

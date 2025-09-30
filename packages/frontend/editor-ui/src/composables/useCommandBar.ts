@@ -11,6 +11,7 @@ import { useTemplateCommands } from './commandBar/useTemplateCommands';
 import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
+import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 
@@ -60,6 +61,7 @@ export function useCommandBar() {
 		activeNodeId,
 		currentProjectName,
 	});
+	const executionNavigationGroup = useExecutionNavigationCommands();
 
 	const canvasViewGroups: CommandGroup[] = [
 		baseCommandGroup,
@@ -69,33 +71,44 @@ export function useCommandBar() {
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
-		baseCommandGroup,
 		workflowNavigationGroup,
+		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		executionNavigationGroup,
+		baseCommandGroup,
 	];
 
 	const credentialsListViewGroups: CommandGroup[] = [
 		credentialNavigationGroup,
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
+		executionNavigationGroup,
+		baseCommandGroup,
+	];
+
+	const executionsListViewGroups: CommandGroup[] = [
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
 		baseCommandGroup,
 	];
 
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
-		if (router.currentRoute.value.name === VIEWS.WORKFLOW) {
-			return canvasViewGroups;
-		} else if (
-			router.currentRoute.value.name === VIEWS.WORKFLOWS ||
-			router.currentRoute.value.name === VIEWS.PROJECTS_WORKFLOWS
-		) {
-			return workflowsListViewGroups;
-		} else if (
-			router.currentRoute.value.name === VIEWS.CREDENTIALS ||
-			router.currentRoute.value.name === VIEWS.PROJECTS_CREDENTIALS
-		) {
-			return credentialsListViewGroups;
+		switch (router.currentRoute.value.name) {
+			case VIEWS.WORKFLOW:
+				return canvasViewGroups;
+			case VIEWS.WORKFLOWS:
+			case VIEWS.PROJECTS_WORKFLOWS:
+				return workflowsListViewGroups;
+			case VIEWS.CREDENTIALS:
+			case VIEWS.PROJECTS_CREDENTIALS:
+				return credentialsListViewGroups;
+			case VIEWS.EXECUTIONS:
+			case VIEWS.PROJECTS_EXECUTIONS:
+				return executionsListViewGroups;
+			default:
+				return [baseCommandGroup];
 		}
-		return [baseCommandGroup];
 	});
 
 	const items = computed<CommandBarItem[]>(() => {
