@@ -29,7 +29,7 @@ export default defineConfig(
 			'import-x/no-default-export': 'warn',
 			'import-x/no-extraneous-dependencies': 'warn',
 
-			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'n8n-local-rules/no-array-push-spread': 'error',
 
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'@typescript-eslint/naming-convention': ['warn'],

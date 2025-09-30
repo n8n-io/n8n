@@ -13,7 +13,7 @@ import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.j
 import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
 import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-module.js';
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
-import { NoArgumentSpreadRule } from './no-argument-spread.js';
+import { NoArrayPushSpreadRule } from './no-array-push-spread.js';
 import { NoInternalPackageImportRule } from './no-internal-package-import.js';
 
 export const rules = {
@@ -31,6 +31,6 @@ export const rules = {
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
 	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
-	'no-argument-spread': NoArgumentSpreadRule,
+	'no-array-push-spread': NoArrayPushSpreadRule,
 	'no-internal-package-import': NoInternalPackageImportRule,
 } satisfies Record<string, AnyRuleModule>;
