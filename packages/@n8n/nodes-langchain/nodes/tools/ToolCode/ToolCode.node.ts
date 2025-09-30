@@ -93,8 +93,11 @@ function getTool(
 			'output',
 			workflowMode === 'manual'
 				? ctx.sendMessageToUI.bind(ctx)
-				: (...args: unknown[]) =>
-						console.log(`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+				: (...args) =>
+						console.log.apply(
+							console,
+							[`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`].concat(args),
+						),
 		);
 		return sandbox;
 	};
