@@ -62,15 +62,15 @@ const handleSelect = () => {
 	}
 
 	&:hover {
-		background-color: var(--color-foreground-light);
+		background-color: var(--color-foreground-base);
 
 		&::before {
-			background-color: var(--color-foreground-base);
+			background-color: var(--color-foreground-dark);
 		}
 	}
 
 	&.selected {
-		background-color: var(--color-primary-tint-3);
+		background-color: var(--color-foreground-base);
 
 		&::before {
 			background-color: var(--color-primary);
