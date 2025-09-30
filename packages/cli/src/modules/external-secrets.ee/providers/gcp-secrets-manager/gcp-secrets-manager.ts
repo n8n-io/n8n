@@ -113,8 +113,8 @@ export class GcpSecretsManager implements SecretsProvider {
 					name: `projects/${projectId}/secrets/${name}/versions/latest`,
 				});
 			} catch (err) {
-				this.logger.error(
-					`GCP Secrets Manager provider failed to access secret: ${name}, version: latest`,
+				this.logger.info(
+					`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
 					{
 						error: ensureError(err),
 					},
