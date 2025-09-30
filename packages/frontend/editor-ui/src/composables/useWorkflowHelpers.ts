@@ -971,7 +971,7 @@ export function useWorkflowHelpers() {
 		workflowHandle.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowHandle.setWorkflowId(workflowData.id);
-		workflowsStore.setWorkflowName({
+		workflowHandle.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});

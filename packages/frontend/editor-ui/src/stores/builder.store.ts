@@ -415,7 +415,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value &&
 			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
 		) {
-			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 		}
 
 		// Restore positions for nodes that still exist and identify new nodes

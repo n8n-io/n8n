@@ -60,6 +60,10 @@ export function useWorkflowHandle() {
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
+	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
+		ws.setWorkflowName(data);
+	}
+
 	function resetState() {
 		removeAllConnections({ setStateDirty: false });
 		removeAllNodes({ setStateDirty: false, removePinData: true });
@@ -69,7 +73,7 @@ export function useWorkflowHandle() {
 
 		setActive(ws.defaults.active);
 		setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-		ws.setWorkflowName({ newName: '', setStateDirty: false });
+		setWorkflowName({ newName: '', setStateDirty: false });
 		ws.setWorkflowSettings({ ...ws.defaults.settings });
 		ws.setWorkflowTagIds([]);
 
@@ -86,6 +90,7 @@ export function useWorkflowHandle() {
 		resetAllNodesIssues,
 		setActive,
 		setWorkflowId,
+		setWorkflowName,
 	};
 }
 

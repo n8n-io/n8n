@@ -17,9 +17,15 @@ import {
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
+import {
+	injectWorkflowHandle,
+	useWorkflowHandle,
+	type WorkflowHandle,
+} from '@/composables/useWorkflowHandle';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+import { Workflow } from 'n8n-workflow';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -36,21 +42,32 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 // Mock the workflows store
-const mockSetWorkflowName = vi.fn();
 const mockWorkflow = {
 	name: DEFAULT_NEW_WORKFLOW_NAME,
 	nodes: [],
 	connections: {},
 };
 
+vi.mock('@/composables/useWorkflowHandle', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+	return {
+		...actual,
+		injectWorkflowHandle: vi.fn(),
+	};
+});
+
 vi.mock('./workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({
 		workflow: mockWorkflow,
+		workflowObject: {
+			setConnections: vi.fn(),
+			setNodes: vi.fn(),
+		},
 		workflowId: 'test-workflow-id',
 		allNodes: [],
 		nodesByName: {},
 		workflowExecutionData: null,
-		setWorkflowName: mockSetWorkflowName,
+		setWorkflowName: vi.fn(),
 	})),
 }));
 
@@ -89,6 +106,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+let workflowHandle: WorkflowHandle;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -107,7 +125,8 @@ describe('AI Builder store', () => {
 		posthogStore.init();
 		track.mockReset();
 		// Reset workflow store mocks
-		mockSetWorkflowName.mockReset();
+		workflowHandle = useWorkflowHandle();
+		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
 		// Reset workflow to default state
 		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		mockWorkflow.nodes = [];
@@ -843,6 +862,7 @@ describe('AI Builder store', () => {
 
 	describe('applyWorkflowUpdate with workflow naming', () => {
 		it('should apply generated workflow name during initial generation when workflow has default name', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -873,13 +893,14 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was called with the generated name
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowName).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
 		});
 
 		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -910,10 +931,11 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowName).not.toHaveBeenCalled();
 		});
 
 		it('should NOT apply generated workflow name when not initial generation', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Ensure initial generation flag is false
@@ -944,10 +966,11 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowName).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow updates without name property', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -977,10 +1000,11 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowName).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow names that start with but are not exactly the default name', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -1011,7 +1035,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName WAS called because the name starts with default
-			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowName).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -1035,6 +1059,7 @@ describe('AI Builder store', () => {
 		});
 
 		it('should maintain initial generation flag state across multiple updates', () => {
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
@@ -1051,7 +1076,7 @@ describe('AI Builder store', () => {
 			});
 
 			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowName).toHaveBeenCalledTimes(1);
 
 			// The flag should still be true for subsequent updates in the same generation
 			expect(builderStore.initialGeneration).toBe(true);
@@ -1073,7 +1098,7 @@ describe('AI Builder store', () => {
 			builderStore.applyWorkflowUpdate(workflowJson2);
 
 			// Should not call setWorkflowName again
-			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowName).toHaveBeenCalledTimes(1);
 		});
 	});
 

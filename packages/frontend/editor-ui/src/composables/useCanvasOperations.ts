@@ -2009,7 +2009,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
 			}
 
 			return workflowData;

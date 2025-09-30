@@ -52,7 +52,7 @@ import * as nodeHelpers from '@/composables/useNodeHelpers';
 import {
 	injectWorkflowHandle,
 	useWorkflowHandle,
-	WorkflowHandle,
+	type WorkflowHandle,
 } from '@/composables/useWorkflowHandle';
 
 import { TelemetryHelpers } from 'n8n-workflow';
@@ -3605,6 +3605,8 @@ describe('useCanvasOperations', () => {
 				renameNode: vi.fn(),
 			});
 
+			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
+
 			const canvasOperations = useCanvasOperations();
 			const workflowDataWithName = {
 				name: 'Test Workflow Name',
@@ -3614,7 +3616,7 @@ describe('useCanvasOperations', () => {
 
 			await canvasOperations.importWorkflowData(workflowDataWithName, 'file');
 
-			expect(workflowsStore.setWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowName).toHaveBeenCalledWith({
 				newName: 'Test Workflow Name',
 				setStateDirty: true,
 			});

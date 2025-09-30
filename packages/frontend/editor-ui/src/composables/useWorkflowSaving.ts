@@ -230,7 +230,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 			if (name) {
-				workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+				workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
 			if (tags) {
@@ -390,7 +390,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowHandle.setActive(workflowData.active || false);
 			workflowHandle.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
-			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			workflowsStore.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			uiStore.stateIsDirty = false;
 			Object.keys(changedNodes).forEach((nodeName) => {
