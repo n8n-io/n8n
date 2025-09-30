@@ -42,6 +42,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		workflowTags: {},
 		role: {},
 		mcp: {},
+		mcpApiKey: {},
 	});
 
 	function addGlobalRole(role: Role) {

@@ -2,10 +2,10 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 
+import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { BadRequestError } from '../../errors/response-errors/bad-request.error';
-import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 
 @RestController('/mcp')
 export class McpSettingsController {
