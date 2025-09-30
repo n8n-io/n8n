@@ -69,14 +69,16 @@ const fullServerUrl = computed(() => {
 							:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 							placement="right"
 						>
-							<N8nButton
-								v-if="isSupported"
-								type="tertiary"
-								:icon="copied ? 'clipboard-check' : 'clipboard'"
-								:square="true"
-								:class="$style['copy-url-button']"
-								@click="copy(fullServerUrl)"
-							/>
+							<div :class="$style['copy-url-wrapper']">
+								<N8nButton
+									v-if="isSupported"
+									type="tertiary"
+									:icon="copied ? 'clipboard-check' : 'clipboard'"
+									:square="true"
+									:class="$style['copy-url-button']"
+									@click="copy(fullServerUrl)"
+								/>
+							</div>
 						</N8nTooltip>
 					</span>
 				</div>
@@ -146,7 +148,7 @@ const fullServerUrl = computed(() => {
 
 	.url {
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: var(--spacing-2xs);
 		background: var(--color-background-xlight);
 		border: var(--border-base);
@@ -155,17 +157,24 @@ const fullServerUrl = computed(() => {
 		overflow: hidden;
 
 		code {
+			text-overflow: ellipsis;
+			overflow: hidden;
+			white-space: pre;
 			padding: var(--spacing-2xs) var(--spacing-3xs);
+		}
+
+		.copy-url-wrapper {
+			display: flex;
+			align-items: center;
+			border-left: var(--border-base);
 		}
 
 		.copy-url-button {
 			border: none;
 			border-radius: 0;
-			border-left: var(--border-base);
 		}
 
 		@media screen and (max-width: 820px) {
-			display: block;
 			word-wrap: break-word;
 			margin-top: var(--spacing-2xs);
 		}
