@@ -222,7 +222,8 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 
 	:global(.el-tree > .el-tree-node) {
 		position: relative;
-		&:after {
+
+		&::after {
 			content: '';
 			position: absolute;
 			top: 2rem;
@@ -271,7 +272,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 		margin-left: calc(-1 * var(--spacing-2xs));
 	}
 
-	&:after {
+	&::after {
 		content: '';
 		position: absolute;
 		margin: auto;
