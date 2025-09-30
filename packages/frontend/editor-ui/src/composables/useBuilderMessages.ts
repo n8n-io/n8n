@@ -240,6 +240,23 @@ export function useBuilderMessages() {
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
+		if (hasAnyRunningTools) {
+			const runningTools = messages.filter(
+				(msg): msg is ChatUI.ToolMessage => msg.type === 'tool' && msg.status === 'running',
+			);
+
+			const lastRunningTool = runningTools[runningTools.length - 1];
+			if (lastRunningTool) {
+				const toolName = lastRunningTool.customDisplayTitle || lastRunningTool.displayTitle;
+				if (toolName) {
+					return toolName;
+				}
+			}
+
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
+		}
+
+		// If no tools are running but we're still thinking (all tools completed, waiting for response)
 		if (!hasAnyRunningTools && isStillThinking) {
 			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}

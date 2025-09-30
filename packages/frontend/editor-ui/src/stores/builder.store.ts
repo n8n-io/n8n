@@ -367,9 +367,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						assistantThinkingMessage.value = undefined;
-					}
-
-					if (result.thinkingMessage) {
+					} else {
+						// Always update thinking message, even when undefined (to clear it)
 						assistantThinkingMessage.value = result.thinkingMessage;
 					}
 				},

@@ -38,7 +38,20 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
+const loadingMessage = computed(() => {
+	// Check if we have any running tool messages visible in the chat
+	const hasVisibleRunningTools = builderStore.chatMessages.some(
+		(msg) => msg.type === 'tool' && msg.status === 'running',
+	);
+
+	// Don't show loading message if tools are already visible and running
+	// to avoid duplicate display (tool messages show their own status)
+	if (hasVisibleRunningTools) {
+		return undefined;
+	}
+
+	return builderStore.assistantThinkingMessage;
+});
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
 	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
