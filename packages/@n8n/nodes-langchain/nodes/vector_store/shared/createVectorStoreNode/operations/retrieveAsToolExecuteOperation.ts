@@ -31,10 +31,10 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 		// Get the search parameters - query from input data, others from node parameters
 		const inputData = context.getInputData();
 		const item = inputData[itemIndex];
-		const query = typeof item.json.query === 'string' ? item.json.query : undefined;
+		const query = typeof item.json.input === 'string' ? item.json.input : undefined;
 
 		if (!query || typeof query !== 'string') {
-			throw new Error('Input data must contain a "query" field with the search query');
+			throw new Error('Input data must contain a "input" field with the search query');
 		}
 
 		const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
@@ -72,27 +72,31 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 			let document;
 			if (includeDocumentMetadata) {
 				document = {
-					pageContent: doc.pageContent,
-					metadata: doc.metadata,
+					type: 'text',
+					text: JSON.stringify({ ...doc }),
 				};
 			} else {
 				document = {
-					pageContent: doc.pageContent,
+					pageContent: JSON.stringify({ pageContent: doc.pageContent }),
 				};
 			}
 
-			return {
-				json: { document, score },
-				pairedItem: {
-					item: itemIndex,
-				},
-			};
+			return document;
 		});
 
 		// Log the AI event for analytics
 		logAiEvent(context, 'ai-vector-store-searched', { query });
 
-		return serializedDocs;
+		return [
+			{
+				json: {
+					response: serializedDocs,
+				},
+				pairedItem: {
+					item: itemIndex,
+				},
+			},
+		];
 	} finally {
 		// Release the vector store client if a release method was provided
 		args.releaseVectorStoreClient?.(vectorStore);
