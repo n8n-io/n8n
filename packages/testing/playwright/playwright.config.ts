@@ -60,6 +60,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 		viewport: MACBOOK_WINDOW_SIZE,
 		actionTimeout: 20000, // TODO: We might need to make this dynamic for container tests if we have low resource containers etc
 		navigationTimeout: 10000,
+		currentsFixturesEnabled: !!process.env.CI,
 	},
 
 	reporter: IS_CI
