@@ -545,7 +545,7 @@ export async function toolsAgentExecute(
 						metadata: response.metadata,
 					};
 				} else {
-					request.actions.push(...response.actions);
+					request.actions = request.actions.concat(response.actions);
 				}
 				return;
 			}

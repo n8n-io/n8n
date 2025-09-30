@@ -536,9 +536,9 @@ export class ChatTrigger extends Node {
 
 			const count = 0;
 			for (const fileKey of Object.keys(files)) {
-				const processedFiles: MultiPartFormData.File[] = [];
+				let processedFiles: MultiPartFormData.File[] = [];
 				if (Array.isArray(files[fileKey])) {
-					processedFiles.push(...files[fileKey]);
+					processedFiles = processedFiles.concat(files[fileKey]);
 				} else {
 					processedFiles.push(files[fileKey]);
 				}

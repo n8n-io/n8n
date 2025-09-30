@@ -330,10 +330,10 @@ export class ToolHttpRequest implements INodeType {
 			return p;
 		});
 
-		const toolParameters: ToolParameter[] = [];
+		let toolParameters: ToolParameter[] = [];
 
-		toolParameters.push(
-			...extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
+		toolParameters = toolParameters.concat(
+			extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
 		);
 
 		if (sendQuery) {

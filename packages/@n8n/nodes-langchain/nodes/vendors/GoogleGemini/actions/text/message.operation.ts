@@ -306,7 +306,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const contents: Content[] = messages.map((m) => ({
+	let contents: Content[] = messages.map((m) => ({
 		parts: [{ text: m.content }],
 		role: m.role,
 	}));
@@ -335,7 +335,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push(...response.candidates.map((c) => c.content));
+		contents = contents.concat(response.candidates.map((c) => c.content));
 
 		for (const { functionCall } of toolCalls) {
 			let toolResponse;
