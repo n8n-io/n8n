@@ -864,9 +864,10 @@ describe('evaluateConnections', () => {
 				...mockNodeTypes,
 				nodeTypeWithBadExpression,
 			]);
+
 			expect(violations).toContainEqual(
 				expect.objectContaining({
-					description: expect.stringContaining('Failed to resolve inputs'),
+					description: expect.stringContaining('Failed to resolve connections'),
 				}),
 			);
 		});
