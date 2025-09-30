@@ -23,7 +23,7 @@ function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
 		if (icon) {
 			const [type, path] = icon.split(':');
 			if (type === 'file') {
-				throw new Error(`Unexpected icon: ${icon}`);
+				return {};
 			}
 			return { icon: path };
 		}

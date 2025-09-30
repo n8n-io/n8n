@@ -48,21 +48,21 @@ const sampleItems = [
 		title: 'All Workflows',
 		icon: { html: '📁' },
 		section: 'Navigation',
-		href: '/workflows',
+		handler: () => console.log('Opening workflows'),
 	},
 	{
 		id: 'executions',
 		title: 'Executions',
 		icon: { html: '🏃' },
 		section: 'Navigation',
-		href: '/executions',
+		handler: () => console.log('Opening executions'),
 	},
 	{
 		id: 'credentials',
 		title: 'Credentials',
 		icon: { html: '🔑' },
 		section: 'Navigation',
-		href: '/credentials',
+		handler: () => console.log('Opening credentials'),
 	},
 
 	// Tools section
@@ -89,14 +89,14 @@ const sampleItems = [
 			html: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/></svg>',
 		},
 		section: 'Settings',
-		href: '/settings',
+		handler: () => console.log('Opening settings'),
 	},
 	{
 		id: 'help',
 		title: 'Help & Documentation',
 		icon: { html: '❓' },
 		section: 'Settings',
-		href: 'https://docs.n8n.io',
+		handler: () => console.log('Opening help'),
 	},
 ];
 

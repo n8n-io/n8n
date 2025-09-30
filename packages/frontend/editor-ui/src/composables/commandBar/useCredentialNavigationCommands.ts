@@ -35,7 +35,8 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	function orderResultByCurrentProjectFirst<T extends ICredentialsResponse>(results: T[]) {
-		const currentProjectId = (route.params.projectId as string) || personalProjectId.value;
+		const currentProjectId =
+			typeof route.params.projectId === 'string' ? route.params.projectId : personalProjectId.value;
 		return results.sort((a, b) => {
 			if (a.homeProject?.id === currentProjectId) return -1;
 			if (b.homeProject?.id === currentProjectId) return 1;

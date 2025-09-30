@@ -150,7 +150,8 @@ const closeCommandBar = () => {
 };
 
 const handleScroll = (event: Event) => {
-	const target = event.target as HTMLElement;
+	if (!(event.target instanceof HTMLElement)) return;
+	const target = event.target;
 	const { scrollTop, scrollHeight, clientHeight } = target;
 
 	if (scrollHeight - scrollTop - clientHeight < 50) {
@@ -206,6 +207,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 	switch (event.key) {
 		case 'Escape':
+			event.preventDefault();
 			void closeCommandBar();
 			break;
 		case 'ArrowDown':

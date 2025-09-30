@@ -29,15 +29,20 @@ export function useDataTableNavigationCommands(options: {
 
 	const dataTableResults = ref<DataStore[]>([]);
 
+	const currentProjectId = computed(() => {
+		return typeof route.params.projectId === 'string'
+			? route.params.projectId
+			: personalProjectId.value;
+	});
+
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
 	});
 
 	function orderResultByCurrentProjectFirst<T extends DataStore>(results: T[]) {
-		const currentProjectId = (route.params.projectId as string) || personalProjectId.value;
 		return results.sort((a, b) => {
-			if (a.project?.id === currentProjectId) return -1;
-			if (b.project?.id === currentProjectId) return 1;
+			if (a.project?.id === currentProjectId.value) return -1;
+			if (b.project?.id === currentProjectId.value) return 1;
 			return 0;
 		});
 	}
@@ -45,15 +50,14 @@ export function useDataTableNavigationCommands(options: {
 	const fetchDataTables = debounce(async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
-			const currentProjectId = (route.params.projectId as string) || personalProjectId.value;
 
-			if (!currentProjectId) {
+			if (!currentProjectId.value) {
 				dataTableResults.value = [];
 				return;
 			}
 
 			await dataStoreStore.fetchDataStores(
-				currentProjectId,
+				currentProjectId.value,
 				1,
 				100, // TODO: pagination/lazy loading
 			);
@@ -120,8 +124,6 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
-		const currentProjectId = (route.params.projectId as string) || personalProjectId.value;
-
 		return [
 			{
 				id: ITEM_ID.CREATE_DATA_TABLE,
@@ -136,10 +138,10 @@ export function useDataTableNavigationCommands(options: {
 					},
 				},
 				handler: () => {
-					if (!currentProjectId) return;
+					if (!currentProjectId.value) return;
 					void router.push({
 						name: PROJECT_DATA_STORES,
-						params: { projectId: currentProjectId, new: 'new' },
+						params: { projectId: currentProjectId.value, new: 'new' },
 					});
 				},
 			},

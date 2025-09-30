@@ -37,8 +37,7 @@ export function useCommandBar() {
 			return 'Personal';
 		}
 		return (
-			projectsStore.myProjects.find((p) => p.id === (route.params.projectId as string))?.name ??
-			'Personal'
+			projectsStore.myProjects.find((p) => p.id === route.params.projectId)?.name ?? 'Personal'
 		);
 	});
 

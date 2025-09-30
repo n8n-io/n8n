@@ -23,9 +23,7 @@ const handleSelect = () => {
 		@click.stop="handleSelect"
 	>
 		<div v-if="item.icon" :class="$style.icon">
-			<!-- eslint-disable vue/no-v-html -->
-			<span v-if="item.icon && 'html' in item.icon" v-html="item.icon.html"></span>
-			<!-- eslint-enable vue/no-v-html -->
+			<span v-if="item.icon && 'html' in item.icon" v-n8n-html="item.icon.html"></span>
 			<component
 				:is="item.icon.component"
 				v-else-if="item.icon && 'component' in item.icon"

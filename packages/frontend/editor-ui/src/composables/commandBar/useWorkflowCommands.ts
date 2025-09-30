@@ -50,10 +50,12 @@ export function useWorkflowCommands(): CommandGroup {
 				section: i18n.baseText('commandBar.sections.credentials'),
 				children: [
 					...credentials.map((credential) => ({
-						id: credential.id as string,
+						id: credential.id,
 						title: credential.name,
 						handler: () => {
-							uiStore.openExistingCredential(credential.id as string);
+							if (typeof credential.id === 'string') {
+								uiStore.openExistingCredential(credential.id);
+							}
 						},
 					})),
 				],
