@@ -553,14 +553,14 @@ describe('InsightsService', () => {
 				workflowName: workflow2.name,
 				projectId: project.id,
 				projectName: project.name,
-				total: 7,
+				total: 8,
 				failed: 2,
 				runTime: 123,
-				succeeded: 5,
+				succeeded: 6,
 				timeSaved: 0,
 			});
-			expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 7);
-			expect(byWorkflow.data[0].averageRunTime).toBeCloseTo(123 / 7);
+			expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 8);
+			expect(byWorkflow.data[0].averageRunTime).toBeCloseTo(123 / 8);
 
 			expect(byWorkflow.data[1]).toMatchObject({
 				workflowId: workflow1.id,
