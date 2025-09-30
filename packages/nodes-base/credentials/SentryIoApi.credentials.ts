@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class SentryIoApi implements ICredentialType {
 	name = 'sentryIoApi';
@@ -16,4 +21,21 @@ export class SentryIoApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticate = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.token}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			baseURL: 'https://sentry.io',
+			url: '/api/0/organizations/',
+		},
+	};
 }
