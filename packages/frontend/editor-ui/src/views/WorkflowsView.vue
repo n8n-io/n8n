@@ -1457,6 +1457,13 @@ const moveFolder = async (payload: {
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
+			toast.showMessage({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.messageNoAccess', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				type: 'success',
+			});
 		} else {
 			// Else show success message and update the list
 			toast.showToast({
