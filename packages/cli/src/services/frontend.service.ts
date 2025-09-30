@@ -159,7 +159,7 @@ export class FrontendService {
 				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
-				debug: true,
+				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
