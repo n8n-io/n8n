@@ -131,9 +131,9 @@ const onItemMounted = ({
 			aria-busy="true"
 			:aria-label="i18n.baseText('generic.loading')"
 		>
-			<n8n-loading :rows="3" class="mb-xs" />
-			<n8n-loading :rows="3" class="mb-xs" />
-			<n8n-loading :rows="3" class="mb-xs" />
+			<N8nLoading :rows="3" class="mb-xs" />
+			<N8nLoading :rows="3" class="mb-xs" />
+			<N8nLoading :rows="3" class="mb-xs" />
 		</li>
 		<li v-if="props.shouldUpgrade" :class="$style.retention">
 			<span>

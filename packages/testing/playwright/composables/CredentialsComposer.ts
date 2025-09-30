@@ -47,6 +47,6 @@ export class CredentialsComposer {
 	 * Create a credential directly via API. Returns created credential object.
 	 */
 	async createFromApi(payload: CreateCredentialDto & { projectId?: string }) {
-		return await this.n8n.api.credentialApi.createCredential(payload);
+		return await this.n8n.api.credentials.createCredential(payload);
 	}
 }

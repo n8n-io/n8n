@@ -20,6 +20,7 @@ interface Props {
 	showCloseButton?: boolean;
 	isOpen?: boolean;
 	isReadOnly?: boolean;
+	isHeaderClickable: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -173,6 +174,7 @@ async function copySessionId() {
 		<LogsPanelHeader
 			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
+			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>

@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 interface Props {
 	node: INodeUi | null;

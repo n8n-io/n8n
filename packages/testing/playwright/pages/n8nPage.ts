@@ -37,6 +37,7 @@ import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
 import { BaseModal } from './components/BaseModal';
+import { Breadcrumbs } from './components/Breadcrumbs';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -86,6 +87,7 @@ export class n8nPage {
 
 	// Helpers
 	readonly navigate: NavigationHelper;
+	readonly breadcrumbs: Breadcrumbs;
 
 	constructor(page: Page) {
 		this.page = page;
@@ -133,6 +135,7 @@ export class n8nPage {
 
 		// Helpers
 		this.navigate = new NavigationHelper(page);
+		this.breadcrumbs = new Breadcrumbs(page);
 	}
 
 	async goHome() {

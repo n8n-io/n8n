@@ -186,11 +186,12 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
+							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@send-message="sendMessage"
-							@click-header="onToggleOpen(true)"
+							@click-header="onToggleOpen"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">
@@ -214,7 +215,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 								:entries="entries"
 								:latest-node-info="latestNodeNameById"
 								:flat-log-entries="flatLogEntries"
-								@click-header="onToggleOpen(true)"
+								:is-header-clickable="!isPoppedOut"
+								@click-header="onToggleOpen"
 								@select="select"
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
@@ -238,7 +240,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							:panels="logsStore.detailsState"
 							:collapsing-input-table-column-name="inputCollapsingColumnName"
 							:collapsing-output-table-column-name="outputCollapsingColumnName"
-							@click-header="onToggleOpen(true)"
+							:is-header-clickable="!isPoppedOut"
+							@click-header="onToggleOpen"
 							@toggle-input-open="logsStore.toggleInputOpen"
 							@toggle-output-open="logsStore.toggleOutputOpen"
 							@collapsing-input-table-column-changed="handleChangeInputTableColumnCollapsing"

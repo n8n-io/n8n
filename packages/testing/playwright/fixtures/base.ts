@@ -138,6 +138,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		const page = await context.newPage();
 		const n8nInstance = new n8nPage(page);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
+		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
+		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
 	},
 

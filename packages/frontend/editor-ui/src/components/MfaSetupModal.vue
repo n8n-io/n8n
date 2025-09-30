@@ -173,12 +173,12 @@ onMounted(async () => {
 		<template #content>
 			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
 				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true">{{
+					<N8nText size="large" color="text-dark" :bold="true">{{
 						i18n.baseText('mfa.setup.step1.instruction1.title')
-					}}</n8n-text>
+					}}</N8nText>
 				</div>
 				<div>
-					<n8n-text size="medium" :bold="false">
+					<N8nText size="medium" :bold="false">
 						<I18nT keypath="mfa.setup.step1.instruction1.subtitle" tag="span" scope="global">
 							<template #part1>
 								{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
@@ -192,24 +192,24 @@ onMounted(async () => {
 								>
 							</template>
 						</I18nT>
-					</n8n-text>
+					</N8nText>
 				</div>
 				<div :class="$style.qrContainer">
 					<QrcodeVue :value="qrCode" :size="150" level="H" />
 				</div>
 				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true">{{
+					<N8nText size="large" color="text-dark" :bold="true">{{
 						i18n.baseText('mfa.setup.step1.instruction2.title')
-					}}</n8n-text>
+					}}</N8nText>
 				</div>
 				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
-					<n8n-input-label
+					<N8nInputLabel
 						size="medium"
 						:bold="false"
 						:class="$style.labelTooltip"
 						:label="i18n.baseText('mfa.setup.step1.input.label')"
 					>
-						<n8n-input
+						<N8nInput
 							v-model="authenticatorCode"
 							type="text"
 							:maxlength="6"
@@ -218,7 +218,7 @@ onMounted(async () => {
 							data-test-id="mfa-token-input"
 							@input="onInput"
 						/>
-					</n8n-input-label>
+					</N8nInputLabel>
 					<div :class="[$style.infoText, 'mt-4xs']">
 						<span size="small" v-text="infoTextErrorMessage"></span>
 					</div>
@@ -226,29 +226,29 @@ onMounted(async () => {
 			</div>
 			<div v-else :class="$style.container">
 				<div>
-					<n8n-text size="medium" :bold="false">{{
+					<N8nText size="medium" :bold="false">{{
 						i18n.baseText('mfa.setup.step2.description')
-					}}</n8n-text>
+					}}</N8nText>
 				</div>
 				<div :class="$style.recoveryCodesContainer">
 					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<n8n-text size="medium">{{ recoveryCode }}</n8n-text>
+						<N8nText size="medium">{{ recoveryCode }}</N8nText>
 					</div>
 				</div>
-				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+				<N8nInfoTip :bold="false" :class="$style['edit-mode-footer-infotip']">
 					<I18nT keypath="mfa.setup.step2.infobox.description" tag="span" scope="global">
 						<template #part1>
 							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
 						</template>
 						<template #part2>
-							<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
+							<N8nText size="small" :bold="true" :class="$style.loseAccessText">
 								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
-							</n8n-text>
+							</N8nText>
 						</template>
 					</I18nT>
-				</n8n-info-tip>
+				</N8nInfoTip>
 				<div>
-					<n8n-button
+					<N8nButton
 						type="primary"
 						icon="hard-drive-download"
 						float="right"
@@ -262,7 +262,7 @@ onMounted(async () => {
 		<template #footer>
 			<div v-if="showRecoveryCodes">
 				<div>
-					<n8n-button
+					<N8nButton
 						float="right"
 						:disabled="!recoveryCodesDownloaded"
 						:label="i18n.baseText('mfa.setup.step2.button.save')"
@@ -274,7 +274,7 @@ onMounted(async () => {
 			</div>
 			<div v-else>
 				<div>
-					<n8n-button
+					<N8nButton
 						float="right"
 						:label="i18n.baseText('mfa.setup.step1.button.continue')"
 						size="large"

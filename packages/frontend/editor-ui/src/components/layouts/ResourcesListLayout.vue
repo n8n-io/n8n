@@ -563,12 +563,12 @@ defineExpose({
 			<slot name="header" />
 		</template>
 		<div v-if="loading" class="resource-list-loading">
-			<n8n-loading :rows="25" :shrink-last="false" />
+			<N8nLoading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
-					<n8n-action-box
+					<N8nActionBox
 						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="
@@ -587,7 +587,7 @@ defineExpose({
 						<template #disabledButtonTooltip>
 							{{ getResourceText('empty.button.disabled.tooltip') }}
 						</template>
-					</n8n-action-box>
+					</N8nActionBox>
 				</slot>
 			</div>
 			<PageViewLayoutList v-else>
@@ -595,7 +595,7 @@ defineExpose({
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
-							<n8n-input
+							<N8nInput
 								v-if="props.uiConfig.searchEnabled"
 								ref="search"
 								:model-value="filtersModel.search"
@@ -607,24 +607,24 @@ defineExpose({
 								@update:model-value="onSearch"
 							>
 								<template #prefix>
-									<n8n-icon icon="search" />
+									<N8nIcon icon="search" />
 								</template>
-							</n8n-input>
+							</N8nInput>
 							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
-								<n8n-select
+								<N8nSelect
 									v-model="sortBy"
 									size="small"
 									data-test-id="resources-list-sort"
 									@change="setSorting(sortBy)"
 								>
-									<n8n-option
+									<N8nOption
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
 										data-test-id="resources-list-sort-item"
 										:value="sortOption"
 										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
 									/>
-								</n8n-select>
+								</N8nSelect>
 							</div>
 							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown
@@ -653,16 +653,16 @@ defineExpose({
 						class="mt-xs"
 						data-test-id="resources-list-filters-applied-info"
 					>
-						<n8n-info-tip :bold="false">
+						<N8nInfoTip :bold="false">
 							{{
 								hasOnlyFiltersThatShowMoreResults
 									? getResourceText('filters.active.shortText', 'filters.active.shortText')
 									: getResourceText('filters.active', 'filters.active')
 							}}
-							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
+							<N8nLink data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
 								{{ getResourceText('filters.active.reset', 'filters.active.reset') }}
-							</n8n-link>
-						</n8n-info-tip>
+							</N8nLink>
+						</N8nInfoTip>
 					</div>
 
 					<div class="pb-xs" />
@@ -671,7 +671,7 @@ defineExpose({
 				<slot name="preamble" />
 
 				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<n8n-loading :rows="rowsPerPage" :shrink-last="false" />
+					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
 				</div>
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
@@ -680,7 +680,7 @@ defineExpose({
 					:class="$style.listWrapper"
 				>
 					<!-- FULL SCROLLING LIST (Shows all resources, filtering and sorting is done in this component) -->
-					<n8n-recycle-scroller
+					<N8nRecycleScroller
 						v-if="type === 'list-full'"
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
@@ -690,7 +690,7 @@ defineExpose({
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :update-item-size="updateItemSize" />
 						</template>
-					</n8n-recycle-scroller>
+					</N8nRecycleScroller>
 					<!-- PAGINATED LIST -->
 					<div
 						v-else-if="type === 'list-paginated'"
@@ -705,7 +705,7 @@ defineExpose({
 							</div>
 						</div>
 						<div :class="$style.listPagination">
-							<el-pagination
+							<ElPagination
 								v-model:current-page="currentPage"
 								v-model:page-size="rowsPerPage"
 								background
@@ -715,11 +715,11 @@ defineExpose({
 								data-test-id="resources-list-pagination"
 								@update:current-page="setCurrentPage"
 								@size-change="setRowsPerPage"
-							></el-pagination>
+							></ElPagination>
 						</div>
 					</div>
 					<!-- DATATABLE -->
-					<n8n-datatable
+					<N8nDatatable
 						v-if="type === 'datatable'"
 						data-test-id="resources-table"
 						:class="$style.datatable"
@@ -733,17 +733,17 @@ defineExpose({
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
 						</template>
-					</n8n-datatable>
+					</N8nDatatable>
 				</div>
 
-				<n8n-text
+				<N8nText
 					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
 					color="text-base"
 					size="medium"
 					data-test-id="resources-list-empty"
 				>
 					{{ getResourceText('noResults', 'noResults') }}
-				</n8n-text>
+				</N8nText>
 
 				<slot name="postamble" />
 			</PageViewLayoutList>

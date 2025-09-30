@@ -18,15 +18,15 @@ const showConnectionLostError = computed(() => {
 <template>
 	<span>
 		<div v-if="showConnectionLostError" class="push-connection-lost primary-color">
-			<n8n-tooltip placement="bottom-end">
+			<N8nTooltip placement="bottom-end">
 				<template #content>
 					<div v-n8n-html="i18n.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
 				</template>
 				<span>
-					<n8n-icon icon="triangle-alert" />&nbsp;
+					<N8nIcon icon="triangle-alert" />&nbsp;
 					{{ i18n.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
-			</n8n-tooltip>
+			</N8nTooltip>
 		</div>
 		<slot v-else />
 	</span>

@@ -1,4 +1,4 @@
-import { chatWithBuilder } from './ai';
+import { chatWithBuilder, getBuilderCredits } from './ai';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatRequest } from '@/types/assistant.types';
@@ -371,6 +371,46 @@ describe('API: ai', () => {
 				undefined,
 				undefined,
 			);
+		});
+	});
+
+	describe('getBuilderCredits', () => {
+		let mockContext: IRestApiContext;
+		let makeRestApiRequestSpy: MockInstance;
+
+		beforeEach(() => {
+			mockContext = {
+				baseUrl: 'http://test-base-url',
+				sessionId: 'test-session',
+				pushRef: 'test-ref',
+			} as IRestApiContext;
+
+			makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest');
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should call makeRestApiRequest with correct parameters and return credits data', async () => {
+			const mockResponse = {
+				creditsQuota: 1000,
+				creditsClaimed: 500,
+			};
+
+			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await getBuilderCredits(mockContext);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(mockContext, 'GET', '/ai/build/credits');
+			expect(result).toEqual(mockResponse);
+		});
+
+		it('should handle API errors', async () => {
+			const error = new Error('API request failed');
+			makeRestApiRequestSpy.mockRejectedValue(error);
+
+			await expect(getBuilderCredits(mockContext)).rejects.toThrow('API request failed');
 		});
 	});
 });
