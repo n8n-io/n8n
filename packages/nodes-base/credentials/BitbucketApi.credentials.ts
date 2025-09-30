@@ -9,14 +9,14 @@ export class BitbucketApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Username',
-			name: 'username',
+			displayName: 'Email',
+			name: 'email',
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'App Password',
-			name: 'appPassword',
+			displayName: 'API Token',
+			name: 'apiToken',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
