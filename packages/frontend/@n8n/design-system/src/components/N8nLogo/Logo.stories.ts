@@ -6,7 +6,7 @@ export default {
 	title: 'Atoms/Logo',
 	component: N8nLogo,
 	argTypes: {
-		location: {
+		size: {
 			control: {
 				type: 'select',
 				options: ['large', 'small'],
