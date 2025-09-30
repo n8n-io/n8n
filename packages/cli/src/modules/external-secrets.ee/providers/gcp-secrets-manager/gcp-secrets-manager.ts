@@ -112,11 +112,11 @@ export class GcpSecretsManager implements SecretsProvider {
 				versions = await this.client.accessSecretVersion({
 					name: `projects/${projectId}/secrets/${name}/versions/latest`,
 				});
-			} catch (err) {
+			} catch (error) {
 				this.logger.info(
 					`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
 					{
-						error: ensureError(err),
+						error: ensureError(error),
 					},
 				);
 			}
