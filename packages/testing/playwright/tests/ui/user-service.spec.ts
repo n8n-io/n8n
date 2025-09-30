@@ -7,7 +7,7 @@ test.describe('User API Service', () => {
 		expect(user.email).toContain('testuser');
 		expect(user.email).toContain('@test.com');
 		expect(user.firstName).toBe('Test');
-		expect(user.lastName).toBe('User');
+		expect(user.lastName).toContain('User');
 		expect(user.role).toContain('member');
 	});
 

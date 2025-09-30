@@ -51,7 +51,7 @@ test.describe('User Management', () => {
 		await n8n.page.reload();
 
 		await n8n.settingsUsers.search(user.email);
-		await n8n.settingsUsers.getRow(user.email).isVisible();
+		await expect(n8n.settingsUsers.getRow(user.email)).toBeVisible();
 
 		await n8n.settingsUsers.clickDeleteUser(user.email);
 		await n8n.settingsUsers.deleteData();
