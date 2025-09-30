@@ -167,9 +167,9 @@ const projectLocation = computed(() => {
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<RouterLink v-if="projectLocation" :to="projectLocation">
-					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap">{{ badgeText }}</span>
+					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 				</RouterLink>
-				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap">{{ badgeText }}</span>
+				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}

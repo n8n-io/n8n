@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
+import CopyInput from '@/components/CopyInput.vue';
 import Modal from '@/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
@@ -12,7 +14,6 @@ import { useToast } from '@/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
-import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 
