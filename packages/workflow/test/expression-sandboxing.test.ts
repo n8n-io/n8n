@@ -1,6 +1,11 @@
 import { Tournament } from '@n8n/tournament';
 
-import { PrototypeSanitizer, sanitizer, DOLLAR_SIGN_ERROR } from '../src/expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	sanitizer,
+	DOLLAR_SIGN_ERROR,
+} from '../src/expression-sandboxing';
 
 const tournament = new Tournament(
 	(e) => {
@@ -10,7 +15,7 @@ const tournament = new Tournament(
 	undefined,
 	{
 		before: [],
-		after: [PrototypeSanitizer],
+		after: [PrototypeSanitizer, DollarSignValidator],
 	},
 );
 
@@ -142,6 +147,22 @@ describe('PrototypeSanitizer', () => {
 
 				expect(() => {
 					tournament.execute('{{ _$_ }}', { _$_: 'underscore' });
+				}).not.toThrow();
+			});
+
+			it('should allow $ as a property name', () => {
+				// $ is a valid property name in JavaScript, so obj.$ should be allowed
+				expect(() => {
+					tournament.execute('{{ obj.$ }}', { obj: { $: 'value' } });
+				}).not.toThrow();
+
+				expect(() => {
+					tournament.execute('{{ data["$"] }}', { data: { $: 'value' } });
+				}).not.toThrow();
+
+				expect(() => {
+					const obj = { nested: { $: 'deep' } };
+					tournament.execute('{{ obj.nested.$ }}', { obj });
 				}).not.toThrow();
 			});
 
