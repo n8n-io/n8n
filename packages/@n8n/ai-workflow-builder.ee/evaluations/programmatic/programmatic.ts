@@ -1,10 +1,10 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { evaluateAgentPrompt } from './agent-prompt';
-import { evaluateConnections } from './connections';
-import { evaluateFromAi } from './fromAi';
-import { evaluateTools } from './tools';
-import { evaluateTrigger } from './trigger';
+import { evaluateAgentPrompt } from './evaluators/agent-prompt';
+import { evaluateConnections } from './evaluators/connections';
+import { evaluateFromAi } from './evaluators/from-ai';
+import { evaluateTools } from './evaluators/tools';
+import { evaluateTrigger } from './evaluators/trigger';
 import type { EvaluationInput } from '../types/evaluation';
 import type { ProgrammaticEvaluationResult } from '../types/test-result';
 import { calculateOverallScore } from '../utils/score';

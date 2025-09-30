@@ -2,11 +2,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { Violation } from '../types/evaluation';
-import type { SingleEvaluatorResult } from '../types/test-result';
-import { nodeParametersContainExpression } from '../utils/expressions';
-import { isTool } from '../utils/isTool';
-import { calcSingleEvaluatorScore } from '../utils/score';
+import type { Violation } from '../../types/evaluation';
+import type { SingleEvaluatorResult } from '../../types/test-result';
+import { nodeParametersContainExpression } from '../../utils/expressions';
+import { isTool } from '../../utils/isTool';
+import { calcSingleEvaluatorScore } from '../../utils/score';
 
 const toolsWithoutParameters = [
 	'@n8n/n8n-nodes-langchain.toolCalculator',

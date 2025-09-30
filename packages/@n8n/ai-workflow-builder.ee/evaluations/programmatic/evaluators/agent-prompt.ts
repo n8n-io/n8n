@@ -1,9 +1,9 @@
 import type { SimpleWorkflow } from '@/types';
 
-import type { Violation } from '../types/evaluation';
-import type { SingleEvaluatorResult } from '../types/test-result';
-import { containsExpression } from '../utils/expressions';
-import { calcSingleEvaluatorScore } from '../utils/score';
+import type { Violation } from '../../types/evaluation';
+import type { SingleEvaluatorResult } from '../../types/test-result';
+import { containsExpression } from '../../utils/expressions';
+import { calcSingleEvaluatorScore } from '../../utils/score';
 
 /**
  * Evaluates Agent nodes to ensure their prompts contain expressions.

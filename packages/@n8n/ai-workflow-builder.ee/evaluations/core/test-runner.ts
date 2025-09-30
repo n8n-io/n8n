@@ -3,7 +3,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import { evaluateWorkflow } from '../chains/workflow-evaluator';
-import { programmaticEvaluation } from '../evaluators/programmatic';
+import { programmaticEvaluation } from '../programmatic/programmatic';
 import type { EvaluationInput, TestCase } from '../types/evaluation';
 import { isWorkflowStateValues } from '../types/langsmith';
 import type { TestResult } from '../types/test-result';

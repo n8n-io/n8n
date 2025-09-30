@@ -2,9 +2,9 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { Violation } from '../types/evaluation';
-import type { SingleEvaluatorResult } from '../types/test-result';
-import { calcSingleEvaluatorScore } from '../utils/score';
+import type { Violation } from '../../types/evaluation';
+import type { SingleEvaluatorResult } from '../../types/test-result';
+import { calcSingleEvaluatorScore } from '../../utils/score';
 
 export interface TriggerEvaluationResult extends SingleEvaluatorResult {
 	hasTrigger: boolean;
