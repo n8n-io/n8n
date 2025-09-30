@@ -148,8 +148,8 @@ export class BitbucketTrigger implements INodeType {
 				const options: IRequestOptions = {
 					method: 'GET',
 					auth: {
-						user: credentials!.username as string,
-						password: credentials!.appPassword as string,
+						username: credentials!.email as string,
+						password: credentials!.apiToken as string,
 					},
 					uri: 'https://api.bitbucket.org/2.0/user',
 					json: true,
