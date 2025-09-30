@@ -22,6 +22,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	ExecutionError,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -424,7 +425,7 @@ describe('workflow timeout with startedAt', () => {
 
 		// ASSERT
 		// The execution should be stopped immediately because the timeout has already elapsed
-		expect(mockStopExecution).toHaveBeenCalledWith('1');
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {

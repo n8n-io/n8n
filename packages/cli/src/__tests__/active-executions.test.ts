@@ -10,7 +10,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { ManualExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	randomInt,
+	sleep,
+	SystemShutdownExecutionCancelledError,
+} from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
@@ -340,7 +345,10 @@ describe('ActiveExecutions', () => {
 			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
