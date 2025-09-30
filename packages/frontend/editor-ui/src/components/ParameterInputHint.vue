@@ -62,6 +62,7 @@ const simplyText = computed(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	font-family: monospace;
 }
 .highlight {
 	color: var(--color-secondary);
