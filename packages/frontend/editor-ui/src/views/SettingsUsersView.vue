@@ -15,6 +15,7 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';

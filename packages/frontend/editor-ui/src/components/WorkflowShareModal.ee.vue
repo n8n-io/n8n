@@ -2,6 +2,7 @@
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { createEventBus } from '@n8n/utils/event-bus';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,

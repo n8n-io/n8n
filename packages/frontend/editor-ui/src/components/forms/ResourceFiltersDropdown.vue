@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onBeforeMount } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
