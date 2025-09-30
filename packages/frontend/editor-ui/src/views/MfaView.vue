@@ -196,7 +196,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<N8nLogo location="authView" :release-channel="releaseChannel" />
+		<N8nLogo size="large" :release-channel="releaseChannel" />
 		<N8nCard>
 			<div :class="$style.headerContainer">
 				<N8nHeading size="xlarge" color="text-dark">{{

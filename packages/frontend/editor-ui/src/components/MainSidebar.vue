@@ -472,7 +472,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</div>
 		<div :class="$style.logo">
 			<N8nLogo
-				location="sidebar"
+				size="small"
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
 			>
