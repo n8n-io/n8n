@@ -2302,8 +2302,9 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 		});
-		// todo: need to delete connections e.g. to second input like in merge node
 		deleteNode(previousId, { trackHistory, trackBulk: false });
+		revalidateNodeInputConnections(newId);
+		revalidateNodeOutputConnections(newId);
 
 		uiStore.stateIsDirty = true;
 
