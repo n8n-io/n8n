@@ -16,7 +16,7 @@ import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
-import { SettingsPage } from './SettingsPage';
+import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
 import { VariablesPage } from './VariablesPage';
@@ -38,6 +38,7 @@ import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { SettingsUsersPage } from './SettingsUsersPage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -56,7 +57,7 @@ export class n8nPage {
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
-	readonly settings: SettingsPage;
+	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
@@ -67,7 +68,7 @@ export class n8nPage {
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly signIn: SignInPage;
-
+	readonly settingsUsers: SettingsUsersPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
@@ -105,7 +106,7 @@ export class n8nPage {
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
-		this.settings = new SettingsPage(page);
+		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
@@ -117,6 +118,7 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
+		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
