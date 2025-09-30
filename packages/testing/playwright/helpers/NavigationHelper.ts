@@ -112,16 +112,14 @@ export class NavigationHelper {
 	 * - Existing workflow: /workflow/{workflowId}
 	 * - Project workflow: /projects/{projectId}/workflow/{workflowId}
 	 */
-	async toWorkflow(workflowId: string = 'new', projectId?: string): Promise<void> {
-		const url = projectId
-			? `/projects/${projectId}/workflow/${workflowId}`
-			: `/workflow/${workflowId}`;
+	async toWorkflow(workflowId: string = 'new'): Promise<void> {
+		const url = `/workflow/${workflowId}`;
 		await this.page.goto(url);
 	}
 
 	/**
 	 * Navigate to a specific folder
-	 * URL: /projects/{projectId}/folders/{folderId}
+	 * URL: /projects/{projectId}/folders/{folderId}/workflows or /home/folders/{folderId}/workflows
 	 */
 	async toFolder(folderId: string, projectId?: string): Promise<void> {
 		const url = projectId
@@ -133,8 +131,8 @@ export class NavigationHelper {
 	/**
 	 * Navigate to workflow canvas (alias for toWorkflow)
 	 */
-	async toCanvas(workflowId: string = 'new', projectId?: string): Promise<void> {
-		await this.toWorkflow(workflowId, projectId);
+	async toCanvas(workflowId: string = 'new'): Promise<void> {
+		await this.toWorkflow(workflowId);
 	}
 
 	/**

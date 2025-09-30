@@ -92,6 +92,7 @@ export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
+export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -836,6 +837,12 @@ export const READY_TO_RUN_V2_EXPERIMENT = {
 	variant2: 'variant-2-twoboxes',
 };
 
+export const PERSONALIZED_TEMPLATES_V3 = {
+	name: '044_template_reco_v3',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.name,
 	WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name,
@@ -846,6 +853,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_EXPERIMENT.name,
+	PERSONALIZED_TEMPLATES_V3.name,
 ];
 
 export const MFA_FORM = {

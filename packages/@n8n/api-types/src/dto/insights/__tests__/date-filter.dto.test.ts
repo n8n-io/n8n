@@ -49,6 +49,28 @@ describe('InsightsDateFilterDto', () => {
 				},
 			},
 			{
+				name: 'valid startDate and endDate (as ISO strings)',
+				request: {
+					startDate: '2025-01-01T00:00:00Z',
+					endDate: '2025-01-31T23:59:59Z',
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01T00:00:00Z'),
+					endDate: new Date('2025-01-31T23:59:59Z'),
+				},
+			},
+			{
+				name: 'valid startDate and endDate (as timestamps)',
+				request: {
+					startDate: new Date('2025-01-01').getTime(),
+					endDate: new Date('2025-01-31').getTime(),
+				},
+				parsedResult: {
+					startDate: new Date('2025-01-01'),
+					endDate: new Date('2025-01-31'),
+				},
+			},
+			{
 				name: 'valid projectId',
 				request: {
 					projectId: '2gQLpmP5V4wOY627',

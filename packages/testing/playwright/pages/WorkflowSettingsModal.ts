@@ -18,6 +18,9 @@ export class WorkflowSettingsModal extends BasePage {
 	getErrorWorkflowField(): Locator {
 		return this.page.getByTestId('workflow-settings-error-workflow');
 	}
+	getDuplicateMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-duplicate');
+	}
 
 	getSaveButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });

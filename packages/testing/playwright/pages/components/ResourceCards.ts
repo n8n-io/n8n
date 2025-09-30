@@ -46,11 +46,14 @@ export class ResourceCards {
 	}
 
 	getCardActionToggle(card: Locator): Locator {
-		return card.getByTestId('card-append');
+		return card
+			.getByTestId('card-append')
+			.locator('[class*="action-toggle"]')
+			.filter({ visible: true });
 	}
 
 	getCardAction(actionName: string): Locator {
-		return this.page.getByTestId(`action-${actionName}`);
+		return this.page.getByTestId(`action-${actionName}`).filter({ visible: true });
 	}
 
 	async openCardActions(card: Locator): Promise<void> {
@@ -65,5 +68,10 @@ export class ResourceCards {
 	async openFolder(folderName: string): Promise<void> {
 		const folderCard = this.getFolder(folderName);
 		await this.clickCardAction(folderCard, 'open');
+	}
+
+	async deleteFolder(folderName: string): Promise<void> {
+		const folderCard = this.getFolder(folderName);
+		await this.clickCardAction(folderCard, 'delete');
 	}
 }
