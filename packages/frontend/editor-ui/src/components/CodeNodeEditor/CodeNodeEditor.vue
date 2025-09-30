@@ -21,6 +21,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';

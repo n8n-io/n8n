@@ -9,6 +9,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import Modal from '@/components/Modal.vue';
 
 import {
 	N8nButton,

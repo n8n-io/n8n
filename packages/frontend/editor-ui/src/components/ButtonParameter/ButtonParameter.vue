@@ -14,6 +14,7 @@ import {
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
