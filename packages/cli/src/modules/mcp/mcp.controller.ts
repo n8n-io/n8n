@@ -1,9 +1,11 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RootLevelController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
+import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -17,7 +19,11 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
-	@Post('/http', { rateLimit: { limit: 100 }, apiKeyAuth: true, usesTemplates: true })
+	@Post('/http', {
+		rateLimit: { limit: 100 },
+		middlewares: [Container.get(McpServerApiKeyService).getAuthMiddleware()],
+		usesTemplates: true,
+	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();

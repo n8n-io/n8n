@@ -34,6 +34,7 @@ describe('permissions', () => {
 			folder: {},
 			insights: {},
 			dataStore: {},
+			mcp: {},
 			role: {},
 		});
 	});
@@ -100,6 +101,7 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			mcp: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {

@@ -1,10 +1,11 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Patch, RestController } from '@n8n/decorators';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 
-import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
+import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
-import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
+import { UpdateMcpSettingsDto } from './update-mcp-settings.dto';
+import { BadRequestError } from '../../errors/response-errors/bad-request.error';
 
 @RestController('/mcp')
 export class McpSettingsController {
@@ -12,19 +13,23 @@ export class McpSettingsController {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 	) {}
 
+	@GlobalScope('mcp:manage')
 	@Get('/settings')
 	async getSettings() {
 		const mcpAccessEnabled = await this.mcpSettingsService.getEnabled();
 		return { mcpAccessEnabled };
 	}
 
+	@GlobalScope('mcp:manage')
 	@Patch('/settings')
-	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
-		if (req.user.role?.slug !== GLOBAL_OWNER_ROLE.slug) {
-			throw new ForbiddenError('Only the instance owner can update MCP settings');
-		}
+	async updateSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateMcpSettingsDto,
+	) {
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
 		try {
@@ -35,5 +40,34 @@ export class McpSettingsController {
 			});
 		}
 		return { mcpAccessEnabled: enabled };
+	}
+
+	@GlobalScope('mcp:manage')
+	@Get('/api-key')
+	async getApiKeyForMcpServer(req: AuthenticatedRequest) {
+		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
+
+		if (!apiKey) {
+			const newApiKey = await this.mcpServerApiKeyService.createMcpServerApiKey(req.user);
+			return newApiKey;
+		}
+
+		return apiKey;
+	}
+
+	@GlobalScope('mcp:manage')
+	@Post('/api-key/rotate')
+	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
+		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
+
+		if (!apiKey) {
+			throw new BadRequestError('No existing MCP server API key to rotate');
+		}
+
+		await this.mcpServerApiKeyService.deleteApiKeyForUser(req.user);
+
+		const newApiKey = await this.mcpServerApiKeyService.createMcpServerApiKey(req.user);
+
+		return newApiKey;
 	}
 }
