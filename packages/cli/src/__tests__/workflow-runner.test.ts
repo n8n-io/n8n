@@ -22,7 +22,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	ExecutionError,
-	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
