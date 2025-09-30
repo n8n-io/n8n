@@ -34,7 +34,7 @@ describe('NodeExecutionContext', () => {
 						null,
 					],
 				},
-			} as any;
+			};
 
 			const ctx = new TestContext(workflow, mock<INode>({ name: 'A' }), additionalData, mode);
 			expect(ctx.getOutgoingConnections('A', NodeConnectionTypes.Main)).toEqual([
@@ -51,7 +51,7 @@ describe('NodeExecutionContext', () => {
 						[],
 					],
 				},
-			} as any;
+			};
 
 			const ctx = new TestContext(workflow, mock<INode>({ name: 'B' }), additionalData, mode);
 			expect(ctx.getIncomingConnections('B', NodeConnectionTypes.Main)).toEqual([
@@ -61,8 +61,8 @@ describe('NodeExecutionContext', () => {
 		});
 
 		it('returns empty array when no connections exist', () => {
-			workflow.connectionsBySourceNode = {} as any;
-			workflow.connectionsByDestinationNode = {} as any;
+			workflow.connectionsBySourceNode = {};
+			workflow.connectionsByDestinationNode = {};
 			const ctx = new TestContext(workflow, mock<INode>({ name: 'X' }), additionalData, mode);
 			expect(ctx.getOutgoingConnections('X', NodeConnectionTypes.Main)).toEqual([]);
 			expect(ctx.getIncomingConnections('X', NodeConnectionTypes.Main)).toEqual([]);

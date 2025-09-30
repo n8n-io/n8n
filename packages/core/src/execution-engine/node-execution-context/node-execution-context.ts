@@ -2,36 +2,34 @@ import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import get from 'lodash/get';
-import type {
-	FunctionsBase,
-	ICredentialDataDecryptedObject,
-	ICredentialsExpressionResolveValues,
-	IExecuteData,
-	IGetNodeParameterOptions,
-	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
-	NodeInputConnections,
-	NodeParameterValueType,
-	NodeTypeAndVersion,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	ApplicationError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
+	type FunctionsBase,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsExpressionResolveValues,
+	type IExecuteData,
+	type IGetNodeParameterOptions,
+	type INode,
+	type INodeCredentialDescription,
+	type INodeCredentialsDetails,
+	type INodeExecutionData,
+	type INodeInputConfiguration,
+	type INodeOutputConfiguration,
+	type IRunExecutionData,
+	type IWorkflowExecuteAdditionalData,
+	type NodeConnectionType,
+	type NodeInputConnections,
+	type NodeParameterValueType,
+	type NodeTypeAndVersion,
+	type Workflow,
+	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
