@@ -179,14 +179,14 @@ describe('ScalingService', () => {
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
-			expect(async () => await scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 
 		it('should throw if called before queue is ready', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
-			expect(async () => await scalingService.setupWorker(5)).toThrow();
+			await expect(scalingService.setupWorker(5)).rejects.toThrow();
 		});
 	});
 
