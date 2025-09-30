@@ -125,7 +125,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});

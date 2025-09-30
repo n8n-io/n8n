@@ -349,7 +349,10 @@ describe('ActiveExecutions', () => {
 				newExecutionId1,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
 
@@ -374,10 +377,22 @@ describe('ActiveExecutions', () => {
 			);
 
 			expect(stopExecutionSpy).toHaveBeenCalledTimes(4);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId1);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId1,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				newExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
+			expect(stopExecutionSpy).toHaveBeenCalledWith(
+				waitingExecutionId2,
+				expect.any(SystemShutdownExecutionCancelledError),
+			);
 		});
 	});
 });
