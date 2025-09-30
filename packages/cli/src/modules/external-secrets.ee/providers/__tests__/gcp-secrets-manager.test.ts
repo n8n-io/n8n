@@ -105,7 +105,7 @@ describe('GCP Secrets Manager', () => {
 			}),
 		);
 
-		const listSpy = jest
+		jest
 			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
 			// @ts-expect-error Partial mock
 			.mockResolvedValue([
@@ -117,7 +117,7 @@ describe('GCP Secrets Manager', () => {
 				],
 			]);
 
-		const getSpy = jest
+		jest
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementationOnce(() => {
 				throw new Error('test error');
