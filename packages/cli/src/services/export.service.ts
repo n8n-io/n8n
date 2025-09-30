@@ -160,7 +160,7 @@ export class ExportService {
 				}
 
 				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl = pageEntities
+				const entitiesJsonl: string = pageEntities
 					.map((entity: unknown) => JSON.stringify(entity))
 					.join('\n');
 				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl) + '\n', 'utf8');
