@@ -418,12 +418,16 @@ export function setRunExecutionData(
 
 	workflowsStore.executingNode.length = 0;
 
+	if (workflowExecution === null) {
+		return;
+	}
+
 	workflowsStore.setWorkflowExecutionData({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
-	} as IExecutionResponse);
+	});
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
 	workflowsStore.setActiveExecutionId(undefined);
 
