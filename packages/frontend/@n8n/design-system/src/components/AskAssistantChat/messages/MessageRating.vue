@@ -35,7 +35,7 @@ function onRateButton(rating: 'up' | 'down') {
 	showRatingButtons.value = false;
 
 	emit('feedback', { rating });
-	if (props.showFeedback && rating === 'down') {
+	if (props.showFeedback) {
 		showFeedbackArea.value = true;
 		setTimeout(() => {
 			if (feedbackInput.value) {
@@ -118,7 +118,6 @@ function onCancelFeedback() {
 				data-test-id="message-feedback-input"
 				:read-only="false"
 				resize="none"
-				:rows="style === 'minimal' ? 3 : 5"
 			/>
 			<div :class="$style.feedbackActions">
 				<N8nButton
@@ -131,7 +130,7 @@ function onCancelFeedback() {
 					type="primary"
 					size="small"
 					data-test-id="message-submit-feedback-button"
-					:label="t('assistantChat.builder.submit')"
+					:label="t('assistantChat.builder.feedbackSubmit')"
 					@click="onSubmitFeedback"
 				/>
 			</div>
@@ -166,7 +165,11 @@ function onCancelFeedback() {
 	:global(.el-textarea__inner) {
 		resize: none;
 		font-family: var(--font-family);
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-s);
+
+		&::placeholder {
+			font-size: var(--font-size-s);
+		}
 	}
 }
 
@@ -201,7 +204,11 @@ function onCancelFeedback() {
 
 	.feedbackInput {
 		:global(.el-textarea__inner) {
-			font-size: var(--font-size-3xs);
+			font-size: var(--font-size-2xs);
+
+			&::placeholder {
+				font-size: var(--font-size-2xs);
+			}
 		}
 	}
 }

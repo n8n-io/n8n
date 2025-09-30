@@ -59,8 +59,9 @@ describe('MessageRating', () => {
 			expect(wrapper.emitted().feedback[0]).toEqual([{ rating: 'down' }]);
 		});
 
-		it('should hide rating buttons and show success after thumbs up', async () => {
+		it('should hide rating buttons and show success after thumbs up when showFeedback is false', async () => {
 			const wrapper = render(MessageRating, {
+				props: { showFeedback: false },
 				global: { stubs },
 			});
 
@@ -75,6 +76,30 @@ describe('MessageRating', () => {
 				wrapper.container.querySelector('[data-test-id="message-thumbs-down-button"]'),
 			).toBeFalsy();
 			expect(wrapper.getByText('assistantChat.builder.success')).toBeTruthy();
+		});
+
+		it('should hide rating buttons and show feedback form after thumbs up when showFeedback is true', async () => {
+			const wrapper = render(MessageRating, {
+				props: { showFeedback: true },
+				global: { stubs },
+			});
+
+			const upButton = wrapper.container.querySelector('[data-test-id="message-thumbs-up-button"]');
+			await fireEvent.click(upButton!);
+			await nextTick();
+
+			expect(
+				wrapper.container.querySelector('[data-test-id="message-thumbs-up-button"]'),
+			).toBeFalsy();
+			expect(
+				wrapper.container.querySelector('[data-test-id="message-thumbs-down-button"]'),
+			).toBeFalsy();
+			expect(
+				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
+			).toBeTruthy();
+			expect(
+				wrapper.container.querySelector('[data-test-id="message-submit-feedback-button"]'),
+			).toBeTruthy();
 		});
 
 		it('should hide rating buttons and show feedback form after thumbs down when showFeedback is true', async () => {
@@ -234,44 +259,6 @@ describe('MessageRating', () => {
 				'[data-test-id="message-feedback-input"]',
 			);
 			expect(feedbackInputAfter?.getAttribute('modelvalue')).toBe('');
-		});
-	});
-
-	describe('textarea rows based on style', () => {
-		it('should have 5 rows for regular style', async () => {
-			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'regular' },
-				global: { stubs },
-			});
-
-			const downButton = wrapper.container.querySelector(
-				'[data-test-id="message-thumbs-down-button"]',
-			);
-			await fireEvent.click(downButton!);
-			await nextTick();
-
-			const feedbackInput = wrapper.container.querySelector(
-				'[data-test-id="message-feedback-input"]',
-			);
-			expect(feedbackInput?.getAttribute('rows')).toBe('5');
-		});
-
-		it('should have 3 rows for minimal style', async () => {
-			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'minimal' },
-				global: { stubs },
-			});
-
-			const downButton = wrapper.container.querySelector(
-				'[data-test-id="message-thumbs-down-button"]',
-			);
-			await fireEvent.click(downButton!);
-			await nextTick();
-
-			const feedbackInput = wrapper.container.querySelector(
-				'[data-test-id="message-feedback-input"]',
-			);
-			expect(feedbackInput?.getAttribute('rows')).toBe('3');
 		});
 	});
 });
