@@ -195,7 +195,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
-		type: 'popover',
 		children: [
 			{
 				id: 'quickstart',
@@ -257,7 +256,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.whatsNew'),
 		position: 'bottom',
 		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
-		type: 'popover',
 		children: [
 			...versionsStore.whatsNewArticles.map(
 				(article) =>
