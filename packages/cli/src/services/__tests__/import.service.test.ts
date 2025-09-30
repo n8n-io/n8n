@@ -320,7 +320,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(mockContent);
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}');
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}');
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -361,7 +362,7 @@ describe('ImportService', () => {
 			jest.mocked(readFile).mockResolvedValue(mockContent);
 
 			await expect(importService.readEntityFile('/test/invalid.jsonl')).rejects.toThrow(
-				'Invalid JSON on line 2 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
+				'Invalid JSON on line 1 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
 			);
 		});
 

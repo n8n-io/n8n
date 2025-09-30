@@ -245,27 +245,27 @@ export class ImportService {
 	 */
 	async readEntityFile(filePath: string): Promise<unknown[]> {
 		const content = await readFile(filePath, 'utf8');
-
-		// For JSONL, we need to split by actual line endings (\n or \r\n)
-		// Each line should contain exactly one complete JSON object
-		const lines = this.cipher.decrypt(content).split(/\r?\n/);
 		const entities: unknown[] = [];
 
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i].trim();
+		for (const block of content.split('\n')) {
+			const lines = this.cipher.decrypt(block).split(/\r?\n/);
 
-			if (!line) continue;
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
 
-			try {
-				entities.push(JSON.parse(line));
-			} catch (error: unknown) {
-				// If parsing fails, it might be because the JSON spans multiple lines
-				// This shouldn't happen in proper JSONL, but let's handle it gracefully
-				this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, { error });
-				this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
-				throw new Error(
-					`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
-				);
+				if (!line) continue;
+
+				try {
+					entities.push(JSON.parse(line));
+				} catch (error: unknown) {
+					// If parsing fails, it might be because the JSON spans multiple lines
+					// This shouldn't happen in proper JSONL, but let's handle it gracefully
+					this.logger.error(`Failed to parse JSON on line ${i + 1} in ${filePath}`, { error });
+					this.logger.error(`Line content (first 200 chars): ${line.substring(0, 200)}...`);
+					throw new Error(
+						`Invalid JSON on line ${i + 1} in file ${filePath}. JSONL format requires one complete JSON object per line.`,
+					);
+				}
 			}
 		}
 

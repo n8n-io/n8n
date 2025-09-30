@@ -163,7 +163,7 @@ export class ExportService {
 				const entitiesJsonl = pageEntities
 					.map((entity: unknown) => JSON.stringify(entity))
 					.join('\n');
-				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl + '\n'), 'utf8');
+				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl) + '\n', 'utf8');
 
 				totalEntityCount += pageEntities.length;
 				currentFileEntityCount += pageEntities.length;
