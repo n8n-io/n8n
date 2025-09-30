@@ -497,7 +497,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 				<template v-else-if="isNDVV2">
 					<NDVEmptyState
-						v-if="isMappingEnabled || hasRootNodeRun"
+						v-if="readOnly"
+						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+					/>
+					<NDVEmptyState
+						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
 						icon="arrow-right-to-line"
 					>
