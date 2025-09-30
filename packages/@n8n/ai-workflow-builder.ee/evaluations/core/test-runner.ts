@@ -54,6 +54,7 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 			trigger: { violations: [], score: 0 },
 			agentPrompt: { violations: [], score: 0 },
 			tools: { violations: [], score: 0 },
+			fromAi: { violations: [], score: 0 },
 		},
 		generationTime: 0,
 		error: errorMessage,
