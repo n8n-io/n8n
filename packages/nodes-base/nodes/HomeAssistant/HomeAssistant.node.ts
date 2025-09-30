@@ -438,7 +438,7 @@ export class HomeAssistant implements INodeType {
 							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}
 					continue;
 				}
@@ -448,7 +448,7 @@ export class HomeAssistant implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {

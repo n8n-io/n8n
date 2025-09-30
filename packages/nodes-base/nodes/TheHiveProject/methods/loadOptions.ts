@@ -287,7 +287,7 @@ export async function loadAlertFields(
 
 	const customFields = await loadCustomFields.call(this);
 
-	returnData.push.apply(returnData, fields.concat(customFields));
+	returnData.push(...fields, ...customFields);
 	return returnData;
 }
 
@@ -309,7 +309,7 @@ export async function loadCaseFields(this: ILoadOptionsFunctions): Promise<INode
 
 	const customFields = await loadCustomFields.call(this);
 
-	returnData.push.apply(returnData, fields.concat(customFields));
+	returnData.push(...fields, ...customFields);
 	return returnData;
 }
 
@@ -331,7 +331,7 @@ export async function loadObservableFields(
 			return field;
 		});
 
-	returnData.push.apply(returnData, fields);
+	returnData.push(...fields);
 	return returnData;
 }
 

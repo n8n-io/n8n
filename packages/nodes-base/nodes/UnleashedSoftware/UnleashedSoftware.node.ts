@@ -190,7 +190,7 @@ export class UnleashedSoftware implements INodeType {
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
 			);
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		return [returnData];

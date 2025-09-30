@@ -120,16 +120,16 @@ export function simplify(responseData: any | [any]) {
 }
 
 export function merge(responseData: [any]) {
-	const response: { columnHeader: IDataObject; data: { rows: IDataObject[] } } = {
+	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,
 		data: responseData[0].data,
 	};
-	const allRows: IDataObject[] = [];
+	const allRows = [];
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows.push.apply(allRows, rows);
+		allRows.push(...(rows as IDataObject[]));
 	}
-	response.data.rows = allRows;
+	response.data.rows = allRows as [];
 	return [response];
 }

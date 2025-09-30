@@ -217,9 +217,8 @@ export async function getSubfolders(
 				subfolders = subfolders.value;
 			}
 
-			returnData.push.apply(
-				returnData,
-				await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName),
+			returnData.push(
+				...(await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName)),
 			);
 		}
 	}

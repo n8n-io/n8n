@@ -141,7 +141,7 @@ export class CircleCi implements INodeType {
 					}
 				}
 
-				returnData.push.apply(returnData, responseData as INodeExecutionData[]);
+				returnData.push(...(responseData as INodeExecutionData[]));
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {}, itemIndex: i });

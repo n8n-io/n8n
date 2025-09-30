@@ -132,7 +132,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        collection: get
@@ -146,7 +146,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       collection: getAll
@@ -159,7 +159,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       collection: update
@@ -198,7 +198,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'event') {
 				// *********************************************************************
@@ -219,7 +219,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'group') {
 				// *********************************************************************
@@ -259,7 +259,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//       group: delete
@@ -273,7 +273,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        group: get
@@ -287,7 +287,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       group: getAll
@@ -300,7 +300,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'getMembers') {
 					// ----------------------------------
 					//       group: getMembers
@@ -315,7 +315,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       group: update
@@ -377,7 +377,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'updateMembers') {
 					// ----------------------------------
 					//       group: updateMembers
@@ -397,7 +397,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} else if (resource === 'member') {
 				// *********************************************************************
@@ -438,7 +438,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//       member: delete
@@ -453,7 +453,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//        member: get
@@ -467,7 +467,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//       member: getAll
@@ -480,7 +480,7 @@ export class Bitwarden implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'getGroups') {
 					// ----------------------------------
 					//       member: getGroups
@@ -494,7 +494,7 @@ export class Bitwarden implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//       member: update
@@ -540,7 +540,7 @@ export class Bitwarden implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'updateGroups') {
 					// ----------------------------------
 					//       member: updateGroups
@@ -559,7 +559,7 @@ export class Bitwarden implements INodeType {
 						this.helpers.returnJsonArray({ success: true }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 		}

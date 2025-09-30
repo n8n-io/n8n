@@ -120,9 +120,8 @@ export async function execute(
 		}
 
 		try {
-			returnData.push.apply(
-				returnData,
-				await sendDiscordMessage.call(this, {
+			returnData.push(
+				...(await sendDiscordMessage.call(this, {
 					guildId,
 					userGuilds,
 					isOAuth2,
@@ -130,13 +129,13 @@ export async function execute(
 					items,
 					files,
 					itemIndex: i,
-				}),
+				})),
 			);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push.apply(returnData, prepareErrorData.call(this, err, i));
+				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}
 

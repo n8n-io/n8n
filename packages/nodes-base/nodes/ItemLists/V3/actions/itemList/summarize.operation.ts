@@ -529,9 +529,8 @@ function aggregationToArray(
 		return returnData;
 	} else {
 		for (const key of Object.keys(aggregationResult)) {
-			returnData.push.apply(
-				returnData,
-				aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+			returnData.push(
+				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
 					...previousStage,
 					[splitFieldName]: key,
 				}),

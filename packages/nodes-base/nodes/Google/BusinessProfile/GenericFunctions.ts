@@ -144,7 +144,7 @@ export async function handlePagination(
 			for (const prop of possibleRootProperties) {
 				if (page.json[prop]) {
 					const currentData = page.json[prop] as IDataObject[];
-					aggregatedResult.push.apply(aggregatedResult, currentData);
+					aggregatedResult.push(...currentData);
 				}
 			}
 

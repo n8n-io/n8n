@@ -265,9 +265,8 @@ export async function execute(
 		const rawData = options.rawData as boolean;
 		const dataProperty = (options.dataProperty as string) || 'data';
 
-		returnData.push.apply(
-			returnData,
-			prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
+		returnData.push(
+			...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 				columnsRow,
 				dataProperty,
 				rawData,
@@ -280,7 +279,7 @@ export async function execute(
 				this.helpers.returnJsonArray({ error: error.message }),
 				{ itemData },
 			);
-			returnData.push.apply(returnData, executionErrorData);
+			returnData.push(...executionErrorData);
 		} else {
 			throw error;
 		}

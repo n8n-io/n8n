@@ -1,4 +1,4 @@
-import { Attribute, Change, type Entry } from 'ldapts';
+import { Attribute, Change } from 'ldapts';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -145,9 +145,7 @@ export class Ldap implements INodeType {
 					await client.unbind();
 				}
 
-				const unique = Object.keys(
-					Object.assign.apply(Object, [{}].concat(results.searchEntries) as [object, ...Entry[]]),
-				);
+				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
 					value: x,
@@ -182,7 +180,7 @@ export class Ldap implements INodeType {
 					if (typeof entry.objectClass === 'string') {
 						objects.push(entry.objectClass);
 					} else {
-						objects.push.apply(objects, entry.objectClass as string[]);
+						objects.push(...entry.objectClass);
 					}
 				}
 
@@ -192,7 +190,7 @@ export class Ldap implements INodeType {
 				for (const value of unique) {
 					if (value === 'custom') {
 						result.push({ name: 'custom', value: 'custom' });
-					} else result.push({ name: value, value: `(objectclass=${value})` });
+					} else result.push({ name: value as string, value: `(objectclass=${value})` });
 				}
 				return result;
 			},
@@ -220,9 +218,7 @@ export class Ldap implements INodeType {
 					await client.unbind();
 				}
 
-				const unique = Object.keys(
-					Object.assign.apply(Object, [{}].concat(results.searchEntries) as [object, ...Entry[]]),
-				);
+				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
 					value: x,

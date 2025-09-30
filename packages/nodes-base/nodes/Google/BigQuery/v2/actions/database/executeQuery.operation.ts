@@ -369,10 +369,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					}
 				}
 
-				returnData.push.apply(
-					returnData,
-					prepareOutput.call(this, queryResponse, i, raw, includeSchema),
-				);
+				returnData.push(...prepareOutput.call(this, queryResponse, i, raw, includeSchema));
 			} else {
 				jobs.push({ jobId, projectId, i, raw, includeSchema, location });
 			}
@@ -382,7 +379,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionErrorData);
+				returnData.push(...executionErrorData);
 				continue;
 			}
 			if ((error.message as string).includes('location') || error.httpCode === '404') {
@@ -425,10 +422,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if (response.jobComplete) {
 					completedJobs.push(job.jobId);
 
-					returnData.push.apply(
-						returnData,
-						prepareOutput.call(this, response, job.i, job.raw, job.includeSchema),
-					);
+					returnData.push(...prepareOutput.call(this, response, job.i, job.raw, job.includeSchema));
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
@@ -445,7 +439,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw new NodeOperationError(this.getNode(), error as Error, {

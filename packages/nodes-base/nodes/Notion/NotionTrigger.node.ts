@@ -227,7 +227,7 @@ export class NotionTrigger implements INodeType {
 					'',
 					option,
 				);
-				records.push.apply(records, results as IDataObject[]);
+				records.push(...(results as IDataObject[]));
 				hasMore = has_more;
 				if (next_cursor !== null) {
 					body.start_cursor = next_cursor;

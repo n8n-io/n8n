@@ -26,7 +26,7 @@ export class N8nJsonLoader {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const processedDocuments = await this.processItem(items[itemIndex], itemIndex);
 
-			docs.push.apply(docs, processedDocuments);
+			docs.push(...processedDocuments);
 		}
 
 		return docs;

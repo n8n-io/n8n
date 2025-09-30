@@ -3,9 +3,9 @@ import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { DynamicTool } from 'langchain/tools';
 import { NodeConnectionTypes, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
-import { nodeNameToToolName } from 'n8n-workflow';
 
 import { getMetadataFiltersValues } from '@utils/helpers';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { logWrapper } from '@utils/logWrapper';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';

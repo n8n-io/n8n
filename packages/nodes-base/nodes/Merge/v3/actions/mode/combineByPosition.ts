@@ -77,15 +77,9 @@ export async function execute(
 
 	let numEntries: number;
 	if (includeUnpaired) {
-		numEntries = Math.max.apply(
-			Math,
-			inputsData.map((input) => input.length).concat([preferred.length]),
-		);
+		numEntries = Math.max(...inputsData.map((input) => input.length), preferred.length);
 	} else {
-		numEntries = Math.min.apply(
-			Math,
-			inputsData.map((input) => input.length).concat([preferred.length]),
-		);
+		numEntries = Math.min(...inputsData.map((input) => input.length), preferred.length);
 		if (numEntries === 0) {
 			this.addExecutionHints({
 				message: 'Consider enabling "Include Any Unpaired Items" in options or check your inputs',
@@ -101,19 +95,15 @@ export async function execute(
 		const restEntries = inputsData.map((input) => input[i] ?? ({} as INodeExecutionData));
 
 		const json = {
-			...mergeIntoSingleObject.apply(null, [
+			...mergeIntoSingleObject(
 				{},
 				...restEntries.map((entry) => entry.json ?? {}),
 				preferredEntry.json ?? {},
-			]),
+			),
 		};
 
 		const binary = {
-			...merge.apply(null, [
-				{},
-				...restEntries.map((entry) => entry.binary ?? {}),
-				preferredEntry.binary ?? {},
-			]),
+			...merge({}, ...restEntries.map((entry) => entry.binary ?? {}), preferredEntry.binary ?? {}),
 		};
 
 		const pairedItem = [

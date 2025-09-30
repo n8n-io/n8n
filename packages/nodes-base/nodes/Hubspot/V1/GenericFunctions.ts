@@ -1922,7 +1922,7 @@ const reduceMetadatFields = (data: string[]) => {
 	return data
 		.reduce((a, v) => {
 			//@ts-ignore
-			a.push.apply(a, v.split(','));
+			a.push(...v.split(','));
 			return a;
 		}, [])
 		.map((email) => ({ email }));

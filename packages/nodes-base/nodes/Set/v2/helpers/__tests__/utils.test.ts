@@ -9,9 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { prepareReturnItem } from '../utils';
 import type { SetNodeOptions } from '../interfaces';
 import { INCLUDE } from '../interfaces';
-import { prepareReturnItem } from '../utils';
 
 describe('prepareReturnItem', () => {
 	const mockNode = mock<INode>({

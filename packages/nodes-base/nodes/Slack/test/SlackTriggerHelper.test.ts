@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-
 import { verifySignature } from '../SlackTriggerHelpers';
 
 // Mock crypto module

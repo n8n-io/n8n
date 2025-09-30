@@ -103,11 +103,8 @@ function getSandbox(
 		'output',
 		workflowMode === 'manual'
 			? this.sendMessageToUI.bind(this)
-			: (...args) =>
-					console.log.apply(
-						console,
-						[`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`].concat(args),
-					),
+			: (...args: unknown[]) =>
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
 	);
 	return sandbox;
 }

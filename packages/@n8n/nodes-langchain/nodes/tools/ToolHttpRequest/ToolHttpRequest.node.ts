@@ -332,9 +332,8 @@ export class ToolHttpRequest implements INodeType {
 
 		const toolParameters: ToolParameter[] = [];
 
-		toolParameters.push.apply(
-			toolParameters,
-			extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
+		toolParameters.push(
+			...extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
 		);
 
 		if (sendQuery) {

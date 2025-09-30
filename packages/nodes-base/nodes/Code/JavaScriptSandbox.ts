@@ -49,10 +49,7 @@ export class JavaScriptSandbox extends Sandbox {
 			wasm: false,
 		});
 
-		this.vm.on('console.log', (...args: unknown[]) => {
-			const params: Parameters<typeof this.emit> = ['output', ...args];
-			this.emit.apply(this, params);
-		});
+		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
 	async runCode<T = unknown>(): Promise<T> {

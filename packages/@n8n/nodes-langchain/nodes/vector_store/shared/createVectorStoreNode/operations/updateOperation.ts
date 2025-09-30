@@ -60,7 +60,7 @@ export async function handleUpdateOperation<T extends VectorStore = VectorStore>
 			}
 
 			// Add the serialized document to the result
-			resultData.push.apply(resultData, serializedDocuments);
+			resultData.push(...serializedDocuments);
 
 			// Use document ID to update the existing document
 			await vectorStore.addDocuments(processedDocuments, {

@@ -179,10 +179,7 @@ export class Code implements INodeType {
 					? this.sendMessageToUI.bind(this)
 					: CODE_ENABLE_STDOUT === 'true'
 						? (...args) =>
-								console.log.apply(
-									console,
-									[`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`].concat(args),
-								)
+								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
 						: () => {},
 			);
 			return sandbox;

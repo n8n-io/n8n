@@ -57,13 +57,13 @@ export async function mailerliteApiRequestAllItems(
 	if (this.getNode().typeVersion === 1) {
 		do {
 			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData.push(...(responseData as IDataObject[]));
 			query.offset += query.limit;
 		} while (responseData.length !== 0);
 	} else {
 		do {
 			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-			returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			returnData.push(...(responseData.data as IDataObject[]));
 			query.cursor = responseData.meta.next_cursor;
 		} while (responseData.links.next !== null);
 	}

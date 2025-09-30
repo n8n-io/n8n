@@ -168,7 +168,7 @@ export class MistralAi implements INodeType {
 											}),
 											{ itemData: { item: i } },
 										);
-										returnData.push.apply(returnData, errorData);
+										returnData.push(...errorData);
 									} else {
 										throw new NodeApiError(this.getNode(), {
 											message: `Batch job failed with status: ${jobResult.status}`,
@@ -210,7 +210,7 @@ export class MistralAi implements INodeType {
 											this.helpers.returnJsonArray({ error: result.error }),
 											{ itemData: { item: index } },
 										);
-										returnData.push.apply(returnData, executionData);
+										returnData.push(...executionData);
 									} else {
 										const data = processResponseData(result.response.body);
 
@@ -218,7 +218,7 @@ export class MistralAi implements INodeType {
 											this.helpers.returnJsonArray(data),
 											{ itemData: { item: index } },
 										);
-										returnData.push.apply(returnData, executionData);
+										returnData.push(...executionData);
 									}
 								}
 							}
@@ -231,7 +231,7 @@ export class MistralAi implements INodeType {
 								}),
 								{ itemData: { item: 0 } },
 							);
-							returnData.push.apply(returnData, executionError);
+							returnData.push(...executionError);
 						} else {
 							throw new NodeApiError(this.getNode(), error);
 						}
@@ -292,7 +292,7 @@ export class MistralAi implements INodeType {
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						} catch (error) {
 							if (this.continueOnFail()) {
 								const executionError = this.helpers.constructExecutionMetaData(
@@ -301,7 +301,7 @@ export class MistralAi implements INodeType {
 									}),
 									{ itemData: { item: i } },
 								);
-								returnData.push.apply(returnData, executionError);
+								returnData.push(...executionError);
 							} else {
 								throw new NodeApiError(this.getNode(), error);
 							}

@@ -38,7 +38,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				},
 			);
 
-			operationResult.push.apply(operationResult, executionData);
+			operationResult.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				operationResult.push({ json: this.getInputData(i)[0].json, error });

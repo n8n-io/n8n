@@ -130,7 +130,7 @@ export async function handleListing(
 
 	do {
 		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);
-		returnData.push.apply(returnData, responseData.data as IDataObject[]);
+		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);

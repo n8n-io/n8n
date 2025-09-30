@@ -1,9 +1,10 @@
-import axios from 'axios';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type Stream from 'node:stream';
 
 import { apiRequest } from '../transport';
+
+import axios from 'axios';
+import type Stream from 'node:stream';
 
 interface File {
 	name: string;

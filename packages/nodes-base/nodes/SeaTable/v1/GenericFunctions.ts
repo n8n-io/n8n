@@ -242,7 +242,7 @@ export function columnNamesGlob(
 			buffer.push(columnName);
 			return;
 		}
-		buffer.push.apply(buffer, names);
+		buffer.push(...names);
 	});
 	return buffer.filter(uniquePredicate);
 }

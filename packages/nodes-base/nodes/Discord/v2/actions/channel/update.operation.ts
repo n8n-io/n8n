@@ -137,12 +137,12 @@ export async function execute(
 				{ itemData: { item: i } },
 			);
 
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
-				returnData.push.apply(returnData, prepareErrorData.call(this, err, i));
+				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}
 

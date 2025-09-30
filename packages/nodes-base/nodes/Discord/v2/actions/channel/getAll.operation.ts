@@ -82,12 +82,12 @@ export async function execute(
 			{ itemData: { item: 0 } },
 		);
 
-		returnData.push.apply(returnData, executionData);
+		returnData.push(...executionData);
 	} catch (error) {
 		const err = parseDiscordError.call(this, error);
 
 		if (this.continueOnFail()) {
-			returnData.push.apply(returnData, prepareErrorData.call(this, err, 0));
+			returnData.push(...prepareErrorData.call(this, err, 0));
 		}
 
 		throw err;

@@ -284,7 +284,7 @@ export class Dropcontact implements INodeType {
 								itemData: mapPairedItemsFrom(entryData),
 							},
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} else {
 						throw new NodeApiError(this.getNode(), {
 							error: responseData.reason || 'invalid request',
@@ -312,7 +312,7 @@ export class Dropcontact implements INodeType {
 									itemData: mapPairedItemsFrom(entryData),
 								},
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason,
@@ -325,7 +325,7 @@ export class Dropcontact implements INodeType {
 								this.helpers.returnJsonArray(d),
 								{ itemData: { item: index } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						});
 					}
 				} else {
@@ -335,7 +335,7 @@ export class Dropcontact implements INodeType {
 							itemData: mapPairedItemsFrom(entryData),
 						},
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -355,7 +355,7 @@ export class Dropcontact implements INodeType {
 								this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason || 'invalid request',
@@ -366,7 +366,7 @@ export class Dropcontact implements INodeType {
 						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 		}

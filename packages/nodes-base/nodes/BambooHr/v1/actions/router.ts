@@ -26,28 +26,16 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 		try {
 			if (bamboohr.resource === 'employee') {
-				operationResult.push.apply(
-					operationResult,
-					await employee[bamboohr.operation].execute.call(this, i),
-				);
+				operationResult.push(...(await employee[bamboohr.operation].execute.call(this, i)));
 			} else if (bamboohr.resource === 'employeeDocument') {
-				operationResult.push.apply(
-					operationResult,
-					//@ts-ignore
-					await employeeDocument[bamboohr.operation].execute.call(this, i),
-				);
+				//@ts-ignore
+				operationResult.push(...(await employeeDocument[bamboohr.operation].execute.call(this, i)));
 			} else if (bamboohr.resource === 'file') {
-				operationResult.push.apply(
-					operationResult,
-					//@ts-ignore
-					await file[bamboohr.operation].execute.call(this, i),
-				);
+				//@ts-ignore
+				operationResult.push(...(await file[bamboohr.operation].execute.call(this, i)));
 			} else if (bamboohr.resource === 'companyReport') {
-				operationResult.push.apply(
-					operationResult,
-					//@ts-ignore
-					await companyReport[bamboohr.operation].execute.call(this, i),
-				);
+				//@ts-ignore
+				operationResult.push(...(await companyReport[bamboohr.operation].execute.call(this, i)));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {

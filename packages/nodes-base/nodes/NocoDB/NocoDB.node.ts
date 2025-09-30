@@ -394,7 +394,7 @@ export class NocoDB implements INodeType {
 							body[i] = { ...body[i], ...responseData[i] };
 						}
 
-						returnData.push.apply(returnData, body);
+						returnData.push(...body);
 					} else {
 						// Calculate ID manually and add to return data
 						let id = responseData[0];
@@ -402,7 +402,7 @@ export class NocoDB implements INodeType {
 							body[i].id = id--;
 						}
 
-						returnData.push.apply(returnData, body);
+						returnData.push(...body);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -444,14 +444,10 @@ export class NocoDB implements INodeType {
 				try {
 					responseData = (await apiRequest.call(this, requestMethod, endPoint, body, qs)) as any[];
 					if (version === 1) {
-						returnData.push.apply(
-							returnData,
-							items.map((item) => item.json),
-						);
+						returnData.push(...items.map((item) => item.json));
 					} else if (version === 2) {
-						returnData.push.apply(
-							returnData,
-							responseData.map((result: number, index: number) => {
+						returnData.push(
+							...responseData.map((result: number, index: number) => {
 								if (result === 0) {
 									const errorMessage = `The row with the ID "${body[index].id}" could not be deleted. It probably doesn't exist.`;
 									if (this.continueOnFail()) {
@@ -469,7 +465,7 @@ export class NocoDB implements INodeType {
 							}),
 						);
 					} else if (version === 3) {
-						returnData.push.apply(returnData, responseData);
+						returnData.push(...responseData);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -480,7 +476,7 @@ export class NocoDB implements INodeType {
 			}
 
 			if (operation === 'getAll') {
-				const data: INodeExecutionData[] = [];
+				const data = [];
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 				try {
 					for (let i = 0; i < items.length; i++) {
@@ -525,7 +521,7 @@ export class NocoDB implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 
 						if (downloadAttachments) {
 							const downloadFieldNames = (
@@ -537,7 +533,7 @@ export class NocoDB implements INodeType {
 								downloadFieldNames,
 								[{ item: i }],
 							);
-							data.push.apply(data, response);
+							data.push(...response);
 						}
 					}
 
@@ -611,14 +607,14 @@ export class NocoDB implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							newItems.push.apply(newItems, executionData);
+							newItems.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 
-							newItems.push.apply(newItems, executionData);
+							newItems.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -627,7 +623,7 @@ export class NocoDB implements INodeType {
 								{ itemData: { item: i } },
 							);
 
-							newItems.push.apply(newItems, executionData);
+							newItems.push(...executionData);
 							continue;
 						}
 						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
@@ -735,11 +731,10 @@ export class NocoDB implements INodeType {
 					responseData = (await apiRequest.call(this, requestMethod, endPoint, body, qs)) as any[];
 
 					if (version === 1) {
-						returnData.push.apply(returnData, body);
+						returnData.push(...body);
 					} else if (version === 2) {
-						returnData.push.apply(
-							returnData,
-							responseData.map((result: number, index: number) => {
+						returnData.push(
+							...responseData.map((result: number, index: number) => {
 								if (result === 0) {
 									const errorMessage = `The row with the ID "${body[index].id}" could not be updated. It probably doesn't exist.`;
 									if (this.continueOnFail()) {
@@ -761,7 +756,7 @@ export class NocoDB implements INodeType {
 							body[i] = { ...body[i], ...responseData[i] };
 						}
 
-						returnData.push.apply(returnData, body);
+						returnData.push(...body);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {

@@ -267,7 +267,7 @@ export class Flow implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 		return [returnData];
 	}

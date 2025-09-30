@@ -177,7 +177,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			} else if (operation === 'create') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
@@ -219,7 +219,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}),
 				);
 			} else if (operation === 'getAll') {
@@ -266,7 +266,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							{ itemData: fallbackPairedItems ?? [{ item: i }] },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({
@@ -297,7 +297,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}),
 				);
 			} else if (operation === 'upsert') {
@@ -352,7 +352,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} else if (operation === 'query') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
@@ -391,7 +391,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							{ itemData: { item: i } },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					}),
 				);
 			}
@@ -430,7 +430,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							{ itemData: fallbackPairedItems ?? [{ item: i }] },
 						);
 
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({

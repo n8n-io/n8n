@@ -227,7 +227,7 @@ export async function pgQueryV2(
 						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					result.push.apply(result, executionData);
+					result.push(...executionData);
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -251,7 +251,7 @@ export async function pgQueryV2(
 						wrapData(transactionResult as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					result.push.apply(result, executionData);
+					result.push(...executionData);
 				} catch (err) {
 					if (!continueOnFail) throw err;
 					result.push({
@@ -416,9 +416,8 @@ export async function pgInsertV2(
 				const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
-					result.push.apply(
-						result,
-						this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
+					result.push(
+						...this.helpers.constructExecutionMetaData(wrapData(insertResult as IDataObject[]), {
 							itemData: { item: i },
 						}),
 					);
@@ -449,7 +448,7 @@ export async function pgInsertV2(
 								itemData: { item: i },
 							},
 						);
-						result.push.apply(result, executionData);
+						result.push(...executionData);
 					}
 				} catch (err) {
 					if (!continueOnFail) {
@@ -689,7 +688,7 @@ export async function pgUpdateV2(
 							wrapData(transactionResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						result.push.apply(result, executionData);
+						result.push(...executionData);
 					} catch (err) {
 						if (!continueOnFail) throw err;
 						result.push({
@@ -717,7 +716,7 @@ export async function pgUpdateV2(
 							wrapData(independentResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						result.push.apply(result, executionData);
+						result.push(...executionData);
 					} catch (err) {
 						if (!continueOnFail) throw err;
 						result.push({

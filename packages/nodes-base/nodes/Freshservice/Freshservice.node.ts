@@ -232,11 +232,8 @@ export class Freshservice implements INodeType {
 				};
 
 				let fields: any[] = [];
-				fields = fields.concat
-					.apply(
-						fields,
-						asset_type_fields.map((data) => data.fields),
-					)
+				fields = fields
+					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
 
 				return toOptions(fields);
@@ -1379,7 +1376,7 @@ export class Freshservice implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionErrorData);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
@@ -1389,7 +1386,7 @@ export class Freshservice implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push.apply(returnData, executionData);
+			returnData.push(...executionData);
 		}
 
 		return [returnData];

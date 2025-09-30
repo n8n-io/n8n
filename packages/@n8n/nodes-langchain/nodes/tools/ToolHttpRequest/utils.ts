@@ -459,9 +459,8 @@ function prepareParameters(
 				parameters.push(parameter);
 			} else if (entry.value) {
 				// if value has placeholders push them to parameters
-				parameters.push.apply(
-					parameters,
-					extractParametersFromText(placeholders, entry.value, sendIn, entry.name),
+				parameters.push(
+					...extractParametersFromText(placeholders, entry.value, sendIn, entry.name),
 				);
 				values[entry.name] = entry.value; //push to user provided values
 			}
@@ -469,9 +468,8 @@ function prepareParameters(
 	}
 
 	if (parametersInputType === 'json' && jsonWithPlaceholders) {
-		parameters.push.apply(
-			parameters,
-			extractParametersFromText(placeholders, jsonWithPlaceholders, sendIn, `${sendIn + 'Raw'}`),
+		parameters.push(
+			...extractParametersFromText(placeholders, jsonWithPlaceholders, sendIn, `${sendIn + 'Raw'}`),
 		);
 	}
 
@@ -543,7 +541,7 @@ export const updateParametersAndOptions = (options: {
 		rawRequestOptions[requestOptionsProperty],
 	);
 
-	toolParameters.push.apply(toolParameters, inputParameters.parameters);
+	toolParameters.push(...inputParameters.parameters);
 
 	requestOptions[requestOptionsProperty] = {
 		...(requestOptions[requestOptionsProperty] as IDataObject),

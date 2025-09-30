@@ -494,27 +494,24 @@ const block = (blockType: string): INodeProperties[] => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
 		case 'to_do':
-			data.push.apply(data, todo(blockType));
-			data.push.apply(
-				data,
-				richText({
+			data.push(...todo(blockType));
+			data.push(
+				...richText({
 					show: {
 						type: [blockType],
 					},
 				}),
 			);
-			data.push.apply(
-				data,
-				textContent({
+			data.push(
+				...textContent({
 					show: {
 						type: [blockType],
 						richText: [false],
 					},
 				}),
 			);
-			data.push.apply(
-				data,
-				text({
+			data.push(
+				...text({
 					show: {
 						type: [blockType],
 						richText: [true],
@@ -523,32 +520,29 @@ const block = (blockType: string): INodeProperties[] => {
 			);
 			break;
 		case 'child_page':
-			data.push.apply(data, title(blockType));
+			data.push(...title(blockType));
 			break;
 		case 'image':
-			data.push.apply(data, imageBlock(blockType));
+			data.push(...imageBlock(blockType));
 			break;
 		default:
-			data.push.apply(
-				data,
-				richText({
+			data.push(
+				...richText({
 					show: {
 						type: [blockType],
 					},
 				}),
 			);
-			data.push.apply(
-				data,
-				textContent({
+			data.push(
+				...textContent({
 					show: {
 						type: [blockType],
 						richText: [false],
 					},
 				}),
 			);
-			data.push.apply(
-				data,
-				text({
+			data.push(
+				...text({
 					show: {
 						type: [blockType],
 						richText: [true],

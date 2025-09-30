@@ -63,7 +63,7 @@ export async function awsApiRequestAllItems(
 		)) as IDataObject;
 
 		const items = (response[propertyName] ?? []) as IDataObject[];
-		returnData.push.apply(returnData, items);
+		returnData.push(...items);
 
 		nextToken = response.NextToken as string | undefined;
 	} while (nextToken);

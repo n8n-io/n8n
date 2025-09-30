@@ -82,7 +82,7 @@ export async function handleListing(
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
-		returnData.push.apply(returnData, items as IDataObject[]);
+		returnData.push(...(items as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);

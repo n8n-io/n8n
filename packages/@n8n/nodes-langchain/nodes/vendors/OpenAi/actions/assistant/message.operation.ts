@@ -20,11 +20,11 @@ import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
 import { getConnectedTools } from '@utils/helpers';
-import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 const properties: INodeProperties[] = [
 	assistantRLC,

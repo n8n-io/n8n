@@ -324,7 +324,7 @@ export class QuickChart implements INodeType {
 			if (labelsUi.length) {
 				for (const labelValue of labelsUi as [{ label: string[] | string }]) {
 					if (Array.isArray(labelValue.label)) {
-						labels?.push.apply(labels, labelValue.label);
+						labels?.push(...labelValue.label);
 					} else {
 						labels?.push(labelValue.label);
 					}
@@ -337,7 +337,7 @@ export class QuickChart implements INodeType {
 				'Labels Array is not a valid array, use valid JSON format, or specify it by expressions';
 
 			if (Array.isArray(labelsArray)) {
-				labels.push.apply(labels, labelsArray);
+				labels.push(...labelsArray);
 			} else {
 				const labelsArrayParsed = jsonParse<string[]>(labelsArray, {
 					errorMessage,
@@ -345,7 +345,7 @@ export class QuickChart implements INodeType {
 				if (!Array.isArray(labelsArrayParsed)) {
 					throw new NodeOperationError(this.getNode(), errorMessage);
 				}
-				labels.push.apply(labels, labelsArrayParsed);
+				labels.push(...labelsArrayParsed);
 			}
 		}
 

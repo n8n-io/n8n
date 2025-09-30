@@ -218,7 +218,7 @@ export class Baserow implements INodeType {
 						this.helpers.returnJsonArray(rows),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//             get
@@ -235,7 +235,7 @@ export class Baserow implements INodeType {
 						this.helpers.returnJsonArray(row as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'create') {
 					// ----------------------------------
 					//             create
@@ -274,7 +274,7 @@ export class Baserow implements INodeType {
 						this.helpers.returnJsonArray(createdRow as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//             update
@@ -315,7 +315,7 @@ export class Baserow implements INodeType {
 						this.helpers.returnJsonArray(updatedRow as Row),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//             delete
@@ -332,7 +332,7 @@ export class Baserow implements INodeType {
 						[{ json: { success: true } }],
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

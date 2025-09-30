@@ -338,7 +338,7 @@ export class Coda implements INodeType {
 								this.helpers.returnJsonArray(responseData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({
@@ -347,7 +347,7 @@ export class Coda implements INodeType {
 								}),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -355,7 +355,7 @@ export class Coda implements INodeType {
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -491,7 +491,7 @@ export class Coda implements INodeType {
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -512,14 +512,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -546,14 +546,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -575,14 +575,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -608,14 +608,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -637,14 +637,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -670,14 +670,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -698,7 +698,7 @@ export class Coda implements INodeType {
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 				return [returnData];
 			}
@@ -720,14 +720,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, responseData);
+						returnData.push(...responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -823,14 +823,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -852,14 +852,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;
@@ -885,14 +885,14 @@ export class Coda implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, executionData);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionErrorData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.messsage }),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionErrorData);
+							returnData.push(...executionErrorData);
 							continue;
 						}
 						throw error;

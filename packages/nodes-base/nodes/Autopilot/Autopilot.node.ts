@@ -301,14 +301,14 @@ export class Autopilot implements INodeType {
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
 						[{ json: { error: error.message } }],
 						{ itemData: { item: i } },
 					);
-					responseData.push.apply(responseData, exectionErrorWithMetaData);
+					responseData.push(...exectionErrorWithMetaData);
 					continue;
 				}
 

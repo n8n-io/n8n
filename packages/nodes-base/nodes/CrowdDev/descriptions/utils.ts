@@ -24,7 +24,7 @@ export const showFor =
 export const mapWith =
 	<T>(...objects: Array<Partial<T>>) =>
 	(item: Partial<T>) =>
-		Object.assign.apply(Object, [{}, item].concat(objects) as [object, ...Array<Partial<T>>]);
+		Object.assign({}, item, ...objects);
 
 export const getId = (): INodeProperties => ({
 	displayName: 'ID',

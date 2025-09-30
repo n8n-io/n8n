@@ -259,9 +259,8 @@ export async function execute(
 	const rawData = this.getNodeParameter('options.rawData', 0, false) as boolean;
 	const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
-	returnData.push.apply(
-		returnData,
-		prepareOutput.call(this, this.getNode(), responseData, {
+	returnData.push(
+		...prepareOutput.call(this, this.getNode(), responseData, {
 			columnsRow,
 			dataProperty,
 			rawData,

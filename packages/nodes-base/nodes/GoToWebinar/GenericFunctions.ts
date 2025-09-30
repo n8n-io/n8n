@@ -106,9 +106,9 @@ export async function goToWebinarApiRequestAllItems(
 		if (responseData.page && parseInt(responseData.page.totalElements as string, 10) === 0) {
 			return [];
 		} else if (responseData._embedded?.[key]) {
-			returnData.push.apply(returnData, responseData._embedded[key] as IDataObject[]);
+			returnData.push(...(responseData._embedded[key] as IDataObject[]));
 		} else {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData.push(...(responseData as IDataObject[]));
 		}
 
 		const limit = query.limit as number | undefined;

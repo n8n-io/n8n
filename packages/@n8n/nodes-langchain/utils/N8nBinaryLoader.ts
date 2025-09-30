@@ -45,7 +45,7 @@ export class N8nBinaryLoader {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const processedDocuments = await this.processItem(items[itemIndex], itemIndex);
 
-			docs.push.apply(docs, processedDocuments);
+			docs.push(...processedDocuments);
 		}
 
 		return docs;
@@ -183,13 +183,13 @@ export class N8nBinaryLoader {
 
 					for (const fileKey of binaryDataKeys) {
 						const processedDocuments = await this.processItemByKey(item, itemIndex, fileKey);
-						docs.push.apply(docs, processedDocuments);
+						docs.push(...processedDocuments);
 					}
 				}
 			}
 		} else {
 			const processedDocuments = await this.processItemByKey(item, itemIndex, this.binaryDataKey);
-			docs.push.apply(docs, processedDocuments);
+			docs.push(...processedDocuments);
 		}
 
 		return docs;
@@ -221,7 +221,7 @@ export class N8nBinaryLoader {
 		const loader = await this.getLoader(mimeType, filePathOrBlob, itemIndex);
 		const loadedDoc = await this.loadDocuments(loader);
 
-		docs.push.apply(docs, loadedDoc);
+		docs.push(...loadedDoc);
 
 		if (metadata) {
 			docs.forEach((document) => {

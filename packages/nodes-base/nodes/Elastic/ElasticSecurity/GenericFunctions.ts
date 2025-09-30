@@ -72,7 +72,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
-		returnData.push.apply(returnData, items as IDataObject[]);
+		returnData.push(...(items as IDataObject[]));
 	} while (returnData.length < responseData.total);
 
 	return returnData;

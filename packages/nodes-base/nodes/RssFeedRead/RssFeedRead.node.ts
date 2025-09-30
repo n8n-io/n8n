@@ -158,7 +158,7 @@ export class RssFeedRead implements INodeType {
 						itemData,
 					});
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -151,7 +151,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 		}
@@ -178,7 +178,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -297,7 +297,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 
 			if (operation === 'delete') {
@@ -318,7 +318,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -383,7 +383,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -467,7 +467,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 
 			if (operation === 'upsert') {
@@ -550,7 +550,7 @@ export class QuickBase implements INodeType {
 					{ itemData },
 				);
 
-				returnData.push.apply(returnData, executionData);
+				returnData.push(...executionData);
 			}
 		}
 
@@ -607,7 +607,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -632,7 +632,7 @@ export class QuickBase implements INodeType {
 						{ itemData: { item: i } },
 					);
 
-					returnData.push.apply(returnData, executionData);
+					returnData.push(...executionData);
 				}
 			}
 		}

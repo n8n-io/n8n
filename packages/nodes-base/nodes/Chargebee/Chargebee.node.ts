@@ -608,7 +608,7 @@ export class Chargebee implements INodeType {
 							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
 							{ itemData: { item: i } },
 						);
-						returnData.push.apply(returnData, responseData);
+						returnData.push(...responseData);
 					});
 				} else if (resource === 'invoice' && operation === 'pdfUrl') {
 					const data: IDataObject = {};
@@ -619,13 +619,13 @@ export class Chargebee implements INodeType {
 						this.helpers.returnJsonArray({ ...data }),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, responseData);
+					returnData.push(...responseData);
 				} else {
 					responseData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
-					returnData.push.apply(returnData, responseData);
+					returnData.push(...responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

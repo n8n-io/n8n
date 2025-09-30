@@ -84,7 +84,7 @@ export async function awsApiRequestAllItems(
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push.apply(returnData, responseData.Items as IDataObject[]);
+		returnData.push(...(responseData.Items as IDataObject[]));
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;
