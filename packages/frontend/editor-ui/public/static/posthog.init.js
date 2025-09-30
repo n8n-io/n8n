@@ -13,7 +13,7 @@
 			}
 			((p = t.createElement('script')).type = 'text/javascript'),
 				(p.async = !0),
-				(p.src = (s.ui_host || s.api_host) + '/static/array.js'),
+				(p.src = s.api_host + '/static/array.js'),
 				(r = t.getElementsByTagName('script')[0]).parentNode.insertBefore(p, r);
 			var u = e;
 			for (
