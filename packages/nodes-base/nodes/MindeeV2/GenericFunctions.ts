@@ -32,8 +32,8 @@ interface MindeeV2UIParams {
  * @param method - HTTP method.
  * @param url - The Mindee API's (complete) URL.
  * @param body - The request body data.
- * @param q - The query param
- * @param headers
+ * @param qs - The query string param.
+ * @param headers - Additional request headers (default: empty object)
  * @param option - Additional request options (default: empty object)
  * @returns The API response data
  * @throws NodeApiError when the API request fails
@@ -43,7 +43,7 @@ export async function mindeeApiRequest(
 	method: IHttpRequestMethods,
 	url: string,
 	body: IDataObject | FormData = {},
-	q: IDataObject = {},
+	qs: IDataObject = {},
 	headers = {} as IDataObject,
 	option = {},
 ): Promise<any> {
@@ -52,9 +52,12 @@ export async function mindeeApiRequest(
 		method,
 		url,
 		body,
+		qs,
 	};
 	try {
-		delete options.qs;
+		if (!qs) {
+			delete options.qs;
+		}
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
