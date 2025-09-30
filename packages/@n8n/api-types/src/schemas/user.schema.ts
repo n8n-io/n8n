@@ -44,8 +44,8 @@ export const userAdminSchema = userMemberSchema.extend({
 
 export const usersListSchema = z.object({
 	count: z.number(),
-	items: z.array(z.union([userMemberSchema, userAdminSchema])),
+	items: z.array(z.union([userAdminSchema, userMemberSchema])),
 });
 
-export type User = z.infer<typeof userMemberSchema> | z.infer<typeof userAdminSchema>;
+export type User = z.infer<typeof userAdminSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;

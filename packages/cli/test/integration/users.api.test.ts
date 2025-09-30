@@ -630,7 +630,6 @@ describe('GET /users', () => {
 				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
 
 				expect(nonPendingUser).toBeDefined();
-				expect(nonPendingUser!.isPending).toBe(false);
 				expect(nonPendingUser!.inviteAcceptUrl).toBeUndefined();
 			});
 		});

@@ -140,7 +140,11 @@ export class UsersController {
 
 		return usersListSchema.parse({
 			count,
-			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+			items: this.removeSupplementaryFields(
+				publicUsers,
+				listQueryOptions,
+				hasGlobalScope(req.user, 'user:create'),
+			),
 		});
 	}
 
