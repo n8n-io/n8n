@@ -69,23 +69,20 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 
 		// Format the documents for the output similar to the original tool format
 		const serializedDocs = docs.map(([doc]) => {
-			let document;
 			if (includeDocumentMetadata) {
-				document = {
-					type: 'text',
+				return {
+					type: 'text' as const,
 					text: JSON.stringify({ ...doc }),
 				};
 			} else {
-				document = {
+				return {
 					pageContent: JSON.stringify({ pageContent: doc.pageContent }),
 				};
 			}
-
-			return document;
 		});
 
 		// Log the AI event for analytics
-		logAiEvent(context, 'ai-vector-store-searched', { query });
+		logAiEvent(context, 'ai-vector-store-searched', { input: query });
 
 		return [
 			{

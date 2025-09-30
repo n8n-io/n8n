@@ -38,7 +38,7 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 
 		inputData = [
 			{
-				json: { query: 'test search query' },
+				json: { input: 'test search query' },
 				pairedItem: { item: 0 },
 			},
 		];
@@ -120,21 +120,21 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 			{ testFilter: 'value' },
 		);
 
-		expect(result).toHaveLength(3);
-		expect(result[0]).toEqual({
-			json: {
-				document: {
-					pageContent: 'test content 1',
-					metadata: { test: 'metadata 1' },
-				},
-				score: 0.95,
-			},
-			pairedItem: { item: 0 },
+		expect(result).toHaveLength(1);
+		expect(result[0].json.response).toHaveLength(3);
+		const response = result[0].json.response as Array<{ type: string; text: string }>;
+		expect(response[0]).toEqual({
+			type: 'text',
+			text: JSON.stringify({
+				pageContent: 'test content 1',
+				metadata: { test: 'metadata 1' },
+			}),
 		});
+		expect(result[0].pairedItem).toEqual({ item: 0 });
 
 		expect(mockArgs.releaseVectorStoreClient).toHaveBeenCalledWith(mockVectorStore);
 		expect(logAiEvent).toHaveBeenCalledWith(mockContext, 'ai-vector-store-searched', {
-			query: 'test search query',
+			input: 'test search query',
 		});
 	});
 
@@ -143,23 +143,23 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 
 		await expect(
 			handleRetrieveAsToolExecuteOperation(mockContext, mockArgs, mockEmbeddings, 0),
-		).rejects.toThrow('Input data must contain a "query" field with the search query');
+		).rejects.toThrow('Input data must contain a "input" field with the search query');
 	});
 
 	it('should throw error when query is not a string', async () => {
-		inputData[0].json = { query: 123 };
+		inputData[0].json = { input: 123 };
 
 		await expect(
 			handleRetrieveAsToolExecuteOperation(mockContext, mockArgs, mockEmbeddings, 0),
-		).rejects.toThrow('Input data must contain a "query" field with the search query');
+		).rejects.toThrow('Input data must contain a "input" field with the search query');
 	});
 
 	it('should throw error when query is empty string', async () => {
-		inputData[0].json = { query: '' };
+		inputData[0].json = { input: '' };
 
 		await expect(
 			handleRetrieveAsToolExecuteOperation(mockContext, mockArgs, mockEmbeddings, 0),
-		).rejects.toThrow('Input data must contain a "query" field with the search query');
+		).rejects.toThrow('Input data must contain a "input" field with the search query');
 	});
 
 	it('should include metadata when includeDocumentMetadata is true', async () => {
@@ -170,9 +170,12 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 			0,
 		);
 
-		expect(result[0].json.document).toHaveProperty('metadata');
-		const document = result[0].json.document as { pageContent: string; metadata: any };
-		expect(document.metadata).toEqual({ test: 'metadata 1' });
+		expect(result).toHaveLength(1);
+		expect(result[0].json.response).toHaveLength(3);
+		const response = result[0].json.response as Array<{ type: string; text: string }>;
+		const firstDoc = JSON.parse(response[0].text);
+		expect(firstDoc).toHaveProperty('metadata');
+		expect(firstDoc.metadata).toEqual({ test: 'metadata 1' });
 	});
 
 	it('should exclude metadata when includeDocumentMetadata is false', async () => {
@@ -185,8 +188,12 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 			0,
 		);
 
-		expect(result[0].json.document).not.toHaveProperty('metadata');
-		expect(result[0].json.document).toEqual({
+		expect(result).toHaveLength(1);
+		expect(result[0].json.response).toHaveLength(3);
+		const response = result[0].json.response as Array<{ pageContent: string }>;
+		const firstDoc = JSON.parse(response[0].pageContent);
+		expect(firstDoc).not.toHaveProperty('metadata');
+		expect(firstDoc).toEqual({
 			pageContent: 'test content 1',
 		});
 	});
@@ -257,20 +264,22 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				0,
 			);
 
-			expect(result).toHaveLength(3);
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(3);
+			const response = result[0].json.response as Array<{ type: string; text: string }>;
 
 			// First result should be the reranked first document (was second in original order)
-			const doc0 = result[0].json.document as { pageContent: string; metadata: any };
+			const doc0 = JSON.parse(response[0].text);
 			expect(doc0.pageContent).toEqual('test content 2');
 			expect(doc0.metadata).toEqual({ test: 'metadata 2' });
 
 			// Second result should be the reranked second document (was first in original order)
-			const doc1 = result[1].json.document as { pageContent: string; metadata: any };
+			const doc1 = JSON.parse(response[1].text);
 			expect(doc1.pageContent).toEqual('test content 1');
 			expect(doc1.metadata).toEqual({ test: 'metadata 1' });
 
 			// Third result should be the reranked third document
-			const doc2 = result[2].json.document as { pageContent: string; metadata: any };
+			const doc2 = JSON.parse(response[2].text);
 			expect(doc2.pageContent).toEqual('test content 3');
 			expect(doc2.metadata).toEqual({ test: 'metadata 3' });
 		});
@@ -285,10 +294,17 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				0,
 			);
 
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(3);
+			const response = result[0].json.response as Array<{ pageContent: string }>;
+
 			// Should maintain reranked order but exclude metadata
-			expect(result[0].json.document).toEqual({ pageContent: 'test content 2' });
-			expect(result[1].json.document).toEqual({ pageContent: 'test content 1' });
-			expect(result[2].json.document).toEqual({ pageContent: 'test content 3' });
+			const doc0 = JSON.parse(response[0].pageContent);
+			expect(doc0).toEqual({ pageContent: 'test content 2' });
+			const doc1 = JSON.parse(response[1].pageContent);
+			expect(doc1).toEqual({ pageContent: 'test content 1' });
+			const doc2 = JSON.parse(response[2].pageContent);
+			expect(doc2).toEqual({ pageContent: 'test content 3' });
 		});
 
 		it('should not call reranker when useReranker is false', async () => {
@@ -330,16 +346,18 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				0,
 			);
 
-			// Check that relevanceScore is used as score but not included in the final metadata
-			expect(result[0].json.score).toBe(0.98);
-			const rerankDoc0 = result[0].json.document as { pageContent: string; metadata: any };
-			expect(rerankDoc0.metadata).toEqual({ test: 'metadata 2', otherField: 'value' });
-			expect(rerankDoc0.metadata).not.toHaveProperty('relevanceScore');
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(2);
+			const response = result[0].json.response as Array<{ type: string; text: string }>;
 
-			expect(result[1].json.score).toBe(0.92);
-			const rerankDoc1 = result[1].json.document as { pageContent: string; metadata: any };
-			expect(rerankDoc1.metadata).toEqual({ test: 'metadata 1' });
-			expect(rerankDoc1.metadata).not.toHaveProperty('relevanceScore');
+			// Check that relevanceScore is used but metadata is preserved without relevanceScore
+			const doc0 = JSON.parse(response[0].text);
+			expect(doc0.metadata).toEqual({ test: 'metadata 2', otherField: 'value' });
+			expect(doc0.metadata).not.toHaveProperty('relevanceScore');
+
+			const doc1 = JSON.parse(response[1].text);
+			expect(doc1.metadata).toEqual({ test: 'metadata 1' });
+			expect(doc1.metadata).not.toHaveProperty('relevanceScore');
 		});
 
 		it('should not use reranker when no documents are found', async () => {
@@ -354,7 +372,8 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 
 			expect(mockContext.getInputConnectionData).not.toHaveBeenCalled();
 			expect(mockReranker.compressDocuments).not.toHaveBeenCalled();
-			expect(result).toHaveLength(0);
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(0);
 		});
 	});
 
@@ -369,9 +388,10 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				0,
 			);
 
-			expect(result).toHaveLength(0);
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(0);
 			expect(logAiEvent).toHaveBeenCalledWith(mockContext, 'ai-vector-store-searched', {
-				query: 'test search query',
+				input: 'test search query',
 			});
 		});
 	});
@@ -397,7 +417,8 @@ describe('handleRetrieveAsToolExecuteOperation', () => {
 				0,
 			);
 
-			expect(result).toHaveLength(3);
+			expect(result).toHaveLength(1);
+			expect(result[0].json.response).toHaveLength(3);
 			// Should not throw error when releaseVectorStoreClient is undefined
 		});
 	});

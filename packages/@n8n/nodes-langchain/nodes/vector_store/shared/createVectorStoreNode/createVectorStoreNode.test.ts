@@ -250,7 +250,7 @@ describe('createVectorStoreNode', () => {
 
 				const inputData: INodeExecutionData[] = [
 					{
-						json: { query: MOCK_SEARCH_VALUE },
+						json: { input: MOCK_SEARCH_VALUE },
 						pairedItem: { item: 0 },
 					},
 				];
@@ -267,26 +267,26 @@ describe('createVectorStoreNode', () => {
 
 				// ASSERT
 				expect(result).toHaveLength(1); // One output array
-				expect(result[0]).toHaveLength(2); // Two documents returned
+				expect(result[0][0]?.json?.response).toHaveLength(2); // Two documents returned
 
 				expect(result[0][0]).toEqual({
 					json: {
-						document: {
-							pageContent: 'first page',
-							metadata: { id: 123 },
-						},
-						score: 0,
-					},
-					pairedItem: { item: 0 },
-				});
-
-				expect(result[0][1]).toEqual({
-					json: {
-						document: {
-							pageContent: 'second page',
-							metadata: { id: 567 },
-						},
-						score: 0,
+						response: [
+							{
+								type: 'text',
+								text: JSON.stringify({
+									pageContent: 'first page',
+									metadata: { id: 123 },
+								}),
+							},
+							{
+								type: 'text',
+								text: JSON.stringify({
+									pageContent: 'second page',
+									metadata: { id: 567 },
+								}),
+							},
+						],
 					},
 					pairedItem: { item: 0 },
 				});
@@ -309,7 +309,7 @@ describe('createVectorStoreNode', () => {
 
 				const inputData: INodeExecutionData[] = [
 					{
-						json: { query: MOCK_SEARCH_VALUE },
+						json: { input: MOCK_SEARCH_VALUE },
 						pairedItem: { item: 0 },
 					},
 				];
@@ -325,9 +325,13 @@ describe('createVectorStoreNode', () => {
 				const result = await nodeType.execute.call(executeContext);
 
 				// ASSERT
-				expect(result[0][0].json.document).not.toHaveProperty('metadata');
-				expect(result[0][0].json.document).toEqual({ pageContent: 'first page' });
-				expect(result[0][1].json.document).toEqual({ pageContent: 'second page' });
+				expect(result[0][0].json.response).toHaveLength(2);
+				const response = result[0][0].json.response as Array<{ pageContent: string }>;
+				const doc0 = JSON.parse(response[0].pageContent);
+				const doc1 = JSON.parse(response[1].pageContent);
+				expect(doc0).not.toHaveProperty('metadata');
+				expect(doc0).toEqual({ pageContent: 'first page' });
+				expect(doc1).toEqual({ pageContent: 'second page' });
 			});
 
 			it('should process multiple input items', async () => {
@@ -340,11 +344,11 @@ describe('createVectorStoreNode', () => {
 
 				const inputData: INodeExecutionData[] = [
 					{
-						json: { query: 'first query' },
+						json: { input: 'first query' },
 						pairedItem: { item: 0 },
 					},
 					{
-						json: { query: 'second query' },
+						json: { input: 'second query' },
 						pairedItem: { item: 1 },
 					},
 				];
@@ -361,18 +365,18 @@ describe('createVectorStoreNode', () => {
 
 				// ASSERT
 				expect(result).toHaveLength(1);
-				expect(result[0]).toHaveLength(4); // 2 documents per query × 2 queries
+				expect(result[0]).toHaveLength(2); // One result item per input query
 
 				// Check that embedQuery was called for both input queries
 				expect(embeddings.embedQuery).toHaveBeenCalledTimes(2);
 				expect(embeddings.embedQuery).toHaveBeenNthCalledWith(1, 'first query');
 				expect(embeddings.embedQuery).toHaveBeenNthCalledWith(2, 'second query');
 
-				// Check pairedItem references
+				// Check pairedItem references and that each result contains both documents
 				expect(result[0][0].pairedItem).toEqual({ item: 0 });
-				expect(result[0][1].pairedItem).toEqual({ item: 0 });
-				expect(result[0][2].pairedItem).toEqual({ item: 1 });
-				expect(result[0][3].pairedItem).toEqual({ item: 1 });
+				expect(result[0][0].json.response).toHaveLength(2); // 2 documents for first query
+				expect(result[0][1].pairedItem).toEqual({ item: 1 });
+				expect(result[0][1].json.response).toHaveLength(2); // 2 documents for second query
 			});
 
 			it('should throw error for unsupported mode in execute', async () => {
