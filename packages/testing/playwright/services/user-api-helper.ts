@@ -15,7 +15,7 @@ export interface TestUser {
 
 /**
  * Creates test users via n8n's invitation API.
- * Note: Using this with n8n.api will affect browser cookies. Use with the isolated api fixture instead.
+ * Note: Using this with n8n.api will affect browser cookies. Use with the isolated api fixture instead unless you want to overwrite the existing user
  */
 export class UserApiHelper {
 	constructor(private api: ApiHelpers) {}
@@ -28,7 +28,7 @@ export class UserApiHelper {
 			email: options.email?.toLowerCase() ?? `testuser${nanoid()}@test.com`,
 			password: options.password ?? 'PlaywrightTest123',
 			firstName: options.firstName ?? 'Test',
-			lastName: options.lastName ?? 'User',
+			lastName: options.lastName ?? `User${nanoid()}`,
 			role: options.role ?? 'global:member',
 		};
 

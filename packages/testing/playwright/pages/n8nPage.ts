@@ -38,6 +38,7 @@ import { NavigationHelper } from '../helpers/NavigationHelper';
 import { ApiHelpers } from '../services/api-helper';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { SettingsUsersPage } from './SettingsUsersPage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -67,7 +68,7 @@ export class n8nPage {
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly signIn: SignInPage;
-
+	readonly settingsUsers: SettingsUsersPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
@@ -117,6 +118,7 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
+		this.settingsUsers = new SettingsUsersPage(page);
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);

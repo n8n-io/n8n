@@ -98,15 +98,10 @@ export class TestEntryComposer {
 	 */
 	async withUser(user: Pick<TestUser, 'email' | 'password'>): Promise<n8nPage> {
 		const browser = this.n8n.page.context().browser()!;
-		const baseURL = new URL(this.n8n.page.url()).origin;
-
-		const context = await browser.newContext({ baseURL });
+		const context = await browser.newContext();
 		const page = await context.newPage();
-
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
-
 		await newN8n.api.login({ email: user.email, password: user.password });
-
 		return newN8n;
 	}
 }
