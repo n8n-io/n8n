@@ -104,30 +104,17 @@ export async function executionFinished(
 	uiStore.setProcessingExecutionResults(true);
 
 	let successToastAlreadyShown = false;
-	let execution: SimplifiedExecution | undefined;
-	if (data.rawData) {
-		const { executionId, workflowId, status, rawData } = data;
 
-		execution = {
-			id: executionId,
-			workflowId,
-			workflowData: workflowsStore.workflow,
-			data: parse(rawData),
-			status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
-			stoppedAt: new Date(),
-		};
-	} else {
-		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId, options.workflowHandle);
-			successToastAlreadyShown = true;
-		}
+	if (data.status === 'success') {
+		handleExecutionFinishedWithOther(options.workflowHandle, successToastAlreadyShown);
+		successToastAlreadyShown = true;
+	}
 
-		execution = await fetchExecutionData(data.executionId);
-		if (!execution) {
-			uiStore.setProcessingExecutionResults(false);
-			return;
-		}
+	const execution = await fetchExecutionData(data.executionId);
+
+	if (!execution) {
+		uiStore.setProcessingExecutionResults(false);
+		return;
 	}
 
 	const runExecutionData = getRunExecutionData(execution);
@@ -138,7 +125,7 @@ export async function executionFinished(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown);
+		handleExecutionFinishedWithOther(options.workflowHandle, successToastAlreadyShown);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowHandle);
@@ -359,19 +346,18 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(
-	workflowId: string,
+function handleExecutionFinishedSuccessfully(
+	workflowName: string,
+	message: string,
 	workflowHandle: WorkflowHandle,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const toast = useToast();
-	const i18n = useI18n();
 
-	workflowHelpers.setDocumentTitle(workflowsStore.getWorkflowById(workflowId)?.name, 'IDLE');
+	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
 	workflowHandle.setActiveExecutionId(undefined);
 	toast.showMessage({
-		title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+		title: message,
 		type: 'success',
 	});
 }
@@ -379,15 +365,19 @@ export function handleExecutionFinishedSuccessfully(
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean) {
+export function handleExecutionFinishedWithOther(
+	workflowHandle: WorkflowHandle,
+	successToastAlreadyShown: boolean,
+) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.workflowObject;
+	const workflowName = workflowObject.name ?? '';
 
-	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
+	workflowHelpers.setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
@@ -410,17 +400,19 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 				}),
 				type: 'success',
 			});
-		} else {
-			toast.showMessage({
-				title: i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
-				type: 'success',
-			});
+		} else if (!successToastAlreadyShown) {
+			handleExecutionFinishedSuccessfully(
+				workflowName,
+				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
+				workflowHandle,
+			);
 		}
 	} else if (!successToastAlreadyShown) {
-		toast.showMessage({
-			title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
-			type: 'success',
-		});
+		handleExecutionFinishedSuccessfully(
+			workflowName,
+			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+			workflowHandle,
+		);
 	}
 }
 
@@ -436,12 +428,16 @@ export function setRunExecutionData(
 
 	workflowsStore.executingNode.length = 0;
 
+	if (workflowExecution === null) {
+		return;
+	}
+
 	workflowHandle.setWorkflowExecutionData({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
-	} as IExecutionResponse);
+	});
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
 	workflowHandle.setActiveExecutionId(undefined);
 

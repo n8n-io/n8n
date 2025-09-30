@@ -861,6 +861,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -891,6 +892,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'Edit Fields',
 						runData: {
 							[errorEvent.nodeName]: [errorEvent.data],
 						},
@@ -973,6 +975,7 @@ describe('useWorkflowsStore', () => {
 				...runWithExistingRunData,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -981,7 +984,7 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should replace existing placeholder task data in new log view', () => {
+		it('should replace existing placeholder task data and lastNodeExecuted', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -1027,6 +1030,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},
