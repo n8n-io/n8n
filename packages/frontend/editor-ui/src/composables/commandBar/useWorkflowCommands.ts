@@ -33,7 +33,6 @@ export function useWorkflowCommands(): CommandGroup {
 	const telemetry = useTelemetry();
 	const workflowSaving = useWorkflowSaving({ router });
 	const workflowActivate = useWorkflowActivate();
-	const { runEntireWorkflow } = useRunWorkflow({ router });
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
@@ -111,7 +110,8 @@ export function useWorkflowCommands(): CommandGroup {
 					i18n.baseText('commandBar.workflow.keywords.workflow'),
 				],
 				handler: () => {
-					void runEntireWorkflow('main');
+					// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
+					void useRunWorkflow({ router }).runEntireWorkflow('main');
 				},
 			},
 			{
