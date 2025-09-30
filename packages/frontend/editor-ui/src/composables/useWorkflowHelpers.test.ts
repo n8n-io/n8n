@@ -23,7 +23,7 @@ import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
 import {
 	injectWorkflowHandle,
 	useWorkflowHandle,
-	WorkflowHandle,
+	type WorkflowHandle,
 } from '@/composables/useWorkflowHandle';
 
 vi.mock('@/composables/useWorkflowHandle', async () => {
