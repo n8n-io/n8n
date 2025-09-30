@@ -159,7 +159,7 @@ onBeforeMount(async () => {
 				<ProjectSharing
 					v-model="selectedProject"
 					:projects="projectsStore.availableProjects"
-					:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+					:placeholder="i18n.baseText('insights.dashboard.search.placeholder')"
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
 					:class="$style.projectSelect"

@@ -2,9 +2,8 @@
 import InputPanel from '@/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { onBeforeUnmount, ref, watch } from 'vue';
 import type { Workflow } from 'n8n-workflow';
-import { computed, useTemplateRef } from 'vue';
+import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { N8nPopoverReka } from '@n8n/design-system';
 import { useStyles } from '@/composables/useStyles';
 import {

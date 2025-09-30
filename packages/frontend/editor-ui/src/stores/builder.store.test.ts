@@ -2,7 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -25,13 +26,21 @@ import {
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
-import { Workflow } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
+import type {} from 'n8n-workflow';
+import { mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+	i18n: {
+		baseText: (key: string) => key,
+	},
 }));
 
 // Mock useToast
@@ -41,38 +50,16 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
-// Mock the workflows store
-const mockWorkflow = {
-	name: DEFAULT_NEW_WORKFLOW_NAME,
-	nodes: [],
-	connections: {},
-};
-
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
-	return {
-		...actual,
-		injectWorkflowHandle: vi.fn(),
-	};
-});
-
-vi.mock('./workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflow: mockWorkflow,
-		workflowObject: {
-			setConnections: vi.fn(),
-			setNodes: vi.fn(),
-		},
-		workflowId: 'test-workflow-id',
-		allNodes: [],
-		nodesByName: {},
-		workflowExecutionData: null,
-		setWorkflowName: vi.fn(),
-	})),
-}));
-
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
+let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+let pinia: ReturnType<typeof createTestingPinia>;
+
+let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
+let getNodeTypeSpy: ReturnType<typeof vi.fn>;
+let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -110,7 +97,8 @@ let workflowHandle: WorkflowHandle;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		setActivePinia(createPinia());
+		pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
@@ -124,13 +112,38 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
-		// Reset workflow store mocks
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
+
+		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+		workflowsStore.workflow.nodes = [];
+		workflowsStore.workflow.connections = {};
+		workflowsStore.allNodes = [];
+		workflowsStore.nodesByName = {};
+		workflowsStore.workflowExecutionData = null;
+
 		workflowHandle = useWorkflowHandle();
 		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
-		// Reset workflow to default state
-		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-		mockWorkflow.nodes = [];
-		mockWorkflow.connections = {};
+
+		setWorkflowNameSpy = vi
+			.mocked(workflowHandle)
+			.setWorkflowName.mockImplementation(({ newName }) => {
+				workflowsStore.workflow.name = newName;
+			});
+
+		getNodeTypeSpy = vi.fn();
+		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
+
+		getCredentialsByTypeSpy = vi.fn().mockReturnValue([]);
+		vi.spyOn(credentialsStore, 'getCredentialsByType', 'get').mockReturnValue(
+			getCredentialsByTypeSpy,
+		);
+		vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(
+			vi.fn().mockReturnValue(undefined),
+		);
 	});
 
 	afterEach(() => {
@@ -862,14 +875,13 @@ describe('AI Builder store', () => {
 
 	describe('applyWorkflowUpdate with workflow naming', () => {
 		it('should apply generated workflow name during initial generation when workflow has default name', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -893,21 +905,20 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was called with the generated name
-			expect(setWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
 		});
 
 		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Set initial generation flag
 			builderStore.initialGeneration = true;
 
 			// Set a custom workflow name (not the default)
-			mockWorkflow.name = 'My Custom Workflow';
+			workflowsStore.workflow.name = 'My Custom Workflow';
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -931,7 +942,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(setWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should NOT apply generated workflow name when not initial generation', () => {
@@ -942,7 +953,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = false;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -966,7 +977,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(setWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow updates without name property', () => {
@@ -977,7 +988,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// Create workflow JSON without a name property
 			const workflowJson = JSON.stringify({
@@ -1000,7 +1011,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName was NOT called
-			expect(setWorkflowName).not.toHaveBeenCalled();
+			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
 		});
 
 		it('should handle workflow names that start with but are not exactly the default name', () => {
@@ -1011,7 +1022,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Set workflow name that starts with default but has more text
-			mockWorkflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
+			workflowsStore.workflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
 
 			// Create workflow JSON with a generated name
 			const workflowJson = JSON.stringify({
@@ -1035,7 +1046,7 @@ describe('AI Builder store', () => {
 			expect(result.success).toBe(true);
 
 			// Verify setWorkflowName WAS called because the name starts with default
-			expect(setWorkflowName).toHaveBeenCalledWith({
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Generated Workflow Name for Email Processing',
 				setStateDirty: false,
 			});
@@ -1066,7 +1077,7 @@ describe('AI Builder store', () => {
 			builderStore.initialGeneration = true;
 
 			// Ensure workflow has default name
-			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 			// First update with name
 			const workflowJson1 = JSON.stringify({
@@ -1076,7 +1087,7 @@ describe('AI Builder store', () => {
 			});
 
 			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(setWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
 
 			// The flag should still be true for subsequent updates in the same generation
 			expect(builderStore.initialGeneration).toBe(true);
@@ -1098,7 +1109,106 @@ describe('AI Builder store', () => {
 			builderStore.applyWorkflowUpdate(workflowJson2);
 
 			// Should not call setWorkflowName again
-			expect(setWorkflowName).toHaveBeenCalledTimes(1);
+			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
+		});
+
+		describe('applyWorkflowUpdate credential defaults', () => {
+			const createTestNodeType = (): INodeTypeDescription => ({
+				displayName: 'Test Node',
+				name: 'n8n-nodes-base.test',
+				description: 'Test node',
+				group: ['trigger'],
+				version: 1,
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{
+								name: 'API Key',
+								value: 'apiKey',
+							},
+						],
+						default: 'apiKey',
+						required: true,
+					},
+				],
+				credentials: [
+					{
+						name: 'testApi',
+						required: true,
+						displayOptions: {
+							show: {
+								authentication: ['apiKey'],
+							},
+						},
+					},
+				],
+			});
+
+			it('assigns default credentials when available', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData?.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'cred-id', name: 'API Credential' },
+				});
+				expect(node.parameters.authentication).toBe('apiKey');
+			});
+
+			it('keeps existing credentials untouched', () => {
+				const builderStore = useBuilderStore();
+				getNodeTypeSpy.mockReturnValue(createTestNodeType());
+				getCredentialsByTypeSpy.mockReturnValue([
+					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
+				]);
+
+				const workflowJson = JSON.stringify({
+					nodes: [
+						{
+							id: 'node1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.test',
+							position: [0, 0],
+							parameters: { authentication: 'apiKey' },
+							credentials: {
+								testApi: { id: 'existing', name: 'Existing Credential' },
+							},
+						},
+					],
+					connections: {},
+				});
+
+				const result = builderStore.applyWorkflowUpdate(workflowJson);
+				expect(result.success).toBe(true);
+				const [node] = result.workflowData?.nodes ?? [];
+				expect(node.credentials).toEqual({
+					testApi: { id: 'existing', name: 'Existing Credential' },
+				});
+			});
 		});
 	});
 
@@ -1185,6 +1295,245 @@ describe('AI Builder store', () => {
 				expect.anything(), // abort signal
 				false, // useDeprecatedCredentials
 			);
+		});
+	});
+
+	describe('Credits management', () => {
+		it('should update builder credits correctly', () => {
+			const builderStore = useBuilderStore();
+
+			// Initially undefined
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+
+			// Update credits
+			builderStore.updateBuilderCredits(100, 30);
+
+			expect(builderStore.creditsQuota).toBe(100);
+			expect(builderStore.creditsRemaining).toBe(70);
+		});
+
+		it('should handle unlimited credits (quota = -1)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(-1, 50);
+
+			expect(builderStore.creditsQuota).toBe(-1);
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should handle edge case where claimed > quota', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(50, 100);
+
+			expect(builderStore.creditsQuota).toBe(50);
+			expect(builderStore.creditsRemaining).toBe(0);
+		});
+
+		it('should return undefined when credits are not initialized', () => {
+			const builderStore = useBuilderStore();
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when only quota is set', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, undefined);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when only claimed is set', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(undefined, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+	});
+
+	describe('hasNoCreditsRemaining', () => {
+		it('should return false when creditsRemaining is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			// No credits initialized
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when creditsRemaining is 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when creditsRemaining is greater than 0', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 30);
+
+			expect(builderStore.creditsRemaining).toBe(70);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when quota is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(undefined, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when claimed is undefined', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, undefined);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return false when unlimited credits (quota = -1)', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(-1, 50);
+
+			expect(builderStore.creditsRemaining).toBeUndefined();
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true when claimed exceeds quota', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(50, 100);
+
+			expect(builderStore.creditsRemaining).toBe(0);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+
+		it('should return false when user has credits available', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.updateBuilderCredits(100, 25);
+
+			expect(builderStore.creditsRemaining).toBe(75);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+		});
+
+		it('should return true immediately after all credits are consumed', () => {
+			const builderStore = useBuilderStore();
+
+			// Start with some credits
+			builderStore.updateBuilderCredits(100, 99);
+			expect(builderStore.hasNoCreditsRemaining).toBe(false);
+
+			// Consume last credit
+			builderStore.updateBuilderCredits(100, 100);
+			expect(builderStore.hasNoCreditsRemaining).toBe(true);
+		});
+	});
+
+	describe('fetchBuilderCredits', () => {
+		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+
+		beforeEach(() => {
+			mockGetBuilderCredits.mockClear();
+		});
+
+		it('should fetch and update credits when release experiment is variant', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API response
+			mockGetBuilderCredits.mockResolvedValueOnce({
+				creditsQuota: 200,
+				creditsClaimed: 50,
+			});
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBe(200);
+			expect(builderStore.creditsRemaining).toBe(150);
+		});
+
+		it('should not fetch credits when release experiment is not variant', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return control for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.control;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.variant;
+			});
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).not.toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should handle API errors gracefully', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API to throw error
+			mockGetBuilderCredits.mockRejectedValueOnce(new Error('API error'));
+
+			await builderStore.fetchBuilderCredits();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			// Credits should remain undefined on error
+			expect(builderStore.creditsQuota).toBeUndefined();
+			expect(builderStore.creditsRemaining).toBeUndefined();
+		});
+
+		it('should call fetchBuilderCredits when opening chat', async () => {
+			const builderStore = useBuilderStore();
+
+			// Mock posthog to return variant for release experiment
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experimentName) => {
+				if (experimentName === WORKFLOW_BUILDER_RELEASE_EXPERIMENT.name) {
+					return WORKFLOW_BUILDER_RELEASE_EXPERIMENT.variant;
+				}
+				return WORKFLOW_BUILDER_DEPRECATED_EXPERIMENT.control;
+			});
+
+			// Mock API response
+			mockGetBuilderCredits.mockResolvedValueOnce({
+				creditsQuota: 100,
+				creditsClaimed: 20,
+			});
+
+			// Mock loadSessions to prevent actual API call
+			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
+
+			await builderStore.openChat();
+
+			expect(mockGetBuilderCredits).toHaveBeenCalled();
+			expect(builderStore.creditsQuota).toBe(100);
+			expect(builderStore.creditsRemaining).toBe(80);
 		});
 	});
 });

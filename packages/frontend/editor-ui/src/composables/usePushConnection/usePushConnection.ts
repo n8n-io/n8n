@@ -3,6 +3,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import {
+	builderCreditsUpdated,
 	testWebhookDeleted,
 	testWebhookReceived,
 	reloadNodeType,
@@ -90,6 +91,8 @@ export function usePushConnection({
 				return await workflowActivated(event);
 			case 'workflowDeactivated':
 				return await workflowDeactivated(event);
+			case 'updateBuilderCredits':
+				return await builderCreditsUpdated(event);
 		}
 	}
 

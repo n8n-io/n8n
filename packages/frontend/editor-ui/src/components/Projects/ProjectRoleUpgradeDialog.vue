@@ -19,7 +19,7 @@ const goToUpgrade = async () => {
 };
 </script>
 <template>
-	<el-dialog
+	<ElDialog
 		v-model="visible"
 		:title="locale.baseText('projects.settings.role.upgrade.title')"
 		width="500"
@@ -45,5 +45,5 @@ const goToUpgrade = async () => {
 				locale.baseText('projects.create.limitReached.link')
 			}}</N8nButton>
 		</template>
-	</el-dialog>
+	</ElDialog>
 </template>

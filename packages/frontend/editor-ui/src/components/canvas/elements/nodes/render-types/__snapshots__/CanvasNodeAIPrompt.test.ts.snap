@@ -6,42 +6,11 @@ exports[`CanvasNodeAIPrompt > should render component correctly 1`] = `
     <h2 class="title">What would you like to automate?</h2>
   </header><!-- Prompt input section -->
   <section class="promptContainer">
-    <div class="container multiline promptInput" style="min-height: 80px;" data-test-id="ai-builder-prompt">
-      <!-- Warning banner when character limit is reached -->
-      <!--v-if-->
-      <!-- Single line mode: input and button side by side -->
-      <!-- Multiline mode: textarea full width with button below -->
-      <!-- Use ScrollArea when content exceeds max height -->
-      <div dir="ltr" style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;" class="scrollAreaRoot scrollAreaWrapper">
-        <div data-reka-scroll-area-viewport="" style="overflow-x: hidden; overflow-y: hidden; max-height: 72px;" class="viewport" tabindex="0">
-          <div><textarea data-test-id="chat-input-textarea" class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas" style="height: 36px; overflow-y: hidden;" placeholder="Ask n8n to build..." maxlength="1000"></textarea></div>
-        </div>
-        <style>
-          /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */
-          [data-reka-scroll-area-viewport] {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          [data-reka-scroll-area-viewport]::-webkit-scrollbar {
-            display: none;
-          }
-        </style>
-        <!---->
-        <!--v-if-->
-        <!--v-if-->
-      </div>
-      <div class="bottomActions"><button class="button button primary small disabled withIcon square sendButton sendButton" disabled="" aria-disabled="true" aria-live="polite" data-test-id="send-message-button"><span class="icon"><svg viewBox="0 0 24 24" width="16px" height="16px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="arrow-up"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12l7-7l7 7m-7 7V5"></path></svg></span>
-          <!--v-if-->
-        </button></div>
-    </div>
+    <div class="n8n-prompt-input promptInput" data-test-id="ai-builder-prompt"><textarea placeholder="Ask n8n to build..." value=""></textarea><button disabled="">Send</button></div>
   </section><!-- Suggestion pills section -->
   <section class="pillsContainer" role="group" aria-label="Workflow suggestions"><button class="suggestionPill" type="button">Invoice processing pipeline</button><button class="suggestionPill" type="button">Daily AI news digest</button><button class="suggestionPill" type="button">RAG knowledge assistant</button><button class="suggestionPill" type="button">Summarize emails with AI</button><button class="suggestionPill" type="button">YouTube video chapters</button><button class="suggestionPill" type="button">Pizza delivery chatbot</button><button class="suggestionPill" type="button">Lead qualification and call scheduling</button><button class="suggestionPill" type="button">Multi-agent research workflow</button></section><!-- Divider -->
   <div class="orDivider" role="separator"><span class="orText">or</span></div><!-- Manual node creation section -->
-  <section class="startManually"><button class="addButton" type="button" aria-label="Add node manually"><svg viewBox="0 0 24 24" width="40px" height="40px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="plus">
-        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7v14"></path>
-      </svg></button>
+  <section class="startManually"><button class="addButton" type="button" aria-label="Add node manually"><span class="n8n-icon-plus"></span></button>
     <div class="startManuallyLabel"><strong class="startManuallyText">Start manually</strong><span class="startManuallySubtitle">Add the first node</span></div>
   </section>
 </article>"

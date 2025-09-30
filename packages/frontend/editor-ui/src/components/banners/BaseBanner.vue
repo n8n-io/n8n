@@ -38,7 +38,7 @@ async function onCloseClick() {
 }
 </script>
 <template>
-	<n8n-callout
+	<N8nCallout
 		:class="$style.callout"
 		:theme="props.theme"
 		:icon="props.customIcon"
@@ -53,7 +53,7 @@ async function onCloseClick() {
 		<template #trailingContent>
 			<div :class="$style.trailingContent">
 				<slot name="trailingContent" />
-				<n8n-icon
+				<N8nIcon
 					v-if="dismissible"
 					size="small"
 					icon="x"
@@ -64,7 +64,7 @@ async function onCloseClick() {
 				/>
 			</div>
 		</template>
-	</n8n-callout>
+	</N8nCallout>
 </template>
 
 <style lang="scss" module>
