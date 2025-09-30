@@ -93,6 +93,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import { getParameterDisplayableOptions } from '@/utils/nodes/nodeTransforms';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -253,7 +254,7 @@ const parameterOptions = computed(() => {
 		}
 	}
 
-	return safeOptions;
+	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
 const modelValueString = computed<string>(() => {

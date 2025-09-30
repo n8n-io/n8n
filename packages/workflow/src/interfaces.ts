@@ -1616,6 +1616,8 @@ export interface INodePropertyOptions {
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
+	displayOptions?: IDisplayOptions;
+	disabledOptions?: IDisplayOptions;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
