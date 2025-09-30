@@ -4,8 +4,8 @@ import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decora
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
-import { UpdateMcpSettingsDto } from './update-mcp-settings.dto';
 import { BadRequestError } from '../../errors/response-errors/bad-request.error';
+import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 
 @RestController('/mcp')
 export class McpSettingsController {
@@ -42,7 +42,7 @@ export class McpSettingsController {
 		return { mcpAccessEnabled: enabled };
 	}
 
-	@GlobalScope('mcp:manage')
+	@GlobalScope('mcpApiKey:create')
 	@Get('/api-key')
 	async getApiKeyForMcpServer(req: AuthenticatedRequest) {
 		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
@@ -55,7 +55,7 @@ export class McpSettingsController {
 		return apiKey;
 	}
 
-	@GlobalScope('mcp:manage')
+	@GlobalScope('mcpApiKey:rotate')
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
 		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
