@@ -946,7 +946,6 @@ describe('AI Builder store', () => {
 		});
 
 		it('should NOT apply generated workflow name when not initial generation', () => {
-			const setWorkflowName = vi.spyOn(workflowHandle, 'setWorkflowName');
 			const builderStore = useBuilderStore();
 
 			// Ensure initial generation flag is false
