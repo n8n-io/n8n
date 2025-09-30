@@ -7,7 +7,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
 
-import { N8nAssistantIcon, N8nButton, N8nText } from '@n8n/design-system';
+import { N8nAssistantIcon, N8nAssistantText, N8nButton, N8nText } from '@n8n/design-system';
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
@@ -50,7 +50,7 @@ const startNewSession = async () => {
 		<template #header>
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
 			<span :class="$style.assistantIcon"><N8nAssistantIcon size="medium" /></span>
-			<AssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
+			<N8nAssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
 		</template>
 		<template #content>

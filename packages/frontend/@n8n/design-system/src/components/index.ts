@@ -1,6 +1,8 @@
 export { default as N8nActionBox } from './N8nActionBox';
+export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export { default as N8nAskAssistantChat } from './AskAssistantChat';
 export { default as N8nAssistantIcon } from './AskAssistantIcon';
+export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nAlert } from './N8nAlert';
