@@ -28,6 +28,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createTestingPinia } from '@pinia/testing';
 import { MarkerType } from '@vue-flow/core';
 import { mock } from 'vitest-mock-extended';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -2902,7 +2903,7 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should include maxConnections when ports have connection limits', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
 				const manualTriggerNode = mockNode({
 					name: 'Manual Trigger',
 					type: MANUAL_TRIGGER_NODE_TYPE,
@@ -2931,23 +2932,16 @@ describe('useCanvasMapping', () => {
 					],
 				});
 
-				const pinia = createTestingPinia({
-					initialState: {
-						[STORES.NODE_TYPES]: {
-							nodeTypes: {
-								[MANUAL_TRIGGER_NODE_TYPE]: {
-									1: mockNodeTypeDescription({
-										name: MANUAL_TRIGGER_NODE_TYPE,
-									}),
-								},
-								[SET_NODE_TYPE]: {
-									1: nodeTypeWithMaxConnections,
-								},
-							},
-						},
+				nodeTypesStore.nodeTypes = {
+					[MANUAL_TRIGGER_NODE_TYPE]: {
+						1: mockNodeTypeDescription({
+							name: MANUAL_TRIGGER_NODE_TYPE,
+						}),
 					},
-				});
-				setActivePinia(pinia);
+					[SET_NODE_TYPE]: {
+						1: nodeTypeWithMaxConnections,
+					},
+				};
 
 				const workflowObject = createTestWorkflowObject({
 					nodes,
@@ -2964,6 +2958,7 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should use minimum maxConnections when multiple ports have limits', () => {
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
 				const manualTriggerNode = mockNode({
 					name: 'Manual Trigger',
 					type: MANUAL_TRIGGER_NODE_TYPE,
@@ -2981,38 +2976,30 @@ describe('useCanvasMapping', () => {
 					},
 				};
 
-				// Mock node types with different maxConnections
-				const pinia = createTestingPinia({
-					initialState: {
-						[STORES.NODE_TYPES]: {
-							nodeTypes: {
-								[MANUAL_TRIGGER_NODE_TYPE]: {
-									1: mockNodeTypeDescription({
-										name: MANUAL_TRIGGER_NODE_TYPE,
-										outputs: [
-											{
-												type: NodeConnectionTypes.Main,
-												maxConnections: 3,
-											},
-										],
-									}),
+				nodeTypesStore.nodeTypes = {
+					[MANUAL_TRIGGER_NODE_TYPE]: {
+						1: mockNodeTypeDescription({
+							name: MANUAL_TRIGGER_NODE_TYPE,
+							outputs: [
+								{
+									type: NodeConnectionTypes.Main,
+									maxConnections: 3,
 								},
-								[SET_NODE_TYPE]: {
-									1: mockNodeTypeDescription({
-										name: SET_NODE_TYPE,
-										inputs: [
-											{
-												type: NodeConnectionTypes.Main,
-												maxConnections: 2,
-											},
-										],
-									}),
-								},
-							},
-						},
+							],
+						}),
 					},
-				});
-				setActivePinia(pinia);
+					[SET_NODE_TYPE]: {
+						1: mockNodeTypeDescription({
+							name: SET_NODE_TYPE,
+							inputs: [
+								{
+									type: NodeConnectionTypes.Main,
+									maxConnections: 2,
+								},
+							],
+						}),
+					},
+				};
 
 				const workflowObject = createTestWorkflowObject({
 					nodes,
@@ -3029,7 +3016,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should not include maxConnections when no limits are set', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3054,7 +3040,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should preserve existing connection data', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
