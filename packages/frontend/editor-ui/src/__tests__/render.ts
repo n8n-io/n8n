@@ -27,7 +27,9 @@ const TelemetryPlugin: Plugin<{}> = {
 const defaultOptions = {
 	global: {
 		stubs: {
-			RouterLink: true,
+			RouterLink: {
+				template: '<a><slot /></a>',
+			},
 			VueJsonPretty: vueJsonPretty,
 		},
 		plugins: [
