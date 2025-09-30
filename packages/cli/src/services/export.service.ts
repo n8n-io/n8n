@@ -7,12 +7,15 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
+import { Cipher } from 'n8n-core';
+import { compressFolder } from '@/utils/compression.util';
 
 @Service()
 export class ExportService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
+		private readonly cipher: Cipher,
 	) {}
 
 	private async clearExistingEntityFiles(outputDir: string, entityName: string): Promise<void> {
@@ -64,7 +67,7 @@ export class ExportService {
 			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
 				.join('\n');
-			await appendFile(filePath, migrationsJsonl ?? '' + '\n', 'utf8');
+			await appendFile(filePath, this.cipher.encrypt(migrationsJsonl ?? '' + '\n'), 'utf8');
 
 			this.logger.info(
 				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
@@ -157,10 +160,10 @@ export class ExportService {
 				}
 
 				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl = pageEntities
+				const entitiesJsonl: string = pageEntities
 					.map((entity: unknown) => JSON.stringify(entity))
 					.join('\n');
-				await appendFile(filePath, entitiesJsonl + '\n', 'utf8');
+				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl) + '\n', 'utf8');
 
 				totalEntityCount += pageEntities.length;
 				currentFileEntityCount += pageEntities.length;
@@ -191,10 +194,30 @@ export class ExportService {
 			totalEntitiesExported += totalEntityCount;
 		}
 
+		// Compress the output directory to entities.zip
+		const zipPath = path.join(outputDir, 'entities.zip');
+		this.logger.info(`\n🗜️  Compressing export to ${zipPath}...`);
+
+		await compressFolder(outputDir, zipPath, {
+			level: 6,
+			exclude: ['*.log'],
+			includeHidden: false,
+		});
+
+		// Clean up individual JSONL files, keeping only the ZIP
+		this.logger.info('🗑️  Cleaning up individual entity files...');
+		const files = await readdir(outputDir);
+		for (const file of files) {
+			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
+				await rm(path.join(outputDir, file));
+			}
+		}
+
 		this.logger.info('\n📊 Export Summary:');
 		this.logger.info(`   Tables processed: ${totalTablesProcessed}`);
 		this.logger.info(`   Total entities exported: ${totalEntitiesExported}`);
 		this.logger.info(`   Output directory: ${outputDir}`);
+		this.logger.info(`   Compressed archive: ${zipPath}`);
 		this.logger.info('✅ Task completed successfully! \n');
 	}
 }

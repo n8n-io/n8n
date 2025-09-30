@@ -503,7 +503,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23, minutes: 59 }),
+					periodStart: now.minus({ days: 13, hours: 23 }),
 				});
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
@@ -567,14 +567,14 @@ describe('InsightsService', () => {
 				workflowName: workflow1.name,
 				projectId: project.id,
 				projectName: project.name,
-				total: 6,
+				total: 7,
 				failed: 2,
 				runTime: 123,
-				succeeded: 4,
+				succeeded: 5,
 				timeSaved: 0,
 			});
-			expect(byWorkflow.data[1].failureRate).toBeCloseTo(2 / 6);
-			expect(byWorkflow.data[1].averageRunTime).toBeCloseTo(123 / 6);
+			expect(byWorkflow.data[1].failureRate).toBeCloseTo(2 / 7);
+			expect(byWorkflow.data[1].averageRunTime).toBeCloseTo(123 / 7);
 		});
 
 		test('compacted data are grouped by workflow correctly with sorting', async () => {
