@@ -1,9 +1,24 @@
-import type { SingleEvaluatorResult } from '../types/test-result';
+import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '../types/test-result';
 
-export function calculateOverallScore(evaluatorResults: SingleEvaluatorResult[]): number {
-	if (evaluatorResults.length === 0) return 0;
-	const total = evaluatorResults.reduce((acc, res) => acc + res.score, 0);
-	return total / evaluatorResults.length;
+export function calculateOverallScore(
+	evaluatorResults: Omit<ProgrammaticEvaluationResult, 'overallScore'>,
+): number {
+	const categories = Object.keys(evaluatorResults) as Array<keyof typeof evaluatorResults>;
+
+	const weights: Record<keyof typeof evaluatorResults, number> = {
+		connections: 0.25,
+		trigger: 0.25,
+		agentPrompt: 0.2,
+		tools: 0.2,
+		fromAi: 0.1,
+	};
+
+	const total = categories.reduce(
+		(acc, category) => acc + evaluatorResults[category].score * weights[category],
+		0,
+	);
+
+	return total;
 }
 
 export function calcSingleEvaluatorScore(

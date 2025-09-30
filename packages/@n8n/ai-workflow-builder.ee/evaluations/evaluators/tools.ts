@@ -4,11 +4,17 @@ import type { SimpleWorkflow } from '@/types';
 
 import type { Violation } from '../types/evaluation';
 import type { SingleEvaluatorResult } from '../types/test-result';
+import { nodeParametersContainExpression } from '../utils/expressions';
+import { isTool } from '../utils/isTool';
 import { calcSingleEvaluatorScore } from '../utils/score';
 
-function isTool(nodeType: INodeTypeDescription): boolean {
-	return nodeType.codex?.subcategories?.AI?.includes('Tools') ?? false;
-}
+const toolsWithoutParameters = [
+	'@n8n/n8n-nodes-langchain.toolCalculator',
+	'@n8n/n8n-nodes-langchain.toolVectorStore',
+	'@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+	'@n8n/n8n-nodes-langchain.mcpClientTool',
+	'@n8n/n8n-nodes-langchain.toolWikipedia',
+];
 
 export function evaluateTools(
 	workflow: SimpleWorkflow,
@@ -29,13 +35,23 @@ export function evaluateTools(
 			continue;
 		}
 
-		// Check if this is a tool
-		if (isTool(nodeType)) {
+		// Check if this is a tool requiring dynamic parameters
+		if (isTool(nodeType) && !toolsWithoutParameters.includes(node.type)) {
 			// Check if the tool node has required parameters set
 			if (!node.parameters || Object.keys(node.parameters).length === 0) {
 				violations.push({
 					type: 'major',
 					description: `Tool node "${node.name}" has no parameters set.`,
+					pointsDeducted: 20,
+				});
+				continue;
+			}
+
+			// Tool should have at least one parameter with expression
+			if (!nodeParametersContainExpression(node.parameters)) {
+				violations.push({
+					type: 'major',
+					description: `Tool node "${node.name}" has no expressions in its parameters. This likely means it is not using dynamic input.`,
 					pointsDeducted: 20,
 				});
 			}

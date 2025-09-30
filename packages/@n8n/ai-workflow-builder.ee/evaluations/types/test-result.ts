@@ -12,6 +12,7 @@ export interface ProgrammaticEvaluationResult {
 	trigger: SingleEvaluatorResult;
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
+	fromAi: SingleEvaluatorResult;
 }
 
 /**

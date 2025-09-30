@@ -2,6 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { evaluateAgentPrompt } from './agent-prompt';
 import { evaluateConnections } from './connections';
+import { evaluateFromAi } from './fromAi';
 import { evaluateTools } from './tools';
 import { evaluateTrigger } from './trigger';
 import type { EvaluationInput } from '../types/evaluation';
@@ -18,13 +19,15 @@ export async function programmaticEvaluation(
 	const triggerEvaluationResult = evaluateTrigger(generatedWorkflow, nodeTypes);
 	const agentPromptEvaluationResult = evaluateAgentPrompt(generatedWorkflow);
 	const toolsEvaluationResult = evaluateTools(generatedWorkflow, nodeTypes);
+	const fromAiEvaluationResult = evaluateFromAi(generatedWorkflow, nodeTypes);
 
-	const overallScore = calculateOverallScore([
-		connectionsEvaluationResult,
-		triggerEvaluationResult,
-		agentPromptEvaluationResult,
-		toolsEvaluationResult,
-	]);
+	const overallScore = calculateOverallScore({
+		connections: connectionsEvaluationResult,
+		trigger: triggerEvaluationResult,
+		agentPrompt: agentPromptEvaluationResult,
+		tools: toolsEvaluationResult,
+		fromAi: fromAiEvaluationResult,
+	});
 
 	return {
 		overallScore,
@@ -32,5 +35,6 @@ export async function programmaticEvaluation(
 		trigger: triggerEvaluationResult,
 		agentPrompt: agentPromptEvaluationResult,
 		tools: toolsEvaluationResult,
+		fromAi: fromAiEvaluationResult,
 	};
 }

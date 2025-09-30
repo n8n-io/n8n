@@ -63,79 +63,59 @@ interface NodeInfo {
 	resolvedOutputs?: Set<NodeConnectionType>;
 }
 
-function resolveNodeOutputs(nodeInfo: NodeInfo): {
-	outputs: Set<NodeConnectionType>;
-	error?: string;
-} {
+function resolveNodeOutputs(nodeInfo: NodeInfo): Set<NodeConnectionType> {
 	const outputTypes = new Set<NodeConnectionType>();
 
 	if (!nodeInfo.nodeType.outputs) {
-		return { outputs: outputTypes };
+		return outputTypes;
 	}
 
-	try {
-		const resolvedOutputs = resolveConnections(
-			nodeInfo.nodeType.outputs,
-			nodeInfo.node.parameters,
-			nodeInfo.node.typeVersion || 1,
-		);
+	const resolvedOutputs = resolveConnections(
+		nodeInfo.nodeType.outputs,
+		nodeInfo.node.parameters,
+		nodeInfo.node.typeVersion || 1,
+	);
 
-		for (const output of resolvedOutputs) {
-			if (typeof output === 'string') {
-				outputTypes.add(output);
-			} else if (typeof output === 'object' && 'type' in output) {
-				outputTypes.add(output.type);
-			}
+	for (const output of resolvedOutputs) {
+		if (typeof output === 'string') {
+			outputTypes.add(output);
+		} else if (typeof output === 'object' && 'type' in output) {
+			outputTypes.add(output.type);
 		}
-		return { outputs: outputTypes };
-	} catch (error) {
-		return {
-			outputs: outputTypes,
-			error: `Failed to resolve outputs for node ${nodeInfo.node.name} (${nodeInfo.node.type}): ${
-				error instanceof Error ? error.message : String(error)
-			}`,
-		};
 	}
+
+	return outputTypes;
 }
 
-function resolveNodeInputs(nodeInfo: NodeInfo): {
-	inputs: Array<{ type: NodeConnectionType; required: boolean }>;
-	error?: string;
-} {
+function resolveNodeInputs(
+	nodeInfo: NodeInfo,
+): Array<{ type: NodeConnectionType; required: boolean }> {
 	const requiredInputs: Array<{ type: NodeConnectionType; required: boolean }> = [];
 
 	if (!nodeInfo.nodeType.inputs) {
-		return { inputs: requiredInputs };
+		return requiredInputs;
 	}
 
-	try {
-		const resolvedInputs = resolveConnections(
-			nodeInfo.nodeType.inputs,
-			nodeInfo.node.parameters,
-			nodeInfo.node.typeVersion || 1,
-		);
+	const resolvedInputs = resolveConnections(
+		nodeInfo.nodeType.inputs,
+		nodeInfo.node.parameters,
+		nodeInfo.node.typeVersion || 1,
+	);
 
-		for (const input of resolvedInputs) {
-			if (typeof input === 'string') {
-				// All main inputs should be treated as required
-				requiredInputs.push({ type: input, required: input === 'main' });
-			} else if (typeof input === 'object' && 'type' in input) {
-				requiredInputs.push({
-					type: input.type,
-					// Main inputs are always required, otherwise use the specified required value
-					required: input.type === 'main' ? true : (input.required ?? false),
-				});
-			}
+	for (const input of resolvedInputs) {
+		if (typeof input === 'string') {
+			// All main inputs should be treated as required
+			requiredInputs.push({ type: input, required: input === 'main' });
+		} else if (typeof input === 'object' && 'type' in input) {
+			requiredInputs.push({
+				type: input.type,
+				// Main inputs are always required, otherwise use the specified required value
+				required: input.type === 'main' ? true : (input.required ?? false),
+			});
 		}
-		return { inputs: requiredInputs };
-	} catch (error) {
-		return {
-			inputs: requiredInputs,
-			error: `Failed to resolve inputs for node ${nodeInfo.node.name} (${nodeInfo.node.type}): ${
-				error instanceof Error ? error.message : String(error)
-			}`,
-		};
 	}
+
+	return requiredInputs;
 }
 
 function getProvidedInputTypes(
@@ -230,7 +210,7 @@ function checkMergeNodeConnections(
 
 		if (totalInputConnections !== expectedInputs) {
 			issues.push({
-				type: 'major',
+				type: 'minor',
 				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
 				pointsDeducted: 10,
 			});
@@ -254,9 +234,6 @@ export function evaluateConnections(
 	// Get connections organized by destination for easier lookup
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 
-	// Build node information map
-	const nodeInfoMap = new Map<string, NodeInfo>();
-
 	for (const node of workflow.nodes) {
 		const nodeType = nodeTypes.find((type) => type.name === node.type);
 		if (!nodeType) {
@@ -270,35 +247,21 @@ export function evaluateConnections(
 
 		const nodeInfo: NodeInfo = { node, nodeType };
 
-		// Resolve inputs
-		const inputResult = resolveNodeInputs(nodeInfo);
-		if (inputResult.error) {
-			violations.push({ type: 'critical', description: inputResult.error, pointsDeducted: 50 });
-		}
-		nodeInfo.resolvedInputs = inputResult.inputs;
+		try {
+			// Resolve inputs and outputs
+			nodeInfo.resolvedInputs = resolveNodeInputs(nodeInfo);
+			nodeInfo.resolvedOutputs = resolveNodeOutputs(nodeInfo);
+		} catch (error) {
+			violations.push({
+				type: 'critical',
+				description: `Failed to resolve connections for node ${node.name} (${node.type}): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+				pointsDeducted: 50,
+			});
 
-		// Resolve outputs
-		const outputResult = resolveNodeOutputs(nodeInfo);
-		if (outputResult.error) {
-			violations.push({ type: 'critical', description: outputResult.error, pointsDeducted: 50 });
-		}
-		nodeInfo.resolvedOutputs = outputResult.outputs;
-
-		nodeInfoMap.set(node.name, nodeInfo);
-	}
-
-	// Second pass: check input requirements and connections
-	for (const node of workflow.nodes) {
-		const nodeInfo = nodeInfoMap.get(node.name);
-		if (!nodeInfo) continue;
-
-		// Resolve inputs
-		const inputResult = resolveNodeInputs(nodeInfo);
-		if (inputResult.error) {
-			violations.push({ type: 'critical', description: inputResult.error, pointsDeducted: 50 });
 			continue;
 		}
-		nodeInfo.resolvedInputs = inputResult.inputs;
 
 		// Get provided connections
 		const providedInputTypes = getProvidedInputTypes(node.name, connectionsByDestination);
