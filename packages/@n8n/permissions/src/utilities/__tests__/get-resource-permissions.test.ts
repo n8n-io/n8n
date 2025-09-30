@@ -34,6 +34,7 @@ describe('permissions', () => {
 			folder: {},
 			insights: {},
 			dataStore: {},
+			mcp: {},
 			role: {},
 		});
 	});
