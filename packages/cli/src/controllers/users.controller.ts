@@ -45,7 +45,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { AuthPrincipal, hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @RestController('/users')
 export class UsersController {
