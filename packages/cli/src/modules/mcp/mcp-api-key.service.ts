@@ -6,6 +6,8 @@ import { JwtService } from '@/services/jwt.service';
 
 const API_KEY_AUDIENCE = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
+const REDACT_API_KEY_REVEAL_COUNT = 4;
+const REDACT_API_KEY_MAX_LENGTH = 10;
 
 @Service()
 export class McpServerApiKeyService {
@@ -29,17 +31,24 @@ export class McpServerApiKeyService {
 				apiKey,
 				audience: API_KEY_AUDIENCE,
 				scopes: [],
+				label: 'MCP Server API Key',
 			}),
 		);
 
 		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
 	}
 
-	async findServerApiKeyForUser(user: User) {
-		return await this.apiKeyRepository.findOneBy({
+	async findServerApiKeyForUser(user: User, redact = false) {
+		const apiKey = await this.apiKeyRepository.findOneBy({
 			userId: user.id,
 			audience: API_KEY_AUDIENCE,
 		});
+
+		if (apiKey && redact) {
+			apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
+		}
+
+		return apiKey;
 	}
 
 	private async getUserForApiKey(apiKey: string) {
@@ -58,6 +67,15 @@ export class McpServerApiKeyService {
 			userId: user.id,
 			audience: API_KEY_AUDIENCE,
 		});
+	}
+
+	redactApiKey(apiKey: string) {
+		const visiblePart = apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT);
+		const redactedPart = '*'.repeat(
+			Math.max(0, REDACT_API_KEY_MAX_LENGTH - REDACT_API_KEY_REVEAL_COUNT),
+		);
+
+		return redactedPart + visiblePart;
 	}
 
 	getAuthMiddleware() {
