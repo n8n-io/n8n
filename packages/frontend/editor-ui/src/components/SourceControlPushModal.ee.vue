@@ -29,7 +29,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
-
+import ProjectSharing from './Projects/ProjectSharing.vue';
 import {
 	N8nBadge,
 	N8nButton,
