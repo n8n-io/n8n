@@ -10,7 +10,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
+import { ManualExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
@@ -275,18 +275,22 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('Should cancel ongoing executions', async () => {
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
-			await expect(postExecutePromise).rejects.toThrow(ExecutionCancelledError);
+			await expect(postExecutePromise).rejects.toThrow(ManualExecutionCancelledError);
 		});
 
 		test('Should cancel waiting executions', async () => {
 			activeExecutions.setStatus(executionId, 'waiting');
-			activeExecutions.stopExecution(executionId);
+			activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
 
-			expect(responsePromise.reject).toHaveBeenCalledWith(expect.any(ExecutionCancelledError));
+			expect(responsePromise.reject).toHaveBeenCalledWith(
+				expect.any(ManualExecutionCancelledError),
+			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
 		});
 	});

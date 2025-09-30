@@ -10,7 +10,6 @@ import {
 	sleep,
 	jsonStringify,
 	ensureError,
-	ExecutionCancelledError,
 	UnexpectedError,
 	ManualExecutionCancelledError,
 } from 'n8n-workflow';

@@ -1,9 +1,8 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
 
-export class ExecutionCancelledError extends ExecutionBaseError {
-	// NOTE: we make the constructor protected because we should always use a more specific sub-error.
-	// If your case doesn't fit any of the sub-errors, then create a new one.
-	protected constructor(executionId: string) {
+export abstract class ExecutionCancelledError extends ExecutionBaseError {
+	// NOTE: prefer one of the more specific
+	constructor(executionId: string) {
 		super('The execution was cancelled', {
 			level: 'warning',
 			extra: { executionId },
