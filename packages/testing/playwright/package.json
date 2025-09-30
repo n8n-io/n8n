@@ -32,7 +32,6 @@
     "@playwright/test": "1.54.2",
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.2",
-    "flatted": "catalog:",
     "generate-schema": "2.6.0",
     "mockserver-client": "^5.15.0",
     "n8n": "workspace:*",

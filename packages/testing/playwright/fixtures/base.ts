@@ -1,5 +1,5 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
-import { fixtures } from '@currents/playwright';
+import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
@@ -12,16 +12,15 @@ import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
-type N8NFixtures = {
+type TestFixtures = {
 	n8n: n8nPage;
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 	proxyServer: ProxyServer;
-	interceptorsSetup: boolean;
 };
 
-type N8NWorkerFixtures = {
+type WorkerFixtures = {
 	n8nUrl: string;
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
@@ -46,13 +45,13 @@ interface ContainerConfig {
  * Provides tag-driven authentication and database management.
  */
 export const test = base.extend<
-	N8NFixtures & CurrentsFixtures,
-	N8NWorkerFixtures & CurrentsWorkerFixtures
+	TestFixtures & CurrentsFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures
 >({
+	...currentsFixtures.baseFixtures,
+	...currentsFixtures.coverageFixtures,
+	...currentsFixtures.actionFixtures,
 	// Container configuration from the project use options
-	...fixtures.baseFixtures,
-	...fixtures.coverageFixtures,
-	...fixtures.actionFixtures,
 	containerConfig: [
 		async ({}, use, workerInfo) => {
 			const config =
@@ -132,30 +131,13 @@ export const test = base.extend<
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-
+	n8n: async ({ context }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
-		await use(true);
-	},
-
-	page: async ({ context }, use, testInfo) => {
 		const page = await context.newPage();
-		const api = new ApiHelpers(context.request);
-
-		await api.setupFromTags(testInfo.tags);
-
-		await use(page);
-		await page.close();
-	},
-
-	n8n: async ({ page, api }, use) => {
-		const n8nInstance = new n8nPage(page, api);
+		const n8nInstance = new n8nPage(page);
+		await n8nInstance.api.setupFromTags(testInfo.tags);
+		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
+		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
 	},
 

@@ -72,5 +72,5 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				currentsReporter(currentsConfig),
 				['./reporters/metrics-reporter.ts'],
 			]
-		: [['html'], ['./reporters/metrics-reporter.ts'], ['list'], currentsReporter(currentsConfig)],
+		: [['html'], ['./reporters/metrics-reporter.ts'], ['list']],
 });
