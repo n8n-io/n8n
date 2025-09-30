@@ -67,7 +67,10 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		// Delete the rows with a non-null projectId (data loss)
 		await queryRunner.query(`DELETE FROM ${variablesTableName} WHERE projectId IS NOT NULL;`);
 
-		// Drop the generated column and its associated index
+		// Drop the generated column index
+		await queryRunner.query(`DROP INDEX ${UNIQUE_GLOBAL_KEY_INDEX_NAME} ON ${variablesTableName};`);
+
+		// Drop the generated column
 		await queryRunner.query(`ALTER TABLE ${variablesTableName} DROP COLUMN globalKey;`);
 
 		// Drop the project id column, foreign key and its associated index
