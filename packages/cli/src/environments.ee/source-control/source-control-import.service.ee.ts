@@ -43,7 +43,7 @@ import type { ExportableTags } from './types/exportable-tags';
 import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { type VariableData, VariablesService } from '../variables/variables.service.ee';
+import { VariablesService } from '../variables/variables.service.ee';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -411,7 +411,7 @@ export class SourceControlImportService {
 		return [];
 	}
 
-	async getLocalVariablesFromDb(): Promise<VariableData[]> {
+	async getLocalVariablesFromDb(): Promise<Variables[]> {
 		return await this.variablesService.getAllCached();
 	}
 
