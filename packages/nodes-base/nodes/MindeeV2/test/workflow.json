@@ -1,49 +1,49 @@
 {
-	"createdAt": "2025-08-25T07:40:46.331Z",
-	"updatedAt": "2025-08-28T15:55:44.000Z",
-	"id": "0ntXdsmmrZOGRxjL",
-	"name": "Mindee V2",
-	"active": false,
-	"isArchived": false,
+	"name": "Mindee Test Workflow enqueueAndGetInference",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [272, 272],
-			"id": "2afeaf1e-5ba6-43cc-8a33-82d0a352f7c1",
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
-			"parameters": {},
+			"parameters": {
+				"operation": "enqueueAndGetInference",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
 			"type": "n8n-nodes-base.mindeeV2",
-			"typeVersion": 4,
-			"position": [896, 272],
-			"id": "f2ad9974-7016-4266-9cc1-c8691a50d8aa",
-			"name": "Mindee V2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
 			"credentials": {
 				"mindeeV2Api": {
-					"id": "MNzaDBYtrc44WNYc",
+					"id": "jgvj8mBb5jbQiIEj",
 					"name": "Mindee V2 account"
 				}
 			}
 		},
 		{
 			"parameters": {
-				"url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/ReceiptSwiss.jpg",
-				"options": {
-					"redirect": {
-						"redirect": {}
-					}
-				}
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
 			},
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [576, 272],
-			"id": "2a3128a6-ebb8-4ea1-abd4-f457f57a5b7f",
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
 			"name": "HTTP Request"
 		}
 	],
+	"pinData": {},
 	"connections": {
 		"When clicking ‘Execute workflow’": {
 			"main": [
@@ -60,7 +60,7 @@
 			"main": [
 				[
 					{
-						"node": "Mindee V2",
+						"node": "Upload a document and get the result",
 						"type": "main",
 						"index": 0
 					}
@@ -68,15 +68,15 @@
 			]
 		}
 	},
+	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"staticData": null,
+	"versionId": "150e8597-78e7-4bc8-85b0-81a5f75e64ec",
 	"meta": {
-		"templateCredsSetupCompleted": true
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e0c08fe50a944235a7d16d1676bab14791196afa3348d9530be465241cbf6b09"
 	},
-	"pinData": {},
-	"versionId": "cb43f723-f704-4161-a4a2-85c61e243987",
-	"triggerCount": 0,
+	"id": "tgt9Smqa1iT3cU96",
 	"tags": []
 }
