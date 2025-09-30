@@ -181,7 +181,7 @@ export class OpenAiAssistant implements INodeType {
 							request: {
 								method: 'GET',
 								headers: {
-									'OpenAI-Beta': 'assistants=v1',
+									'OpenAI-Beta': 'assistants=v2',
 								},
 								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/assistants',
 							},
