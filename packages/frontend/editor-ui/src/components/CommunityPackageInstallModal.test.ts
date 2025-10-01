@@ -7,9 +7,6 @@ import userEvent from '@testing-library/user-event';
 import { retry } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
-	props: {
-		appendToBody: false,
-	},
 	data() {
 		return {
 			packageName: 'n8n-nodes-hello',

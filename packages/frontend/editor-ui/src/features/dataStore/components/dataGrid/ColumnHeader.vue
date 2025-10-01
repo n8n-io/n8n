@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 import { N8nActionDropdown } from '@n8n/design-system';
 
-type HeaderParamsWithDelete = IHeaderParams & {
+export type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete?: (columnId: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;

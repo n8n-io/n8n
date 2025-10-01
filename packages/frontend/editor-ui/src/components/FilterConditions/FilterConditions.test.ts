@@ -1,4 +1,4 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import { STORES } from '@n8n/stores';
@@ -9,6 +9,8 @@ import { within, waitFor } from '@testing-library/vue';
 import { getFilterOperator } from './utils';
 import get from 'lodash/get';
 import * as workFlowHelpers from '@/composables/useWorkflowHelpers';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
+import type { FilterTypeOptions, FilterValue } from 'n8n-workflow';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -24,14 +26,14 @@ const DEFAULT_SETUP = {
 			name: 'If',
 			type: 'n8n-nodes-base.if',
 			typeVersion: 2,
-			position: [1120, 380],
+			position: [1120, 380] as const,
 			credentials: {},
 			disabled: false,
 		},
-		parameter: { name: 'conditions', displayName: 'Conditions' },
-		value: {},
+		parameter: createTestNodeProperties({ name: 'conditions', displayName: 'Conditions' }),
+		value: {} as FilterValue,
 	},
-};
+} satisfies RenderOptions<typeof FilterConditions>;
 
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
@@ -60,24 +62,30 @@ describe('FilterConditions.vue', () => {
 					options: {
 						caseSensitive: true,
 						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
 					},
 					conditions: [
 						{
+							id: '1',
 							leftValue: '={{ $json.tags }}',
 							rightValue: 'exotic',
 							operator: getFilterOperator('array:contains'),
 						},
 						{
+							id: '2',
 							leftValue: '={{ $json.meta }}',
 							rightValue: '',
 							operator: getFilterOperator('object:notEmpty'),
 						},
 						{
+							id: '3',
 							leftValue: '={{ $json.name }}',
 							rightValue: 'John',
 							operator: getFilterOperator('string:equals'),
 						},
 						{
+							id: '4',
 							leftValue: '={{ $json.tags }}',
 							rightValue: 5,
 							operator: getFilterOperator('array:lengthGte'),
@@ -153,17 +161,19 @@ describe('FilterConditions.vue', () => {
 				value: {
 					conditions: [
 						{
+							id: '1',
 							leftValue: '={{ $json.num }}',
 							rightValue: '5',
 							operator: getFilterOperator('number:equals'),
 						},
 						{
+							id: '2',
 							leftValue: '={{ $json.num }}',
 							rightValue: 'not a number',
 							operator: getFilterOperator('number:equals'),
 						},
 					],
-				},
+				} as Partial<FilterValue> as FilterValue,
 			},
 		});
 
@@ -191,11 +201,11 @@ describe('FilterConditions.vue', () => {
 		const { findAllByTestId } = renderComponent({
 			props: {
 				...DEFAULT_SETUP.props,
-				parameter: {
+				parameter: createTestNodeProperties({
 					typeOptions: {
-						filter: { leftValue: 'leftValue is always this' },
+						filter: { leftValue: 'leftValue is always this', version: {} },
 					},
-				},
+				}),
 			},
 		});
 
@@ -210,22 +220,24 @@ describe('FilterConditions.vue', () => {
 				value: {
 					conditions: [
 						{
+							id: '1',
 							leftValue: 'foo',
 							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 						{
+							id: '2',
 							leftValue: 'foo',
 							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 					],
-				},
-				parameter: {
+				} as Partial<FilterValue> as FilterValue,
+				parameter: createTestNodeProperties({
 					typeOptions: {
-						filter: { allowedCombinators: ['or'] },
+						filter: { allowedCombinators: ['or'], version: {} },
 					},
-				},
+				}),
 			},
 		});
 
@@ -239,22 +251,24 @@ describe('FilterConditions.vue', () => {
 				value: {
 					conditions: [
 						{
+							id: '1',
 							leftValue: 'foo',
 							operator: { type: 'string', operation: 'equals' },
 							rightValue: 'bar',
 						},
 						{
+							id: '2',
 							leftValue: 'foo',
 							operator: { type: 'string', operation: 'equals' },
 							rightValue: 'bar',
 						},
 					],
-				},
-				parameter: {
+				} as Partial<FilterValue> as FilterValue,
+				parameter: createTestNodeProperties({
 					typeOptions: {
-						filter: { maxConditions: 2 },
+						filter: { maxConditions: 2, version: {} },
 					},
-				},
+				}),
 			},
 		});
 
@@ -285,15 +299,18 @@ describe('FilterConditions.vue', () => {
 					options: {
 						caseSensitive: true,
 						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
 					},
 					conditions: [
 						{
+							id: '1',
 							leftValue: '={{ $json.name }}',
 							rightValue: 'John',
 							operator: getFilterOperator('string:equals'),
 						},
 					],
-				},
+				} as Partial<FilterValue> as FilterValue,
 			},
 		});
 
@@ -345,17 +362,19 @@ describe('FilterConditions.vue', () => {
 				value: {
 					conditions: [
 						{
+							id: '1',
 							leftValue: 'foo',
 							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 						{
+							id: '2',
 							leftValue: 'foo',
 							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 					],
-				},
+				} as Partial<FilterValue> as FilterValue,
 				readOnly: true,
 			},
 		});
@@ -394,7 +413,7 @@ describe('FilterConditions.vue', () => {
 						},
 					],
 					combinator: 'and',
-				},
+				} as Partial<FilterValue> as FilterValue,
 			},
 		});
 
@@ -447,16 +466,16 @@ describe('FilterConditions.vue', () => {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
-				parameter: {
+				parameter: createTestNodeProperties({
 					...DEFAULT_SETUP.props.parameter,
 					typeOptions: {
-						filter: { caseSensitive: true },
+						filter: { caseSensitive: true } as FilterTypeOptions,
 					},
-				},
-				node: {
+				}),
+				node: createTestNode({
 					...DEFAULT_SETUP.props.node,
 					parameters: {},
-				},
+				}),
 			},
 		});
 
