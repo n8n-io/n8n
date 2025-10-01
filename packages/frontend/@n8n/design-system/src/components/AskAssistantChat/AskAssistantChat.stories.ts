@@ -908,3 +908,212 @@ TaskAborted.args = {
 		},
 	],
 };
+
+export const ScrollbarWithManyMessages = Template.bind({});
+ScrollbarWithManyMessages.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '1',
+			type: 'text',
+			role: 'user',
+			content: 'Hey, can you help me with a workflow?',
+			read: true,
+		},
+		{
+			id: '2',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Of course! I'd be happy to help you create a workflow. What would you like to build?",
+			read: true,
+		},
+		{
+			id: '3',
+			type: 'text',
+			role: 'user',
+			content: 'I need to connect Slack to Google Sheets',
+			read: true,
+		},
+		{
+			id: '4',
+			type: 'text',
+			role: 'assistant',
+			content:
+				"Great! I can help you set up a workflow that connects Slack to Google Sheets. Here's what we'll need to do:",
+			read: true,
+		},
+		{
+			id: '5',
+			type: 'block',
+			role: 'assistant',
+			title: 'Steps to connect Slack and Google Sheets',
+			content: `1. Add a Slack Trigger node to your workflow
+2. Configure it to listen for specific events (like new messages in a channel)
+3. Add a Google Sheets node
+4. Set up authentication for both services
+5. Map the data from Slack to your Google Sheets columns`,
+			read: true,
+		},
+		{
+			id: '6',
+			type: 'text',
+			role: 'user',
+			content: 'That sounds good. Can you show me how to set up the Slack trigger?',
+			read: true,
+		},
+		{
+			id: '7',
+			type: 'text',
+			role: 'assistant',
+			content: "Here's how to set up the Slack Trigger node:",
+			read: true,
+		},
+		{
+			id: '8',
+			type: 'block',
+			role: 'assistant',
+			title: 'Slack Trigger Configuration',
+			content: `**Event Type**: Choose the event you want to monitor (e.g., "New Message Posted to Channel")
+
+**Channel**: Select the Slack channel you want to watch
+
+**Credentials**: You'll need to authenticate with Slack by:
+- Creating a Slack app
+- Adding the necessary OAuth scopes
+- Installing the app to your workspace
+
+Once configured, the trigger will activate whenever the specified event occurs.`,
+			read: true,
+		},
+		{
+			id: '9',
+			type: 'text',
+			role: 'user',
+			content: 'What about the Google Sheets part?',
+			read: true,
+		},
+		{
+			id: '10',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'For Google Sheets, you\'ll want to use the "Append" operation to add new rows. Here\'s the configuration:',
+			read: true,
+		},
+		{
+			id: '11',
+			type: 'code-diff',
+			role: 'assistant',
+			description: 'Example data mapping from Slack to Google Sheets',
+			codeDiff: `@@ -1,3 +1,10 @@
++// Map Slack message data to Google Sheets columns
++{
++  "Timestamp": "{{ $json.ts }}",
++  "User": "{{ $json.user }}",
++  "Channel": "{{ $json.channel }}",
++  "Message": "{{ $json.text }}",
++  "Thread": "{{ $json.thread_ts }}"
++}`,
+			suggestionId: 'sheets-mapping',
+			read: true,
+		},
+		{
+			id: '12',
+			type: 'text',
+			role: 'user',
+			content: 'Perfect! How do I handle errors?',
+			read: true,
+		},
+		{
+			id: '13',
+			type: 'text',
+			role: 'assistant',
+			content: 'Good thinking! Let me check for error handling best practices in your workflow.',
+			read: true,
+		},
+		{
+			id: '14',
+			type: 'tool',
+			role: 'assistant',
+			toolName: 'analyze_workflow',
+			toolCallId: 'call_analyze_123',
+			status: 'completed',
+			displayTitle: 'Analyzing Workflow',
+			customDisplayTitle: 'Checking for error handling patterns',
+			updates: [
+				{
+					type: 'input',
+					data: {
+						workflowId: 'slack-to-sheets',
+						checkType: 'error-handling',
+					},
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Scanning workflow nodes...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'progress',
+					data: { message: 'Checking for Error Trigger nodes...' },
+					timestamp: new Date().toISOString(),
+				},
+				{
+					type: 'output',
+					data: {
+						recommendations: [
+							'Add Error Trigger node',
+							'Configure retry logic for API calls',
+							'Add try/catch blocks in Code nodes',
+						],
+						currentErrorHandling: 'None detected',
+					},
+					timestamp: new Date().toISOString(),
+				},
+			],
+			read: true,
+		},
+		{
+			id: '15',
+			type: 'text',
+			role: 'user',
+			content: 'Thanks! Can you show me the complete workflow?',
+			read: true,
+		},
+		{
+			id: '16',
+			type: 'text',
+			role: 'assistant',
+			content: "Here's what your complete workflow will look like:",
+			read: true,
+		},
+		{
+			id: '17',
+			type: 'block',
+			role: 'assistant',
+			title: 'Complete Workflow Structure',
+			content: `**Nodes in Order**:
+
+1. **Slack Trigger** → Listens for new messages
+2. **Function Node** → Formats the data
+3. **Google Sheets** → Appends the row
+4. **Error Trigger** → Catches any errors
+5. **Slack Node** → Sends error notifications (if needed)
+
+**Connections**:
+- Main flow: Slack Trigger → Function → Google Sheets
+- Error flow: Error Trigger → Slack notification
+
+This structure ensures data flows smoothly and errors are handled gracefully.`,
+			read: true,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
