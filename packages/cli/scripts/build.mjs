@@ -60,15 +60,17 @@ function copySwaggerTheme() {
 
 function bundleOpenApiSpecs() {
 	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
+	const srcDir = path.resolve(ROOT_DIR, 'src');
 
 	shell
 		.find(publicApiDir)
 		.reduce((acc, cur) => {
-			return cur.endsWith(SPEC_FILENAME) ? [...acc, path.relative('./src', cur)] : acc;
+			return cur.endsWith(SPEC_FILENAME) ? [...acc, path.relative(srcDir, cur)] : acc;
 		}, [])
 		.forEach((specPath) => {
+			const srcSpecPath = path.resolve(ROOT_DIR, 'src', specPath);
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
+			const command = `pnpm openapi bundle "${srcSpecPath}" --output "${distSpecPath}"`;
 
 			shell.exec(command, { silent: true });
 		});
