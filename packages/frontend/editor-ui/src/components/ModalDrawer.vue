@@ -3,7 +3,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { onBeforeUnmount, onMounted } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { ElDrawer } from 'element-plus';
-
 const props = withDefaults(
 	defineProps<{
 		name: string;

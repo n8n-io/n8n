@@ -11,6 +11,7 @@ import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nInfoTip, N8nLink, N8nTabs, N8nText } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		modalBus?: EventBus;

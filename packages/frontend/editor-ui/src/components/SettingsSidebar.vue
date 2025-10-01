@@ -10,6 +10,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nHeading, N8nIcon, N8nLink, N8nMenu } from '@n8n/design-system';
 const emit = defineEmits<{
 	return: [];
 }>();

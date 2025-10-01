@@ -21,7 +21,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
+import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 type Props = {
@@ -116,7 +118,7 @@ watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) =>
 	}
 });
 
-async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+async function onBeforeTabLeave(_activeName: string | number, oldActiveName: string | number) {
 	// Confirm dialog if leaving ask-ai tab during loading
 	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
 		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {

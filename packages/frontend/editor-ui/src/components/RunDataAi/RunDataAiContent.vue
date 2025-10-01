@@ -13,6 +13,7 @@ import { formatTokenUsageCount } from '@/utils/aiUtils';
 import { getReferencedData } from '@/components/RunDataAi/utils';
 import { type LogEntry } from '@/features/logs/logs.types';
 
+import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
 	startTimeMs: number;
 	executionTimeMs: number;

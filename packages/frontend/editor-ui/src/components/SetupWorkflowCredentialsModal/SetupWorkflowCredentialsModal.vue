@@ -2,7 +2,6 @@
 import Modal from '@/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '@/components/SetupWorkflowCredentialsModal/useSetupWorkflowCredentialsModalState';
 import { useI18n } from '@n8n/i18n';
-import N8nHeading from '@n8n/design-system/components/N8nHeading';
 import AppsRequiringCredsNotice from '@/views/SetupWorkflowFromTemplateView/AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from '@/views/SetupWorkflowFromTemplateView/SetupTemplateFormStep.vue';
 import { onMounted, onUnmounted } from 'vue';
@@ -10,6 +9,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 
+import { N8nButton, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowStore = useWorkflowsStore();

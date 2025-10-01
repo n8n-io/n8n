@@ -1,19 +1,21 @@
 <script lang="ts" setup>
-import { computed, shallowRef, watch } from 'vue';
-import type { INodeUi } from '@/Interface';
-import { useI18n } from '@n8n/i18n';
 import LogsOverviewRows from '@/features/logs/components/LogsOverviewRows.vue';
 import { useLogsExecutionData } from '@/features/logs/composables/useLogsExecutionData';
 import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand';
-import type { LogTreeFilter, LogEntry } from '@/features/logs/logs.types';
-import { N8nText } from '@n8n/design-system';
-import RunDataAiContent from '@/components/RunDataAi/RunDataAiContent.vue';
+import type { LogEntry, LogTreeFilter } from '@/features/logs/logs.types';
 import { findLogEntryById } from '@/features/logs/logs.utils';
+import type { INodeUi } from '@/Interface';
+import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, shallowRef, watch } from 'vue';
+import RunDataAiContent from './RunDataAiContent.vue';
 
-const { node, runIndex = 0 } = defineProps<{
+export interface Props {
 	node: INodeUi;
 	runIndex?: number;
-}>();
+}
+
+const { node, runIndex = 0 } = defineProps<Props>();
 
 const i18n = useI18n();
 

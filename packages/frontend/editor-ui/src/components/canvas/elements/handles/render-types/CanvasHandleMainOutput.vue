@@ -4,6 +4,8 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref, useCssModule } from 'vue';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useI18n } from '@n8n/i18n';
+import CanvasHandleDot from '@/components/canvas/elements/handles/render-types/parts/CanvasHandleDot.vue';
+import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
 
 const emit = defineEmits<{
 	add: [];

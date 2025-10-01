@@ -1,6 +1,6 @@
 import { ALPHABET } from '../src/constants';
 import { ApplicationError } from '@n8n/errors';
-import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
@@ -415,7 +415,7 @@ describe('sleepWithAbort', () => {
 		abortController.abort();
 
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 	});
 
@@ -427,7 +427,7 @@ describe('sleepWithAbort', () => {
 
 		const start = Date.now();
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 		const end = Date.now();
 		const elapsed = end - start;
@@ -454,7 +454,7 @@ describe('sleepWithAbort', () => {
 		const sleepPromise = sleepWithAbort(1000, abortController.signal);
 		setTimeout(() => abortController.abort(), 50);
 
-		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+		await expect(sleepPromise).rejects.toThrow(ManualExecutionCancelledError);
 
 		// clearTimeout should have been called to clean up
 		expect(clearTimeoutSpy).toHaveBeenCalled();
