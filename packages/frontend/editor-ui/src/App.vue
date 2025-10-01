@@ -109,8 +109,6 @@ watch(
 	{ immediate: true },
 );
 
-throw new Error('TRY SENTRY');
-
 useExposeCssVar('--toast-bottom-offset', toastBottomOffset);
 useExposeCssVar('--ask-assistant-floating-button-bottom-offset', askAiFloatingButtonBottomOffset);
 </script>
