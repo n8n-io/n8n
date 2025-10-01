@@ -121,6 +121,49 @@ describe('VariablesService', () => {
 				projectId: project.id,
 			});
 		});
+
+		test('user should not be able to create global variable that already exists', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+
+			await variablesService.create(user, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value1',
+			});
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.create(user, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value1',
+				}),
+			).rejects.toThrow('A global variable with key "VAR1" already exists');
+		});
+
+		test('user should not be able to create project variable that already exists in the same project', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			const project = await createTeamProject();
+
+			await variablesService.create(user, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value1',
+				projectId: project.id,
+			});
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.create(user, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value1',
+					projectId: project.id,
+				}),
+			).rejects.toThrow('A variable with key "VAR1" already exists in the specified project');
+		});
 	});
 
 	describe('getAllCached', () => {
