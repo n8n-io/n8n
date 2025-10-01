@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - ai-1492-feature-set-up-running-evaluations-in-ci
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/ci-evals.yml'
@@ -28,7 +29,6 @@ jobs:
         uses: ./.github/actions/setup-nodejs-github
 
       - name: Run Evaluations
-        continue-on-error: true
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
         run: |
           pnpm eval:langsmith
