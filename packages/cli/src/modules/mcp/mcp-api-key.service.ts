@@ -12,6 +12,7 @@ const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 const API_KEY_LABEL = 'MCP Server API Key';
+const REDACT_API_KEY_MIN_HIDDEN_CHARS = 6;
 
 /**
  * Service for managing MCP server API keys, including creation, retrieval, deletion, and authentication middleware.
@@ -84,6 +85,10 @@ export class McpServerApiKeyService {
 	}
 
 	private redactApiKey(apiKey: string) {
+		if (REDACT_API_KEY_REVEAL_COUNT >= apiKey.length - REDACT_API_KEY_MIN_HIDDEN_CHARS) {
+			return '*'.repeat(apiKey.length);
+		}
+
 		const visiblePart = apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT);
 		const redactedPart = '*'.repeat(
 			Math.max(0, REDACT_API_KEY_MAX_LENGTH - REDACT_API_KEY_REVEAL_COUNT),
