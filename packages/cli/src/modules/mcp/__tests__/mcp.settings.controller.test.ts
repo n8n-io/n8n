@@ -33,7 +33,7 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: false });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = new Response();
 			const result = await controller.updateSettings(req, res, dto);
