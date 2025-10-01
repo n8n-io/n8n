@@ -246,6 +246,7 @@ export class ImportService {
 	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
 		const entities: Record<string, unknown>[] = [];
+		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
 			const lines = this.cipher.decrypt(block).split(/\r?\n/);
@@ -256,7 +257,7 @@ export class ImportService {
 				if (!line) continue;
 
 				try {
-					entities.push(z.record(z.string(), z.unknown()).parse(JSON.parse(line)));
+					entities.push(entitySchema.parse(JSON.parse(line)));
 				} catch (error: unknown) {
 					// If parsing fails, it might be because the JSON spans multiple lines
 					// This shouldn't happen in proper JSONL, but let's handle it gracefully
@@ -378,7 +379,7 @@ export class ImportService {
 					return;
 				}
 
-				const tableName = entityMetadata.tableName;
+				const tableName = this.dataSource.driver.escape(entityMetadata.tableName);
 				this.logger.info(`   📋 Target table: ${tableName}`);
 
 				let entityCount = 0;
@@ -389,18 +390,21 @@ export class ImportService {
 						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
 						this.logger.info(`      Found ${entities.length} entities`);
 
-						for (const entity of entities) {
-							const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
-								`INSERT INTO ${this.dataSource.driver.escape(tableName)} (${Object.keys(entity)
-									.map((key) => this.dataSource.driver.escape(key))
-									.join(', ')}) VALUES (${Object.keys(entity)
-									.map((key) => `:${key}`)
-									.join(', ')})`,
-								entity,
-								{},
-							);
-							await transactionManager.query(query, parameters);
-						}
+						await Promise.all(
+							entities.map(async (entity) => {
+								const columns = Object.keys(entity);
+								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
+								const columnValues = columns.map((key) => `:${key}`).join(', ');
+
+								const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
+									`INSERT INTO ${tableName} (${columnNames}) VALUES (${columnValues})`,
+									entity,
+									{},
+								);
+
+								await transactionManager.query(query, parameters);
+							}),
+						);
 
 						entityCount += entities.length;
 					}),
