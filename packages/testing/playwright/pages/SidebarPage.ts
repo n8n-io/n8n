@@ -79,6 +79,10 @@ export class SidebarPage {
 		return this.page.getByTestId('banners-TRIAL');
 	}
 
+	getTemplatesLink(): Locator {
+		return this.page.locator('[data-test-id="menu-item"][id="templates"]');
+	}
+
 	async openUserMenu(): Promise<void> {
 		await this.getUserMenu().click();
 	}
