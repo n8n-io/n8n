@@ -126,17 +126,6 @@ export class AuthService {
 		};
 	}
 
-	extractAPIKeyFromHeader(headerValue: string) {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
-		}
-		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			return apiKeyMatch[1];
-		}
-		throw new AuthError('Invalid authorization header format');
-	}
-
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}

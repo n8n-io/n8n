@@ -1,13 +1,15 @@
-import { ApiKeyRepository, AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NextFunction, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
 
 const API_KEY_AUDIENCE = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
+const API_KEY_LABEL = 'MCP Server API Key';
 
 @Service()
 export class McpServerApiKeyService {
@@ -31,7 +33,7 @@ export class McpServerApiKeyService {
 				apiKey,
 				audience: API_KEY_AUDIENCE,
 				scopes: [],
-				label: 'MCP Server API Key',
+				label: API_KEY_LABEL,
 			}),
 		);
 
@@ -78,10 +80,27 @@ export class McpServerApiKeyService {
 		return redactedPart + visiblePart;
 	}
 
+	extractAPIKeyFromHeader(headerValue: string) {
+		if (!headerValue.startsWith('Bearer')) {
+			throw new AuthError('Invalid authorization header format');
+		}
+		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
+		if (apiKeyMatch) {
+			return apiKeyMatch[1];
+		}
+		throw new AuthError('Invalid authorization header format');
+	}
+
 	getAuthMiddleware() {
-		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			const authHeader = req.headers.authorization;
-			const apiKey = authHeader?.split(' ')[1];
+		return async (req: Request, res: Response, next: NextFunction) => {
+			const authorizationHeader = req.header('authorization');
+
+			if (!authorizationHeader) {
+				this.responseWithUnauthorized(res);
+				return;
+			}
+
+			const apiKey = this.extractAPIKeyFromHeader(authorizationHeader);
 
 			if (!apiKey) {
 				this.responseWithUnauthorized(res);
@@ -105,6 +124,7 @@ export class McpServerApiKeyService {
 				return;
 			}
 
+			// @ts-ignore
 			req.user = user;
 
 			next();

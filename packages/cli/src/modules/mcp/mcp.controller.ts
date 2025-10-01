@@ -11,6 +11,8 @@ import { McpSettingsService } from './mcp.settings.service';
 
 export type FlushableResponse = Response & { flush: () => void };
 
+const getAuthMiddleware = () => Container.get(McpServerApiKeyService).getAuthMiddleware();
+
 @RootLevelController('/mcp-access')
 export class McpController {
 	constructor(
@@ -21,7 +23,7 @@ export class McpController {
 
 	@Post('/http', {
 		rateLimit: { limit: 100 },
-		middlewares: [Container.get(McpServerApiKeyService).getAuthMiddleware()],
+		middlewares: [getAuthMiddleware()],
 		usesTemplates: true,
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
