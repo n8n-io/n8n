@@ -297,6 +297,37 @@ describe('WorkflowCard', () => {
 		expect(actions).not.toHaveTextContent('Move');
 	});
 
+	it("should not show 'Move' action on read only instance", async () => {
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(settingsStore, 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(vueRouter, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECTS,
+		} as vueRouter.RouteLocationNormalizedLoadedGeneric);
+
+		const data = createWorkflow({
+			scopes: ['workflow:update'],
+		});
+
+		const { getByTestId } = renderComponent({
+			props: { data, areFoldersEnabled: true, readOnly: true },
+		});
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Move');
+	});
+
 	it("should have 'Archive' action on non archived nonactive workflows", async () => {
 		const data = createWorkflow({
 			active: false,
