@@ -51,6 +51,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			: 0,
 	);
 	const throttledState = useThrottle(state, updateInterval);
+	const throttledWorkflowData = computed(() => throttledState.value?.response.workflowData);
+
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
 	const workflow = ref<Workflow>();
@@ -172,13 +174,10 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	// Update workflow object on throttled state changes
 	// NOTE: don't turn the workflow object into a computed! It causes infinite update loop
 	watch(
-		throttledState,
-		(state) => {
-			workflow.value = state
-				? new Workflow({
-						...state.response.workflowData,
-						nodeTypes: workflowsStore.getNodeTypes(),
-					})
+		throttledWorkflowData,
+		(data) => {
+			workflow.value = data
+				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
 				: undefined;
 		},
 		{ immediate: true },
