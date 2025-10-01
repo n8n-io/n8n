@@ -5,7 +5,6 @@ import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decora
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
-import { BadRequestError } from '../../errors/response-errors/bad-request.error';
 
 @RestController('/mcp')
 export class McpSettingsController {
