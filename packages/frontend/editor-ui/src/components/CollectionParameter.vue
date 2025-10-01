@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { EXPERIMENT_TEMPLATE_RECO_V2_KEY, TEMPLATES_URLS } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';

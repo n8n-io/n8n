@@ -11,6 +11,7 @@ import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import NDVHeader from '@/components/NDVHeader.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';

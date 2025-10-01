@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';

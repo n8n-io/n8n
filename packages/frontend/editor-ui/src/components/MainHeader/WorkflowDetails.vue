@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import FolderBreadcrumbs from '@/components/Folders/FolderBreadcrumbs.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';

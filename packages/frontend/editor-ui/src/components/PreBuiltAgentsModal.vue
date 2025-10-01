@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { PRE_BUILT_AGENTS_MODAL_KEY } from '@/constants';
 import { createEventBus } from '@n8n/utils/event-bus';

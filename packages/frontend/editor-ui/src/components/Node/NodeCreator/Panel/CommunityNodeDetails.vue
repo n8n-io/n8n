@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';

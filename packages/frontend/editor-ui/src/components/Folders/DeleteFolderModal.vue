@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
+import MoveToFolderDropdown from '@/components/Folders/MoveToFolderDropdown.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '@/stores/folders.store';

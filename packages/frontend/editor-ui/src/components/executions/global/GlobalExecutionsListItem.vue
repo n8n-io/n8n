@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import GlobalExecutionsListItemQueuedTooltip from '@/components/executions/global/GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';

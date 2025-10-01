@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
