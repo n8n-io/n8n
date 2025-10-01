@@ -3,12 +3,12 @@ import type { ApiKey, AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
+import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 
 const createReq = (body: unknown): AuthenticatedRequest =>
 	({ body }) as unknown as AuthenticatedRequest;
@@ -93,7 +93,7 @@ describe('McpSettingsController', () => {
 
 			const result = await controller.getApiKeyForMcpServer(req);
 
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser, true);
+			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
 			expect(mcpServerApiKeyService.createMcpServerApiKey).toHaveBeenCalledWith(mockUser);
 			expect(result).toEqual(mockApiKey);
 		});
