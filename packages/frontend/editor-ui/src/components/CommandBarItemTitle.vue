@@ -17,13 +17,23 @@ defineProps<{
 	display: flex;
 	gap: var(--spacing-3xs);
 	align-items: center;
+	min-width: 0;
 }
 
 .title {
 	color: var(--color-text-dark);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex-shrink: 1;
+	min-width: 0;
 }
 
 .suffix {
 	color: var(--color-text-light);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 50%;
 }
 </style>
