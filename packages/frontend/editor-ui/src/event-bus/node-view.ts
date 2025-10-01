@@ -23,6 +23,15 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to open import workflow from file picker */
 	importWorkflowFromFile: never;
+
+	/** Command to archive current workflow */
+	archiveWorkflow: never;
+
+	/** Command to unarchive current workflow */
+	unarchiveWorkflow: never;
+
+	/** Command to delete current workflow */
+	deleteWorkflow: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

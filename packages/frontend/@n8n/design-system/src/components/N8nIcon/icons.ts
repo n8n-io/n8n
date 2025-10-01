@@ -33,6 +33,7 @@ import VectorSquare from './custom/vector-square.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
+import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
 import IconLucideArrowLeft from '~icons/lucide/arrow-left';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
@@ -456,6 +457,7 @@ export const updatedIconSet = {
 	// lucide
 	'align-right': IconLucideAlignRight,
 	archive: IconLucideArchive,
+	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': IconLucideArrowDown,
 	'arrow-left': IconLucideArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,

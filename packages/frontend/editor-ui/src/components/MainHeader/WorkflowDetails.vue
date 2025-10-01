@@ -442,6 +442,97 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
+async function handleArchiveWorkflow() {
+	if (props.active) {
+		const archiveConfirmed = await message.confirm(
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+				interpolate: { workflowName: props.name },
+			}),
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+				),
+				cancelButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+				),
+			},
+		);
+
+		if (archiveConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	try {
+		await workflowsStore.archiveWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	uiStore.stateIsDirty = false;
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
+async function handleUnarchiveWorkflow() {
+	await workflowsStore.unarchiveWorkflow(props.id);
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+}
+
+async function handleDeleteWorkflow() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: props.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.deleteWorkflow(props.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+	uiStore.stateIsDirty = false;
+	// Reset tab title since workflow is deleted.
+	documentTitle.reset();
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.name },
+		}),
+		type: 'success',
+	});
+
+	await router.push({ name: VIEWS.WORKFLOWS });
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -492,7 +583,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
-			onImportWorkflowFromFile();
+			handleImportWorkflowFromFile();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
@@ -528,95 +619,15 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			if (props.active) {
-				const archiveConfirmed = await message.confirm(
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-						interpolate: { workflowName: props.name },
-					}),
-					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-						),
-						cancelButtonText: locale.baseText(
-							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-						),
-					},
-				);
-
-				if (archiveConfirmed !== MODAL_CONFIRM) {
-					return;
-				}
-			}
-
-			try {
-				await workflowsStore.archiveWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
-				return;
-			}
-
-			uiStore.stateIsDirty = false;
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
-
+			await handleArchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
-			await workflowsStore.unarchiveWorkflow(props.id);
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
+			await handleUnarchiveWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
-			const deleteConfirmed = await message.confirm(
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-					interpolate: { workflowName: props.name },
-				}),
-				locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-					),
-					cancelButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-					),
-				},
-			);
-
-			if (deleteConfirmed !== MODAL_CONFIRM) {
-				return;
-			}
-
-			try {
-				await workflowsStore.deleteWorkflow(props.id);
-			} catch (error) {
-				toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
-				return;
-			}
-			uiStore.stateIsDirty = false;
-			// Reset tab title since workflow is deleted.
-			documentTitle.reset();
-			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-					interpolate: { workflowName: props.name },
-				}),
-				type: 'success',
-			});
-
-			await router.push({ name: VIEWS.WORKFLOWS });
+			await handleDeleteWorkflow();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
@@ -718,16 +729,22 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 	}
 };
 
-const onImportWorkflowFromFile = () => {
+const handleImportWorkflowFromFile = () => {
 	importFileRef.value?.click();
 };
 
 onMounted(() => {
-	nodeViewEventBus.on('importWorkflowFromFile', onImportWorkflowFromFile);
+	nodeViewEventBus.on('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.on('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 });
 
 onBeforeUnmount(() => {
-	nodeViewEventBus.off('importWorkflowFromFile', onImportWorkflowFromFile);
+	nodeViewEventBus.off('importWorkflowFromFile', handleImportWorkflowFromFile);
+	nodeViewEventBus.off('archiveWorkflow', handleArchiveWorkflow);
+	nodeViewEventBus.off('unarchiveWorkflow', handleUnarchiveWorkflow);
+	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 });
 </script>
 

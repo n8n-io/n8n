@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { type Component, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
@@ -39,6 +39,9 @@ const ITEM_ID = {
 	DOWNLOAD_WORKFLOW: 'download-workflow',
 	IMPORT_WORKFLOW_FROM_URL: 'import-workflow-from-url',
 	IMPORT_WORKFLOW_FROM_FILE: 'import-workflow-from-file',
+	ARCHIVE_WORKFLOW: 'archive-workflow',
+	UNARCHIVE_WORKFLOW: 'unarchive-workflow',
+	DELETE_WORKFLOW: 'delete-workflow',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -81,7 +84,7 @@ export function useWorkflowCommands(): CommandGroup {
 					})),
 				],
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'arrow-right',
 					},
@@ -89,6 +92,134 @@ export function useWorkflowCommands(): CommandGroup {
 			},
 		];
 	});
+
+	const canvasActions = computed<CommandBarItem[]>(() => [
+		{
+			id: ITEM_ID.SAVE_WORKFLOW,
+			title: i18n.baseText('commandBar.workflow.save'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			handler: async () => {
+				const saved = await workflowSaving.saveCurrentWorkflow();
+				if (saved) {
+					canvasEventBus.emit('saved:workflow');
+				}
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'save',
+				},
+			},
+		},
+		{
+			id: ITEM_ID.TEST_WORKFLOW,
+			title: i18n.baseText('commandBar.workflow.test'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			keywords: [
+				i18n.baseText('commandBar.workflow.keywords.test'),
+				i18n.baseText('commandBar.workflow.keywords.execute'),
+				i18n.baseText('commandBar.workflow.keywords.run'),
+				i18n.baseText('commandBar.workflow.keywords.workflow'),
+			],
+			handler: () => {
+				// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
+				void useRunWorkflow({ router }).runEntireWorkflow('main');
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'flask-conical',
+				},
+			},
+		},
+		{
+			id: ITEM_ID.SELECT_ALL,
+			title: i18n.baseText('commandBar.workflow.selectAll'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			handler: () => {
+				canvasEventBus.emit('nodes:selectAll');
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'list-checks',
+				},
+			},
+		},
+		{
+			id: ITEM_ID.TIDY_UP_WORKFLOW,
+			title: i18n.baseText('commandBar.workflow.tidyUp'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			handler: () => {
+				canvasEventBus.emit('tidyUp', {
+					source: 'command-bar',
+				});
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'wand-sparkles',
+				},
+			},
+		},
+		{
+			id: ITEM_ID.DUPLICATE_WORKFLOW,
+			title: i18n.baseText('commandBar.workflow.duplicate'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			handler: () => {
+				uiStore.openModalWithData({
+					name: DUPLICATE_MODAL_KEY,
+					data: {
+						id: workflowsStore.workflowId,
+						name: editableWorkflow.value.name,
+						tags: editableWorkflow.value.tags,
+					},
+				});
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'copy',
+				},
+			},
+		},
+	]);
+
+	const activateCommands = computed<CommandBarItem[]>(() =>
+		workflowsStore.isWorkflowActive
+			? [
+					{
+						id: ITEM_ID.DEACTIVATE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.deactivate'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'power-off',
+							},
+						},
+					},
+				]
+			: [
+					{
+						id: ITEM_ID.ACTIVATE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.activate'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'power',
+							},
+						},
+					},
+				],
+	);
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
 		const subworkflows = editableWorkflow.value.nodes
@@ -123,7 +254,7 @@ export function useWorkflowCommands(): CommandGroup {
 					})),
 				],
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'sign-in-alt',
 					},
@@ -132,131 +263,8 @@ export function useWorkflowCommands(): CommandGroup {
 		];
 	});
 
-	const workflowCommands = computed<CommandBarItem[]>(() => {
+	const exportCommands = computed<CommandBarItem[]>(() => {
 		return [
-			{
-				id: ITEM_ID.TEST_WORKFLOW,
-				title: i18n.baseText('commandBar.workflow.test'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				keywords: [
-					i18n.baseText('commandBar.workflow.keywords.test'),
-					i18n.baseText('commandBar.workflow.keywords.execute'),
-					i18n.baseText('commandBar.workflow.keywords.run'),
-					i18n.baseText('commandBar.workflow.keywords.workflow'),
-				],
-				handler: () => {
-					// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
-					void useRunWorkflow({ router }).runEntireWorkflow('main');
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'flask-conical',
-					},
-				},
-			},
-			{
-				id: ITEM_ID.SAVE_WORKFLOW,
-				title: i18n.baseText('commandBar.workflow.save'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				handler: async () => {
-					const saved = await workflowSaving.saveCurrentWorkflow();
-					if (saved) {
-						canvasEventBus.emit('saved:workflow');
-					}
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'save',
-					},
-				},
-			},
-			...(workflowsStore.isWorkflowActive
-				? [
-						{
-							id: ITEM_ID.DEACTIVATE_WORKFLOW,
-							title: i18n.baseText('commandBar.workflow.deactivate'),
-							section: i18n.baseText('commandBar.sections.workflow'),
-							handler: () => {
-								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, false);
-							},
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'power-off',
-								},
-							},
-						},
-					]
-				: [
-						{
-							id: ITEM_ID.ACTIVATE_WORKFLOW,
-							title: i18n.baseText('commandBar.workflow.activate'),
-							section: i18n.baseText('commandBar.sections.workflow'),
-							handler: () => {
-								void workflowActivate.updateWorkflowActivation(workflowsStore.workflowId, true);
-							},
-							icon: {
-								component: N8nIcon,
-								props: {
-									icon: 'power',
-								},
-							},
-						},
-					]),
-			{
-				id: ITEM_ID.SELECT_ALL,
-				title: i18n.baseText('commandBar.workflow.selectAll'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				handler: () => {
-					canvasEventBus.emit('nodes:selectAll');
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'list-checks',
-					},
-				},
-			},
-			{
-				id: ITEM_ID.TIDY_UP_WORKFLOW,
-				title: i18n.baseText('commandBar.workflow.tidyUp'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				handler: () => {
-					canvasEventBus.emit('tidyUp', {
-						source: 'command-bar',
-					});
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'wand-sparkles',
-					},
-				},
-			},
-			{
-				id: ITEM_ID.DUPLICATE_WORKFLOW,
-				title: i18n.baseText('commandBar.workflow.duplicate'),
-				section: i18n.baseText('commandBar.sections.workflow'),
-				handler: () => {
-					uiStore.openModalWithData({
-						name: DUPLICATE_MODAL_KEY,
-						data: {
-							id: workflowsStore.workflowId,
-							name: editableWorkflow.value.name,
-							tags: editableWorkflow.value.tags,
-						},
-					});
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'copy',
-					},
-				},
-			},
-			...subworkflowCommands.value,
 			{
 				id: ITEM_ID.DOWNLOAD_WORKFLOW,
 				title: i18n.baseText('commandBar.workflow.download'),
@@ -283,18 +291,27 @@ export function useWorkflowCommands(): CommandGroup {
 					saveAs(blob, name + '.json');
 				},
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'download',
 					},
 				},
+				keywords: [
+					i18n.baseText('commandBar.workflow.keywords.download'),
+					i18n.baseText('commandBar.workflow.keywords.export'),
+				],
 			},
+		];
+	});
+
+	const importCommands = computed<CommandBarItem[]>(() => {
+		return [
 			{
 				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,
 				title: i18n.baseText('commandBar.workflow.importFromURL'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'link',
 					},
@@ -308,7 +325,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.importFromFile'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'link',
 					},
@@ -317,6 +334,75 @@ export function useWorkflowCommands(): CommandGroup {
 					nodeViewEventBus.emit('importWorkflowFromFile');
 				},
 			},
+		];
+	});
+
+	const lifecycleCommands = computed<CommandBarItem[]>(() => {
+		return !workflowsStore.workflow.isArchived
+			? [
+					{
+						id: ITEM_ID.ARCHIVE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.archive'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						keywords: [
+							i18n.baseText('commandBar.workflow.keywords.archive'),
+							i18n.baseText('commandBar.workflow.keywords.delete'),
+						],
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'trash',
+							},
+						},
+						handler: () => {
+							nodeViewEventBus.emit('archiveWorkflow');
+						},
+					},
+				]
+			: [
+					{
+						id: ITEM_ID.UNARCHIVE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.unarchive'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						keywords: [
+							i18n.baseText('commandBar.workflow.keywords.unarchive'),
+							i18n.baseText('commandBar.workflow.keywords.restore'),
+						],
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'archive-restore',
+							},
+						},
+						handler: () => {
+							nodeViewEventBus.emit('unarchiveWorkflow');
+						},
+					},
+					{
+						id: ITEM_ID.DELETE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.delete'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'trash',
+							},
+						},
+						handler: () => {
+							nodeViewEventBus.emit('deleteWorkflow');
+						},
+					},
+				];
+	});
+
+	const workflowCommands = computed<CommandBarItem[]>(() => {
+		return [
+			...canvasActions.value,
+			...activateCommands.value,
+			...subworkflowCommands.value,
+			...exportCommands.value,
+			...importCommands.value,
+			...lifecycleCommands.value,
 		];
 	});
 
