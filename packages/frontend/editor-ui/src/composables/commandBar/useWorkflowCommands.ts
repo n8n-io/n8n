@@ -356,7 +356,7 @@ export function useWorkflowCommands(): CommandGroup {
 				icon: {
 					component: N8nIcon as Component,
 					props: {
-						icon: 'link',
+						icon: 'file-import',
 					},
 				},
 				handler: () => {
