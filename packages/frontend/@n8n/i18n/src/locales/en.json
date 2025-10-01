@@ -3594,7 +3594,7 @@
 	"commandBar.workflow.duplicate": "Duplicate workflow",
 	"commandBar.workflow.download": "Download workflow",
 	"commandBar.workflow.openCredential": "Open credential",
-	"commandBar.workflow.openSubworkflow": "Open subworkflow",
+	"commandBar.workflow.openSubworkflow": "Open sub-workflow",
 	"commandBar.workflow.keywords.test": "test",
 	"commandBar.workflow.keywords.execute": "execute",
 	"commandBar.workflow.keywords.run": "run",

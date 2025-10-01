@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CommandGroup } from './types';
@@ -33,6 +34,12 @@ export function useTemplateCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.templates.import'),
 				children: [...importTemplateCommands.value],
 				section: i18n.baseText('commandBar.sections.templates'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'file-import',
+					},
+				},
 			},
 		];
 	});

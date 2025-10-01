@@ -13,7 +13,7 @@ import { VIEWS } from '@/constants';
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
 	OPEN_CREDENTIAL: 'open-credential',
-};
+} as const;
 
 export function useCredentialNavigationCommands(options: {
 	lastQuery: Ref<string>;

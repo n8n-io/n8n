@@ -80,6 +80,7 @@ import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
+import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
@@ -199,6 +200,7 @@ import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
 import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
+import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
@@ -283,6 +285,7 @@ export const deprecatedIconSet = {
 	'code-branch': IconLucideGitBranch,
 	cog: IconLucideCog,
 	cogs: IconLucideCog,
+	'columns-3-cog': IconLucideColumns3Cog,
 	comment: IconLucideMessageCircle,
 	comments: IconLucideMessagesSquare,
 	'clipboard-list': IconLucideClipboardList,
@@ -618,6 +621,7 @@ export const updatedIconSet = {
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
+	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	wrench: IconLucideWrench,
 	x: IconLucideX,
