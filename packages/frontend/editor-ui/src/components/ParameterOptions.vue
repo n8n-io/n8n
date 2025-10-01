@@ -24,6 +24,7 @@ interface Props {
 	loading?: boolean;
 	loadingMessage?: string;
 	isContentOverridden?: boolean;
+	staticFieldName?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -201,7 +202,7 @@ const onViewSelected = (selected: string) => {
 				:model-value="selectedView"
 				:disabled="isReadOnly"
 				:options="[
-					{ label: i18n.baseText('parameterInput.fixed'), value: 'fixed' },
+					{ label: staticFieldName || i18n.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
 				]"
 				@update:model-value="onViewSelected"

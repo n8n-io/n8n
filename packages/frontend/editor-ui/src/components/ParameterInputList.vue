@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type {
 	CalloutAction,
+	IDataObject,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	ADD_FORM_NOTICE,
 	getParameterValueByPath,
+	jsonParse,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
@@ -53,6 +58,7 @@ import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -102,6 +108,12 @@ const {
 } = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
+
+const schemaVisible = ref(false);
+
+function onToggleSchema() {
+	schemaVisible.value = !schemaVisible.value;
+}
 
 onErrorCaptured((e, component) => {
 	if (
@@ -372,6 +384,40 @@ function onNoticeAction(action: string) {
 	}
 }
 
+async function onModeSelected(command: string, parameter: INodeProperties) {
+	if (!node.value) return;
+
+	let value: NodeParameterValue;
+
+	switch (command) {
+		case 'addExpression':
+			if (isValueExpression(parameter, getParameterValue(parameter.name))) return;
+			value = `=${JSON.stringify(getParameterValue(parameter.name), null, 2)}`;
+			break;
+
+		case 'removeExpression':
+			if (!isValueExpression(parameter, getParameterValue(parameter.name))) return;
+			value = (getParameterValue(parameter.name) as string).replace(/^=/, '').trim();
+			if (value.startsWith('{{') && value.endsWith('}}')) {
+				value = value.replace(/^\{\{/, '').replace(/\}\}$/, '');
+			}
+			value = jsonParse(value, { acceptJSObject: true });
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+			break;
+
+		case 'openExpression':
+			return;
+	}
+
+	const parameterData: IUpdateInformation = {
+		node: node.value.name,
+		name: getPath(parameter.name),
+		value,
+	};
+
+	valueChanged(parameterData);
+}
+
 function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
@@ -496,6 +542,43 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	await dismissCallout(parameter.name);
 }
+
+function getParameterSchema(parameter: INodeProperties) {
+	if (['string', 'number', 'boolean'].includes(parameter.type)) return parameter.type;
+	if (['options'].includes(parameter.type)) {
+		if (parameter.typeOptions?.loadOptionsMethod) {
+			return 'string';
+		}
+		return (parameter?.options as INodePropertyOptions[]).map((option) => option.value).join(' | ');
+	}
+	if (parameter.type === 'collection') {
+		const schema: IDataObject = {};
+		for (const property of (parameter.options as INodeProperties[]) ?? []) {
+			if (property.type === 'notice') continue;
+			schema[property.name] = getParameterSchema(property);
+		}
+		return schema;
+	}
+	if (parameter.type === 'fixedCollection') {
+		const schema: IDataObject = {};
+
+		const values = (parameter.options?.[0] as INodePropertyCollection)?.values ?? [];
+
+		for (const property of values) {
+			if (property.type === 'notice') continue;
+			schema[property.name] = getParameterSchema(property);
+		}
+
+		const valuesKey = (parameter.options as INodeProperties[])[0].name;
+		const isMultipleValue = parameter?.typeOptions?.multipleValues;
+		return { [valuesKey]: isMultipleValue ? [schema] : schema };
+	}
+	return parameter;
+}
+
+function getSchema(parameter: INodeProperties) {
+	return JSON.stringify(getParameterSchema(parameter), null, 2);
+}
 </script>
 
 <template>
@@ -599,6 +682,21 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					:input-name="parameter.name"
 					color="text-dark"
 				>
+					<template #options>
+						<N8nTooltip placement="right">
+							<template #content>
+								Switching between modes may require expressions adjustments
+							</template>
+							<ParameterOptions
+								:parameter="parameter"
+								:value="getParameterValue(parameter.name)"
+								:is-read-only="isReadOnly as boolean"
+								:show-options="false"
+								static-field-name="Widget"
+								@update:model-value="(command) => onModeSelected(command, parameter)"
+							/>
+						</N8nTooltip>
+					</template>
 					<template
 						v-if="
 							showIssuesInLabelFor.includes(parameter.type) &&
@@ -616,7 +714,41 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError">
+
+				<div v-if="isValueExpression(parameter, getParameterValue(parameter.name))">
+					<ParameterInputFull
+						:parameter="parameter"
+						:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
+						:hide-hint="true"
+						:value="getParameterValue(parameter.name)"
+						:display-options="false"
+						:path="getPath(parameter.name)"
+						:is-read-only="
+							isReadOnly ||
+							(parameter.disabledOptions &&
+								shouldDisplayNodeParameter(parameter, 'disabledOptions'))
+						"
+						:hide-label="true"
+						:node-values="nodeValues"
+						@update="valueChanged"
+						@blur="onParameterBlur(parameter.name)"
+					/>
+
+					<code>
+						<div class="schema-btn">
+							<N8nButton
+								size="mini"
+								label="Schema"
+								type="tertiary"
+								@click="onToggleSchema"
+								style="margin-bottom: 5px; margin-top: 5px"
+							></N8nButton>
+						</div>
+
+						<pre class="schema-preview" v-if="schemaVisible">{{ getSchema(parameter) }}</pre>
+					</code>
+				</div>
+				<Suspense v-else-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"
@@ -788,6 +920,28 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 	.callout-dismiss:hover {
 		color: var(--color-icon-hover);
+	}
+
+	.schema-btn {
+		position: relative;
+		top: 0;
+	}
+
+	.schema-preview {
+		font-size: var(--font-size-2xs);
+		color: var(--color-notice-font);
+		margin-bottom: var(--spacing-xs);
+		padding: var(--spacing-2xs);
+		background-color: var(--background-color);
+		border-width: 1px 1px 1px 7px;
+		border-style: solid;
+		border-color: var(--border-color);
+		border-radius: var(--border-radius-small);
+		line-height: var(--font-line-height-compact);
+		border-color: var(--color-info-tint-1);
+		background-color: var(--color-info-tint-2);
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 }
 </style>

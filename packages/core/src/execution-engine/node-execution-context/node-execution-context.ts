@@ -14,6 +14,7 @@ import type {
 	INodeExecutionData,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodeParameters,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
@@ -28,6 +29,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	jsonParse,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
@@ -397,6 +399,81 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this._getNodeParameter(parameterName, itemIndex, fallbackValue, options);
 	}
 
+	private getCollectionParameterValue(
+		parameters: INodeParameters,
+		parameterPath: string,
+		itemIndex: number,
+		fallbackValue?: NodeParameterValueType,
+	): NodeParameterValueType {
+		const segments = parameterPath
+			.replace(/\[(\d+)\]/g, '.$1')
+			.split('.')
+			.filter(Boolean);
+
+		if (segments.length === 1) {
+			const value = get(parameters, parameterPath, fallbackValue);
+
+			if (typeof value === 'string') {
+				if (value.startsWith('=')) {
+					let s = value.replace(/^=/, '');
+					s = this.evaluateExpression(s, itemIndex) as string;
+					try {
+						if (typeof s === 'object') {
+							return s;
+						} else {
+							s = jsonParse(s, { acceptJSObject: true });
+							if (typeof s !== 'object') return fallbackValue;
+							return s;
+						}
+					} catch {
+						return fallbackValue;
+					}
+				} else {
+					return fallbackValue;
+				}
+			}
+
+			return value;
+		}
+
+		let current: unknown = parameters;
+
+		for (const segment of segments) {
+			if (current === undefined) return fallbackValue;
+
+			if (typeof current === 'string') {
+				const s = current.trim();
+				if (s.startsWith('=')) {
+					let value = s.replace(/^=/, '');
+					value = this.evaluateExpression(value, itemIndex) as string;
+					try {
+						if (typeof value === 'object') {
+							current = value;
+						} else {
+							current = jsonParse(value, { acceptJSObject: true });
+						}
+					} catch {
+						return fallbackValue;
+					}
+				} else {
+					return fallbackValue;
+				}
+			}
+
+			if (Array.isArray(current)) {
+				const idx = Number(segment);
+				if (!Number.isInteger(idx)) return fallbackValue;
+				current = current[idx];
+			} else if (typeof current === 'object' && current !== null) {
+				current = (current as Record<string, unknown>)[segment];
+			} else {
+				return fallbackValue;
+			}
+		}
+
+		return (current as NodeParameterValueType) ?? fallbackValue;
+	}
+
 	protected _getNodeParameter(
 		parameterName: string,
 		itemIndex: number,
@@ -409,8 +486,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const value = get(node.parameters, parameterName, fallbackValue);
+		const parameterPath = parameterName.split('.');
+
+		const propertyDescription = nodeType.description.properties.find(
+			(prop) =>
+				parameterPath[0] === prop.name &&
+				NodeHelpers.displayParameter(node.parameters, prop, node, nodeType.description),
+		);
+
+		let value;
+		if (
+			propertyDescription &&
+			['fixedCollection', 'collection'].includes(propertyDescription.type)
+		) {
+			value = this.getCollectionParameterValue(
+				node.parameters,
+				parameterName,
+				itemIndex,
+				fallbackValue as unknown as NodeParameterValueType,
+			);
+		} else {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			value = get(node.parameters, parameterName, fallbackValue);
+		}
 
 		if (value === undefined) {
 			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
