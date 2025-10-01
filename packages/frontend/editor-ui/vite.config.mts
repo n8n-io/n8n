@@ -4,6 +4,7 @@ import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
@@ -74,6 +75,8 @@ const alias = [
 		replacement: resolve(__dirname, 'src/source-map-js-shim'),
 	},
 ];
+
+const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
@@ -166,9 +169,21 @@ const plugins: UserConfig['plugins'] = [
 			return [];
 		},
 	},
+	...(release
+		? [
+				sentryVitePlugin({
+					org: 'n8nio',
+					project: 'instance-frontend',
+					authToken: process.env.SENTRY_AUTH_TOKEN,
+					telemetry: false,
+					release: {
+						name: `n8n@${release}`,
+					},
+				}),
+			]
+		: []),
 ];
 
-const { RELEASE: release } = process.env;
 const target = browserslistToEsbuild(browsers);
 
 export default mergeConfig(
