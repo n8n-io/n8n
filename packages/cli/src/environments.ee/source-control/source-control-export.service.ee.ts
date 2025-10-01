@@ -3,11 +3,12 @@ import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	FolderRepository,
-	TagRepository,
-	WorkflowTagMappingRepository,
+	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -16,18 +17,21 @@ import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
+import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
+import { VariablesService } from '../variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import {
 	getCredentialExportPath,
 	getFoldersPath,
+	getProjectExportPath,
 	getVariablesPath,
 	getWorkflowExportPath,
 	readFoldersFromSourceControlFile,
@@ -41,9 +45,9 @@ import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
-import { VariablesService } from '../variables/variables.service.ee';
 
 import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { ExportableProject } from './types/exportable-project';
 
 @Service()
 export class SourceControlExportService {
@@ -51,12 +55,15 @@ export class SourceControlExportService {
 
 	private workflowExportFolder: string;
 
+	private projectExportFolder: string;
+
 	private credentialExportFolder: string;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -67,6 +74,7 @@ export class SourceControlExportService {
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
+		this.projectExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_PROJECT_EXPORT_FOLDER);
 		this.credentialExportFolder = path.join(
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -461,6 +469,71 @@ export class SourceControlExportService {
 		} catch (error) {
 			this.logger.error('Failed to export credentials to work folder', { error });
 			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
+		}
+	}
+
+	async exportProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.projectExportFolder], true);
+
+			const projectIds = candidates.map((e) => e.id);
+			const projects = await this.projectRepository.find({
+				where: { id: In(projectIds) },
+				relations: { projectRelations: { user: true, role: true } },
+			});
+
+			await Promise.all(
+				projects.map(async (project) => {
+					const fileName = getProjectExportPath(project.id, this.projectExportFolder);
+
+					let owner: RemoteResourceOwner;
+
+					if (project.type === 'personal') {
+						const personalOwner = project.projectRelations.find(
+							(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
+						);
+
+						if (!personalOwner) {
+							throw new UnexpectedError(`Project ${project.name} has no owner`);
+						}
+
+						owner = {
+							type: 'personal',
+							projectId: project.id,
+							projectName: project.name,
+							personalEmail: personalOwner.user.email,
+						};
+					} else {
+						owner = {
+							type: 'team',
+							teamId: project.id,
+							teamName: project.name,
+						};
+					}
+					const sanitizedProject: ExportableProject = {
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						owner,
+					};
+
+					this.logger.debug(`Writing project ${project.id} to ${fileName}`);
+					return await fsWriteFile(fileName, JSON.stringify(sanitizedProject, null, 2));
+				}),
+			);
+
+			return {
+				count: projects.length,
+				folder: this.projectExportFolder,
+				files: projects.map((project) => ({
+					id: project.id,
+					name: getProjectExportPath(project.id, this.projectExportFolder),
+				})),
+			};
+		} catch (error) {
+			if (error instanceof UnexpectedError) throw error;
+			throw new UnexpectedError('Failed to export projects to work folder', { cause: error });
 		}
 	}
 }

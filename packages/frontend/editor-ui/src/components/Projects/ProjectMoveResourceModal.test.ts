@@ -11,6 +11,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import type { ComponentProps } from 'vue-component-type-helpers';
+import { ResourceType } from '@/utils/projects.utils';
+import type { ProjectSharingData } from 'n8n-workflow';
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
@@ -44,19 +47,19 @@ describe('ProjectMoveResourceModal', () => {
 		projectsStore.availableProjects = [createProjectListItem()];
 		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
-				resourceType: 'workflow',
+				resourceType: ResourceType.Workflow,
 				resourceTypeLabel: 'workflow',
-				resource: {
+				resource: createTestWorkflow({
 					id: '1',
 					name: 'My Workflow',
 					homeProject: {
 						id: '2',
 						name: 'My Project',
-					},
-				},
+					} as ProjectSharingData,
+				}),
 			},
 		};
 		renderComponent({ props });
@@ -70,19 +73,19 @@ describe('ProjectMoveResourceModal', () => {
 		projectsStore.availableProjects = [];
 		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
-				resourceType: 'workflow',
+				resourceType: ResourceType.Workflow,
 				resourceTypeLabel: 'workflow',
-				resource: {
+				resource: createTestWorkflow({
 					id: '1',
 					name: 'My Workflow',
 					homeProject: {
 						id: '2',
 						name: 'My Project',
-					},
-				},
+					} as ProjectSharingData,
+				}),
 			},
 		};
 		const { getByText } = renderComponent({ props });
@@ -93,19 +96,19 @@ describe('ProjectMoveResourceModal', () => {
 		const projects = Array.from({ length: 5 }, createProjectListItem);
 		projectsStore.availableProjects = projects;
 
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
-				resourceType: 'workflow',
+				resourceType: ResourceType.Workflow,
 				resourceTypeLabel: 'Workflow',
-				resource: {
+				resource: createTestWorkflow({
 					id: '1',
 					name: 'My Workflow',
 					homeProject: {
 						id: projects[0].id,
 						name: projects[0].name,
-					},
-				},
+					} as ProjectSharingData,
+				}),
 			},
 		};
 
@@ -129,19 +132,19 @@ describe('ProjectMoveResourceModal', () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 		projectsStore.availableProjects = [createProjectListItem()];
 
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
-				resourceType: 'credential',
+				resourceType: ResourceType.Credential,
 				resourceTypeLabel: 'credential',
-				resource: {
+				resource: createTestWorkflow({
 					id: '1',
 					name: 'My credential',
 					homeProject: {
 						id: '2',
 						name: 'My Project',
-					},
-				},
+					} as ProjectSharingData,
+				}),
 			},
 		};
 
@@ -208,10 +211,10 @@ describe('ProjectMoveResourceModal', () => {
 			},
 		]);
 
-		const props = {
+		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
-				resourceType: 'workflow',
+				resourceType: ResourceType.Workflow,
 				resourceTypeLabel: 'workflow',
 				resource: movedWorkflow,
 			},

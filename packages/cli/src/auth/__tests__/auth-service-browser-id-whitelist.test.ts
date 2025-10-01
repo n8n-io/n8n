@@ -6,6 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
 import type { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
+import type { ErrorReporter } from 'n8n-core';
 
 describe('AuthService Browser ID Whitelist', () => {
 	let authService: AuthService;
@@ -19,6 +20,7 @@ describe('AuthService Browser ID Whitelist', () => {
 		const userRepository = mock<UserRepository>();
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
+		const errorReporter = mock<ErrorReporter>();
 
 		authService = new AuthService(
 			globalConfig,
@@ -29,6 +31,7 @@ describe('AuthService Browser ID Whitelist', () => {
 			userRepository,
 			invalidAuthTokenRepository,
 			mfaService,
+			errorReporter,
 		);
 	});
 

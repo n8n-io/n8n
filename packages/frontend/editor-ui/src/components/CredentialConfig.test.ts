@@ -17,7 +17,7 @@ vi.mock('@n8n/i18n', async () => {
 	};
 });
 
-const defaultRenderOptions: RenderOptions = {
+const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {
