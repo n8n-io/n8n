@@ -451,7 +451,7 @@ describe('VectorStoreRedis.node', () => {
 			await expect((node as any).populateVectorStore(context, {}, [], 0)).rejects.toEqual(
 				new NodeOperationError(context.getNode(), 'Error: fail', {
 					itemIndex: 0,
-					description: 'Please check your Redis connection details',
+					description: 'Please check your index/schema and parameters',
 				}),
 			);
 
