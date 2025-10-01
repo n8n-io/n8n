@@ -70,6 +70,13 @@ dependencies are installed and the packages get linked correctly. Here's a short
 
 If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
 
+**NOTE**: The devcontainer allocates 8GB of memory during `pnpm build`. Ising less that this may cause out of memory errors, especially on fresh clones that have not installed any packages before.
+If you want to change the allocated memory, you can adjust `NODE_OPTIONS=--max-old-space-size` in `.devcontainer/devcontainer.json`:
+
+```
+"postAttachCommand": "NODE_OPTIONS='--max-old-space-size=8192' pnpm build"
+```
+
 ### Requirements
 
 #### Node.js
