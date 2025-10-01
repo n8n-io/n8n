@@ -98,7 +98,7 @@ const plugins: UserConfig['plugins'] = [
 		],
 	}),
 	// Add istanbul coverage plugin for E2E tests
-	...(process.env.COVERAGE_ENABLED === 'true'
+	...(process.env.BUILD_WITH_COVERAGE === 'true'
 		? [
 				istanbul({
 					include: 'src/**/*',
