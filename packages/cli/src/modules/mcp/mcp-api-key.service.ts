@@ -67,7 +67,7 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	async deleteApiKeyForUser(user: User) {
+	async deleteAllMcpApiKeysForUser(user: User) {
 		await this.apiKeyRepository.delete({
 			userId: user.id,
 			audience: API_KEY_AUDIENCE,

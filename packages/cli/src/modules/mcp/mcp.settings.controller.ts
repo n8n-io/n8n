@@ -57,7 +57,7 @@ export class McpSettingsController {
 			throw new BadRequestError('No existing MCP server API key to rotate');
 		}
 
-		await this.mcpServerApiKeyService.deleteApiKeyForUser(req.user);
+		await this.mcpServerApiKeyService.deleteAllMcpApiKeysForUser(req.user);
 
 		const newApiKey = await this.mcpServerApiKeyService.createMcpServerApiKey(req.user);
 
