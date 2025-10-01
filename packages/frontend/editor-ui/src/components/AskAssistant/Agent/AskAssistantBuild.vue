@@ -52,7 +52,7 @@ const showExecuteMessage = computed(() => {
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
-const showAskOwnerTooltip = computed(() => usersStore.isInstanceOwner);
+const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 async function onUserMessage(content: string) {
 	const isNewWorkflow = workflowsStore.isNewWorkflow;
