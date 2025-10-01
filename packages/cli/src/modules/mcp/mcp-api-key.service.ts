@@ -1,10 +1,12 @@
-import { ApiKeyRepository, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import { EntityManager } from '@n8n/typeorm';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -23,14 +25,17 @@ export class McpServerApiKeyService {
 		private readonly userRepository: UserRepository,
 	) {}
 
-	async createMcpServerApiKey(user: User) {
+	async createMcpServerApiKey(user: User, em?: EntityManager) {
+		const manager = em ?? this.apiKeyRepository.manager;
+
 		const apiKey = this.jwtService.sign({
 			sub: user.id,
 			iss: API_KEY_ISSUER,
 			aud: API_KEY_AUDIENCE,
 		});
 
-		await this.apiKeyRepository.insert(
+		await manager.insert(
+			ApiKey,
 			// @ts-ignore CAT-957
 			this.apiKeyRepository.create({
 				userId: user.id,
@@ -45,9 +50,11 @@ export class McpServerApiKeyService {
 	}
 
 	async findServerApiKeyForUser(user: User, { redact = true } = {}) {
-		const apiKey = await this.apiKeyRepository.findOneBy({
-			userId: user.id,
-			audience: API_KEY_AUDIENCE,
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: {
+				userId: user.id,
+				audience: API_KEY_AUDIENCE,
+			},
 		});
 
 		if (apiKey && redact) {
@@ -68,8 +75,10 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	async deleteAllMcpApiKeysForUser(user: User) {
-		await this.apiKeyRepository.delete({
+	async deleteAllMcpApiKeysForUser(user: User, em?: EntityManager) {
+		const manager = em ?? this.apiKeyRepository.manager;
+
+		await manager.delete(ApiKey, {
 			userId: user.id,
 			audience: API_KEY_AUDIENCE,
 		});
@@ -137,5 +146,12 @@ export class McpServerApiKeyService {
 
 	private responseWithUnauthorized(res: Response) {
 		res.status(401).send({ message: 'Unauthorized' });
+	}
+
+	async rotateMcpServerApiKey(user: User) {
+		return await this.apiKeyRepository.manager.transaction(async (manager) => {
+			await this.deleteAllMcpApiKeysForUser(user, manager);
+			return await this.createMcpServerApiKey(user, manager);
+		});
 	}
 }
