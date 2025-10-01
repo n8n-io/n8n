@@ -9,7 +9,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nIcon, N8nLink, N8nMenuItem, type IMenuItem } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{
 	return: [];
 }>();

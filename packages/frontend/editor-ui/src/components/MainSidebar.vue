@@ -14,6 +14,8 @@ import {
 	N8nLogo,
 	N8nPopoverReka,
 	N8nScrollArea,
+	N8nAvatar,
+	N8nText,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
@@ -51,6 +53,8 @@ import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTempl
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import ProjectNavigation from './Projects/ProjectNavigation.vue';
+import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -641,7 +645,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 											[$style.expanded]: fullyExpanded,
 										}"
 									>
-										<N8nText size="small" :bold="true" color="text-dark">{{
+										<N8nText size="small" color="text-dark">{{
 											usersStore.currentUser?.fullName
 										}}</N8nText>
 									</div>
