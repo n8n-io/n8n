@@ -1,5 +1,6 @@
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -31,8 +32,19 @@ function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
 	return {};
 }
 
-export function useNodeCommands(): CommandGroup {
+const ITEM_ID = {
+	ADD_NODE: 'add-node',
+	OPEN_NODE: 'open-node',
+	ADD_STICKY: 'add-sticky',
+};
+
+export function useNodeCommands(options: {
+	lastQuery: Ref<string>;
+	activeNodeId: Ref<string | null>;
+}): CommandGroup {
 	const i18n = useI18n();
+	const { lastQuery } = options;
+
 	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
@@ -69,6 +81,14 @@ export function useNodeCommands(): CommandGroup {
 		});
 	});
 
+	const rootAddNodeCommandItems = computed<CommandBarItem[]>(() => {
+		if (lastQuery.value.length <= 2) {
+			return [];
+		}
+
+		return addNodeCommands.value;
+	});
+
 	const openNodeCommands = computed<CommandBarItem[]>(() => {
 		return editableWorkflow.value.nodes.map((node) => {
 			const { id, name, type } = node;
@@ -94,32 +114,69 @@ export function useNodeCommands(): CommandGroup {
 		});
 	});
 
+	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
+		if (lastQuery.value.length <= 2) {
+			return [];
+		}
+
+		return openNodeCommands.value;
+	});
+
 	const nodeCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
-				id: 'add-node',
+				id: ITEM_ID.ADD_NODE,
 				title: i18n.baseText('commandBar.nodes.addNode'),
 				section: i18n.baseText('commandBar.sections.nodes'),
+				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 				children: [...addNodeCommands.value],
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'arrow-right',
+					},
+				},
 			},
+			...rootAddNodeCommandItems.value,
 			{
-				id: 'add-sticky-note',
+				id: ITEM_ID.OPEN_NODE,
+				title: i18n.baseText('commandBar.nodes.openNode'),
+				section: i18n.baseText('commandBar.sections.nodes'),
+				children: [...openNodeCommands.value],
+				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'arrow-right',
+					},
+				},
+			},
+			...rootOpenNodeCommandItems.value,
+			{
+				id: ITEM_ID.ADD_STICKY,
 				title: i18n.baseText('commandBar.nodes.addStickyNote'),
 				section: i18n.baseText('commandBar.sections.nodes'),
 				handler: () => {
 					canvasEventBus.emit('create:sticky');
 				},
-			},
-			{
-				id: 'open-node',
-				title: i18n.baseText('commandBar.nodes.openNode'),
-				section: i18n.baseText('commandBar.sections.nodes'),
-				children: [...openNodeCommands.value],
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'plus',
+					},
+				},
 			},
 		];
 	});
 
+	function onCommandBarChange(query: string) {
+		const trimmed = query.trim();
+	}
+
 	return {
 		commands: nodeCommands,
+		handlers: {
+			onCommandBarChange,
+		},
 	};
 }

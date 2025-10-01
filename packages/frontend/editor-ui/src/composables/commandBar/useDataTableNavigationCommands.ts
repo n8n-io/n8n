@@ -162,8 +162,6 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
-		lastQuery.value = query;
-
 		const trimmed = query.trim();
 		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;

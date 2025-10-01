@@ -181,8 +181,6 @@ export function useWorkflowNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
-		lastQuery.value = query;
-
 		const trimmed = query.trim();
 		const isInWorkflowParent = activeNodeId.value === ITEM_ID.OPEN_WORKFLOW;
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
