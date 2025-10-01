@@ -7,7 +7,6 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import { useNodeCommands } from './commandBar/useNodeCommands';
 import { useWorkflowCommands } from './commandBar/useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigationCommands';
-import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
@@ -44,7 +43,6 @@ export function useCommandBar() {
 		return projectsStore.myProjects.find((p) => p.id === projectId)?.name ?? 'Personal';
 	});
 
-	const baseCommandGroup = useBaseCommands();
 	const nodeCommandGroup = useNodeCommands({
 		lastQuery,
 		activeNodeId,
@@ -72,7 +70,6 @@ export function useCommandBar() {
 	});
 
 	const canvasViewGroups: CommandGroup[] = [
-		baseCommandGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
@@ -84,7 +81,6 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
-		baseCommandGroup,
 	];
 
 	const credentialsListViewGroups: CommandGroup[] = [
@@ -93,7 +89,6 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
-		baseCommandGroup,
 	];
 
 	const executionsListViewGroups: CommandGroup[] = [
@@ -101,7 +96,6 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
-		baseCommandGroup,
 	];
 
 	const dataStoresListViewGroups: CommandGroup[] = [
@@ -110,7 +104,14 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
-		baseCommandGroup,
+	];
+
+	const fallbackViewCommands: CommandGroup[] = [
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
 	];
 
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
@@ -131,7 +132,7 @@ export function useCommandBar() {
 			case DATA_STORE_VIEW:
 				return dataStoresListViewGroups;
 			default:
-				return [baseCommandGroup];
+				return fallbackViewCommands;
 		}
 	});
 
