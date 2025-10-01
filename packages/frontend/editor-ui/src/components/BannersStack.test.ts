@@ -37,7 +37,7 @@ const initialState = {
 	},
 };
 
-const defaultRenderOptions: RenderOptions = {
+const defaultRenderOptions: RenderOptions<typeof BannerStack> = {
 	pinia: createTestingPinia({ initialState }),
 };
 

@@ -3,6 +3,7 @@ import multiprocessing
 import traceback
 import textwrap
 import json
+import io
 import os
 import sys
 import logging
@@ -178,6 +179,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -196,8 +198,8 @@ class TaskExecutor:
             result = globals[EXECUTOR_USER_OUTPUT_KEY]
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _per_item(
@@ -216,6 +218,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -243,8 +246,8 @@ class TaskExecutor:
 
             TaskExecutor._put_result(queue, result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(queue, e, stderr_capture.getvalue(), print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -273,11 +276,25 @@ class TaskExecutor:
         shm.close()
 
     @staticmethod
-    def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
+    def _put_error(
+        queue: multiprocessing.Queue,
+        e: BaseException,
+        stderr: str = "",
+        print_args: PrintArgs = [],
+    ):
+        error_dict = {
+            "message": f"Process exited with code {e.code}"
+            if isinstance(e, SystemExit)
+            else str(e),
+            "stack": traceback.format_exc(),
+            "stderr": stderr,
+        }
+
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+
         queue.put(
             {
-                "error": {"message": str(e), "stack": traceback.format_exc()},
+                "error": error_dict,
                 "print_args": print_args_to_send,
             }
         )

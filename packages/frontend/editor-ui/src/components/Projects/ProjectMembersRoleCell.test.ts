@@ -125,8 +125,7 @@ const mockRoles: Record<ProjectRole, { label: string; desc: string }> = {
 		desc: '',
 	},
 };
-
-const mockActions: Array<ActionDropdownItem<string>> = [
+const mockActions: Array<ActionDropdownItem<ProjectRole>> = [
 	{ id: 'project:admin', label: 'Admin' },
 	{ id: 'project:editor', label: 'Editor' },
 	{ id: 'project:viewer', label: 'Viewer', disabled: true },

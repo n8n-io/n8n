@@ -6,6 +6,7 @@ interface VueComponentInstance {
 	__vueParentComponent?: {
 		setupState?: {
 			onUserMessage?: (message: string) => Promise<void>;
+			showAskOwnerTooltip?: boolean;
 		};
 	};
 }
@@ -94,6 +95,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {
@@ -212,6 +214,32 @@ describe('AskAssistantBuild', () => {
 			// Basic verification that no methods were called on mount
 			expect(builderStore.sendChatMessage).not.toHaveBeenCalled();
 			expect(builderStore.addAssistantMessages).not.toHaveBeenCalled();
+		});
+
+		it('should show ask owner tooltip when user is not instance owner', () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.isInstanceOwner = false;
+
+			const { container } = renderComponent();
+
+			// Get the component instance
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const showAskOwnerTooltip = vm?.setupState?.showAskOwnerTooltip;
+
+			expect(showAskOwnerTooltip).toBe(true);
+		});
+
+		it('should not show ask owner tooltip when user is instance owner', () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.isInstanceOwner = true;
+
+			const { container } = renderComponent();
+
+			// Get the component instance
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const showAskOwnerTooltip = vm?.setupState?.showAskOwnerTooltip;
+
+			expect(showAskOwnerTooltip).toBe(false);
 		});
 	});
 
