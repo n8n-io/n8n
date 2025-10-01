@@ -6,6 +6,7 @@ import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplates
 import { useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { EXPERIMENT_TEMPLATE_RECO_V3_KEY } from '@/constants';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { N8nCard, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{

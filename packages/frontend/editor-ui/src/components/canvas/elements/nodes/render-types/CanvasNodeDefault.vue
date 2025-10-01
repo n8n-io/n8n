@@ -12,6 +12,7 @@ import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/co
 import CanvasNodeTooltip from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const $style = useCssModule();
 const i18n = useI18n();

@@ -2,6 +2,7 @@
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import upperFirst from 'lodash/upperFirst';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';

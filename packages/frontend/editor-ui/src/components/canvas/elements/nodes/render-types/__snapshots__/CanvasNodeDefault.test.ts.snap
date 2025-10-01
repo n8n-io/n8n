@@ -7,12 +7,24 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   style="--canvas-node--width: 224px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  <nodeicon
-    class="icon"
-    disabled="false"
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
     shrink="false"
-    size="40"
-  />
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <div
     class="settingsIcons"
   >
@@ -48,12 +60,24 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   style="--canvas-node--width: 240px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
   <!--v-if-->
-  <nodeicon
-    class="icon"
-    disabled="false"
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
     shrink="false"
-    size="30"
-  />
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -82,12 +106,24 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
   <!--v-if-->
-  <nodeicon
-    class="icon"
-    disabled="false"
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
     shrink="false"
-    size="30"
-  />
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -116,12 +152,24 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  <nodeicon
-    class="icon"
-    disabled="false"
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
     shrink="false"
-    size="40"
-  />
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <div
     class="settingsIcons"
   >
@@ -157,12 +205,24 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   style="--canvas-node--width: 96px; --canvas-node--height: 96px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  <nodeicon
-    class="icon"
-    disabled="false"
+  <div
+    class="n8n-node-icon nodeIcon icon nodeIcon icon"
     shrink="false"
-    size="40"
-  />
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <div
     class="settingsIcons"
   >

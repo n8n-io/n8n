@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
