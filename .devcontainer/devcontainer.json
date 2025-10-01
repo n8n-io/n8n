@@ -10,7 +10,7 @@
 	],
 	"forwardPorts": [8080, 5678],
 	"postCreateCommand": "corepack prepare --activate && pnpm install",
-	"postAttachCommand": "pnpm build",
+	"postAttachCommand": "NODE_OPTIONS='--max-old-space-size=8192' pnpm build",
 	"customizations": {
 		"codespaces": {
 			"openFiles": ["CONTRIBUTING.md"]
