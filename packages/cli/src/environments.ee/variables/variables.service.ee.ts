@@ -167,6 +167,23 @@ export class VariablesService {
 		}
 	}
 
+	async validateUniqueVariable(key: string, projectId?: string) {
+		const existingVariablesByKey = (await this.getAllCached()).filter((v) => v.key === key);
+		// If variable is global, check that it does not already exist with the same key
+		if (!projectId && existingVariablesByKey.find((v) => !v.project)) {
+			throw new VariableCountLimitReachedError(
+				`A global variable with key "${key}" already exists`,
+			);
+		}
+
+		// If variable is for a project, check that it does not already exist in the same project with the same key
+		if (projectId && existingVariablesByKey.find((v) => v.project?.id === projectId)) {
+			throw new VariableCountLimitReachedError(
+				`A variable with key "${key}" already exists in the specified project`,
+			);
+		}
+	}
+
 	async create(user: User, variable: CreateVariableRequestDto): Promise<Variables> {
 		const userHasRight = await this.isAuthorizedForVariable(
 			user,
@@ -181,6 +198,9 @@ export class VariablesService {
 
 		// Check license and limits
 		await this.canCreateNewVariable();
+
+		// Check that variable key is unique (globally or in the project)
+		await this.validateUniqueVariable(variable.key, variable.projectId);
 
 		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
@@ -224,7 +244,8 @@ export class VariablesService {
 		// TODO: implement guards when changing variable projectId or moving from global to project variable or vice versa
 
 		await this.variablesRepository.update(id, {
-			...variable,
+			key: variable.key,
+			value: variable.value,
 			project: variable.projectId ? { id: variable.projectId } : null,
 		});
 		await this.updateCache();
