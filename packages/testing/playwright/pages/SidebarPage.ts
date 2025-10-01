@@ -80,7 +80,7 @@ export class SidebarPage {
 	}
 
 	getTemplatesLink(): Locator {
-		return this.page.locator('[data-test-id="menu-item"][id="templates"]');
+		return this.page.locator('a:has(#templates)');
 	}
 
 	async openUserMenu(): Promise<void> {

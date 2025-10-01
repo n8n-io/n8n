@@ -151,10 +151,7 @@ test.describe('Workflow templates', () => {
 			const templatesLink = n8n.sideBar.getTemplatesLink();
 			await expect(templatesLink).toBeVisible();
 
-			const anchorLink = templatesLink.locator('xpath=ancestor::a[1]');
-			await expect(anchorLink).toHaveAttribute('href');
-
-			const href = await anchorLink.getAttribute('href');
+			const href = await templatesLink.getAttribute('href');
 			expect(href).toContain(URLS.N8N_WORKFLOWS);
 
 			const url = new URL(href!);
@@ -172,7 +169,7 @@ test.describe('Workflow templates', () => {
 			expect(utmAwc).toBeTruthy();
 			expect(utmAwc).toMatch(/[0-9]+/);
 
-			await expect(anchorLink).toHaveAttribute('target', '_blank');
+			await expect(templatesLink).toHaveAttribute('target', '_blank');
 		});
 
 		test('Redirects to website when visiting templates page directly', async ({
@@ -232,16 +229,11 @@ test.describe('Workflow templates', () => {
 		});
 
 		test('should save template id with the workflow', async ({ n8n }) => {
-			const saveRequestPromise = n8n.page.waitForRequest(
-				(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
-			);
-
 			await n8n.templatesComposer.importFirstTemplate();
 
-			await n8n.canvas.clickSaveWorkflowButton();
+			const saveRequest = await n8n.workflowComposer.saveWorkflowAndWaitForRequest();
 			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText(NOTIFICATIONS.SAVED);
 
-			const saveRequest = await saveRequestPromise;
 			const requestBody = saveRequest.postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
 		});
