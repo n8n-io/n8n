@@ -46,6 +46,7 @@ import type {
 	StatusExportableCredential,
 } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableProject } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
 import type { StatusResourceOwner, RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
@@ -899,6 +900,64 @@ export class SourceControlImportService {
 		return result;
 	}
 
+	/**
+	 * Only team projects are supported.
+	 * Personal project are not supported because they are not stable across instances.
+	 */
+	async importTeamProjectsFromWorkFolder(candidates: SourceControlledFile[]) {
+		const importResults = [];
+
+		for (const candidate of candidates) {
+			try {
+				this.logger.debug(`Importing project file ${candidate.file}`);
+				const project = jsonParse<ExportableProject>(
+					await fsReadFile(candidate.file, { encoding: 'utf8' }),
+				);
+
+				// This is just a safety check as there should only be team projects in the work folder
+				if (!project?.id || project.type !== 'team') {
+					this.logger.debug(`Skipping non-team project: ${project?.id || 'unknown'}`);
+					continue;
+				}
+
+				// Validate that owner matches the project itself
+				if (
+					typeof project.owner !== 'object' ||
+					project.owner.type !== 'team' ||
+					project.owner.teamId !== project.id
+				) {
+					this.logger.warn(`Project ${project.id} has inconsistent owner data, skipping`);
+					continue;
+				}
+
+				// Upsert team project with metadata only
+				await this.projectRepository.upsert(
+					{
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						type: 'team',
+					},
+					['id'],
+				);
+
+				this.logger.info(`Imported team project: ${project.name}`);
+				importResults.push({
+					id: project.id,
+					name: project.name,
+				});
+			} catch (error) {
+				const errorMessage = ensureError(error);
+				this.logger.error(`Failed to import project from file ${candidate.file}`, {
+					error: errorMessage,
+				});
+			}
+		}
+
+		return importResults;
+	}
+
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
 			await this.workflowService.delete(user, candidate.id, true);
@@ -943,6 +1002,7 @@ export class SourceControlImportService {
 			let teamProject = await this.projectRepository.findOne({
 				where: { id: owner.teamId },
 			});
+
 			if (!teamProject) {
 				try {
 					teamProject = await this.projectRepository.save(

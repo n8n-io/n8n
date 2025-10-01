@@ -473,6 +473,10 @@ export class SourceControlExportService {
 		}
 	}
 
+	/**
+	 * Only team projects are supported.
+	 * Personal project are not supported because they are not stable across instances.
+	 */
 	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.projectExportFolder], true);
