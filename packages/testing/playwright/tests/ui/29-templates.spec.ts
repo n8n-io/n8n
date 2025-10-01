@@ -17,6 +17,7 @@ const URLS = {
 
 const TEMPLATE_ID = '1';
 const TEST_CATEGORY = 'sales';
+const SALES_CATEGORY_ID = 3;
 
 const NOTIFICATIONS = {
 	SAVED: 'Saved',
@@ -55,10 +56,10 @@ function preventNavigation(n8n: n8nPage) {
  * @returns The extracted number, or 0 if no number found
  */
 function parseCount(text: string | null): number {
-	return parseInt(text?.replace(/\D/g, '') ?? '0', 10);
+	return parseInt(text?.replace(/\D/g, '') || '0', 10);
 }
 
-function createN8nApiRequirements(): TestRequirements {
+function createTemplateHostRequirements(): TestRequirements {
 	return {
 		config: {
 			settings: {
@@ -116,7 +117,7 @@ async function setupDynamicTemplateRoutes(n8n: n8nPage, hostname: string) {
 	await n8n.page.route(`https://${hostname}/api/templates/collections*`, (route) => {
 		const url = new URL(route.request().url());
 		const categoryParam = url.searchParams.get('category[]');
-		const response = categoryParam === '3' ? [] : COLLECTIONS;
+		const response = categoryParam === String(SALES_CATEGORY_ID) ? [] : COLLECTIONS;
 		void route.fulfill({
 			status: 200,
 			contentType: 'application/json',
@@ -143,7 +144,7 @@ test.describe('Workflow templates', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await setupRequirements(createN8nApiRequirements());
+			await setupRequirements(createTemplateHostRequirements());
 			await n8n.navigate.toWorkflows();
 
 			const templatesLink = n8n.sideBar.getTemplatesLink();
@@ -177,7 +178,7 @@ test.describe('Workflow templates', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await setupRequirements(createN8nApiRequirements());
+			await setupRequirements(createTemplateHostRequirements());
 			await n8n.navigate.toTemplates();
 
 			await expect(n8n.page.getByRole('heading', { name: /workflow.*templates/i })).toBeVisible({
