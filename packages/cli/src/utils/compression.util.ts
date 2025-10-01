@@ -2,6 +2,7 @@ import * as fflate from 'fflate';
 import { promisify } from 'util';
 import { readFile, readdir, writeFile, mkdir, stat } from 'fs/promises';
 import * as path from 'path';
+import { createWriteStream } from 'fs';
 
 const unzip = promisify(fflate.unzip);
 const zip = promisify(fflate.zip);
@@ -71,8 +72,8 @@ function sanitizePath(fileName: string, outputDir: string): string {
 }
 
 /**
- * Compress a folder into a ZIP archive
- * Reuses the same patterns as the Compression node
+ * Compress a folder into a ZIP archive using streaming
+ * Based on fflate documentation: https://github.com/101arrowz/fflate
  */
 export async function compressFolder(
 	sourceDir: string,
@@ -81,15 +82,39 @@ export async function compressFolder(
 ): Promise<void> {
 	const { level = 6, exclude = [], includeHidden = false } = options;
 
-	const zipData: fflate.Zippable = {};
-
-	await addDirectoryToZip(sourceDir, '', zipData, { exclude, includeHidden, level });
-
 	// Ensure output directory exists
 	const outputDir = path.dirname(outputPath);
 	await mkdir(outputDir, { recursive: true });
-	const buffer = await zip(zipData);
-	await writeFile(outputPath, buffer);
+
+	// Create write stream for the output ZIP file
+	const outputStream = createWriteStream(outputPath);
+
+	// Create streaming ZIP using fflate
+	const zip = new fflate.Zip();
+
+	// Handle data from the ZIP stream
+	zip.ondata = (err, data, final) => {
+		if (err) {
+			outputStream.destroy(err);
+			return;
+		}
+		outputStream.write(Buffer.from(data));
+		if (final) {
+			outputStream.end();
+		}
+	};
+
+	// Add directory contents to ZIP using streaming
+	await addDirectoryToZipStreaming(sourceDir, '', zip, { exclude, includeHidden, level });
+
+	// Finalize the ZIP
+	zip.end();
+
+	// Wait for the stream to finish
+	return new Promise<void>((resolve, reject) => {
+		outputStream.on('finish', resolve);
+		outputStream.on('error', reject);
+	});
 }
 
 /**
@@ -146,8 +171,64 @@ export async function decompressFolder(
 }
 
 /**
+ * Add directory contents to zip using streaming approach
+ * This version processes files one at a time instead of loading everything into memory
+ */
+async function addDirectoryToZipStreaming(
+	dirPath: string,
+	zipPath: string,
+	zip: fflate.Zip,
+	options: { exclude: string[]; includeHidden: boolean; level: fflate.ZipOptions['level'] },
+): Promise<void> {
+	const { exclude, includeHidden, level } = options;
+
+	const entries = await readdir(dirPath, { withFileTypes: true });
+
+	for (const entry of entries) {
+		// Skip hidden files if not including them
+		if (!includeHidden && entry.name.startsWith('.')) {
+			continue;
+		}
+
+		// Skip excluded files
+		if (
+			exclude.some((pattern) =>
+				pattern.startsWith('*.')
+					? entry.name.endsWith(pattern.slice(1))
+					: entry.name.includes(pattern),
+			)
+		) {
+			continue;
+		}
+
+		const fullPath = path.join(dirPath, entry.name);
+		const zipEntryPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+
+		if (entry.isDirectory()) {
+			await addDirectoryToZipStreaming(fullPath, zipEntryPath, zip, options);
+		} else {
+			// Determine compression level based on file extension
+			const fileExtension = path.extname(entry.name).toLowerCase().slice(1);
+			const compressionLevel: fflate.ZipOptions['level'] = ALREADY_COMPRESSED.includes(
+				fileExtension,
+			)
+				? 0
+				: level;
+
+			// Create a ZIP stream for this specific file
+			const zipStream = new fflate.ZipDeflate(zipEntryPath, { level: compressionLevel });
+			zip.add(zipStream);
+
+			// Read file content and stream it
+			const fileContent = await readFile(fullPath);
+			zipStream.push(new Uint8Array(fileContent), true);
+		}
+	}
+}
+
+/**
  * Add directory contents to zip data structure
- * Follows the same pattern as Compression node
+ * This version loads everything into memory (legacy approach)
  */
 async function addDirectoryToZip(
 	dirPath: string,
@@ -182,17 +263,17 @@ async function addDirectoryToZip(
 		if (entry.isDirectory()) {
 			await addDirectoryToZip(fullPath, zipEntryPath, zipData, options);
 		} else {
-			const fileContent = await readFile(fullPath);
+			// Determine compression level based on file extension
 			const fileExtension = path.extname(entry.name).toLowerCase().slice(1);
-
-			// Use same compression logic as Compression node
 			const compressionLevel: fflate.ZipOptions['level'] = ALREADY_COMPRESSED.includes(
 				fileExtension,
 			)
 				? 0
 				: level;
 
-			zipData[zipEntryPath] = [new Uint8Array(fileContent), { level: compressionLevel }];
+			// Read file content
+			const fileContent = await readFile(fullPath);
+			zipData[zipEntryPath] = new Uint8Array(fileContent);
 		}
 	}
 }
