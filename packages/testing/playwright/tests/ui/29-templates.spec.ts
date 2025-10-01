@@ -56,7 +56,8 @@ function preventNavigation(n8n: n8nPage) {
  * @returns The extracted number, or 0 if no number found
  */
 function parseCount(text: string | null): number {
-	return parseInt(text?.replace(/\D/g, '') || '0', 10);
+	const digits = text?.replace(/\D/g, '') ?? '';
+	return parseInt(digits || '0', 10);
 }
 
 function createTemplateHostRequirements(): TestRequirements {
