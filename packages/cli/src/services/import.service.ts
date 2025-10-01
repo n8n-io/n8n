@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
 import {
 	Project,
@@ -19,7 +19,7 @@ import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
-import { safeJoinPath } from '@n8n/backend-common';
+import { z } from 'zod';
 
 @Service()
 export class ImportService {
@@ -256,7 +256,7 @@ export class ImportService {
 				if (!line) continue;
 
 				try {
-					entities.push(JSON.parse(line));
+					entities.push(z.record(z.string(), z.unknown()).parse(JSON.parse(line)));
 				} catch (error: unknown) {
 					// If parsing fails, it might be because the JSON spans multiple lines
 					// This shouldn't happen in proper JSONL, but let's handle it gracefully
