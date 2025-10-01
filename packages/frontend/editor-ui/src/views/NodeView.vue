@@ -277,17 +277,16 @@ const hideNodeIssues = ref(false);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
+const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
+	if (isDemoRoute.value) return 'demo';
+	return route.params.name;
 });
+
 const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
-const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
+const isNewWorkflowRoute = computed(() => 'new' in route.query || isDemoRoute.value);
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
-const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -390,9 +389,7 @@ async function initializeRoute(force = false) {
 	}
 
 	const isAlreadyInitialized =
-		!force &&
-		initializedWorkflowId.value &&
-		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
+		!force && initializedWorkflowId.value && workflowId.value === initializedWorkflowId.value;
 
 	// This function is called on route change as well, so we need to do the following:
 	// - if the redirect is blank, then do nothing
@@ -505,10 +502,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
-			return await router.replace({
-				name: VIEWS.ENTITY_NOT_FOUND,
-				params: { entityType: 'workflow' },
-			});
+			// return await router.replace({
+			// 	name: VIEWS.ENTITY_NOT_FOUND,
+			// 	params: { entityType: 'workflow' },
+			// });
 		}
 		if (error.httpStatusCode === 403) {
 			return await router.replace({

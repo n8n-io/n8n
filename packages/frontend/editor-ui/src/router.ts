@@ -21,6 +21,7 @@ import { projectsRoutes } from '@/routes/projects.routes';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from './composables/useCalloutHelpers';
+import { nanoid } from 'nanoid';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -363,16 +364,12 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
 		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
+		},
+		redirect: () => {
+			const id = nanoid();
+			return `/workflow/${id}?new`;
 		},
 	},
 	{
