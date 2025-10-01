@@ -36,6 +36,7 @@ import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParamete
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useHistoryStore } from '@/stores/history.store';
