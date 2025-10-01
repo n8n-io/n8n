@@ -30,7 +30,7 @@ jobs:
 
       - name: Export Node Types
         run: |
-          ./packages/cli/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
 
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
