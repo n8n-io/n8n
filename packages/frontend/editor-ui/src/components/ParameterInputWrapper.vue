@@ -22,6 +22,7 @@ import { computed, useTemplateRef } from 'vue';
 
 import { BINARY_DATA_ACCESS_TOOLTIP } from '@/constants';
 
+import { N8nTooltip } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;

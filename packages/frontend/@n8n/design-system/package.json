@@ -43,7 +43,6 @@
     "sass": "^1.71.1",
     "tailwindcss": "^3.4.3",
     "unplugin-icons": "catalog:frontend",
-    "unplugin-vue-components": "catalog:frontend",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

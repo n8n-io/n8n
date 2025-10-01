@@ -169,9 +169,6 @@ catalogs:
     unplugin-icons:
       specifier: ^0.19.0
       version: 0.19.0
-    unplugin-vue-components:
-      specifier: ^0.27.2
-      version: 0.27.3
     vue:
       specifier: ^3.5.13
       version: 3.5.13
@@ -2290,9 +2287,6 @@ importers:
       unplugin-icons:
         specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
-      unplugin-vue-components:
-        specifier: catalog:frontend
-        version: 0.27.3(@babel/parser@7.28.4)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
         version: 6.3.5(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -2852,9 +2846,6 @@ importers:
       unplugin-icons:
         specifier: catalog:frontend
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
-      unplugin-vue-components:
-        specifier: catalog:frontend
-        version: 0.27.3(@babel/parser@7.28.4)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
         version: 6.3.5(@types/node@20.19.11)(jiti@1.21.7)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -3744,10 +3735,6 @@ packages:
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/compat-data@7.26.8':
-    resolution: {integrity: sha512-oH5UPLMWR3L2wEFLnFJ1TZXqHufiTKAiLfqw5zkhS4dKXLJ10yVztfil/twG8EDTA4F/tvVNw9nOl4ZMslB8rQ==}
-    engines: {node: '>=6.9.0'}
-
   '@babel/compat-data@7.27.5':
     resolution: {integrity: sha512-KiRAp/VoJaWkkte84TvUd9qjdbZAdiqyvMxrGl1N6vzFogKmaLgoM3L1kgtLicp2HP5fBJS8JrZKLVIZGVJAVg==}
     engines: {node: '>=6.9.0'}
@@ -3766,10 +3753,6 @@ packages:
 
   '@babel/helper-annotate-as-pure@7.25.9':
     resolution: {integrity: sha512-gv7320KBUFJz1RnylIg5WWYPRXKZ884AGkYpgpWW02TH66Dl+HaC1t1CKd0z3R4b6hdYEcmrNZHUmfCP+1u3/g==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/helper-compilation-targets@7.26.5':
-    resolution: {integrity: sha512-IXuyn5EkouFJscIDuFF5EsiSolseme1s0CZB+QxVugqJLYmKdxI1VfIBOst0SUu4rnk2Z7kqTwmoO1lp3HIfnA==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-compilation-targets@7.27.2':
@@ -3841,10 +3824,6 @@ packages:
 
   '@babel/helper-validator-identifier@7.27.1':
     resolution: {integrity: sha512-D2hP9eA+Sqx1kBZgzxZh0y1trbuU+JoDkiEwqhQ36nodYqJwyEIhPSdMNd7lOm/4io72luTPWH20Yda0xOuUow==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/helper-validator-option@7.25.9':
-    resolution: {integrity: sha512-e/zv1co8pp55dNdEcCynfj9X7nyUKUXoUEwfXqaZt0omVOmDe9oOTdKStH4GmAw6zxMFs50ZayuMfHDKlO7Tfw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-validator-option@7.27.1':
@@ -9050,9 +9029,6 @@ packages:
   caniuse-lite@1.0.30001677:
     resolution: {integrity: sha512-fmfjsOlJUpMWu+mAAtZZZHz7UEwsUxIIvu1TJfO1HqFQvB/B+ii0xr9B5HpbZY/mC4XZ8SvjHJqtAY6pDPQEog==}
 
-  caniuse-lite@1.0.30001703:
-    resolution: {integrity: sha512-kRlAGTRWgPsOj7oARC9m1okJEXdL/8fekFVcxA8Hl7GH4r/sN4OJn/i6Flde373T50KS7Y37oFbMwlE8+F42kQ==}
-
   caniuse-lite@1.0.30001724:
     resolution: {integrity: sha512-WqJo7p0TbHDOythNTqYujmaJTvtYRZrjpP8TCvH6Vb9CYJerJNKamKzIWOM4BkQatWj9H2lYulpdAQNBe7QhNA==}
 
@@ -10146,9 +10122,6 @@ packages:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
     engines: {node: '>=0.10.0'}
     hasBin: true
-
-  electron-to-chromium@1.5.114:
-    resolution: {integrity: sha512-DFptFef3iktoKlFQK/afbo274/XNWD00Am0xa7M8FZUepHlHT8PEuiNBoRfFHbH1okqN58AlhbJ4QTkcnXorjA==}
 
   electron-to-chromium@1.5.173:
     resolution: {integrity: sha512-2bFhXP2zqSfQHugjqJIDFVwa+qIxyNApenmXTp9EjaKtdPrES5Qcn9/aSFy/NaP2E+fWG/zxKu/LBvY36p5VNQ==}
@@ -12406,23 +12379,6 @@ packages:
       openai:
         optional: true
 
-  langsmith@0.3.69:
-    resolution: {integrity: sha512-YKzu92YAP2o+d+1VmR38xqFX0RIRLKYj1IqdflVEY83X0FoiVlrWO3xDLXgnu7vhZ2N2M6jx8VO9fVF8yy9gHA==}
-    peerDependencies:
-      '@opentelemetry/api': '*'
-      '@opentelemetry/exporter-trace-otlp-proto': '*'
-      '@opentelemetry/sdk-trace-base': '*'
-      openai: '*'
-    peerDependenciesMeta:
-      '@opentelemetry/api':
-        optional: true
-      '@opentelemetry/exporter-trace-otlp-proto':
-        optional: true
-      '@opentelemetry/sdk-trace-base':
-        optional: true
-      openai:
-        optional: true
-
   lazy-ass@1.6.0:
     resolution: {integrity: sha512-cc8oEVoctTvsFZ/Oje/kGnHbpWHYBe8IAJe4C0QNc3t8uM/0Y8+erSz/7Y1ALuXTEZTMvxXwO6YbX1ey3ujiZw==}
     engines: {node: '> 0.8'}
@@ -14476,6 +14432,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -16275,19 +16232,6 @@ packages:
       vue-template-es2015-compiler:
         optional: true
 
-  unplugin-vue-components@0.27.3:
-    resolution: {integrity: sha512-5wg7lbdg5ZcrAQNzyYK+6gcg/DG8K6rO+f5YeuvqGHs/PhpapBvpA4O/0ex/pFthE5WgRk43iWuRZEMLVsdz4Q==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@babel/parser': ^7.15.8
-      '@nuxt/kit': ^3.2.2
-      vue: 2 || 3
-    peerDependenciesMeta:
-      '@babel/parser':
-        optional: true
-      '@nuxt/kit':
-        optional: true
-
   unplugin@1.0.1:
     resolution: {integrity: sha512-aqrHaVBWW1JVKBHmGo33T5TxeL0qWzfvjWokObHA9bYmN7eNDkwOxmLjhioHl9878qDFMAaT51XNroRyuz7WxA==}
 
@@ -16301,12 +16245,6 @@ packages:
   untildify@4.0.0:
     resolution: {integrity: sha512-KK8xQ1mkzZeg9inewmFVDNkg3l5LUhoq9kN6iWYB/CC9YMG8HA+c1Q8HwDe6dEX7kErrEVNVBO3fWsVq5iDgtw==}
     engines: {node: '>=8'}
-
-  update-browserslist-db@1.1.1:
-    resolution: {integrity: sha512-R8UzCaa9Az+38REPiJ1tXlImTJXlVfgHZsglwBD/k6nj76ctsH1E3q4doGrukiLQd3sGQYu56r5+lo5r94l29A==}
-    hasBin: true
-    peerDependencies:
-      browserslist: '>= 4.21.0'
 
   update-browserslist-db@1.1.3:
     resolution: {integrity: sha512-UxhIZQ+QInVdunkDAaiazvvT/+fXL5Osr0JZlJulepYu6Jd7qJtDZjlur0emRlT71EN3ScPoE7gvsuIKKNavKw==}
@@ -18282,8 +18220,6 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
-  '@babel/compat-data@7.26.8': {}
-
   '@babel/compat-data@7.27.5': {}
 
   '@babel/core@7.26.10':
@@ -18325,14 +18261,6 @@ snapshots:
   '@babel/helper-annotate-as-pure@7.25.9':
     dependencies:
       '@babel/types': 7.27.6
-
-  '@babel/helper-compilation-targets@7.26.5':
-    dependencies:
-      '@babel/compat-data': 7.26.8
-      '@babel/helper-validator-option': 7.25.9
-      browserslist: 4.24.4
-      lru-cache: 5.1.1
-      semver: 7.7.2
 
   '@babel/helper-compilation-targets@7.27.2':
     dependencies:
@@ -18432,8 +18360,6 @@ snapshots:
   '@babel/helper-string-parser@7.27.1': {}
 
   '@babel/helper-validator-identifier@7.27.1': {}
-
-  '@babel/helper-validator-option@7.25.9': {}
 
   '@babel/helper-validator-option@7.27.1': {}
 
@@ -18636,7 +18562,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-annotate-as-pure': 7.25.9
-      '@babel/helper-compilation-targets': 7.26.5
+      '@babel/helper-compilation-targets': 7.27.2
       '@babel/helper-plugin-utils': 7.26.5
       '@babel/helper-replace-supers': 7.26.5(@babel/core@7.26.10)
       '@babel/traverse': 7.26.10
@@ -18698,7 +18624,7 @@ snapshots:
   '@babel/plugin-transform-function-name@7.25.9(@babel/core@7.26.10)':
     dependencies:
       '@babel/core': 7.26.10
-      '@babel/helper-compilation-targets': 7.26.5
+      '@babel/helper-compilation-targets': 7.27.2
       '@babel/helper-plugin-utils': 7.26.5
       '@babel/traverse': 7.26.10
     transitivePeerDependencies:
@@ -18782,7 +18708,7 @@ snapshots:
   '@babel/plugin-transform-object-rest-spread@7.25.9(@babel/core@7.26.10)':
     dependencies:
       '@babel/core': 7.26.10
-      '@babel/helper-compilation-targets': 7.26.5
+      '@babel/helper-compilation-targets': 7.27.2
       '@babel/helper-plugin-utils': 7.26.5
       '@babel/plugin-transform-parameters': 7.25.9(@babel/core@7.26.10)
 
@@ -18904,11 +18830,11 @@ snapshots:
 
   '@babel/preset-env@7.26.9(@babel/core@7.26.10)':
     dependencies:
-      '@babel/compat-data': 7.26.8
+      '@babel/compat-data': 7.27.5
       '@babel/core': 7.26.10
-      '@babel/helper-compilation-targets': 7.26.5
+      '@babel/helper-compilation-targets': 7.27.2
       '@babel/helper-plugin-utils': 7.26.5
-      '@babel/helper-validator-option': 7.25.9
+      '@babel/helper-validator-option': 7.27.1
       '@babel/plugin-bugfix-firefox-class-in-computed-class-key': 7.25.9(@babel/core@7.26.10)
       '@babel/plugin-bugfix-safari-class-field-initializer-scope': 7.25.9(@babel/core@7.26.10)
       '@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression': 7.25.9(@babel/core@7.26.10)
@@ -19887,14 +19813,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2))
+      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -19922,14 +19848,14 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.8.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.5.0
-      jest-config: 29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
+      jest-config: 29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2))
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
       jest-regex-util: 29.4.3
@@ -19954,7 +19880,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       jest-mock: 29.6.2
 
   '@jest/expect-utils@29.6.2':
@@ -19972,7 +19898,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@sinonjs/fake-timers': 10.0.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       jest-message-util: 29.6.2
       jest-mock: 29.6.2
       jest-util: 29.6.2
@@ -20068,7 +19994,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.4
       '@types/istanbul-reports': 3.0.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       '@types/yargs': 17.0.19
       chalk: 4.1.2
 
@@ -20167,7 +20093,7 @@ snapshots:
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
       langchain: 0.3.33(f461b118585bdb288345da9017188aa6)
-      langsmith: 0.3.69(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
+      langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
       zod: 3.25.67
@@ -20246,7 +20172,7 @@ snapshots:
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.12
-      langsmith: 0.3.69(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
+      langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -22354,7 +22280,7 @@ snapshots:
 
   '@types/asn1@0.2.0':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/aws4@1.11.2':
     dependencies:
@@ -22436,13 +22362,13 @@ snapshots:
 
   '@types/docker-modem@3.0.6':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       '@types/ssh2': 1.11.6
 
   '@types/dockerode@3.3.42':
     dependencies:
       '@types/docker-modem': 3.0.6
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       '@types/ssh2': 1.11.6
 
   '@types/eslint@9.6.1':
@@ -22483,12 +22409,12 @@ snapshots:
 
   '@types/ftp@0.3.33':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/glob@8.0.0':
     dependencies:
       '@types/minimatch': 5.1.2
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/gm@1.25.0':
     dependencies:
@@ -22542,7 +22468,7 @@ snapshots:
 
   '@types/jsdom@20.0.1':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       '@types/tough-cookie': 4.0.2
       parse5: 7.1.2
 
@@ -22552,7 +22478,7 @@ snapshots:
 
   '@types/jsonfile@6.1.4':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
     optional: true
 
   '@types/jsonpath@0.2.0': {}
@@ -22759,16 +22685,16 @@ snapshots:
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/ssh2@0.5.52':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       '@types/ssh2-streams': 0.1.12
 
   '@types/ssh2@1.11.6':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/sshpk@1.17.4':
     dependencies:
@@ -22806,7 +22732,7 @@ snapshots:
 
   '@types/tedious@4.0.9':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/temp@0.9.4':
     dependencies:
@@ -22814,7 +22740,7 @@ snapshots:
 
   '@types/through@0.0.30':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
 
   '@types/tough-cookie@4.0.2': {}
 
@@ -24177,10 +24103,10 @@ snapshots:
 
   browserslist@4.24.4:
     dependencies:
-      caniuse-lite: 1.0.30001703
-      electron-to-chromium: 1.5.114
+      caniuse-lite: 1.0.30001724
+      electron-to-chromium: 1.5.173
       node-releases: 2.0.19
-      update-browserslist-db: 1.1.1(browserslist@4.24.4)
+      update-browserslist-db: 1.1.3(browserslist@4.24.4)
 
   browserslist@4.25.0:
     dependencies:
@@ -24388,8 +24314,6 @@ snapshots:
   camelize@1.0.1: {}
 
   caniuse-lite@1.0.30001677: {}
-
-  caniuse-lite@1.0.30001703: {}
 
   caniuse-lite@1.0.30001724: {}
 
@@ -25618,8 +25542,6 @@ snapshots:
   ejs@3.1.10:
     dependencies:
       jake: 10.8.5
-
-  electron-to-chromium@1.5.114: {}
 
   electron-to-chromium@1.5.173: {}
 
@@ -28028,7 +27950,7 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-config@29.6.2(@types/node@20.19.11)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2)):
+  jest-config@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2)):
     dependencies:
       '@babel/core': 7.26.10
       '@jest/test-sequencer': 29.6.2
@@ -28053,8 +27975,39 @@ snapshots:
       slash: 3.0.0
       strip-json-comments: 3.1.1
     optionalDependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       ts-node: 10.9.2(@types/node@20.17.57)(typescript@5.9.2)
+    transitivePeerDependencies:
+      - babel-plugin-macros
+      - supports-color
+
+  jest-config@29.6.2(@types/node@20.19.1)(ts-node@10.9.2(@types/node@20.19.11)(typescript@5.9.2)):
+    dependencies:
+      '@babel/core': 7.26.10
+      '@jest/test-sequencer': 29.6.2
+      '@jest/types': 29.6.1
+      babel-jest: 29.6.2(@babel/core@7.26.10)
+      chalk: 4.1.2
+      ci-info: 3.8.0
+      deepmerge: 4.3.1
+      glob: 7.2.3
+      graceful-fs: 4.2.11
+      jest-circus: 29.6.2
+      jest-environment-node: 29.6.2
+      jest-get-type: 29.4.3
+      jest-regex-util: 29.4.3
+      jest-resolve: 29.6.2
+      jest-runner: 29.6.2
+      jest-util: 29.6.2
+      jest-validate: 29.6.2
+      micromatch: 4.0.8
+      parse-json: 5.2.0
+      pretty-format: 29.7.0
+      slash: 3.0.0
+      strip-json-comments: 3.1.1
+    optionalDependencies:
+      '@types/node': 20.19.1
+      ts-node: 10.9.2(@types/node@20.19.11)(typescript@5.9.2)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -28334,7 +28287,7 @@ snapshots:
   jest-util@29.5.0:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.1
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -28343,7 +28296,7 @@ snapshots:
   jest-util@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       chalk: 4.1.2
       ci-info: 3.8.0
       graceful-fs: 4.2.11
@@ -28703,20 +28656,6 @@ snapshots:
       - ws
 
   langsmith@0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      chalk: 4.1.2
-      console-table-printer: 2.14.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.7.2
-      uuid: 10.0.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/sdk-trace-base': 1.30.1(@opentelemetry/api@1.9.0)
-      openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
-
-  langsmith@0.3.69(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)):
     dependencies:
       '@types/uuid': 10.0.0
       chalk: 4.1.2
@@ -33113,7 +33052,7 @@ snapshots:
 
   ts-type@3.0.1(ts-toolbelt@9.6.0):
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.10
       ts-toolbelt: 9.6.0
       tslib: 2.8.1
       typedarray-dts: 1.0.0
@@ -33427,25 +33366,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  unplugin-vue-components@0.27.3(@babel/parser@7.28.4)(rollup@4.49.0)(vue@3.5.13(typescript@5.9.2)):
-    dependencies:
-      '@antfu/utils': 0.7.10
-      '@rollup/pluginutils': 5.1.4(rollup@4.49.0)
-      chokidar: 4.0.3
-      debug: 4.4.1(supports-color@8.1.1)
-      fast-glob: 3.3.3
-      local-pkg: 0.5.0
-      magic-string: 0.30.17
-      minimatch: 9.0.5
-      mlly: 1.7.4
-      unplugin: 1.11.0
-      vue: 3.5.13(typescript@5.9.2)
-    optionalDependencies:
-      '@babel/parser': 7.28.4
-    transitivePeerDependencies:
-      - rollup
-      - supports-color
-
   unplugin@1.0.1:
     dependencies:
       acorn: 8.14.0
@@ -33486,7 +33406,7 @@ snapshots:
 
   untildify@4.0.0: {}
 
-  update-browserslist-db@1.1.1(browserslist@4.24.4):
+  update-browserslist-db@1.1.3(browserslist@4.24.4):
     dependencies:
       browserslist: 4.24.4
       escalade: 3.2.0
