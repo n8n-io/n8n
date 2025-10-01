@@ -1,5 +1,5 @@
 import { computed, nextTick, ref } from 'vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -9,13 +9,14 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import * as useResolvedExpression from '@/composables/useResolvedExpression';
 
-const DEFAULT_SETUP = {
+const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({
 		initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
 	}),
 	props: {
 		path: 'parameters.fields.0',
 		modelValue: {
+			id: '1',
 			name: '',
 			type: 'string',
 			value: '',
@@ -49,7 +50,7 @@ describe('Assignment.vue', () => {
 
 		await waitFor(() =>
 			expect(emitted('update:model-value')[0]).toEqual([
-				{ name: 'New name', type: 'array', value: 'New value' },
+				{ id: '1', name: 'New name', type: 'array', value: 'New value' },
 			]),
 		);
 	});
@@ -92,6 +93,7 @@ describe('Assignment.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: {
+					id: '1',
 					name: 'binaryField',
 					type: 'binary',
 					value: 'data',

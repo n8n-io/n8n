@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import type { IWorkflowDb } from '@/Interface';
+import type { WorkflowResource } from '@/Interface';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useMessage } from '@/composables/useMessage';
@@ -54,16 +54,15 @@ const renderComponent = createComponentRenderer(WorkflowCard, {
 	pinia: createTestingPinia({}),
 });
 
-const createWorkflow = (overrides = {}): IWorkflowDb => ({
+const createWorkflow = (overrides = {}): WorkflowResource => ({
+	resourceType: 'workflow',
 	id: '1',
 	name: 'My Workflow',
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
-	nodes: [],
-	connections: {},
 	active: true,
 	isArchived: false,
-	versionId: '1',
+	readOnly: false,
 	...overrides,
 });
 

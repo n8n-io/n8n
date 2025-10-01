@@ -22,6 +22,7 @@ import {
 	EVALUATIONS_DOCS_URL,
 } from '@/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('vue-router', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -211,7 +212,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -259,7 +260,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'regular-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'regular-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -352,7 +353,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
@@ -674,7 +675,7 @@ describe('WorkflowProductionChecklist', () => {
 				props: {
 					workflow: {
 						...mockWorkflow,
-						nodes: [{ type: 'ai-node', typeVersion: 1 }],
+						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
 					},
 				},
 				pinia,
