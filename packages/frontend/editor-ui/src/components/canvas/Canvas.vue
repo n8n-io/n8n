@@ -350,6 +350,7 @@ const keyMap = computed(() => {
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
+		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 	};
 	return fullKeymap;
 });

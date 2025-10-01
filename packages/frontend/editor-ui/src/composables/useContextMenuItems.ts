@@ -236,7 +236,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 							{
 								id: 'replace',
 								label: i18n.baseText('contextMenu.replace'),
-								shortcut: { keys: ['r'] },
+								shortcut: { keys: ['R'] },
 								disabled: isReadOnly.value,
 							},
 						];

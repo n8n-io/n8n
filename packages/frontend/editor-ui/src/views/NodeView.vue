@@ -79,7 +79,6 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
-	getNodeInputs,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
