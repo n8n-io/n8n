@@ -118,6 +118,8 @@ class TaskRunner:
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()
 
+            except websockets.ConnectionClosedOK:
+                pass
             except Exception:
                 raise WebsocketConnectionError(self.task_broker_uri)
 
@@ -201,6 +203,8 @@ class TaskRunner:
             try:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
+            except websockets.ConnectionClosedOK:
+                break
             except Exception as e:
                 self.logger.error(f"Error handling message: {e}")
 
