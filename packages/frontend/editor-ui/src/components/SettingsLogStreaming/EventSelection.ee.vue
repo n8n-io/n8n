@@ -25,9 +25,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const logStreamingStore = useLogStreamingStore();
 
-const anonymizeAuditMessages = computed(() => {
-	return logStreamingStore.items[props.destinationId]?.destination.anonymizeAuditMessages;
-});
+const anonymizeAuditMessages = computed(
+	() => logStreamingStore.items[props.destinationId]?.destination.anonymizeAuditMessages,
+);
 
 function onInput() {
 	emit('input');
@@ -84,7 +84,7 @@ function groupLabelInfo(t: string): string | undefined {
 			</Checkbox>
 			<Checkbox
 				v-if="group.name === 'n8n.audit'"
-				:model-value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
+				:model-value="anonymizeAuditMessages"
 				:disabled="readonly"
 				@update:model-value="onInput"
 				@change="anonymizeAuditMessagesChanged"
