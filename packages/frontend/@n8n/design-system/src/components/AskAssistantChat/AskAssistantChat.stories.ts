@@ -33,7 +33,7 @@ const TemplateWithInputPlaceholder: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div style="width:275px; height:500px">
-			<ask-assistant-chat v-bind="args" >
+			<ask-assistant-chat v-bind="args">
 				<template #inputPlaceholder>
 					<button>Click me</button>
 				</template>
@@ -1112,7 +1112,7 @@ Once configured, the trigger will activate whenever the specified event occurs.`
 This structure ensures data flows smoothly and errors are handled gracefully.`,
 			read: true,
 			showRating: true,
-			ratingStyle: 'regular',
+			ratingStyle: 'minimal',
 			showFeedback: true,
 		},
 	]),
