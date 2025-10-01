@@ -60,6 +60,14 @@ export const frontendConfig = tseslint.config(
 			'vue/no-multiple-template-root': 'error',
 			'vue/v-slot-style': 'error',
 			'vue/no-unused-components': 'error',
+			'vue/no-undef-components': [
+				'error',
+				{
+					ignorePatterns: [
+						'FontAwesomeIcon', // Globally registered in plugins/icons/index.ts
+					],
+				},
+			],
 			'vue/multi-word-component-names': 'off',
 			'vue/component-name-in-template-casing': [
 				'error',
