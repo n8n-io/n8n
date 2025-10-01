@@ -9,18 +9,23 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import {
-	N8nText,
-	N8nTooltip,
-	N8nIcon,
-	N8nTableHeaderControlsButton,
-	N8nExternalLink,
-} from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
 import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
+import { ElScrollbar } from 'element-plus';
+import {
+	N8nCallout,
+	N8nExternalLink,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+	N8nTableHeaderControlsButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,

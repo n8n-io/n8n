@@ -13,7 +13,6 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
@@ -23,6 +22,7 @@ import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
 
+import { N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;

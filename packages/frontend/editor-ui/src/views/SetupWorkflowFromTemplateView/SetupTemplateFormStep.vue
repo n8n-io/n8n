@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import N8nHeading from '@n8n/design-system/components/N8nHeading';
 import NodeIcon from '@/components/NodeIcon.vue';
 import CredentialPicker from '@/components/CredentialPicker/CredentialPicker.vue';
 import IconSuccess from './IconSuccess.vue';
@@ -16,6 +15,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 import { I18nT } from 'vue-i18n';
 
+import { N8nHeading } from '@n8n/design-system';
 // Props
 const props = withDefaults(
 	defineProps<{

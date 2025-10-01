@@ -7,7 +7,8 @@ import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, FolderResource, WorkflowResource } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	resource: WorkflowResource | CredentialsResource | FolderResource;
 	resourceType: ResourceType;

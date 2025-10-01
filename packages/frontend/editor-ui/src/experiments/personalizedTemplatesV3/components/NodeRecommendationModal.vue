@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { EXPERIMENT_TEMPLATE_RECO_V3_KEY, TEMPLATES_URLS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
@@ -6,6 +7,7 @@ import { ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nText } from '@n8n/design-system';
 
 const uiStore = useUIStore();
 const {

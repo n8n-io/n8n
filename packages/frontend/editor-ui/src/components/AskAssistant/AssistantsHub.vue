@@ -7,6 +7,8 @@ import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 
+import { N8nResizeWrapper } from '@n8n/design-system';
+import HubSwitcher from '@/components/AskAssistant/HubSwitcher.vue';
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 

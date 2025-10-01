@@ -7,7 +7,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
-import { N8nSuggestedActions } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -22,6 +21,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
+import { N8nSuggestedActions } from '@n8n/design-system';
 const props = defineProps<{
 	workflow: IWorkflowDb;
 }>();

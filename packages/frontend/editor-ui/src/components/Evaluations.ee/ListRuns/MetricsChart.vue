@@ -4,6 +4,7 @@ import { computed, watchEffect } from 'vue';
 import { Line } from 'vue-chartjs';
 import { useMetricsChart } from '../composables/useMetricsChart';
 
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 const emit = defineEmits<{
 	'update:selectedMetric': [value: string];
 }>();

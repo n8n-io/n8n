@@ -39,6 +39,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
+import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import {
 	N8nCallout,
 	N8nIcon,
@@ -47,13 +53,8 @@ import {
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );

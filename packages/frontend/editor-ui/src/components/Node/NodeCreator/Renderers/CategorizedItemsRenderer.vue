@@ -24,6 +24,7 @@ export interface Props {
 
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });

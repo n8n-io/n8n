@@ -2,7 +2,7 @@ import type { Plugin } from 'vue';
 
 import 'regenerator-runtime/runtime';
 
-import ElementPlus, { ElLoading, ElMessageBox } from 'element-plus';
+import { ElLoading, ElMessageBox } from 'element-plus';
 import { N8nPlugin } from '@n8n/design-system';
 import { useMessage } from '@/composables/useMessage';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
@@ -15,7 +15,6 @@ export const GlobalComponentsPlugin: Plugin = {
 		app.component('EnterpriseEdition', EnterpriseEdition);
 		app.component('ParameterInputList', ParameterInputList);
 
-		app.use(ElementPlus);
 		app.use(N8nPlugin, {});
 
 		// app.use(ElLoading);

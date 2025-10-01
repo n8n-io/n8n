@@ -2,7 +2,6 @@
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref } from 'vue';
-import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -14,6 +13,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -245,7 +245,7 @@ watch(currentRoute, () => {
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
-		<AskAssistantChat
+		<N8nAskAssistantChat
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
@@ -275,7 +275,7 @@ watch(currentRoute, () => {
 					i18n.baseText('aiAssistant.builder.assistantPlaceholder')
 				}}</N8nText>
 			</template>
-		</AskAssistantChat>
+		</N8nAskAssistantChat>
 	</div>
 </template>
 
