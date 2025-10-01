@@ -72,6 +72,7 @@ export function useCommandBar() {
 		nodeCommandGroup,
 		workflowCommandGroup,
 		templateCommandGroup,
+		workflowNavigationGroup,
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
@@ -100,6 +101,7 @@ export function useCommandBar() {
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
+			case VIEWS.NEW_WORKFLOW:
 				return canvasViewGroups;
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
