@@ -12,6 +12,7 @@ import { useCredentialNavigationCommands } from './commandBar/useCredentialNavig
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
 import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
 import { useExecutionCommands } from './commandBar/useExecutionCommands';
+import { useEvaluationCommands } from './commandBar/useEvaluationCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
@@ -52,6 +53,7 @@ export function useCommandBar() {
 	});
 	const workflowCommandGroup = useWorkflowCommands();
 	const executionCommandGroup = useExecutionCommands();
+	const evaluationCommandGroup = useEvaluationCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -119,6 +121,15 @@ export function useCommandBar() {
 		executionNavigationGroup,
 	];
 
+	const evaluationViewGroups: CommandGroup[] = [
+		evaluationCommandGroup,
+		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
+	];
+
 	const fallbackViewCommands: CommandGroup[] = [
 		projectNavigationGroup,
 		workflowNavigationGroup,
@@ -147,6 +158,10 @@ export function useCommandBar() {
 			case PROJECT_DATA_STORES:
 			case DATA_STORE_VIEW:
 				return dataStoresListViewGroups;
+			case VIEWS.EVALUATION:
+			case VIEWS.EVALUATION_EDIT:
+			case VIEWS.EVALUATION_RUNS_DETAIL:
+				return evaluationViewGroups;
 			default:
 				return fallbackViewCommands;
 		}
@@ -177,6 +192,12 @@ export function useCommandBar() {
 			case PROJECT_DATA_STORES:
 			case DATA_STORE_VIEW:
 				return i18n.baseText('commandBar.sections.dataTables');
+			case VIEWS.EVALUATION:
+			case VIEWS.EVALUATION_EDIT:
+			case VIEWS.EVALUATION_RUNS_DETAIL:
+				return workflowStore.workflow.name
+					? i18n.baseText('commandBar.sections.evaluation') + ' ⋅ ' + workflowStore.workflow.name
+					: i18n.baseText('commandBar.sections.evaluation');
 			default:
 				return '';
 		}

@@ -3578,6 +3578,7 @@
 	"commandBar.sections.dataTables": "Data Tables",
 	"commandBar.sections.execution": "Execution",
 	"commandBar.sections.executions": "Executions",
+	"commandBar.sections.evaluation": "Evaluation",
 	"commandBar.sections.demo": "Demo",
 	"commandBar.nodes.addNode": "Add node",
 	"commandBar.nodes.addStickyNote": "Add sticky note",
