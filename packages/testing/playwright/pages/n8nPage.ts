@@ -19,6 +19,7 @@ import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
@@ -32,6 +33,7 @@ import { MfaComposer } from '../composables/MfaComposer';
 import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
+import { TemplatesComposer } from '../composables/TemplatesComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { NavigationHelper } from '../helpers/NavigationHelper';
@@ -59,6 +61,7 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
+	readonly templates: TemplatesPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
@@ -84,6 +87,7 @@ export class n8nPage {
 	readonly mfaComposer: MfaComposer;
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly ndvComposer: NodeDetailsViewComposer;
+	readonly templatesComposer: TemplatesComposer;
 	readonly start: TestEntryComposer;
 
 	// Helpers
@@ -108,6 +112,7 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
+		this.templates = new TemplatesPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
@@ -133,6 +138,7 @@ export class n8nPage {
 		this.mfaComposer = new MfaComposer(this);
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.ndvComposer = new NodeDetailsViewComposer(this);
+		this.templatesComposer = new TemplatesComposer(this);
 		this.start = new TestEntryComposer(this);
 
 		// Helpers
