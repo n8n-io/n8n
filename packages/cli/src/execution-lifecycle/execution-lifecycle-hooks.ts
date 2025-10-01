@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -9,6 +10,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { safeStringify } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -162,6 +164,8 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
+	const globalConfig = Container.get(GlobalConfig);
+	const useNativeJson = globalConfig.executions.experimentalNativeJsonSerialization;
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
@@ -232,9 +236,9 @@ function hookFunctionsPush(
 					retryOf,
 					workflowId,
 					workflowName,
-					flattedRunData: data?.resultData.runData
-						? stringify(data.resultData.runData)
-						: stringify({}),
+					flattedRunData: (useNativeJson ? safeStringify : stringify)(
+						data?.resultData.runData ?? {},
+					),
 				},
 			},
 			pushRef,

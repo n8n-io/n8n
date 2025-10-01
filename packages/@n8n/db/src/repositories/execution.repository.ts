@@ -30,7 +30,12 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	UnexpectedError,
+	safeParse,
+	safeStringify,
+} from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -132,6 +137,8 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
 
+	private readonly useNativeJson: boolean;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
@@ -141,6 +148,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+		this.useNativeJson = this.globalConfig.executions.experimentalNativeJsonSerialization;
 	}
 
 	// Find all executions that are in the 'new' state but do not have associated execution data.
@@ -213,7 +221,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
+					data: this.useNativeJson
+						? safeParse(executionData.data)
+						: (parse(executionData.data) as IRunExecutionData),
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -339,7 +349,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			...(options?.includeData && {
 				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
+					? this.useNativeJson
+						? safeParse(executionData.data)
+						: (parse(executionData.data) as IRunExecutionData)
 					: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
@@ -356,7 +368,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
 		const { connections, nodes, name, settings } = currentWorkflow ?? {};
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
+		const data = this.useNativeJson ? safeStringify(dataObj) : stringify(dataObj);
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
@@ -435,7 +447,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionData: Partial<ExecutionData> = {};
 
 		if (workflowData) executionData.workflowData = workflowData;
-		if (data) executionData.data = stringify(data);
+		if (data) {
+			executionData.data = this.useNativeJson ? safeStringify(data) : stringify(data);
+		}
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 

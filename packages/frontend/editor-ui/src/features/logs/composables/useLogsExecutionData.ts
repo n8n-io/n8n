@@ -9,13 +9,13 @@ import {
 	findSubExecutionLocator,
 	mergeStartData,
 } from '@/features/logs/logs.utils';
-import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
 import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { unflattenExecutionData } from '../../../utils/executionUtils';
 
 // useThrottle with reactive timeout support
 function useThrottle<T>(state: Ref<T>, timeout: ComputedRef<number>) {
@@ -110,9 +110,7 @@ export function useLogsExecutionData(isEnabled: ComputedRef<boolean>) {
 
 		try {
 			const subExecution = await workflowsStore.fetchExecutionDataById(locator.executionId);
-			const data = subExecution?.data
-				? (parse(subExecution.data as unknown as string) as IRunExecutionData)
-				: undefined;
+			const data = subExecution?.data ? unflattenExecutionData(subExecution).data : undefined;
 
 			if (!data || !subExecution) {
 				throw Error('Data is missing');

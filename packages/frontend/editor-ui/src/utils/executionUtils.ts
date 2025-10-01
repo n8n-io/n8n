@@ -37,7 +37,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
-import { parse } from 'flatted';
+import { safeParse } from 'n8n-workflow';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -406,7 +406,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
-		data: parse(fullExecutionData.data),
+		data: safeParse(fullExecutionData.data),
 	};
 
 	returnData.finished = returnData.finished ? returnData.finished : false;

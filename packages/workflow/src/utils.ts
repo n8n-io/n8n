@@ -1,6 +1,7 @@
 import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
+import { parse as flattedParse, stringify as flattedStringify } from 'flatted';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 
@@ -201,6 +202,46 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 
 export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {
 	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
+};
+
+/**
+ * Safely serializes data, using native JSON.stringify when possible,
+ * falling back to flatted.stringify for circular references.
+ *
+ * @param data - The data to serialize
+ * @returns Serialized string
+ */
+export const safeStringify = (data: unknown): string => {
+	if (data === undefined) {
+		return '[]';
+	}
+
+	try {
+		return JSON.stringify(data);
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('circular')) {
+			return flattedStringify(data);
+		}
+		throw error;
+	}
+};
+
+/**
+ * Safely parses serialized data, automatically detecting whether it was
+ * serialized with JSON.stringify or flatted.stringify.
+ *
+ * Detection: flatted always wraps output in an array [...]
+ *
+ * @param data - The serialized string to parse
+ * @returns Parsed data
+ */
+export const safeParse = <T = unknown>(data: string): T => {
+	// Auto-detect format: flatted always starts with '['
+	if (data[0] === '[') {
+		return flattedParse(data) as T;
+	}
+
+	return jsonParse<T>(data);
 };
 
 export const sleep = async (ms: number): Promise<void> =>

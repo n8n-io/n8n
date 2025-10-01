@@ -28,7 +28,7 @@ import {
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
-import { parse } from 'flatted';
+import { safeParse } from 'n8n-workflow';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
@@ -189,7 +189,7 @@ export async function fetchExecutionData(
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
-			data: parse(executionResponse.data as unknown as string),
+			data: safeParse(executionResponse.data as unknown as string),
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
 			stoppedAt: new Date(),

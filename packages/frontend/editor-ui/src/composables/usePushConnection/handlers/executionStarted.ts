@@ -1,7 +1,7 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { parse } from 'flatted';
 import type { WorkflowState } from '@/composables/useWorkflowState';
+import { safeParse } from 'n8n-workflow';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
@@ -20,6 +20,6 @@ export async function executionStarted(
 	}
 
 	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
-		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
+		workflowsStore.workflowExecutionData.data.resultData.runData = safeParse(data.flattedRunData);
 	}
 }

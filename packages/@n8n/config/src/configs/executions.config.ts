@@ -98,4 +98,12 @@ export class ExecutionsConfig {
 	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
+
+	/**
+	 * Whether to use native JSON.stringify/parse instead of flatted for execution data serialization.
+	 * This provides ~4.5x performance improvement for 99%+ of executions.
+	 * Automatically falls back to flatted for circular references.
+	 */
+	@Env('EXPERIMENTAL_EXECUTIONS_NATIVE_JSON_SERIALIZATION')
+	experimentalNativeJsonSerialization: boolean = false;
 }

@@ -2,7 +2,7 @@ import type {
 	ChangeLocationSearchResponseItem,
 	FolderCreateResponse,
 	FolderTreeResponseItem,
-	IExecutionResponse,
+	IExecutionFlattedResponse,
 	IExecutionsCurrentSummaryExtended,
 	IUsedCredential,
 	IWorkflowDb,
@@ -94,7 +94,7 @@ export async function getExecutions(
 }
 
 export async function getExecutionData(context: IRestApiContext, executionId: string) {
-	return await makeRestApiRequest<IExecutionResponse | null>(
+	return await makeRestApiRequest<IExecutionFlattedResponse | null>(
 		context,
 		'GET',
 		`/executions/${executionId}`,

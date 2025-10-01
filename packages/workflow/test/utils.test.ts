@@ -14,6 +14,8 @@ import {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	sleepWithAbort,
+	safeStringify,
+	safeParse,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -460,6 +462,112 @@ describe('sleepWithAbort', () => {
 		expect(clearTimeoutSpy).toHaveBeenCalled();
 
 		clearTimeoutSpy.mockRestore();
+	});
+});
+
+describe('safeStringify and safeParse', () => {
+	describe('with feature flag disabled', () => {
+		it('should use flatted for regular objects', () => {
+			const obj = { foo: 'bar', num: 123 };
+			const serialized = safeStringify(obj, false);
+
+			// Flatted always wraps in array
+			expect(serialized).toMatch(/^\[/);
+
+			const parsed = safeParse(serialized, false);
+			expect(parsed).toEqual(obj);
+		});
+
+		it('should handle circular references with flatted', () => {
+			const obj: any = { a: 1 };
+			obj.self = obj;
+
+			const serialized = safeStringify(obj, false);
+			expect(serialized).toMatch(/^\[/);
+
+			const parsed = safeParse(serialized, false);
+			expect(parsed.a).toBe(1);
+			expect(parsed.self).toBe(parsed);
+		});
+	});
+
+	describe('with feature flag enabled', () => {
+		it('should use native JSON for objects without circular refs', () => {
+			const obj = { foo: 'bar', num: 123, nested: { deep: true } };
+			const serialized = safeStringify(obj, true);
+
+			// Native JSON doesn't wrap in array
+			expect(serialized).toMatch(/^\{/);
+			expect(serialized).toBe(JSON.stringify(obj));
+
+			const parsed = safeParse(serialized, true);
+			expect(parsed).toEqual(obj);
+		});
+
+		it('should fallback to flatted for circular references', () => {
+			const obj: any = { a: 1, b: 2 };
+			obj.circular = obj;
+
+			const serialized = safeStringify(obj, true);
+
+			// Should fallback to flatted (wrapped in array)
+			expect(serialized).toMatch(/^\[/);
+
+			const parsed = safeParse(serialized, true);
+			expect(parsed.a).toBe(1);
+			expect(parsed.circular).toBe(parsed);
+		});
+
+		it('should auto-detect flatted format when parsing', () => {
+			// Create flatted data
+			const obj = { foo: 'bar' };
+			const flattedStr = safeStringify(obj, false);
+
+			// Parse with feature flag enabled - should auto-detect
+			const parsed = safeParse(flattedStr, true);
+			expect(parsed).toEqual(obj);
+		});
+
+		it('should parse native JSON format', () => {
+			const obj = { foo: 'bar', num: 123 };
+			const jsonStr = JSON.stringify(obj);
+
+			const parsed = safeParse(jsonStr, true);
+			expect(parsed).toEqual(obj);
+		});
+
+		it('should handle arrays', () => {
+			const arr = [1, 2, { nested: true }];
+			const serialized = safeStringify(arr, true);
+
+			expect(serialized).toMatch(/^\[/);
+			expect(serialized).toBe(JSON.stringify(arr));
+
+			const parsed = safeParse(serialized, true);
+			expect(parsed).toEqual(arr);
+		});
+	});
+
+	describe('backward compatibility', () => {
+		it('should parse old flatted data with feature flag enabled', () => {
+			// Simulate old data that was stringified with flatted
+			const oldData = { execution: 'data', result: [1, 2, 3] };
+			const flattedOldData = safeStringify(oldData, false);
+
+			// Should be parseable with new code (flag enabled)
+			const parsed = safeParse(flattedOldData, true);
+			expect(parsed).toEqual(oldData);
+		});
+
+		it('should parse new JSON data with feature flag disabled', () => {
+			// Simulate new data stringified with JSON
+			const newData = { execution: 'data', result: [1, 2, 3] };
+			const jsonNewData = safeStringify(newData, true);
+
+			// Should be parseable with old code (flag disabled)
+			const parsed = safeParse(jsonNewData, false);
+			expect(parsed).toEqual(newData);
+		});
 	});
 });
 

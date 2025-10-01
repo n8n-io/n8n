@@ -1738,7 +1738,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
+	async function fetchExecutionDataById(
+		executionId: string,
+	): Promise<IExecutionFlattedResponse | null> {
 		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
 	}
 

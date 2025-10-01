@@ -34,6 +34,8 @@ export {
 	base64DecodeUTF8,
 	jsonStringify,
 	replaceCircularReferences,
+	safeStringify,
+	safeParse,
 	sleep,
 	sleepWithAbort,
 	fileTypeFromMimeType,
