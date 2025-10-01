@@ -506,14 +506,10 @@ export class DataStoreRowsRepository {
 			const rawRows: DataStoreRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
-				return rawRows as T extends true
-					? Array<Pick<DataStoreRowReturn, 'id'>>
-					: DataStoreRowReturn[];
+				return rawRows;
 			}
 
-			return normalizeRows(rawRows, columns) as T extends true
-				? Array<Pick<DataStoreRowReturn, 'id'>>
-				: DataStoreRowReturn[];
+			return normalizeRows(rawRows, columns);
 		});
 	}
 
