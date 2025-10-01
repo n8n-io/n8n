@@ -1,6 +1,5 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { mkdir, rm, readdir, appendFile } from 'fs/promises';
-import path from 'path';
 
 import { Service } from '@n8n/di';
 
@@ -29,7 +28,7 @@ export class ExportService {
 				`   🗑️  Found ${entityFiles.length} existing file(s) for ${entityName}, deleting...`,
 			);
 			for (const file of entityFiles) {
-				await rm(path.join(outputDir, file));
+				await rm(safeJoinPath(outputDir, file));
 				this.logger.info(`      Deleted: ${file}`);
 			}
 		}
@@ -62,7 +61,7 @@ export class ExportService {
 			const allMigrations = await this.dataSource.query(`SELECT * FROM ${formattedTableName}`);
 
 			const fileName = 'migrations.jsonl';
-			const filePath = path.join(outputDir, fileName);
+			const filePath = safeJoinPath(outputDir, fileName);
 
 			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
@@ -150,7 +149,7 @@ export class ExportService {
 				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
 				const fileName =
 					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
-				const filePath = path.join(outputDir, fileName);
+				const filePath = safeJoinPath(outputDir, fileName);
 
 				// If we've moved to a new file, log the completion of the previous file
 				if (targetFileIndex > fileIndex) {
@@ -195,7 +194,7 @@ export class ExportService {
 		}
 
 		// Compress the output directory to entities.zip
-		const zipPath = path.join(outputDir, 'entities.zip');
+		const zipPath = safeJoinPath(outputDir, 'entities.zip');
 		this.logger.info(`\n🗜️  Compressing export to ${zipPath}...`);
 
 		await compressFolder(outputDir, zipPath, {
@@ -209,7 +208,7 @@ export class ExportService {
 		const files = await readdir(outputDir);
 		for (const file of files) {
 			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
-				await rm(path.join(outputDir, file));
+				await rm(safeJoinPath(outputDir, file));
 			}
 		}
 
