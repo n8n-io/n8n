@@ -35,17 +35,14 @@ export function useCommandBar() {
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
 
-	const personalProjectId = computed(() => {
-		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
-	});
-
 	const currentProjectName = computed(() => {
-		if (!route.params.projectId || route.params.projectId === personalProjectId.value) {
+		const projectId = route.params.projectId || projectsStore.currentProjectId;
+
+		if (projectId === projectsStore.personalProject?.id) {
 			return 'Personal';
 		}
-		return (
-			projectsStore.myProjects.find((p) => p.id === route.params.projectId)?.name ?? 'Personal'
-		);
+
+		return projectsStore.myProjects.find((p) => p.id === projectId)?.name ?? 'Personal';
 	});
 
 	const baseCommandGroup = useBaseCommands();

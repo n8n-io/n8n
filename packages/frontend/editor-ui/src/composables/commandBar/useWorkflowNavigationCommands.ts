@@ -37,16 +37,10 @@ export function useWorkflowNavigationCommands(options: {
 	const workflowResults = ref<IWorkflowDb[]>([]);
 	const isLoading = ref(false);
 
-	const personalProjectId = computed(() => {
-		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
-	});
-
 	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
-		const currentProjectId =
-			typeof route.params.projectId === 'string' ? route.params.projectId : personalProjectId.value;
 		return results.sort((a, b) => {
-			if (a.homeProject?.id === currentProjectId) return -1;
-			if (b.homeProject?.id === currentProjectId) return 1;
+			if (a.homeProject?.id === projectsStore.currentProjectId) return -1;
+			if (b.homeProject?.id === projectsStore.currentProjectId) return 1;
 			return 0;
 		});
 	}
@@ -124,10 +118,11 @@ export function useWorkflowNavigationCommands(options: {
 			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
 			section: i18n.baseText('commandBar.sections.workflows'),
 			handler: () => {
-				void router.push({
+				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
 					params: { name: workflow.id },
 				});
+				window.location.href = targetRoute.fullPath;
 			},
 		};
 	};
@@ -158,13 +153,14 @@ export function useWorkflowNavigationCommands(options: {
 					},
 				},
 				handler: () => {
-					void router.push({
+					const targetRoute = router.resolve({
 						name: VIEWS.NEW_WORKFLOW,
 						query: {
-							projectId: route.params.projectId,
+							projectId: projectsStore.currentProjectId,
 							parentFolderId: route.params.folderId,
 						},
 					});
+					window.location.href = targetRoute.fullPath;
 				},
 			},
 			{
