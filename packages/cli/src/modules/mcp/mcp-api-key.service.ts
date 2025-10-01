@@ -11,6 +11,9 @@ const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 const API_KEY_LABEL = 'MCP Server API Key';
 
+/**
+ * Service for managing MCP server API keys, including creation, retrieval, deletion, and authentication middleware.
+ */
 @Service()
 export class McpServerApiKeyService {
 	constructor(
