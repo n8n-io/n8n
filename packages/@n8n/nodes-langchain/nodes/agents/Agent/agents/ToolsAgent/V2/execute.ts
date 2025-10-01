@@ -1,7 +1,11 @@
 import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
 import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type {
+	AIMessageChunk,
+	MessageContentComplex,
+	MessageContentText,
+} from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import {
@@ -79,6 +83,82 @@ function createAgentExecutor(
 	});
 }
 
+type ContentBlock = {
+	type: string;
+	text?: string;
+	thinking?: Array<{ type: 'text'; text: string }>;
+};
+
+type ComplexBlock = MessageContentComplex; // as in your codebase
+type Block = ContentBlock | ComplexBlock;
+
+/**
+ * Collapse provider content (string or array-of-blocks) to plain text for UI/output.
+ * - Remove ALL chain-of-thought (thinking) from user-visible output.
+ * - Keep only plain 'text' blocks when content is an array.
+ * - For strings, strip <think>...</think> sections entirely (not just tags).
+ */
+export function flattenContentToText(
+	content: string | Block[] | undefined | null,
+	opts?: { collapseWhitespace?: boolean },
+): string {
+	if (content == null) return '';
+
+	// 1) STRING INPUT
+	if (typeof content === 'string') {
+		// Remove entire <think>...</think> segments (non-greedy), case-insensitive.
+		// This avoids leaking chain-of-thought and mirrors reasoning model guidance.
+		// Examples: "text <think>hidden</think> more" -> "text  more"
+		let out = content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+		// Optional: collapse multi-space/newlines to single space (nicer UI)
+		if (opts?.collapseWhitespace !== false) {
+			out = out.replace(/\s+/g, ' ').trim();
+		}
+		return out;
+	}
+
+	// 2) ARRAY INPUT
+	let out = '';
+	for (const b of content) {
+		if (!b || typeof b !== 'object') continue;
+
+		switch ((b as any).type) {
+			case 'text': {
+				const t = (b as any).text;
+				if (typeof t === 'string') out += t;
+				break;
+			}
+
+			// Explicitly ignore chain-of-thought
+			case 'thinking': {
+				// Some providers send nested thinking as array-of-text blocks.
+				// Don't append it to user-visible output:
+				// const nested = (b as any).thinking as Array<{ type: 'text'; text: string }> | undefined;
+				// (We intentionally ignore.)
+				break;
+			}
+
+			// Known non-textual / metadata types we ignore for the final plain-text:
+			case 'image_url':
+			case 'reference':
+			case 'document_url':
+			case 'input_audio':
+			case 'file':
+			default:
+				// ignore unknown/unsupported safely
+				break;
+		}
+	}
+
+	// Optional: normalize whitespace in concatenated text
+	if (opts?.collapseWhitespace !== false) {
+		out = out.replace(/\s+/g, ' ').trim();
+	}
+
+	return out;
+}
+
 async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
@@ -97,25 +177,23 @@ async function processEventStream(
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
-			case 'on_chat_model_stream':
+			case 'on_chat_model_stream': {
 				const chunk = event.data?.chunk as AIMessageChunk;
-				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							if (message?.type === 'text') {
-								chunkText += (message as MessageContentText)?.text;
-							}
-						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
+				if (chunk?.content !== undefined) {
+					const cont = chunk.content;
+					// Only process if content is a string or array of blocks
+					if (typeof cont === 'string' || Array.isArray(cont)) {
+						// Preserve whitespace boundaries during streaming so tests & UI match.
+						const chunkText = flattenContentToText(cont, { collapseWhitespace: false });
+						// Always emit item—even empty—so downstream can rely on chunk ordering.
+						ctx.sendChunk('item', itemIndex, chunkText);
+						agentResult.output += chunkText;
+					} else {
+						// unexpected content format — ignore or log
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
 				}
 				break;
+			}
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (returnIntermediateSteps && event.data) {
@@ -291,10 +369,33 @@ export async function toolsAgentExecute(
 				);
 			} else {
 				// Handle regular execution
-				return await executor.invoke(invokeParams, executeOptions);
+
+				let response: any;
+				response = await executor.invoke(invokeParams, executeOptions);
+
+				// If provider put structured blocks into response.output (array or tagged string), flatten them.
+				if (response && typeof response.output !== 'undefined') {
+					try {
+						// Sometimes output is already a string; sometimes providers return objects/arrays.
+						// If it's an object with a "content" field (OpenAI-compatible), try to flatten it too.
+						if (Array.isArray((response as any).output)) {
+							(response as any).output = flattenContentToText((response as any).output);
+						} else if (
+							typeof (response as any).output === 'object' &&
+							(response as any).output !== null
+						) {
+							const maybeContent = (response as any).output.content ?? (response as any).output;
+							(response as any).output = flattenContentToText(maybeContent);
+						} else if (typeof (response as any).output === 'string') {
+							(response as any).output = flattenContentToText((response as any).output);
+						}
+					} catch {
+						// If anything goes wrong, leave output as-is rather than throwing.
+					}
+				}
+				return response;
 			}
 		});
-
 		const batchResults = await Promise.allSettled(batchPromises);
 		// This is only used to check if the output parser is connected
 		// so we can parse the output if needed. Actual output parsing is done in the loop above

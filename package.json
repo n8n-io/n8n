@@ -87,6 +87,7 @@
       "sqlite3"
     ],
     "overrides": {
+       "@mistralai/mistralai": "1.10.0",
       "@azure/identity": "^4.3.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",

@@ -7,7 +7,7 @@ import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflo
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
 import * as commonModule from '../../agents/ToolsAgent/common';
-import { toolsAgentExecute } from '../../agents/ToolsAgent/V2/execute';
+import { toolsAgentExecute, flattenContentToText } from '../../agents/ToolsAgent/V2/execute';
 
 jest.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
 	getOptionalOutputParser: jest.fn(),
@@ -883,5 +883,100 @@ describe('toolsAgentExecute', () => {
 		expect(mockExecutor.invoke).toHaveBeenCalledTimes(1);
 		expect(result[0]).toHaveLength(1);
 		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
+	});
+
+	describe('flattenContentToText', () => {
+		it('should return empty string for undefined or null content', () => {
+			expect(flattenContentToText(undefined)).toBe('');
+			expect(flattenContentToText(null as any)).toBe('');
+		});
+
+		it('should remove <think> tags from string content', () => {
+			expect(flattenContentToText('text <think>hidden</think> more')).toBe('text more');
+			expect(flattenContentToText('<think>start</think>visible<think>end</think>')).toBe('visible');
+		});
+
+		it('should handle string content without think tags', () => {
+			expect(flattenContentToText('plain text')).toBe('plain text');
+		});
+
+		it('should extract text from array of text blocks', () => {
+			const content = [
+				{ type: 'text', text: 'hello' },
+				{ type: 'text', text: ' world' },
+			];
+			expect(flattenContentToText(content)).toBe('hello world');
+		});
+
+		it('should exclude thinking blocks from output', () => {
+			const content = [
+				{ type: 'text', text: 'visible' },
+				{ type: 'thinking', thinking: [{ type: 'text', text: 'hidden reasoning' }] },
+				{ type: 'text', text: ' text' },
+			];
+			expect(
+				flattenContentToText([
+					{ type: 'text', text: 'visible' },
+					{ type: 'thinking', thinking: [{ type: 'text', text: 'hidden reasoning' }] },
+					{ type: 'text', text: ' text' },
+				]),
+			).toBe('visible text'); // not including thinking
+		});
+
+		it('should ignore image_url blocks', () => {
+			const content = [
+				{ type: 'text', text: 'before' },
+				{ type: 'image_url', image_url: { url: 'http://example.com/image.png' } },
+				{ type: 'text', text: 'after' },
+			];
+			expect(flattenContentToText(content)).toBe('beforeafter');
+		});
+
+		it('should ignore reference blocks', () => {
+			const content = [
+				{ type: 'text', text: 'text' },
+				{ type: 'reference', reference_ids: ['ref1', 'ref2'] },
+			];
+			expect(flattenContentToText(content)).toBe('text');
+		});
+
+		it('should ignore document_url blocks', () => {
+			const content = [{ type: 'text', text: 'content' }, { type: 'document_url' }];
+			expect(flattenContentToText(content)).toBe('content');
+		});
+
+		it('should handle mixed content types', () => {
+			const content = [
+				{ type: 'text', text: 'start' },
+				{ type: 'thinking', thinking: [{ type: 'text', text: 'internal' }] },
+				{ type: 'image_url', image_url: { url: 'http://test.com' } },
+				{ type: 'text', text: ' middle' },
+				{ type: 'reference', reference_ids: ['123'] },
+				{ type: 'text', text: ' end' },
+			];
+			expect(flattenContentToText(content)).toBe('start middle end');
+		});
+
+		it('should handle empty array', () => {
+			expect(flattenContentToText([])).toBe('');
+		});
+
+		it('should handle array with only non-text blocks', () => {
+			const content = [
+				{ type: 'thinking', thinking: [{ type: 'text', text: 'hidden' }] },
+				{ type: 'image_url', image_url: { url: 'http://test.com' } },
+			];
+			expect(flattenContentToText(content)).toBe('');
+		});
+
+		it('should handle malformed blocks gracefully', () => {
+			const content = [
+				{ type: 'text', text: 'valid' },
+				null as any,
+				{ type: 'text' }, // missing text field
+				{ type: 'unknown' }, // unknown type
+			];
+			expect(flattenContentToText(content)).toBe('valid');
+		});
 	});
 });
