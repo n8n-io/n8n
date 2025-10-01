@@ -19,6 +19,7 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	VIEWS,
+	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
@@ -36,7 +37,9 @@ const ITEM_ID = {
 	ACTIVATE_WORKFLOW: 'activate-workflow',
 	DEACTIVATE_WORKFLOW: 'deactivate-workflow',
 	SELECT_ALL: 'select-all',
+	OPEN_WORKFLOW_SETTINGS: 'open-workflow-settings',
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
+	RENAME_WORKFLOW: 'rename-workflow',
 	DUPLICATE_WORKFLOW: 'duplicate-workflow',
 	DOWNLOAD_WORKFLOW: 'download-workflow',
 	IMPORT_WORKFLOW_FROM_URL: 'import-workflow-from-url',
@@ -169,6 +172,20 @@ export function useWorkflowCommands(): CommandGroup {
 							},
 						},
 					},
+					{
+						id: ITEM_ID.RENAME_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.rename'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							nodeViewEventBus.emit('renameWorkflow');
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'pencil-alt',
+							},
+						},
+					},
 				]
 			: []),
 		{
@@ -182,6 +199,20 @@ export function useWorkflowCommands(): CommandGroup {
 				component: N8nIcon as Component,
 				props: {
 					icon: 'list-checks',
+				},
+			},
+		},
+		{
+			id: ITEM_ID.OPEN_WORKFLOW_SETTINGS,
+			title: i18n.baseText('commandBar.workflow.openSettings'),
+			section: i18n.baseText('commandBar.sections.workflow'),
+			handler: () => {
+				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			},
+			icon: {
+				component: N8nIcon as Component,
+				props: {
+					icon: 'cog',
 				},
 			},
 		},
