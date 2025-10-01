@@ -28,13 +28,14 @@ describe('Workflow templates', () => {
 			// Templates should be a link to the website
 			mainSidebar.getters
 				.templates()
-				.parent('a')
+				.find('a')
 				.should('have.attr', 'href')
 				.and('include', 'https://n8n.io/workflows');
+
 			// Link should contain instance address and n8n version
 			mainSidebar.getters
 				.templates()
-				.parent('a')
+				.find('a')
 				.then(($a) => {
 					const href = $a.attr('href');
 					const params = new URLSearchParams(href);
@@ -45,7 +46,7 @@ describe('Workflow templates', () => {
 					expect(params.get('utm_n8n_version')).to.match(/[0-9]+\.[0-9]+\.[0-9]+/);
 					expect(params.get('utm_awc')).to.match(/[0-9]+/);
 				});
-			mainSidebar.getters.templates().parent('a').should('have.attr', 'target', '_blank');
+			mainSidebar.getters.templates().find('a').should('have.attr', 'target', '_blank');
 		});
 
 		it('Redirects to website when visiting templates page directly', () => {
