@@ -54,7 +54,7 @@ catalogs:
     '@sentry/vue': ^8.33.1
     pinia: ^2.2.4
     typescript: ^5.8.2
-    vite: ^6.3.5
+    vite: ^6.3.6
     vitest: ^3.1.3
     vitest-mock-extended: ^3.1.0
     vue: ^3.5.13
