@@ -12,6 +12,7 @@ import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import CredentialIcon from '@/components/CredentialIcon.vue';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -69,35 +70,28 @@ export function useCredentialNavigationCommands(options: {
 	};
 	const fetchCredentialsDebounced = debounce(fetchCredentialsImpl, 300);
 
-	const getCredentialTitle = (
-		credential: ICredentialsResponse,
-		includeOpenCredentialPrefix: boolean,
-	) => {
-		let prefix = '';
+	const getCredentialProjectSuffix = (credential: ICredentialsResponse) => {
 		if (credential.homeProject && credential.homeProject.type === 'personal') {
-			prefix = includeOpenCredentialPrefix
-				? i18n.baseText('commandBar.credentials.openPrefixPersonal')
-				: i18n.baseText('commandBar.credentials.prefixPersonal');
-		} else {
-			prefix = includeOpenCredentialPrefix
-				? i18n.baseText('commandBar.credentials.openPrefixProject', {
-						interpolate: { projectName: credential.homeProject?.name ?? '' },
-					})
-				: i18n.baseText('commandBar.credentials.prefixProject', {
-						interpolate: { projectName: credential.homeProject?.name ?? '' },
-					});
+			return i18n.baseText('projects.menu.personal');
 		}
-		return prefix + (credential.name || i18n.baseText('commandBar.credentials.unnamed'));
+		return credential.homeProject?.name ?? '';
 	};
 
-	const createCredentialCommand = (
-		credential: ICredentialsResponse,
-		includeOpenCredentialPrefix: boolean,
-	): CommandBarItem => {
+	const createCredentialCommand = (credential: ICredentialsResponse): CommandBarItem => {
+		// Add credential name to keywords since we're using a custom component for the title
+		const keywords = [credential.name];
+
 		return {
 			id: credential.id,
-			title: getCredentialTitle(credential, includeOpenCredentialPrefix),
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: credential.name,
+					suffix: getCredentialProjectSuffix(credential),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.credentials'),
+			keywords,
 			icon: {
 				component: CredentialIcon,
 				props: {
@@ -111,14 +105,14 @@ export function useCredentialNavigationCommands(options: {
 	};
 
 	const openCredentialCommands = computed<CommandBarItem[]>(() => {
-		return credentialResults.value.map((credential) => createCredentialCommand(credential, false));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential));
 	});
 
 	const rootCredentialItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return credentialResults.value.map((credential) => createCredentialCommand(credential, true));
+		return credentialResults.value.map((credential) => createCredentialCommand(credential));
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {

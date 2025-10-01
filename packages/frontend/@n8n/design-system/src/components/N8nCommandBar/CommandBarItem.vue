@@ -35,7 +35,10 @@ const handleSelect = () => {
 			/>
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.title">{{ item.title }}</div>
+			<div :class="$style.title">
+				<template v-if="typeof item.title === 'string'">{{ item.title }}</template>
+				<component :is="item.title.component" v-else v-bind="item.title.props" />
+			</div>
 		</div>
 	</div>
 </template>

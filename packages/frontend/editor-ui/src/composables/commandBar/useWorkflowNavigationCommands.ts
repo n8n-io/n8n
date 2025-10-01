@@ -17,6 +17,7 @@ import type { CommandGroup, CommandBarItem } from './types';
 import { useTagsStore } from '@/stores/tags.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -147,28 +148,14 @@ export function useWorkflowNavigationCommands(options: {
 
 	const fetchWorkflowsDebounced = debounce(fetchWorkflowsImpl, 300);
 
-	const getWorkflowTitle = (workflow: IWorkflowDb, includeOpenWorkflowPrefix: boolean) => {
-		let prefix = '';
+	const getWorkflowProjectSuffix = (workflow: IWorkflowDb) => {
 		if (workflow.homeProject && workflow.homeProject.type === ProjectTypes.Personal) {
-			prefix = includeOpenWorkflowPrefix
-				? i18n.baseText('commandBar.workflows.openPrefixPersonal')
-				: i18n.baseText('commandBar.workflows.prefixPersonal');
-		} else {
-			prefix = includeOpenWorkflowPrefix
-				? i18n.baseText('commandBar.workflows.openPrefixProject', {
-						interpolate: { projectName: workflow.homeProject?.name ?? '' },
-					})
-				: i18n.baseText('commandBar.workflows.prefixProject', {
-						interpolate: { projectName: workflow.homeProject?.name ?? '' },
-					});
+			return i18n.baseText('projects.menu.personal');
 		}
-		return prefix + (workflow.name || i18n.baseText('commandBar.workflows.unnamed'));
+		return workflow.homeProject?.name ?? '';
 	};
 
-	const createWorkflowCommand = (
-		workflow: IWorkflowDb,
-		includeOpenWorkflowPrefix: boolean,
-	): CommandBarItem => {
+	const createWorkflowCommand = (workflow: IWorkflowDb): CommandBarItem => {
 		const keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -184,13 +171,23 @@ export function useWorkflowNavigationCommands(options: {
 			}
 		}
 
+		// Add workflow name to keywords since we're using a custom component for the title
+		const workflowName = workflow.name;
+		keywords.push(workflowName);
+
 		if (workflow.tags && workflow.tags.length > 0) {
 			keywords.push(...workflow.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)));
 		}
 
 		return {
 			id: workflow.id,
-			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+					suffix: getWorkflowProjectSuffix(workflow),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.workflows'),
 			...(keywords.length > 0 ? { keywords } : {}),
 			...(icon ? { icon } : {}),

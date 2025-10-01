@@ -10,6 +10,7 @@ import type { DataStore } from '@/features/dataStore/datastore.types';
 import { N8nIcon } from '@n8n/design-system';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	OPEN_DATA_TABLE: 'open-data-table',
@@ -76,32 +77,28 @@ export function useDataTableNavigationCommands(options: {
 
 	const fetchDataTablesDebounced = debounce(fetchDataTablesImpl, 300);
 
-	const getDataTableTitle = (dataTable: DataStore, includeOpenDataTablePrefix: boolean) => {
-		let prefix = '';
+	const getDataTableProjectSuffix = (dataTable: DataStore) => {
 		if (dataTable.project && dataTable.project.type === 'personal') {
-			prefix = includeOpenDataTablePrefix
-				? i18n.baseText('commandBar.dataTables.openPrefixPersonal')
-				: i18n.baseText('commandBar.dataTables.prefixPersonal');
-		} else {
-			prefix = includeOpenDataTablePrefix
-				? i18n.baseText('commandBar.dataTables.openPrefixProject', {
-						interpolate: { projectName: dataTable.project?.name ?? '' },
-					})
-				: i18n.baseText('commandBar.dataTables.prefixProject', {
-						interpolate: { projectName: dataTable.project?.name ?? '' },
-					});
+			return i18n.baseText('projects.menu.personal');
 		}
-		return prefix + (dataTable.name || i18n.baseText('commandBar.dataTables.unnamed'));
+		return dataTable.project?.name ?? '';
 	};
 
-	const createDataTableCommand = (
-		dataTable: DataStore,
-		includeOpenDataTablePrefix: boolean,
-	): CommandBarItem => {
+	const createDataTableCommand = (dataTable: DataStore): CommandBarItem => {
+		// Add data table name to keywords since we're using a custom component for the title
+		const keywords = [dataTable.name];
+
 		return {
 			id: dataTable.id,
-			title: getDataTableTitle(dataTable, includeOpenDataTablePrefix),
+			title: {
+				component: CommandBarItemTitle,
+				props: {
+					title: dataTable.name,
+					suffix: getDataTableProjectSuffix(dataTable),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.dataTables'),
+			keywords,
 			handler: () => {
 				void router.push({
 					name: DATA_STORE_DETAILS,
@@ -115,14 +112,14 @@ export function useDataTableNavigationCommands(options: {
 	};
 
 	const openDataTableCommands = computed<CommandBarItem[]>(() => {
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, false));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
