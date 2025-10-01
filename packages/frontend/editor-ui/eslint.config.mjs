@@ -48,6 +48,14 @@ export default defineConfig(frontendConfig, {
 		'@typescript-eslint/no-empty-object-type': 'warn',
 		'@typescript-eslint/no-unsafe-function-type': 'warn',
 		'vue/attribute-hyphenation': 'warn',
+		'vue/no-undef-components': [
+			'error',
+			{
+				ignorePatterns: [
+					'FontAwesomeIcon', // Globally registered in plugins/icons/index.ts
+				],
+			},
+		],
 		'@typescript-eslint/no-unsafe-assignment': 'warn',
 		'@typescript-eslint/unbound-method': 'warn',
 		'@typescript-eslint/restrict-template-expressions': 'warn',
