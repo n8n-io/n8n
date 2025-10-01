@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nIcon } from '@n8n/design-system';
 const router = useRouter();
 const i18n = useI18n();
 

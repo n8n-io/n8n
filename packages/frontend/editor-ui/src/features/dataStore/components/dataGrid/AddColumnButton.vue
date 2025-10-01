@@ -9,9 +9,20 @@ import { DATA_STORE_COLUMN_TYPES } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
-import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
 
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nOption,
+	N8nPopoverReka,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 type FormError = {
 	message?: string;
 	description?: string;

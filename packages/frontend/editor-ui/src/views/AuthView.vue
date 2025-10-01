@@ -5,6 +5,7 @@ import type { FormFieldValueUpdate, IFormBoxConfig } from '@/Interface';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { EmailOrLdapLoginIdAndPassword } from './SigninView.vue';
 
+import { N8nFormBox, N8nText } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
 		form: IFormBoxConfig;

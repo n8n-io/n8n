@@ -18,6 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import { N8nButton, N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 interface ISearchEvent {
 	search_string: string;
 	workflow_results_count: number;

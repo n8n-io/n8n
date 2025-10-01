@@ -36,6 +36,7 @@ import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParamete
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import NodeStorageLimitCallout from '@/features/dataStore/components/NodeStorageLimitCallout.vue';
+import NodeTitle from '@/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/models/history';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useHistoryStore } from '@/stores/history.store';
@@ -53,12 +54,12 @@ import {
 	nameIsParameter,
 } from '@/utils/nodeSettingsUtils';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 
+import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		eventBus?: EventBus;

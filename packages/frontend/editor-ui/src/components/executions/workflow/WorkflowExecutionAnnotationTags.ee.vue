@@ -8,6 +8,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 
+import { ElTag } from 'element-plus';
+import { N8nButton } from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary;
 }>();

@@ -27,9 +27,9 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-
 interface Props {
 	parameter: INodeProperties;
 	path: string;

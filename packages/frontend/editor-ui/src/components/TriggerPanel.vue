@@ -24,6 +24,15 @@ import { isTriggerPanelObject } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
+import {
+	N8nButton,
+	N8nHeading,
+	N8nInfoAccordion,
+	N8nLink,
+	N8nPulse,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		nodeName: string;

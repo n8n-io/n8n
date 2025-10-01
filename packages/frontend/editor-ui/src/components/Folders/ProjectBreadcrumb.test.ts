@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
 import ProjectBreadcrumb from './ProjectBreadcrumb.vue';
 import { ProjectTypes } from '@/types/projects.types';
-import type { Project } from '@vue-flow/core';
+import { createTestProject } from '@/__tests__/data/projects';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -41,11 +41,11 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders personal project info correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'user');
@@ -55,12 +55,12 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders team project info correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Team Project',
 					type: ProjectTypes.Team,
 					icon: { type: 'icon', value: 'folder' },
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'folder');
@@ -70,12 +70,12 @@ describe('ProjectBreadcrumb', () => {
 	it('Renders team project emoji icon correctly', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Team Project',
 					type: ProjectTypes.Team,
 					icon: { type: 'emoji', value: '🔥' },
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		expect(getByTestId('project-icon')).toHaveAttribute('data-icon', '🔥');
@@ -85,11 +85,11 @@ describe('ProjectBreadcrumb', () => {
 	it('emits hover event', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseEnter(getByTestId('home-project'));
@@ -100,11 +100,11 @@ describe('ProjectBreadcrumb', () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				isDragging: true,
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseUp(getByTestId('home-project'));
@@ -115,11 +115,11 @@ describe('ProjectBreadcrumb', () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				isDragging: false,
-				currentProject: {
+				currentProject: createTestProject({
 					id: '1',
 					name: 'Test Project',
 					type: ProjectTypes.Personal,
-				} satisfies Partial<Project>,
+				}),
 			},
 		});
 		await fireEvent.mouseUp(getByTestId('home-project'));
@@ -141,11 +141,11 @@ describe('ProjectBreadcrumb', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					isShared: true,
-					currentProject: {
+					currentProject: createTestProject({
 						id: '1',
 						name: 'Some Project',
 						type: ProjectTypes.Personal,
-					} satisfies Partial<Project>,
+					}),
 				},
 			});
 			expect(getByTestId('project-icon')).toHaveAttribute('data-icon', 'share');
@@ -166,11 +166,11 @@ describe('ProjectBreadcrumb', () => {
 			const { container } = renderComponent({
 				props: {
 					isShared: false,
-					currentProject: {
+					currentProject: createTestProject({
 						id: 'project-123',
 						name: 'My Project',
 						type: ProjectTypes.Team,
-					} satisfies Partial<Project>,
+					}),
 				},
 			});
 			const link = container.querySelector('a');

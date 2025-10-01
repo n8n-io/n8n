@@ -152,6 +152,22 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to template onboarding flow
+	 * URL: /workflows/onboarding/{templateId}
+	 */
+	async toOnboardingTemplate(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/onboarding/${templateId}`);
+	}
+
+	/**
+	 * Navigate to template import flow
+	 * URL: /workflows/templates/{templateId}
+	 */
+	async toTemplateImport(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/templates/${templateId}`);
+	}
+
+	/**
 	 * Navigate to community nodes
 	 * URL: /settings/community-nodes
 	 */

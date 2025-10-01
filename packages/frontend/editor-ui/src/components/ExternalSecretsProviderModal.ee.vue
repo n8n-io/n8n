@@ -20,6 +20,7 @@ import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecret
 import { createEventBus } from '@n8n/utils/event-bus';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nCallout, N8nLink, N8nNotice } from '@n8n/design-system';
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };
 }>();
