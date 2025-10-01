@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { FrontendSettings } from '@n8n/api-types';
-import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
-import { useFavicon } from '@vueuse/core';
+import { computed, useCssModule } from 'vue';
 
-import LogoIcon from './logo-icon.svg';
-import LogoText from './logo-text.svg';
+import LogoCollapsed from './primary-logo-collapsed.png';
+import LogoExpanded from './primary-logo-expanded.png';
 
 const props = defineProps<
 	(
@@ -20,11 +19,15 @@ const props = defineProps<
 	}
 >();
 
-const { location, releaseChannel } = props;
+const { location } = props;
 
-const showLogoText = computed(() => {
+const showFullLogo = computed(() => {
 	if (location === 'authView') return true;
 	return !props.collapsed;
+});
+
+const logoSrc = computed(() => {
+	return showFullLogo.value ? LogoExpanded : LogoCollapsed;
 });
 
 const $style = useCssModule();
@@ -38,27 +41,11 @@ const containerClasses = computed(() => {
 		props.collapsed ? $style.sidebarCollapsed : $style.sidebarExpanded,
 	];
 });
-
-const svg = useTemplateRef<{ $el: Element }>('logo');
-onMounted(() => {
-	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
-
-	const logoEl = svg.value!.$el;
-
-	// Change the logo fill color inline, so that favicon can also use it
-	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
-	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
-
-	// Reuse the SVG as favicon
-	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
-	useFavicon(URL.createObjectURL(blob));
-});
 </script>
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+		<img :src="logoSrc" :class="$style.logo" alt="HubSync" />
 		<slot />
 	</div>
 </template>
@@ -70,35 +57,29 @@ onMounted(() => {
 	align-items: center;
 }
 
-.logoText {
-	margin-left: var(--spacing-5xs);
-	path {
-		fill: var(--color-text-dark);
-	}
+.logo {
+	height: auto;
+	max-width: 100%;
+	object-fit: contain;
 }
 
 .authView {
-	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
 
-	.logo,
-	.logoText {
-		transform: scale(1.3) translateY(-2px);
-	}
-
-	.logoText {
-		margin-left: var(--spacing-xs);
-		margin-right: var(--spacing-3xs);
+	.logo {
+		height: 80px;
 	}
 }
 
 .sidebarExpanded .logo {
+	height: 32px;
 	margin-left: var(--spacing-2xs);
 }
 
 .sidebarCollapsed .logo {
-	width: 40px;
 	height: 30px;
+	width: 40px;
 	padding: 0 var(--spacing-4xs);
+	object-fit: contain;
 }
 </style>
