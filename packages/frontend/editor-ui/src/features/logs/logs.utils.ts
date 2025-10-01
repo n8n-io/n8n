@@ -42,6 +42,14 @@ export function getConsumedTokens(task: Array<INodeExecutionData | null>): LlmTo
 	return tokenUsage;
 }
 
+function getConsumedTokensFromTaskData(runData: ITaskData) {
+	return getConsumedTokens(
+		Object.values(runData.data ?? {})
+			.flat()
+			.flat(),
+	);
+}
+
 function createNode(
 	node: INodeUi,
 	context: LogTreeCreationContext,
@@ -58,13 +66,7 @@ function createNode(
 		runIndex,
 		runData,
 		children,
-		consumedTokens: runData
-			? getConsumedTokens(
-					Object.values(runData.data ?? {})
-						.flat()
-						.flat(),
-				)
-			: emptyTokenUsageData,
+		consumedTokens: runData ? getConsumedTokensFromTaskData(runData) : emptyTokenUsageData,
 		workflow: context.workflow,
 		executionId: context.executionId,
 		execution: context.data,

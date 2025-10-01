@@ -124,5 +124,10 @@ describe('RunDataAi', () => {
 		await fireEvent.click(within(tree).getAllByText('m0')[1]);
 
 		expect(rendered.queryByText(/hey/)).toBeInTheDocument();
+
+		await fireEvent.click(within(tree).getByText('a0'));
+
+		// Clicking root log should trigger de-selection
+		expect(rendered.queryByText(/Use these logs to see information/)).toBeInTheDocument();
 	});
 });
