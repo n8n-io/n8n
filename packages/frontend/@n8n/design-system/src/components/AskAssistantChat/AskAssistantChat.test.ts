@@ -406,9 +406,9 @@ describe('AskAssistantChat', () => {
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'search',
-				status: 'completed',
-				displayTitle: 'Search Complete',
-				customDisplayTitle: undefined,
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Search Title',
 				updates: [
 					{ type: 'progress', data: { status: 'Initializing search' } },
 					{ type: 'progress', data: { status: 'Processing results' } },
@@ -470,9 +470,9 @@ describe('AskAssistantChat', () => {
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'search',
-				status: 'completed',
-				displayTitle: 'Search Complete',
-				customDisplayTitle: undefined,
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Search Title',
 				updates: [
 					{ type: 'progress', data: { status: 'Initializing search' } },
 					{ type: 'progress', data: { status: 'Processing results' } },
@@ -549,8 +549,8 @@ describe('AskAssistantChat', () => {
 
 			expectToolMessage(props, {
 				id: '3',
-				status: 'completed',
-				displayTitle: 'Final Search Complete',
+				status: 'error',
+				displayTitle: 'Search error',
 				customDisplayTitle: undefined,
 				updates: [
 					{ type: 'output', data: { result: 'Found some items' } },
@@ -560,7 +560,7 @@ describe('AskAssistantChat', () => {
 			});
 		});
 
-		it('should collapse running, completed and error statuses into completed when last is completed', () => {
+		it('should collapse running, completed and error statuses into running', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -594,9 +594,9 @@ describe('AskAssistantChat', () => {
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'search',
-				status: 'completed',
-				displayTitle: 'Final Search Complete',
-				customDisplayTitle: undefined,
+				status: 'running',
+				displayTitle: 'Search Running',
+				customDisplayTitle: 'Custom Search Title',
 				updates: [
 					{ type: 'output', data: { result: 'Found some items' } },
 					{ type: 'progress', data: { status: 'Processing more results' } },
@@ -606,7 +606,7 @@ describe('AskAssistantChat', () => {
 			});
 		});
 
-		it('should show completed when last message is completed even with running messages in between', () => {
+		it('should preserve running status when collapsing messages with running status', () => {
 			const messages = [
 				createToolMessage({
 					id: '1',
@@ -636,9 +636,9 @@ describe('AskAssistantChat', () => {
 
 			expectToolMessage(props, {
 				id: '3',
-				status: 'completed',
-				displayTitle: 'Final Search Complete',
-				customDisplayTitle: undefined,
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Running Title',
 				updates: [
 					{ type: 'output', data: { result: 'Found some items' } },
 					{ type: 'progress', data: { status: 'Processing more results' } },
@@ -675,8 +675,7 @@ describe('AskAssistantChat', () => {
 			const props = getMessageWrapperProps();
 
 			const toolMessage = props.message as ChatUI.ToolMessage;
-			expect(toolMessage.status).toEqual('completed');
-			expect(toolMessage.displayTitle).toEqual('Search Complete');
+			expect(toolMessage.status).toEqual('running');
 			expect(toolMessage.updates).toEqual([
 				{ type: 'progress', data: { status: 'Starting search' } },
 				{ type: 'input', data: { query: 'test query' } },
@@ -815,8 +814,7 @@ describe('AskAssistantChat', () => {
 				role: 'assistant',
 				type: 'tool',
 				toolName: 'search',
-				status: 'completed',
-				displayTitle: 'Search Complete',
+				status: 'running',
 				updates: [
 					{ type: 'progress', data: { status: 'Starting' } },
 					{ type: 'output', data: { result: 'Found results' } },

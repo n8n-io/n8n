@@ -115,12 +115,10 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 			// Check if we have running messages - if so, show the last running one and use its titles
 			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
 			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
-
-			// if the last message is running count as running, otherwise its completed or errored
-			if (lastMessage.status === 'running' && runningMessages.length > 0) {
+			if (runningMessages.length > 0) {
 				const lastRunning = runningMessages[runningMessages.length - 1];
 				titleSource = lastRunning;
-			} else if (errorMessage && lastMessage.status !== 'completed') {
+			} else if (errorMessage) {
 				titleSource = errorMessage;
 			}
 
