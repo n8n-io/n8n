@@ -11,6 +11,7 @@ import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigat
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
 import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
+import { useExecutionCommands } from './commandBar/useExecutionCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
@@ -50,6 +51,7 @@ export function useCommandBar() {
 		activeNodeId,
 	});
 	const workflowCommandGroup = useWorkflowCommands();
+	const executionCommandGroup = useExecutionCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -75,6 +77,15 @@ export function useCommandBar() {
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+	];
+
+	const executionViewGroups: CommandGroup[] = [
+		executionCommandGroup,
+		workflowNavigationGroup,
+		projectNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
 	];
 
 	const workflowsListViewGroups: CommandGroup[] = [
@@ -121,6 +132,9 @@ export function useCommandBar() {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
 				return canvasViewGroups;
+			case VIEWS.EXECUTION_PREVIEW:
+			case VIEWS.EXECUTION_DEBUG:
+				return executionViewGroups;
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
 				return workflowsListViewGroups;
@@ -139,12 +153,18 @@ export function useCommandBar() {
 	});
 
 	const context = computed(() => {
+		console.log(router.currentRoute.value.name);
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
 				return workflowStore.workflow.name
 					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
 					: i18n.baseText('commandBar.sections.workflow');
+			case VIEWS.EXECUTION_PREVIEW:
+			case VIEWS.EXECUTION_DEBUG:
+				return workflowStore.workflow.name
+					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowStore.workflow.name
+					: i18n.baseText('commandBar.sections.execution');
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
 				return i18n.baseText('commandBar.sections.workflows');
