@@ -126,6 +126,8 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 
 	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
 });
+
+const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item.available));
 </script>
 
 <template>
@@ -137,7 +139,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem v-for="item in sidebarMenuItems" :key="item.id" :item="item" />
+			<N8nMenuItem v-for="item in visibleItems" :key="item.id" :item="item" />
 		</div>
 		<div :class="$style.versionContainer">
 			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">

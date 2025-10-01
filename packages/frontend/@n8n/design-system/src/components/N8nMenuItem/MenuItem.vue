@@ -68,6 +68,7 @@ const iconColor = computed(() => {
 				:class="[$style.menuItem, { [$style.active]: active }]"
 				:aria-label="props.ariaLabel"
 				data-test-id="menu-item"
+				:id="item.id"
 				@click="emit('click')"
 			>
 				<div
@@ -83,7 +84,7 @@ const iconColor = computed(() => {
 					<N8nIcon v-else-if="icon" :icon="icon" />
 				</div>
 				<N8nText v-if="!compact" :class="$style.menuItemText">{{ item.label }}</N8nText>
-				<N8nIcon v-if="item.children" icon="chevron-right" color="text-light" />
+				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
 		</N8nTooltip>
 	</div>
