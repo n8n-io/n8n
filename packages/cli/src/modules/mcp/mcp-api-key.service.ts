@@ -1,12 +1,11 @@
 import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EntityManager } from '@n8n/typeorm';
 import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
-import { EntityManager } from '@n8n/typeorm';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
