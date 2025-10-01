@@ -1,16 +1,14 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
+import type { ITemplatesCollection } from '@n8n/rest-api-client';
 
 let pinia: ReturnType<typeof createPinia>;
 const renderComponent = createComponentRenderer(TemplatesInfoCard);
 
-const TEST_COLLECTION = {
+const TEST_COLLECTION: ITemplatesCollection = {
 	id: 8,
-	rank: 1,
 	name: 'Advanced AI',
-	totalViews: null,
-	createdAt: '2023-10-03T17:04:44.645Z',
 	workflows: [{ id: 1951 }, { id: 1953 }, { id: 1954 }, { id: 1955 }],
 	nodes: [
 		{
@@ -22,6 +20,7 @@ const TEST_COLLECTION = {
 				type: 'icon',
 			},
 			displayName: 'Agent',
+			defaults: {},
 		},
 		{
 			id: 1121,
@@ -32,6 +31,7 @@ const TEST_COLLECTION = {
 				type: 'icon',
 			},
 			displayName: 'Summarization Chain',
+			defaults: {},
 		},
 		{
 			id: 1123,
@@ -42,6 +42,7 @@ const TEST_COLLECTION = {
 				type: 'icon',
 			},
 			displayName: 'Basic LLM Chain',
+			defaults: {},
 		},
 	],
 };
