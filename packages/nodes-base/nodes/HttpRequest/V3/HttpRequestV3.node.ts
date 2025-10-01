@@ -409,7 +409,7 @@ export class HttpRequestV3 implements INodeType {
 						return accumulator;
 					}
 
-					// Handle multiple values for the same parameter, with special handling for binary data
+					// Handle multiple values for the same parameter, with special handling for binary data objects
 					const existingValue = accumulator[cur.name];
 					if (existingValue !== undefined) {
 						if (Array.isArray(existingValue)) {
