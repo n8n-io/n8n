@@ -11,6 +11,7 @@ import type { CommandGroup, CommandBarItem } from './types';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import CredentialIcon from '@/components/CredentialIcon.vue';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -97,6 +98,12 @@ export function useCredentialNavigationCommands(options: {
 			id: credential.id,
 			title: getCredentialTitle(credential, includeOpenCredentialPrefix),
 			section: i18n.baseText('commandBar.sections.credentials'),
+			icon: {
+				component: CredentialIcon,
+				props: {
+					credentialTypeName: credential.type,
+				},
+			},
 			handler: () => {
 				uiStore.openExistingCredential(credential.id);
 			},
@@ -195,6 +202,10 @@ export function useCredentialNavigationCommands(options: {
 		}
 	}
 
+	async function initialize() {
+		await credentialsStore.fetchCredentialTypes(false);
+	}
+
 	return {
 		commands: credentialNavigationCommands,
 		handlers: {
@@ -202,5 +213,6 @@ export function useCredentialNavigationCommands(options: {
 			onCommandBarNavigateTo,
 		},
 		isLoading,
+		initialize,
 	};
 }
