@@ -284,53 +284,52 @@ export class MindeeV2 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		for (let i = 0; i < items.length; i++) {
-			if (this.getNode())
-				try {
-					let result: IDataObject[] | undefined = undefined;
-					const operation = this.getNodeParameter('operation', i);
-					const resource = this.getNodeParameter('resource', i);
+			try {
+				let result: IDataObject[] | undefined = undefined;
+				const operation = this.getNodeParameter('operation', i);
+				const resource = this.getNodeParameter('resource', i);
 
-					if (resource === 'document') {
-						const params = readUIParams(this, i);
-						const form = new FormData();
-						await buildRequestBody(this, i, params, form);
-						const headers = {
-							...form.getHeaders?.(),
-							'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
-						} as IDataObject;
-						if (operation === 'enqueueAndGetInference') {
-							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
-							const pollingUrl = extractPollingUrl(this, enqueue);
-							result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
-						}
-						if (operation === 'enqueue') {
-							const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
-							result = [enqueue as JsonObject];
-						}
-						if (operation === 'getInference') {
-							const jobId = this.getNodeParameter('jobId', i, '') as string;
-							const pollingUrl = `${ROOT_URL}/inferences/${jobId}`;
-							result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
-						}
+				if (resource === 'document') {
+					const params = readUIParams(this, i);
+					const form = new FormData();
+					await buildRequestBody(this, i, params, form);
+					const headers = {
+						...form.getHeaders?.(),
+						'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
+					} as IDataObject;
+					if (operation === 'enqueueAndGetInference') {
+						const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
+						const pollingUrl = extractPollingUrl(this, enqueue);
+						result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 					}
-					if (!result) {
-						throw new NodeOperationError(this.getNode(), 'Unknown operation', {
-							description: 'No operation matched the provided operation',
-						});
+					if (operation === 'enqueue') {
+						const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
+						result = [enqueue as JsonObject];
 					}
-
-					returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						const errorMessage =
-							error instanceof NodeApiError || error instanceof NodeOperationError
-								? error.message
-								: String(error);
-						returnData.push({ error: errorMessage });
-						continue;
+					if (operation === 'getInference') {
+						const jobId = this.getNodeParameter('jobId', i, '') as string;
+						const pollingUrl = `${ROOT_URL}/jobs/${jobId}`;
+						result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 					}
-					throw error;
 				}
+				if (!result) {
+					throw new NodeOperationError(this.getNode(), 'Unknown operation', {
+						description: 'No operation matched the provided operation',
+					});
+				}
+
+				returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const errorMessage =
+						error instanceof NodeApiError || error instanceof NodeOperationError
+							? error.message
+							: String(error);
+					returnData.push({ error: errorMessage });
+					continue;
+				}
+				throw error;
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
