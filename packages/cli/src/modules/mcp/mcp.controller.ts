@@ -24,6 +24,7 @@ export class McpController {
 	@Post('/http', {
 		rateLimit: { limit: 100 },
 		middlewares: [getAuthMiddleware()],
+		skipAuth: true,
 		usesTemplates: true,
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
