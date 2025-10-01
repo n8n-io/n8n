@@ -616,6 +616,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 										v-for="action in userMenuItems"
 										:key="action.id"
 										:item="action"
+										:data-test-id="`user-menu-item-${action.id}`"
 										@click="() => onUserActionToggle(action.id)"
 									/>
 								</div>
