@@ -1,6 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Variables, Project, TagEntity, User, WorkflowTagMapping } from '@n8n/db';
+import type {
+	Variables,
+	Project,
+	TagEntity,
+	User,
+	WorkflowTagMapping,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	SharedCredentials,
 	CredentialsRepository,
@@ -517,7 +524,6 @@ export class SourceControlImportService {
 
 	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
-		const workflowManager = this.activeWorkflowManager;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
 			fields: ['id', 'name', 'versionId', 'active'],
@@ -536,9 +542,11 @@ export class SourceControlImportService {
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
 			this.logger.debug(`Parsing workflow file ${candidate.file}`);
+
 			const importedWorkflow = jsonParse<IWorkflowToImport>(
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 			);
+
 			if (!importedWorkflow?.id) {
 				continue;
 			}
@@ -589,26 +597,7 @@ export class SourceControlImportService {
 			}
 
 			if (existingWorkflow?.active) {
-				try {
-					// remove active pre-import workflow
-					this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-					await workflowManager.remove(existingWorkflow.id);
-
-					if (importedWorkflow.active) {
-						// try activating the imported workflow
-						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-						await workflowManager.add(existingWorkflow.id, 'activate');
-					}
-				} catch (e) {
-					const error = ensureError(e);
-					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
-				} finally {
-					// update the versionId of the workflow to match the imported workflow
-					await this.workflowRepository.update(
-						{ id: existingWorkflow.id },
-						{ versionId: importedWorkflow.versionId },
-					);
-				}
+				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
 			}
 
 			importWorkflowsResult.push({
@@ -616,10 +605,37 @@ export class SourceControlImportService {
 				name: candidate.file,
 			});
 		}
+
 		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
 			id: string;
 			name: string;
 		}>;
+	}
+
+	private async activateImportedWorkflow({
+		existingWorkflow,
+		importedWorkflow,
+	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+		try {
+			// remove active pre-import workflow
+			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+			await this.activeWorkflowManager.remove(existingWorkflow.id);
+
+			if (importedWorkflow.active) {
+				// try activating the imported workflow
+				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+			}
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
+		} finally {
+			// update the versionId of the workflow to match the imported workflow
+			await this.workflowRepository.update(
+				{ id: existingWorkflow.id },
+				{ versionId: importedWorkflow.versionId },
+			);
+		}
 	}
 
 	async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
