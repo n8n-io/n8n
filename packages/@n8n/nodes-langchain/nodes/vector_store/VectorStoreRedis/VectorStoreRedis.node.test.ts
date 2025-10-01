@@ -129,8 +129,8 @@ describe('VectorStoreRedis.node', () => {
 		});
 	});
 
-	describe('listIndices', () => {
-		it('returns mapped indices when FT._LIST succeeds', async () => {
+	describe('listIndexes', () => {
+		it('returns mapped indexes when FT._LIST succeeds', async () => {
 			const mockClient = {
 				on: jest.fn(),
 				connect: jest.fn().mockResolvedValue(undefined),
@@ -143,7 +143,7 @@ describe('VectorStoreRedis.node', () => {
 
 			(loadOptionsFunctions as any).getCredentials = jest.fn().mockResolvedValue(baseCredentials);
 
-			const results = await (RedisNode.listIndices as any).call(loadOptionsFunctions as any);
+			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
 
 			expect(mockClient.ft._list).toHaveBeenCalled();
 			expect(results).toEqual({
@@ -170,7 +170,7 @@ describe('VectorStoreRedis.node', () => {
 				.fn()
 				.mockResolvedValue(failureCredentials);
 
-			const results = await (RedisNode.listIndices as any).call(loadOptionsFunctions as any);
+			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
 
 			expect(results).toEqual({ results: [] });
 		});

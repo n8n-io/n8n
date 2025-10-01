@@ -201,10 +201,10 @@ export async function getRedisClient(context: IFunctionsContext) {
 }
 
 /**
- * Get the complete list of indices from Redis.
- * @returns The list of indices.
+ * Get the complete list of indexes from Redis.
+ * @returns The list of indexes.
  */
-export async function listIndices(this: ILoadOptionsFunctions) {
+export async function listIndexes(this: ILoadOptionsFunctions) {
 	const client = await getRedisClient(this);
 
 	if (client === null) {
@@ -212,17 +212,17 @@ export async function listIndices(this: ILoadOptionsFunctions) {
 	}
 
 	try {
-		// Get all indices using FT._LIST command
-		const indices = await client.ft._list();
+		// Get all indexes using FT._LIST command
+		const indexes = await client.ft._list();
 
-		const results = (indices as string[]).map((index) => ({
+		const results = (indexes as string[]).map((index) => ({
 			name: index,
 			value: index,
 		}));
 
 		return { results };
 	} catch (error) {
-		this.logger.info('Failed to get Redis indices: ' + error.message);
+		this.logger.info('Failed to get Redis indexes: ' + error.message);
 		return { results: [] };
 	}
 }
@@ -301,7 +301,7 @@ export class VectorStoreRedis extends createVectorStoreNode({
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
-	methods: { listSearch: { redisIndexSearch: listIndices } },
+	methods: { listSearch: { redisIndexSearch: listIndexes } },
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
@@ -386,7 +386,7 @@ export class VectorStoreRedis extends createVectorStoreNode({
 			context.logger.info(`Error while populating the store: ${error.message}`);
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,
-				description: 'Please check your Redis connection details',
+				description: 'Please check your index/schema and parameters',
 			});
 		}
 	},
