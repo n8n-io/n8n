@@ -265,9 +265,13 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{ url?: string; apiKey?: string }>(
-			'anthropicApi',
-		);
+		const credentials = await this.getCredentials<{
+			url?: string;
+			apiKey?: string;
+			header?: boolean;
+			headerName?: string;
+			headerValue?: string;
+		}>('anthropicApi');
 		const baseURL = credentials.url ?? 'https://api.anthropic.com';
 		const version = this.getNode().typeVersion;
 		const modelName =
@@ -320,6 +324,26 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		const clientOptions: {
+			fetchOptions?: { dispatcher: any };
+			defaultHeaders?: Record<string, string>;
+		} = {
+			fetchOptions: {
+				dispatcher: getProxyAgent(baseURL),
+			},
+		};
+
+		if (
+			credentials.header &&
+			typeof credentials.headerName === 'string' &&
+			credentials.headerName &&
+			typeof credentials.headerValue === 'string'
+		) {
+			clientOptions.defaultHeaders = {
+				[credentials.headerName]: credentials.headerValue,
+			};
+		}
+
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
@@ -331,11 +355,7 @@ export class LmChatAnthropic implements INodeType {
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			invocationKwargs,
-			clientOptions: {
-				fetchOptions: {
-					dispatcher: getProxyAgent(baseURL),
-				},
-			},
+			clientOptions,
 		});
 
 		return {
