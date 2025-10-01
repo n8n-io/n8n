@@ -141,7 +141,9 @@ export function useCommandBar() {
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
-				return i18n.baseText('commandBar.sections.workflow') + ' · ' + workflowStore.workflow.name;
+				return workflowStore.workflow.name
+					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
+					: i18n.baseText('commandBar.sections.workflow');
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
 				return i18n.baseText('commandBar.sections.workflows');
