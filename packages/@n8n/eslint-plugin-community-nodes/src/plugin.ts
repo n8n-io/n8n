@@ -31,6 +31,7 @@ const configs = {
 			'n8n-community-nodes/no-credential-reuse': 'error',
 			'n8n-community-nodes/icon-validation': 'error',
 			'n8n-community-nodes/resource-operation-pattern': 'warn',
+			'n8n-community-nodes/credential-documentation-url': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -46,6 +47,7 @@ const configs = {
 			'n8n-community-nodes/credential-test-required': 'error',
 			'n8n-community-nodes/no-credential-reuse': 'error',
 			'n8n-community-nodes/icon-validation': 'error',
+			'n8n-community-nodes/credential-documentation-url': 'error',
 			'n8n-community-nodes/resource-operation-pattern': 'warn',
 		},
 	},

@@ -9,6 +9,7 @@ import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { IconValidationRule } from './icon-validation.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 
 export const rules = {
 	'no-restricted-globals': NoRestrictedGlobalsRule,
@@ -21,4 +22,5 @@ export const rules = {
 	'no-credential-reuse': NoCredentialReuseRule,
 	'icon-validation': IconValidationRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'credential-documentation-url': CredentialDocumentationUrlRule,
 } satisfies Record<string, AnyRuleModule>;
