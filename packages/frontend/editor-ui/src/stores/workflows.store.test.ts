@@ -566,6 +566,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.activeWorkflows).toContain('1');
 			expect(workflowsStore.workflowsById['1'].active).toBe(true);
 			expect(workflowsStore.workflow.active).toBe(true);
+			expect(workflowsStore.workflowObject.active).toBe(true);
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
@@ -613,6 +614,7 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow.active = true;
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflowObject.active).toBe(false);
 		});
 	});
 

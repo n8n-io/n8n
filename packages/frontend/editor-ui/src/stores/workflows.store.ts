@@ -925,6 +925,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setActive(active: boolean) {
 		workflow.value.active = active;
+		workflowObject.value.active = workflow.value.active;
 	}
 
 	function setIsArchived(isArchived: boolean) {
