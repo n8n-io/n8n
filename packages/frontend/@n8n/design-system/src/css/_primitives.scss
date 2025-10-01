@@ -1,25 +1,14 @@
-// 👶 NEW PRIMITIVES
-
-// Plan:
-// Replace existing with new ones (also in token files)
-// e.g. --color--orange-100
-// (For tokens instead we will create new ones)
-
-// issues
-// 1. Missing gray with alpha
-// Color Alternate H - Used for errors in dark mode mapped to red but we have to check it looks good
-
 @mixin primitives {
 	// White
 	--color--white: hsl(220, 1%, 100%); // --p-white
-	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1); // --p-white-a-010
-	--color--white-alpha-200: hsla(220, 1%, 100%, 0.15); // --p-white-a-015
-	--color--white-alpha-300: hsla(220, 1%, 100%, 0.2); // --p-white-a-020
-	--color--white-alpha-400: hsla(220, 1%, 100%, 0.25); // --p-white-a-025
-	--color--white-alpha-500: hsla(220, 1%, 100%, 0.3); // --p-white-a-030
+	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1);
+	--color--white-alpha-200: hsla(220, 1%, 100%, 0.15);
+	--color--white-alpha-300: hsla(220, 1%, 100%, 0.2);
+	--color--white-alpha-400: hsla(220, 1%, 100%, 0.25); // ✅ --p-white-a-025
+	--color--white-alpha-500: hsla(220, 1%, 100%, 0.3); // ✅ --p-white-a-030
 	--color--white-alpha-600: hsla(220, 1%, 100%, 0.4);
 	--color--white-alpha-700: hsla(220, 1%, 100%, 0.5);
-	--color--white-alpha-800: hsla(220, 1%, 100%, 0.7); // --p-white-a-075
+	--color--white-alpha-800: hsla(220, 1%, 100%, 0.7); // ✅ --p-white-a-075
 	--color--white-alpha-900: hsla(220, 1%, 100%, 0.9);
 
 	// Black
@@ -35,33 +24,31 @@
 	--color--black-alpha-900: hsl(220, 1%, 0%, 0.9);
 
 	// Gray
-	--color--gray-50: hsl(220, 1%, 99%); // --p-gray-010
-	--color--gray-100: hsl(220, 1%, 97%); // --p-gray-040, --p-gray-030, --p-gray-025
-	--color--gray-150: hsl(220, 1%, 93%); // --p-gray-070
-	--color--gray-200: hsl(220, 1%, 88%); // --p-gray-120
-	--color--gray-250: hsl(220, 1%, 80%); // --p-gray-200
-	--color--gray-300: hsl(220, 1%, 68%); // --p-gray-320
-	--color--gray-400: hsl(220, 1%, 58%); // --p-gray-420
-	--color--gray-500: hsl(220, 1%, 51%); // --p-gray-490
-	--color--gray-600: hsl(220, 1%, 46%); // --p-gray-540
-	--color--gray-700: hsl(220, 1%, 33%); // --p-gray-670
-	--color--gray-800: hsl(220, 1%, 29%); // --p-gray-710
-	--color--gray-850: hsl(220, 1%, 26%); // --p-gray-740
-	--color--gray-900: hsl(220, 1%, 20%); // --p-gray-800, --p-gray-780
-	--color--gray-950: hsl(220, 1%, 18%); // --p-gray-820
-	// ! Missing gray with alpha+
-	// Gray alpha
-	// --p-gray-320-a-010: hsla(var(--h-gray), 10%, 68%, 0.1);
-	// --p-gray-70-a-010: hsla(var(--h-gray), 32%, 93%, 0.1);
+	--color--gray-50: hsl(220, 1%, 99%); // ✅ --p-gray-010
+	--color--gray-100: hsl(220, 1%, 97%); // ✅ --p-gray-040, ✅ --p-gray-030, ✅ --p-gray-025
+	--color--gray-150: hsl(220, 1%, 93%); // ✅ --p-gray-070
+	--color--gray-200: hsl(220, 1%, 88%); // ✅ --p-gray-120
+	--color--gray-250: hsl(220, 1%, 80%); // ✅ --p-gray-200
+	--color--gray-300: hsl(220, 1%, 68%); // ✅ --p-gray-320
+	--color--gray-400: hsl(220, 1%, 58%); // ✅ --p-gray-420
+	--color--gray-500: hsl(220, 1%, 51%); // ✅ --p-gray-490
+	--color--gray-600: hsl(220, 1%, 46%); // ✅ --p-gray-540
+	--color--gray-700: hsl(220, 1%, 33%); // ✅ --p-gray-670
+	--color--gray-800: hsl(220, 1%, 29%); // ✅ --p-gray-710
+	--color--gray-850: hsl(220, 1%, 26%); // ✅ --p-gray-740
+	--color--gray-900: hsl(220, 1%, 20%); // ✅ --p-gray-800, --p-gray-780
+	--color--gray-950: hsl(220, 1%, 18%); // ✅ --p-gray-820
+
+	--color--gray-alpha-100: hsla(220, 32%, 93%, 0.1); // --p-gray-70-a-010
 
 	// Orange
-	--color--orange-50: hsl(7, 100%, 98%); // --p-color-primary-030
-	--color--orange-100: hsl(7, 100%, 95%); // --p-color-primary-050
-	--color--orange-150: hsl(7, 100%, 95%); // --p-color-primary-070
-	--color--orange-200: hsl(7, 100%, 90%); // --p-color-primary-120
-	--color--orange-250: hsl(7, 100%, 80%); // --p-color-primary-220
-	--color--orange-300: hsl(7, 100%, 68%); // --p-color-primary-320
-	--color--orange-400: hsl(7, 100%, 60%); // --p-color-primary-420
+	--color--orange-50: hsl(7, 100%, 98%); // ✅ --p-color-primary-030
+	--color--orange-100: hsl(7, 100%, 95%); // ✅ --p-color-primary-050
+	--color--orange-150: hsl(7, 100%, 95%); // ✅ --p-color-primary-070
+	--color--orange-200: hsl(7, 100%, 90%); // ✅ --p-color-primary-120
+	--color--orange-250: hsl(7, 100%, 80%); // ✅ --p-color-primary-220
+	--color--orange-300: hsl(7, 100%, 68%); // ✅ --p-color-primary-320
+	--color--orange-400: hsl(7, 100%, 60%); // ✅ --p-color-primary-420
 	--color--orange-500: hsl(7, 100%, 50%);
 	--color--orange-600: hsl(7, 100%, 40%);
 	--color--orange-700: hsl(7, 100%, 30%);
@@ -69,91 +56,76 @@
 	--color--orange-900: hsl(7, 100%, 10%);
 	--color--orange-950: hsl(7, 100%, 5%);
 
-	--color--orange-alpha-100: hsla(7, 100%, 68%, 0.1); // --p-color-primary-320-a-010
-	--color--orange-alpha-300: hsla(7, 100%, 68%, 0.35); // --p-color-primary-320-a-035
-	--color--orange-alpha-500: hsla(7, 100%, 68%, 0.5); // --p-color-primary-320-a-050
-
 	// Purple
 	--color--purple-50: hsl(247, 49%, 95%);
-	--color--purple-100: hsl(247, 49%, 93%); // --p-color-secondary-070
-	--color--purple-200: hsl(247, 49%, 83%); // --p-color-secondary-170
-	--color--purple-300: hsl(247, 49%, 73%); // --p-color-secondary-270
-	--color--purple-400: hsl(247, 49%, 63%); // --p-color-secondary-370
-	--color--purple-500: hsl(247, 49%, 53%); // --p-color-secondary-470
-	--color--purple-600: hsl(247, 49%, 43%); // --p-color-secondary-570
-	--color--purple-700: hsl(247, 49%, 30%); // --p-color-secondary-720
+	--color--purple-100: hsl(247, 49%, 93%); // ✅ --p-color-secondary-070
+	--color--purple-200: hsl(247, 49%, 83%); // ✅ --p-color-secondary-170
+	--color--purple-300: hsl(247, 49%, 73%); // ✅ --p-color-secondary-270
+	--color--purple-400: hsl(247, 49%, 63%); // ✅ --p-color-secondary-370
+	--color--purple-500: hsl(247, 49%, 53%); // ✅ --p-color-secondary-470
+	--color--purple-600: hsl(247, 49%, 43%); // ✅ --p-color-secondary-570
+	--color--purple-700: hsl(247, 49%, 30%); // ✅ --p-color-secondary-720
 	--color--purple-800: hsl(247, 49%, 20%);
 	--color--purple-900: hsl(247, 49%, 10%);
 
-	--color--purple-alpha-100: hsla(247, 49%, 53%, 0.1); // --p-color-secondary-470-a-010
-	--color--purple-alpha-300: hsla(247, 49%, 53%, 0.25); // --p-color-secondary-470-a-025
-
 	// Green
-	--color--green-50: hsl(150, 60%, 95%); // --p-color-alt-a-050
-	--color--green-100: hsl(150, 60%, 90%); // --p-color-alt-a-100
-	--color--green-200: hsl(150, 60%, 80%); // --p-color-alt-a-200
-	--color--green-300: hsl(150, 60%, 70%); // --p-color-alt-a-300
+	--color--green-50: hsl(150, 60%, 95%); // ✅ --p-color-alt-a-050
+	--color--green-100: hsl(150, 60%, 90%); // ✅ --p-color-alt-a-100
+	--color--green-200: hsl(150, 60%, 80%); // ✅ --p-color-alt-a-200
+	--color--green-300: hsl(150, 60%, 70%); // ✅ --p-color-alt-a-300
 	--color--green-400: hsl(150, 60%, 60%);
 	--color--green-500: hsl(150, 60%, 50%);
-	--color--green-600: hsl(150, 60%, 40%); // --p-color-alt-a-600
-	--color--green-700: hsl(150, 60%, 30%); // --p-color-alt-a-700
-	--color--green-800: hsl(150, 60%, 20%); // --p-color-alt-a-800
+	--color--green-600: hsl(150, 60%, 40%); // ✅ --p-color-alt-a-600
+	--color--green-700: hsl(150, 60%, 30%); // ✅ --p-color-alt-a-700
+	--color--green-800: hsl(150, 60%, 20%); // ✅ --p-color-alt-a-800
 	--color--green-900: hsl(150, 60%, 10%);
-
-	--color--green-alpha-100: hsla(150, 60%, 40%, 0.15); // --p-color-alt-a-600-a-015
-	--color--green-alpha-300: hsla(150, 60%, 40%, 0.25); // --p-color-alt-a-600-a-025
 
 	// Blue
 	--color--blue-50: hsl(210, 67%, 95%);
-	--color--blue-100: hsl(210, 67%, 92%); // --p-color-alt-e-080
-	--color--blue-200: hsl(210, 67%, 82%); // --p-color-alt-e-180
+	--color--blue-100: hsl(210, 67%, 92%); // ✅ --p-color-alt-e-080
+	--color--blue-200: hsl(210, 67%, 82%); // ✅ --p-color-alt-e-180
 	--color--blue-300: hsl(210, 67%, 70%);
-	--color--blue-400: hsl(210, 67%, 57%); // --p-color-alt-e-430
-	--color--blue-500: hsl(210, 67%, 47%); // --p-color-alt-e-530
-	--color--blue-600: hsl(210, 67%, 42%); // --p-color-alt-e-580
-	--color--blue-700: hsl(210, 67%, 32%); // --p-color-alt-e-680
-	--color--blue-800: hsl(210, 67%, 22%); // --p-color-alt-e-780
+	--color--blue-400: hsl(210, 67%, 57%); // ✅ --p-color-alt-e-430
+	--color--blue-500: hsl(210, 67%, 47%); // ✅ --p-color-alt-e-530
+	--color--blue-600: hsl(210, 67%, 42%); // ✅ --p-color-alt-e-580
+	--color--blue-700: hsl(210, 67%, 32%); // ✅ --p-color-alt-e-680
+	--color--blue-800: hsl(210, 67%, 22%); // ✅ --p-color-alt-e-780
 	--color--blue-900: hsl(210, 67%, 10%);
 
 	// Gold
-	--color--gold-50: hsl(36, 77%, 97%); // --p-color-alt-b-030
-	--color--gold-100: hsl(36, 77%, 87%); // --p-color-alt-b-130
-	--color--gold-200: hsl(36, 77%, 82%); // --p-color-alt-b-180
-	--color--gold-300: hsl(36, 77%, 72%); // --p-color-alt-b-280
-	--color--gold-400: hsl(36, 77%, 57%); // --p-color-alt-b-430
-	--color--gold-500: hsl(36, 77%, 47%); // --p-color-alt-b-530
+	--color--gold-50: hsl(36, 77%, 97%); // ✅ --p-color-alt-b-030
+	--color--gold-100: hsl(36, 77%, 87%); // ✅ --p-color-alt-b-130
+	--color--gold-200: hsl(36, 77%, 82%); // ✅ --p-color-alt-b-180
+	--color--gold-300: hsl(36, 77%, 72%); // ✅ --p-color-alt-b-280
+	--color--gold-400: hsl(36, 77%, 57%); // ✅ --p-color-alt-b-430
+	--color--gold-500: hsl(36, 77%, 47%); // ✅ --p-color-alt-b-530
 	--color--gold-600: hsl(36, 77%, 40%);
-	--color--gold-700: hsl(36, 77%, 32%); // --p-color-alt-b-680
-	--color--gold-800: hsl(36, 77%, 22%); // --p-color-alt-b-780
+	--color--gold-700: hsl(36, 77%, 32%); // ✅ --p-color-alt-b-680
+	--color--gold-800: hsl(36, 77%, 22%); // ✅ --p-color-alt-b-780
 	--color--gold-900: hsl(36, 77%, 10%);
 
-	--color--gold-alpha-200: hsla(36, 77%, 57%, 0.2); // --p-color-alt-b-430-a-020
-
 	// Red
-	--color--red-50: hsl(355, 83%, 97%); // --p-color-alt-c-030
-	--color--red-100: hsl(355, 83%, 92%); // --p-color-alt-c-080
-	--color--red-200: hsl(355, 83%, 82%); // --p-color-alt-c-180
-	--color--red-250: hsl(355, 83%, 77%); // --p-color-alt-c-230
-	--color--red-300: hsl(355, 83%, 67%); // --p-color-alt-c-330, --p-color-alt-h-310
+	--color--red-50: hsl(355, 83%, 97%); // ✅ --p-color-alt-c-030
+	--color--red-100: hsl(355, 83%, 92%); // ✅ --p-color-alt-c-080
+	--color--red-200: hsl(355, 83%, 82%); // ✅ --p-color-alt-c-180
+	--color--red-250: hsl(355, 83%, 77%); // ✅ --p-color-alt-c-230
+	--color--red-300: hsl(355, 83%, 67%); // ✅ --p-color-alt-c-330, ✅ --p-color-alt-h-310
 	--color--red-400: hsl(355, 83%, 60%);
-	--color--red-500: hsl(355, 83%, 52%); // --p-color-alt-c-480
-	--color--red-600: hsl(355, 83%, 42%); // --p-color-alt-c-580
-	--color--red-650: hsl(355, 83%, 37%); // --p-color-alt-c-630
-	--color--red-700: hsl(355, 83%, 27%); // --p-color-alt-c-730
+	--color--red-500: hsl(355, 83%, 52%); // ✅ --p-color-alt-c-480
+	--color--red-600: hsl(355, 83%, 42%); // ✅ --p-color-alt-c-580
+	--color--red-650: hsl(355, 83%, 37%); // ✅ --p-color-alt-c-630
+	--color--red-700: hsl(355, 83%, 27%); // ✅ --p-color-alt-c-730
 	--color--red-800: hsl(355, 83%, 20%);
 
-	--color--red-alpha-100: hsla(355, 83%, 52%, 0.1); // --p-color-alt-c-480-a-010
-	--color--red-alpha-200: hsla(355, 83%, 52%, 0.2); // --p-color-alt-c-480-a-020
-
 	// Yellow
-	--color--yellow-100: hsl(46, 100%, 92%); // --p-color-alt-d-080
-	--color--yellow-200: hsl(46, 100%, 77%); // --p-color-alt-d-230
+	--color--yellow-100: hsl(46, 100%, 92%); // ✅ --p-color-alt-d-080
+	--color--yellow-200: hsl(46, 100%, 77%); // ✅ --p-color-alt-d-230
 	--color--yellow-300: hsl(46, 100%, 70%);
 	--color--yellow-400: hsl(46, 100%, 60%);
 	--color--yellow-500: hsl(46, 100%, 50%);
 	--color--yellow-600: hsl(46, 100%, 40%);
-	--color--yellow-700: hsl(46, 100%, 32%); // --p-color-alt-d-680
-	--color--yellow-800: hsl(46, 100%, 22%); // --p-color-alt-d-780
+	--color--yellow-700: hsl(46, 100%, 32%); // ✅ --p-color-alt-d-680
+	--color--yellow-800: hsl(46, 100%, 22%); // ✅ --p-color-alt-d-780
 	--color--yellow-900: hsl(46, 100%, 10%);
 
 	// GreeLight
@@ -162,7 +134,7 @@
 	--color--green-light-300: hsl(147, 83%, 70%);
 	--color--green-light-400: hsl(147, 83%, 60%);
 	--color--green-light-500: hsl(147, 83%, 50%);
-	--color--green-light-600: hsl(147, 83%, 44%); // --p-color-alt-f-560
+	--color--green-light-600: hsl(147, 83%, 44%); // ✅ --p-color-alt-f-560
 	--color--green-light-700: hsl(147, 83%, 30%);
 	--color--green-light-800: hsl(147, 83%, 20%);
 	--color--green-light-900: hsl(147, 83%, 10%);
@@ -174,144 +146,9 @@
 	--color--slate-400: hsl(248, 10%, 60%);
 	--color--slate-500: hsl(248, 10%, 50%);
 	--color--slate-600: hsl(248, 10%, 40%);
-	--color--slate-700: hsl(248, 10%, 30%); // --p-color-alt-g-700
+	--color--slate-700: hsl(248, 10%, 30%); // ✅ --p-color-alt-g-700
 	--color--slate-800: hsl(248, 10%, 20%);
 	--color--slate-900: hsl(248, 10%, 10%);
-
-	--color--slate-alpha-700: hsla(247, 10%, 30%, 0.75); // --p-color-alt-g-700-a-075
-
-	// --------------------
-	// --------------------
-	// --------------------
-	// --------------------
-
-	// 👴 OLD PRIMITIVES
-	--h-gray: 220;
-
-	// Gray
-	--p-gray-820: hsl(var(--h-gray), 1%, 18%);
-	--p-gray-800: hsl(var(--h-gray), 1%, 20%);
-	--p-gray-780: hsl(var(--h-gray), 1%, 22%);
-	--p-gray-740: hsl(var(--h-gray), 2%, 26%);
-	--p-gray-710: hsl(var(--h-gray), 2%, 29%);
-	--p-gray-670: hsl(var(--h-gray), 2%, 33%);
-	--p-gray-540: hsl(var(--h-gray), 4%, 46%);
-	--p-gray-490: hsl(var(--h-gray), 3%, 51%);
-	--p-gray-420: hsl(var(--h-gray), 4%, 58%);
-	--p-gray-320: hsl(var(--h-gray), 10%, 68%);
-	--p-gray-200: hsl(var(--h-gray), 18%, 80%);
-	--p-gray-120: hsl(var(--h-gray), 25%, 88%);
-	--p-gray-070: hsl(var(--h-gray), 32%, 93%);
-	--p-gray-040: hsl(var(--h-gray), 40%, 96%);
-	--p-gray-030: hsl(var(--h-gray), 43%, 97%);
-	--p-gray-025: hsl(var(--h-gray), 50%, 97.5%);
-	--p-gray-010: hsl(var(--h-gray), 50%, 99%);
-	--p-white: hsl(var(--h-gray), 50%, 100%);
-
-	// Gray alpha
-	--p-gray-320-a-010: hsla(var(--h-gray), 10%, 68%, 0.1);
-	--p-gray-70-a-010: hsla(var(--h-gray), 32%, 93%, 0.1);
-
-	// White alpha
-	--p-white-a-075: hsla(var(--h-gray), 50%, 100%, 0.75);
-	--p-white-a-030: hsla(var(--h-gray), 50%, 100%, 0.3);
-	--p-white-a-025: hsla(var(--h-gray), 50%, 100%, 0.25);
-	--p-white-a-020: hsla(var(--h-gray), 50%, 100%, 0.2);
-	--p-white-a-015: hsla(var(--h-gray), 50%, 100%, 0.15);
-	--p-white-a-010: hsla(var(--h-gray), 50%, 100%, 0.1);
-
-	// Primary color
-	--h-primary: 7;
-	--s-primary: 100%;
-	--l-primary: 68%;
-
-	--p-color-primary-420: hsl(7, 85%, 58%);
-	--p-color-primary-320: hsl(7, 100%, 68%); // Base
-	--p-color-primary-220: hsl(7, 100%, 78%);
-	--p-color-primary-120: hsl(7, 100%, 88%);
-	--p-color-primary-070: hsl(7, 100%, 93%);
-	--p-color-primary-050: hsl(7, 100%, 95%);
-	--p-color-primary-030: hsl(7, 100%, 98%);
-
-	--p-color-primary-320-a-010: hsla(7, 100%, 68%, 0.1);
-	--p-color-primary-320-a-035: hsla(7, 100%, 68%, 0.35);
-	--p-color-primary-320-a-050: hsla(7, 100%, 68%, 0.5);
-
-	// Secondary color
-	--p-color-secondary-720: hsl(247, 24%, 28%);
-	--p-color-secondary-570: hsl(247, 49%, 43%);
-	--p-color-secondary-470: hsl(247, 49%, 53%); // Base
-	--p-color-secondary-370: hsl(247, 49%, 63%);
-	--p-color-secondary-270: hsl(247, 49%, 73%);
-	--p-color-secondary-170: hsl(247, 49%, 83%);
-	--p-color-secondary-070: hsl(247, 49%, 93%);
-
-	--p-color-secondary-470-a-010: hsla(247, 49%, 53%, 0.1);
-	--p-color-secondary-470-a-025: hsla(247, 49%, 53%, 0.25);
-
-	// Color Alternate A
-	--p-color-alt-a-800: hsl(150, 45%, 20%);
-	--p-color-alt-a-700: hsl(150, 53%, 30%);
-	--p-color-alt-a-600: hsl(150, 60%, 40%); // Base
-	--p-color-alt-a-300: hsl(150, 60%, 70%);
-	--p-color-alt-a-200: hsl(150, 60%, 80%);
-	--p-color-alt-a-100: hsl(150, 60%, 90%);
-	--p-color-alt-a-050: hsl(150, 60%, 95%);
-
-	--p-color-alt-a-600-a-015: hsla(150, 60%, 40%, 0.15);
-	--p-color-alt-a-600-a-025: hsla(150, 60%, 40%, 0.25);
-
-	// Color Alternate B
-	--p-color-alt-b-780: hsl(36, 42%, 22%);
-	--p-color-alt-b-680: hsl(36, 42%, 32%);
-	--p-color-alt-b-530: hsl(36, 77%, 47%);
-	--p-color-alt-b-430: hsl(36, 77%, 57%); // Base
-	--p-color-alt-b-280: hsl(36, 77%, 72%);
-	--p-color-alt-b-180: hsl(36, 77%, 82%);
-	--p-color-alt-b-130: hsl(36, 77%, 87%);
-	--p-color-alt-b-030: hsl(36, 77%, 97%);
-
-	--p-color-alt-b-430-a-020: hsla(36, 77%, 57%, 0.2);
-
-	// Color Alternate C
-	--p-color-alt-c-730: hsl(355, 43%, 27%);
-	--p-color-alt-c-630: hsl(355, 53%, 37%);
-	--p-color-alt-c-580: hsl(355, 83%, 42%);
-	--p-color-alt-c-480: hsl(355, 83%, 52%); // Base
-	--p-color-alt-c-330: hsl(355, 83%, 67%);
-	--p-color-alt-c-230: hsl(355, 83%, 77%);
-	--p-color-alt-c-180: hsl(355, 83%, 82%);
-	--p-color-alt-c-080: hsl(355, 83%, 92%);
-	--p-color-alt-c-030: hsl(355, 83%, 97%);
-
-	--p-color-alt-c-480-a-020: hsla(355, 83%, 52%, 0.2);
-	--p-color-alt-c-480-a-010: hsla(355, 83%, 52%, 0.1);
-
-	// Color Alternate D
-	--p-color-alt-d-780: hsl(46, 45%, 22%);
-	--p-color-alt-d-680: hsl(46, 45%, 32%);
-	--p-color-alt-d-230: hsl(46, 100%, 77%);
-	--p-color-alt-d-080: hsl(46, 100%, 92%); // Base
-
-	// Color Alternate E
-	--p-color-alt-e-780: hsl(210, 47%, 22%);
-	--p-color-alt-e-680: hsl(210, 57%, 32%);
-	--p-color-alt-e-580: hsl(210, 67%, 42%);
-	--p-color-alt-e-530: hsl(210, 67%, 47%);
-	--p-color-alt-e-430: hsl(210, 67%, 57%); // Base
-	--p-color-alt-e-180: hsl(210, 67%, 82%);
-	--p-color-alt-e-080: hsl(210, 67%, 92%);
-
-	// Color Alternate F
-	--p-color-alt-f-560: hsl(147, 83%, 44%); // Base
-
-	// Color Alternate G
-	--p-color-alt-g-700: hsl(247, 10%, 30%); // Base
-
-	--p-color-alt-g-700-a-075: hsla(247, 10%, 30%, 0.75);
-
-	// Color Alternate H - Used for errors in dark mode
-	--p-color-alt-h-310: hsl(355, 100%, 69%); // Base
 }
 
 :root {

@@ -22,39 +22,39 @@ const Template =
 	});
 
 export const Gray = Template(
-	"<color-circles :colors=\"['--p-gray-820', '--p-gray-800', '--p-gray-780', '--p-gray-740', '--p-gray-710', '--p-gray-670', '--p-gray-540', '--p-gray-490', '--p-gray-420', '--p-gray-320', '--p-gray-200', '--p-gray-120', '--p-gray-070', '--p-gray-040', '--p-gray-030', '--p-gray-025', '--p-gray-010', '--p-white']\" />",
+	"<color-circles :colors=\"['--color--gray-950', '--color--gray-900', '--color--gray-900', '--color--gray-850', '--color--gray-800', '--color--gray-700', '--color--gray-600', '--color--gray-500', '--color--gray-400', '--color--gray-300', '--color--gray-250', '--color--gray-200', '--color--gray-150', '--color--gray-100', '--color--gray-100', '--color--gray-100', '--color--gray-50', '--p-white']\" />",
 );
 
 export const Primary = Template(
-	"<color-circles :colors=\"['--p-color-primary-420', '--p-color-primary-320', '--p-color-primary-220', '--p-color-primary-120', '--p-color-primary-070', '--p-color-primary-050', '--p-color-primary-030']\" />",
+	"<color-circles :colors=\"['--color--orange-400', '--color--orange-300', '--color--orange-250', '--color--orange-200', '--color--orange-150', '--color--orange-100', '--color--orange-50']\" />",
 );
 
 export const Secondary = Template(
-	"<color-circles :colors=\"['--p-color-secondary-720','--p-color-secondary-570','--p-color-secondary-470','--p-color-secondary-370','--p-color-secondary-270','--p-color-secondary-170','--p-color-secondary-070']\" />",
+	"<color-circles :colors=\"['--color--purple-700','--color--purple-600','--color--purple-500','--color--purple-400','--color--purple-300','--color--purple-200','--color--purple-100']\" />",
 );
 
 export const AlternateA = Template(
-	"<color-circles :colors=\"['--p-color-alt-a-800', '--p-color-alt-a-700', '--p-color-alt-a-600', '--p-color-alt-a-300', '--p-color-alt-a-200', '--p-color-alt-a-100', '--p-color-alt-a-050']\" />",
+	"<color-circles :colors=\"['--color--green-800', '--color--green-700', '--color--green-600', '--color--green-300', '--color--green-200', '--color--green-100', '--color--green-50']\" />",
 );
 
 export const AlternateB = Template(
-	"<color-circles :colors=\"['--p-color-alt-b-780', '--p-color-alt-b-680', '--p-color-alt-b-530', '--p-color-alt-b-430', '--p-color-alt-b-280', '--p-color-alt-b-180', '--p-color-alt-b-130', '--p-color-alt-b-030']\" />",
+	"<color-circles :colors=\"['--color--gold-800', '--color--gold-700', '--color--gold-500', '--color--gold-400', '--color--gold-300', '--color--gold-200', '--color--gold-100', '--color--gold-50']\" />",
 );
 
 export const AlternateC = Template(
-	"<color-circles :colors=\"['--p-color-alt-c-730', '--p-color-alt-c-630', '--p-color-alt-c-580', '--p-color-alt-c-480', '--p-color-alt-c-330', '--p-color-alt-c-230', '--p-color-alt-c-180', '--p-color-alt-c-080', '--p-color-alt-c-030']\" />",
+	"<color-circles :colors=\"['--color--red-700', '--color--red-650', '--color--red-600', '--color--red-500', '--color--red-300', '--color--red-250', '--color--red-200', '--color--red-100', '-color--red-50']\" />",
 );
 
 export const AlternateD = Template(
-	"<color-circles :colors=\"['--p-color-alt-d-780', '--p-color-alt-d-680', '--p-color-alt-d-230', '--p-color-alt-d-080']\" />",
+	"<color-circles :colors=\"['--color--yellow-800', '--color--yellow-700', '--color--yellow-200', '--color--yellow-100']\" />",
 );
 
 export const AlternateE = Template(
-	"<color-circles :colors=\"['--p-color-alt-e-780', '--p-color-alt-e-680', '--p-color-alt-e-580', '--p-color-alt-e-530', '--p-color-alt-e-430', '--p-color-alt-e-180', '--p-color-alt-e-080']\" />",
+	"<color-circles :colors=\"['--color--blue-800', '--color--blue-700', '--color--blue-600', '--color--blue-500', '--color--blue-400', '--color--blue-200', '--color--blue-100']\" />",
 );
 
-export const AlternateF = Template('<color-circles :colors="[\'--p-color-alt-f-560\']" />');
+export const AlternateF = Template('<color-circles :colors="[\'--color--green-light-600\']" />');
 
-export const AlternateG = Template('<color-circles :colors="[\'--p-color-alt-g-700\']" />');
+export const AlternateG = Template('<color-circles :colors="[\'--color--slate-700\']" />');
 
-export const AlternateH = Template('<color-circles :colors="[\'--p-color-alt-h-310\']" />');
+export const AlternateH = Template('<color-circles :colors="[\'--color--red-300\']" />');
