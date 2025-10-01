@@ -548,7 +548,7 @@ export class ProjectService {
 		});
 	}
 
-	async getProjectsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
+	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
 		const where: FindOptionsWhere<Project> = {};
 		if (projectIds) {
 			where.id = In(projectIds);
@@ -563,9 +563,11 @@ export class ProjectService {
 			};
 		}
 
-		return await this.projectRepository.find({
+		const projects = await this.projectRepository.find({
 			where,
+			select: ['id'],
 		});
+		return projects.map((p) => p.id);
 	}
 
 	/**
