@@ -31,7 +31,7 @@ export class Baserow implements INodeType {
 		name: 'baserow',
 		icon: 'file:baserow.svg',
 		group: ['output'],
-		version: 2,
+		version: [1, 1.1],
 		description: 'Consume the Baserow API',
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {

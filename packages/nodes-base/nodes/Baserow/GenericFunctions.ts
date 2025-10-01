@@ -108,6 +108,12 @@ export async function getAuthorizationHeader(
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	} else {
+		if (!token) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Missing or empty token. Please provide a valid token in credentials.',
+			});
+		}
+
 		return `Token ${token}`;
 	}
 }

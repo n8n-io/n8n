@@ -57,7 +57,6 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				dataToSend: ['defineBelow'],
 			},
 		},
 		default: '',
