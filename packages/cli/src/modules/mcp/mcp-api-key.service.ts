@@ -1,11 +1,12 @@
 import { ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
+import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
 
-const API_KEY_AUDIENCE = 'mcp-server-api';
+const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
