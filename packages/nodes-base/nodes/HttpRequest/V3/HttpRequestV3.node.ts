@@ -421,7 +421,7 @@ export class HttpRequestV3 implements INodeType {
 							'value' in existingValue &&
 							'options' in existingValue
 						) {
-							// It's a binary data object with the expected structure, overwrite it
+							// It's a validated binary data object (has value and options properties), overwrite it
 							accumulator[cur.name] = cur.value;
 						} else {
 							// Convert existing primitive value and new value into an array
