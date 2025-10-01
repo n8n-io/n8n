@@ -100,14 +100,13 @@ export function useDataTableNavigationCommands(options: {
 			title: getDataTableTitle(dataTable, includeOpenDataTablePrefix),
 			section: i18n.baseText('commandBar.sections.dataTables'),
 			handler: () => {
-				const targetRoute = router.resolve({
+				void router.push({
 					name: DATA_STORE_DETAILS,
 					params: {
 						projectId: dataTable.projectId,
 						id: dataTable.id,
 					},
 				});
-				window.location.href = targetRoute.fullPath;
 			},
 		};
 	};

@@ -15,6 +15,7 @@ import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigat
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
+import { PROJECT_DATA_STORES, DATA_STORE_VIEW } from '@/features/dataStore/constants';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -97,6 +98,14 @@ export function useCommandBar() {
 		baseCommandGroup,
 	];
 
+	const dataStoresListViewGroups: CommandGroup[] = [
+		dataTableNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		executionNavigationGroup,
+		baseCommandGroup,
+	];
+
 	const activeCommandGroups = computed<CommandGroup[]>(() => {
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
@@ -110,6 +119,9 @@ export function useCommandBar() {
 			case VIEWS.EXECUTIONS:
 			case VIEWS.PROJECTS_EXECUTIONS:
 				return executionsListViewGroups;
+			case PROJECT_DATA_STORES:
+			case DATA_STORE_VIEW:
+				return dataStoresListViewGroups;
 			default:
 				return [baseCommandGroup];
 		}
@@ -128,6 +140,9 @@ export function useCommandBar() {
 			case VIEWS.EXECUTIONS:
 			case VIEWS.PROJECTS_EXECUTIONS:
 				return i18n.baseText('commandBar.sections.executions');
+			case PROJECT_DATA_STORES:
+			case DATA_STORE_VIEW:
+				return i18n.baseText('commandBar.sections.dataTables');
 			default:
 				return '';
 		}

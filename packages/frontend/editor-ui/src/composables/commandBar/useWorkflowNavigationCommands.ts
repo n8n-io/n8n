@@ -124,11 +124,10 @@ export function useWorkflowNavigationCommands(options: {
 			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
 			section: i18n.baseText('commandBar.sections.workflows'),
 			handler: () => {
-				const targetRoute = router.resolve({
+				void router.push({
 					name: VIEWS.WORKFLOW,
 					params: { name: workflow.id },
 				});
-				window.location.href = targetRoute.fullPath;
 			},
 		};
 	};

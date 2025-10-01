@@ -87,7 +87,7 @@ const redirectToDataStores = () => {
 						:placeholder="i18n.baseText('dataStore.add.input.name.placeholder')"
 						data-test-id="data-store-name-input"
 						name="dataStoreName"
-						@keyup.enter="onSubmit"
+						@keydown.enter="onSubmit"
 					/>
 				</N8nInputLabel>
 			</div>
