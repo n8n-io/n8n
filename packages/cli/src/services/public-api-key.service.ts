@@ -87,6 +87,7 @@ export class PublicApiKeyService {
 			where: {
 				apiKeys: {
 					apiKey,
+					audience: API_KEY_AUDIENCE,
 				},
 			},
 			relations: ['role'],
@@ -176,7 +177,7 @@ export class PublicApiKeyService {
 
 	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
 		const apiKeyData = await this.apiKeyRepository.findOne({
-			where: { apiKey },
+			where: { apiKey, audience: API_KEY_AUDIENCE },
 			select: { scopes: true },
 		});
 		if (!apiKeyData) return false;
@@ -209,7 +210,7 @@ export class PublicApiKeyService {
 		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 		const userApiKeys = await manager.find(ApiKey, {
-			where: { userId: user.id },
+			where: { userId: user.id, audience: API_KEY_AUDIENCE },
 		});
 
 		const keysWithOwnerScopes = userApiKeys.filter((apiKey) =>
