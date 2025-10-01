@@ -1752,6 +1752,127 @@ describe('dataStore', () => {
 				},
 			]);
 		});
+
+		it('should simulate update without persisting when dryRun is true', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ name: 'Alice', age: 30 }],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.upsertRow(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', value: 'Alice', condition: 'eq' }],
+					},
+					data: { age: 35 },
+				},
+				true,
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					dryRunState: 'before',
+				}),
+				expect.objectContaining({
+					name: 'Alice',
+					age: 35,
+					dryRunState: 'after',
+				}),
+			]);
+
+			// Verify data was NOT persisted
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30, // unchanged
+				}),
+			]);
+		});
+
+		it('should simulate insert without persisting when dryRun is true and no match', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[{ name: 'Alice', age: 30 }],
+				'id',
+			);
+
+			// ACT
+			const result = await dataStoreService.upsertRow(
+				dataStoreId,
+				project1.id,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', value: 'Bob', condition: 'eq' }],
+					},
+					data: { name: 'Bob', age: 25 },
+				},
+				true,
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				expect.objectContaining({
+					id: null,
+					name: null,
+					age: null,
+					dryRunState: 'before',
+				}),
+				expect.objectContaining({
+					id: 0, // placeholder for dry run
+					name: 'Bob',
+					age: 25,
+					dryRunState: 'after',
+				}),
+			]);
+
+			// Verify data was NOT persisted
+			const { count, data } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			expect(count).toEqual(1);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+				}),
+			]);
+		});
 	});
 
 	describe('deleteRows', () => {

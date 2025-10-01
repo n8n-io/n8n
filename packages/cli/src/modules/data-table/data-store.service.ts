@@ -213,14 +213,30 @@ export class DataStoreService {
 	async upsertRow<T extends boolean | undefined>(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
-		returnData?: T,
-	): Promise<T extends true ? DataStoreRowReturn[] : true>;
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData: true,
+		dryRun?: boolean,
+	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
-		dto: Omit<UpsertDataStoreRowDto, 'returnData'>,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData?: boolean,
+		dryRun?: true,
+	): Promise<DataStoreRowReturnWithState[]>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
+		returnData?: false,
+		dryRun?: false,
+	): Promise<true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
+		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataTableId, projectId);
@@ -228,6 +244,17 @@ export class DataStoreService {
 		const result = await this.dataStoreColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataStoreColumnRepository.getColumns(dataTableId, trx);
 			this.validateUpdateParams(dto, columns);
+
+			if (dryRun) {
+				return await this.dataStoreRowsRepository.dryRunUpsertRow(
+					dataTableId,
+					dto.data,
+					dto.filter,
+					columns,
+					trx,
+				);
+			}
+
 			const updated = await this.dataStoreRowsRepository.updateRows(
 				dataTableId,
 				dto.data,
@@ -252,7 +279,9 @@ export class DataStoreService {
 			return returnData ? inserted : true;
 		});
 
-		this.dataStoreSizeValidator.reset();
+		if (!dryRun) {
+			this.dataStoreSizeValidator.reset();
+		}
 
 		return result;
 	}

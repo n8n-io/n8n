@@ -395,6 +395,41 @@ export class DataStoreRowsRepository {
 		return pairs;
 	}
 
+	async dryRunUpsertRow(
+		dataStoreId: string,
+		data: Record<string, DataStoreColumnJsType | null>,
+		filter: DataTableFilter,
+		columns: DataTableColumn[],
+		trx?: EntityManager,
+	): Promise<DataStoreRowReturnWithState[]> {
+		const updateResult = await this.dryRunUpdateRows(dataStoreId, data, filter, columns, trx);
+
+		if (updateResult.length > 0) {
+			return updateResult;
+		}
+
+		// No rows were updated, simulate insert
+		const dbType = this.dataSource.options.type;
+		const now = new Date();
+		const preparedData = this.prepareUpdateData(data, columns, dbType);
+		const insertedRow: DataStoreRowReturnWithState = {
+			id: 0, // Placeholder ID for dry run
+			createdAt: now,
+			updatedAt: now,
+			...preparedData,
+			dryRunState: 'after',
+		};
+		const rowBefore: DataStoreRowReturnWithState = {
+			id: null,
+			createdAt: null,
+			updatedAt: null,
+			...Object.fromEntries(Object.keys(preparedData).map((key) => [key, null])),
+			dryRunState: 'before',
+		};
+
+		return [rowBefore, insertedRow];
+	}
+
 	/**
 	 * Deletes rows from the data table.
 	 * Note: `dryRun` overrides `returnData` and always returns the affected rows without deleting them.

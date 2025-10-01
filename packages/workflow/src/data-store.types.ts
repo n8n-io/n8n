@@ -66,6 +66,7 @@ export type UpdateDataStoreRowOptions = {
 export type UpsertDataStoreRowOptions = {
 	filter: DataTableFilter;
 	data: DataStoreRow;
+	dryRun?: boolean;
 };
 
 export type DeleteDataTableRowsOptions = {
@@ -100,7 +101,10 @@ export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
 export type DataStoreRowsReturn = DataStoreRowReturn[];
 
-export type DataStoreRowReturnWithState = DataStoreRowReturn & {
+export type DataStoreRowReturnWithState = DataStoreRow & {
+	id: number | null;
+	createdAt: Date | null;
+	updatedAt: Date | null;
 	dryRunState: 'before' | 'after';
 };
 
@@ -177,7 +181,9 @@ export interface IDataStoreProjectService {
 		options: UpdateDataStoreRowOptions,
 	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
 
-	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
+	upsertRow(
+		options: UpsertDataStoreRowOptions,
+	): Promise<DataStoreRowReturn[] | DataStoreRowReturnWithState[]>;
 
 	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataStoreRowReturn[]>;
 }
