@@ -95,7 +95,7 @@ import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/175
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
 import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
-import { AddAudienceColumnToApiKeys1758731786132 } from './1758731786132-AddAudienceColumnToApiKey';
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
