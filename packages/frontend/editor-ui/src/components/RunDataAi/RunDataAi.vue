@@ -8,6 +8,7 @@ import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand
 import type { LogTreeFilter, LogEntry } from '@/features/logs/logs.types';
 import { N8nText } from '@n8n/design-system';
 import RunDataAiContent from '@/components/RunDataAi/RunDataAiContent.vue';
+import { findLogEntryById } from '@/features/logs/logs.utils';
 
 const { node, runIndex = 0 } = defineProps<{
 	node: INodeUi;
@@ -33,7 +34,7 @@ function select(entry: LogEntry | undefined) {
 watch(
 	entries,
 	(latestEntries) => {
-		if (!selected.value) {
+		if (!selected.value || findLogEntryById(selected.value.id, latestEntries) === undefined) {
 			selected.value = latestEntries[0]?.children[0];
 		}
 	},

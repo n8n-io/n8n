@@ -274,6 +274,10 @@ export function createLogTree(
 	});
 }
 
+export function findLogEntryById(id: string, entries: LogEntry[]) {
+	return findLogEntryRec((entry) => entry.id === id, entries);
+}
+
 export function findLogEntryRec(
 	isMatched: (entry: LogEntry) => boolean,
 	entries: LogEntry[],
