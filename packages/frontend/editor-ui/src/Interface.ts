@@ -964,6 +964,16 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface EnvironmentVariable {
+	id: string;
+	key: string;
+	value: string;
+	project?: {
+		id: string;
+		name: string;
+	};
+}
+
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
