@@ -179,12 +179,14 @@ export type CanvasEventBusEvents = {
 	'saved:workflow': never;
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
+	'nodes:selectAll': never;
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
 	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	'create:sticky': never;
 };
 
 export interface CanvasNodeInjectionData {

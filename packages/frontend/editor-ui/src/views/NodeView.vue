@@ -1450,6 +1450,16 @@ function removeSourceControlEventBindings() {
 }
 
 /**
+ * Command bar
+ * */
+function addCommandBarEventBindings() {
+	canvasEventBus.on('create:sticky', onCreateSticky);
+}
+function removeCommandBarEventBindings() {
+	canvasEventBus.off('create:sticky', onCreateSticky);
+}
+
+/**
  * Post message events
  */
 
@@ -1914,10 +1924,11 @@ onMounted(() => {
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
+	addCommandBarEventBindings();
 	registerCustomActions();
 });
 
-onActivated(async () => {
+onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
@@ -1934,6 +1945,7 @@ onBeforeUnmount(() => {
 	removeBeforeUnloadEventBindings();
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
+	removeCommandBarEventBindings();
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
