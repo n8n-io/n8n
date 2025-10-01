@@ -6,6 +6,7 @@ import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import { randomUUID } from 'crypto';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -25,13 +26,14 @@ export class McpServerApiKeyService {
 		private readonly userRepository: UserRepository,
 	) {}
 
-	async createMcpServerApiKey(user: User, em?: EntityManager) {
-		const manager = em ?? this.apiKeyRepository.manager;
+	async createMcpServerApiKey(user: User, trx?: EntityManager) {
+		const manager = trx ?? this.apiKeyRepository.manager;
 
 		const apiKey = this.jwtService.sign({
 			sub: user.id,
 			iss: API_KEY_ISSUER,
 			aud: API_KEY_AUDIENCE,
+			jti: randomUUID(),
 		});
 
 		await manager.insert(
@@ -76,8 +78,8 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	async deleteAllMcpApiKeysForUser(user: User, em?: EntityManager) {
-		const manager = em ?? this.apiKeyRepository.manager;
+	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {
+		const manager = trx ?? this.apiKeyRepository.manager;
 
 		await manager.delete(ApiKey, {
 			userId: user.id,
@@ -153,10 +155,31 @@ export class McpServerApiKeyService {
 		res.status(401).send({ message: 'Unauthorized' });
 	}
 
+	async getOrCreateApiKey(user: User) {
+		return await this.apiKeyRepository.manager.transaction(async (trx) => {
+			// Check if key exists within the transaction
+			const apiKey = await trx.findOne(ApiKey, {
+				where: {
+					userId: user.id,
+					audience: API_KEY_AUDIENCE,
+				},
+			});
+
+			// If key exists, return it (with redaction)
+			if (apiKey) {
+				apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
+				return apiKey;
+			}
+
+			// No key exists, create one within the same transaction
+			return await this.createMcpServerApiKey(user, trx);
+		});
+	}
+
 	async rotateMcpServerApiKey(user: User) {
-		return await this.apiKeyRepository.manager.transaction(async (manager) => {
-			await this.deleteAllMcpApiKeysForUser(user, manager);
-			return await this.createMcpServerApiKey(user, manager);
+		return await this.apiKeyRepository.manager.transaction(async (trx) => {
+			await this.deleteAllMcpApiKeysForUser(user, trx);
+			return await this.createMcpServerApiKey(user, trx);
 		});
 	}
 }

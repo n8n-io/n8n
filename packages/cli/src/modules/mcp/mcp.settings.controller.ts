@@ -38,27 +38,12 @@ export class McpSettingsController {
 	@GlobalScope('mcpApiKey:create')
 	@Get('/api-key')
 	async getApiKeyForMcpServer(req: AuthenticatedRequest) {
-		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
-
-		if (!apiKey) {
-			const newApiKey = await this.mcpServerApiKeyService.createMcpServerApiKey(req.user);
-			return newApiKey;
-		}
-
-		return apiKey;
+		return await this.mcpServerApiKeyService.getOrCreateApiKey(req.user);
 	}
 
 	@GlobalScope('mcpApiKey:rotate')
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
-		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
-
-		if (!apiKey) {
-			throw new BadRequestError('No existing MCP server API key to rotate');
-		}
-
-		const newApiKey = await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
-
-		return newApiKey;
+		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 }
