@@ -411,17 +411,15 @@ export class HttpRequestV3 implements INodeType {
 
 					// Handle multiple values for the same parameter
 					const existingValue = accumulator[cur.name];
-					if (existingValue !== undefined && typeof existingValue !== 'object') {
-						if (Array.isArray(existingValue)) {
-							// If it's already an array, append to it
-							accumulator[cur.name] = [...existingValue, cur.value];
-						} else {
-							// Convert existing value and new value into an array
-							accumulator[cur.name] = [existingValue, cur.value];
-						}
-					} else {
-						// First occurrence of this parameter or it's a binary data object
+					if (existingValue === undefined) {
+						// First occurrence of this parameter
 						accumulator[cur.name] = cur.value;
+					} else if (Array.isArray(existingValue)) {
+						// If it's already an array, append to it
+						accumulator[cur.name] = existingValue.concat(cur.value);
+					} else {
+						// Convert to array with both values
+						accumulator[cur.name] = [existingValue, cur.value];
 					}
 					return accumulator;
 				};
