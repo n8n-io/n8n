@@ -49,11 +49,11 @@ export function safeJoinPath(parentPath: string, ...paths: string[]): string {
 }
 
 export function findPackageJson(startPath: string): string | null {
-	let currentDir = startPath;
+	let currentDir = path.dirname(startPath);
 
 	while (parsePath(currentDir).dir !== parsePath(currentDir).root) {
 		const testPath = safeJoinPath(currentDir, 'package.json');
-		if (existsSync(testPath)) {
+		if (fileExistsWithCaseSync(testPath)) {
 			return testPath;
 		}
 
@@ -159,7 +159,7 @@ export function validateIconPath(
 	const isSvg = relativePath.endsWith('.svg');
 	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
 	const fullPath = path.join(baseDir, relativePath);
-	const exists = existsSync(fullPath);
+	const exists = fileExistsWithCaseSync(fullPath);
 
 	return {
 		isValid: isFile && isSvg && exists,
@@ -247,6 +247,14 @@ function checkCredentialUsageInFile(
 	} catch {
 		return { hasUsage: false, allTestedBy: true };
 	}
+}
+
+function fileExistsWithCaseSync(filePath: string): boolean {
+	const dir = path.dirname(filePath);
+	const file = path.basename(filePath);
+	const files = new Set(readdirSync(dir));
+
+	return files.has(file);
 }
 
 export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
