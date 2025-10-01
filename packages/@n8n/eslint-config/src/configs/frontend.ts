@@ -63,9 +63,7 @@ export const frontendConfig = tseslint.config(
 			'vue/no-undef-components': [
 				'error',
 				{
-					ignorePatterns: [
-						'FontAwesomeIcon', // Globally registered in plugins/icons/index.ts
-					],
+					ignorePatterns: ['FontAwesomeIcon'],
 				},
 			],
 			'vue/multi-word-component-names': 'off',
