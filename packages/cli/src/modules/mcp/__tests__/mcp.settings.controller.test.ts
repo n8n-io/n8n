@@ -80,7 +80,7 @@ describe('McpSettingsController', () => {
 
 			const result = await controller.getApiKeyForMcpServer(req);
 
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser, true);
+			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
 			expect(mcpServerApiKeyService.createMcpServerApiKey).not.toHaveBeenCalled();
 			expect(result).toEqual(mockApiKey);
 		});

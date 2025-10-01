@@ -43,7 +43,7 @@ export class McpServerApiKeyService {
 		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
 	}
 
-	async findServerApiKeyForUser(user: User, redact = false) {
+	async findServerApiKeyForUser(user: User, { redact = true } = {}) {
 		const apiKey = await this.apiKeyRepository.findOneBy({
 			userId: user.id,
 			audience: API_KEY_AUDIENCE,
@@ -74,7 +74,7 @@ export class McpServerApiKeyService {
 		});
 	}
 
-	redactApiKey(apiKey: string) {
+	private redactApiKey(apiKey: string) {
 		const visiblePart = apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT);
 		const redactedPart = '*'.repeat(
 			Math.max(0, REDACT_API_KEY_MAX_LENGTH - REDACT_API_KEY_REVEAL_COUNT),
@@ -83,7 +83,7 @@ export class McpServerApiKeyService {
 		return redactedPart + visiblePart;
 	}
 
-	extractAPIKeyFromHeader(headerValue: string) {
+	private extractAPIKeyFromHeader(headerValue: string) {
 		if (!headerValue.startsWith('Bearer')) {
 			throw new AuthError('Invalid authorization header format');
 		}

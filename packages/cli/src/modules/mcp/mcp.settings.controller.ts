@@ -38,7 +38,7 @@ export class McpSettingsController {
 	@GlobalScope('mcpApiKey:create')
 	@Get('/api-key')
 	async getApiKeyForMcpServer(req: AuthenticatedRequest) {
-		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user, true);
+		const apiKey = await this.mcpServerApiKeyService.findServerApiKeyForUser(req.user);
 
 		if (!apiKey) {
 			const newApiKey = await this.mcpServerApiKeyService.createMcpServerApiKey(req.user);
