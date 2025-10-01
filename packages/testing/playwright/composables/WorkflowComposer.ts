@@ -106,6 +106,6 @@ export class WorkflowComposer {
 			(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
 		);
 		await this.n8n.canvas.clickSaveWorkflowButton();
-		return saveRequestPromise;
+		return await saveRequestPromise;
 	}
 }
