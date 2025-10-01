@@ -3,9 +3,11 @@ import { useRouter } from 'vue-router';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
@@ -51,6 +53,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const router = useRouter();
 
@@ -58,6 +61,18 @@ export function useWorkflowCommands(): CommandGroup {
 	const telemetry = useTelemetry();
 	const workflowSaving = useWorkflowSaving({ router });
 	const workflowActivate = useWorkflowActivate();
+
+	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const isWorkflowSaving = computed(() => uiStore.isActionActive.workflowSaving);
+	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+
+	const workflowPermissions = computed(
+		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+	);
+
+	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
+		(workflowPermissions.value[permission] === true && !isReadOnly.value) ||
+		workflowsStore.isNewWorkflow;
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
@@ -94,44 +109,68 @@ export function useWorkflowCommands(): CommandGroup {
 	});
 
 	const canvasActions = computed<CommandBarItem[]>(() => [
-		{
-			id: ITEM_ID.SAVE_WORKFLOW,
-			title: i18n.baseText('commandBar.workflow.save'),
-			section: i18n.baseText('commandBar.sections.workflow'),
-			handler: async () => {
-				const saved = await workflowSaving.saveCurrentWorkflow();
-				if (saved) {
-					canvasEventBus.emit('saved:workflow');
-				}
-			},
-			icon: {
-				component: N8nIcon as Component,
-				props: {
-					icon: 'save',
-				},
-			},
-		},
-		{
-			id: ITEM_ID.TEST_WORKFLOW,
-			title: i18n.baseText('commandBar.workflow.test'),
-			section: i18n.baseText('commandBar.sections.workflow'),
-			keywords: [
-				i18n.baseText('commandBar.workflow.keywords.test'),
-				i18n.baseText('commandBar.workflow.keywords.execute'),
-				i18n.baseText('commandBar.workflow.keywords.run'),
-				i18n.baseText('commandBar.workflow.keywords.workflow'),
-			],
-			handler: () => {
-				// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
-				void useRunWorkflow({ router }).runEntireWorkflow('main');
-			},
-			icon: {
-				component: N8nIcon as Component,
-				props: {
-					icon: 'flask-conical',
-				},
-			},
-		},
+		...(hasPermission('update') && !isArchived.value
+			? [
+					...(!isWorkflowSaving.value
+						? [
+								{
+									id: ITEM_ID.SAVE_WORKFLOW,
+									title: i18n.baseText('commandBar.workflow.save'),
+									section: i18n.baseText('commandBar.sections.workflow'),
+									handler: async () => {
+										const saved = await workflowSaving.saveCurrentWorkflow();
+										if (saved) {
+											canvasEventBus.emit('saved:workflow');
+										}
+									},
+									icon: {
+										component: N8nIcon as Component,
+										props: {
+											icon: 'save',
+										},
+									},
+								},
+							]
+						: []),
+					{
+						id: ITEM_ID.TEST_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.test'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						keywords: [
+							i18n.baseText('commandBar.workflow.keywords.test'),
+							i18n.baseText('commandBar.workflow.keywords.execute'),
+							i18n.baseText('commandBar.workflow.keywords.run'),
+							i18n.baseText('commandBar.workflow.keywords.workflow'),
+						],
+						handler: () => {
+							// Lazily instantiate useRunWorkflow only when the handler runs to avoid early initialization side effects
+							void useRunWorkflow({ router }).runEntireWorkflow('main');
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'flask-conical',
+							},
+						},
+					},
+					{
+						id: ITEM_ID.TIDY_UP_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.tidyUp'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							canvasEventBus.emit('tidyUp', {
+								source: 'command-bar',
+							});
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'wand-sparkles',
+							},
+						},
+					},
+				]
+			: []),
 		{
 			id: ITEM_ID.SELECT_ALL,
 			title: i18n.baseText('commandBar.workflow.selectAll'),
@@ -146,47 +185,37 @@ export function useWorkflowCommands(): CommandGroup {
 				},
 			},
 		},
-		{
-			id: ITEM_ID.TIDY_UP_WORKFLOW,
-			title: i18n.baseText('commandBar.workflow.tidyUp'),
-			section: i18n.baseText('commandBar.sections.workflow'),
-			handler: () => {
-				canvasEventBus.emit('tidyUp', {
-					source: 'command-bar',
-				});
-			},
-			icon: {
-				component: N8nIcon as Component,
-				props: {
-					icon: 'wand-sparkles',
-				},
-			},
-		},
-		{
-			id: ITEM_ID.DUPLICATE_WORKFLOW,
-			title: i18n.baseText('commandBar.workflow.duplicate'),
-			section: i18n.baseText('commandBar.sections.workflow'),
-			handler: () => {
-				uiStore.openModalWithData({
-					name: DUPLICATE_MODAL_KEY,
-					data: {
-						id: workflowsStore.workflowId,
-						name: editableWorkflow.value.name,
-						tags: editableWorkflow.value.tags,
+		...(hasPermission('create')
+			? [
+					{
+						id: ITEM_ID.DUPLICATE_WORKFLOW,
+						title: i18n.baseText('commandBar.workflow.duplicate'),
+						section: i18n.baseText('commandBar.sections.workflow'),
+						handler: () => {
+							uiStore.openModalWithData({
+								name: DUPLICATE_MODAL_KEY,
+								data: {
+									id: workflowsStore.workflowId,
+									name: editableWorkflow.value.name,
+									tags: editableWorkflow.value.tags,
+								},
+							});
+						},
+						icon: {
+							component: N8nIcon as Component,
+							props: {
+								icon: 'copy',
+							},
+						},
 					},
-				});
-			},
-			icon: {
-				component: N8nIcon as Component,
-				props: {
-					icon: 'copy',
-				},
-			},
-		},
+				]
+			: []),
 	]);
 
-	const activateCommands = computed<CommandBarItem[]>(() =>
-		workflowsStore.isWorkflowActive
+	const activateCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update') || isArchived.value) return [];
+
+		return workflowsStore.isWorkflowActive
 			? [
 					{
 						id: ITEM_ID.DEACTIVATE_WORKFLOW,
@@ -218,8 +247,8 @@ export function useWorkflowCommands(): CommandGroup {
 							},
 						},
 					},
-				],
-	);
+				];
+	});
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
 		const subworkflows = editableWorkflow.value.nodes
@@ -338,7 +367,9 @@ export function useWorkflowCommands(): CommandGroup {
 	});
 
 	const lifecycleCommands = computed<CommandBarItem[]>(() => {
-		return !workflowsStore.workflow.isArchived
+		if (!hasPermission('delete')) return [];
+
+		return !isArchived.value
 			? [
 					{
 						id: ITEM_ID.ARCHIVE_WORKFLOW,

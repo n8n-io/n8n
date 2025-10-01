@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { type Component, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -10,6 +10,9 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup } from './types';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -27,10 +30,27 @@ export function useNodeCommands(options: {
 	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
+	const sourceControlStore = useSourceControlStore();
+	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
+	const isReadOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+
+	const workflowPermissions = computed(
+		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+	);
+
+	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
+		(workflowPermissions.value[permission] === true && !isReadOnly.value && !isArchived.value) ||
+		workflowsStore.isNewWorkflow;
+
 	const addNodeCommands = computed<CommandBarItem[]>(() => {
+		if (!hasPermission('update')) {
+			return [];
+		}
+
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
 		const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
@@ -103,19 +123,23 @@ export function useNodeCommands(options: {
 
 	const nodeCommands = computed<CommandBarItem[]>(() => {
 		return [
-			{
-				id: ITEM_ID.ADD_NODE,
-				title: i18n.baseText('commandBar.nodes.addNode'),
-				section: i18n.baseText('commandBar.sections.nodes'),
-				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
-				children: [...addNodeCommands.value],
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-			},
+			...(hasPermission('update')
+				? [
+						{
+							id: ITEM_ID.ADD_NODE,
+							title: i18n.baseText('commandBar.nodes.addNode'),
+							section: i18n.baseText('commandBar.sections.nodes'),
+							placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
+							children: [...addNodeCommands.value],
+							icon: {
+								component: N8nIcon as Component,
+								props: {
+									icon: 'plus',
+								},
+							},
+						},
+					]
+				: []),
 			...rootAddNodeCommandItems.value,
 			{
 				id: ITEM_ID.OPEN_NODE,
@@ -124,38 +148,35 @@ export function useNodeCommands(options: {
 				children: [...openNodeCommands.value],
 				placeholder: i18n.baseText('commandBar.nodes.searchPlaceholder'),
 				icon: {
-					component: N8nIcon,
+					component: N8nIcon as Component,
 					props: {
 						icon: 'columns-3-cog',
 					},
 				},
 			},
 			...rootOpenNodeCommandItems.value,
-			{
-				id: ITEM_ID.ADD_STICKY,
-				title: i18n.baseText('commandBar.nodes.addStickyNote'),
-				section: i18n.baseText('commandBar.sections.nodes'),
-				handler: () => {
-					canvasEventBus.emit('create:sticky');
-				},
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'sticky-note',
-					},
-				},
-			},
+			...(hasPermission('update')
+				? [
+						{
+							id: ITEM_ID.ADD_STICKY,
+							title: i18n.baseText('commandBar.nodes.addStickyNote'),
+							section: i18n.baseText('commandBar.sections.nodes'),
+							handler: () => {
+								canvasEventBus.emit('create:sticky');
+							},
+							icon: {
+								component: N8nIcon as Component,
+								props: {
+									icon: 'sticky-note',
+								},
+							},
+						},
+					]
+				: []),
 		];
 	});
 
-	function onCommandBarChange(query: string) {
-		const trimmed = query.trim();
-	}
-
 	return {
 		commands: nodeCommands,
-		handlers: {
-			onCommandBarChange,
-		},
 	};
 }
