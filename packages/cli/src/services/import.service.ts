@@ -14,12 +14,12 @@ import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { readdir, readFile } from 'fs/promises';
-import path from 'path';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
+import { safeJoinPath } from '@n8n/backend-common';
 
 @Service()
 export class ImportService {
@@ -228,7 +228,7 @@ export class ImportService {
 				if (!entityFiles[entityName]) {
 					entityFiles[entityName] = [];
 				}
-				entityFiles[entityName].push(path.join(inputDir, file));
+				entityFiles[entityName].push(safeJoinPath(inputDir, file));
 			}
 		}
 
@@ -243,9 +243,9 @@ export class ImportService {
 	 * @param filePath - Path to the JSONL file
 	 * @returns Array of parsed entity objects
 	 */
-	async readEntityFile(filePath: string): Promise<unknown[]> {
+	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: unknown[] = [];
+		const entities: Record<string, unknown>[] = [];
 
 		for (const block of content.split('\n')) {
 			const lines = this.cipher.decrypt(block).split(/\r?\n/);
@@ -273,7 +273,7 @@ export class ImportService {
 	}
 
 	private async decompressEntitiesZip(inputDir: string): Promise<void> {
-		const entitiesZipPath = path.join(inputDir, 'entities.zip');
+		const entitiesZipPath = safeJoinPath(inputDir, 'entities.zip');
 		const { existsSync } = await import('fs');
 
 		if (!existsSync(entitiesZipPath)) {
@@ -331,7 +331,7 @@ export class ImportService {
 		const files = await readdir(inputDir);
 		for (const file of files) {
 			if (file.endsWith('.jsonl') && file !== 'entities.zip') {
-				await rm(path.join(inputDir, file));
+				await rm(safeJoinPath(inputDir, file));
 				this.logger.info(`   Removed: ${file}`);
 			}
 		}
@@ -384,15 +384,25 @@ export class ImportService {
 				let entityCount = 0;
 				await Promise.all(
 					files.map(async (filePath) => {
-						this.logger.info(`   📁 Reading file: ${path.basename(filePath)}`);
+						this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities = await this.readEntityFile(filePath);
+						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
 						this.logger.info(`      Found ${entities.length} entities`);
 
-						if (entities.length > 0) {
-							await transactionManager.insert(tableName, entities);
-							entityCount += entities.length;
+						for (const entity of entities) {
+							const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
+								`INSERT INTO ${this.dataSource.driver.escape(tableName)} (${Object.keys(entity)
+									.map((key) => this.dataSource.driver.escape(key))
+									.join(', ')}) VALUES (${Object.keys(entity)
+									.map((key) => `:${key}`)
+									.join(', ')})`,
+								entity,
+								{},
+							);
+							await transactionManager.query(query, parameters);
 						}
+
+						entityCount += entities.length;
 					}),
 				);
 
@@ -461,7 +471,7 @@ export class ImportService {
 	 * @returns Promise that resolves if migrations match, throws error if they don't
 	 */
 	async validateMigrations(inputDir: string): Promise<void> {
-		const migrationsFilePath = path.join(inputDir, 'migrations.jsonl');
+		const migrationsFilePath = safeJoinPath(inputDir, 'migrations.jsonl');
 
 		try {
 			// Check if migrations file exists
