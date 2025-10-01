@@ -88,8 +88,9 @@ export class VariablesService {
 	): Promise<Variables[]> {
 		const allCachedVariables = await this.getAllCached();
 		const canListGlobalVariables = hasGlobalScope(user, 'variable:list');
-		const projects = await this.projectService.getProjectsWithScope(user, ['projectVariable:list']);
-		const projectIds = projects.map((p) => p.id);
+		const projectIds = await this.projectService.getProjectIdsWithScope(user, [
+			'projectVariable:list',
+		]);
 
 		const userHasAccess = (variable: Variables) =>
 			(!variable.project && canListGlobalVariables) ||
