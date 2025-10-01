@@ -7,9 +7,9 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
-import { createOwner } from '@test-integration/db/users';
 
-import { McpServerApiKeyService } from './mcp-api-key.service';
+import { McpServerApiKeyService } from '../mcp-api-key.service';
+import { createOwner } from '@test-integration/db/users';
 
 const mockReqWith = (authHeader: string | undefined) => {
 	const req = mockDeep<Request>();
