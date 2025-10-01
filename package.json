@@ -125,7 +125,8 @@
       "minifaker": "patches/minifaker.patch",
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
-      "v-code-diff": "patches/v-code-diff.patch"
+      "v-code-diff": "patches/v-code-diff.patch",
+      "@mistralai/mistralai": "patches/@mistralai__mistralai.patch"
     }
   }
 }

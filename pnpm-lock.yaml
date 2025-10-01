@@ -214,6 +214,9 @@ patchedDependencies:
   '@lezer/highlight':
     hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
     path: patches/@lezer__highlight.patch
+  '@mistralai/mistralai':
+    hash: 3b2f0d598d51235411bc31d30808c6b88b5627a9ec03186a90c0e823445381cc
+    path: patches/@mistralai__mistralai.patch
   '@types/express-serve-static-core@5.0.6':
     hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
     path: patches/@types__express-serve-static-core@5.0.6.patch
@@ -20078,7 +20081,7 @@ snapshots:
   '@langchain/mistralai@0.2.1(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(zod@3.25.67)':
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      '@mistralai/mistralai': 1.3.4(zod@3.25.67)
+      '@mistralai/mistralai': 1.3.4(patch_hash=3b2f0d598d51235411bc31d30808c6b88b5627a9ec03186a90c0e823445381cc)(zod@3.25.67)
       uuid: 10.0.0
     transitivePeerDependencies:
       - zod
@@ -20230,7 +20233,7 @@ snapshots:
 
   '@miragejs/pretender-node-polyfill@0.1.2': {}
 
-  '@mistralai/mistralai@1.3.4(zod@3.25.67)':
+  '@mistralai/mistralai@1.3.4(patch_hash=3b2f0d598d51235411bc31d30808c6b88b5627a9ec03186a90c0e823445381cc)(zod@3.25.67)':
     dependencies:
       zod: 3.25.67
 

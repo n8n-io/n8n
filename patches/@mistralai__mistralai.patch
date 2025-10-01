@@ -1,0 +1,61 @@
+diff --git a/models/components/contentchunk.js b/models/components/contentchunk.js
+index c1ff8b21051f6ca96df8caf2d1564ebbd695327e..1a6b9205d429ef050741dfdada76a1e6fae6d60d 100644
+--- a/models/components/contentchunk.js
++++ b/models/components/contentchunk.js	
+@@ -40,6 +40,7 @@ exports.ContentChunk$inboundSchema = z.union([
+     referencechunk_js_1.ReferenceChunk$inboundSchema.and(z.object({ type: z.literal("reference") }).transform((v) => ({
+         type: v.type,
+     }))),
++     z.object({ type: z.literal("thinking") }).passthrough(),
+ ]);
+ /** @internal */
+ exports.ContentChunk$outboundSchema = z.union([
+@@ -50,6 +51,7 @@ exports.ContentChunk$outboundSchema = z.union([
+     referencechunk_js_1.ReferenceChunk$outboundSchema.and(z.object({ type: z.literal("reference") }).transform((v) => ({
+         type: v.type,
+     }))),
++     z.object({ type: z.literal("thinking") }).passthrough(),
+ ]);
+ /**
+  * @internal
+diff --git a/src/models/components/contentchunk.ts b/src/models/components/contentchunk.ts
+index 7825e9d8ba419fdc1d68704fc36f7d548f4e129c..d0053e2f514392f3b5904e525e64b411497de2e6 100644
+--- a/src/models/components/contentchunk.ts
++++ b/src/models/components/contentchunk.ts	
+@@ -25,7 +25,8 @@ import {
+ export type ContentChunk =
+   | (ImageURLChunk & { type: "image_url" })
+   | (TextChunk & { type: "text" })
+-  | (ReferenceChunk & { type: "reference" });
++  | (ReferenceChunk & { type: "reference" })
++  | ({ type: "thinking" } & Record<string, unknown>); 
+ 
+ /** @internal */
+ export const ContentChunk$inboundSchema: z.ZodType<
+@@ -46,13 +47,15 @@ export const ContentChunk$inboundSchema: z.ZodType<
+       type: v.type,
+     })),
+   ),
++  z.object({ type: z.literal("thinking") }).passthrough(),
+ ]);
+ 
+ /** @internal */
+ export type ContentChunk$Outbound =
+   | (ImageURLChunk$Outbound & { type: "image_url" })
+   | (TextChunk$Outbound & { type: "text" })
+-  | (ReferenceChunk$Outbound & { type: "reference" });
++  | (ReferenceChunk$Outbound & { type: "reference" })
++  | ({ type: "thinking" } & Record<string, unknown>); 
+ 
+ /** @internal */
+ export const ContentChunk$outboundSchema: z.ZodType<
+@@ -72,7 +75,9 @@ export const ContentChunk$outboundSchema: z.ZodType<
+     z.object({ type: z.literal("reference") }).transform((v) => ({
+       type: v.type,
+     })),
++    
+   ),
++  z.object({ type: z.literal("thinking") }).passthrough(),
+ ]);
+ 
+ /**
