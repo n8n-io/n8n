@@ -1,17 +1,16 @@
 {
-	"name": "Mindee Test Workflow enqueueAndGetInference",
+	"name": "Mindee Enqueue and Get uploaded document",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-304, -80],
-			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"position": [-224, 0],
+			"id": "d3253fe4-af4a-41f3-a0c2-492f9d587d2d",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
-				"operation": "enqueueAndGetInference",
 				"modelId": {
 					"__rl": true,
 					"value": "87654321-4321-4321-4321-CBA987654321",
@@ -21,9 +20,26 @@
 			},
 			"type": "n8n-nodes-base.mindeeV2",
 			"typeVersion": 1,
-			"position": [176, -80],
-			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
-			"name": "Upload a document and get the result",
+			"position": [208, 0],
+			"id": "ef84ac78-6df6-4ea7-837f-5058112c7ab5",
+			"name": "Upload a document",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getInference",
+				"jobId": "12345678-1234-1234-1234-123456789ABC"
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "a35fcf56-35c8-4c35-bbe0-774068ca325a",
+			"name": "Get result from an uploaded document",
 			"credentials": {
 				"mindeeV2Api": {
 					"id": "testIdMindeeAPI",
@@ -38,8 +54,8 @@
 			},
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [-96, -80],
-			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"position": [-16, 0],
+			"id": "82c1c781-ebc6-4750-8ba5-7b30a51d1773",
 			"name": "HTTP Request"
 		}
 	],
@@ -56,11 +72,22 @@
 				]
 			]
 		},
+		"Upload a document": {
+			"main": [
+				[
+					{
+						"node": "Get result from an uploaded document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
 		"HTTP Request": {
 			"main": [
 				[
 					{
-						"node": "Upload a document and get the result",
+						"node": "Upload a document",
 						"type": "main",
 						"index": 0
 					}
@@ -72,11 +99,11 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "150e8597-78e7-4bc8-85b0-81a5f75e64ec",
+	"versionId": "865581c2-e5eb-480e-acdd-34751db18c58",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e0c08fe50a944235a7d16d1676bab14791196afa3348d9530be465241cbf6b09"
 	},
-	"id": "tgt9Smqa1iT3cU96",
+	"id": "Rc8EGsL9i5N2eO4K",
 	"tags": []
 }
