@@ -9,6 +9,7 @@ import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/co
 import { useTelemetry } from '@/composables/useTelemetry';
 
 import { N8nButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import Modal from '@/components/Modal.vue';
 type Props = {
 	modalName: string;
 };

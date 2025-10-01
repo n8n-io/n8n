@@ -13,6 +13,7 @@ import { useTimestamp } from '@vueuse/core';
 import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;

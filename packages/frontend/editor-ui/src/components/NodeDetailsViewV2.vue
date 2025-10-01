@@ -47,6 +47,7 @@ import TriggerPanel from './TriggerPanel.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];

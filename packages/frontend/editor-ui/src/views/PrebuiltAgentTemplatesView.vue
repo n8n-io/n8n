@@ -8,6 +8,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { N8nCard, N8nHeading, N8nLink, N8nNodeCreatorNode } from '@n8n/design-system';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 const nodeTypesStore = useNodeTypesStore();
 
 const i18n = useI18n();

@@ -5,6 +5,7 @@ import { type Project, ProjectTypes } from '@/types/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;

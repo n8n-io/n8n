@@ -143,6 +143,7 @@ import { useExperimentalNdvStore } from '@/components/canvas/experimental/experi
 import { useParentFolder } from '@/composables/useParentFolder';
 
 import { N8nCallout } from '@n8n/design-system';
+
 defineOptions({
 	name: 'NodeView',
 });

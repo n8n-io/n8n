@@ -2,6 +2,7 @@
 import type { NodeIconSource } from '@/utils/nodeIcon';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 import {
 	N8nIcon,

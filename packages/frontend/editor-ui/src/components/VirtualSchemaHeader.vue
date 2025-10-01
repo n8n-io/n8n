@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { SCHEMA_PREVIEW_DOCS_URL } from '@/constants';
 
 import { N8nIcon, N8nLink } from '@n8n/design-system';
+import { I18nT } from 'vue-i18n';
 const props = defineProps<{
 	title: string;
 	collapsable: boolean;
