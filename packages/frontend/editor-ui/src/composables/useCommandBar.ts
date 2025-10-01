@@ -16,10 +16,12 @@ import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_STORES, DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
+	const workflowStore = useWorkflowsStore();
 	const router = useRouter();
 	const route = useRoute();
 	const postHog = usePostHog();
@@ -138,7 +140,8 @@ export function useCommandBar() {
 	const context = computed(() => {
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
-				return i18n.baseText('commandBar.sections.workflow');
+			case VIEWS.NEW_WORKFLOW:
+				return i18n.baseText('commandBar.sections.workflow') + ' · ' + workflowStore.workflow.name;
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
 				return i18n.baseText('commandBar.sections.workflows');
