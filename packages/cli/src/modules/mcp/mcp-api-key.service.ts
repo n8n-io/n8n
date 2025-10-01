@@ -1,12 +1,12 @@
 import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { randomUUID } from 'crypto';
 import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
-import { randomUUID } from 'crypto';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -36,19 +36,17 @@ export class McpServerApiKeyService {
 			jti: randomUUID(),
 		});
 
-		await manager.insert(
-			ApiKey,
-			// @ts-ignore CAT-957
-			this.apiKeyRepository.create({
-				userId: user.id,
-				apiKey,
-				audience: API_KEY_AUDIENCE,
-				scopes: [],
-				label: API_KEY_LABEL,
-			}),
-		);
+		const apiKeyEntity = this.apiKeyRepository.create({
+			userId: user.id,
+			apiKey,
+			audience: API_KEY_AUDIENCE,
+			scopes: [],
+			label: API_KEY_LABEL,
+		});
 
-		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
+		await manager.insert(ApiKey, apiKeyEntity);
+
+		return await manager.findOneByOrFail(ApiKey, { apiKey });
 	}
 
 	async findServerApiKeyForUser(user: User, { redact = true } = {}) {
@@ -156,24 +154,19 @@ export class McpServerApiKeyService {
 	}
 
 	async getOrCreateApiKey(user: User) {
-		return await this.apiKeyRepository.manager.transaction(async (trx) => {
-			// Check if key exists within the transaction
-			const apiKey = await trx.findOne(ApiKey, {
-				where: {
-					userId: user.id,
-					audience: API_KEY_AUDIENCE,
-				},
-			});
-
-			// If key exists, return it (with redaction)
-			if (apiKey) {
-				apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
-				return apiKey;
-			}
-
-			// No key exists, create one within the same transaction
-			return await this.createMcpServerApiKey(user, trx);
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: {
+				userId: user.id,
+				audience: API_KEY_AUDIENCE,
+			},
 		});
+
+		if (apiKey) {
+			apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
+			return apiKey;
+		}
+
+		return await this.createMcpServerApiKey(user);
 	}
 
 	async rotateMcpServerApiKey(user: User) {

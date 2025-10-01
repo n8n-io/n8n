@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ApiKey, AuthenticatedRequest } from '@n8n/db';
+import { type ApiKey, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
@@ -7,8 +7,6 @@ import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const createReq = (body: unknown): AuthenticatedRequest =>
 	({ body }) as unknown as AuthenticatedRequest;
@@ -35,21 +33,7 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: false });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
-
-			const res = new Response();
-			const result = await controller.updateSettings(req, res, dto);
-
-			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
-			expect(result).toEqual({ mcpAccessEnabled: false });
-		});
-
-		test('disables MCP access correctly for admins', async () => {
-			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_ADMIN_ROLE.slug);
-			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
-			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(undefined);
 
 			const res = new Response();
 			const result = await controller.updateSettings(req, res, dto);
@@ -63,13 +47,32 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: true });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: true });
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = new Response();
 			const result = await controller.updateSettings(req, res, dto);
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('handles module registry refresh failure gracefully', async () => {
+			const req = createReq({ mcpAccessEnabled: true });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+			const error = new Error('Registry sync failed');
+
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockRejectedValue(error);
+
+			const res = new Response();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(logger.warn).toHaveBeenCalledWith('Failed to sync MCP settings to module registry', {
+				cause: 'Registry sync failed',
+			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
@@ -88,27 +91,13 @@ describe('McpSettingsController', () => {
 			createdAt: new Date(),
 		} as unknown as ApiKey;
 
-		test('returns existing API key when found', async () => {
+		test('returns API key from getOrCreateApiKey', async () => {
 			const req = { user: mockUser } as AuthenticatedRequest;
-			mcpServerApiKeyService.findServerApiKeyForUser.mockResolvedValue(mockApiKey);
+			mcpServerApiKeyService.getOrCreateApiKey.mockResolvedValue(mockApiKey);
 
 			const result = await controller.getApiKeyForMcpServer(req);
 
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
-			expect(mcpServerApiKeyService.createMcpServerApiKey).not.toHaveBeenCalled();
-			expect(result).toEqual(mockApiKey);
-		});
-
-		test('creates and returns new API key when none exists', async () => {
-			const req = { user: mockUser } as AuthenticatedRequest;
-
-			mcpServerApiKeyService.findServerApiKeyForUser.mockResolvedValue(null);
-			mcpServerApiKeyService.createMcpServerApiKey.mockResolvedValue(mockApiKey);
-
-			const result = await controller.getApiKeyForMcpServer(req);
-
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
-			expect(mcpServerApiKeyService.createMcpServerApiKey).toHaveBeenCalledWith(mockUser);
+			expect(mcpServerApiKeyService.getOrCreateApiKey).toHaveBeenCalledWith(mockUser);
 			expect(result).toEqual(mockApiKey);
 		});
 	});
@@ -122,36 +111,15 @@ describe('McpSettingsController', () => {
 			createdAt: new Date(),
 		} as unknown as ApiKey;
 
-		test('successfully rotates existing API key', async () => {
+		test('successfully rotates API key', async () => {
 			const req = { user: mockUser } as AuthenticatedRequest;
 
-			mcpServerApiKeyService.findServerApiKeyForUser.mockResolvedValue(mockApiKey);
-			mcpServerApiKeyService.deleteApiKeyForUser.mockResolvedValue(undefined);
-			mcpServerApiKeyService.createMcpServerApiKey.mockResolvedValue(mockApiKey);
+			mcpServerApiKeyService.rotateMcpServerApiKey.mockResolvedValue(mockApiKey);
 
 			const result = await controller.rotateApiKeyForMcpServer(req);
 
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
-			expect(mcpServerApiKeyService.deleteApiKeyForUser).toHaveBeenCalledWith(mockUser);
-			expect(mcpServerApiKeyService.createMcpServerApiKey).toHaveBeenCalledWith(mockUser);
+			expect(mcpServerApiKeyService.rotateMcpServerApiKey).toHaveBeenCalledWith(mockUser);
 			expect(result).toEqual(mockApiKey);
-		});
-
-		test('throws BadRequestError when no existing API key to rotate', async () => {
-			const req = { user: mockUser } as AuthenticatedRequest;
-
-			mcpServerApiKeyService.findServerApiKeyForUser.mockResolvedValue(null);
-
-			await expect(controller.rotateApiKeyForMcpServer(req)).rejects.toBeInstanceOf(
-				BadRequestError,
-			);
-			await expect(controller.rotateApiKeyForMcpServer(req)).rejects.toThrow(
-				'No existing MCP server API key to rotate',
-			);
-
-			expect(mcpServerApiKeyService.findServerApiKeyForUser).toHaveBeenCalledWith(mockUser);
-			expect(mcpServerApiKeyService.deleteApiKeyForUser).not.toHaveBeenCalled();
-			expect(mcpServerApiKeyService.createMcpServerApiKey).not.toHaveBeenCalled();
 		});
 	});
 });
