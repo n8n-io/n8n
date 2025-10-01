@@ -6,12 +6,24 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import type { DateValue } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
+import type { InsightsDateFilterDto, InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, defineAsyncComponent, onBeforeMount, onMounted, ref, watch } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	onBeforeMount,
+	onMounted,
+	ref,
+	shallowRef,
+	watch,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES, TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
-import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
+import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
+// import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
+import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 const InsightsPaywall = defineAsyncComponent(
@@ -67,24 +79,60 @@ const sortTableBy = ref([{ id: props.insightType, desc: true }]);
 
 const upgradeModalVisible = ref(false);
 const selectedDateRange = ref<InsightsDateRange['key']>('week');
-const granularity = computed(
-	() =>
-		insightsStore.dateRanges.find((item) => item.key === selectedDateRange.value)?.granularity ??
-		'day',
-);
+const granularity = computed(() => {
+	const { start, end } = range.value;
+	if (!start || !end) return 'day';
+
+	const comparison = end.compare(start);
+
+	if (comparison <= 0) return 'hour';
+	if (comparison <= 30) return 'day';
+	return 'week';
+});
 const selectedProject = ref<ProjectSharingData | null>(null);
+
+const maxDate = today(getLocalTimeZone());
+
+const maxLicensedDate =
+	insightsStore.dateRanges.toReversed().find((dateRange) => dateRange.licensed)?.key ?? 'week';
+
+const timeRangeLabels = getTimeRangeLabels();
+const presets = computed(() =>
+	insightsStore.dateRanges.map((item) => {
+		return {
+			value: timeRangeMappings[item.key],
+			label: timeRangeLabels[item.key],
+			disabled: !item.licensed,
+		};
+	}),
+);
+
+const maximumValue = shallowRef(maxDate.copy());
+const minimumValue = shallowRef(
+	maxDate.copy().subtract({ days: timeRangeMappings[maxLicensedDate] }),
+);
+
+const range = shallowRef<{
+	start: DateValue;
+	end: DateValue;
+}>({
+	start: maxDate.copy(),
+	end: maxDate.copy(),
+});
 
 const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 25,
 	sortBy,
-	dateRange = selectedDateRange.value,
+	startDate,
+	endDate,
 	projectId = selectedProject.value?.id,
 }: {
 	page?: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
-	dateRange?: InsightsDateRange['key'];
+	startDate?: InsightsDateFilterDto['startDate'];
+	endDate?: InsightsDateFilterDto['endDate'];
 	projectId?: string;
 }) => {
 	const skip = page * itemsPerPage;
@@ -96,7 +144,8 @@ const fetchPaginatedTableData = ({
 		skip,
 		take,
 		sortBy: sortKey,
-		dateRange,
+		startDate,
+		endDate,
 		projectId,
 	});
 };
@@ -112,25 +161,31 @@ function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TI
 }
 
 watch(
-	() => [props.insightType, selectedDateRange.value, selectedProject.value],
+	() => [props.insightType, selectedDateRange.value, selectedProject.value, range.value],
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
+		const startDate = range.value.start?.toDate(getLocalTimeZone()).toISOString();
+		const endDate = range.value.end?.toDate(getLocalTimeZone()).toISOString();
+
 		if (insightsStore.isSummaryEnabled) {
 			void insightsStore.summary.execute(0, {
-				dateRange: selectedDateRange.value,
+				startDate,
+				endDate,
 				projectId: selectedProject.value?.id,
 			});
 		}
 
 		void insightsStore.charts.execute(0, {
-			dateRange: selectedDateRange.value,
+			startDate,
+			endDate,
 			projectId: selectedProject.value?.id,
 		});
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
-				dateRange: selectedDateRange.value,
+				startDate,
+				endDate,
 				projectId: selectedProject.value?.id,
 			});
 		}
@@ -167,11 +222,11 @@ onBeforeMount(async () => {
 					@clear="selectedProject = null"
 				/>
 
-				<InsightsDateRangeSelect
-					:model-value="selectedDateRange"
-					style="width: 173px"
-					data-test-id="range-select"
-					@update:model-value="handleTimeChange"
+				<InsightsDataRangePicker
+					v-model="range"
+					:max-value="maximumValue"
+					:min-value="minimumValue"
+					:presets
 				/>
 
 				<InsightsUpgradeModal v-model="upgradeModalVisible" />
@@ -202,11 +257,14 @@ onBeforeMount(async () => {
 						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
 					</div>
 					<div :class="$style.insightsChartWrapper">
+						{{ granularity }}
 						<component
 							:is="chartComponents[props.insightType]"
 							:type="props.insightType"
 							:data="insightsStore.charts.state"
 							:granularity
+							:start-date="range.start.toString()"
+							:end-date="range.end.toString()"
 						/>
 					</div>
 					<div :class="$style.insightsTableWrapper">
@@ -319,6 +377,39 @@ onBeforeMount(async () => {
 	min-width: 200px;
 	:global(.el-input--suffix .el-input__inner) {
 		padding-right: 26px;
+	}
+}
+
+.PresetButton {
+	background-color: transparent;
+	border: none;
+	transition-property:
+		color,
+		background-color,
+		border-color,
+		text-decoration-color,
+		fill,
+		stroke,
+		opacity,
+		box-shadow,
+		transform,
+		filter,
+		backdrop-filter,
+		-webkit-backdrop-filter;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 0.15s;
+	border-radius: 0.375rem;
+	padding-left: 0.75rem;
+	padding-right: 0.75rem;
+	padding-top: 0.5rem;
+	padding-bottom: 0.5rem;
+	text-align: left;
+	font-size: 13px;
+	cursor: pointer;
+	color: var(--color-text-base);
+	font-weight: 400;
+	&:hover {
+		background-color: var(--color-foreground-light);
 	}
 }
 </style>

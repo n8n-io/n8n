@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { useI18n } from '@n8n/i18n';
 import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
+import { useI18n } from '@n8n/i18n';
 import { useCssVar } from '@vueuse/core';
 import type { ChartData } from 'chart.js';
 import { computed } from 'vue';
