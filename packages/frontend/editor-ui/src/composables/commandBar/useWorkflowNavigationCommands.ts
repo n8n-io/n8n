@@ -13,6 +13,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup, CommandBarItem } from './types';
+import { useTagsStore } from '@/stores/tags.store';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -31,6 +32,7 @@ export function useWorkflowNavigationCommands(options: {
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
+	const tagsStore = useTagsStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -53,15 +55,19 @@ export function useWorkflowNavigationCommands(options: {
 	const fetchWorkflowsImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
+			const trimmedLower = trimmed.toLowerCase();
 
 			// Find matching node types from available nodes
 			const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 			const visibleNodeTypes = nodeTypesStore.allNodeTypes;
 			const { mergedNodes } = generateMergedNodesAndActions(visibleNodeTypes, httpOnlyCredentials);
 			const matchedNodes = mergedNodes.filter(
-				(node) => node.displayName?.toLowerCase() === trimmed.toLowerCase(),
+				(node) => node.displayName?.toLowerCase() === trimmedLower,
 			);
 			const matchedNodeTypeNames = Array.from(new Set(matchedNodes.map((node) => node.name)));
+
+			// Check if search query matches any existing tag names
+			const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === trimmedLower);
 
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
@@ -77,7 +83,18 @@ export function useWorkflowNavigationCommands(options: {
 						})
 					: Promise.resolve([]);
 
-			const [byName, byNodeTypes] = await Promise.all([nameSearchPromise, nodeTypeSearchPromise]);
+			const tagSearchPromise = matchedTag
+				? workflowsStore.searchWorkflows({
+						tags: [matchedTag.name],
+						select: ['id', 'name', 'active', 'ownedBy', 'tags'],
+					})
+				: Promise.resolve([]);
+
+			const [byName, byNodeTypes, byTags] = await Promise.all([
+				nameSearchPromise,
+				nodeTypeSearchPromise,
+				tagSearchPromise,
+			]);
 
 			// Build keywords and node type maps for workflows found by node types
 			const keywordsMap = new Map<string, string[]>();
@@ -112,7 +129,7 @@ export function useWorkflowNavigationCommands(options: {
 			workflowMatchedNodeTypes.value = nodeTypesMap;
 
 			// Merge and dedupe by id
-			const merged = [...byName, ...byNodeTypes];
+			const merged = [...byName, ...byNodeTypes, ...byTags];
 			const uniqueById = Array.from(new Map(merged.map((w) => [w.id, w])).values());
 			workflowResults.value = orderResultByCurrentProjectFirst(uniqueById);
 		} catch {
@@ -148,7 +165,7 @@ export function useWorkflowNavigationCommands(options: {
 		workflow: IWorkflowDb,
 		includeOpenWorkflowPrefix: boolean,
 	): CommandBarItem => {
-		const keywords = workflowKeywords.value.get(workflow.id);
+		const keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
 		// Get node icon if this workflow matched by node type
@@ -163,11 +180,15 @@ export function useWorkflowNavigationCommands(options: {
 			}
 		}
 
+		if (workflow.tags && workflow.tags.length > 0) {
+			keywords.push(...workflow.tags.map((tag) => (typeof tag === 'string' ? tag : tag.name)));
+		}
+
 		return {
 			id: workflow.id,
 			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
 			section: i18n.baseText('commandBar.sections.workflows'),
-			...(keywords && keywords.length > 0 ? { keywords } : {}),
+			...(keywords.length > 0 ? { keywords } : {}),
 			...(icon ? { icon } : {}),
 			handler: () => {
 				const targetRoute = router.resolve({
@@ -256,6 +277,10 @@ export function useWorkflowNavigationCommands(options: {
 		}
 	}
 
+	async function initialize() {
+		await tagsStore.fetchAll();
+	}
+
 	return {
 		commands: workflowNavigationCommands,
 		handlers: {
@@ -263,5 +288,6 @@ export function useWorkflowNavigationCommands(options: {
 			onCommandBarNavigateTo,
 		},
 		isLoading,
+		initialize,
 	};
 }

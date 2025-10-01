@@ -12,4 +12,5 @@ export interface CommandGroup {
 	commands: ComputedRef<CommandBarItem[]>;
 	handlers?: CommandBarEventHandlers;
 	isLoading?: Ref<boolean>;
+	initialize?: () => Promise<void>;
 }
