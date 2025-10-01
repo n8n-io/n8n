@@ -69,6 +69,7 @@ export class McpServerApiKeyService {
 			where: {
 				apiKeys: {
 					apiKey,
+					audience: API_KEY_AUDIENCE,
 				},
 			},
 			relations: ['role'],
