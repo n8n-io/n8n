@@ -15,7 +15,7 @@ const ITEM_ID = {
 	ADD_NODE: 'add-node',
 	OPEN_NODE: 'open-node',
 	ADD_STICKY: 'add-sticky',
-};
+} as const;
 
 export function useNodeCommands(options: {
 	lastQuery: Ref<string>;
@@ -112,7 +112,7 @@ export function useNodeCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'plus',
 					},
 				},
 			},
@@ -126,7 +126,7 @@ export function useNodeCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'arrow-right',
+						icon: 'columns-3-cog',
 					},
 				},
 			},
@@ -141,7 +141,7 @@ export function useNodeCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'plus',
+						icon: 'sticky-note',
 					},
 				},
 			},

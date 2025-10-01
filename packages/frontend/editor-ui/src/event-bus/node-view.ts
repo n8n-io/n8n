@@ -20,6 +20,9 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to tidy up the canvas */
 	tidyUp: never;
+
+	/** Command to open import workflow from file picker */
+	importWorkflowFromFile: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

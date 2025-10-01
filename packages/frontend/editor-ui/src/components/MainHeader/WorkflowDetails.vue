@@ -58,7 +58,15 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { saveAs } from 'file-saver';
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -484,7 +492,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
-			importFileRef.value?.click();
+			onImportWorkflowFromFile();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
@@ -709,6 +717,18 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		});
 	}
 };
+
+const onImportWorkflowFromFile = () => {
+	importFileRef.value?.click();
+};
+
+onMounted(() => {
+	nodeViewEventBus.on('importWorkflowFromFile', onImportWorkflowFromFile);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('importWorkflowFromFile', onImportWorkflowFromFile);
+});
 </script>
 
 <template>
