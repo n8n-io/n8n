@@ -118,8 +118,6 @@ class TaskRunner:
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()
 
-            except websockets.ConnectionClosedOK:
-                pass
             except Exception:
                 raise WebsocketConnectionError(self.task_broker_uri)
 
