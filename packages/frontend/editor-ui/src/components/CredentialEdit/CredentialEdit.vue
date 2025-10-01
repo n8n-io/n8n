@@ -53,7 +53,13 @@ import { useI18n } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
-import { N8nIconButton, N8nInlineTextEdit, N8nText, type IMenuItem } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nMenuItem,
+	N8nText,
+	type IMenuItem,
+} from '@n8n/design-system';
 
 type Props = {
 	modalName: string;

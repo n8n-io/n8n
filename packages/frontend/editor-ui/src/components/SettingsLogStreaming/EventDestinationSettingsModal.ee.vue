@@ -55,6 +55,7 @@ import {
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nInputLabel,
+	N8nMenuItem,
 	N8nOption,
 	N8nSelect,
 	N8nText,
