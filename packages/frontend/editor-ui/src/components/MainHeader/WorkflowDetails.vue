@@ -738,6 +738,7 @@ onMounted(() => {
 	nodeViewEventBus.on('archiveWorkflow', handleArchiveWorkflow);
 	nodeViewEventBus.on('unarchiveWorkflow', handleUnarchiveWorkflow);
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 });
 
 onBeforeUnmount(() => {
@@ -745,6 +746,7 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('archiveWorkflow', handleArchiveWorkflow);
 	nodeViewEventBus.off('unarchiveWorkflow', handleUnarchiveWorkflow);
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
+	nodeViewEventBus.off('renameWorkflow', onNameToggle);
 });
 </script>
 

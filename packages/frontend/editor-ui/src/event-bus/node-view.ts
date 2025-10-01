@@ -32,6 +32,9 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to delete current workflow */
 	deleteWorkflow: never;
+
+	/** Command to rename current workflow */
+	renameWorkflow: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();
