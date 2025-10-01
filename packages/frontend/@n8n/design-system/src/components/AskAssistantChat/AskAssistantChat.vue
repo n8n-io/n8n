@@ -112,13 +112,11 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
 			let titleSource = lastMessage;
 
-			// Priority: Use last message's status unless it's running and we have completed/error
-			// This ensures completed messages don't get stuck showing as running
-			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
+			// Check if we have running messages - if so, show the last running one and use its titles
 			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
+			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
 
-			// If the last message is completed or error, use it (don't show running)
-			// Only show running if the last message is actually running
+			// if the last message is running count as running, otherwise its completed or errored
 			if (lastMessage.status === 'running' && runningMessages.length > 0) {
 				const lastRunning = runningMessages[runningMessages.length - 1];
 				titleSource = lastRunning;
@@ -126,18 +124,17 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 				titleSource = errorMessage;
 			}
 
-			// Combine all updates from all tool messages
+			// Combine all updates from all messages in the group
 			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
 
-			// Create collapsed message with title logic based on final status
+			// Create collapsed message using last message as base, but with titles from titleSource
 			const collapsedMessage: ChatUI.ToolMessage = {
 				...lastMessage,
-				status: titleSource.status,
-				updates: combinedUpdates,
 				displayTitle: titleSource.displayTitle,
-				// Only set customDisplayTitle if status is running (for example "Adding X node")
 				customDisplayTitle:
 					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
+				status: titleSource.status,
+				updates: combinedUpdates,
 			};
 
 			result.push(collapsedMessage);
