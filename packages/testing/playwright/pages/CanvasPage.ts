@@ -468,6 +468,8 @@ export class CanvasPage extends BasePage {
 	}
 
 	async selectAll(): Promise<void> {
+		// Establish proper selection context first
+		await this.getCanvasNodes().first().click();
 		await this.page.keyboard.press('ControlOrMeta+a');
 	}
 
@@ -753,6 +755,61 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-plus-button');
 	}
 
+	async hitUndo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+z');
+	}
+
+	async hitRedo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+	}
+
+	async hitPaste(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+V');
+	}
+
+	async getNodePosition(nodeName: string): Promise<{ x: number; y: number }> {
+		const node = this.nodeByName(nodeName);
+		const boundingBox = await node.boundingBox();
+		if (!boundingBox) throw new Error(`Node ${nodeName} not found or not visible`);
+		return { x: boundingBox.x, y: boundingBox.y };
+	}
+
+	async dragNodeToRelativePosition(
+		nodeName: string,
+		deltaX: number,
+		deltaY: number,
+	): Promise<void> {
+		const node = this.nodeByName(nodeName);
+		const currentBox = await node.boundingBox();
+		if (!currentBox) throw new Error(`Node ${nodeName} not found`);
+
+		// Calculate center of node for drag start
+		const startX = currentBox.x + currentBox.width / 2;
+		const startY = currentBox.y + currentBox.height / 2;
+
+		// Use mouse events for precise control
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
+	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Delete').click();
+	}
+
+	async hitDeleteAllNodes(): Promise<void> {
+		await this.selectAll();
+		await this.page.keyboard.press('Backspace');
+	}
+
+	getNodeInputHandles(nodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
+		);
+  }
+  
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
 	}

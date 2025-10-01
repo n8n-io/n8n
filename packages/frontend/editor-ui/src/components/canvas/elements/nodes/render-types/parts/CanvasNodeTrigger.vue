@@ -6,10 +6,10 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 const {
 	name,
 	type,

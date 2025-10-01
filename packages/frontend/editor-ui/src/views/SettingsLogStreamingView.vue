@@ -16,6 +16,8 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { ElCol, ElRow, ElSwitch } from 'element-plus';
+import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();

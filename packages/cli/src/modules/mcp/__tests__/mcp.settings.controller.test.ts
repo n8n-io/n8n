@@ -45,6 +45,20 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
+		test('disables MCP access correctly for admins', async () => {
+			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_ADMIN_ROLE.slug);
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
+
+			const res = new Response();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(result).toEqual({ mcpAccessEnabled: false });
+		});
+
 		test('enables MCP access correctly', async () => {
 			const req = createReq({ mcpAccessEnabled: true });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });

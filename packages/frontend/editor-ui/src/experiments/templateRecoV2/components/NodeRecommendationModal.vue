@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Modal from '@/components/Modal.vue';
 import { EXPERIMENT_TEMPLATE_RECO_V2_KEY, TEMPLATES_URLS } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -7,7 +8,9 @@ import { computed, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nRadioButtons } from '@n8n/design-system';
 
 const props = defineProps<{
 	modalName: string;
