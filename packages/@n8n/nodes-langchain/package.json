@@ -228,7 +228,7 @@
     "pdf-parse": "1.1.1",
     "pg": "8.12.0",
     "proxy-from-env": "^1.1.0",
-    "redis": "4.6.12",
+    "redis": "4.6.14",
     "sanitize-html": "2.12.1",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
