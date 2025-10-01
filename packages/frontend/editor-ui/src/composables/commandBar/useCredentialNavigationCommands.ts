@@ -167,7 +167,10 @@ export function useCredentialNavigationCommands(options: {
 		lastQuery.value = query;
 
 		const trimmed = query.trim();
-		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL) {
+		const isInCredentialParent = activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+
+		if (isInCredentialParent || isRootWithQuery) {
 			void fetchCredentials(trimmed);
 		}
 	}

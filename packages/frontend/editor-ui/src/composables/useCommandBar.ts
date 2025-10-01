@@ -138,7 +138,6 @@ export function useCommandBar() {
 	});
 
 	const isLoading = computed(() => {
-		console.log('activeCommandGroups.value', activeCommandGroups.value);
 		return activeCommandGroups.value.some((group) => group.isLoading?.value === true);
 	});
 

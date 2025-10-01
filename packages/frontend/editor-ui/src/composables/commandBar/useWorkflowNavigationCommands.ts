@@ -187,7 +187,10 @@ export function useWorkflowNavigationCommands(options: {
 		lastQuery.value = query;
 
 		const trimmed = query.trim();
-		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_WORKFLOW) {
+		const isInWorkflowParent = activeNodeId.value === ITEM_ID.OPEN_WORKFLOW;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+
+		if (isInWorkflowParent || isRootWithQuery) {
 			void fetchWorkflows(trimmed);
 		}
 	}

@@ -164,7 +164,10 @@ export function useDataTableNavigationCommands(options: {
 		lastQuery.value = query;
 
 		const trimmed = query.trim();
-		if (trimmed.length > 2 || activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE) {
+		const isInDataTableParent = activeNodeId.value === ITEM_ID.OPEN_DATA_TABLE;
+		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
+
+		if (isInDataTableParent || isRootWithQuery) {
 			void fetchDataTables(trimmed);
 		}
 	}
