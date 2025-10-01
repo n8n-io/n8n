@@ -23,7 +23,11 @@ const handleSelect = () => {
 		@click.stop="handleSelect"
 	>
 		<div v-if="item.icon" :class="$style.icon">
-			<span v-if="item.icon && 'html' in item.icon" v-n8n-html="item.icon.html"></span>
+			<span
+				v-if="item.icon && 'html' in item.icon"
+				v-n8n-html="item.icon.html"
+				:class="$style.iconHtml"
+			></span>
 			<component
 				:is="item.icon.component"
 				v-else-if="item.icon && 'component' in item.icon"
@@ -83,6 +87,14 @@ const handleSelect = () => {
 	width: var(--spacing-l);
 	height: var(--spacing-l);
 	flex-shrink: 0;
+}
+
+.iconHtml {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
 }
 
 .content {

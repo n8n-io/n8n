@@ -8,29 +8,8 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { canvasEventBus } from '@/event-bus/canvas';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
-import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
-import type { SimplifiedNodeType } from '@/Interface';
+import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup } from './types';
-
-function getIconSource(nodeType: SimplifiedNodeType | null, baseUrl: string) {
-	if (!nodeType) return {};
-	const iconUrl = getNodeIconUrl(nodeType);
-	if (iconUrl) {
-		return { path: baseUrl + iconUrl };
-	}
-	// Otherwise, extract it from icon prop
-	if (nodeType.icon) {
-		const icon = getNodeIcon(nodeType);
-		if (icon) {
-			const [type, path] = icon.split(':');
-			if (type === 'file') {
-				return {};
-			}
-			return { icon: path };
-		}
-	}
-	return {};
-}
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',

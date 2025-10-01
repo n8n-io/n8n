@@ -10,6 +10,8 @@ import { VIEWS } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup, CommandBarItem } from './types';
 
 const ITEM_ID = {
@@ -28,6 +30,7 @@ export function useWorkflowNavigationCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
+	const rootStore = useRootStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -35,6 +38,8 @@ export function useWorkflowNavigationCommands(options: {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowResults = ref<IWorkflowDb[]>([]);
+	const workflowKeywords = ref<Map<string, string[]>>(new Map());
+	const workflowMatchedNodeTypes = ref<Map<string, string>>(new Map());
 	const isLoading = ref(false);
 
 	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
@@ -48,35 +53,63 @@ export function useWorkflowNavigationCommands(options: {
 	const fetchWorkflowsImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
-			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-			});
 
 			// Find matching node types from available nodes
 			const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 			const visibleNodeTypes = nodeTypesStore.allNodeTypes;
 			const { mergedNodes } = generateMergedNodesAndActions(visibleNodeTypes, httpOnlyCredentials);
-			const trimmedLower = trimmed.toLowerCase();
-			const matchedNodeTypeNames = Array.from(
-				new Set(
-					mergedNodes
-						.filter(
-							(node) =>
-								node.displayName?.toLowerCase().includes(trimmedLower) ||
-								node.name?.toLowerCase().includes(trimmedLower),
-						)
-						.map((node) => node.name),
-				),
+			const matchedNodes = mergedNodes.filter(
+				(node) => node.displayName?.toLowerCase() === trimmed.toLowerCase(),
 			);
+			const matchedNodeTypeNames = Array.from(new Set(matchedNodes.map((node) => node.name)));
+
+			// Search workflows by name with minimal fields
+			const nameSearchPromise = workflowsStore.searchWorkflows({
+				name: trimmed,
+				select: ['id', 'name', 'active', 'ownedBy'],
+			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
-							// nodeTypes: matchedNodeTypeNames, TODO
+							nodeTypes: matchedNodeTypeNames,
+							select: ['id', 'name', 'active', 'nodes', 'ownedBy'],
 						})
 					: Promise.resolve([]);
 
 			const [byName, byNodeTypes] = await Promise.all([nameSearchPromise, nodeTypeSearchPromise]);
+
+			// Build keywords and node type maps for workflows found by node types
+			const keywordsMap = new Map<string, string[]>();
+			const nodeTypesMap = new Map<string, string>();
+			const matchedNodeDisplayNames = new Map(
+				matchedNodes.map((node) => [node.name, node.displayName]),
+			);
+
+			byNodeTypes.forEach((workflow) => {
+				if (!workflow.nodes) return;
+
+				const matchedWorkflowNodes = workflow.nodes.filter((node) =>
+					matchedNodeTypeNames.includes(node.type),
+				);
+
+				if (matchedWorkflowNodes.length === 0) return;
+
+				// Store the first matched node type for icon display
+				nodeTypesMap.set(workflow.id, matchedWorkflowNodes[0].type);
+
+				// Store all matched display names as keywords
+				const matchedDisplayNames = matchedWorkflowNodes
+					.map((node) => matchedNodeDisplayNames.get(node.type))
+					.filter((name): name is string => !!name);
+
+				if (matchedDisplayNames.length > 0) {
+					keywordsMap.set(workflow.id, matchedDisplayNames);
+				}
+			});
+
+			workflowKeywords.value = keywordsMap;
+			workflowMatchedNodeTypes.value = nodeTypesMap;
 
 			// Merge and dedupe by id
 			const merged = [...byName, ...byNodeTypes];
@@ -84,6 +117,8 @@ export function useWorkflowNavigationCommands(options: {
 			workflowResults.value = orderResultByCurrentProjectFirst(uniqueById);
 		} catch {
 			workflowResults.value = [];
+			workflowKeywords.value.clear();
+			workflowMatchedNodeTypes.value.clear();
 		} finally {
 			isLoading.value = false;
 		}
@@ -113,10 +148,27 @@ export function useWorkflowNavigationCommands(options: {
 		workflow: IWorkflowDb,
 		includeOpenWorkflowPrefix: boolean,
 	): CommandBarItem => {
+		const keywords = workflowKeywords.value.get(workflow.id);
+		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
+
+		// Get node icon if this workflow matched by node type
+		let icon: CommandBarItem['icon'] | undefined;
+		if (matchedNodeType) {
+			const nodeType = nodeTypesStore.getNodeType(matchedNodeType);
+			const src = getIconSource(nodeType, rootStore.baseUrl);
+			if (src?.path) {
+				icon = {
+					html: `<img src="${src.path}" style="width: 100%; height: 100%; object-fit: contain;" />`,
+				};
+			}
+		}
+
 		return {
 			id: workflow.id,
 			title: getWorkflowTitle(workflow, includeOpenWorkflowPrefix),
 			section: i18n.baseText('commandBar.sections.workflows'),
+			...(keywords && keywords.length > 0 ? { keywords } : {}),
+			...(icon ? { icon } : {}),
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
@@ -199,6 +251,8 @@ export function useWorkflowNavigationCommands(options: {
 			void fetchWorkflowsImpl('');
 		} else if (to === null) {
 			workflowResults.value = [];
+			workflowKeywords.value.clear();
+			workflowMatchedNodeTypes.value.clear();
 		}
 	}
 

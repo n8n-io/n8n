@@ -660,18 +660,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
+		select,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
+		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
+			undefined,
+			select,
 		);
 		return workflows;
 	}
@@ -1094,7 +1101,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.pinData = {};
 		}
 
-		const { [nodeName]: _, ...pinData } = workflow.value.pinData as IPinData;
+		const { [nodeName]: _, ...pinData } = workflow.value.pinData;
 		workflow.value.pinData = pinData;
 		workflowObject.value.setPinData(pinData);
 
@@ -1632,7 +1639,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
 		}
 
-		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
+		const tasksData = workflowExecutionData.value.data.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
 			workflowExecutionResultDataLastUpdate.value = Date.now();
