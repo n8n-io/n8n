@@ -1,7 +1,8 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoCredentialReuseRule } from './no-credential-reuse.js';
-import { vi } from 'vitest';
 import * as fs from 'node:fs';
+import { vi } from 'vitest';
+
+import { NoCredentialReuseRule } from './no-credential-reuse.js';
 
 const ruleTester = new RuleTester();
 
@@ -29,7 +30,7 @@ function createCredentialClass(name: string, displayName: string): string {
 }
 
 function createNodeCode(
-	credentials: (string | { name: string; required?: boolean })[] = [],
+	credentials: Array<string | { name: string; required?: boolean }> = [],
 ): string {
 	const credentialsArray =
 		credentials.length > 0
@@ -41,6 +42,45 @@ function createNodeCode(
 							const required =
 								cred.required !== undefined ? `,\n\t\t\t\trequired: ${cred.required}` : '';
 							return `{\n\t\t\t\tname: '${cred.name}'${required},\n\t\t\t}`;
+						}
+					})
+					.join(',\n\t\t\t')
+			: '';
+
+	const credentialsProperty =
+		credentials.length > 0 ? `credentials: [\n\t\t\t${credentialsArray}\n\t\t],` : '';
+
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		${credentialsProperty}
+		properties: [],
+	};
+}`;
+}
+
+// Helper function to create expected outputs with double quotes (matching rule fix behavior)
+function createExpectedNodeCode(
+	credentials: Array<string | { name: string; required?: boolean }> = [],
+): string {
+	const credentialsArray =
+		credentials.length > 0
+			? credentials
+					.map((cred) => {
+						if (typeof cred === 'string') {
+							return `"${cred}"`;
+						} else {
+							const required =
+								cred.required !== undefined ? `,\n\t\t\t\trequired: ${cred.required}` : '';
+							return `{\n\t\t\t\tname: "${cred.name}"${required},\n\t\t\t}`;
 						}
 					})
 					.join(',\n\t\t\t')
@@ -112,7 +152,7 @@ function setupMockFileSystem() {
 		);
 	});
 
-	mockReadFileSync.mockImplementation((path: any): string => {
+	mockReadFileSync.mockImplementation((path: string | Buffer | URL | number): string => {
 		const pathStr = path.toString();
 		if (pathStr.includes('package.json')) {
 			return JSON.stringify(packageJson, null, 2);
@@ -171,6 +211,18 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'ExternalApi' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: createExpectedNodeCode([{ name: 'myApiCredential', required: true }]),
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: createExpectedNodeCode([{ name: 'anotherApiCredential', required: true }]),
+						},
+					],
 				},
 			],
 		},
@@ -182,6 +234,18 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'ExternalApi' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: createExpectedNodeCode(['myApiCredential']),
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: createExpectedNodeCode(['anotherApiCredential']),
+						},
+					],
 				},
 			],
 		},
@@ -197,10 +261,118 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'ExternalApi' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			'myApiCredential',
+			{
+				name: "myApiCredential",
+				required: true,
+			},
+			'AnotherExternalApi'
+		],
+		properties: [],
+	};
+}`,
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			'myApiCredential',
+			{
+				name: "anotherApiCredential",
+				required: true,
+			},
+			'AnotherExternalApi'
+		],
+		properties: [],
+	};
+}`,
+						},
+					],
 				},
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'AnotherExternalApi' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			'myApiCredential',
+			{
+				name: 'ExternalApi',
+				required: true,
+			},
+			"myApiCredential"
+		],
+		properties: [],
+	};
+}`,
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			'myApiCredential',
+			{
+				name: 'ExternalApi',
+				required: true,
+			},
+			"anotherApiCredential"
+		],
+		properties: [],
+	};
+}`,
+						},
+					],
 				},
 			],
 		},
@@ -215,10 +387,126 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'ExternalApi1' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: "myApiCredential",
+				required: true,
+			},
+			{
+				name: 'ExternalApi2',
+				required: false,
+			}
+		],
+		properties: [],
+	};
+}`,
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: "anotherApiCredential",
+				required: true,
+			},
+			{
+				name: 'ExternalApi2',
+				required: false,
+			}
+		],
+		properties: [],
+	};
+}`,
+						},
+					],
 				},
 				{
 					messageId: 'credentialNotInPackage',
 					data: { credentialName: 'ExternalApi2' },
+					suggestions: [
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'myApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'ExternalApi1',
+				required: true,
+			},
+			{
+				name: "myApiCredential",
+				required: false,
+			}
+		],
+		properties: [],
+	};
+}`,
+						},
+						{
+							messageId: 'useAvailable',
+							data: { suggestedName: 'anotherApiCredential' },
+							output: `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Node',
+		name: 'testNode',
+		group: ['output'],
+		version: 1,
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'ExternalApi1',
+				required: true,
+			},
+			{
+				name: "anotherApiCredential",
+				required: false,
+			}
+		],
+		properties: [],
+	};
+}`,
+						},
+					],
 				},
 			],
 		},

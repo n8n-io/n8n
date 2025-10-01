@@ -1,15 +1,16 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
+
+import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
+import { CredentialPasswordFieldRule } from './credential-password-field.js';
+import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { IconValidationRule } from './icon-validation.js';
+import { NoCredentialReuseRule } from './no-credential-reuse.js';
+import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
-import { CredentialPasswordFieldRule } from './credential-password-field.js';
-import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
-import { CredentialTestRequiredRule } from './credential-test-required.js';
-import { NoCredentialReuseRule } from './no-credential-reuse.js';
-import { IconValidationRule } from './icon-validation.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
-import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 
 export const rules = {
 	'no-restricted-globals': NoRestrictedGlobalsRule,

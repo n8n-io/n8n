@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 
 const ruleTester = new RuleTester();

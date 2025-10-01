@@ -1,9 +1,8 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
 import {
 	isCredentialTypeClass,
 	findClassProperty,
-	findObjectProperty,
 	getStringLiteralValue,
+	createRule,
 } from '../utils/index.js';
 
 type RuleOptions = {
@@ -69,11 +68,12 @@ function getExpectedFormatsMessage(options: RuleOptions): string {
 	return formats.slice(0, -1).join(', ') + ' or ' + formats[formats.length - 1];
 }
 
-export const CredentialDocumentationUrlRule = ESLintUtils.RuleCreator.withoutDocs({
+export const CredentialDocumentationUrlRule = createRule({
+	name: 'credential-documentation-url',
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure credential documentationUrl is either a valid URL or a camelCase slug',
+			description: 'Enforce valid credential documentationUrl format (URL or camelCase slug)',
 		},
 		messages: {
 			invalidDocumentationUrl: "documentationUrl '{{ value }}' must be {{ expectedFormats }}",
