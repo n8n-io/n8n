@@ -18,10 +18,11 @@ export class McpSettingsService {
 		if (isMcpAccessEnabled) return isMcpAccessEnabled;
 
 		const row = await this.settingsRepository.findByKey(KEY);
+
 		// Disabled by default
-		if (!row) return false;
-		await this.cacheService.set(KEY, Boolean(row.value));
-		return Boolean(row.value);
+		if (!row?.value) return false;
+		await this.cacheService.set(KEY, row.value === 'true');
+		return row.value === 'true';
 	}
 
 	async setEnabled(enabled: boolean): Promise<void> {
