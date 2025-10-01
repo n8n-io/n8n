@@ -244,7 +244,8 @@ export function prepareFormData({
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
-			input.defaultValue = field.fieldValue as string;
+			input.defaultValue =
+				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
 		}
 
 		formData.formFields.push(input);
