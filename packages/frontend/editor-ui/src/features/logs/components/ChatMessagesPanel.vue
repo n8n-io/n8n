@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import Chat from '@n8n/chat/components/Chat.vue';
-import { ChatPlugin, createChat } from '@n8n/chat/plugins';
+import { ChatPlugin } from '@n8n/chat/plugins';
 import type { ChatOptions } from '@n8n/chat/types';
 import {
 	computed,
@@ -117,7 +117,6 @@ const chatOptions = computed<ChatOptions>(() => {
 			},
 		},
 		mode: 'fullscreen' as const,
-		target: chatContainer.value,
 		showWindowCloseButton: false,
 		showWelcomeScreen: false,
 		loadPreviousSession: true,
@@ -188,7 +187,9 @@ async function initializeChat() {
 	}
 
 	// Create Vue app instance with chat SDK
-	createChat(chatOptions.value);
+	chatApp = createApp(Chat);
+	chatApp.use(ChatPlugin, chatOptions.value);
+	chatApp.mount(chatContainer.value);
 }
 
 function destroyChat() {
@@ -421,6 +422,9 @@ onUnmounted(() => {
 	flex-direction: column;
 }
 
+.chat-message-typing {
+	max-width: 100px !important;
+}
 .chatContainer {
 	height: 100%;
 	width: 100%;
