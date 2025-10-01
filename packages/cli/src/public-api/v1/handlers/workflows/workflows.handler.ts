@@ -506,13 +506,6 @@ export = {
 					req.user,
 				);
 
-				if (result.executionId) {
-					Container.get(EventService).emit('workflow-pre-execute', {
-						executionId: result.executionId,
-						data: workflow,
-					});
-				}
-
 				return res.json(result);
 			} catch (error) {
 				if (error instanceof Error) {
