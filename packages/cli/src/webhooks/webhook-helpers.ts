@@ -396,7 +396,9 @@ export async function executeWebhook(
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase();
+	const additionalData = await WorkflowExecuteAdditionalData.getBase({
+		projectId: project?.id,
+	});
 
 	if (executionId) {
 		additionalData.executionId = executionId;
