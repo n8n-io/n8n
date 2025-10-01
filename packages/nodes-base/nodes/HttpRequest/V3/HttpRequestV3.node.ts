@@ -415,8 +415,13 @@ export class HttpRequestV3 implements INodeType {
 						if (Array.isArray(existingValue)) {
 							// If it's already an array, append to it
 							accumulator[cur.name] = existingValue.concat(cur.value);
-						} else if (typeof existingValue === 'object') {
-							// It's a binary data object, overwrite it
+						} else if (
+							existingValue !== null &&
+							typeof existingValue === 'object' &&
+							'value' in existingValue &&
+							'options' in existingValue
+						) {
+							// It's a binary data object with the expected structure, overwrite it
 							accumulator[cur.name] = cur.value;
 						} else {
 							// Convert existing primitive value and new value into an array
