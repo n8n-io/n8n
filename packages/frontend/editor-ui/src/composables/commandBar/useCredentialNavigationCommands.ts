@@ -165,8 +165,6 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
-		lastQuery.value = query;
-
 		const trimmed = query.trim();
 		const isInCredentialParent = activeNodeId.value === ITEM_ID.OPEN_CREDENTIAL;
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;

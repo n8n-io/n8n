@@ -49,7 +49,10 @@ export function useCommandBar() {
 	});
 
 	const baseCommandGroup = useBaseCommands();
-	const nodeCommandGroup = useNodeCommands();
+	const nodeCommandGroup = useNodeCommands({
+		lastQuery,
+		activeNodeId,
+	});
 	const workflowCommandGroup = useWorkflowCommands();
 	const workflowNavigationGroup = useWorkflowNavigationCommands({
 		lastQuery,
@@ -168,6 +171,8 @@ export function useCommandBar() {
 	});
 
 	function onCommandBarChange(query: string) {
+		lastQuery.value = query;
+
 		for (const group of activeCommandGroups.value) {
 			if (group.handlers?.onCommandBarChange) {
 				group.handlers.onCommandBarChange(query);
