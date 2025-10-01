@@ -4,6 +4,7 @@ import { parseMixed, type SyntaxNodeRef } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 
 import { n8nCompletionSources } from './completions/addCompletions';
+import type { Completion } from '@codemirror/autocomplete';
 import { autocompletion } from '@codemirror/autocomplete';
 import { expressionCloseBracketsConfig } from './expressionCloseBrackets';
 
@@ -29,4 +30,9 @@ export function n8nLang() {
 }
 
 export const n8nAutocompletion = () =>
-	autocompletion({ icons: false, aboveCursor: true, closeOnBlur: false });
+	autocompletion({
+		icons: false,
+		aboveCursor: true,
+		closeOnBlur: false,
+		optionClass: (completion: Completion) => completion.type ?? '',
+	});

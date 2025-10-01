@@ -60,6 +60,11 @@
 			gap: var(--spacing-2xs);
 			scroll-padding: 40px;
 			scroll-margin: 40px;
+
+			&.strikethrough {
+				text-decoration: line-through;
+				color: var(--color-text-light);
+			}
 		}
 
 		li .cm-completionLabel {
