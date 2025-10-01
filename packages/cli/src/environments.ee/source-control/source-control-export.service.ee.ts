@@ -479,44 +479,24 @@ export class SourceControlExportService {
 
 			const projectIds = candidates.map((e) => e.id);
 			const projects = await this.projectRepository.find({
-				where: { id: In(projectIds) },
-				relations: { projectRelations: { user: true, role: true } },
+				where: { id: In(projectIds), type: 'team' },
 			});
 
 			await Promise.all(
 				projects.map(async (project) => {
 					const fileName = getProjectExportPath(project.id, this.projectExportFolder);
 
-					let owner: RemoteResourceOwner;
-
-					if (project.type === 'personal') {
-						const personalOwner = project.projectRelations.find(
-							(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
-						);
-
-						if (!personalOwner) {
-							throw new UnexpectedError(`Project ${project.name} has no owner`);
-						}
-
-						owner = {
-							type: 'personal',
-							projectId: project.id,
-							projectName: project.name,
-							personalEmail: personalOwner.user.email,
-						};
-					} else {
-						owner = {
-							type: 'team',
-							teamId: project.id,
-							teamName: project.name,
-						};
-					}
 					const sanitizedProject: ExportableProject = {
 						id: project.id,
 						name: project.name,
 						icon: project.icon,
 						description: project.description,
-						owner,
+						type: 'team',
+						owner: {
+							type: 'team',
+							teamId: project.id,
+							teamName: project.name,
+						},
 					};
 
 					this.logger.debug(`Writing project ${project.id} to ${fileName}`);
