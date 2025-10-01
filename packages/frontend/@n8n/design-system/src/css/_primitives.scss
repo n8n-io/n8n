@@ -24,18 +24,18 @@
 	--color--black-alpha-900: hsl(220, 1%, 0%, 0.9);
 
 	// Gray
-	--color--gray-50: hsl(220, 1%, 99%);
-	--color--gray-100: hsl(220, 1%, 97%);
-	--color--gray-150: hsl(220, 1%, 93%);
-	--color--gray-200: hsl(220, 1%, 88%);
-	--color--gray-250: hsl(220, 1%, 80%);
-	--color--gray-300: hsl(220, 1%, 68%);
-	--color--gray-400: hsl(220, 1%, 58%);
-	--color--gray-500: hsl(220, 1%, 51%);
-	--color--gray-600: hsl(220, 1%, 46%);
-	--color--gray-700: hsl(220, 1%, 33%);
-	--color--gray-800: hsl(220, 1%, 29%);
-	--color--gray-850: hsl(220, 1%, 26%);
+	--color--gray-50: hsl(220, 50%, 99%);
+	--color--gray-100: hsl(220, 43%, 97%);
+	--color--gray-150: hsl(220, 32%, 93%);
+	--color--gray-200: hsl(220, 25%, 88%);
+	--color--gray-250: hsl(220, 18%, 80%);
+	--color--gray-300: hsl(220, 10%, 68%);
+	--color--gray-400: hsl(220, 4%, 58%);
+	--color--gray-500: hsl(220, 4%, 51%);
+	--color--gray-600: hsl(220, 3%, 46%);
+	--color--gray-700: hsl(220, 2%, 33%);
+	--color--gray-800: hsl(220, 2%, 29%);
+	--color--gray-850: hsl(220, 2%, 26%);
 	--color--gray-900: hsl(220, 1%, 20%);
 	--color--gray-950: hsl(220, 1%, 18%);
 
@@ -145,8 +145,10 @@
 	--color--slate-400: hsl(248, 10%, 60%);
 	--color--slate-500: hsl(248, 10%, 50%);
 	--color--slate-600: hsl(248, 10%, 40%);
-	--color--slate-700: hsl(248, 10%, 30%) --color--slate-800: hsl(248, 10%, 20%);
+	--color--slate-700: hsl(248, 10%, 30%);
+	--color--slate-800: hsl(248, 10%, 20%);
 	--color--slate-900: hsl(248, 10%, 10%);
+	--color--slate-alpha-700: hsla(247, 10%, 30%, 0.75);
 }
 
 :root {
