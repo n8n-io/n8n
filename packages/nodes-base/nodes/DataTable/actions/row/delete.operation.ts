@@ -8,7 +8,7 @@ import {
 
 import { DRY_RUN } from '../../common/fields';
 import { getSelectFields, getSelectFilter } from '../../common/selectMany';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { getDataTableProxyExecute, getDryRunParameter } from '../../common/utils';
 
 // named `deleteRows` since `delete` is a reserved keyword
 export const FIELD: string = 'deleteRows';
@@ -38,16 +38,7 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataTableProxyExecute(this, index);
-
-	const dryRun = this.getNodeParameter(`options.${DRY_RUN.name}`, index, false);
-
-	if (typeof dryRun !== 'boolean') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`unexpected input ${JSON.stringify(dryRun)} for boolean dryRun`,
-		);
-	}
-
+	const dryRun = getDryRunParameter(this, index);
 	const filter = await getSelectFilter(this, index);
 
 	if (filter.filters.length === 0) {

@@ -9,7 +9,7 @@ import {
 import { makeAddRow, getAddRow } from '../../common/addRow';
 import { DRY_RUN } from '../../common/fields';
 import { getSelectFields, getSelectFilter } from '../../common/selectMany';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { getDataTableProxyExecute, getDryRunParameter } from '../../common/utils';
 
 export const FIELD: string = 'upsert';
 
@@ -39,16 +39,7 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataTableProxyExecute(this, index);
-
-	const dryRun = this.getNodeParameter(`options.${DRY_RUN.name}`, index, false);
-
-	if (typeof dryRun !== 'boolean') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`unexpected input ${JSON.stringify(dryRun)} for boolean dryRun`,
-		);
-	}
-
+	const dryRun = getDryRunParameter(this, index);
 	const row = getAddRow(this, index);
 	const filter = await getSelectFilter(this, index);
 
