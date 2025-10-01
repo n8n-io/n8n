@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: n8n
+    env: docker
+    repo: https://github.com/YOUR_USERNAME/n8n
+    branch: master
+    dockerfilePath: docker/images/n8n/Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: GENERIC_TIMEZONE
+        value: Africa/Kampala
+      - key: N8N_BASIC_AUTH_USER
+        value: admin
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: admin
+      - key: N8N_HOST
+        value: 0.0.0.0
+      - key: N8N_PORT
+        value: 5678
+      - key: WEBHOOK_URL
+        value: https://YOUR-RENDER-SUBDOMAIN.onrender.com/
