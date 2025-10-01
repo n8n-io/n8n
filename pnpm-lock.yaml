@@ -3145,6 +3145,9 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
     devDependencies:
+      '@n8n/eslint-plugin-community-nodes':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-plugin-community-nodes
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config

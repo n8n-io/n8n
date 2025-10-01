@@ -1,33 +1,24 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import * as fs from 'node:fs';
 import { vi } from 'vitest';
 
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
+import * as fileUtils from '../utils/file-utils.js';
+
+vi.mock('../utils/file-utils.js', async () => {
+	const actual = await vi.importActual('../utils/file-utils.js');
+	return {
+		...actual,
+		readPackageJsonCredentials: vi.fn(),
+		findPackageJson: vi.fn(),
+	};
+});
+
+const mockReadPackageJsonCredentials = vi.mocked(fileUtils.readPackageJsonCredentials);
+const mockFindPackageJson = vi.mocked(fileUtils.findPackageJson);
 
 const ruleTester = new RuleTester();
 
-// Mock fs functions
-vi.mock('node:fs', () => ({
-	readFileSync: vi.fn(),
-	existsSync: vi.fn(),
-}));
-
-const mockReadFileSync = vi.mocked(fs.readFileSync);
-const mockExistsSync = vi.mocked(fs.existsSync);
-
 const nodeFilePath = '/tmp/TestNode.node.ts';
-
-function createCredentialClass(name: string, displayName: string): string {
-	return `
-		import type { ICredentialType, INodeProperties } from 'n8n-workflow';
-
-		export class ${name.charAt(0).toUpperCase() + name.slice(1)} implements ICredentialType {
-			name = '${name}';
-			displayName = '${displayName}';
-			properties: INodeProperties[] = [];
-		}
-	`;
-}
 
 function createNodeCode(
 	credentials: Array<string | { name: string; required?: boolean }> = [],
@@ -130,41 +121,10 @@ export class NotANode {
 }
 
 function setupMockFileSystem() {
-	const packageJson = {
-		name: 'test-package',
-		n8n: {
-			credentials: [
-				'dist/credentials/MyApi.credentials.js',
-				'dist/credentials/AnotherApi.credentials.js',
-			],
-		},
-	};
-
-	const myApiCredential = createCredentialClass('myApiCredential', 'My API');
-	const anotherApiCredential = createCredentialClass('anotherApiCredential', 'Another API');
-
-	mockExistsSync.mockImplementation((path: fs.PathLike) => {
-		const pathStr = path.toString();
-		return (
-			pathStr.includes('package.json') ||
-			pathStr.includes('MyApi.credentials.ts') ||
-			pathStr.includes('AnotherApi.credentials.ts')
-		);
-	});
-
-	mockReadFileSync.mockImplementation((path: string | Buffer | URL | number): string => {
-		const pathStr = path.toString();
-		if (pathStr.includes('package.json')) {
-			return JSON.stringify(packageJson, null, 2);
-		}
-		if (pathStr.includes('MyApi.credentials.ts')) {
-			return myApiCredential;
-		}
-		if (pathStr.includes('AnotherApi.credentials.ts')) {
-			return anotherApiCredential;
-		}
-		throw new Error(`File not found: ${pathStr}`);
-	});
+	mockFindPackageJson.mockReturnValue('/tmp/package.json');
+	mockReadPackageJsonCredentials.mockReturnValue(
+		new Set(['myApiCredential', 'anotherApiCredential']),
+	);
 }
 
 setupMockFileSystem();

@@ -27,11 +27,15 @@ function isValidUrl(value: string): boolean {
 }
 
 function isValidSlug(value: string): boolean {
-	// Check if it's a camelCase slug that can contain slashes
-	// Pattern: starts with lowercase letter, followed by letters/numbers, can contain slashes
-	// Each segment after slash should also follow camelCase pattern
-	const slugPattern = /^[a-z][a-zA-Z0-9]*(?:\/[a-z][a-zA-Z0-9]*)*$/;
-	return slugPattern.test(value);
+	const segments = value.split('/');
+
+	const camelCasePattern = /^[a-z][a-zA-Z0-9]*$/;
+	const kebabCasePattern = /^[a-z][a-z0-9-]*$/;
+
+	return (
+		segments.every((segment) => camelCasePattern.test(segment)) ||
+		segments.every((segment) => kebabCasePattern.test(segment))
+	);
 }
 
 function validateDocumentationUrl(value: string, options: RuleOptions): boolean {
@@ -54,7 +58,7 @@ function getExpectedFormatsMessage(options: RuleOptions): string {
 	}
 
 	if (options.allowSlugs) {
-		formats.push('a camelCase slug (can contain slashes)');
+		formats.push('a camelCase or kebab-case slug (can contain slashes)');
 	}
 
 	if (formats.length === 0) {
@@ -73,7 +77,8 @@ export const CredentialDocumentationUrlRule = createRule({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Enforce valid credential documentationUrl format (URL or camelCase slug)',
+			description:
+				'Enforce valid credential documentationUrl format (URL or camelCase/kebab-case slug)',
 		},
 		messages: {
 			invalidDocumentationUrl: "documentationUrl '{{ value }}' must be {{ expectedFormats }}",
@@ -89,7 +94,7 @@ export const CredentialDocumentationUrlRule = createRule({
 					},
 					allowSlugs: {
 						type: 'boolean',
-						description: 'Whether to allow camelCase slugs with slashes',
+						description: 'Whether to allow camelCase or kebab-case slugs with slashes',
 					},
 				},
 				additionalProperties: false,

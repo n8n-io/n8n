@@ -19,7 +19,7 @@
 
 Ensures that credential `documentationUrl` values are in a valid format. For community packages, this should always be a complete URL to your documentation.
 
-The camelCase slug option (`allowSlugs`) is only intended for internal n8n use when referring to slugs on docs.n8n.io, and should not be used in community packages.
+The camelCase/kebab-case slug option (`allowSlugs`) is only intended for internal n8n use when referring to slugs on docs.n8n.io, and should not be used in community packages.
 
 ## Examples
 
@@ -75,7 +75,6 @@ The `allowSlugs` option is available for internal n8n development:
     "@n8n/community-nodes/credential-documentation-url": [
       "error",
       {
-        "allowUrls": true,
         "allowSlugs": true
       }
     ]

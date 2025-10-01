@@ -250,11 +250,15 @@ function checkCredentialUsageInFile(
 }
 
 function fileExistsWithCaseSync(filePath: string): boolean {
-	const dir = path.dirname(filePath);
-	const file = path.basename(filePath);
-	const files = new Set(readdirSync(dir));
+	try {
+		const dir = path.dirname(filePath);
+		const file = path.basename(filePath);
+		const files = new Set(readdirSync(dir));
 
-	return files.has(file);
+		return files.has(file);
+	} catch {
+		return false;
+	}
 }
 
 export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
