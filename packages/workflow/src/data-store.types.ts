@@ -69,6 +69,7 @@ export type UpsertDataStoreRowOptions = {
 
 export type DeleteDataTableRowsOptions = {
 	filter: DataTableFilter;
+	dryRun?: boolean;
 };
 
 export type MoveDataStoreColumnOptions = {

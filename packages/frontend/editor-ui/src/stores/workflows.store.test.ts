@@ -15,6 +15,7 @@ import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
+	IConnections,
 	INodeExecutionData,
 	INode,
 	INodeTypeDescription,
@@ -147,6 +148,92 @@ describe('useWorkflowsStore', () => {
 
 			const isWaiting = workflowsStore.isWaitingExecution;
 			expect(isWaiting).toEqual(true);
+		});
+	});
+
+	describe('workflowValidationIssues', () => {
+		it('collects issues only from connected, enabled nodes', () => {
+			const connections: IConnections = {
+				Start: {
+					main: [
+						[
+							{
+								node: 'Fetch',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			};
+
+			workflowsStore.workflow.nodes = [
+				{
+					id: 'start',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+				{
+					id: 'fetch',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					parameters: {},
+					issues: {
+						parameters: {
+							url: ['Missing URL', 'Invalid URL.'],
+						},
+						credentials: {
+							httpBasicAuth: ['Credentials not set'],
+						},
+					},
+					position: [300, 0],
+				},
+				{
+					id: 'orphan',
+					name: 'Disconnected',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: {},
+					issues: {
+						parameters: { field: ['Should be ignored'] },
+					},
+					position: [0, 400],
+				},
+				{
+					id: 'disabled',
+					name: 'Disabled Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					disabled: true,
+					parameters: {},
+					issues: {
+						parameters: { field: ['Disabled issue'] },
+					},
+					position: [0, 600],
+				},
+			];
+			workflowsStore.workflow.connections = connections;
+
+			const issues = workflowsStore.workflowValidationIssues;
+			expect(issues).toEqual([
+				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
+				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
+			]);
+		});
+	});
+
+	describe('formatIssueMessage', () => {
+		it('joins array entries and trims trailing period', () => {
+			const message = workflowsStore.formatIssueMessage(['Missing URL', 'Invalid value.']);
+			expect(message).toBe('Missing URL, Invalid value');
+		});
+
+		it('returns string representation for non-array values', () => {
+			expect(workflowsStore.formatIssueMessage('Simple issue.')).toBe('Simple issue.');
 		});
 	});
 
@@ -770,6 +857,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -800,6 +888,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'Edit Fields',
 						runData: {
 							[errorEvent.nodeName]: [errorEvent.data],
 						},
@@ -882,6 +971,7 @@ describe('useWorkflowsStore', () => {
 				...runWithExistingRunData,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
@@ -890,7 +980,7 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
-		it('should replace existing placeholder task data in new log view', () => {
+		it('should replace existing placeholder task data and lastNodeExecuted', () => {
 			const successEventWithExecutionIndex = deepCopy(successEvent);
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
@@ -936,6 +1026,7 @@ describe('useWorkflowsStore', () => {
 				...executionResponse,
 				data: {
 					resultData: {
+						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},

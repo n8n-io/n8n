@@ -89,7 +89,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 			await n8n.page.waitForLoadState();
 
-			await expect(n8n.settings.getUpgradeCta()).toBeVisible();
+			await expect(n8n.settingsPersonal.getUpgradeCta()).toBeVisible();
 		});
 	});
 

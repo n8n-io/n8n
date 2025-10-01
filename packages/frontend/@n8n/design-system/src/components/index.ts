@@ -69,3 +69,4 @@ export { default as N8nTableHeaderControlsButton } from './TableHeaderControlsBu
 export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
+export { default as N8nCommandBar } from './N8nCommandBar';

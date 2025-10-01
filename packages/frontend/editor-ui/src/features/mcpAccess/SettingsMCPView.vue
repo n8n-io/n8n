@@ -21,10 +21,10 @@ const documentTitle = useDocumentTitle();
 const workflowsStore = useWorkflowsStore();
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
-const isOwner = computed(() => usersStore.isInstanceOwner);
 const rootStore = useRootStore();
 
 const workflowsLoading = ref(false);
+const mcpStatusLoading = ref(false);
 
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
@@ -83,6 +83,11 @@ const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
 	},
 ]);
 
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+
+const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+
 const getProjectIcon = (workflow: WorkflowListItem): IconOrEmoji => {
 	if (workflow.homeProject?.type === 'personal') {
 		return { type: 'icon', value: 'user' };
@@ -115,10 +120,18 @@ const fetchAvailableWorkflows = async () => {
 };
 
 const onUpdateMCPEnabled = async (value: boolean) => {
-	const updated = await mcpStore.setMcpAccessEnabled(value);
-	if (updated) {
-		await fetchAvailableWorkflows();
-	} else {
+	try {
+		mcpStatusLoading.value = true;
+		const updated = await mcpStore.setMcpAccessEnabled(value);
+		if (updated) {
+			await fetchAvailableWorkflows();
+		} else {
+			workflowsLoading.value = false;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
+	} finally {
+		mcpStatusLoading.value = false;
 		workflowsLoading.value = false;
 	}
 };
@@ -158,14 +171,15 @@ onMounted(async () => {
 			<div :class="$style.mainTooggle" data-test-id="mcp-toggle-container">
 				<N8nTooltip
 					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-					:disabled="isOwner"
+					:disabled="canToggleMCP"
 					placement="top"
 				>
 					<ElSwitch
-						:model-value="mcpStore.mcpAccessEnabled"
 						size="large"
 						data-test-id="mcp-access-toggle"
-						:disabled="!isOwner"
+						:model-value="mcpStore.mcpAccessEnabled"
+						:disabled="!canToggleMCP"
+						:loading="mcpStatusLoading"
 						@update:model-value="onUpdateMCPEnabled"
 					/>
 				</N8nTooltip>
