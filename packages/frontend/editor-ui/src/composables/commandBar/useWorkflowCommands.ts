@@ -12,13 +12,19 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { canvasEventBus } from '@/event-bus/canvas';
-import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
+import {
+	DUPLICATE_MODAL_KEY,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from '../useWorkflowActivate';
 import type { CommandGroup, CommandBarItem } from './types';
 import uniqBy from 'lodash/uniqBy';
+import { nodeViewEventBus } from '@/event-bus';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
@@ -31,6 +37,8 @@ const ITEM_ID = {
 	TIDY_UP_WORKFLOW: 'tidy-up-workflow',
 	DUPLICATE_WORKFLOW: 'duplicate-workflow',
 	DOWNLOAD_WORKFLOW: 'download-workflow',
+	IMPORT_WORKFLOW_FROM_URL: 'import-workflow-from-url',
+	IMPORT_WORKFLOW_FROM_FILE: 'import-workflow-from-file',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -248,6 +256,7 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 				},
 			},
+			...subworkflowCommands.value,
 			{
 				id: ITEM_ID.DOWNLOAD_WORKFLOW,
 				title: i18n.baseText('commandBar.workflow.download'),
@@ -280,7 +289,34 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 				},
 			},
-			...subworkflowCommands.value,
+			{
+				id: ITEM_ID.IMPORT_WORKFLOW_FROM_URL,
+				title: i18n.baseText('commandBar.workflow.importFromURL'),
+				section: i18n.baseText('commandBar.sections.workflow'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'link',
+					},
+				},
+				handler: () => {
+					uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
+				},
+			},
+			{
+				id: ITEM_ID.IMPORT_WORKFLOW_FROM_FILE,
+				title: i18n.baseText('commandBar.workflow.importFromFile'),
+				section: i18n.baseText('commandBar.sections.workflow'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'link',
+					},
+				},
+				handler: () => {
+					nodeViewEventBus.emit('importWorkflowFromFile');
+				},
+			},
 		];
 	});
 

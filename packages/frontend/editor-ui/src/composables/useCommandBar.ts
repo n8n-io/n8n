@@ -7,7 +7,6 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import { useNodeCommands } from './commandBar/useNodeCommands';
 import { useWorkflowCommands } from './commandBar/useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './commandBar/useWorkflowNavigationCommands';
-import { useTemplateCommands } from './commandBar/useTemplateCommands';
 import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
@@ -56,7 +55,6 @@ export function useCommandBar() {
 		activeNodeId,
 		currentProjectName,
 	});
-	const templateCommandGroup = useTemplateCommands();
 	const dataTableNavigationGroup = useDataTableNavigationCommands({
 		lastQuery,
 		activeNodeId,
@@ -77,7 +75,6 @@ export function useCommandBar() {
 		baseCommandGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
-		templateCommandGroup,
 		workflowNavigationGroup,
 	];
 
@@ -141,7 +138,7 @@ export function useCommandBar() {
 	const context = computed(() => {
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
-				return 'workflow todo';
+				return i18n.baseText('commandBar.sections.workflow');
 			case VIEWS.WORKFLOWS:
 			case VIEWS.PROJECTS_WORKFLOWS:
 				return i18n.baseText('commandBar.sections.workflows');
