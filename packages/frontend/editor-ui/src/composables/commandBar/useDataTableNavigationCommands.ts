@@ -48,7 +48,7 @@ export function useDataTableNavigationCommands(options: {
 		});
 	}
 
-	const fetchDataTables = debounce(async (query: string) => {
+	const fetchDataTablesImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
 
@@ -69,7 +69,9 @@ export function useDataTableNavigationCommands(options: {
 		} finally {
 			isLoading.value = false;
 		}
-	}, 300);
+	};
+
+	const fetchDataTablesDebounced = debounce(fetchDataTablesImpl, 300);
 
 	const getDataTableTitle = (dataTable: DataStore, includeOpenDataTablePrefix: boolean) => {
 		let prefix = '';
@@ -168,7 +170,8 @@ export function useDataTableNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInDataTableParent || isRootWithQuery) {
-			void fetchDataTables(trimmed);
+			isLoading.value = isInDataTableParent;
+			void fetchDataTablesDebounced(trimmed);
 		}
 	}
 
@@ -177,7 +180,7 @@ export function useDataTableNavigationCommands(options: {
 
 		if (to === ITEM_ID.OPEN_DATA_TABLE) {
 			isLoading.value = true;
-			void fetchDataTables('');
+			void fetchDataTablesImpl('');
 		} else if (to === null) {
 			dataTableResults.value = [];
 		}

@@ -51,7 +51,7 @@ export function useWorkflowNavigationCommands(options: {
 		});
 	}
 
-	const fetchWorkflows = debounce(async (query: string) => {
+	const fetchWorkflowsImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
 			const nameSearchPromise = workflowsStore.searchWorkflows({
@@ -93,7 +93,9 @@ export function useWorkflowNavigationCommands(options: {
 		} finally {
 			isLoading.value = false;
 		}
-	}, 300);
+	};
+
+	const fetchWorkflowsDebounced = debounce(fetchWorkflowsImpl, 300);
 
 	const getWorkflowTitle = (workflow: IWorkflowDb, includeOpenWorkflowPrefix: boolean) => {
 		let prefix = '';
@@ -191,7 +193,8 @@ export function useWorkflowNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInWorkflowParent || isRootWithQuery) {
-			void fetchWorkflows(trimmed);
+			isLoading.value = isInWorkflowParent;
+			void fetchWorkflowsDebounced(trimmed);
 		}
 	}
 
@@ -200,7 +203,7 @@ export function useWorkflowNavigationCommands(options: {
 
 		if (to === ITEM_ID.OPEN_WORKFLOW) {
 			isLoading.value = true;
-			void fetchWorkflows('');
+			void fetchWorkflowsImpl('');
 		} else if (to === null) {
 			workflowResults.value = [];
 		}

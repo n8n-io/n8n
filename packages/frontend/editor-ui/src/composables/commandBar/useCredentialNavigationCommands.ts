@@ -46,7 +46,7 @@ export function useCredentialNavigationCommands(options: {
 		});
 	}
 
-	const fetchCredentials = debounce(async (query: string) => {
+	const fetchCredentialsImpl = async (query: string) => {
 		try {
 			const trimmed = (query || '').trim();
 			await credentialsStore.fetchAllCredentials();
@@ -62,7 +62,8 @@ export function useCredentialNavigationCommands(options: {
 		} finally {
 			isLoading.value = false;
 		}
-	}, 300);
+	};
+	const fetchCredentialsDebounced = debounce(fetchCredentialsImpl, 300);
 
 	const getCredentialTitle = (
 		credential: ICredentialsResponse,
@@ -171,7 +172,8 @@ export function useCredentialNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInCredentialParent || isRootWithQuery) {
-			void fetchCredentials(trimmed);
+			isLoading.value = isInCredentialParent;
+			void fetchCredentialsDebounced(trimmed);
 		}
 	}
 
@@ -180,7 +182,7 @@ export function useCredentialNavigationCommands(options: {
 
 		if (to === ITEM_ID.OPEN_CREDENTIAL) {
 			isLoading.value = true;
-			void fetchCredentials('');
+			void fetchCredentialsImpl('');
 		} else if (to === null) {
 			credentialResults.value = [];
 		}
