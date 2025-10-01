@@ -12,6 +12,7 @@ import { useBaseCommands } from './commandBar/useBaseCommands';
 import { useDataTableNavigationCommands } from './commandBar/useDataTableNavigationCommands';
 import { useCredentialNavigationCommands } from './commandBar/useCredentialNavigationCommands';
 import { useExecutionNavigationCommands } from './commandBar/useExecutionNavigationCommands';
+import { useProjectNavigationCommands } from './commandBar/useProjectNavigationCommands';
 import type { CommandGroup } from './commandBar/types';
 import { usePostHog } from '@/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
@@ -67,6 +68,10 @@ export function useCommandBar() {
 		currentProjectName,
 	});
 	const executionNavigationGroup = useExecutionNavigationCommands();
+	const projectNavigationGroup = useProjectNavigationCommands({
+		lastQuery,
+		activeNodeId,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		baseCommandGroup,
@@ -77,6 +82,7 @@ export function useCommandBar() {
 
 	const workflowsListViewGroups: CommandGroup[] = [
 		workflowNavigationGroup,
+		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
@@ -85,6 +91,7 @@ export function useCommandBar() {
 
 	const credentialsListViewGroups: CommandGroup[] = [
 		credentialNavigationGroup,
+		projectNavigationGroup,
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
@@ -93,6 +100,7 @@ export function useCommandBar() {
 
 	const executionsListViewGroups: CommandGroup[] = [
 		workflowNavigationGroup,
+		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		baseCommandGroup,
@@ -100,6 +108,7 @@ export function useCommandBar() {
 
 	const dataStoresListViewGroups: CommandGroup[] = [
 		dataTableNavigationGroup,
+		projectNavigationGroup,
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,

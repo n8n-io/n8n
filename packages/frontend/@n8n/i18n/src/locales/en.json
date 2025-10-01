@@ -3626,5 +3626,10 @@
 	"commandBar.executions.open": "Open executions",
 	"commandBar.templates.import": "Import template",
 	"commandBar.templates.importWithPrefix": "Import template > {templateName}",
-	"commandBar.demo.availableEverywhere": "This is available everywhere"
+	"commandBar.demo.availableEverywhere": "This is available everywhere",
+	"commandBar.sections.projects": "Projects",
+	"commandBar.projects.create": "Create project",
+	"commandBar.projects.open": "Open project",
+	"commandBar.projects.searchPlaceholder": "Search by project name...",
+	"commandBar.projects.unnamed": "(unnamed project)"
 }

@@ -334,7 +334,7 @@ onUnmounted(() => {
 	border-radius: var(--border-radius-large);
 	box-shadow: var(--box-shadow-dark);
 	width: 100%;
-	max-width: 600px;
+	max-width: 700px;
 	z-index: 1000;
 }
 
@@ -355,7 +355,7 @@ onUnmounted(() => {
 }
 
 .itemsList {
-	max-height: 300px;
+	max-height: 350px;
 	overflow-y: auto;
 	padding-bottom: var(--spacing-s);
 }
