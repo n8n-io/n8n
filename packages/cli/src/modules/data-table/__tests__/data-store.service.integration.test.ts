@@ -2097,6 +2097,15 @@ describe('dataStore', () => {
 					age: 30,
 					createdAt: expect.any(Date),
 					updatedAt: expect.any(Date),
+					dryRunState: 'before',
+				},
+				{
+					id: null,
+					name: null,
+					age: null,
+					createdAt: null,
+					updatedAt: null,
+					dryRunState: 'after',
 				},
 			]);
 
@@ -2152,6 +2161,15 @@ describe('dataStore', () => {
 					age: 25,
 					createdAt: expect.any(Date),
 					updatedAt: expect.any(Date),
+					dryRunState: 'before',
+				},
+				{
+					id: null,
+					name: null,
+					age: null,
+					createdAt: null,
+					updatedAt: null,
+					dryRunState: 'after',
 				},
 			]);
 

@@ -376,23 +376,14 @@ export class DataStoreRowsRepository {
 			trx,
 		);
 
-		const preparedData = this.prepareUpdateData(data, columns, dbType);
+		const columnUpdates = this.prepareUpdateData(data, columns, dbType);
 
-		const afterRows: DataStoreRowReturn[] = beforeRows.map((row) => {
-			const updatedRow = { ...row };
-			for (const [key, value] of Object.entries(preparedData)) {
-				updatedRow[key] = value;
-			}
-			updatedRow.updatedAt = new Date();
-			return updatedRow;
-		});
-
-		const pairs: DataStoreRowReturnWithState[] = [];
-		for (let i = 0; i < beforeRows.length; i++) {
-			pairs.push({ ...beforeRows[i], dryRunState: 'before' });
-			pairs.push({ ...afterRows[i], dryRunState: 'after' });
-		}
-		return pairs;
+		return beforeRows
+			.map((original) => {
+				const updated = { ...original, ...columnUpdates, updatedAt: new Date() };
+				return this.toDryRunRows(original, updated);
+			})
+			.flat();
 	}
 
 	async dryRunUpsertRow(
@@ -412,22 +403,14 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const now = new Date();
 		const preparedData = this.prepareUpdateData(data, columns, dbType);
-		const insertedRow: DataStoreRowReturnWithState = {
+		const insertedRow: DataStoreRowReturn = {
 			id: 0, // Placeholder ID for dry run
 			createdAt: now,
 			updatedAt: now,
 			...preparedData,
-			dryRunState: 'after',
-		};
-		const rowBefore: DataStoreRowReturnWithState = {
-			id: null,
-			createdAt: null,
-			updatedAt: null,
-			...Object.fromEntries(Object.keys(preparedData).map((key) => [key, null])),
-			dryRunState: 'before',
 		};
 
-		return [rowBefore, insertedRow];
+		return this.toDryRunRows(null, insertedRow);
 	}
 
 	/**
@@ -480,7 +463,7 @@ export class DataStoreRowsRepository {
 
 			// Skip deletion for dry run
 			if (dryRun) {
-				return affectedRows;
+				return affectedRows.map((row) => this.toDryRunRows(row, null)).flat();
 			}
 
 			const deleteQuery = em.createQueryBuilder().delete().from(table, 'dataTable');
@@ -546,6 +529,39 @@ export class DataStoreRowsRepository {
 			}
 		}
 		return setData;
+	}
+
+	private toDryRunRows(
+		beforeState: DataStoreRowReturn | null,
+		afterState: DataStoreRowReturn | null,
+	): DataStoreRowReturnWithState[] {
+		if (beforeState === null && afterState === null) {
+			throw new Error('Both before and after rows cannot be null');
+		}
+
+		if (beforeState && afterState) {
+			return [
+				{ ...beforeState, dryRunState: 'before' },
+				{ ...afterState, dryRunState: 'after' },
+			];
+		}
+
+		// If one of the states is null, create a template row with nulls for missing values
+		const template = (beforeState ?? afterState)!;
+		const nullRow = {
+			id: null,
+			createdAt: null,
+			updatedAt: null,
+			...Object.fromEntries(Object.keys(template).map((key) => [key, null])),
+		};
+
+		const before = beforeState ?? nullRow;
+		const after = afterState ?? nullRow;
+
+		return [
+			{ ...before, dryRunState: 'before' },
+			{ ...after, dryRunState: 'after' },
+		];
 	}
 
 	async createTableWithColumns(
