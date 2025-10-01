@@ -345,7 +345,7 @@ describe('SourceControlExportService', () => {
 		});
 	});
 
-	describe('exportProjectsToWorkFolder', () => {
+	describe('exportTeamProjectsToWorkFolder', () => {
 		it('should export projects to work folder', async () => {
 			// Arrange
 			const candidates = [
@@ -404,7 +404,7 @@ describe('SourceControlExportService', () => {
 			projectRepository.find.mockResolvedValue([project1, project2]);
 
 			// Act
-			const result = await service.exportProjectsToWorkFolder(candidates);
+			const result = await service.exportTeamProjectsToWorkFolder(candidates);
 
 			// Assert
 			expect(projectRepository.find).toHaveBeenCalledWith({

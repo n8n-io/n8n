@@ -473,7 +473,7 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.projectExportFolder], true);
 
