@@ -1,7 +1,11 @@
 import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
 import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type {
+	AIMessageChunk,
+	MessageContentComplex,
+	MessageContentText,
+} from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import {
@@ -88,8 +92,16 @@ type AnyBlock = {
 	thinking?: Array<{ type: 'text'; text: string }>;
 };
 
+type ContentBlock = {
+	type: string;
+	text?: string;
+	thinking?: Array<{ type: 'text'; text: string }>;
+};
+type ComplexBlock = MessageContentComplex;
+type Block = ContentBlock | ComplexBlock;
+
 // Collapse provider content (string or array-of-blocks) to plain text for UI/output.
-function flattenContentToText(content: string | AnyBlock[] | undefined): string {
+function flattenContentToText(content: string | Block[] | undefined): string {
 	if (content == null) return '';
 	if (typeof content === 'string') {
 		// Magistral models may embed <think>...</think> tags in string. Remove them if present.
@@ -102,7 +114,9 @@ function flattenContentToText(content: string | AnyBlock[] | undefined): string 
 		if (!b || typeof b !== 'object') continue;
 		switch (b.type) {
 			case 'text':
-				if (typeof b.text === 'string') out += b.text;
+				if (typeof (b as any).text === 'string') {
+					out += (b as any).text;
+				}
 				break;
 			case 'thinking':
 				// Do NOT expose chain-of-thought to users.
@@ -147,10 +161,16 @@ async function processEventStream(
 			case 'on_chat_model_stream': {
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content !== undefined) {
-					const chunkText = flattenContentToText(chunk.content as any);
-					if (chunkText) {
-						ctx.sendChunk('item', itemIndex, chunkText);
-						agentResult.output += chunkText;
+					const cont = chunk.content;
+					// Only process if content is a string or array of blocks
+					if (typeof cont === 'string' || Array.isArray(cont)) {
+						const chunkText = flattenContentToText(cont);
+						if (chunkText) {
+							ctx.sendChunk('item', itemIndex, chunkText);
+							agentResult.output += chunkText;
+						}
+					} else {
+						// unexpected content format — ignore or log
 					}
 				}
 				break;
@@ -330,13 +350,9 @@ export async function toolsAgentExecute(
 				);
 			} else {
 				// Handle regular execution
+
 				let response: any;
-				try {
-					response = await executor.invoke(invokeParams, executeOptions);
-				} catch (err: any) {
-					// fallback safe stub
-					return { output: '' };
-				}
+				response = await executor.invoke(invokeParams, executeOptions);
 
 				// If provider put structured blocks into response.output (array or tagged string), flatten them.
 				if (response && typeof response.output !== 'undefined') {
