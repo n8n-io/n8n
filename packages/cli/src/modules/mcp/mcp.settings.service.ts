@@ -1,26 +1,34 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { CacheService } from '@/services/cache/cache.service';
+
 const KEY = 'mcp.access.enabled';
 
 @Service()
 export class McpSettingsService {
-	cacheIsEnabled: boolean | null = null;
-	constructor(private readonly settingsRepository: SettingsRepository) {}
+	constructor(
+		private readonly settingsRepository: SettingsRepository,
+		private readonly cacheService: CacheService,
+	) {}
 
 	async getEnabled(): Promise<boolean> {
-		if (this.cacheIsEnabled !== null) return this.cacheIsEnabled;
+		const isMcpAccessEnabled = await this.cacheService.get<boolean>(KEY);
+
+		if (isMcpAccessEnabled) return isMcpAccessEnabled;
 
 		const row = await this.settingsRepository.findByKey(KEY);
 		// Disabled by default
 		if (!row) return false;
-		this.cacheIsEnabled = row.value === 'true';
-		return this.cacheIsEnabled;
+		await this.cacheService.set(KEY, Boolean(row.value));
+		return Boolean(row.value);
 	}
 
 	async setEnabled(enabled: boolean): Promise<void> {
-		const value = enabled ? 'true' : 'false';
-		await this.settingsRepository.upsert({ key: KEY, value, loadOnStartup: true }, ['key']);
-		this.cacheIsEnabled = value === 'true';
+		await this.settingsRepository.upsert(
+			{ key: KEY, value: enabled.toString(), loadOnStartup: true },
+			['key'],
+		);
+		await this.cacheService.set(KEY, enabled);
 	}
 }
