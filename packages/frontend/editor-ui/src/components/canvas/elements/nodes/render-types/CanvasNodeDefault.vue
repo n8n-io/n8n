@@ -180,7 +180,7 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node-border-width: 2px;
+	--canvas-node-border-width: 1.5px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 	--node-icon-color: var(--color-foreground-dark);
@@ -192,8 +192,9 @@ function onActivate(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background: var(--canvas-node--background, var(--color-node-background));
+	background-clip: padding-box;
 	border: var(--canvas-node-border-width) solid
-		var(--canvas-node--border-color, var(--color-foreground-xdark));
+		var(--canvas-node--border-color, var(--color-foreground-dark));
 	border-radius: var(--border-radius-large);
 
 	&.trigger {
@@ -206,13 +207,17 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
 			var(--canvas-node--border-color, var(--color-foreground-dark));
 		border-radius: calc(var(--canvas-node--height) / 2);
 
 		.statusIcons {
 			right: unset;
+		}
+
+		&.running::after,
+		&.waiting::after {
+			border-radius: 50%;
 		}
 	}
 
@@ -277,6 +282,7 @@ function onActivate(event: MouseEvent) {
 			--color-canvas-node-success-border-color,
 			var(--color-success)
 		);
+		--canvas-node-border-width: 2px;
 	}
 
 	&.warning {
@@ -285,6 +291,7 @@ function onActivate(event: MouseEvent) {
 
 	&.error {
 		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+		--canvas-node-border-width: 2px;
 	}
 
 	&.pinned {
@@ -294,26 +301,67 @@ function onActivate(event: MouseEvent) {
 		);
 	}
 
-	&.disabled {
-		--canvas-node--border-color: var(
-			--color-canvas-node-disabled-border-color,
-			var(--color-foreground-base)
-		);
-	}
-
 	&.running {
-		background-color: var(--color-node-executing-background);
-		--canvas-node--border-color: var(
-			--color-canvas-node-running-border-color,
-			var(--color-node-running-border)
-		);
+		--canvas-node--border-color: transparent;
 	}
+}
 
-	&.waiting {
-		--canvas-node--border-color: var(
-			--color-canvas-node-waiting-border-color,
-			var(--color-secondary)
-		);
+.running::after,
+.waiting::after {
+	content: '';
+	position: absolute;
+	inset: -3px;
+	border-radius: var(--border-radius-large);
+	z-index: -1;
+	background: conic-gradient(
+		from var(--angle),
+		#aaa,
+		#aaa 20%,
+		transparent 35%,
+		transparent 65%,
+		#aaa 90%,
+		#aaa
+	);
+	background: conic-gradient(
+		from var(--angle),
+		rgba(255, 109, 90, 1),
+		rgba(255, 109, 90, 1) 20%,
+		rgba(255, 109, 90, 0.2) 35%,
+		rgba(255, 109, 90, 0.2) 65%,
+		rgba(255, 109, 90, 1) 90%,
+		rgba(255, 109, 90, 1)
+	);
+	/* background: conic-gradient(
+		from var(--angle),
+		rgba(0, 0, 0, 0.2),
+		rgba(0, 0, 0, 0.2) 20%,
+		transparent 35%,
+		transparent 65%,
+		rgba(0, 0, 0, 0.2) 90%,
+		rgba(0, 0, 0, 0.2)
+	); */
+}
+
+.running::after {
+	animation: border-rotate 1.5s linear infinite;
+}
+
+.waiting::after {
+	animation: border-rotate 4.5s linear infinite;
+}
+
+@property --angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes border-rotate {
+	from {
+		--angle: 0deg;
+	}
+	to {
+		--angle: 360deg;
 	}
 }
 

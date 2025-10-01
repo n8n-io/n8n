@@ -183,7 +183,8 @@ const N8nNodeIcon = getCurrentInstance()?.type;
 
 .disabled {
 	color: '#ccc';
-	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
-	filter: contrast(40%) brightness(1.5) grayscale(100%);
+	-webkit-filter: grayscale(100%);
+	filter: grayscale(100%);
+	opacity: 0.5;
 }
 </style>

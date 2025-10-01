@@ -27,9 +27,9 @@ const classes = computed(() => {
 
 const edgeColor = computed(() => {
 	if (connectionType.value !== NodeConnectionTypes.Main) {
-		return 'var(--node-type-supplemental-color)';
+		return 'var(--color--connection-line)';
 	} else {
-		return 'var(--color-foreground-xdark)';
+		return 'var(--color--connection-line)';
 	}
 });
 

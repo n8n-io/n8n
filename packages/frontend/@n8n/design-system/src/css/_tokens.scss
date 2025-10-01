@@ -89,16 +89,10 @@
 	--color-canvas-background-h: var(--h-gray); // Used for connectors labels background
 	--color-canvas-background-s: 47%;
 	--color-canvas-background-l: 99%;
-	--color-canvas-dot: var(--p-gray-120);
-	--color-canvas-read-only-line: var(--p-gray-030);
+	--color-canvas-dot: var(--p-gray-420);
+	--color-canvas-read-only-line: var(--p-gray-040);
 	--color-canvas-selected: var(--p-gray-070);
 	--color-canvas-selected-transparent: hsla(var(--h-gray), 47%, 30%, 0.1);
-	--color-canvas-label-background: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
-		0.85
-	);
 
 	// Nodes
 	--color-node-background: var(--color-background-xlight);
@@ -587,6 +581,12 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
+
+	// general canvas elements
+	--color--connection-line: hsl(var(--h-gray), 18%, 74%);
+	--canvas--background: hsl(var(--h-gray), 25%, 97%);
+	--canvas-node--border-color: rgba(0, 0, 0, 0.12);
+	--node-handle--background: var(--p-gray-420);
 
 	// Various
 	--color-avatar-accent-1: var(--p-gray-120);

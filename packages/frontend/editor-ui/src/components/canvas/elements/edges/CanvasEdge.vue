@@ -63,18 +63,16 @@ const edgeColor = computed(() => {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
-	} else if (!isMainConnection.value) {
-		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
-		return 'var(--color-background-dark)';
+		return 'var(--color--connection-line)';
 	} else {
-		return 'var(--color-foreground-xdark)';
+		return 'var(--color--connection-line)';
 	}
 });
 
 const edgeStyle = computed(() => ({
 	...props.style,
-	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
+	...(status.value === 'pinned' ? { strokeDasharray: '8,8' } : {}),
 }));
 
 const edgeStroke = computed(() =>
@@ -86,6 +84,8 @@ const edgeClasses = computed(() => ({
 	hovered: delayedHovered.value,
 	'bring-to-front': props.bringToFront,
 }));
+
+const edgeMarkerEnd = computed(() => (isMainConnection.value ? props.markerEnd : undefined));
 
 const edgeToolbarStyle = computed(() => ({
 	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
@@ -149,7 +149,7 @@ function onEdgeLabelMouseLeave() {
 			:class="edgeClasses"
 			:style="edgeStyle"
 			:path="segment[0]"
-			:marker-end="markerEnd"
+			:marker-end="edgeMarkerEnd"
 			:interaction-width="40"
 		/>
 	</g>
@@ -182,7 +182,7 @@ function onEdgeLabelMouseLeave() {
 		stroke 0.3s ease,
 		fill 0.3s ease;
 	stroke: var(--canvas-edge-color, v-bind(edgeStroke));
-	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1));
+	stroke-width: calc(1.5 * var(--canvas-zoom-compensation-factor, 1));
 	stroke-linecap: square;
 }
 
@@ -201,11 +201,6 @@ function onEdgeLabelMouseLeave() {
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
 	color: var(--color-text-base);
 	font-size: var(--font-size-xs);
-	background-color: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
-		0.85
-	);
+	background-color: var(--canvas--background);
 }
 </style>

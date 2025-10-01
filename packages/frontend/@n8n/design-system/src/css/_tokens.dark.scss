@@ -87,12 +87,6 @@
 	--color-canvas-read-only-line: var(--p-gray-800);
 	--color-canvas-selected: var(--p-white-a-025);
 	--color-canvas-selected-transparent: var(--color-canvas-selected);
-	--color-canvas-label-background: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
-		0.85
-	);
 
 	// Nodes
 	--color-node-background: var(--p-gray-740);
@@ -501,6 +495,11 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
+
+	// general canvas elements
+	--color--connection-line: var(--p-gray-540);
+	--canvas--background: var(--p-gray-820);
+	--canvas-node--border-color: rgba(255, 255, 255, 0.1);
 
 	// Various
 	--color-info-tint-1: var(--p-gray-420);

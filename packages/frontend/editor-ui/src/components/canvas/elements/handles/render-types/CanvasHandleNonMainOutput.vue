@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, useCssModule } from 'vue';
 
 const $style = useCssModule();
+const { executionStatus, hasPinnedData } = useCanvasNode();
 const { label, isRequired } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
@@ -16,7 +18,11 @@ const classes = computed(() => ({
 <template>
 	<div :class="classes">
 		<div :class="$style.label">{{ label }}</div>
-		<CanvasHandleDiamond :handle-classes="handleClasses" />
+		<CanvasHandleDiamond
+			:handle-classes="handleClasses"
+			:execution-status="executionStatus"
+			:has-pinned-data="hasPinnedData"
+		/>
 	</div>
 </template>
 
@@ -34,8 +40,8 @@ const classes = computed(() => ({
 	left: 50%;
 	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
 	font-size: var(--font-size-2xs);
-	color: var(--node-type-supplemental-color);
-	background: var(--color-canvas-label-background);
+	color: var(--color-foreground-xdark);
+	background: var(--canvas--background);
 	z-index: 0;
 	white-space: nowrap;
 }

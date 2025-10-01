@@ -1,10 +1,17 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, useCssModule } from 'vue';
+import type { CanvasNodeDefaultRender } from '@/types';
 
 const $style = useCssModule();
 
+const { render, executionStatus, hasPinnedData } = useCanvasNode();
 const { label, isRequired } = useCanvasNodeHandle();
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const isDirty = computed(() => renderOptions.value.dirtiness !== undefined);
 
 const classes = computed(() => ({
 	'canvas-node-handle-main-input': true,
@@ -17,7 +24,12 @@ const handleClasses = 'target';
 <template>
 	<div :class="classes">
 		<div :class="[$style.label]">{{ label }}</div>
-		<CanvasHandleRectangle :handle-classes="handleClasses" />
+		<CanvasHandleDot
+			:handle-classes="handleClasses"
+			:execution-status="executionStatus"
+			:has-pinned-data="hasPinnedData"
+			:is-dirty="isDirty"
+		/>
 	</div>
 </template>
 
@@ -37,7 +49,7 @@ const handleClasses = 'target';
 	transform-origin: center left;
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-canvas-label-background);
+	background: var(--canvas--background);
 	z-index: 1;
 	text-align: center;
 	white-space: nowrap;

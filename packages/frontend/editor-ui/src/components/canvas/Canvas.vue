@@ -934,6 +934,7 @@ defineExpose({
 		:nodes="nodes"
 		:edges="connections"
 		:class="classes"
+		:style="{ backgroundColor: 'var(--canvas--background)' }"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
