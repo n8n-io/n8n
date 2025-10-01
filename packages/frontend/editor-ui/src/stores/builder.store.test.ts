@@ -50,6 +50,15 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
+// Mock to inject workflowHandle
+vi.mock('@/composables/useWorkflowHandle', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+	return {
+		...actual,
+		injectWorkflowHandle: vi.fn(),
+	};
+});
+
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -128,11 +137,10 @@ describe('AI Builder store', () => {
 		workflowHandle = useWorkflowHandle();
 		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
 
-		setWorkflowNameSpy = vi
-			.mocked(workflowHandle)
-			.setWorkflowName.mockImplementation(({ newName }) => {
-				workflowsStore.workflow.name = newName;
-			});
+		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
+			workflowsStore.workflow.name = newName;
+		});
+		vi.spyOn(workflowHandle, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
