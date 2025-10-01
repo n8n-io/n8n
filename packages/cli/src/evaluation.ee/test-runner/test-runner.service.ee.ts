@@ -10,6 +10,7 @@ import {
 	NodeConnectionTypes,
 	metricRequiresModelConnection,
 	DEFAULT_EVALUATION_METRIC,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -280,7 +281,10 @@ export class TestRunnerService {
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
-			this.activeExecutions.stopExecution(executionId);
+			this.activeExecutions.stopExecution(
+				executionId,
+				new ManualExecutionCancelledError(executionId),
+			);
 		});
 
 		// Wait for the execution to finish
