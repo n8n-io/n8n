@@ -49,21 +49,17 @@ import {
 	syslogModalDescription,
 } from './descriptions.ee';
 import { useElementSize } from '@vueuse/core';
-<<<<<<< HEAD
-import { N8nInlineTextEdit, N8nMenuItem, N8nText } from '@n8n/design-system';
 
-=======
 import {
 	N8nButton,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nInputLabel,
-	N8nMenu,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
->>>>>>> master
+
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
 const props = withDefaults(
