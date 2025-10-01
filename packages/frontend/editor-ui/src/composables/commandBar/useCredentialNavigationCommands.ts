@@ -9,6 +9,8 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from './types';
 import { VIEWS } from '@/constants';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	CREATE_CREDENTIAL: 'create-credential',
@@ -25,6 +27,7 @@ export function useCredentialNavigationCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const uiStore = useUIStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const route = useRoute();
 	const router = useRouter();
@@ -112,41 +115,47 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {
-		return [
-			{
-				id: ITEM_ID.CREATE_CREDENTIAL,
-				title: i18n.baseText('commandBar.credentials.create', {
-					interpolate: { projectName: currentProjectName.value },
-				}),
-				section: i18n.baseText('commandBar.sections.credentials'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-				handler: () => {
-					const currentProjectId =
-						typeof route.params.projectId === 'string'
-							? route.params.projectId
-							: personalProjectId.value;
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(projectsStore.currentProject?.scopes).credential.create;
 
-					const routeName =
-						route.name === VIEWS.SHARED_CREDENTIALS
-							? VIEWS.SHARED_CREDENTIALS
-							: route.name === VIEWS.CREDENTIALS
-								? VIEWS.CREDENTIALS
-								: VIEWS.PROJECTS_CREDENTIALS;
-
-					void router.push({
-						name: routeName,
-						params: {
-							projectId: currentProjectId,
-							credentialId: 'create',
-						},
-					});
+		const newCredentialCommand: CommandBarItem = {
+			id: ITEM_ID.CREATE_CREDENTIAL,
+			title: i18n.baseText('commandBar.credentials.create', {
+				interpolate: { projectName: currentProjectName.value },
+			}),
+			section: i18n.baseText('commandBar.sections.credentials'),
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'plus',
 				},
 			},
+			handler: () => {
+				const currentProjectId =
+					typeof route.params.projectId === 'string'
+						? route.params.projectId
+						: personalProjectId.value;
+
+				const routeName =
+					route.name === VIEWS.SHARED_CREDENTIALS
+						? VIEWS.SHARED_CREDENTIALS
+						: route.name === VIEWS.CREDENTIALS
+							? VIEWS.CREDENTIALS
+							: VIEWS.PROJECTS_CREDENTIALS;
+
+				void router.push({
+					name: routeName,
+					params: {
+						projectId: currentProjectId,
+						credentialId: 'create',
+					},
+				});
+			},
+		};
+
+		return [
+			...(hasCreatePermission ? [newCredentialCommand] : []),
 			{
 				id: ITEM_ID.OPEN_CREDENTIAL,
 				title: i18n.baseText('commandBar.credentials.open'),

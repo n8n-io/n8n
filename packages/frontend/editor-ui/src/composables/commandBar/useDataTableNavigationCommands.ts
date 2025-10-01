@@ -8,6 +8,8 @@ import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/co
 import type { CommandGroup, CommandBarItem } from './types';
 import type { DataStore } from '@/features/dataStore/datastore.types';
 import { N8nIcon } from '@n8n/design-system';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	OPEN_DATA_TABLE: 'open-data-table',
@@ -23,6 +25,7 @@ export function useDataTableNavigationCommands(options: {
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataStoreStore = useDataStoreStore();
 	const projectsStore = useProjectsStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -123,27 +126,33 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
-		return [
-			{
-				id: ITEM_ID.CREATE_DATA_TABLE,
-				title: i18n.baseText('commandBar.dataTables.create', {
-					interpolate: { projectName: currentProjectName.value },
-				}),
-				section: i18n.baseText('commandBar.sections.dataTables'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-				handler: () => {
-					if (!currentProjectId.value) return;
-					void router.push({
-						name: PROJECT_DATA_STORES,
-						params: { projectId: currentProjectId.value, new: 'new' },
-					});
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			!!getResourcePermissions(projectsStore.currentProject?.scopes)?.dataStore?.create;
+
+		const newDataTableCommand: CommandBarItem = {
+			id: ITEM_ID.CREATE_DATA_TABLE,
+			title: i18n.baseText('commandBar.dataTables.create', {
+				interpolate: { projectName: currentProjectName.value },
+			}),
+			section: i18n.baseText('commandBar.sections.dataTables'),
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'plus',
 				},
 			},
+			handler: () => {
+				if (!currentProjectId.value) return;
+				void router.push({
+					name: PROJECT_DATA_STORES,
+					params: { projectId: currentProjectId.value, new: 'new' },
+				});
+			},
+		};
+
+		return [
+			...(hasCreatePermission ? [newDataTableCommand] : []),
 			{
 				id: ITEM_ID.OPEN_DATA_TABLE,
 				title: i18n.baseText('commandBar.dataTables.open'),

@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ProjectTypes } from '@/types/projects.types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
@@ -14,6 +15,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup, CommandBarItem } from './types';
 import { useTagsStore } from '@/stores/tags.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
@@ -33,6 +36,7 @@ export function useWorkflowNavigationCommands(options: {
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
 	const tagsStore = useTagsStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -145,7 +149,7 @@ export function useWorkflowNavigationCommands(options: {
 
 	const getWorkflowTitle = (workflow: IWorkflowDb, includeOpenWorkflowPrefix: boolean) => {
 		let prefix = '';
-		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
+		if (workflow.homeProject && workflow.homeProject.type === ProjectTypes.Personal) {
 			prefix = includeOpenWorkflowPrefix
 				? i18n.baseText('commandBar.workflows.openPrefixPersonal')
 				: i18n.baseText('commandBar.workflows.prefixPersonal');
@@ -212,30 +216,36 @@ export function useWorkflowNavigationCommands(options: {
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
-		return [
-			{
-				id: ITEM_ID.CREATE_WORKFLOW,
-				title: i18n.baseText('commandBar.workflows.create', {
-					interpolate: { projectName: currentProjectName.value },
-				}),
-				section: i18n.baseText('commandBar.sections.workflows'),
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'plus',
-					},
-				},
-				handler: () => {
-					const targetRoute = router.resolve({
-						name: VIEWS.NEW_WORKFLOW,
-						query: {
-							projectId: projectsStore.currentProjectId,
-							parentFolderId: route.params.folderId,
-						},
-					});
-					window.location.href = targetRoute.fullPath;
+		const hasCreatePermission =
+			!sourceControlStore.preferences.branchReadOnly &&
+			getResourcePermissions(projectsStore.currentProject?.scopes).workflow.create;
+
+		const newWorkflowCommand: CommandBarItem = {
+			id: ITEM_ID.CREATE_WORKFLOW,
+			title: i18n.baseText('commandBar.workflows.create', {
+				interpolate: { projectName: currentProjectName.value },
+			}),
+			section: i18n.baseText('commandBar.sections.workflows'),
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'plus',
 				},
 			},
+			handler: () => {
+				const targetRoute = router.resolve({
+					name: VIEWS.NEW_WORKFLOW,
+					query: {
+						projectId: projectsStore.currentProjectId,
+						parentFolderId: route.params.folderId,
+					},
+				});
+				window.location.href = targetRoute.fullPath;
+			},
+		};
+
+		return [
+			...(hasCreatePermission ? [newWorkflowCommand] : []),
 			{
 				id: ITEM_ID.OPEN_WORKFLOW,
 				title: i18n.baseText('commandBar.workflows.open'),
