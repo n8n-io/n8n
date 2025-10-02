@@ -338,6 +338,16 @@ export class LmChatAnthropic implements INodeType {
 			},
 		});
 
+		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
+		if (!options.topP) {
+			delete model.topP;
+		}
+
+		// If topP is set to a value and temperature is not, unset default Langchain temperature
+		if (options.topP && !options.temperature) {
+			delete model.temperature;
+		}
+
 		return {
 			response: model,
 		};
