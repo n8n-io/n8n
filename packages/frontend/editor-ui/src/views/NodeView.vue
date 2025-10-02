@@ -466,7 +466,7 @@ async function initializeWorkspaceForNewWorkflow() {
 
 	const parentFolderId = route.query.parentFolderId as string | undefined;
 
-	await workflowsStore.getNewWorkflowDataAndMakeShareable(
+	await workflowState.getNewWorkflowDataAndMakeShareable(
 		undefined,
 		projectsStore.currentProjectId,
 		parentFolderId,
