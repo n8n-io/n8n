@@ -16,7 +16,6 @@ import { getIconSource } from '@/utils/nodeIconUtils';
 import type { CommandGroup, CommandBarItem } from './types';
 import { useTagsStore } from '@/stores/tags.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
@@ -213,9 +212,7 @@ export function useWorkflowNavigationCommands(options: {
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission =
-			!sourceControlStore.preferences.branchReadOnly &&
-			getResourcePermissions(projectsStore.currentProject?.scopes).workflow.create;
+		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
 
 		const newWorkflowCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_WORKFLOW,
@@ -240,7 +237,6 @@ export function useWorkflowNavigationCommands(options: {
 				window.location.href = targetRoute.fullPath;
 			},
 		};
-
 		return [
 			...(hasCreatePermission ? [newWorkflowCommand] : []),
 			{

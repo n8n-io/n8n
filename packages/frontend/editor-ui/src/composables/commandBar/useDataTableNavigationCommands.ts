@@ -9,7 +9,6 @@ import type { CommandGroup, CommandBarItem } from './types';
 import type { DataStore } from '@/features/dataStore/datastore.types';
 import { N8nIcon } from '@n8n/design-system';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
@@ -123,9 +122,7 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission =
-			!sourceControlStore.preferences.branchReadOnly &&
-			!!getResourcePermissions(projectsStore.currentProject?.scopes)?.dataStore?.create;
+		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
 
 		const newDataTableCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_DATA_TABLE,

@@ -10,7 +10,6 @@ import { useUIStore } from '@/stores/ui.store';
 import type { CommandGroup, CommandBarItem } from './types';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
@@ -116,9 +115,7 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {
-		const hasCreatePermission =
-			!sourceControlStore.preferences.branchReadOnly &&
-			getResourcePermissions(projectsStore.currentProject?.scopes).credential.create;
+		const hasCreatePermission = !sourceControlStore.preferences.branchReadOnly;
 
 		const newCredentialCommand: CommandBarItem = {
 			id: ITEM_ID.CREATE_CREDENTIAL,
