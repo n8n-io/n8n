@@ -13,16 +13,19 @@ export class McpSettingsService {
 	) {}
 
 	async getEnabled(): Promise<boolean> {
-		const isMcpAccessEnabled = await this.cacheService.get<boolean>(KEY);
+		const isMcpAccessEnabled = await this.cacheService.get<string>(KEY);
 
-		if (isMcpAccessEnabled) return isMcpAccessEnabled;
+		if (isMcpAccessEnabled !== undefined) {
+			return isMcpAccessEnabled === 'true';
+		}
 
 		const row = await this.settingsRepository.findByKey(KEY);
 
-		// Disabled by default
-		if (!row?.value) return false;
-		await this.cacheService.set(KEY, row.value === 'true');
-		return row.value === 'true';
+		const enabled = row?.value === 'true';
+
+		await this.cacheService.set(KEY, enabled.toString());
+
+		return enabled;
 	}
 
 	async setEnabled(enabled: boolean): Promise<void> {
@@ -30,6 +33,7 @@ export class McpSettingsService {
 			{ key: KEY, value: enabled.toString(), loadOnStartup: true },
 			['key'],
 		);
-		await this.cacheService.set(KEY, enabled);
+
+		await this.cacheService.set(KEY, enabled.toString());
 	}
 }
