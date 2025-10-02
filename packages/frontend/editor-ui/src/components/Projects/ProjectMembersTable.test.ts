@@ -82,16 +82,22 @@ vi.mock('@/components/Projects/ProjectMembersRoleCell.vue', () => ({
 		},
 		emits: ['update:role', 'badge-click'],
 		template: `
-			<div
-				data-test-id="role-cell"
-				@badge-click="$emit('badge-click', $event)"
-			>
+			<div data-test-id="role-cell">
 				<button
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
 				>
 					{{ roles[data.role]?.label || data.role }}
 				</button>
+				<template v-for="action in actions" :key="action.id">
+					<span
+						v-if="action.badge"
+						:data-test-id="'badge-' + action.id"
+						@click="action.disabled && $emit('badge-click', action.id)"
+					>
+						{{ action.badge }}
+					</span>
+				</template>
 			</div>
 		`,
 	},
@@ -543,28 +549,29 @@ describe('ProjectMembersTable', () => {
 			renderComponent();
 
 			// Viewer role is unlicensed, should have badge
-			const viewerRoleCell = screen.getByText('Viewer');
-			expect(viewerRoleCell).toBeInTheDocument();
+			// Since there are multiple role cells (one per member), we get all badges
+			const viewerBadges = screen.getAllByTestId('badge-project:viewer');
+			expect(viewerBadges.length).toBeGreaterThan(0);
+			expect(viewerBadges[0]).toHaveTextContent('Upgrade');
 		});
 
 		it('should not show badge on licensed roles', () => {
 			renderComponent();
 
-			// Admin and Editor roles are licensed
-			expect(screen.getByText('Admin')).toBeInTheDocument();
-			expect(screen.getByText('Editor')).toBeInTheDocument();
+			// Admin and Editor roles are licensed, should not have badges
+			expect(screen.queryByTestId('badge-project:admin')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('badge-project:editor')).not.toBeInTheDocument();
 		});
 
 		it('should emit show-upgrade-dialog event when badge is clicked', () => {
 			const { emitted } = renderComponent();
 
-			// Simulate badge-click event from ProjectMembersRoleCell
-			const roleCells = screen.getAllByTestId('role-cell');
-			expect(roleCells.length).toBeGreaterThan(0);
+			// Click the badge on an unlicensed role (Viewer)
+			const viewerBadges = screen.getAllByTestId('badge-project:viewer');
+			expect(viewerBadges.length).toBeGreaterThan(0);
 
-			roleCells[0].dispatchEvent(
-				new CustomEvent('badge-click', { detail: 'project:viewer', bubbles: true }),
-			);
+			// Click the first badge
+			viewerBadges[0].click();
 
 			// The component should emit show-upgrade-dialog when badge is clicked
 			expect(emitted()).toHaveProperty('show-upgrade-dialog');
@@ -574,8 +581,10 @@ describe('ProjectMembersTable', () => {
 			renderComponent();
 
 			// This test verifies the computed property works correctly
-			// by checking that unlicensed role (Viewer) is rendered
-			expect(screen.getByText('Viewer')).toBeInTheDocument();
+			// by checking that unlicensed role (Viewer) has a badge rendered
+			const viewerBadges = screen.getAllByTestId('badge-project:viewer');
+			expect(viewerBadges.length).toBeGreaterThan(0);
+			expect(viewerBadges[0]).toHaveTextContent('Upgrade');
 		});
 	});
 });
