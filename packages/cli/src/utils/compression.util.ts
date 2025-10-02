@@ -89,9 +89,9 @@ export async function compressFolder(
 	const zip = new fflate.Zip();
 
 	// Handle data from the ZIP stream
-	zip.ondata = (err, data, final) => {
-		if (err) {
-			outputStream.destroy(err);
+	zip.ondata = (error, data, final) => {
+		if (error) {
+			outputStream.destroy(error);
 			return;
 		}
 		outputStream.write(Buffer.from(data));
@@ -107,7 +107,7 @@ export async function compressFolder(
 	zip.end();
 
 	// Wait for the stream to finish
-	return new Promise<void>((resolve, reject) => {
+	return await new Promise<void>((resolve, reject) => {
 		outputStream.on('finish', resolve);
 		outputStream.on('error', reject);
 	});
@@ -121,7 +121,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 	// Ensure output directory exists
 	await mkdir(outputDir, { recursive: true });
 
-	return new Promise<void>(async (resolve, reject) => {
+	return await new Promise<void>(async (resolve, reject) => {
 		let filesToProcess = 0;
 
 		const unzip = new fflate.Unzip((stream) => {
@@ -136,15 +136,15 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 				const dirPath = path.dirname(filePath);
 
 				// Create directory if it doesn't exist
-				mkdir(dirPath, { recursive: true }).catch((err) => {
-					if (err.code !== 'EEXIST') {
-						reject(err);
+				mkdir(dirPath, { recursive: true }).catch((error) => {
+					if (error.code !== 'EEXIST') {
+						reject(error);
 					}
 				});
 
-				stream.ondata = async (err, chunk, final) => {
-					if (err) {
-						reject(err);
+				stream.ondata = async (error, chunk, final) => {
+					if (error) {
+						reject(error);
 						return;
 					}
 
@@ -178,7 +178,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 		const zipStream = createReadStream(sourcePath);
 
 		for await (const chunk of zipStream) {
-			unzip.push(chunk);
+			unzip.push(chunk as Uint8Array);
 		}
 
 		zipStream.on('error', reject);
