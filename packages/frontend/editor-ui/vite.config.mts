@@ -105,10 +105,6 @@ const plugins: UserConfig['plugins'] = [
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
-			{
-				src: pathPosix.resolve('../@n8n/design-system/src/css/fonts/InterVariable*.woff2'),
-				dest: resolve(__dirname, 'dist/assets'),
-			},
 		],
 	}),
 	vue(),
