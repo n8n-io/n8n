@@ -128,7 +128,8 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			if (!stream.name.endsWith('/')) {
 				filesToProcess++;
 
-				let data = new Uint8Array();
+				const chunks: Uint8Array[] = [];
+				let totalLength = 0;
 
 				// Sanitize path to prevent zip slip attacks
 				const filePath = sanitizePath(stream.name, outputDir);
@@ -147,10 +148,17 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 						return;
 					}
 
-					data = new Uint8Array([...data, ...chunk]);
+					chunks.push(chunk);
+					totalLength += chunk.length;
 
 					if (final) {
-						await writeFile(filePath, Buffer.from(data));
+						const finalBuffer = new Uint8Array(totalLength);
+						let offset = 0;
+						for (const chunk of chunks) {
+							finalBuffer.set(chunk, offset);
+							offset += chunk.length;
+						}
+						await writeFile(filePath, Buffer.from(finalBuffer));
 
 						filesToProcess--;
 
@@ -174,6 +182,11 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 		}
 
 		zipStream.on('error', reject);
+
+		// If no files were processed (e.g., only directories), resolve immediately
+		if (filesToProcess === 0) {
+			resolve();
+		}
 	});
 }
 
