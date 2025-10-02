@@ -145,64 +145,108 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		it('should also resume parent execution once sub-workflow finishes', async () => {
-			const parentExecution = mock<IExecutionResponse>({
-				id: 'parent_execution_id',
-				finished: false,
-			});
-			parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
-			execution.data.parentExecution = {
-				executionId: parentExecution.id,
-				workflowId: parentExecution.workflowData.id,
-			};
-			executionRepository.findSingleExecution
-				.calledWith(parentExecution.id)
-				.mockResolvedValue(parentExecution);
-			const postExecutePromise = createDeferredPromise<IRun | undefined>();
-			activeExecutions.getPostExecutePromise
-				.calledWith(execution.id)
-				.mockReturnValue(postExecutePromise.promise);
+		describe('with parent execution', () => {
+			let parentExecution: IExecutionResponse;
+			let postExecutePromise: ReturnType<typeof createDeferredPromise<IRun | undefined>>;
 
-			await waitTracker.startExecution(execution.id);
-
-			expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
-				includeData: true,
-				unflattenData: true,
+			beforeEach(() => {
+				parentExecution = mock<IExecutionResponse>({
+					id: 'parent_execution_id',
+					finished: false,
+				});
+				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				execution.data.parentExecution = {
+					executionId: parentExecution.id,
+					workflowId: parentExecution.workflowData.id,
+				};
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				postExecutePromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(execution.id)
+					.mockReturnValue(postExecutePromise.promise);
 			});
 
-			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			expect(workflowRunner.run).toHaveBeenNthCalledWith(
-				1,
-				{
-					executionMode: execution.mode,
-					executionData: execution.data,
-					workflowData: execution.workflowData,
-					projectId: project.id,
-					pushRef: execution.data.pushRef,
-				},
-				false,
-				false,
-				execution.id,
-			);
+			it('should resume parent execution once sub-workflow finishes if parent is waiting', async () => {
+				// Manually track the parent execution to simulate it waiting
+				const hasSpy = jest.spyOn(waitTracker, 'has');
+				hasSpy.mockReturnValue(true);
 
-			postExecutePromise.resolve(mock<IRun>());
-			await jest.advanceTimersByTimeAsync(100);
+				await waitTracker.startExecution(execution.id);
 
-			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-			expect(workflowRunner.run).toHaveBeenNthCalledWith(
-				2,
-				{
-					executionMode: parentExecution.mode,
-					executionData: parentExecution.data,
-					workflowData: parentExecution.workflowData,
-					projectId: project.id,
-					pushRef: parentExecution.data.pushRef,
-					startedAt: parentExecution.startedAt,
-				},
-				false,
-				false,
-				parentExecution.id,
-			);
+				expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					{
+						executionMode: execution.mode,
+						executionData: execution.data,
+						workflowData: execution.workflowData,
+						projectId: project.id,
+						pushRef: execution.data.pushRef,
+					},
+					false,
+					false,
+					execution.id,
+				);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					{
+						executionMode: parentExecution.mode,
+						executionData: parentExecution.data,
+						workflowData: parentExecution.workflowData,
+						projectId: project.id,
+						pushRef: parentExecution.data.pushRef,
+						startedAt: parentExecution.startedAt,
+					},
+					false,
+					false,
+					parentExecution.id,
+				);
+			});
+
+			it('should not resume parent execution if parent is not waiting', async () => {
+				// Do not track the parent execution, simulating it not waiting
+				const hasSpy = jest.spyOn(waitTracker, 'has');
+				hasSpy.mockReturnValue(false);
+
+				await waitTracker.startExecution(execution.id);
+
+				expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(execution.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					{
+						executionMode: execution.mode,
+						executionData: execution.data,
+						workflowData: execution.workflowData,
+						projectId: project.id,
+						pushRef: execution.data.pushRef,
+					},
+					false,
+					false,
+					execution.id,
+				);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				// Parent execution should not be resumed
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 
