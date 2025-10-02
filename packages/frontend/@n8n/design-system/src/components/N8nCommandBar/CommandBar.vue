@@ -329,7 +329,7 @@ onUnmounted(() => {
 	top: 20vh;
 	left: 50%;
 	transform: translateX(-50%);
-	background: var(--color-background-xlight);
+	background: var(--color-foreground-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	box-shadow: var(--box-shadow-dark);
