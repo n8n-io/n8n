@@ -232,7 +232,6 @@ const {
 	cutNodes,
 	duplicateNodes,
 	revertDeleteNode,
-	addNodes,
 	revertAddNode,
 	createConnection,
 	revertCreateConnection,
@@ -1184,9 +1183,9 @@ function onClickReplaceNode(nodeId: string) {
 
 	nodeCreatorReplaceTargetId.value = nodeId;
 	if (isTriggerNode(nodeType)) {
-		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_REPLACE_ACTION);
+		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {
-		nodeCreatorStore.openNodeCreatorForRegularNodes(NODE_CREATOR_OPEN_SOURCES.NODE_REPLACE_ACTION);
+		nodeCreatorStore.openNodeCreatorForRegularNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	}
 }
 
