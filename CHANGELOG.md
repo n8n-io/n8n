@@ -1,3 +1,13 @@
+## [1.114.2](https://github.com/n8n-io/n8n/compare/n8n@1.114.1...n8n@1.114.2) (2025-10-02)
+
+
+### Bug Fixes
+
+* **core:** Check all outputs for chat triggers, first output only for webhooks ([#20308](https://github.com/n8n-io/n8n/issues/20308)) ([067e133](https://github.com/n8n-io/n8n/commit/067e13365fd8f4f73b9f7ac8d17a3241008710ee))
+* **core:** Fix paired item data retrieval in loops with IF nodes ([#20309](https://github.com/n8n-io/n8n/issues/20309)) ([8c41278](https://github.com/n8n-io/n8n/commit/8c412781a036718e9614a81144dad271f23dd4c6))
+
+
+
 ## [1.114.1](https://github.com/n8n-io/n8n/compare/n8n@1.114.0...n8n@1.114.1) (2025-10-02)
 
 
