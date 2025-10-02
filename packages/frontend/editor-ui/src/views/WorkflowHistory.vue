@@ -23,6 +23,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
 
+import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
@@ -331,9 +332,9 @@ watchEffect(async () => {
 <template>
 	<div :class="$style.view">
 		<div :class="$style.header">
-			<n8n-heading tag="h2" size="medium">
+			<N8nHeading tag="h2" size="medium">
 				{{ activeWorkflow?.name }}
-			</n8n-heading>
+			</N8nHeading>
 			<span v-if="activeWorkflow?.isArchived">
 				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
@@ -341,12 +342,12 @@ watchEffect(async () => {
 			</span>
 		</div>
 		<div :class="$style.corner">
-			<n8n-heading tag="h2" size="medium" bold>
+			<N8nHeading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
-			</n8n-heading>
-			<router-link :to="editorRoute" data-test-id="workflow-history-close-button">
-				<n8n-button type="tertiary" icon="x" size="small" text square />
-			</router-link>
+			</N8nHeading>
+			<RouterLink :to="editorRoute" data-test-id="workflow-history-close-button">
+				<N8nButton type="tertiary" icon="x" size="small" text square />
+			</RouterLink>
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<WorkflowHistoryList

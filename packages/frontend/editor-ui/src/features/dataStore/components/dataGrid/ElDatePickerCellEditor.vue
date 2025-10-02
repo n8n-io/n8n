@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { ICellEditorParams } from 'ag-grid-community';
 import { useDatePickerCommon } from '@/features/dataStore/composables/useDatePickerCommon';
 
+import { ElDatePicker } from 'element-plus';
 const props = defineProps<{
 	params: ICellEditorParams;
 }>();
@@ -25,6 +26,13 @@ const {
 	onChange: () => props.params.stopEditing(),
 });
 
+const dateValueComputed = computed({
+	get: () => dateValue.value ?? undefined,
+	set: (val) => {
+		dateValue.value = val ?? null;
+	},
+});
+
 onMounted(async () => {
 	initializeValue(props.params.value as unknown);
 	await focusPicker();
@@ -38,10 +46,10 @@ defineExpose({
 
 <template>
 	<div ref="wrapperRef" class="datastore-datepicker-wrapper">
-		<el-date-picker
+		<ElDatePicker
 			id="datastore-datepicker"
 			ref="pickerRef"
-			v-model="dateValue"
+			v-model="dateValueComputed"
 			type="datetime"
 			:style="{ width: `${inputWidth}px` }"
 			:clearable="true"

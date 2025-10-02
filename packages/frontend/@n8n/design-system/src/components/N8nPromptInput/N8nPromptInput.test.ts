@@ -1,6 +1,8 @@
+/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
+import { vi } from 'vitest';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
@@ -476,39 +478,459 @@ describe('N8nPromptInput', () => {
 		});
 	});
 
-	describe('edge cases', () => {
-		it('should handle very long single line text', () => {
-			const longText = 'a'.repeat(500);
+	describe('credits bar', () => {
+		it('should hide credit bar when quota is -1', () => {
 			const { container } = renderComponent({
 				props: {
-					modelValue: longText,
-					maxLength: 1000,
+					creditsQuota: -1,
+					creditsRemaining: 0,
 				},
 				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
 				},
 			});
 
-			const textarea = container.querySelector('textarea');
-			expect(textarea).toHaveValue(longText);
+			// Credit bar should not be rendered
+			const creditsBar = container.querySelector('.creditsBar');
+			expect(creditsBar).toBeFalsy();
 		});
 
-		it('should apply maxLinesBeforeScroll prop', () => {
-			// This prop affects the computed textAreaMaxHeight value
-			// which is used in multiline mode. We can test that the prop is accepted.
+		it('should show credit bar when quota is a valid positive number', () => {
 			const { container } = renderComponent({
 				props: {
-					modelValue: 'Test',
-					maxLinesBeforeScroll: 2,
+					creditsQuota: 100,
+					creditsRemaining: 80,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			// Credit bar should be rendered
+			const creditsBar = container.querySelector('.creditsBar');
+			expect(creditsBar).toBeTruthy();
+		});
+
+		it('should show credits bar when creditsQuota and creditsRemaining are provided', () => {
+			const { container } = renderComponent({
+				props: {
+					creditsQuota: 100,
+					creditsRemaining: 75,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			const creditsBar = container.querySelector('.creditsBar');
+			expect(creditsBar).toBeTruthy();
+		});
+
+		it('should show no credits warning when creditsRemaining is 0', () => {
+			const { container } = renderComponent({
+				props: {
+					creditsQuota: 100,
+					creditsRemaining: 0,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			const noCredits = container.querySelector('.noCredits');
+			expect(noCredits).toBeTruthy();
+		});
+
+		it('should disable textarea and send button when no credits remain', () => {
+			const { container } = renderComponent({
+				props: {
+					modelValue: 'Test message',
+					creditsQuota: 100,
+					creditsRemaining: 0,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: {
+							props: ['disabled', 'streaming'],
+							template: '<button :disabled="disabled"></button>',
+						},
+						N8nTooltip: true,
+						N8nLink: true,
+						N8nIcon: true,
+					},
+				},
+			});
+
+			const textarea = container.querySelector('textarea');
+			expect(textarea).toHaveAttribute('disabled');
+			const button = container.querySelector('button');
+			expect(button).toHaveAttribute('disabled');
+			const disabledContainer = container.querySelector('.disabled');
+			expect(disabledContainer).toBeTruthy();
+		});
+
+		it('should not show placeholder when no credits remain', () => {
+			const { container } = renderComponent({
+				props: {
+					placeholder: 'Type your message...',
+					creditsQuota: 100,
+					creditsRemaining: 0,
+				},
+				global: {
+					stubs: [
+						'N8nCallout',
+						'N8nScrollArea',
+						'N8nSendStopButton',
+						'N8nTooltip',
+						'N8nLink',
+						'N8nIcon',
+					],
+				},
+			});
+
+			const textarea = container.querySelector('textarea');
+			expect(textarea).toHaveAttribute('placeholder', '');
+		});
+	});
+
+	describe('upgrade-click event', () => {
+		it('should emit upgrade-click event when upgrade link is clicked', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					creditsQuota: 100,
+					creditsRemaining: 10,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: true,
+						N8nTooltip: {
+							template: '<n8n-tooltip-stub><slot></slot></n8n-tooltip-stub>',
+						},
+						N8nLink: true,
+						N8nIcon: true,
+					},
+				},
+			});
+
+			// Find and click the upgrade link
+			const upgradeLink = wrapper.find('n8n-link-stub');
+			await upgradeLink.trigger('click');
+
+			// Verify the upgrade-click event was emitted
+			expect(wrapper.emitted('upgrade-click')).toBeTruthy();
+			expect(wrapper.emitted('upgrade-click')).toHaveLength(1);
+
+			wrapper.unmount();
+		});
+	});
+
+	describe('showAskOwnerTooltip prop', () => {
+		it('should enable tooltip when showAskOwnerTooltip is true', () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					creditsQuota: 100,
+					creditsRemaining: 10,
+					showAskOwnerTooltip: true,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: true,
+						N8nTooltip: {
+							props: ['disabled', 'content', 'placement'],
+							template:
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+						},
+						N8nLink: true,
+						N8nIcon: true,
+					},
+				},
+			});
+
+			// Find tooltips with different placements
+			const creditsTooltip = wrapper.find('.tooltip-top');
+			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+
+			expect(creditsTooltip.exists()).toBe(true);
+			expect(askOwnerTooltip.exists()).toBe(true);
+			expect(askOwnerTooltip.attributes('data-disabled')).toBe('false');
+
+			wrapper.unmount();
+		});
+
+		it('should disable tooltip when showAskOwnerTooltip is false', () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					creditsQuota: 100,
+					creditsRemaining: 10,
+					showAskOwnerTooltip: false,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: true,
+						N8nTooltip: {
+							props: ['disabled', 'content', 'placement'],
+							template:
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+						},
+						N8nLink: true,
+						N8nIcon: true,
+					},
+				},
+			});
+
+			// Find tooltips with different placements
+			const creditsTooltip = wrapper.find('.tooltip-top');
+			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+
+			expect(creditsTooltip.exists()).toBe(true);
+			expect(askOwnerTooltip.exists()).toBe(true);
+			expect(askOwnerTooltip.attributes('data-disabled')).toBe('true');
+
+			wrapper.unmount();
+		});
+	});
+
+	describe('minLines prop', () => {
+		it('should start in multiline mode when minLines > 1', () => {
+			const { container } = renderComponent({
+				props: {
+					minLines: 3,
 				},
 				global: {
 					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
 				},
 			});
 
-			// Component should render without errors
+			// Should be in multiline mode from the start
+			expect(container.querySelector('.multilineTextarea')).toBeTruthy();
+			expect(container.querySelector('.singleLineWrapper')).toBeFalsy();
+		});
+
+		it('should maintain minimum height based on minLines', () => {
+			const minLines = 3;
+			const expectedMinHeight = minLines * 18; // 18px per line
+
+			const { container } = renderComponent({
+				props: {
+					minLines,
+					modelValue: '', // Empty value
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
 			const textarea = container.querySelector('textarea');
-			expect(textarea).toBeTruthy();
+			// Check that the textarea has the minimum height
+			const style = textarea?.getAttribute('style');
+			expect(style).toContain(`height: ${expectedMinHeight}px`);
+		});
+
+		it('should not go below minLines height when text is deleted', async () => {
+			const minLines = 2;
+			const expectedMinHeight = minLines * 18;
+
+			const render = renderComponent({
+				props: {
+					minLines,
+					modelValue: 'Line 1\nLine 2\nLine 3',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			// Clear the text
+			await render.rerender({ modelValue: '' });
+
+			const textarea = render.container.querySelector('textarea');
+			const style = textarea?.getAttribute('style');
+			expect(style).toContain(`height: ${expectedMinHeight}px`);
+		});
+	});
+
+	describe('refocusAfterSend prop', () => {
+		it('should refocus textarea after submit when refocusAfterSend is true', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Test message',
+					refocusAfterSend: true,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+				attachTo: document.body,
+			});
+
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			const focusSpy = vi.spyOn(textarea, 'focus');
+
+			// Trigger submit
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+			// Wait for next tick and animation frame
+			await wrapper.vm.$nextTick();
+			await new Promise(requestAnimationFrame);
+
+			expect(focusSpy).toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('should not refocus textarea after submit when refocusAfterSend is false', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Test message',
+					refocusAfterSend: false,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			const focusSpy = vi.spyOn(textarea, 'focus');
+
+			// Trigger submit
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+			// Wait for next tick
+			await wrapper.vm.$nextTick();
+
+			expect(focusSpy).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('should refocus textarea after stop when refocusAfterSend is true', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Test message',
+					streaming: true,
+					refocusAfterSend: true,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: {
+							props: ['disabled', 'streaming'],
+							template: '<button @click="$emit(\'stop\')">Stop</button>',
+							emits: ['stop'],
+						},
+					},
+				},
+				attachTo: document.body,
+			});
+
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			const focusSpy = vi.spyOn(textarea, 'focus');
+
+			// Trigger stop
+			const stopButton = wrapper.find('button');
+			await stopButton.trigger('click');
+
+			// Wait for next tick and animation frame
+			await wrapper.vm.$nextTick();
+			await new Promise(requestAnimationFrame);
+
+			expect(focusSpy).toHaveBeenCalled();
+			wrapper.unmount();
+		});
+	});
+
+	describe('disabled state', () => {
+		it('should disable textarea and button when disabled prop is true', () => {
+			const { container } = renderComponent({
+				props: {
+					modelValue: 'Test message',
+					disabled: true,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: {
+							props: ['disabled', 'streaming'],
+							template: '<button :disabled="disabled"></button>',
+						},
+					},
+				},
+			});
+
+			const textarea = container.querySelector('textarea');
+			expect(textarea).toHaveAttribute('disabled');
+
+			const button = container.querySelector('button');
+			expect(button).toHaveAttribute('disabled');
+
+			const disabledContainer = container.querySelector('.disabled');
+			expect(disabledContainer).toBeTruthy();
+		});
+
+		it('should not emit submit when disabled', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+					disabled: true,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+			expect(render.emitted('submit')).toBeFalsy();
+		});
+
+		it('should apply disabled styles to container', () => {
+			const { container } = renderComponent({
+				props: {
+					disabled: true,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const disabledContainer = container.querySelector('.disabled');
+			expect(disabledContainer).toBeTruthy();
 		});
 	});
 });

@@ -13,7 +13,6 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
@@ -22,7 +21,9 @@ import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
 import NDVEmptyState from '@/components/NDVEmptyState.vue';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 
+import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -309,7 +310,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
+		:search-shortcut="isPaneActive ? '/' : undefined"
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
@@ -410,9 +411,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			</template>
 
 			<template v-else>
-				<N8nText v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-					i18n.baseText('ndv.output.waitingToRun')
-				}}</N8nText>
+				<div v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">
+					<div :class="$style.spinner">
+						<N8nSpinner type="ring" />
+					</div>
+					<N8nText>
+						{{ i18n.baseText('ndv.output.waitingToRun') }}
+					</N8nText>
+				</div>
 				<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 					<template v-if="isSubNodeType">
 						{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
@@ -522,5 +528,17 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	padding: 0;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
+}
+
+.spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
 }
 </style>

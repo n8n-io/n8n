@@ -5,6 +5,7 @@ import type { ProjectListItem } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	routeName: string;
 	resourceType: ResourceType;
@@ -33,7 +34,7 @@ const targetProjectName = computed(() => {
 			<span v-else>{{ i18n.baseText('projects.move.resource.success.message.workflow') }}</span>
 		</N8nText>
 		<p v-if="isTargetProjectTeam" class="pt-s">
-			<router-link
+			<RouterLink
 				:to="{
 					name: props.routeName,
 					params: { projectId: props.targetProject.id },
@@ -44,7 +45,7 @@ const targetProjectName = computed(() => {
 						interpolate: { targetProjectName },
 					})
 				}}
-			</router-link>
+			</RouterLink>
 		</p>
 	</div>
 </template>

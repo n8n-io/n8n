@@ -30,6 +30,9 @@ interface Props {
 	inputPlaceholder?: string;
 	scrollOnNewMessage?: boolean;
 	showStop?: boolean;
+	creditsQuota?: number;
+	creditsRemaining?: number;
+	showAskOwnerTooltip?: boolean;
 	maxCharacterLength?: number;
 }
 
@@ -40,6 +43,7 @@ const emit = defineEmits<{
 	codeReplace: [number];
 	codeUndo: [number];
 	feedback: [RatingFeedback];
+	'upgrade-click': [];
 }>();
 
 const onClose = () => emit('close');
@@ -373,6 +377,7 @@ defineExpose({
 							</div>
 						</div>
 					</data>
+					<slot name="messagesFooter" />
 				</div>
 				<div
 					v-if="loadingMessage"
@@ -422,9 +427,13 @@ defineExpose({
 				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
 				:streaming="streaming"
+				:credits-quota="creditsQuota"
+				:credits-remaining="creditsRemaining"
+				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
 				data-test-id="chat-input"
+				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			/>

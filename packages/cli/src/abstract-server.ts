@@ -169,7 +169,7 @@ export abstract class AbstractServer {
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				// EADDRINUSE is thrown when the port is already in use
-				this.logger.info(
+				this.logger.error(
 					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 			} else if (error.code === 'EACCES') {
@@ -177,12 +177,20 @@ export abstract class AbstractServer {
 				// This can happen if the port is below 1024 and the process is not run as root
 				// or when the port is reserved by the system, for example Windows reserves random ports
 				// for NAT for Hyper-V and other virtualization software.
-				this.logger.info(
+				this.logger.error(
 					`n8n does not have permission to use port ${port}. Please run n8n with a different port.`,
+				);
+			} else if (error.code === 'EAFNOSUPPORT') {
+				// EAFNOSUPPORT is thrown when the address is not available
+				this.logger.error(
+					`n8n's address '${address}' is not available. Please run n8n with a different address, provide correct address in the environment variables N8N_LISTEN_ADDRESS and/or N8N_WORKER_SERVER_ADDRESS.`,
 				);
 			} else {
 				// Other errors are unexpected and should be logged
-				this.logger.error('n8n webserver failed, exiting', { error });
+				this.logger.error('n8n webserver failed, exiting', {
+					message: error.message,
+					code: error.code,
+				});
 			}
 			// we always exit on error, so that n8n does not run in an inconsistent state
 			process.exit(1);

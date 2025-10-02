@@ -15,6 +15,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 
+import { N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -116,24 +117,24 @@ onMounted(async () => {
 		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
-					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
+					<N8nHeading v-if="collection && collection.name" tag="h1" size="2xlarge">
 						{{ collection.name }}
-					</n8n-heading>
-					<n8n-text v-if="collection && collection.name" color="text-base" size="small">
+					</N8nHeading>
+					<N8nText v-if="collection && collection.name" color="text-base" size="small">
 						{{ i18n.baseText('templates.collection') }}
-					</n8n-text>
-					<n8n-loading :loading="!collection || !collection.name" :rows="2" variant="h1" />
+					</N8nText>
+					<N8nLoading :loading="!collection || !collection.name" :rows="2" variant="h1" />
 				</div>
 			</div>
 			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</n8n-text>
+				<N8nText color="text-base">{{ i18n.baseText('templates.collectionsNotFound') }}</N8nText>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div v-if="loading || isFullTemplatesCollection(collection)" :class="$style.markdown">
-						<n8n-markdown
+						<N8nMarkdown
 							:content="
 								isFullTemplatesCollection(collection) && collection.description
 									? collection.description

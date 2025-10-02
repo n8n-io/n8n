@@ -22,6 +22,7 @@ import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-wor
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { nextTick } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -238,11 +239,11 @@ describe('ParameterInput.vue', () => {
 		const { container, emitted } = renderComponent({
 			props: {
 				path: 'tag',
-				parameter: {
+				parameter: createTestNodeProperties({
 					displayName: 'Tag',
 					name: 'tag',
 					type: 'string',
-				},
+				}),
 				modelValue: '',
 			},
 		});
@@ -268,11 +269,11 @@ describe('ParameterInput.vue', () => {
 			const { container, emitted } = renderComponent({
 				props: {
 					path: 'tag',
-					parameter: {
+					parameter: createTestNodeProperties({
 						displayName: 'Tag',
 						name: 'tag',
 						type: 'string',
-					},
+					}),
 					modelValue: '',
 				},
 			});
@@ -304,11 +305,11 @@ describe('ParameterInput.vue', () => {
 			const { container, emitted } = renderComponent({
 				props: {
 					path: 'percentage',
-					parameter: {
+					parameter: createTestNodeProperties({
 						displayName: 'Percentage',
 						name: 'percentage',
 						type: 'number',
-					},
+					}),
 					modelValue: 1,
 				},
 			});
@@ -335,12 +336,12 @@ describe('ParameterInput.vue', () => {
 		const { emitted, container } = renderComponent({
 			props: {
 				path: 'columns',
-				parameter: {
+				parameter: createTestNodeProperties({
 					displayName: 'Columns',
 					name: 'columns',
 					type: 'multiOptions',
 					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
-				},
+				}),
 				modelValue: ['id', 'title'],
 			},
 		});
@@ -371,12 +372,12 @@ describe('ParameterInput.vue', () => {
 		const { emitted, container, getByTestId } = renderComponent({
 			props: {
 				path: 'columns',
-				parameter: {
+				parameter: createTestNodeProperties({
 					displayName: 'Columns',
 					name: 'columns',
 					type: 'options',
 					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
-				},
+				}),
 				modelValue: 'id',
 			},
 		});
@@ -581,11 +582,11 @@ describe('ParameterInput.vue', () => {
 		const { rerender, getByRole, getByTestId } = renderComponent({
 			props: {
 				path: 'name',
-				parameter: {
+				parameter: createTestNodeProperties({
 					displayName: 'Name',
 					name: 'name',
 					type: 'string',
-				},
+				}),
 				modelValue: 'test',
 			},
 		});
@@ -605,11 +606,11 @@ describe('ParameterInput.vue', () => {
 			const { rerender, getByRole, getByTestId } = renderComponent({
 				props: {
 					path: 'name',
-					parameter: {
+					parameter: createTestNodeProperties({
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
-					},
+					}),
 					modelValue: 'test',
 				},
 			});
@@ -629,11 +630,11 @@ describe('ParameterInput.vue', () => {
 			const { container, emitted } = renderComponent({
 				props: {
 					path: 'textField',
-					parameter: {
+					parameter: createTestNodeProperties({
 						displayName: 'Text Field',
 						name: 'textField',
 						type: 'string',
-					},
+					}),
 					modelValue: '',
 				},
 			});
@@ -686,6 +687,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -701,6 +703,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -716,6 +719,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).toBeInTheDocument();
@@ -731,6 +735,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
@@ -746,6 +751,7 @@ describe('ParameterInput.vue', () => {
 				},
 			});
 
+			await nextTick();
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();

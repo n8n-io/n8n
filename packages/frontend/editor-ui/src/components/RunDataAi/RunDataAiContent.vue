@@ -12,6 +12,7 @@ import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '../ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/utils/aiUtils';
 
+import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
 	startTimeMs: number;
 	executionTimeMs: number;
@@ -92,7 +93,7 @@ const outputError = computed(() => {
 				<ul :class="$style.meta">
 					<li v-if="runMeta?.startTimeMs">{{ runMeta?.executionTimeMs }}ms</li>
 					<li v-if="runMeta?.startTimeMs">
-						<n8n-tooltip>
+						<N8nTooltip>
 							<template #content>
 								{{ new Date(runMeta?.startTimeMs).toLocaleString() }}
 							</template>
@@ -103,7 +104,7 @@ const outputError = computed(() => {
 									},
 								})
 							}}
-						</n8n-tooltip>
+						</N8nTooltip>
 					</li>
 					<li v-if="runMeta">
 						<ViewSubExecution :task-metadata="runMeta" :display-mode="'ai'" :inline="true" />
@@ -116,9 +117,9 @@ const outputError = computed(() => {
 								},
 							})
 						}}
-						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
+						<N8nInfoTip type="tooltip" theme="info-light" tooltip-placement="right">
 							<ConsumedTokensDetails :consumed-tokens="consumedTokensSum" />
-						</n8n-info-tip>
+						</N8nInfoTip>
 					</li>
 				</ul>
 			</div>

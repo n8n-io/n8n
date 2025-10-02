@@ -12,7 +12,6 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-
 interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];
@@ -20,6 +19,7 @@ interface Props {
 	showCloseButton?: boolean;
 	isOpen?: boolean;
 	isReadOnly?: boolean;
+	isHeaderClickable: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -173,6 +173,7 @@ async function copySessionId() {
 		<LogsPanelHeader
 			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
+			:is-clickable="isHeaderClickable"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>

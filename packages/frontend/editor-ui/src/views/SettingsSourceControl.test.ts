@@ -74,7 +74,7 @@ describe('SettingsSourceControl', () => {
 		const { container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
 			pinia,
 			global: {
-				stubs: ['teleport'],
+				stubs: ['Teleport'],
 			},
 		});
 

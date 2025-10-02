@@ -11,6 +11,18 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
+import { ElSwitch } from 'element-plus';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nHeading,
+	N8nInfoTip,
+	N8nInput,
+	N8nOption,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
@@ -336,14 +348,14 @@ async function onOidcSettingsSave() {
 <template>
 	<div class="pb-2xl">
 		<div :class="$style.heading">
-			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</n8n-heading>
+			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
 		</div>
-		<n8n-info-tip>
+		<N8nInfoTip>
 			{{ i18n.baseText('settings.sso.info') }}
 			<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
-		</n8n-info-tip>
+		</N8nInfoTip>
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
 			data-test-id="sso-auth-protocol-select"
@@ -392,10 +404,10 @@ async function onOidcSettingsSave() {
 				<div :class="$style.group">
 					<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					<div class="mt-2xs mb-s">
-						<n8n-radio-buttons v-model="ipsType" :options="ipsOptions" />
+						<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
 					</div>
 					<div v-if="ipsType === IdentityProviderSettingsType.URL">
-						<n8n-input
+						<N8nInput
 							v-model="metadataUrl"
 							type="text"
 							name="metadataUrl"
@@ -406,7 +418,7 @@ async function onOidcSettingsSave() {
 						<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
 					</div>
 					<div v-if="ipsType === IdentityProviderSettingsType.XML">
-						<n8n-input
+						<N8nInput
 							v-model="metadata"
 							type="textarea"
 							name="metadata"
@@ -416,7 +428,7 @@ async function onOidcSettingsSave() {
 						<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 					</div>
 					<div :class="$style.group">
-						<n8n-tooltip
+						<N8nTooltip
 							v-if="ssoStore.isEnterpriseSamlEnabled"
 							:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
 						>
@@ -425,26 +437,26 @@ async function onOidcSettingsSave() {
 									{{ i18n.baseText('settings.sso.activation.tooltip') }}
 								</span>
 							</template>
-							<el-switch
+							<ElSwitch
 								v-model="ssoStore.isSamlLoginEnabled"
 								data-test-id="sso-toggle"
 								:disabled="isToggleSsoDisabled"
 								:class="$style.switch"
 								:inactive-text="ssoActivatedLabel"
 							/>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</div>
 				</div>
 				<div :class="$style.buttons">
-					<n8n-button
+					<N8nButton
 						:disabled="!isSaveEnabled"
 						size="large"
 						data-test-id="sso-save"
 						@click="onSave"
 					>
 						{{ i18n.baseText('settings.sso.settings.save') }}
-					</n8n-button>
-					<n8n-button
+					</N8nButton>
+					<N8nButton
 						:disabled="!isTestEnabled"
 						size="large"
 						type="tertiary"
@@ -452,14 +464,14 @@ async function onOidcSettingsSave() {
 						@click="onTest"
 					>
 						{{ i18n.baseText('settings.sso.settings.test') }}
-					</n8n-button>
+					</N8nButton>
 				</div>
 
 				<footer :class="$style.footer">
 					{{ i18n.baseText('settings.sso.settings.footer.hint') }}
 				</footer>
 			</div>
-			<n8n-action-box
+			<N8nActionBox
 				v-else
 				data-test-id="sso-content-unlicensed"
 				:class="$style.actionBox"
@@ -470,7 +482,7 @@ async function onOidcSettingsSave() {
 				<template #heading>
 					<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
 				</template>
-			</n8n-action-box>
+			</N8nActionBox>
 		</div>
 		<div v-if="authProtocol === SupportedProtocols.OIDC">
 			<div v-if="ssoStore.isEnterpriseOidcEnabled">
@@ -537,7 +549,7 @@ async function onOidcSettingsSave() {
 					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 				</div>
 				<div :class="$style.group">
-					<el-switch
+					<ElSwitch
 						v-model="ssoStore.isOidcLoginEnabled"
 						data-test-id="sso-oidc-toggle"
 						:class="$style.switch"
@@ -546,17 +558,17 @@ async function onOidcSettingsSave() {
 				</div>
 
 				<div :class="$style.buttons">
-					<n8n-button
+					<N8nButton
 						data-test-id="sso-oidc-save"
 						size="large"
 						:disabled="cannotSaveOidcSettings"
 						@click="onOidcSettingsSave"
 					>
 						{{ i18n.baseText('settings.sso.settings.save') }}
-					</n8n-button>
+					</N8nButton>
 				</div>
 			</div>
-			<n8n-action-box
+			<N8nActionBox
 				v-else
 				data-test-id="sso-content-unlicensed"
 				:class="$style.actionBox"
@@ -566,7 +578,7 @@ async function onOidcSettingsSave() {
 				<template #heading>
 					<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
 				</template>
-			</n8n-action-box>
+			</N8nActionBox>
 		</div>
 	</div>
 </template>

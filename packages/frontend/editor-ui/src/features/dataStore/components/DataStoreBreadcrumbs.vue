@@ -10,6 +10,8 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { telemetry } from '@/plugins/telemetry';
 
+import { N8nBreadcrumbs, N8nInlineTextEdit } from '@n8n/design-system';
+import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
 const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
@@ -99,7 +101,7 @@ watch(
 
 <template>
 	<div :class="$style['data-store-breadcrumbs']">
-		<n8n-breadcrumbs
+		<N8nBreadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
 			:highlight-last-item="false"
@@ -122,7 +124,7 @@ watch(
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
-		</n8n-breadcrumbs>
+		</N8nBreadcrumbs>
 		<div :class="$style['data-store-actions']">
 			<DataStoreActions
 				:data-store="props.dataStore"

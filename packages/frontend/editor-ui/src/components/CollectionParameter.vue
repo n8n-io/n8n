@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -17,6 +18,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
 	hideDelete?: boolean;
@@ -169,7 +171,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	<div class="collection-parameter" @keydown.stop>
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				<n8n-text size="small">{{ i18n.baseText('collectionParameter.noProperties') }}</n8n-text>
+				<N8nText size="small">{{ i18n.baseText('collectionParameter.noProperties') }}</N8nText>
 			</div>
 
 			<Suspense>
@@ -185,7 +187,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
-				<n8n-button
+				<N8nButton
 					v-if="(parameter.options ?? []).length === 1"
 					type="tertiary"
 					block
@@ -193,22 +195,22 @@ function valueChanged(parameterData: IUpdateInformation) {
 					@click="optionSelected((parameter.options ?? [])[0].name)"
 				/>
 				<div v-else class="add-option">
-					<n8n-select
+					<N8nSelect
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
 						filterable
 						@update:model-value="optionSelected"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="item in parameterOptions"
 							:key="item.name"
 							:label="getParameterOptionLabel(item)"
 							:value="item.name"
 							data-test-id="collection-parameter-option"
 						>
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 				</div>
 			</div>
 		</div>

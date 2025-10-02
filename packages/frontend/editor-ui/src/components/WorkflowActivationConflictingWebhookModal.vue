@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
+import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const modalBus = createEventBus();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
@@ -75,28 +76,28 @@ const onClick = async () => {
 		:center="true"
 	>
 		<template #content>
-			<n8n-callout theme="danger" data-test-id="conflicting-webhook-callout">
+			<N8nCallout theme="danger" data-test-id="conflicting-webhook-callout">
 				A {{ webhookTypeUi.callout }} '{{ data.node }}' in the workflow '{{ data.workflowName }}'
 				uses a conflicting URL path, so this workflow cannot be activated
-			</n8n-callout>
+			</N8nCallout>
 			<div :class="$style.container">
 				<div>
-					<n8n-text color="text-base"> You can deactivate </n8n-text>
-					<n8n-link :to="workflowUrl" :underline="true"> {{ data.workflowName }} </n8n-link>
-					<n8n-text color="text-base" data-test-id="conflicting-webhook-suggestion">
+					<N8nText color="text-base"> You can deactivate </N8nText>
+					<N8nLink :to="workflowUrl" :underline="true"> {{ data.workflowName }} </N8nLink>
+					<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
 						{{ webhookTypeUi.suggestion }}
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 			<div data-test-id="conflicting-webhook-path">
-				<n8n-text color="text-light"> {{ webhookUrl }}/</n8n-text>
-				<n8n-text color="text-dark" bold>
+				<N8nText color="text-light"> {{ webhookUrl }}/</N8nText>
+				<N8nText color="text-dark" bold>
 					{{ data.webhookPath }}
-				</n8n-text>
+				</N8nText>
 			</div>
 		</template>
 		<template #footer>
-			<n8n-button
+			<N8nButton
 				label="Done"
 				size="medium"
 				float="right"

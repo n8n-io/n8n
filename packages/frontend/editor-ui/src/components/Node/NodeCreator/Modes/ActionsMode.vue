@@ -35,6 +35,7 @@ import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
+import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
 }>();
@@ -280,7 +281,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 				>
 					<!-- Empty state -->
 					<template v-if="hasNoTriggerActions" #empty>
-						<n8n-callout
+						<N8nCallout
 							v-if="hasNoTriggerActions"
 							theme="info"
 							iconless
@@ -294,7 +295,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 									})
 								"
 							/>
-						</n8n-callout>
+						</N8nCallout>
 						<ItemsRenderer :elements="placeholderTriggerActions" @selected="onSelected" />
 					</template>
 					<template v-else #empty>
@@ -316,7 +317,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
-					<n8n-callout
+					<N8nCallout
 						v-if="!userActivated && isTriggerRootView"
 						theme="info"
 						iconless
@@ -324,10 +325,10 @@ const callouts = computed<INodeCreateElement[]>(() =>
 						data-test-id="actions-panel-activation-callout"
 					>
 						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
-					</n8n-callout>
+					</N8nCallout>
 					<!-- Empty state -->
 					<template #empty>
-						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
+						<N8nInfoTip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
 								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
@@ -335,7 +336,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 									})
 								"
 							/>
-						</n8n-info-tip>
+						</N8nInfoTip>
 						<p
 							v-else
 							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"

@@ -8,7 +8,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
+import ProjectBreadcrumb from '@/components/Folders/ProjectBreadcrumb.vue';
 
+import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
@@ -192,7 +194,7 @@ onBeforeUnmount(() => {
 		:class="{ [$style.container]: true, [$style['dragging']]: isDragging }"
 		data-test-id="folder-breadcrumbs"
 	>
-		<n8n-breadcrumbs
+		<N8nBreadcrumbs
 			v-if="visibleBreadcrumbsItems.length"
 			v-model:drag-active="isDragging"
 			:items="visibleBreadcrumbsItems"
@@ -216,7 +218,7 @@ onBeforeUnmount(() => {
 			<template #append>
 				<slot name="append"></slot>
 			</template>
-		</n8n-breadcrumbs>
+		</N8nBreadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
 		<div v-else-if="currentProject || isSharedContext" :class="$style['home-project']">
 			<ProjectBreadcrumb
@@ -231,7 +233,7 @@ onBeforeUnmount(() => {
 		<div v-else>
 			<slot name="append"></slot>
 		</div>
-		<n8n-action-toggle
+		<N8nActionToggle
 			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"
 			:class="$style['action-toggle']"

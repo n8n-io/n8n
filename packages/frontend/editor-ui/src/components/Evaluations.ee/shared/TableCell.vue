@@ -30,9 +30,9 @@ const getCellContent = (column: TestTableColumn<T>, row: T) => {
 		<a v-if="column.openInNewTab" :href="router.resolve(column.route(row)!).href" target="_blank">
 			{{ getCellContent(column, row) }}
 		</a>
-		<router-link v-else :to="column.route(row)!">
+		<RouterLink v-else :to="column.route(row)!">
 			{{ getCellContent(column, row) }}
-		</router-link>
+		</RouterLink>
 	</div>
 
 	<div v-else>

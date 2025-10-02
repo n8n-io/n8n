@@ -12,7 +12,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import uniqBy from 'lodash/uniqBy';
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
@@ -30,9 +29,11 @@ import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
+import { type SearchShortcut } from '@/types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
+import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -45,13 +46,14 @@ export type Props = {
 	linkedRuns?: boolean;
 	readOnly?: boolean;
 	isProductionExecutionPreview?: boolean;
-	isPaneActive?: boolean;
+	searchShortcut?: SearchShortcut;
 	displayMode: IRunDataDisplayMode;
 	compact?: boolean;
 	disableDisplayModeSelection?: boolean;
 	focusedMappableInput: string;
 	isMappingOnboarded: boolean;
 	nodeNotRunMessageVariant?: 'default' | 'simple';
+	truncateLimit?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,6 +63,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isProductionExecutionPreview: false,
 	isPaneActive: false,
 	nodeNotRunMessageVariant: 'default',
+	searchShortcut: undefined,
 });
 
 const emit = defineEmits<{
@@ -415,13 +418,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:mapping-enabled="isMappingEnabled"
 		:distance-from-active="currentNodeDepth"
 		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
+		:search-shortcut="searchShortcut"
 		:display-mode="displayMode"
 		pane-type="input"
 		data-test-id="ndv-input-panel"
 		:disable-ai-content="true"
 		:collapsing-table-column-name="collapsingColumnName"
 		:compact="compact"
+		:truncate-limit="truncateLimit"
 		:disable-display-mode-selection="disableDisplayModeSelection"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
@@ -570,6 +574,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						tooltip-placement="bottom"
+						:show-loading-spinner="false"
 						@execute="onNodeExecute"
 					>
 						<template

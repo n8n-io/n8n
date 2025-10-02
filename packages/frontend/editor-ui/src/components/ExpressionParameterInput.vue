@@ -2,6 +2,7 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
@@ -18,7 +19,9 @@ import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { CanvasKey } from '@/constants';
 import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
+import { isEventTargetContainedBy } from '@/utils/htmlUtils';
 
+import { N8nButton } from '@n8n/design-system';
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -89,7 +92,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (event?.target instanceof Element && outputPopover.value?.contentRef?.contains(event.target)) {
+	if (isEventTargetContainedBy(event?.target, outputPopover.value?.contentRef)) {
 		return;
 	}
 
@@ -214,7 +217,7 @@ defineExpose({ focus, select });
 					/>
 				</template>
 			</DraggableTarget>
-			<n8n-button
+			<N8nButton
 				v-if="!isDragging"
 				square
 				outline

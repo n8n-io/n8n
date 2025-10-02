@@ -5,7 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
+import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 type Props = {
 	dataStore: DataStoreResource;
 	readOnly?: boolean;
@@ -51,9 +53,9 @@ const getDataStoreSize = computed(() => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']">
-						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
+						<N8nText tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
-						</n8n-text>
+						</N8nText>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>

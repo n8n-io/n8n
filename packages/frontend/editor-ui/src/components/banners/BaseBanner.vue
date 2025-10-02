@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { CalloutTheme } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { N8nCallout, N8nIcon } from '@n8n/design-system';
 interface Props {
 	name: BannerName;
 	theme?: CalloutTheme;
@@ -38,7 +39,7 @@ async function onCloseClick() {
 }
 </script>
 <template>
-	<n8n-callout
+	<N8nCallout
 		:class="$style.callout"
 		:theme="props.theme"
 		:icon="props.customIcon"
@@ -53,7 +54,7 @@ async function onCloseClick() {
 		<template #trailingContent>
 			<div :class="$style.trailingContent">
 				<slot name="trailingContent" />
-				<n8n-icon
+				<N8nIcon
 					v-if="dismissible"
 					size="small"
 					icon="x"
@@ -64,7 +65,7 @@ async function onCloseClick() {
 				/>
 			</div>
 		</template>
-	</n8n-callout>
+	</N8nCallout>
 </template>
 
 <style lang="scss" module>

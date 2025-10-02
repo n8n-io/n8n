@@ -22,6 +22,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	ExecutionError,
+	TimeoutExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -424,7 +425,7 @@ describe('workflow timeout with startedAt', () => {
 
 		// ASSERT
 		// The execution should be stopped immediately because the timeout has already elapsed
-		expect(mockStopExecution).toHaveBeenCalledWith('1');
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {
@@ -471,6 +472,63 @@ describe('workflow timeout with startedAt', () => {
 		// ASSERT
 		// The execution should not be stopped immediately (original timeout logic)
 		expect(mockStopExecution).not.toHaveBeenCalled();
+	});
+
+	it('should call stopExecution when the timeout callback is executed', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		Container.get(GlobalConfig).executions.timeout = 10;
+
+		let timeoutCallback: (() => void) | undefined;
+		jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+			if (typeof fn === 'function') {
+				timeoutCallback = fn;
+			}
+			return {} as NodeJS.Timeout;
+		});
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// Execute the timeout callback
+		expect(timeoutCallback).toBeDefined();
+		timeoutCallback!();
+
+		// ASSERT
+		// The execution should be stopped when the timeout callback is executed
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 });
 

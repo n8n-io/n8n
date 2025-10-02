@@ -6,7 +6,7 @@ test.describe('AI-1401 AI sub-nodes show node output with no path back in input'
 
 		// Execute the workflow first to generate data
 		await n8n.canvas.executeNode('Edit Fields');
-		await n8n.page.waitForTimeout(3000); // Wait for execution to complete
+		await n8n.notifications.waitForNotification('Node executed successfully');
 
 		for (const node of ['hackernews_top', 'hackernews_sub']) {
 			await n8n.canvas.openNode(node);

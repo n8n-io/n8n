@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
-import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { ElCheckbox, ElOption, ElOptionGroup, ElSelect } from 'element-plus';
+import { N8nInputLabel, N8nLink, N8nNotice } from '@n8n/design-system';
 // Define props
 const props = defineProps({
 	modelValue: {
@@ -95,14 +96,14 @@ function goToUpgradeApiKeyScopes() {
 				:append-to="popperContainer"
 			>
 				<template #header>
-					<el-checkbox
+					<ElCheckbox
 						v-model="checkAll"
 						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 					>
 						{{ i18n.baseText('settings.api.scopes.selectAll') }}
-					</el-checkbox>
+					</ElCheckbox>
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
@@ -120,9 +121,9 @@ function goToUpgradeApiKeyScopes() {
 		<N8nNotice v-if="!enabled">
 			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
 				<template #link>
-					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
+					<N8nLink size="small" @click="goToUpgradeApiKeyScopes">
 						{{ i18n.baseText('generic.upgrade') }}
-					</n8n-link>
+					</N8nLink>
 				</template>
 			</I18nT>
 		</N8nNotice>

@@ -2,6 +2,7 @@
 import Draggable from '@/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
+import { N8nIcon } from '@n8n/design-system';
 defineProps<{
 	canMoveRight: boolean;
 	canMoveLeft: boolean;
@@ -40,13 +41,13 @@ const onDragStart = () => {
 					v-if="canMoveLeft"
 					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
 				>
-					<n8n-icon icon="arrow-left" />
+					<N8nIcon icon="arrow-left" />
 				</span>
 				<span
 					v-if="canMoveRight"
 					:class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }"
 				>
-					<n8n-icon icon="arrow-right" />
+					<N8nIcon icon="arrow-right" />
 				</span>
 				<div :class="$style.grid">
 					<div>

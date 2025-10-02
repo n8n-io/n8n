@@ -21,7 +21,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
+import { ElTabPane, ElTabs } from 'element-plus';
 export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 type Props = {
@@ -107,9 +109,7 @@ onBeforeUnmount(() => {
 });
 
 const askAiEnabled = computed(() => {
-	return (
-		props.disableAskAi !== true && settingsStore.isAskAiEnabled && props.language === 'javaScript'
-	);
+	return !props.disableAskAi && settingsStore.isAskAiEnabled && props.language === 'javaScript';
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
@@ -118,7 +118,7 @@ watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) =>
 	}
 });
 
-async function onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+async function onBeforeTabLeave(_activeName: string | number, oldActiveName: string | number) {
 	// Confirm dialog if leaving ask-ai tab during loading
 	if (oldActiveName === 'ask-ai' && isLoadingAIResponse.value) {
 		const confirmModal = await message.alert(i18n.baseText('codeNodeEditor.askAi.sureLeaveTab'), {
@@ -221,7 +221,7 @@ defineExpose({
 		ref="codeNodeEditorContainerRef"
 		:class="['code-node-editor', $style['code-node-editor-container']]"
 	>
-		<el-tabs
+		<ElTabs
 			v-if="askAiEnabled"
 			ref="tabs"
 			v-model="activeTab"
@@ -229,7 +229,7 @@ defineExpose({
 			:before-leave="onBeforeTabLeave"
 			:class="$style.tabs"
 		>
-			<el-tab-pane
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
@@ -255,8 +255,8 @@ defineExpose({
 					</template>
 				</DraggableTarget>
 				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
+			</ElTabPane>
+			<ElTabPane
 				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
@@ -270,8 +270,8 @@ defineExpose({
 					@started-loading="onAiLoadStart"
 					@finished-loading="onAiLoadEnd"
 				/>
-			</el-tab-pane>
-		</el-tabs>
+			</ElTabPane>
+		</ElTabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
 			<DraggableTarget
