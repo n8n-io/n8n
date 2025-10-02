@@ -61,10 +61,8 @@ export class SidebarPage {
 	}
 
 	async clickAboutMenuItem(): Promise<void> {
-		await this.page
-			.getByTestId('menu-item')
-			.filter({ hasText: 'About n8n' })
-			.dispatchEvent('click');
+		await this.page.getByTestId('help').click();
+		await this.page.getByTestId('about').click();
 	}
 
 	async closeAboutModal(): Promise<void> {
