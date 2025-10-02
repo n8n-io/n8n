@@ -219,6 +219,10 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	padding: 0 var(--spacing-xs);
 	display: flex;
 
+	:global(.el-tree) {
+		background-color: transparent;
+	}
+
 	:global(.el-tree-node__expand-icon) {
 		display: none;
 	}
