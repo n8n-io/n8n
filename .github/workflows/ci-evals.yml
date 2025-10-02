@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - master
-      - ai-1492-feature-set-up-running-evaluations-in-ci
-    paths:
-      - 'packages/@n8n/ai-workflow-builder.ee/**'
-      - '.github/workflows/ci-evals.yml'
-  pull_request:
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/ci-evals.yml'
