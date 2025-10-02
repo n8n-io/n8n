@@ -1565,23 +1565,6 @@ export class WorkflowExecute {
 								}
 
 								return input.map((item, itemIndex) => {
-									// Preserve any existing sourceOverwrite from the pairedItem.
-									// This allows nodes like SplitInBatches to override the
-									// source information that tracks where an item originated
-									// from, which is critical for maintaining correct data
-									// lineage when nodes need to manipulate the item tracking
-									// chain.
-									if (typeof item.pairedItem === 'object' && 'sourceOverwrite' in item.pairedItem) {
-										return {
-											...item,
-											pairedItem: {
-												item: itemIndex,
-												input: inputIndex || undefined,
-												sourceOverwrite: item.pairedItem.sourceOverwrite,
-											},
-										};
-									}
-
 									return {
 										...item,
 										pairedItem: {

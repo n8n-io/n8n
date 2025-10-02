@@ -28,9 +28,11 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
 import { jsonParse } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useCredentialsStore } from './credentials.store';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/utils/nodeTypesUtils';
+import { stringSizeInBytes } from '@/utils/typesUtils';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
@@ -51,6 +53,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -69,6 +72,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		clearMessages,
 		mapAssistantMessageToUI,
 		clearRatingLogic,
+		getRunningTools,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -220,7 +224,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		if (e.name === 'AbortError') {
 			// Handle abort errors as they are expected when stopping streaming
-			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			const userMsg = createAssistantMessage(
+				locale.baseText('aiAssistant.builder.streamAbortedMessage'),
+				'aborted-streaming',
+			);
 			chatMessages.value = [...chatMessages.value, userMsg];
 			return;
 		}
@@ -316,6 +323,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 
 		if (type === 'execution') {
+			const resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+			const resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
+
+			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
 			trackingPayload.execution_status = executionStatus ?? '';
 			if (executionStatus === 'error') {
 				trackingPayload.error_message = errorMessage ?? '';
@@ -364,9 +375,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						assistantThinkingMessage.value = undefined;
-					}
-
-					if (result.thinkingMessage) {
+					} else {
+						// Always update thinking message, even when undefined (to clear it)
 						assistantThinkingMessage.value = result.thinkingMessage;
 					}
 				},
@@ -498,8 +508,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
-		workflowsStore.removeAllConnections({ setStateDirty: false });
-		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
 
 		// For the initial generation, we want to apply auto-generated workflow name
 		// but only if the workflow has default name
@@ -508,7 +518,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			initialGeneration.value &&
 			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
 		) {
-			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 		}
 
 		// Restore positions for nodes that still exist and identify new nodes
@@ -597,5 +607,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
 		updateBuilderCredits,
+		getRunningTools,
 	};
 });

@@ -49,16 +49,18 @@ import {
 	syslogModalDescription,
 } from './descriptions.ee';
 import { useElementSize } from '@vueuse/core';
+
 import {
 	N8nButton,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nInputLabel,
-	N8nMenu,
+	N8nMenuItem,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
 const props = withDefaults(
@@ -480,7 +482,13 @@ const { width } = useElementSize(defNameRef);
 				</template>
 				<template v-else>
 					<div :class="$style.sidebar">
-						<N8nMenu mode="tabs" :items="sidebarItems" @select="onTabSelect"></N8nMenu>
+						<N8nMenuItem
+							v-for="item in sidebarItems"
+							:key="item.id"
+							:item="item"
+							:active="activeTab === item.id"
+							@click="() => onTabSelect(item.id)"
+						/>
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 						<template v-if="isTypeWebhook">

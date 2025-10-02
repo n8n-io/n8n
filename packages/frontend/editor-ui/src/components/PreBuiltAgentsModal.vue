@@ -6,6 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { computed } from 'vue';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import type { INodeCreateElement } from '@/Interface';
+import ItemsRenderer from '@/components/Node/NodeCreator/Renderers/ItemsRenderer.vue';
 
 import { N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();

@@ -62,4 +62,14 @@ export class TemplatesPage extends BasePage {
 	async clickCategoryFilter(category: string): Promise<void> {
 		await this.getCategoryFilter(category).click();
 	}
+
+	/**
+	 * Click the "Use workflow" button on a specific template card by workflow title
+	 * @param workflowTitle - The title of the workflow to find on the template card
+	 */
+	async clickUseWorkflowButton(workflowTitle: string): Promise<void> {
+		const templateCard = this.page.getByTestId('template-card').filter({ hasText: workflowTitle });
+		await templateCard.hover();
+		await templateCard.getByTestId('use-workflow-button').click();
+	}
 }
