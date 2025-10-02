@@ -17,20 +17,6 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 
-vi.mock('@/features/insights/components/InsightsPaywall.vue', async (importOriginal) => {
-	const actual = await importOriginal<{ default: unknown }>();
-	return {
-		...actual,
-		default: defineComponent({
-			template: `
-				<div>
-					<h4>Upgrade to access more detailed insights</h4>
-				</div>
-			`,
-		}),
-	};
-});
-
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
@@ -367,8 +353,8 @@ describe('InsightsTableWorkflows', () => {
 			).not.toBeInTheDocument();
 		});
 
-		it('should display paywall when dashboard is not enabled', async () => {
-			renderComponent({
+		it('should render paywall cover when dashboard is not enabled', async () => {
+			const { container } = renderComponent({
 				props: {
 					data: mockInsightsData,
 					loading: false,
@@ -376,9 +362,23 @@ describe('InsightsTableWorkflows', () => {
 				},
 			});
 
-			expect(
-				await screen.findByText('Upgrade to access more detailed insights'),
-			).toBeInTheDocument();
+			// Verify sample data is used instead of real data
+			expect(screen.getByTestId('workflow-row-sample-workflow-1')).toBeInTheDocument();
+			expect(screen.queryByTestId('workflow-row-workflow-1')).not.toBeInTheDocument();
+
+			// Wait for the blurryCover div that contains the paywall to be present
+			await screen.findByTestId('insights-table');
+			const blurryCover = container.querySelector('[class*="blurryCover"]');
+			expect(blurryCover).toBeInTheDocument();
+
+			// Wait for the async paywall component to load and render
+			// The paywall text should appear once the component loads
+			const paywallText = await screen.findByText(
+				'Upgrade to access more detailed insights',
+				{},
+				{ timeout: 3000 },
+			);
+			expect(paywallText).toBeInTheDocument();
 		});
 
 		it('should use sample data when dashboard is not enabled', () => {
