@@ -254,7 +254,7 @@ export class MessageBird implements INodeType {
 								value: 'sms',
 							},
 						],
-						default: 'binary',
+						default: 'sms',
 						description: 'The type of message. Values can be: sms, binary, or flash.',
 					},
 					{
