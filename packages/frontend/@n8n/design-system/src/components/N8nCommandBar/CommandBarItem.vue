@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { ref } from 'vue';
+
 import type { CommandBarItem } from './types';
 
 const props = defineProps<{
@@ -10,8 +12,18 @@ const emit = defineEmits<{
 	select: [item: CommandBarItem];
 }>();
 
+const isHovered = ref(false);
+
 const handleSelect = () => {
 	emit('select', props.item);
+};
+
+const handleMouseEnter = () => {
+	isHovered.value = true;
+};
+
+const handleMouseLeave = () => {
+	isHovered.value = false;
 };
 </script>
 
@@ -21,6 +33,8 @@ const handleSelect = () => {
 		:data-item-id="item.id"
 		:class="[$style.item, { [$style.selected]: isSelected }]"
 		@click.stop="handleSelect"
+		@mouseenter="handleMouseEnter"
+		@mouseleave="handleMouseLeave"
 	>
 		<div v-if="item.icon" :class="$style.icon">
 			<span
@@ -37,7 +51,11 @@ const handleSelect = () => {
 		<div :class="$style.content">
 			<div :class="$style.title">
 				<template v-if="typeof item.title === 'string'">{{ item.title }}</template>
-				<component :is="item.title.component" v-else v-bind="item.title.props" />
+				<component
+					:is="item.title.component"
+					v-else
+					v-bind="{ ...item.title.props, isSelected, isHovered }"
+				/>
 			</div>
 		</div>
 	</div>

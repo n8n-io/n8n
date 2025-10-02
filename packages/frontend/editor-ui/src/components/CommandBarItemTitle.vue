@@ -1,11 +1,18 @@
 <script lang="ts" setup>
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
-defineProps<{
+interface Props {
 	title: string;
 	suffix?: string;
 	suffixIcon?: IconOrEmoji;
-}>();
+	actionText?: string;
+
+	// passed from CommandBarItem
+	isSelected?: boolean;
+	isHovered?: boolean;
+}
+
+defineProps<Props>();
 </script>
 
 <template>
@@ -15,6 +22,9 @@ defineProps<{
 			<ProjectIcon v-if="suffixIcon" :icon="suffixIcon" size="mini" :border-less="true" />
 			{{ suffix }}
 		</span>
+		<span v-if="actionText && (isSelected || isHovered)" :class="$style.action">{{
+			actionText
+		}}</span>
 	</span>
 </template>
 
@@ -44,5 +54,11 @@ defineProps<{
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	max-width: 50%;
+}
+
+.action {
+	color: var(--color-text-light);
+	margin-left: auto;
+	flex-shrink: 0;
 }
 </style>

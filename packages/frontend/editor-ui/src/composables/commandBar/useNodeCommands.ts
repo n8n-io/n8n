@@ -12,6 +12,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/components/NodeIcon.vue';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	ADD_NODE: 'add-node',
@@ -57,10 +58,15 @@ export function useNodeCommands(options: {
 
 			return {
 				id: name,
-				title: i18n.baseText('commandBar.nodes.addNodeWithPrefix', {
-					interpolate: { nodeName: displayName },
-				}),
+				title: {
+					component: CommandBarItemTitle as Component,
+					props: {
+						title: displayName,
+						actionText: i18n.baseText('generic.add'),
+					},
+				},
 				keywords: [
+					displayName,
 					i18n.baseText('commandBar.nodes.keywords.insert'),
 					i18n.baseText('commandBar.nodes.keywords.add'),
 					i18n.baseText('commandBar.nodes.keywords.create'),
@@ -98,11 +104,15 @@ export function useNodeCommands(options: {
 
 			return {
 				id,
-				title: i18n.baseText('commandBar.nodes.openNodeWithPrefix', {
-					interpolate: { nodeName: name },
-				}),
+				title: {
+					component: CommandBarItemTitle as Component,
+					props: {
+						title: name,
+						actionText: i18n.baseText('generic.open'),
+					},
+				},
 				section: i18n.baseText('commandBar.sections.nodes'),
-				keywords: [type],
+				keywords: [name, type],
 				icon: {
 					component: NodeIcon,
 					props: {

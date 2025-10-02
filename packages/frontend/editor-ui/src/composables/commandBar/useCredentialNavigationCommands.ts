@@ -87,6 +87,7 @@ export function useCredentialNavigationCommands(options: {
 				props: {
 					title: credential.name,
 					suffix: getCredentialProjectSuffix(credential),
+					actionText: i18n.baseText('generic.open'),
 				},
 			},
 			section: i18n.baseText('commandBar.sections.credentials'),

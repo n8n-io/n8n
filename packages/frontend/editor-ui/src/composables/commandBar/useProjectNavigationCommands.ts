@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, type Ref, type Component } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -7,6 +7,7 @@ import type { ProjectListItem } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CommandGroup, CommandBarItem } from './types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import CommandBarItemTitle from '@/components/CommandBarItemTitle.vue';
 
 const ITEM_ID = {
 	CREATE_PROJECT: 'create-project',
@@ -49,8 +50,15 @@ export function useProjectNavigationCommands(options: {
 
 		return {
 			id: project.id,
-			title,
+			title: {
+				component: CommandBarItemTitle as Component,
+				props: {
+					title,
+					actionText: i18n.baseText('generic.open'),
+				},
+			},
 			section: i18n.baseText('commandBar.sections.projects'),
+			keywords: [title],
 			handler: () => {
 				void router.push({
 					name: VIEWS.PROJECTS_WORKFLOWS,

@@ -255,6 +255,7 @@ export function useWorkflowNavigationCommands(options: {
 					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
 					suffix,
 					...(suffix ? { suffixIcon: getProjectIcon(workflow) } : {}),
+					actionText: i18n.baseText('generic.open'),
 				},
 			},
 			section: i18n.baseText('commandBar.sections.workflows'),

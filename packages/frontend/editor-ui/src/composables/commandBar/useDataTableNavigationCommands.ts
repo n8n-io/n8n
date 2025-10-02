@@ -94,6 +94,7 @@ export function useDataTableNavigationCommands(options: {
 				props: {
 					title: dataTable.name,
 					suffix: getDataTableProjectSuffix(dataTable),
+					actionText: i18n.baseText('generic.open'),
 				},
 			},
 			section: i18n.baseText('commandBar.sections.dataTables'),
