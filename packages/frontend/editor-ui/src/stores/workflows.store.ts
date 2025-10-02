@@ -2116,7 +2116,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
 		private: {
-			name,
 			setWorkflowSettings,
 			setWorkflowName,
 			setActiveExecutionId,
