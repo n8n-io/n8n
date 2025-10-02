@@ -77,21 +77,21 @@ export function useWorkflowNavigationCommands(options: {
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
 				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder'],
+				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder'],
+							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
 				? workflowsStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder'],
+						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
 					})
 				: Promise.resolve([]);
 
@@ -133,13 +133,14 @@ export function useWorkflowNavigationCommands(options: {
 			workflowKeywords.value = keywordsMap;
 			workflowMatchedNodeTypes.value = nodeTypesMap;
 
-			// Merge and dedupe by id
+			// Merge and dedupe by id, filter out archived workflows
 			const merged = [...byName, ...byNodeTypes, ...byTags];
 			const uniqueById = Array.from(new Map(merged.map((w) => [w.id, w])).values());
-			workflowResults.value = orderResultByCurrentProjectFirst(uniqueById);
+			const nonArchivedWorkflows = uniqueById.filter((w) => !w.isArchived);
+			workflowResults.value = orderResultByCurrentProjectFirst(nonArchivedWorkflows);
 
 			// Cache parent folders for breadcrumb building
-			const parentFolders = uniqueById
+			const parentFolders = nonArchivedWorkflows
 				.map((w) => w.parentFolder)
 				.filter((pf) => pf !== undefined && pf !== null);
 
