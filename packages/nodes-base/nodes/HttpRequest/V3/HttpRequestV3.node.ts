@@ -409,39 +409,18 @@ export class HttpRequestV3 implements INodeType {
 							return false;
 						}
 
-						const dataValue = value.value;
+						const isNodeReadable = (maybe: unknown): maybe is Readable => {
+							return (
+								maybe !== null &&
+								typeof maybe === 'object' &&
+								typeof (maybe as any).pipe === 'function' &&
+								typeof (maybe as any).read === 'function'
+							);
+						};
 
-						// Check for Buffer
-						if (dataValue instanceof Buffer) {
-							return true;
-						}
+						const dataValue = (value as IBinaryDataObject).value;
 
-						// More reliable check for Readable streams using constructor name
-						// This avoids issues with instanceof across module boundaries
-						if (
-							dataValue !== null &&
-							typeof dataValue === 'object' &&
-							dataValue.constructor &&
-							(dataValue.constructor.name === 'Readable' ||
-								dataValue.constructor.name === 'ReadStream' ||
-								dataValue.constructor.name === 'ReadableStream')
-						) {
-							return true;
-						}
-
-						// Additional check for objects that have stream-like properties
-						if (
-							dataValue !== null &&
-							typeof dataValue === 'object' &&
-							'pipe' in dataValue &&
-							'read' in dataValue &&
-							typeof dataValue.pipe === 'function' &&
-							typeof dataValue.read === 'function'
-						) {
-							return true;
-						}
-
-						return false;
+						return Buffer.isBuffer(dataValue) || isNodeReadable(dataValue);
 					};
 
 					// Prepare the current value to be added
