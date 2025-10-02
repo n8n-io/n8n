@@ -12,6 +12,14 @@ import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';
 import { isDateObject } from '@/utils/typeGuards';
 
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nButton,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	provider: ExternalSecretsProvider;
 }>();

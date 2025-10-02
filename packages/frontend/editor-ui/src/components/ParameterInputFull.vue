@@ -7,6 +7,7 @@ import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import FromAiOverrideButton from '@/components/ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '@/components/ParameterInputOverrides/FromAiOverrideField.vue';
+import ParameterOverrideSelectableList from '@/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -19,7 +20,6 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nInputLabel } from '@n8n/design-system';
 import {
 	buildValueFromOverride,
 	type FromAIOverride,
@@ -31,6 +31,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { inject } from 'vue';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 
+import { N8nInputLabel } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;

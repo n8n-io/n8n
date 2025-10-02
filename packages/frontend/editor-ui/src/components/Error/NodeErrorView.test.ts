@@ -86,7 +86,7 @@ describe('NodeErrorView.vue', () => {
 				error: {
 					node: error.node,
 					messages: ['Unexpected identifier [line 1]'],
-				},
+				} as NodeError,
 			},
 		});
 
@@ -101,7 +101,7 @@ describe('NodeErrorView.vue', () => {
 				error: {
 					node: error.node,
 					message: 'Unexpected identifier [line 1]',
-				},
+				} as NodeError,
 			},
 		});
 
@@ -128,7 +128,7 @@ describe('NodeErrorView.vue', () => {
 						type: 'n8n-nodes-base.function',
 						typeVersion: 1,
 					},
-				},
+				} as NodeError,
 			},
 		});
 
@@ -167,7 +167,7 @@ describe('NodeErrorView.vue', () => {
 					...error,
 					name: 'NodeOperationError',
 					functionality: 'configuration-node',
-				},
+				} as NodeError,
 			},
 		});
 
@@ -200,7 +200,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { queryByTestId } = renderComponent({
 				props: {
-					error: errorWithoutNode,
+					error: errorWithoutNode as unknown as NodeError,
 				},
 			});
 
@@ -231,7 +231,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as unknown as NodeError,
 				},
 			});
 
@@ -265,7 +265,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as unknown as NodeError,
 				},
 			});
 
@@ -285,7 +285,7 @@ describe('NodeErrorView.vue', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					error: testError,
+					error: testError as NodeError,
 				},
 			});
 

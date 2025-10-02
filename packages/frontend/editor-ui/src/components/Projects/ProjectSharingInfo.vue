@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { splitName } from '@/utils/projects.utils';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
+import { N8nAvatar } from '@n8n/design-system';
 type Props = {
 	project: ProjectListItem | ProjectSharingData;
 };

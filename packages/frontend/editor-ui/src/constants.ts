@@ -779,6 +779,12 @@ export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const COMMAND_BAR_EXPERIMENT = {
+	name: 'command_bar',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	name: '029_ndv_ui_overhaul',
 	control: 'control',

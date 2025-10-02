@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, mockDeep } from 'jest-mock-extended';
 
@@ -34,15 +34,29 @@ describe('McpSettingsController', () => {
 	});
 
 	describe('updateSettings', () => {
-		test('prevents non-owners from updating MCP access', async () => {
+		test('prevents non-admins from updating MCP access', async () => {
 			const req = createReq({ mcpAccessEnabled: false }, 'member');
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			const res = new Response();
 			await expect(controller.updateSettings(req, res, dto)).rejects.toBeInstanceOf(ForbiddenError);
 		});
 
-		test('disables MCP access correctly', async () => {
+		test('disables MCP access correctly for instance owners', async () => {
 			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_OWNER_ROLE.slug);
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });
+
+			const res = new Response();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(result).toEqual({ mcpAccessEnabled: false });
+		});
+
+		test('disables MCP access correctly for admins', async () => {
+			const req = createReq({ mcpAccessEnabled: false }, GLOBAL_ADMIN_ROLE.slug);
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue({ mcpAccessEnabled: false });

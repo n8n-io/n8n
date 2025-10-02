@@ -2,7 +2,7 @@
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
-import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
+import { N8nAskAssistantChat } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useI18n } from '@n8n/i18n';
@@ -64,7 +64,7 @@ async function undoCodeDiff(index: number) {
 
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
-		<AskAssistantChat
+		<N8nAskAssistantChat
 			:user="user"
 			:messages="assistantStore.chatMessages"
 			:streaming="assistantStore.streaming"
@@ -83,7 +83,7 @@ async function undoCodeDiff(index: number) {
 			<template #header>
 				<slot name="header" />
 			</template>
-		</AskAssistantChat>
+		</N8nAskAssistantChat>
 	</div>
 </template>
 

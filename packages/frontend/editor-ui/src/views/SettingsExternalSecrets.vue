@@ -9,6 +9,7 @@ import type { ExternalSecretsProvider } from '@/Interface';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
+import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();

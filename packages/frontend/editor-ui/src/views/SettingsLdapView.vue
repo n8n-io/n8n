@@ -11,7 +11,6 @@ import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-clie
 import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
-import { ElTable, ElTableColumn } from 'element-plus';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -21,6 +20,8 @@ import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useSSOStore } from '@/stores/sso.store';
 
+import { ElTable, ElTableColumn } from 'element-plus';
+import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
 type TableRow = {
 	status: string;
 	startAt: string;

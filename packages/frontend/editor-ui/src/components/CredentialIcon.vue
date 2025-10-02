@@ -4,10 +4,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
-import { N8nNodeIcon } from '@n8n/design-system';
 import type { ICredentialType } from 'n8n-workflow';
 import { computed } from 'vue';
 
+import { N8nNodeIcon } from '@n8n/design-system';
 const props = defineProps<{
 	credentialTypeName: string | null;
 }>();

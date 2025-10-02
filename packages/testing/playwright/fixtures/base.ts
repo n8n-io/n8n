@@ -1,3 +1,5 @@
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
@@ -42,7 +44,13 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	TestFixtures & CurrentsFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures
+>({
+	...currentsFixtures.baseFixtures,
+	...currentsFixtures.coverageFixtures,
+	...currentsFixtures.actionFixtures,
 	// Container configuration from the project use options
 	containerConfig: [
 		async ({}, use, workerInfo) => {
@@ -123,18 +131,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-		await setupDefaultInterceptors(context);
-		await use(context);
-	},
-
 	n8n: async ({ context }, use, testInfo) => {
+		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 		const n8nInstance = new n8nPage(page);
 		await n8nInstance.api.setupFromTags(testInfo.tags);

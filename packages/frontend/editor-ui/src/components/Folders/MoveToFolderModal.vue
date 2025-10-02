@@ -19,11 +19,16 @@ import type {
 	IUsedCredential,
 } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import Modal from '@/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
+import ProjectMoveResourceModalCredentialsList from '@/components/Projects/ProjectMoveResourceModalCredentialsList.vue';
+import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { ResourceType, getTruncatedProjectName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { I18nT } from 'vue-i18n';
 
+import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
+import { N8nIcon, N8nText } from '@n8n/design-system';
 type Props = {
 	icon: IconOrEmoji;
 	size?: 'mini' | 'small' | 'medium' | 'large';

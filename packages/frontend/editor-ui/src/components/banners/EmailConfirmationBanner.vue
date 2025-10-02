@@ -6,6 +6,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
+import { N8nButton } from '@n8n/design-system';
 const toast = useToast();
 const cloudPlanStore = useCloudPlanStore();
 
