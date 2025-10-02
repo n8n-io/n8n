@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DraggableTarget from '@/components/DraggableTarget.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { codeNodeEditorEventBus } from '@/event-bus';

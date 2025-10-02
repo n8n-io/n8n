@@ -4,7 +4,7 @@ import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStore
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nIconButton } from '@n8n/design-system';
 
 export type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete?: (columnId: string) => void;

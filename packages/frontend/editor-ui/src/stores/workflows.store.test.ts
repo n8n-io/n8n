@@ -553,6 +553,11 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.setWorkflowName({ newName: 'New Workflow Name', setStateDirty: false });
 			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
 		});
+
+		it('should propagate name to workflowObject for pre-exec expressions', () => {
+			workflowsStore.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
+			expect(workflowsStore.workflowObject.name).toBe('WF Title');
+		});
 	});
 
 	describe('setWorkflowActive()', () => {

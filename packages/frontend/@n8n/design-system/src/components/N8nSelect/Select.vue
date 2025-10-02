@@ -3,8 +3,7 @@ import { ElSelect } from 'element-plus';
 import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
 
-import type { SelectSize } from '@n8n/design-system/types';
-
+import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;

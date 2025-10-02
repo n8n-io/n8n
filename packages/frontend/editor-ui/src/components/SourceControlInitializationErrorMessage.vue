@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { RouterLink } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { I18nT } from 'vue-i18n';
 

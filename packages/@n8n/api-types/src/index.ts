@@ -45,6 +45,8 @@ export {
 	type User,
 	type UsersList,
 	usersListSchema,
+	userBaseSchema,
+	userDetailSchema,
 } from './schemas/user.schema';
 
 export {

@@ -1,5 +1,5 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE, type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Patch, RestController } from '@n8n/decorators';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
@@ -22,8 +22,8 @@ export class McpSettingsController {
 
 	@Patch('/settings')
 	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
-		if (req.user.role?.slug !== GLOBAL_OWNER_ROLE.slug) {
-			throw new ForbiddenError('Only the instance owner can update MCP settings');
+		if (![GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug].includes(req.user.role?.slug)) {
+			throw new ForbiddenError('Only admin users can update MCP settings');
 		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);

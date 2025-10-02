@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings.store';
 
+import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
 // #region Props
 // ---------------------------------------------------------------------------

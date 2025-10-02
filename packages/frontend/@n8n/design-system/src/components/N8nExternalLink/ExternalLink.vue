@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { IconSize } from '@n8n/design-system/types';
-
+import type { IconSize } from '../../types';
 import N8nIcon from '../N8nIcon';
 
 interface ExternalLinkProps {

@@ -15,6 +15,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import { useToast } from '@/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
+import { useBuilderStore } from '@/stores/builder.store';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -30,6 +31,7 @@ const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const logsStore = useLogsStore();
 const toast = useToast();
+const builderStore = useBuilderStore();
 
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
@@ -193,7 +195,7 @@ watch(workflowIssues, async () => {
 		<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
 			<CanvasRunWorkflowButton
 				:class="$style.runButton"
-				:disabled="hasValidationIssues"
+				:disabled="hasValidationIssues || builderStore.hasNoCreditsRemaining"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:hide-tooltip="true"
 				:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
