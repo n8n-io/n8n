@@ -135,23 +135,12 @@ const plugins: UserConfig['plugins'] = [
 		transformIndexHtml: (html, ctx) => {
 			// Skip config tags when using Vite dev server. Otherwise the BE
 			// will replace it with the actual config script in cli/src/commands/start.ts.
-			if (!ctx.server) return html;
-
-			let result = html.replace('%CONFIG_TAGS%', '');
-
-			// Replace placeholders (both regular and URL-encoded versions)
-			const replacements = {
-				BASE_PATH: '//localhost:5678',
-				REST_ENDPOINT: '/rest',
-			};
-
-			for (const [placeholder, value] of Object.entries(replacements)) {
-				result = result
-					.replaceAll(`/{{${placeholder}}}`, value)
-					.replaceAll(`/%7B%7B${placeholder}%7D%7D`, value);
-			}
-
-			return result;
+			return ctx.server
+				? html
+						.replace('%CONFIG_TAGS%', '')
+						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
+				: html;
 		},
 	},
 	// For sanitize-html
