@@ -2282,7 +2282,7 @@ export function useCanvasOperations() {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? []);
-		await workflowsStore.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
+		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
