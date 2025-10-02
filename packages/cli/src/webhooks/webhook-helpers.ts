@@ -649,11 +649,16 @@ export async function executeWebhook(
 
 		const { parentExecution } = runExecutionData;
 		if (parentExecution) {
-			// on child execution completion, resume parent execution
-			void executePromise.then(() => {
-				const waitTracker = Container.get(WaitTracker);
-				void waitTracker.startExecution(parentExecution.executionId);
-			});
+			const waitTracker = Container.get(WaitTracker);
+			// On child execution completion, resume parent execution. Only try to resume parent if it is actually waiting.
+			// // NOTE: a better approach might be to explicitly indicate whether the parent should be resumed e.g. via a
+			// `shouldResumeParent` property on `parentExecution`. But this addresses the issue in the short term with
+			// minimal changes.
+			if (waitTracker.has(parentExecution.executionId)) {
+				void executePromise.then(() => {
+					void waitTracker.startExecution(parentExecution.executionId);
+				});
+			}
 		}
 
 		if (!didSendResponse) {
