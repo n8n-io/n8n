@@ -36,17 +36,25 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
-	async function createVariable(variable: Omit<EnvironmentVariable, 'id'>) {
+	async function createVariable(
+		variable: Omit<EnvironmentVariable, 'id' | 'project'> & { projectId?: string },
+	) {
 		const data = await environmentsApi.createVariable(rootStore.restApiContext, variable);
-
+		if (variable.projectId) {
+			data.project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+		}
 		allVariables.value.unshift(data);
 
 		return data;
 	}
 
-	async function updateVariable(variable: EnvironmentVariable) {
+	async function updateVariable(
+		variable: Omit<EnvironmentVariable, 'project'> & { projectId?: string },
+	) {
 		const data = await environmentsApi.updateVariable(rootStore.restApiContext, variable);
-
+		if (variable.projectId) {
+			data.project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
+		}
 		allVariables.value = allVariables.value.map((v) => (v.id === data.id ? data : v));
 
 		return data;

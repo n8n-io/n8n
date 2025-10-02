@@ -16,14 +16,14 @@ export async function getVariable(
 
 export async function createVariable(
 	context: IRestApiContext,
-	data: Omit<EnvironmentVariable, 'id'>,
+	data: Omit<EnvironmentVariable, 'id' | 'project'> & { project?: { id: string | null } },
 ): Promise<EnvironmentVariable> {
 	return await makeRestApiRequest(context, 'POST', '/variables', data as unknown as IDataObject);
 }
 
 export async function updateVariable(
 	context: IRestApiContext,
-	{ id, ...data }: EnvironmentVariable,
+	{ id, ...data }: Omit<EnvironmentVariable, 'project'> & { projectId?: string },
 ): Promise<EnvironmentVariable> {
 	return await makeRestApiRequest(
 		context,
