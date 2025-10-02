@@ -23,7 +23,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import * as buttonParameterUtils from '@/components/ButtonParameter/utils';
-import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -277,7 +277,7 @@ describe('NodeExecuteButton', () => {
 	it('stops execution when clicking button while workflow is running', async () => {
 		workflowsStore.isWorkflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
-		useWorkflowHandle().setActiveExecutionId('test-execution-id');
+		useWorkflowState().setActiveExecutionId('test-execution-id');
 		workflowsStore.isNodeExecuting.mockReturnValue(true);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),

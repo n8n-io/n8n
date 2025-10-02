@@ -13,7 +13,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { useWorkflowHandle } from './useWorkflowHandle';
+import { useWorkflowState } from './useWorkflowState';
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -127,8 +127,8 @@ describe(useNodeDirtiness, () => {
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			const workflowHandle = useWorkflowHandle();
-			workflowHandle.setWorkflowExecutionData({
+			const workflowState = useWorkflowState();
+			workflowState.setWorkflowExecutionData({
 				id: workflowsStore.workflow.id,
 				finished: true,
 				mode: 'manual',
@@ -436,8 +436,8 @@ describe(useNodeDirtiness, () => {
 			});
 		}
 
-		const workflowHandle = useWorkflowHandle();
-		workflowHandle.setWorkflowExecutionData({
+		const workflowState = useWorkflowState();
+		workflowState.setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

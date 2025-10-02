@@ -47,7 +47,7 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
-import { injectWorkflowHandle } from './useWorkflowHandle';
+import { injectWorkflowState } from './useWorkflowState';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -63,7 +63,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = injectWorkflowHandle();
+	const workflowState = injectWorkflowState();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
@@ -95,24 +95,24 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		workflowsStore.subWorkflowExecutionError = null;
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowHandle.setActiveExecutionId(null);
+		workflowState.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowHandle.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw error;
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowHandle.setActiveExecutionId(response.executionId);
+			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
-			workflowHandle.setActiveExecutionId(undefined);
+			workflowState.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -371,7 +371,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					...workflowData,
 				} as IWorkflowDb,
 			};
-			workflowHandle.setWorkflowExecutionData(executionData);
+			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
 			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
@@ -408,7 +408,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
-			workflowHandle.setWorkflowExecutionData(null);
+			workflowState.setWorkflowExecutionData(null);
 			workflowHelpers.setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
@@ -497,7 +497,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
-				workflowHandle.setWorkflowExecutionData(executedData);
+				workflowState.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),

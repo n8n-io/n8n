@@ -33,11 +33,11 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
 	return {
 		...actual,
-		injectWorkflowHandle: vi.fn(),
+		injectWorkflowState: vi.fn(),
 	};
 });
 

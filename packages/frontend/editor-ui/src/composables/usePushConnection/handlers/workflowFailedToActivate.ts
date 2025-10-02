@@ -1,12 +1,12 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
 import { useToast } from '@/composables/useToast';
-import type { WorkflowHandle } from '@/composables/useWorkflowHandle';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
-	options: { workflowHandle: WorkflowHandle },
+	options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
 
@@ -15,7 +15,7 @@ export async function workflowFailedToActivate(
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
-	options.workflowHandle.setActive(false);
+	options.workflowState.setActive(false);
 
 	const toast = useToast();
 	const i18n = useI18n();

@@ -19,10 +19,10 @@ import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import {
-	injectWorkflowHandle,
-	useWorkflowHandle,
-	type WorkflowHandle,
-} from '@/composables/useWorkflowHandle';
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
@@ -50,12 +50,12 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
-// Mock to inject workflowHandle
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+// Mock to inject workflowState
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
 	return {
 		...actual,
-		injectWorkflowHandle: vi.fn(),
+		injectWorkflowState: vi.fn(),
 	};
 });
 
@@ -102,7 +102,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-let workflowHandle: WorkflowHandle;
+let workflowState: WorkflowState;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -134,13 +134,13 @@ describe('AI Builder store', () => {
 		workflowsStore.nodesByName = {};
 		workflowsStore.workflowExecutionData = null;
 
-		workflowHandle = useWorkflowHandle();
-		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
 			workflowsStore.workflow.name = newName;
 		});
-		vi.spyOn(workflowHandle, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
+		vi.spyOn(workflowState, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);

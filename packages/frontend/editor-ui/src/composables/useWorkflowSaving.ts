@@ -27,7 +27,7 @@ import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
-import { useWorkflowHandle } from './useWorkflowHandle';
+import { useWorkflowState } from './useWorkflowState';
 
 export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRouter> }) {
 	const uiStore = useUIStore();
@@ -35,7 +35,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = useWorkflowHandle();
+	const workflowState = useWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
@@ -230,13 +230,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 			if (name) {
-				workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 			}
 
 			if (tags) {
 				const createdTags = (workflowData.tags || []) as ITag[];
 				const tagIds = createdTags.map((tag: ITag): string => tag.id);
-				workflowHandle.setWorkflowTagIds(tagIds);
+				workflowState.setWorkflowTagIds(tagIds);
 			}
 
 			uiStore.stateIsDirty = false;
@@ -387,11 +387,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 				}
 			}
 
-			workflowHandle.setActive(workflowData.active || false);
-			workflowHandle.setWorkflowId(workflowData.id);
+			workflowState.setActive(workflowData.active || false);
+			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
-			workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-			workflowHandle.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
 			uiStore.stateIsDirty = false;
 			Object.keys(changedNodes).forEach((nodeName) => {
 				const changes = {
@@ -404,7 +404,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 
 			const createdTags = (workflowData.tags || []) as ITag[];
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
-			workflowHandle.setWorkflowTagIds(tagIds);
+			workflowState.setWorkflowTagIds(tagIds);
 
 			const templateId = router.currentRoute.value.query.templateId;
 			if (templateId) {

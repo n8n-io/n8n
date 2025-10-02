@@ -15,7 +15,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
@@ -24,7 +24,7 @@ const environment = process.env.NODE_ENV;
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
 const workflowsStore = useWorkflowsStore();
-const workflowHandle = injectWorkflowHandle();
+const workflowState = injectWorkflowState();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
@@ -97,7 +97,7 @@ function forceUpdateInstance() {
 }
 
 function onBusClosing() {
-	workflowHandle.removeAllNodes({ setStateDirty: false, removePinData: true });
+	workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
 	uiStore.stateIsDirty = false;
 }
 

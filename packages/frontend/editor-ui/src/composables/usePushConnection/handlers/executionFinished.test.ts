@@ -9,7 +9,7 @@ import type { ITaskData } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { Router } from 'vue-router';
-import type { WorkflowHandle } from '@/composables/useWorkflowHandle';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -202,7 +202,7 @@ describe('executionFinished', () => {
 			},
 			{
 				router: mock<Router>(),
-				workflowHandle: mock<WorkflowHandle>(),
+				workflowState: mock<WorkflowState>(),
 			},
 		);
 

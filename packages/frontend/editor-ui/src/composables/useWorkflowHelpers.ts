@@ -64,7 +64,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -534,7 +534,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = injectWorkflowHandle();
+	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
@@ -878,7 +878,7 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowHandle.setActive(!!workflow.active);
+			workflowState.setActive(!!workflow.active);
 			uiStore.stateIsDirty = false;
 		}
 
@@ -968,14 +968,14 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowHandle.setActive(workflowData.active || false);
+		workflowState.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowHandle.setWorkflowId(workflowData.id);
-		workflowHandle.setWorkflowName({
+		workflowState.setWorkflowId(workflowData.id);
+		workflowState.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		workflowHandle.setWorkflowSettings(workflowData.settings ?? {});
+		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
@@ -994,7 +994,7 @@ export function useWorkflowHelpers() {
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
-		workflowHandle.setWorkflowTagIds(tagIds || []);
+		workflowState.setWorkflowTagIds(tagIds || []);
 		tagsStore.upsertTags(tags);
 	}
 

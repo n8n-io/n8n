@@ -2,10 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
-	injectWorkflowHandle,
-	useWorkflowHandle,
-	type WorkflowHandle,
-} from '@/composables/useWorkflowHandle';
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi, IExecutionResponse } from '@/Interface';
 import type { Workflow } from 'n8n-workflow';
@@ -20,15 +20,15 @@ vi.mock('@/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
 	return {
 		...actual,
-		injectWorkflowHandle: vi.fn(),
+		injectWorkflowState: vi.fn(),
 	};
 });
 
-let workflowHandle: WorkflowHandle;
+let workflowState: WorkflowState;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
 
@@ -38,8 +38,8 @@ describe('useExecutionDebugging()', () => {
 		createTestingPinia();
 		toast = useToast();
 
-		workflowHandle = useWorkflowHandle();
-		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		executionDebugging = useExecutionDebugging();
 	});
@@ -183,7 +183,7 @@ describe('useExecutionDebugging()', () => {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
 		} as unknown as Workflow;
-		const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
@@ -214,7 +214,7 @@ describe('useExecutionDebugging()', () => {
 			pinData: {},
 			getParentNodes: vi.fn().mockReturnValue([]),
 		} as unknown as Workflow;
-		const setWorkflowExecutionData = vi.spyOn(workflowHandle, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 

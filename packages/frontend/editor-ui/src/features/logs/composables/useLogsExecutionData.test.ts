@@ -16,23 +16,23 @@ import type { IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import {
-	injectWorkflowHandle,
-	useWorkflowHandle,
-	type WorkflowHandle,
-} from '@/composables/useWorkflowHandle';
+	injectWorkflowState,
+	useWorkflowState,
+	type WorkflowState,
+} from '@/composables/useWorkflowState';
 import { computed } from 'vue';
 
 vi.mock('@/composables/useToast');
 
-vi.mock('@/composables/useWorkflowHandle', async () => {
-	const actual = await vi.importActual('@/composables/useWorkflowHandle');
+vi.mock('@/composables/useWorkflowState', async () => {
+	const actual = await vi.importActual('@/composables/useWorkflowState');
 	return {
 		...actual,
-		injectWorkflowHandle: vi.fn(),
+		injectWorkflowState: vi.fn(),
 	};
 });
 
-let workflowHandle: WorkflowHandle;
+let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -43,8 +43,8 @@ describe(useLogsExecutionData, () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 
-		workflowHandle = useWorkflowHandle();
-		vi.mocked(injectWorkflowHandle).mockReturnValue(workflowHandle);
+		workflowState = useWorkflowState();
+		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
@@ -52,7 +52,7 @@ describe(useLogsExecutionData, () => {
 
 	describe('isEnabled', () => {
 		beforeEach(() => {
-			workflowHandle.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
@@ -79,7 +79,7 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			workflowHandle.setWorkflowExecutionData(
+			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
 					workflowData: createTestWorkflow({

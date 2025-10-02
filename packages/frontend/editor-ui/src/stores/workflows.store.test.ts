@@ -36,7 +36,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -266,7 +266,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return false for an existing workflow', () => {
-			useWorkflowHandle().setWorkflowId('123');
+			useWorkflowState().setWorkflowId('123');
 			expect(workflowsStore.isNewWorkflow).toBe(false);
 		});
 	});
@@ -853,7 +853,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node success run data', () => {
-			useWorkflowHandle().setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -877,7 +877,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should add node error event and track errored executions', async () => {
 			workflowsStore.workflow.pinData = {};
-			useWorkflowHandle().setWorkflowExecutionData(executionResponse);
+			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -967,7 +967,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			useWorkflowHandle().setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1022,7 +1022,7 @@ describe('useWorkflowsStore', () => {
 					},
 				},
 			};
-			useWorkflowHandle().setWorkflowExecutionData(runWithExistingRunData);
+			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
 				type: 'n8n-nodes-base.manualTrigger',

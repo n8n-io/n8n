@@ -105,7 +105,7 @@ import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
-import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
@@ -154,7 +154,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHandle = injectWorkflowHandle();
+	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -1661,9 +1661,9 @@ export function useCanvasOperations() {
 
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
-		workflowHandle.resetState();
+		workflowState.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
-		workflowHandle.setActiveExecutionId(undefined);
+		workflowState.setActiveExecutionId(undefined);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -2020,7 +2020,7 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowHandle.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
+				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
 			}
 
 			return workflowData;
@@ -2222,7 +2222,7 @@ export function useCanvasOperations() {
 
 		initializeWorkspace(data.workflowData);
 
-		workflowHandle.setWorkflowExecutionData(data);
+		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowsStore.setWorkflowPinData({});

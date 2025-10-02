@@ -21,21 +21,21 @@ import {
 	workflowActivated,
 	workflowDeactivated,
 } from '@/composables/usePushConnection/handlers';
-import { useWorkflowHandle, type WorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowState, type WorkflowState } from '@/composables/useWorkflowState';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
 export function usePushConnection({
 	router,
-	workflowHandle,
+	workflowState,
 }: {
 	router: ReturnType<typeof useRouter>;
-	workflowHandle?: WorkflowHandle;
+	workflowState?: WorkflowState;
 }) {
 	const pushStore = usePushConnectionStore();
 	const options = {
 		router,
-		workflowHandle: workflowHandle ?? useWorkflowHandle(),
+		workflowState: workflowState ?? useWorkflowState(),
 	};
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);

@@ -1,14 +1,14 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { parse } from 'flatted';
-import type { WorkflowHandle } from '@/composables/useWorkflowHandle';
+import type { WorkflowState } from '@/composables/useWorkflowState';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
  */
 export async function executionStarted(
 	{ data }: ExecutionStarted,
-	options: { workflowHandle: WorkflowHandle },
+	options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
 
@@ -16,7 +16,7 @@ export async function executionStarted(
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
 		return;
 	} else if (workflowsStore.activeExecutionId === null) {
-		options.workflowHandle.setActiveExecutionId(data.executionId);
+		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
 	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {

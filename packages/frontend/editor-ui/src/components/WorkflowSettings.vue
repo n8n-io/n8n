@@ -24,7 +24,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDebounce } from '@/composables/useDebounce';
-import { injectWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { injectWorkflowState } from '@/composables/useWorkflowState';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
@@ -39,7 +39,7 @@ const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
-const workflowHandle = injectWorkflowHandle();
+const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 
 const isLoading = ref(true);
@@ -367,7 +367,7 @@ const saveSettings = async () => {
 
 	const oldSettings = deepCopy(workflowsStore.workflowSettings);
 
-	workflowHandle.setWorkflowSettings(localWorkflowSettings);
+	workflowState.setWorkflowSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 

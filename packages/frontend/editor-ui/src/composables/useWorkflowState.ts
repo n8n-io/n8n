@@ -1,4 +1,4 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WorkflowHandleKey } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WorkflowStateKey } from '@/constants';
 import type { IExecutionResponse } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -6,7 +6,7 @@ import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 
-export function useWorkflowHandle() {
+export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const uiStore = useUIStore();
 
@@ -110,14 +110,14 @@ export function useWorkflowHandle() {
 	};
 }
 
-export type WorkflowHandle = ReturnType<typeof useWorkflowHandle>;
+export type WorkflowState = ReturnType<typeof useWorkflowState>;
 
-export function injectWorkflowHandle() {
+export function injectWorkflowState() {
 	return inject(
-		WorkflowHandleKey,
+		WorkflowStateKey,
 		() => {
-			console.error('Attempted to inject workflowHandle outside of NodeView tree');
-			return useWorkflowHandle();
+			console.error('Attempted to inject workflowState outside of NodeView tree');
+			return useWorkflowState();
 		},
 		true,
 	);

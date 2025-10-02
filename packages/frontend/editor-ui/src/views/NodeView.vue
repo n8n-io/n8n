@@ -68,7 +68,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
-	WorkflowHandleKey,
+	WorkflowStateKey,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -142,7 +142,7 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useKeybindings } from '@/composables/useKeybindings';
 import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
-import { useWorkflowHandle } from '@/composables/useWorkflowHandle';
+import { useWorkflowState } from '@/composables/useWorkflowState';
 import { useParentFolder } from '@/composables/useParentFolder';
 
 import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
@@ -208,8 +208,8 @@ const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore()
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 
-const workflowHandle = useWorkflowHandle();
-provide(WorkflowHandleKey, workflowHandle);
+const workflowState = useWorkflowState();
+provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -1867,7 +1867,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 
 			// Make sure workflow id is empty when leaving the editor
-			workflowHandle.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			workflowState.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 			return true;
 		},
