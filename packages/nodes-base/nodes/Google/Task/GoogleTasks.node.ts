@@ -12,6 +12,19 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
 
+// Helper to enforce RFC 3339 format (YYYY-MM-DDTHH:mm:ssZ)
+function toRFC3339(dateValue: string | undefined): string | undefined {
+	if (!dateValue) return undefined;
+	// If already in RFC 3339 format, return as is
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(dateValue)) {
+		return dateValue;
+	}
+	// Try to parse and convert
+	const d = new Date(dateValue);
+	if (isNaN(d.getTime())) return dateValue; // fallback: return as is
+	return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Tasks',
@@ -112,11 +125,11 @@ export class GoogleTasks implements INodeType {
 							body.notes = additionalFields.notes as string;
 						}
 						if (additionalFields.dueDate) {
-							body.due = additionalFields.dueDate as string;
+							body.due = toRFC3339(additionalFields.dueDate as string);
 						}
 
 						if (additionalFields.completed) {
-							body.completed = additionalFields.completed as string;
+							body.completed = toRFC3339(additionalFields.completed as string);
 						}
 
 						if (additionalFields.deleted) {
@@ -232,11 +245,11 @@ export class GoogleTasks implements INodeType {
 						}
 
 						if (updateFields.dueDate) {
-							body.due = updateFields.dueDate as string;
+							body.due = toRFC3339(updateFields.dueDate as string);
 						}
 
 						if (updateFields.completed) {
-							body.completed = updateFields.completed as string;
+							body.completed = toRFC3339(updateFields.completed as string);
 						}
 
 						if (updateFields.deleted) {
