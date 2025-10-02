@@ -119,7 +119,7 @@ describe('useResolvedExpression', () => {
 		const resolveExpressionSpy = mockResolveExpression();
 		resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
 
-		workflowHandle.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
 
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: '={{ $workflow.name }}',
@@ -130,7 +130,7 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('Old Name');
 
 		// Update name and expect re-resolution
-		workflowHandle.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+		workflowState.setWorkflowName({ newName: 'New Name', setStateDirty: false });
 		await nextTick();
 		vi.advanceTimersByTime(200);
 		expect(toValue(resolvedExpressionString)).toBe('New Name');
