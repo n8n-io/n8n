@@ -53,7 +53,10 @@ const filteredItems = computed(() => {
 	if (inputValue.value) {
 		const query = inputValue.value.toLowerCase();
 		items = items.filter((item) => {
-			const searchText = [item.title, ...(item.keywords ?? [])]
+			const searchText = [
+				typeof item.title === 'string' ? item.title : '',
+				...(item.keywords ?? []),
+			]
 				.filter(Boolean)
 				.join(' ')
 				.toLowerCase();
