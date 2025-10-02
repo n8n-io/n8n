@@ -53,7 +53,7 @@ export function useGenericCommands(): CommandGroup {
 			title: i18n.baseText('mainSidebar.templates'),
 			section: i18n.baseText('commandBar.sections.general'),
 			handler: () => {
-				void router.push({ name: VIEWS.TEMPLATES });
+				void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
 			},
 			icon: {
 				component: N8nIcon as Component,
