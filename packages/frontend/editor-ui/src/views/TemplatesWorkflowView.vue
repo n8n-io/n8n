@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import TemplateDetails from '@/components/TemplateDetails.vue';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { N8nButton, N8nHeading, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';

@@ -12,6 +12,7 @@ export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
 export { default as N8nCallout } from './N8nCallout';
+export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';

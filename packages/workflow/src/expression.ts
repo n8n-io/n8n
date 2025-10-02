@@ -310,8 +310,6 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
-
 			if (returnValue.name === 'DateTime')
 				throw new ApplicationError('this is a DateTime, please access its methods');
 

@@ -7,7 +7,7 @@ import { ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 
 const uiStore = useUIStore();
 const {
