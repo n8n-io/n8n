@@ -48,6 +48,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -134,6 +135,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+				VARIABLE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {

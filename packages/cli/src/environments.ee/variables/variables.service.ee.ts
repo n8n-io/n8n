@@ -244,7 +244,8 @@ export class VariablesService {
 		// TODO: implement guards when changing variable projectId or moving from global to project variable or vice versa
 
 		await this.variablesRepository.update(id, {
-			...variable,
+			key: variable.key,
+			value: variable.value,
 			project: variable.projectId ? { id: variable.projectId } : null,
 		});
 		await this.updateCache();

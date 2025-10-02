@@ -45,6 +45,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	VARIABLE_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -95,6 +96,7 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
+import VariableModal from '@/components/VariableModal.vue';
 </script>
 
 <template>
@@ -373,6 +375,12 @@ import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/com
 		<ModalRoot :name="PRE_BUILT_AGENTS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<PreBuiltAgentsModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="VARIABLE_MODAL_KEY">
+			<template #default="{ data }">
+				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
 			</template>
 		</ModalRoot>
 

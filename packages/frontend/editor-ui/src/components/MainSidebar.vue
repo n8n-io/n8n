@@ -24,6 +24,7 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	PROJECT_VARIABLES_EXPERIMENT,
 	RELEASE_NOTES_URL,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
@@ -57,6 +58,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import ProjectNavigation from './Projects/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
+import { usePostHog } from '@/stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -80,6 +82,7 @@ const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 const calloutHelpers = useCalloutHelpers();
+const posthogStore = usePostHog();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
@@ -111,6 +114,13 @@ const showWhatsNewNotification = computed(
 		versionsStore.whatsNewArticles.some(
 			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
 		),
+);
+
+const isProjectVariablesEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		PROJECT_VARIABLES_EXPERIMENT.name,
+		PROJECT_VARIABLES_EXPERIMENT.variant,
+	),
 );
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
@@ -186,6 +196,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.variables'),
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
+		available: !isProjectVariablesEnabled.value,
 	},
 	{
 		id: 'insights',
